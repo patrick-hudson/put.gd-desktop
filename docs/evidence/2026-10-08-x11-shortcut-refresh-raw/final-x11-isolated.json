@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "-R",
+    "^x11_isolated$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/memory-surfaces/x11-grab-fix/final-x11-isolated.xml"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 17.001375566003844,
+  "gitCommit": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+  "sha256": {
+    "src/platform/x11/X11Shortcuts.cpp": "53da3a5936f02e72180cb017d6c8ef9ced5a02a2696a5ea6a3e4f1037801917c",
+    "src/platform/x11/X11Shortcuts.h": "b3a1a37809167b9ada9b575f58cf3d67195730b040ff616a759faa03c941b30c",
+    "tests/desktop/x11/test_x11.cpp": "130714c7c0a41fad4ab220064798cbc97f629800610626880f8ae69d3020881f",
+    "tests/fixtures/X11MappingBarrier.h": "acaffe2867c53ad5dd4f09c2433e5a81c2c26c2015412bc8f0d7389f48006a2b",
+    "build/dev/test_x11": "cde483eaa4e0296b5ffc3d6214a1952fe5ddabff74619a10e3506fdf9ad9cfd0"
+  },
+  "qt": "6.4.2",
+  "compiler": "GCC 13.2.0",
+  "os": "Linux Mint 22.3",
+  "graphicalAcceptance": false
+}

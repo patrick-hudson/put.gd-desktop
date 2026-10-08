@@ -1,0 +1,58 @@
+{
+  "status": "fixed-uncommitted",
+  "finishedAtUtc": "2026-10-08T22:32:10.522521+00:00",
+  "fixOwnedFiles": [
+    "src/platform/x11/X11Shortcuts.cpp",
+    "tests/desktop/x11/test_x11.cpp",
+    "tests/fixtures/X11MappingBarrier.h",
+    "docs/testing-x11-shortcut-refresh.md"
+  ],
+  "sha256": {
+    "src/platform/x11/X11Shortcuts.cpp": "53da3a5936f02e72180cb017d6c8ef9ced5a02a2696a5ea6a3e4f1037801917c",
+    "tests/desktop/x11/test_x11.cpp": "130714c7c0a41fad4ab220064798cbc97f629800610626880f8ae69d3020881f",
+    "tests/fixtures/X11MappingBarrier.h": "acaffe2867c53ad5dd4f09c2433e5a81c2c26c2015412bc8f0d7389f48006a2b",
+    "docs/testing-x11-shortcut-refresh.md": "0830cec6b0e0c2ba8d2b287bd02ff9099ffdc3185cc64e1ee82a82731681a3cd"
+  },
+  "stagedFilesOwned": [],
+  "rootCause": "MappingNotify called bind, which cleared and flushed all passive grabs before synchronous modifier-map fetch/regrab; an XTEST chord processed in this gap was permanently lost.",
+  "fix": "Reuse existing keycode/modifier grabs across refresh, install missing combinations, roll back only new combinations on rejection, and remove obsolete old combinations after all actions are reconciled.",
+  "red": {
+    "receipt": "red.json",
+    "exitCode": 1,
+    "actualActivationCount": 0,
+    "expected": 1,
+    "elapsedSeconds": 15.62407947803149
+  },
+  "green": {
+    "receipt": "final-x11-isolated.json",
+    "exitCode": 0,
+    "qtTestEntriesPassed": 25,
+    "qtTestEntriesFailed": 0,
+    "elapsedSeconds": 17.001375566003844
+  },
+  "originalProbe": {
+    "receipt": "original-probe.json",
+    "exitCode": 0,
+    "unchangedLibrarySha256": "d9c47657721d8fa9dbe84dc529879bf18a24d1db78724ae9c531bb5f51373c72"
+  },
+  "selfReview": {
+    "findings": [],
+    "checked": [
+      "accepted action native-combination transfer",
+      "new-only rollback and obsolete retained cleanup",
+      "sorted duplicate precedence",
+      "disabled/removed binding cleanup",
+      "mapping refresh preserves unchanged grabs",
+      "test barrier scope is RAII/thread-local and remains inactive in unrelated tests",
+      "no timeout, retry, warmup or production test hook",
+      "git diff --check"
+    ]
+  },
+  "limitations": [
+    "Original intermittent GNOME Qt 6.10.2 failure did not record scheduling; its exact causality remains unproven.",
+    "Only isolated Xvfb and native XCB/XTEST were exercised for this correction, not physical or guest compositor acceptance.",
+    "Current frozen memory candidate does not contain this separate correction.",
+    "Root owns cross-desktop/integration review and final commit; worker did not stage, commit, push or touch frozen worktree/harnesses."
+  ],
+  "buildIdle": true
+}

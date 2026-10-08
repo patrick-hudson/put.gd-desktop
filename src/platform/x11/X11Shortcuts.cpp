@@ -15,7 +15,10 @@ bool X11Shortcuts::available()const{return notifier_&&connection_&&!xcb_connecti
 uint16_t X11Shortcuts::modifier(const xcb_get_modifier_mapping_reply_t* map,xcb_keysym_t one,xcb_keysym_t two){if(!map)return 0;auto* codes=xcb_get_modifier_mapping_keycodes(map);uint16_t result=0;for(int m=0;m<8;++m)for(int i=0;i<map->keycodes_per_modifier;++i){auto code=codes[m*map->keycodes_per_modifier+i];if(!code)continue;for(int col=0;col<4;++col){auto sym=xcb_key_symbols_get_keysym(symbols_,code,col);if(sym==one||sym==two)result|=uint16_t(1<<m);}}return result;}
 void X11Shortcuts::clear(){if(!connection_)return;for(const auto& grab:grabs_)xcb_ungrab_key(connection_,grab.code,root_,grab.modifiers);grabs_.clear();xcb_flush(connection_);}
 void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
- clear();requested_=bindings;status_={};if(!available()){for(auto it=bindings.begin();it!=bindings.end();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"bound",false},{"error","shortcut_unavailable"}};emit bindingsChanged();return;}
+ requested_=bindings;status_={};if(!available()){clear();for(auto it=bindings.begin();it!=bindings.end();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"bound",false},{"error","shortcut_unavailable"}};emit bindingsChanged();return;}
+ const auto identity=[](xcb_keycode_t code,uint16_t modifiers){return QString::number(code)+":"+QString::number(modifiers);};
+ QSet<QString> existing;for(const auto& grab:grabs_)existing.insert(identity(grab.code,grab.modifiers));
+ QList<Grab> next;
  const auto mapping=x11::reply(xcb_get_modifier_mapping_reply(connection_,xcb_get_modifier_mapping(connection_),nullptr));
  const auto mask=[&](xcb_keysym_t one,xcb_keysym_t two){return modifier(mapping.get(),one,two);};
  const auto control=mask(XK_Control_L,XK_Control_R),shift=mask(XK_Shift_L,XK_Shift_R),alt=mask(XK_Alt_L,XK_Alt_R),meta=mask(XK_Super_L,XK_Super_R);
@@ -30,7 +33,7 @@ void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
   if(qt&Qt::AltModifier)modifiers|=alt;
   if(qt&Qt::MetaModifier)modifiers|=meta;
   if(sequence.count()!=1||!key||qt.testFlag(Qt::KeypadModifier)||qt.testFlag(Qt::GroupSwitchModifier)){entry["error"]="shortcut_unsupported";status_[action]=entry;continue;}
-  auto* codes=xcb_key_symbols_get_keycode(symbols_,key);QList<Grab> attempt;bool conflict=false;QSet<QString> attemptIds;
+  auto* codes=xcb_key_symbols_get_keycode(symbols_,key);QList<Grab> attempt,installed;bool conflict=false;QSet<QString> attemptIds;
   bool unsupported=false;
   if(codes)for(auto* code=codes;*code;++code){
    const auto base=xcb_key_symbols_get_keysym(symbols_,*code,0),shifted=xcb_key_symbols_get_keysym(symbols_,*code,1);
@@ -38,16 +41,24 @@ void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
    uint16_t effective=modifiers;
    if(base!=key){if(!shift){unsupported=true;continue;}effective|=shift;}
    for(auto lock:ignored){
-    const auto mask=uint16_t(effective|lock);const QString id=QString::number(*code)+":"+QString::number(mask);
+    const auto mask=uint16_t(effective|lock);const QString id=identity(*code,mask);
     if(attemptIds.contains(id))continue;
     attemptIds.insert(id);
     if(accepted.contains(id)){conflict=true;continue;}
+    // MappingNotify often leaves the native chord unchanged. Keep that grab
+    // installed while querying the map and adding any new combinations.
+    if(existing.contains(id)){attempt.append({action,*code,mask});continue;}
     auto* error=xcb_request_check(connection_,xcb_grab_key_checked(connection_,0,root_,mask,*code,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC));
-    if(error){conflict=true;free(error);}else attempt.append({action,*code,mask});
+    if(error){conflict=true;free(error);}else{const Grab grab{action,*code,mask};attempt.append(grab);installed.append(grab);}
    }
   }
-  free(codes);if(conflict||attempt.isEmpty()){for(const auto& grab:attempt)xcb_ungrab_key(connection_,grab.code,root_,grab.modifiers);entry["error"]=conflict?"shortcut_conflict":unsupported?"shortcut_unsupported":"shortcut_unmapped";}else{grabs_.append(attempt);accepted.unite(attemptIds);entry["bound"]=true;entry["actual"]=sequence.toString(QKeySequence::PortableText);}status_[action]=entry;
+  free(codes);if(conflict||attempt.isEmpty()){for(const auto& grab:installed)xcb_ungrab_key(connection_,grab.code,root_,grab.modifiers);entry["error"]=conflict?"shortcut_conflict":unsupported?"shortcut_unsupported":"shortcut_unmapped";}else{next.append(attempt);accepted.unite(attemptIds);entry["bound"]=true;entry["actual"]=sequence.toString(QKeySequence::PortableText);}status_[action]=entry;
  }
+ // Remove obsolete grabs only after every new action has been reconciled.
+ // Failed actions release their retained combinations here, unless another
+ // accepted action now owns them.
+ for(const auto& grab:grabs_)if(!accepted.contains(identity(grab.code,grab.modifiers)))xcb_ungrab_key(connection_,grab.code,root_,grab.modifiers);
+ grabs_=std::move(next);
  xcb_flush(connection_);emit bindingsChanged();
 }
 void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){const auto type=raw->response_type&127;if(type==XCB_KEY_PRESS){const auto* key=reinterpret_cast<xcb_key_press_event_t*>(raw);for(const auto& grab:grabs_)if(grab.code==key->detail&&grab.modifiers==(key->state&255)){// Release this connection's active passive-key grab before the selector

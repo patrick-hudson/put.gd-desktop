@@ -1,0 +1,56 @@
+Start testing: Oct 08 17:30 CDT
+----------------------------------------------------------
+5/31 Testing: x11_isolated
+5/31 Test: x11_isolated
+Command: "/usr/bin/dbus-run-session" "--" "/usr/bin/xvfb-run" "-a" "/home/patrick/work/put.gd/build/dev/test_x11"
+Directory: /home/patrick/work/put.gd/build/dev
+"x11_isolated" start time: Oct 08 17:30 CDT
+Output:
+----------------------------------------------------------
+dbus-daemon[2310056]: [session uid=1000 pid=2310056] Activating service name='org.gtk.vfs.Daemon' requested by ':1.0' (uid=1000 pid=2310073 comm="/home/patrick/work/put.gd/build/dev/test_x11" label="chatgpt (unconfined)")
+dbus-daemon[2310056]: [session uid=1000 pid=2310056] Successfully activated service 'org.gtk.vfs.Daemon'
+dbus-daemon[2310056]: [session uid=1000 pid=2310056] Activating service name='org.a11y.Bus' requested by ':1.2' (uid=1000 pid=2310073 comm="/home/patrick/work/put.gd/build/dev/test_x11" label="chatgpt (unconfined)")
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[2310056]: [session uid=1000 pid=2310056] Successfully activated service 'org.a11y.Bus'
+********* Start testing of X11Test *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : X11Test::initTestCase()
+dbus-daemon[2310098]: Activating service name='org.a11y.atspi.Registry' requested by ':1.0' (uid=1000 pid=2310073 comm="/home/patrick/work/put.gd/build/dev/test_x11" label="chatgpt (unconfined)")
+dbus-daemon[2310098]: Successfully activated service 'org.a11y.atspi.Registry'
+SpiRegistry daemon is running with well-known name - org.a11y.atspi.Registry
+PASS   : X11Test::nativeSelectionTextAndRevision()
+PASS   : X11Test::nativeFilesImageAndUrlPrecedence()
+PASS   : X11Test::remoteUriFallsThroughToText()
+PASS   : X11Test::bmpImageAndIncrementalSelection()
+PASS   : X11Test::incrementalText()
+PASS   : X11Test::invocationRevisionIncludesQueuedOwnerChange()
+PASS   : X11Test::nativeKeyActivationWithLocks()
+PASS   : X11Test::regionCancellationAndExactSelection()
+PASS   : X11Test::encodedImageResultIsServedToNativeClipboardConsumer()
+PASS   : X11Test::simultaneousClipboardImportsAreSerialized()
+PASS   : X11Test::cancellingRegionDoesNotCancelClipboardImport()
+PASS   : X11Test::regionRetainsExternalFocusAndNativeEscape()
+PASS   : X11Test::heldGlobalChordHandsKeyboardToSelector()
+PASS   : X11Test::clipboardQueueBoundAndFrozenOwner()
+PASS   : X11Test::asciiLetterShortcutNeedsNoImplicitShift()
+PASS   : X11Test::shiftedPrintableShortcutUsesActualChord()
+PASS   : X11Test::keyboardMappingChangeRebindsActualCodes()
+PASS   : X11Test::mappingRefreshKeepsUnchangedChordGrabbed()
+PASS   : X11Test::mappingConflictReleasesRejectedGrabsAndPreservesOtherActions()
+PASS   : X11Test::nonresponsiveOwnerKeepsEventLoopAlive()
+PASS   : X11Test::conflictsAreReported()
+PASS   : X11Test::activeWindowFrozenAndMovedTargetRejected()
+PASS   : X11Test::desktopIsDetached()
+PASS   : X11Test::cleanupTestCase()
+Totals: 25 passed, 0 failed, 0 skipped, 0 blacklisted, 16739ms
+********* Finished testing of X11Test *********
+A connection to the bus can't be made
+<end of output>
+Test time =  16.99 sec
+----------------------------------------------------------
+Test Passed.
+"x11_isolated" end time: Oct 08 17:31 CDT
+"x11_isolated" time elapsed: 00:00:16
+----------------------------------------------------------
+
+End testing: Oct 08 17:31 CDT

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="1"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="16"
+	timestamp="2026-10-08T17:30:45"
+	>
+	<testcase name="x11_isolated" classname="x11_isolated" time="16.9893" status="run">
+		<properties/>
+		<system-out>dbus-daemon[2310056]: [session uid=1000 pid=2310056] Activating service name='org.gtk.vfs.Daemon' requested by ':1.0' (uid=1000 pid=2310073 comm="/home/patrick/work/put.gd/build/dev/test_x11" label="chatgpt (unconfined)")
+dbus-daemon[2310056]: [session uid=1000 pid=2310056] Successfully activated service 'org.gtk.vfs.Daemon'
+dbus-daemon[2310056]: [session uid=1000 pid=2310056] Activating service name='org.a11y.Bus' requested by ':1.2' (uid=1000 pid=2310073 comm="/home/patrick/work/put.gd/build/dev/test_x11" label="chatgpt (unconfined)")
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[2310056]: [session uid=1000 pid=2310056] Successfully activated service 'org.a11y.Bus'
+********* Start testing of X11Test *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : X11Test::initTestCase()
+dbus-daemon[2310098]: Activating service name='org.a11y.atspi.Registry' requested by ':1....
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

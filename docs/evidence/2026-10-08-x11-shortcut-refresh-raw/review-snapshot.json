@@ -1,0 +1,11 @@
+{
+  "base": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+  "workspace": "/tmp/putgd-x11-review",
+  "scope": [
+    "src/platform/x11/X11Shortcuts.cpp",
+    "tests/desktop/x11/test_x11.cpp",
+    "tests/fixtures/X11MappingBarrier.h",
+    "docs/testing-x11-shortcut-refresh.md"
+  ],
+  "patchSha256": "661560c95cb908f8381161dceb48a44daad5f63cf3e47e3dc42e977d759758ff"
+}

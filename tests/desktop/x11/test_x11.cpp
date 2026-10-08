@@ -20,6 +20,7 @@
 #include "ui/RegionOverlay.h"
 #include "../../fixtures/X11SelectionFixture.h"
 #include "../../fixtures/X11DesktopFixture.h"
+#include "../../fixtures/X11MappingBarrier.h"
 #include <X11/keysym.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xcb.h>
@@ -184,6 +185,53 @@ private slots:
   struct Restore {xcb_connection_t* connection;xcb_keycode_t code;QList<xcb_keysym_t> values;~Restore(){xcb_change_keyboard_mapping(connection,1,code,values.size(),values.constData());xcb_flush(connection);}} restore{desktop.connection,code,previous};
   QList<xcb_keysym_t> replacement(previous.size(),XCB_NO_SYMBOL);replacement[0]=XK_F6;if(replacement.size()>1)replacement[1]=XK_F6;const auto before=changes;xcb_change_keyboard_mapping(desktop.connection,1,code,replacement.size(),replacement.constData());xcb_flush(desktop.connection);QTRY_VERIFY(changes>before);QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
   desktop.key(XK_Control_L,true);desktop.rawKey(code,true);desktop.rawKey(code,false);desktop.key(XK_Control_L,false);QTRY_COMPARE(activated,1);
+ }
+ void mappingRefreshKeepsUnchangedChordGrabbed() {
+  X11DesktopFixture desktop;X11MappingBarrier barrier;X11Shortcuts shortcuts;int activated=0,changes=0;bool injected=false;
+  connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString& action){QCOMPARE(action,QString("region"));++activated;});
+  connect(&shortcuts,&X11Shortcuts::bindingsChanged,this,[&]{++changes;});
+  shortcuts.bind({{"region","Ctrl+Shift+1"}});QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
+  barrier.arm([&](xcb_connection_t* connection){
+   // Finish any earlier ungrabs before the independent client's key events.
+   auto* sync=xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr);QVERIFY(sync);free(sync);
+   desktop.key(XK_Control_L,true);desktop.key(XK_Shift_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Shift_L,false);desktop.key(XK_Control_L,false);
+   QCOMPARE(desktop.inputFocus(),desktop.window);injected=true;
+  });
+  const auto code=xcb_get_setup(desktop.connection)->max_keycode;
+  auto* mapping=xcb_get_keyboard_mapping_reply(desktop.connection,xcb_get_keyboard_mapping(desktop.connection,code,1),nullptr);QVERIFY(mapping);
+  // A real server notification with unchanged symbols must never drop a grab.
+  xcb_change_keyboard_mapping(desktop.connection,1,code,mapping->keysyms_per_keycode,xcb_get_keyboard_mapping_keysyms(mapping));free(mapping);xcb_flush(desktop.connection);
+  QTRY_VERIFY(injected);QVERIFY(changes>1);QTRY_COMPARE(activated,1);QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
+ }
+ void mappingConflictReleasesRejectedGrabsAndPreservesOtherActions() {
+  X11DesktopFixture desktop;X11Shortcuts shortcuts;int changes=0;QStringList activated;
+  connect(&shortcuts,&X11Shortcuts::bindingsChanged,this,[&]{++changes;});
+  connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString& action){activated.append(action);});
+  const QHash<QString,QString> bindings{{"region","Ctrl+F6"},{"clipboard","Ctrl+Shift+1"}};shortcuts.bind(bindings);
+  QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());QVERIFY(shortcuts.status()["clipboard"].toObject()["bound"].toBool());
+  const auto original=desktop.code(XK_F6),extra=xcb_get_setup(desktop.connection)->max_keycode;QVERIFY(original&&original!=extra);
+  auto* mapping=xcb_get_keyboard_mapping_reply(desktop.connection,xcb_get_keyboard_mapping(desktop.connection,extra,1),nullptr);QVERIFY(mapping);
+  const auto* values=xcb_get_keyboard_mapping_keysyms(mapping);QList<xcb_keysym_t> previous;for(int i=0;i<mapping->keysyms_per_keycode;++i)previous.append(values[i]);free(mapping);
+  struct Restore {xcb_connection_t* connection;xcb_keycode_t code;QList<xcb_keysym_t> values;~Restore(){xcb_change_keyboard_mapping(connection,1,code,values.size(),values.constData());xcb_flush(connection);}} restore{desktop.connection,extra,previous};
+  const auto root=xcb_setup_roots_iterator(xcb_get_setup(desktop.connection)).data->root;
+  auto* error=xcb_request_check(desktop.connection,xcb_grab_key_checked(desktop.connection,0,root,XCB_MOD_MASK_CONTROL,extra,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC));QVERIFY(!error);
+  QList<xcb_keysym_t> replacement(previous.size(),XCB_NO_SYMBOL);replacement[0]=XK_F6;if(replacement.size()>1)replacement[1]=XK_F6;
+  const auto before=changes;xcb_change_keyboard_mapping(desktop.connection,1,extra,replacement.size(),replacement.constData());xcb_flush(desktop.connection);QTRY_VERIFY(changes>before);
+  QVERIFY(!shortcuts.status()["region"].toObject()["bound"].toBool());QCOMPARE(shortcuts.status()["region"].toObject()["error"].toString(),QString("shortcut_conflict"));QVERIFY(shortcuts.status()["clipboard"].toObject()["bound"].toBool());
+  // Rejection must remove both retained and newly installed lock variants.
+  for(const auto code:{original,extra})for(uint16_t mask=0;mask<256;++mask){
+   if(!(mask&XCB_MOD_MASK_CONTROL))continue;
+   error=xcb_request_check(desktop.connection,xcb_grab_key_checked(desktop.connection,0,root,mask,code,XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC));QVERIFY(!error);
+   xcb_ungrab_key(desktop.connection,code,root,mask);
+  }
+  desktop.inputFocus();shortcuts.bind(bindings);QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
+  desktop.key(XK_Control_L,true);desktop.key(XK_Shift_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Shift_L,false);desktop.key(XK_Control_L,false);QTRY_COMPARE(activated,QStringList{"clipboard"});
+  // The same native chord can move between actions; disabled and duplicate
+  // actions must not keep ownership after the reconciliation.
+  shortcuts.bind({{"first","Ctrl+Shift+1"},{"second","Ctrl+Shift+1"},{"disabled",""}});
+  QVERIFY(shortcuts.status()["first"].toObject()["bound"].toBool());QCOMPARE(shortcuts.status()["second"].toObject()["error"].toString(),QString("shortcut_conflict"));QCOMPARE(shortcuts.status()["disabled"].toObject()["error"].toString(),QString("disabled"));
+  desktop.key(XK_Control_L,true);desktop.key(XK_Shift_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Shift_L,false);desktop.key(XK_Control_L,false);QTRY_COMPARE(activated,(QStringList{"clipboard","first"}));
+  shortcuts.bind({});X11Shortcuts next;next.bind({{"region","Ctrl+Shift+1"}});QVERIFY(next.status()["region"].toObject()["bound"].toBool());
  }
  void nonresponsiveOwnerKeepsEventLoopAlive() {
   xcb_connection_t* c=xcb_connect(nullptr,nullptr);auto root=xcb_setup_roots_iterator(xcb_get_setup(c)).data->root;
