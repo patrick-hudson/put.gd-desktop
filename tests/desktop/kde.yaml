@@ -1,0 +1,56 @@
+profile: kde-wayland
+baseline:
+  distribution: Kubuntu 26.04 LTS
+  compositor: Plasma 6.6 / KWin
+  session: Wayland
+  qt_platform: wayland
+status: awaiting-real-session-acceptance
+required_environments:
+  - disposable-qemu-guest
+safety:
+  payloads: synthetic-only
+  destination: isolated-test-destination
+  host_guest_clipboard: disabled
+  physical_display_coordination: root-required
+metadata_required:
+  - screenshot2-version-and-restricted-executable-entry
+  - ext-data-control-version
+  - kglobalaccel-current-api-and-returned-bindings
+  - iso-sha256
+  - desktop-and-compositor-version
+  - qt-version-and-platform
+  - app-build-identity
+  - display-layout-native-logical-scale-rotation
+  - acceleration
+scenarios:
+  - absent-and-mismatched-restricted-desktop-entry-actionable-permission-error
+  - clipboard-import-unfocused-result-write-preserves-primary-all-mime-types
+  - delayed-truncated-excessive-fd-transfer-bounded-responsive-ui
+  - missing-data-control-service-loss-and-session-restart-recovery
+  - region-drag-exact-fixture-pixels-upload-and-independent-link-paste
+  - escape-and-right-click-no-publication-no-clipboard-change
+  - invocation-frozen-external-window-with-frame-compositor-native-occlusion
+  - disappearing-window-target-error
+  - desktop-all-monitors-panels-negative-origin-rotation-transparent-gaps
+  - mixed-density-single-and-spanning-monitor-capture
+  - display-removal-or-scale-change-cancels-selection
+  - native-kglobalaccel-v2-global-hotkeys-unfocused
+  - shortcut-conflict-reported-without-stealing
+  - native-clipboard-text-image-two-local-files-matching-bytes-and-paste
+  - nonresponsive-clipboard-owner-responsive-ui-actionable-timeout
+  - local-only-image-text-files-paste-zero-s3-requests
+  - newer-clipboard-owner-and-newer-invocation-suppress-auto-copy
+  - upload-copy-enabled-and-disabled-folder-routing-original-and-generated-names
+  - offline-upload-source-preserved-local-copy-and-explicit-retry
+  - restart-history-search-preview-link-copy-and-synthetic-remote-delete
+  - external-config-valid-invalid-dirty-form-conflict-effective-shortcut-rebind
+  - installed-package-startup
+  - physical-release-build-acquisition-and-interaction-timing
+artifacts_required:
+  - results-json-and-junit
+  - expected-actual-fixture-dimensions-and-sha256
+  - separate-app-paste-results
+  - synthetic-upload-receipts-and-public-get-hashes
+  - sanitized-desktop-logs
+  - qmp-witness-frames-per-display-head
+  - package-and-version-manifest

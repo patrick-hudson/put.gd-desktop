@@ -83,7 +83,7 @@ public:
     QByteArray bytes() const { return buffer_.bytes(); }
 };
 bool publicFixtureMatches(const StorageReceipt& published, const QByteArray& expected) {
-    Aws::Client::ClientConfiguration config(false, "legacy");
+    Aws::Client::ClientConfiguration config(false, "legacy", true);
     config.verifySSL = true;
     config.followRedirects = Aws::Client::FollowRedirectsPolicy::NEVER;
     config.connectTimeoutMs = published.destination.settings["connectTimeoutMs"].toInt();

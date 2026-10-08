@@ -6,6 +6,8 @@ option(PUTGD_LAB_FIXTURE "Package independent synthetic desktop fixture (develop
 configure_file(app.desktop.in putgd.desktop @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
   DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+install(FILES "${PROJECT_SOURCE_DIR}/integrations/gnome/extension.js" "${PROJECT_SOURCE_DIR}/integrations/gnome/metadata.json"
+  DESTINATION "${CMAKE_INSTALL_DATADIR}/gnome-shell/extensions/putgd@put.gd")
 # This is an opt-in XDG autostart template; preferences.launchAtLogin owns enabling it.
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
   DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/autostart")
@@ -42,6 +44,8 @@ configure_file(putgd-launcher.in putgd-launcher @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/putgd-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME putgd-launcher)
 install(FILES "${PROJECT_SOURCE_DIR}/cmake/dependency-lock.json" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd")
 install(FILES runtime-notices.txt DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
+install(FILES "${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml"
+  DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
 # SDK license must come from the exact source tree provisioned by the build contract.
 set(PUTGD_AWS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/build/dependencies/aws-sdk-cpp" CACHE PATH "Pinned official SDK source")
 if(NOT EXISTS "${PUTGD_AWS_SOURCE_DIR}/LICENSE")
@@ -66,7 +70,7 @@ set(CPACK_PACKAGE_NAME putgd)
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 set(CPACK_PACKAGE_CONTACT "put.gd maintainers")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux screen and clipboard sharing")
-set(CPACK_PACKAGING_INSTALL_PREFIX /usr)
+set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland")

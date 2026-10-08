@@ -19,6 +19,9 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates python3 cmake ninja-build qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
+          if [ '${{ matrix.distribution }}' = '26.04' ]; then
+            apt-get install -y liblayershellqtinterface-dev
+          fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Provision pinned AWS SDK
         run: |
@@ -31,7 +34,18 @@ jobs:
         run: |
           cmake --preset dev
           cmake --build --preset dev
-          ctest --preset dev
+          ctest --preset dev --output-junit "$PWD/build/dev/ctest-results.xml"
+      - name: Preserve structured test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ctest-linux-${{ matrix.distribution }}
+          path: |
+            build/dev/ctest-results.xml
+            build/dev/Testing/Temporary/LastTest.log
+            build/dev/Testing/Temporary/LastTestsFailed.log
+          if-no-files-found: warn
+          retention-days: 30
       - name: Build without test dependencies
         run: |
           cmake --preset release -DBUILD_TESTING=OFF

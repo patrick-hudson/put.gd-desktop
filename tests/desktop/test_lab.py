@@ -14,6 +14,17 @@ spec.loader.exec_module(lab)
 
 
 class LabContracts(unittest.TestCase):
+    def test_test_journal_retains_each_attempt_as_valid_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            lab.test_event(run, {'event': 'started', 'testId': 'first'})
+            lab.test_event(run, {'event': 'finished', 'testId': 'first', 'ok': False})
+            lab.test_event(run, {'event': 'started', 'testId': 'second'})
+            entries = [json.loads(line) for line in (run / 'test-events.jsonl').read_text().splitlines()]
+            self.assertEqual([entry['testId'] for entry in entries], ['first', 'first', 'second'])
+            self.assertFalse(entries[1]['ok'])
+            self.assertTrue(all(entry.get('timestampUtc') for entry in entries))
+
     def test_launch_is_disposable_and_control_channels_are_local(self):
         profile = lab.load_profile('cinnamon-x11')
         command = lab.qemu_command(profile, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'), 22001, 9, 'kvm')
@@ -82,6 +93,24 @@ class LabContracts(unittest.TestCase):
             server.close()
             self.assertFalse(thread.is_alive())
             self.assertEqual(errors, [])
+
+    def test_wayland_fixture_origin_requires_complete_independent_paint(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'witness.ppm'
+            width, height, x, y = 700, 400, 10, 20
+            pixels = bytearray(width * height * 3)
+            top = bytes([220, 30, 40]) * 320 + bytes([20, 180, 70]) * 320
+            bottom = bytes([35, 70, 220]) * 320 + bytes([235, 190, 20]) * 320
+            for row in range(320):
+                offset = ((y + row) * width + x) * 3
+                pixels[offset:offset + 640 * 3] = top if row < 160 else bottom
+            header = f'P6\n{width} {height}\n255\n'.encode()
+            path.write_bytes(header + pixels)
+            self.assertEqual(lab.locate_fixture_paint(path),
+                             {'x': x, 'y': y, 'width': 640, 'height': 320})
+            pixels[((y + 200) * width + x + 100) * 3] = 0
+            path.write_bytes(header + pixels)
+            self.assertIsNone(lab.locate_fixture_paint(path))
 
     def test_public_bytes_and_independent_link_paste_must_match_receipt(self):
         with tempfile.TemporaryDirectory() as directory:

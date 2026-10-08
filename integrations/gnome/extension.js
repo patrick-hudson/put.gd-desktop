@@ -1,0 +1,685 @@
+import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
+import St from 'gi://St';
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import * as Config from 'resource:///org/gnome/shell/misc/config.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+
+
+Gio._promisify(Shell.Screenshot.prototype, 'screenshot_area');
+Gio._promisify(Shell.Screenshot, 'composite_to_stream');
+const PATH = '/org/gnome/Shell/Extensions/Putgd';
+const IFACE = 'org.putgd.Gnome50';
+const CLIENT = 'org.putgd.App.Gnome50';
+const CHUNK = 65536;
+const ACTIONS = ['region', 'window', 'desktop', 'clipboard'];
+const XML = `<node><interface name="${IFACE}">
+<method name="Hello"><arg type="s" direction="out"/></method>
+<method name="InvalidateCopy"><arg type="s" direction="out"/></method>
+<method name="Revision"><arg type="s" direction="out"/></method>
+<method name="Prepare"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Acquire"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Read"><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Release"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="BeginCopy"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="s" direction="out"/></method>
+<method name="WriteCopy"><arg type="s" direction="in"/><arg type="t" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="CommitCopy"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<method name="Bind"><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
+<signal name="Action"><arg type="s"/><arg type="s"/></signal>
+<signal name="ClipboardChanged"><arg type="t"/></signal>
+<signal name="CapabilitiesChanged"/>
+</interface></node>`;
+
+function failure(code, message) {
+    const error = new Error(message);
+    error.bridgeCode = code;
+    return error;
+}
+function check(condition, code, message) {
+    if (!condition)
+        throw failure(code, message);
+}
+function rectangle(rect) {
+    return [rect.x, rect.y, rect.width, rect.height];
+}
+function limitsFrom(json) {
+    check(json.length <= 4096, 'bridge_protocol', 'Resource limits exceed the control-message limit');
+    const value = JSON.parse(json);
+    for (const name of ['textBytes', 'imageBytes', 'imagePixels', 'maxFiles'])
+        check(Number.isSafeInteger(value[name]) && value[name] > 0,
+            'bridge_protocol', 'Invalid resource limits');
+    // Match the shared configuration's maximum exactly; chunk offsets are uint64.
+    check(value.textBytes <= 1099511627776 && value.imageBytes <= 1099511627776,
+        'input_excessive', 'Configured transfer exceeds the bridge byte range');
+    check(Array.isArray(value.imageMimes) && value.imageMimes.length <= 128 &&
+        value.imageMimes.every(m => typeof m === 'string' && m.length <= 128 && m.startsWith('image/')),
+    'bridge_protocol', 'Invalid supported image MIME list');
+    return value;
+}
+function bytesOf(stream) {
+    stream.close(null);
+    return stream.steal_as_bytes().toArray();
+}
+
+// Own only this selector's modal grab and actors; cleanup does not reach into
+// screenshot UI internals or leave an upstream idle destruction callback alive.
+const RegionSelector = GObject.registerClass(class RegionSelector extends St.Widget {
+    _init() {
+        super._init({reactive: true, visible: false, x: 0, y: 0});
+        this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
+        this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
+        this._rectangle = new St.Widget({visible: false, style: 'border: 2px solid #8bc6ff; background-color: rgba(35,105,180,0.15);'});
+        this.add_child(this._rectangle);
+        this._start = null;
+        this._finish = null;
+        this._grab = null;
+        this._closed = false;
+        this.connect('captured-event', (_actor, event) => this._input(event));
+        Main.uiGroup.add_child(this);
+    }
+    _input(event) {
+        const type = event.type();
+        if (type === Clutter.EventType.KEY_PRESS) {
+            if (event.get_key_symbol() === Clutter.KEY_Escape)
+                this.cancel();
+            return Clutter.EVENT_STOP;
+        }
+        if (type === Clutter.EventType.BUTTON_PRESS) {
+            if (event.get_button() === Clutter.BUTTON_SECONDARY) {
+                this.cancel();
+                return Clutter.EVENT_STOP;
+            }
+            if (event.get_button() === Clutter.BUTTON_PRIMARY) {
+                this._start = event.get_coords().map(Math.floor);
+                this._update(this._start);
+            }
+            return Clutter.EVENT_STOP;
+        }
+        if (type === Clutter.EventType.MOTION) {
+            if (this._start)
+                this._update(event.get_coords().map(Math.floor));
+            return Clutter.EVENT_STOP;
+        }
+        if (type === Clutter.EventType.BUTTON_RELEASE) {
+            if (event.get_button() === Clutter.BUTTON_PRIMARY && this._start) {
+                const rect = this._geometry(event.get_coords().map(Math.floor));
+                this._settle(rect.width > 0 && rect.height > 0 ? rect : null);
+            }
+            return Clutter.EVENT_STOP;
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+    _geometry([x, y]) {
+        // Pointer positions are rectangle edges, matching the shared Qt selector.
+        return {x: Math.min(this._start[0], x), y: Math.min(this._start[1], y),
+            width: Math.abs(x - this._start[0]), height: Math.abs(y - this._start[1])};
+    }
+    _update(point) {
+        const rect = this._geometry(point);
+        this._rectangle.set_position(rect.x, rect.y);
+        this._rectangle.set_size(rect.width, rect.height);
+        this._rectangle.show();
+    }
+    selectAsync() {
+        return new Promise((resolve, reject) => {
+            this._finish = resolve;
+            try {
+                this.show();
+                this._grab = Main.pushModal(this);
+                check(!this._grab.is_revoked(), 'busy_selecting',
+                    'GNOME cannot acquire the selection input grab');
+            } catch (error) {
+                this._finish = null;
+                this._cleanup();
+                reject(error);
+            }
+        });
+    }
+    _cleanup() {
+        if (this._closed)
+            return;
+        this._closed = true;
+        const grab = this._grab;
+        this._grab = null;
+        if (grab)
+            Main.popModal(grab);
+        this.hide();
+        this.destroy();
+    }
+    _settle(value) {
+        const finish = this._finish;
+        this._finish = null;
+        this._cleanup();
+        finish?.(value);
+    }
+    cancel() {
+        this._settle(null);
+    }
+});
+
+export default class PutgdExtension extends Extension {
+    enable() {
+        this._enabled = true;
+        this._requests = new Map();
+        this._bindings = new Map();
+        this._selector = null;
+        this._revision = 1;
+        this._copyEpoch = 0;
+        this._selection = global.display.get_selection();
+        this._ownerSignal = this._selection.connect('owner-changed', (_selection, type) => {
+            if (type !== Meta.SelectionType.SELECTION_CLIPBOARD)
+                return;
+            this._revision++;
+            this._dbus.emit_signal('ClipboardChanged', new GLib.Variant('(t)', [this._revision]));
+        });
+        this._layoutSignal = Main.layoutManager.connect('monitors-changed', () => {
+            for (const [id, request] of this._requests) {
+                if (request.action && request.action !== 'clipboard')
+                    this._drop(id, 'display_changed', 'Display layout changed during capture');
+            }
+        });
+        this._sessionSignal = Main.sessionMode.connect('updated', () => {
+            if (Main.sessionMode.isLocked) {
+                for (const id of this._requests.keys())
+                    this._drop(id, 'helper_unavailable', 'GNOME session locked');
+            }
+        });
+        this._acceleratorSignal = global.display.connect('accelerator-activated', (_display, id) => {
+            const action = this._bindings.get(id);
+            if (action && this._enabled && !Main.sessionMode.isLocked)
+                this._hotkey(action);
+        });
+        this._clientWatch = Gio.bus_watch_name(Gio.BusType.SESSION, CLIENT,
+            Gio.BusNameWatcherFlags.NONE, null, () => {
+                for (const id of this._requests.keys())
+                    this._drop(id, 'helper_unavailable', 'Resident application disconnected');
+                this._unbind();
+            });
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(XML, this);
+        this._dbus.export(Gio.DBus.session, PATH);
+        this._dbus.emit_signal('CapabilitiesChanged', null);
+    }
+
+    disable() {
+        if (!this._enabled)
+            return;
+        this._enabled = false;
+        for (const id of this._requests.keys())
+            this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
+        this._unbind();
+        if (this._ownerSignal)
+            this._selection.disconnect(this._ownerSignal);
+        if (this._layoutSignal)
+            Main.layoutManager.disconnect(this._layoutSignal);
+        if (this._sessionSignal)
+            Main.sessionMode.disconnect(this._sessionSignal);
+        if (this._acceleratorSignal)
+            global.display.disconnect(this._acceleratorSignal);
+        if (this._clientWatch)
+            Gio.bus_unwatch_name(this._clientWatch);
+        this._ownerSignal = this._layoutSignal = this._sessionSignal = this._acceleratorSignal = this._clientWatch = 0;
+        this._dbus.emit_signal('CapabilitiesChanged', null);
+        this._dbus.unexport();
+        this._dbus = null;
+        this._selection = null;
+        this._requests.clear();
+    }
+
+    _authenticate(invocation) {
+        check(this._enabled && !Main.sessionMode.isLocked, 'helper_unavailable', 'GNOME user session is unavailable');
+        const owner = Gio.DBus.session.call_sync('org.freedesktop.DBus',
+            '/org/freedesktop/DBus', 'org.freedesktop.DBus', 'GetNameOwner',
+            new GLib.Variant('(s)', [CLIENT]), new GLib.VariantType('(s)'),
+            Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+        check(owner === invocation.get_sender(), 'bridge_unauthorized', 'Request is not from the resident GNOME bridge');
+    }
+
+    async _run(invocation, operation) {
+        try {
+            this._authenticate(invocation);
+            const result = await operation(invocation.get_sender());
+            invocation.return_value(new GLib.Variant('(s)', [JSON.stringify(result ?? {})]));
+        } catch (error) {
+            // Never log exception text from native MIME owners or source names.
+            const known = typeof error.bridgeCode === 'string';
+            const id = invocation.get_parameters().deep_unpack()[0];
+            const request = this._requests.get(id);
+            if (typeof id === 'string' && this._requests.get(id)?.sender === invocation.get_sender())
+                this._drop(id);
+            invocation.return_value(new GLib.Variant('(s)', [JSON.stringify({error: {
+                code: known ? error.bridgeCode : 'helper_failed',
+                message: known ? error.message : 'GNOME native request failed; inspect helper setup',
+                details: known ? {} : {api: request?.stage ?? 'control',
+                    exceptionType: ['TypeError', 'ReferenceError', 'Error'].includes(error.name) ? error.name : 'native'},
+            }})]));
+        }
+    }
+
+    _new(id, sender) {
+        check(/^[0-9a-f-]{36}$/.test(id) && !this._requests.has(id),
+            'bridge_protocol', 'Request ID is invalid or already in use');
+        check(this._requests.size < 2048, 'busy_selecting', 'Too many pending GNOME bridge requests');
+        const request = {id, sender, cancellable: new Gio.Cancellable(), data: null};
+        request.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120000, () => {
+            request.timer = 0;
+            this._drop(id, 'transfer_timeout', 'GNOME source acquisition timed out');
+            return GLib.SOURCE_REMOVE;
+        });
+        this._requests.set(id, request);
+        return request;
+    }
+
+    _get(id, sender) {
+        const request = this._requests.get(id);
+        check(request && request.sender === sender, 'bridge_protocol', 'Request ID is stale or does not belong to this caller');
+        return request;
+    }
+
+    _drop(id, code = 'cancelled', message = 'GNOME acquisition cancelled') {
+        const request = this._requests.get(id);
+        if (!request)
+            return;
+        this._requests.delete(id);
+        if (request.timer)
+            GLib.source_remove(request.timer);
+        request.timer = 0;
+        if (request.transferTimer)
+            GLib.source_remove(request.transferTimer);
+        request.transferTimer = 0;
+        request.error = failure(code, message);
+        request.cancellable.cancel();
+        if (request.selector) {
+            // Cancellation settles the promise and destroys our own actors/grab.
+            request.selector.cancel();
+            request.selector = null;
+            this._selector = null;
+        }
+        request.data = null;
+        request.parts = null;
+        request.window = null;
+        request.actor = null;
+    }
+
+    _alive(request) {
+        if (request.error)
+            throw request.error;
+        check(this._enabled && this._requests.get(request.id) === request,
+            'cancelled', 'GNOME request cancelled');
+    }
+
+    async _layout(cancellable) {
+        const state = await new Promise((resolve, reject) => {
+            Gio.DBus.session.call('org.gnome.Mutter.DisplayConfig', '/org/gnome/Mutter/DisplayConfig',
+                'org.gnome.Mutter.DisplayConfig', 'GetCurrentState', null, null,
+                Gio.DBusCallFlags.NONE, 1000, cancellable, (connection, result) => {
+                    try { resolve(connection.call_finish(result).deep_unpack()); }
+                    catch { reject(failure('capture_geometry', 'Mutter display configuration is unavailable')); }
+                });
+        });
+        const [serial, physical, logical] = state;
+        return Main.layoutManager.monitors.map(monitor => {
+            const configured = logical.find(entry => entry[0] === monitor.x && entry[1] === monitor.y);
+            check(configured && configured[5].length > 0, 'capture_geometry', 'Mutter logical monitor metadata is unavailable');
+            const connectors = configured[5].map(spec => spec[0]).sort();
+            const modes = connectors.map(connector => {
+                const output = physical.find(entry => entry[0][0] === connector);
+                const mode = output?.[1].find(entry => entry[6]['is-current']?.deep_unpack());
+                check(mode, 'capture_geometry', 'Mutter current native monitor mode is unavailable');
+                return [mode[1], mode[2]];
+            });
+            return {identity: connectors.join('+'), logical: rectangle(monitor), density: configured[2],
+                rotation: configured[3] % 4 * 90, transform: configured[3], physical: modes, serial};
+        });
+    }
+
+    HelloAsync(_args, invocation) {
+        this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
+            extensionVersion: this.metadata.version, clipboardRevision: this._revision}));
+    }
+
+    InvalidateCopyAsync(_args, invocation) {
+        this._run(invocation, () => { this._copyEpoch++; return {}; });
+    }
+
+    RevisionAsync(_args, invocation) {
+        this._run(invocation, () => ({clipboardRevision: this._revision}));
+    }
+
+    async _prepare(id, action, sender) {
+        this._copyEpoch++;
+        check(ACTIONS.includes(action), 'source_unsupported', 'Unknown GNOME source action');
+        const request = this._new(id, sender);
+        request.action = action;
+        request.stage = 'prepare';
+        request.revision = this._revision;
+        // Freeze focus and geometry synchronously in the Shell hotkey callback,
+        // before display metadata retrieval or native-app acceptance yields.
+        if (action === 'window') {
+            const window = global.display.focus_window;
+            check(window && window.get_pid() !== this._clientPid(sender),
+                'capture_target', 'Focus an external application window before capture');
+            const actor = window.get_compositor_private();
+            check(actor && !window.minimized, 'capture_target', 'Focused external window is unavailable');
+            request.window = window;
+            request.actor = actor;
+            request.frame = rectangle(window.get_frame_rect());
+        }
+        request.layout = action === 'clipboard' ? null : await this._layout(request.cancellable);
+        this._alive(request);
+        return {version: 1, requestId: id};
+    }
+
+    async _hotkey(action) {
+        const id = GLib.uuid_string_random();
+        try {
+            const sender = Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
+                'org.freedesktop.DBus', 'GetNameOwner', new GLib.Variant('(s)', [CLIENT]),
+                new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+            try {
+                await this._prepare(id, action, sender);
+            } catch (error) {
+                const request = this._requests.get(id);
+                if (!request)
+                    return;
+                request.error = error.bridgeCode ? error : failure('helper_failed', 'GNOME could not freeze the hotkey source');
+            }
+            if (this._enabled && this._requests.has(id))
+                this._dbus.emit_signal('Action', new GLib.Variant('(ss)', [action, id]));
+        } catch {
+            // No resident bridge: binding has no capture or clipboard effect.
+            this._drop(id);
+        }
+    }
+
+    PrepareAsync([id, action], invocation) {
+        this._run(invocation, sender => this._prepare(id, action, sender));
+    }
+
+    _clientPid(sender) {
+        return Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
+            'org.freedesktop.DBus', 'GetConnectionUnixProcessID', new GLib.Variant('(s)', [sender]),
+            new GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+    }
+
+    AcquireAsync([id, json], invocation) {
+        this._run(invocation, async sender => {
+            const request = this._get(id, sender);
+            check(!request.started, 'bridge_protocol', 'Source request has already been consumed');
+            this._alive(request);
+            request.started = true;
+            request.limits = limitsFrom(json);
+            if (request.action === 'clipboard')
+                return this._clipboard(request);
+            return this._capture(request);
+        });
+    }
+
+    async _capture(request) {
+        const limits = request.limits;
+        check(JSON.stringify(await this._layout(request.cancellable)) === JSON.stringify(request.layout),
+            'display_changed', 'Display layout changed before capture');
+        const parts = [];
+        const frames = [];
+        let total = 0;
+        let pixelCount = 0;
+        let selection;
+        if (request.action === 'window') {
+            check(request.window.get_compositor_private() === request.actor && !request.window.minimized &&
+                JSON.stringify(rectangle(request.window.get_frame_rect())) === JSON.stringify(request.frame),
+            'capture_target', 'Frozen external window disappeared or changed geometry');
+            request.stage = 'window-texture';
+            const actorGeometry = [request.actor.x, request.actor.y, request.actor.width, request.actor.height];
+            const content = request.actor.paint_to_content(null);
+            const texture = content.get_texture();
+            const width = texture.get_width();
+            const height = texture.get_height();
+            check(width > 0 && height > 0 && width * height <= limits.imagePixels && width * height * 4 <= limits.imageBytes,
+                'input_excessive', 'Frozen window exceeds image limits');
+            const stream = Gio.MemoryOutputStream.new_resizable();
+            request.stage = 'window-encode';
+            await Shell.Screenshot.composite_to_stream(texture, 0, 0, width, height, 1, null, 0, 0, 1, stream);
+            this._alive(request);
+            check(JSON.stringify(rectangle(request.window.get_frame_rect())) === JSON.stringify(request.frame),
+                'capture_target', 'Frozen window geometry changed during capture');
+            const data = bytesOf(stream);
+            // Actor texture includes the compositor's frame/shadow; use its
+            // actual logical extents instead of recapturing the current focus.
+            selection = actorGeometry;
+            frames.push({identity: `window-${request.window.get_stable_sequence()}`, logical: selection,
+                native: [0, 0, width, height], density: width / selection[2], rotation: 0, offset: 0, length: data.length});
+            parts.push(data);
+            total = data.length;
+        } else {
+            for (const monitor of request.layout) {
+                const [x, y, width, height] = monitor.logical;
+                const estimated = Math.ceil(width * monitor.density) * Math.ceil(height * monitor.density);
+                check(estimated <= limits.imagePixels - pixelCount && estimated * 4 <= limits.imageBytes - pixelCount * 4,
+                    'input_excessive', 'Monitor capture exceeds image limits');
+                const stream = Gio.MemoryOutputStream.new_resizable();
+                const shooter = new Shell.Screenshot();
+                request.stage = 'monitor-capture';
+                await shooter.screenshot_area(x, y, width, height, stream);
+                this._alive(request);
+                const data = bytesOf(stream);
+                const [pixelWidth, pixelHeight] = this._pngSize(data);
+                pixelCount += pixelWidth * pixelHeight;
+                check(pixelCount <= limits.imagePixels && pixelCount * 4 <= limits.imageBytes && data.length <= limits.imageBytes - total,
+                    'input_excessive', 'Monitor frames exceed image limits');
+                frames.push({...monitor, native: [0, 0, pixelWidth, pixelHeight], density: pixelWidth / width,
+                    offset: total, length: data.length});
+                total += data.length;
+                parts.push(data);
+            }
+            check(frames.length > 0, 'capture_geometry', 'No enabled monitor is available');
+            const xs = request.layout.map(m => m.logical[0]);
+            const ys = request.layout.map(m => m.logical[1]);
+            const right = request.layout.map(m => m.logical[0] + m.logical[2]);
+            const bottom = request.layout.map(m => m.logical[1] + m.logical[3]);
+            selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
+            if (request.action === 'region') {
+                check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+                const selector = new RegionSelector();
+                this._selector = request.selector = selector;
+                request.stage = 'region-select';
+                const selected = await selector.selectAsync();
+                request.selector = null;
+                this._selector = null;
+                this._alive(request);
+                check(selected, 'cancelled', 'GNOME region selection cancelled');
+                selection = rectangle(selected);
+            }
+        }
+        this._alive(request);
+        check(JSON.stringify(await this._layout(request.cancellable)) === JSON.stringify(request.layout),
+            'display_changed', 'Display layout changed during capture');
+        check(total <= limits.imageBytes, 'input_excessive', 'Capture PNG exceeds image limits');
+        request.data = new Uint8Array(total);
+        let offset = 0;
+        for (const part of parts) {
+            request.data.set(part, offset);
+            offset += part.length;
+        }
+        request.metadata = {version: 1, requestId: request.id, mime: 'application/x-putgd-capture', bytes: total, frames, selection};
+        request.actor = request.window = null;
+        return request.metadata;
+    }
+
+    _pngSize(data) {
+        check(data.length >= 24 && data[0] === 137 && data[1] === 80 && data[2] === 78 && data[3] === 71,
+            'bridge_protocol', 'Shell returned an invalid PNG');
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        return [view.getUint32(16), view.getUint32(20)];
+    }
+
+    async _clipboard(request) {
+        check(request.revision === this._revision, 'clipboard_changed', 'Clipboard changed before source acquisition');
+        const offered = this._selection.get_mimetypes(Meta.SelectionType.SELECTION_CLIPBOARD) ?? [];
+        const candidates = [];
+        if (offered.includes('text/uri-list'))
+            candidates.push('text/uri-list');
+        const images = offered.filter(m => m.startsWith('image/') && request.limits.imageMimes?.includes(m));
+        images.sort((a, b) => Number(b === 'image/png') - Number(a === 'image/png'));
+        candidates.push(...images);
+        for (const mime of ['text/plain;charset=utf-8', 'UTF8_STRING', 'text/plain']) {
+            if (offered.includes(mime))
+                candidates.push(mime);
+        }
+        check(candidates.length > 0, 'source_unsupported', 'Clipboard has no supported files, image, or plain text');
+        for (const mime of candidates) {
+            const bound = mime.startsWith('image/') ? request.limits.imageBytes : request.limits.textBytes;
+            const stream = Gio.MemoryOutputStream.new_resizable();
+            // Read bound+1: reaching it proves an excessive offer without an
+            // unlimited allocation or a silently truncated accepted payload.
+            await new Promise((resolve, reject) => {
+                request.transferTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 5000, () => {
+                    request.transferTimer = 0;
+                    request.cancellable.cancel();
+                    reject(failure('transfer_timeout', 'Clipboard owner exceeded the five-second transfer deadline'));
+                    return GLib.SOURCE_REMOVE;
+                });
+                request.stage = 'clipboard-transfer';
+                this._selection.transfer_async(Meta.SelectionType.SELECTION_CLIPBOARD, mime, bound + 1,
+                    stream, request.cancellable, (selection, result) => {
+                        if (request.transferTimer)
+                            GLib.source_remove(request.transferTimer);
+                        request.transferTimer = 0;
+                        try {
+                            selection.transfer_finish(result);
+                            resolve();
+                        } catch {
+                            reject(failure('transfer_timeout', 'Clipboard owner did not complete its bounded transfer'));
+                        }
+                    });
+            });
+            this._alive(request);
+            check(request.revision === this._revision, 'clipboard_changed', 'Clipboard owner changed during source acquisition');
+            const data = bytesOf(stream);
+            check(data.length <= bound, 'input_excessive', 'Clipboard offer exceeds resource limits');
+            if (mime === 'text/uri-list') {
+                const text = new TextDecoder().decode(data);
+                const uris = text.split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith('#'));
+                // Remote-only URI offers fall through to the owner's actual
+                // image/text representation; mixed lists remain a batch error.
+                if (!uris.some(uri => uri.startsWith('file:')))
+                    continue;
+                check(uris.length <= request.limits.maxFiles, 'input_excessive', 'Clipboard file offer exceeds file-count limits');
+            }
+            if (data.length === 0)
+                continue;
+            request.data = data;
+            request.metadata = {version: 1, requestId: request.id, mime, bytes: data.length};
+            return request.metadata;
+        }
+        throw failure('source_unsupported', 'Clipboard offers no usable local files, image, or plain text');
+    }
+
+    ReadAsync([id, offset, maximum], invocation) {
+        this._run(invocation, sender => {
+            const request = this._get(id, sender);
+            check(request.data && maximum > 0 && maximum <= CHUNK && offset < request.data.length,
+                'bridge_protocol', 'Transfer offset or chunk size is invalid');
+            return {version: 1, requestId: id, offset,
+                data: GLib.base64_encode(request.data.subarray(offset, Math.min(offset + maximum, request.data.length)))};
+        });
+    }
+
+    ReleaseAsync([id], invocation) {
+        this._run(invocation, sender => {
+            this._get(id, sender);
+            this._drop(id);
+            return {};
+        });
+    }
+
+    BeginCopyAsync([id, mime, length], invocation) {
+        this._run(invocation, sender => {
+            check(['image/png', 'text/plain;charset=utf-8', 'text/uri-list'].includes(mime),
+                'source_unsupported', 'Unsupported clipboard result MIME');
+            check(length > 0 && length <= 1099511627776, 'input_excessive', 'Clipboard result exceeds bridge limits');
+            const request = this._new(id, sender);
+            request.mime = mime;
+            request.copyEpoch = ++this._copyEpoch;
+            request.revision = this._revision;
+            request.expected = length;
+            request.parts = [];
+            request.received = 0;
+            return {};
+        });
+    }
+
+    WriteCopyAsync([id, offset, encoded], invocation) {
+        this._run(invocation, sender => {
+            const request = this._get(id, sender);
+            check(request.parts && encoded.length <= 4 * Math.ceil(CHUNK / 3) && /^[A-Za-z0-9+/]*={0,2}$/.test(encoded),
+                'bridge_protocol', 'Clipboard result chunk is invalid');
+            const data = GLib.base64_decode(encoded);
+            check(data.length > 0 && data.length <= CHUNK && GLib.base64_encode(data) === encoded &&
+                offset === request.received && data.length <= request.expected - request.received,
+            'bridge_protocol', 'Clipboard result transfer offset is invalid');
+            request.parts.push(data);
+            request.received += data.length;
+            return {};
+        });
+    }
+
+    CommitCopyAsync([id], invocation) {
+        this._run(invocation, sender => {
+            const request = this._get(id, sender);
+            check(request.parts && request.received === request.expected, 'bridge_protocol', 'Clipboard result transfer is incomplete');
+            check(request.copyEpoch === this._copyEpoch && request.revision === this._revision,
+                'copy_suppressed', 'Clipboard changed or a newer invocation superseded result copying');
+            const data = new Uint8Array(request.expected);
+            let offset = 0;
+            for (const part of request.parts) {
+                data.set(part, offset);
+                offset += part.length;
+            }
+            request.stage = 'clipboard-own';
+            St.Clipboard.get_default().set_content(St.ClipboardType.CLIPBOARD, request.mime, new GLib.Bytes(data));
+            request.parts = null;
+            return {clipboardRevision: this._revision};
+        });
+    }
+
+    _unbind() {
+        for (const id of this._bindings.keys()) {
+            Main.wm.allowKeybinding(Meta.external_binding_name_for_action(id), Shell.ActionMode.NONE);
+            global.display.ungrab_accelerator(id);
+        }
+        this._bindings.clear();
+    }
+
+    BindAsync([json], invocation) {
+        this._run(invocation, () => {
+            check(json.length <= 16384, 'bridge_protocol', 'Shortcut configuration exceeds control-message limits');
+            const requested = JSON.parse(json);
+            this._unbind();
+            const bindings = {};
+            for (const action of ACTIONS) {
+                const entry = requested[action] ?? {};
+                const status = {requested: String(entry.requested ?? ''), bound: false};
+                if (!status.requested) {
+                    status.error = 'disabled';
+                } else if (!entry.accelerator || entry.accelerator.length > 256) {
+                    status.error = 'shortcut_unsupported';
+                } else {
+                    const id = global.display.grab_accelerator(entry.accelerator, Meta.KeyBindingFlags.IGNORE_AUTOREPEAT);
+                    if (id === Meta.KeyBindingAction.NONE) {
+                        status.error = 'shortcut_conflict';
+                    } else {
+                        this._bindings.set(id, action);
+                        Main.wm.allowKeybinding(Meta.external_binding_name_for_action(id), Shell.ActionMode.NORMAL);
+                        status.bound = true;
+                        status.actual = status.requested;
+                    }
+                }
+                bindings[action] = status;
+            }
+            return {bindings};
+        });
+    }
+}

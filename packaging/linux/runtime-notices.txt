@@ -11,6 +11,10 @@ installed alongside this notice; s2n-tls uses Apache-2.0. Rebuild the pinned off
 SDK following docs/build.md, update the lock deliberately, and rebuild the DEB to
 update these libraries. No compiler or Qt runtime is bundled.
 
+The ext-data-control-v1 Wayland protocol notice is retained in
+wayland-ext-data-control-v1.xml beside this file, including its original
+copyright and permission text. Generated client bindings use that protocol.
+
 This development package and its optional synthetic fixture are inputs to graphical
 acceptance. Installation alone does not certify compositor support. Release lifecycle,
 complete license audit, integration assets and checksums remain U10 release gates.

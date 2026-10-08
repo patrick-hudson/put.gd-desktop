@@ -36,3 +36,9 @@ Inspect actual capabilities/configuration before acting; retain operation IDs an
 exact history IDs/effects before acknowledging deletion. Full U9 acceptance still requires
 real Cinnamon, U6 lab instructions and a fresh-agent walkthrough; headless parity alone
 cannot establish those gates. Package/lab commands remain pending until their units land.
+
+Keep graphical lab interactions visible through each VM’s localhost VNC listener.
+The user watches the live display wall at http://127.0.0.1:8765/; do not disable or
+redirect guest display output during graphical tests. Distinguish SSH build/log work
+from graphical acceptance, and restore an idle/locked test session through its
+visible console before using it as acceptance evidence.

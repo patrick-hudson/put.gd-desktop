@@ -4,6 +4,7 @@
 #include <QJsonObject>
 class QLineEdit;
 class QLabel;
+class QPlainTextEdit;
 namespace putgd {
 class ShortcutEditor final:public QWidget {
 public:
@@ -12,6 +13,6 @@ public:
  QJsonObject actions(const QJsonObject&) const;
  void setStatus(const QJsonObject&);
  const QHash<QString,QLineEdit*>& editors() const{return editors_;}
-private:QHash<QString,QLineEdit*> editors_;QLabel* status_;
+private:QHash<QString,QLineEdit*> editors_;QHash<QString,QLabel*> bindingStates_;QLabel* status_;QPlainTextEdit* details_;
 };
 }

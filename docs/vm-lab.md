@@ -3,6 +3,10 @@
 The host interface is `python3 tools/lab/lab.py`. It uses QEMU, QMP, SSH and ordinary
 Mint packages. It never shares the host clipboard. All control sockets are private;
 VNC and SSH forwarding bind to 127.0.0.1. A QMP witness is independent of guest capture.
+The user watches active machines at http://127.0.0.1:8765/. Keep each guest’s VNC
+listener and graphical output active during interaction; use `run --keep` while
+continuing a test session so subsequent actions remain visible on the display wall.
+A locked or blanked session must be visibly restored before graphical acceptance.
 Host protocol tests and offscreen fixture checks do not prove desktop acceptance.
 
 ## First Cinnamon golden disk
@@ -109,7 +113,10 @@ a running golden disk. The guest app uses isolated `~/putgd-lab/config` and `dat
 settings/history directories. Evidence does not need a source checkout in the guest.
 
 Other implemented `--scenario` values are `window`, `desktop`, `clipboard-text`,
-`clipboard-image`, and `clipboard-files`. Use fresh overlays for scenario isolation.
+`clipboard-image`, and `clipboard-files`. Selector checks are `region-cancel-escape`,
+`region-cancel-right-click`, and `region-cancel-zero-area`: they require cancelled/no-result
+completion, no artifacts, and an unchanged independent text clipboard source.
+Use fresh overlays for scenario isolation.
 QMP drives the real global hotkey while the independent fixture is focused. The fixture
 paints fixed RGB regions, owns real native clipboard sources (Ctrl+Alt+Shift+T/I/F), and
 records actual Ctrl+V MIME results. Region dimensions/interior pixels, full frame/desktop
@@ -161,12 +168,45 @@ the base disk hash and run ID. Run directories include ephemeral private keys an
 never be uploaded whole: export only the explicit evidence files in `common.yaml`,
 `artifact-*`, `public-*`, `history-paste.json`, package/version manifests and results.
 
-Cinnamon is the only implemented bootstrap profile. A real Cinnamon fixture run must
-pass before expanding to GNOME/Plasma. Those native Wayland profiles additionally require
-U7/U8 helpers, actual Wayland session and native Qt platform; Xwayland is rejected by
-readiness. TCG is explicit and labelled functional-only. VM evidence does not certify the physical-machine performance budgets.
+Profiles are available for Cinnamon/X11, Ubuntu GNOME/Wayland, Kubuntu
+Plasma/Wayland and the additional Fedora GNOME/Wayland smoke environment.
+Mint, Ubuntu, Fedora and Kubuntu base disks have been installed and checked locally;
+the full Wayland action matrix remains pending.
+Native Wayland profiles require the installed U7/U8 helper, an actual Wayland
+session and the native Qt platform; readiness rejects Xwayland. TCG is explicit and labelled functional-only. VM evidence does not certify the physical-machine performance budgets.
 Multihead/scaling/rotation/removal, cancellation, shortcut conflicts, archive failures,
 copy suppression, full GUI history/config conflict flows, normal GTK/file-manager
 interop, physical Cinnamon and the complete release matrix remain acceptance gates.
 A host protocol pass, ISO checksum, live desktop boot or installed package alone does
 not satisfy them.
+
+## Additional distro base disks
+
+Use the ISO identities and authenticated checksum sources in `image-lock.json`.
+Ubuntu's normal installer supports a NoCloud autoinstall seed; a manually completed
+normal installer is also valid. Fedora Workstation's Live ISO requires its normal
+graphical Anaconda install; do not assume a Kickstart seed is supported. Kubuntu
+uses its normal graphical installer. Install each once into its own 32 GiB qcow2
+base and create the `lab` user. Enable automatic login in that disposable guest
+so a fresh boot reaches the native desktop.
+
+`bootstrap-guest.sh` supports apt-based guests and Fedora's dnf. Run it inside
+the guest with only the lab public key. It restores SSH file labels on SELinux
+guests and enables their SSH firewall service when Firewalld is running. Its
+package-manager sudo rule applies only to the guest. Verify the guest host-key
+fingerprint against its QEMU console before pinning it.
+
+After a fresh installed-disk boot, record OS/compositor versions, native session
+type and successful automatic login. Power down cleanly, run `qemu-img check`,
+and record the base SHA256. Install applications and development dependencies
+only in disposable overlays. No AWS credentials belong in a base image.
+
+Build the application package against each distro's own Qt/runtime libraries.
+A Mint .deb is not a substitute for an Ubuntu 26.04 package: package names and
+ABIs can differ. Use the documented SDK/CMake/CTest/CPack build in a snapshot;
+never bypass package-manager dependency checks.
+
+On Wayland, Qt's reported window origin is not a global screen coordinate. The
+runner locates the complete synthetic four-color pattern in an independent
+pre-action QMP witness; it rejects missing, obscured or ambiguous patterns.
+Capture results are compared afterward and never determine the input coordinates.

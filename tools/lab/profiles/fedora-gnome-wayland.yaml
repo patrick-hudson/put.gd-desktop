@@ -1,0 +1,14 @@
+{
+  "name": "fedora-gnome-wayland",
+  "desktop": "GNOME",
+  "session": "wayland",
+  "qt_platform": "wayland",
+  "session_process": "gnome-shell",
+  "image": "fedora-gnome-wayland",
+  "memory_mib": 6144,
+  "cpus": 2,
+  "video": "virtio-vga",
+  "display_heads": 1,
+  "guest_user": "lab",
+  "status": "requires-graphical-acceptance"
+}

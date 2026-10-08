@@ -1,4 +1,5 @@
 #pragma once
+#include <QElapsedTimer>
 #include "storage/s3/S3Provider.h"
 #include "storage/s3/SdkRuntime.h"
 #include <QTest>

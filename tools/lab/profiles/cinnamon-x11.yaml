@@ -9,5 +9,6 @@
   "video": "virtio-vga",
   "display_heads": 1,
   "guest_user": "lab",
-  "status": "requires-graphical-acceptance"
+  "status": "requires-graphical-acceptance",
+  "session_process": "cinnamon"
 }

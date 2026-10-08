@@ -111,10 +111,16 @@ setarch x86_64 -R cmake -S . -B build/tsan-instrumented-qt -G Ninja \
   -DCMAKE_PREFIX_PATH="$PWD/work/sanitizer-diagnosis/qtbase-tsan-build/lib/cmake;$PWD/build/sdk"
 setarch x86_64 -R cmake --build build/tsan-instrumented-qt --parallel 2
 setarch x86_64 -R env QT_QPA_PLATFORM=offscreen \
+  QT_QPA_FONTDIR=/usr/share/fonts/truetype/dejavu \
   PATH="$putgd_tsan_deps/bin:$PATH" LD_LIBRARY_PATH="$putgd_tsan_deps/lib" \
   TSAN_OPTIONS="halt_on_error=1:suppressions=$PWD/tests/sanitizer/tsan.supp" \
   ctest --test-dir build/tsan-instrumented-qt --output-on-failure
 ```
+
+The test Qt may build without Fontconfig when its development package is absent.
+Set `QT_QPA_FONTDIR` to an installed font directory in that case; the example uses
+DejaVu on Mint. A fontless offscreen run uses different fallback metrics and does
+not establish the compact layout gate. Keep the size assertions unchanged.
 
 GCC 13 TSan on this host initially aborts with `unexpected memory mapping`.
 `setarch -R` disables address randomization only for the child process and its

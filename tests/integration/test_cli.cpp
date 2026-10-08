@@ -3,6 +3,8 @@
 #include <QLocalSocket>
 #include <QProcess>
 #include <QElapsedTimer>
+#include <QProcessEnvironment>
+#include <QDir>
 using namespace putgd;using namespace putgd::test;
 class CliContract:public QObject {
  Q_OBJECT
@@ -13,6 +15,14 @@ private slots:
   server.setUiActivation([&](const QString& requested){view=requested;});
   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"history\"}"});QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("history"));
   view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"arbitrary\"}"});QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);QVERIFY(view.isEmpty());QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+ }
+ void backgroundLaunchDoesNotRaiseExistingResident() {
+  QTemporaryDir d;QVERIFY(d.isValid());const auto runtime=d.filePath("runtime");QVERIFY(QDir().mkpath(runtime));QVERIFY(QFile::setPermissions(runtime,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);QVERIFY(server.listen(runtime+"/putgd"));
+  QStringList views;server.setUiActivation([&](const QString& view){views.append(view);});
+  QProcess client;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("XDG_RUNTIME_DIR",runtime);environment.insert("QT_QPA_PLATFORM","offscreen");client.setProcessEnvironment(environment);
+  client.start(PUTGD_APP_PATH,{"--background"});QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QVERIFY2(views.isEmpty(),"A duplicate background launch raised the resident UI");
+  client.start(PUTGD_APP_PATH,{"--history"});QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(views,QStringList{"history"});QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
  }
  void realClientAndMalformedProtocol() {
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));QTRY_VERIFY(ops.ready());

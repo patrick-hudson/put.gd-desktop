@@ -12,7 +12,7 @@ contract is [issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1
 | U9 headless MCP slice | Locked official Python SDK stdio discovery and strict public argument schemas; 12 tools forwarding argument-vector production CLI calls; actual SDK stdio plus production CLI against a synthetic Unix peer: 3 tests pass | Actual resident/native effects, U6 graphical instructions, and a fresh-agent walkthrough remain required for full U9 acceptance |
 | U5 settings / resident GUI | Real settings/service widgets, independently routed local folders, session/keychain form, history paging/deletion, copy-only retry, observed-revision conflicts and startup refresh; current Debug23/23 (44.21s). Affected7 memory/thread checks passed, then final shared-copy/core3/3 memory38.15s/thread90.02s; final GUI history6cases Debug2805ms/memory8851ms/thread27190ms. No-test Release builds | Actual Mint settings, OS keyring consent, notifications and independent native paste witnessed; login, remote history and custom R35 visuals remain gates |
 | U6 lab / development package | Authenticated Mint22.3 ISO, real installed Cinnamon6.6.4/KVM guest, console-pinned SSH/public lab key; normal CPackDEB generated with distroQt/privateofficialAWS runtime; host lab6contracts pass. Foreground-process interruption was diagnosed and replaced with normal QEMUdaemon/pidfile ownership | Two independent disks and region/window/desktop/text/image/two-file native paste checks passed; mixed-display and timeout/crash evidence remain gates |
-| U7/U8/U10 remaining delivery | Shared native/UI/lab interfaces are implemented; MCP headless scope remains separately tracked | GNOME/KDE adapters, complete MCP acceptance, physical performance and release lifecycle evidence |
+| Current native/UI wave | GNOME and KDE production adapters compile; bridge/FD contracts pass. Integrated Debug25/25 (44.16s), affected memory6/6 (17.26s), thread5/6 plus real-font history1/1 (25.80s); final changed S3/UI memory2/2 (10.34s), thread2/2 (21.13s). Native Ubuntu Qt6.10 full25/25 (36.84s). All six GNOME single-head local acquisition/paste workflows pass; Escape and right-click cancellation preserve the independent text source | GNOME GTK interop, zero-area cancellation, ownership/lifecycle/display matrix and live publication; actual KDE, complete MCP acceptance, physical performance and release lifecycle evidence |
 
 Configuration tests cover fresh setup without an implicit cloud profile, private atomic
 writes, stale revisions, retained accepted settings after malformed/missing/oversized files,
@@ -157,11 +157,11 @@ fixture bytes differed from the requested archive. The runner now uses normal ap
 The fixture source chord uses Ctrl+Alt+Shift+T/I/F, avoiding Cinnamon's terminal shortcut.
 Host lab contracts pass 6/6 (0.003s), including rejecting VM performance certification.
 
-The user added R35/AE15 on 2026-10-08: the current functional forms are scaffolding for
+The user added R35/AE15 on 2026-10-08: the original functional forms were scaffolding for
 a polished custom Qt visual design. Their contract tests do not satisfy the final
 rendered visual review. The user also provided Ubuntu26.04.1 and Fedora44 installation
 media. Both SHA256 values match good official checksum signatures, pinned in image-lock.
-Their golden disks and disposable overlays are being provisioned; no Wayland acceptance
+Their golden disks are installed and disposable overlays are used for testing; no Wayland acceptance
 is claimed from checksum verification. credentials.txt is explicitly ignored and its
 commit/export is prohibited in AGENTS.md; it remains absent from the Git index.
 
@@ -170,3 +170,89 @@ stopped the owned second Mint QEMU process. The disposable disk and prior scenar
 evidence remain available. The live capture operation reached partial: local PNG saved,
 S3 prepublication check denied, no result copied. This is failure/recovery evidence,
 not a successful S3/public-link test.
+
+## Current native desktop and visual checks
+
+The custom Qt visual system has been inspected in installed Mint and Ubuntu
+applications. Settings, activity and populated history use the same design.
+An actual compact-history preview/expanded-controls failure was fixed; the installed
+Mint witness fits 1000×700 with a visible preview. Offscreen GUI tests retain strict
+layout and keyboard checks. Full AE15 scale/error/confirmation-state inspection
+remains pending. Shortcut statuses now show readable per-action results with exact
+JSON behind a keyboard-accessible advanced disclosure.
+
+A fontless instrumented Qt run expanded history to 1045 pixels and failed its
+unchanged assertion. The same thread-checked test passed with installed DejaVu fonts
+selected through QT_QPA_FONTDIR. No layout assertion or race/leak filter was relaxed.
+
+Ubuntu's native Qt6.10 build exposed a missing direct QElapsedTimer fixture include
+and an unsigned public-GET check that spent six seconds discovering EC2 metadata.
+The include is explicit and the SDK configuration disables unnecessary IMDS lookup,
+as the configured S3 client already did. The original five-second synthetic probe
+test then passed; its timeout was not increased. Native packaging also aligns the
+desktop executable with the configured installation prefix.
+
+Authenticated Mint, Ubuntu and Fedora images have been installed, booted into their
+native desktop, powered down cleanly and checked/hashed. Tests use disposable qcow2
+overlays. Kubuntu's one-time installation also completed, with fresh automatic Plasma
+6.6.6/Wayland login and clean disk check. This establishes base provenance,
+not full desktop support. Credentials are absent from base disks and Git.
+
+GNOME50's removed grab API caused a genuine region-selector TypeError. The helper
+now uses the public is_revoked API, cleans up failed setup, and preserves half-open
+drag geometry. Native operation3ae7b7c4-aa27-40dd-92af-1de2fab42675 produced an80×60
+image with expected pixels and an identical independent Qt paste. Desktop operation
+8374ea3c-6d17-4b03-9677-aa8c4f8fb513 likewise produced1280×800 and identical paste.
+The runner locates complete synthetic paint in a pre-action QMP image because Qt
+on Wayland cannot report the global window origin. Active-window operation
+e73d7b29-b38c-41b2-9395-4c2436dded50 produced662×480, with dimensions derived from
+the pre-action paint and the fixture's native frame margins; independent paste matched.
+
+A real clipboard import failure exposed use of an absent Meta.SelectionType.CLIPBOARD
+enum. The installed Mutter18 typelib exposes SELECTION_CLIPBOARD. Correcting those
+three references restored native text,96×64 image, and ordered two-file imports and
+independent Qt paste. St.ClipboardType.CLIPBOARD remains correct and unchanged.
+These are six named single-head local workflows, not complete GNOME certification.
+
+Real selector cancellation exposed a durable pending copy status after acquisition
+ended. A failing operation regression preceded the shared finish-path fix, which
+settles pending failed/cancelled/interrupted results as no_result. The full operations
+suite then passed Debug(4.59s), ASan/UBSan with leaks(5.06s), instrumented Qt TSan(6.75s),
+and native Ubuntu(3.32s). Installed Escape/right-click cancellation now creates no
+artifacts and preserves independently pasted synthetic text. QMP button press/release
+must be separated so the compositor receives both transitions.
+
+### Latest native and physical evidence (2026-10-08)
+
+The actual GNOME 50.1 Wayland guest passes all six local capture/clipboard workflows,
+including independent GTK 4.22 native Wayland paste for text, images, and files.
+Escape, right-click, and zero-area cancellation produce no artifacts and preserve
+the independent clipboard source. Helper disable/re-enable during selection settles
+the interrupted operation and restores all four bindings; disabled per-action
+diagnostics now report unbound rather than retaining stale bound status.
+
+The locked official MCP 1.30.0 helper was exercised over actual stdio against the
+installed GNOME production CLI: discovery, content-free inspection, revision-checked
+configuration updates/conflicts, clipboard invocation, operation identity, and
+history parity pass. This does not complete the Cinnamon, fresh-agent, or remote
+upload/deletion acceptance gates.
+
+The physical Cinnamon release resident measured 84,783,104 bytes RSS (80.9 MiB)
+and 0.009995 percent of one core over 300 seconds, with empty history and no
+capture/network invocation. The original idle budgets pass for that scope. The
+user requested approximately 40 MiB; optimization and populated-history/capture
+performance checks remain pending. The native KDE Qt 6.10/LayerShell build and
+25/25 tests pass in Kubuntu. All six named single-head local KDE workflows now
+pass with independent Qt paste: exact 80×60 region, independently queried
+640×448 active-window frame, full 1280×800 desktop, text, image, and two files.
+Native checks also prove saved shortcuts rebind and a foreign shortcut is not
+stolen. The region check caught fractional-pointer rounding; the corrected result
+has identical capture/paste hashes. Each new attempt retains parameters, JUnit,
+JSONL events, witnesses, and a checksum manifest. This is partial KDE evidence;
+mixed-scale/multiple-display, GTK, cloud, and lifecycle gates remain.
+KDE Escape cancellation also passes with no artifacts and preserved synthetic text;
+right-click and zero-area checks remain pending.
+
+The refreshed host standard Debug suite passes 25/25 in 46.79 seconds outside
+the process sandbox. A sandboxed attempt could not open local test sockets/Xvfb
+and is not a code regression or a passing acceptance result.

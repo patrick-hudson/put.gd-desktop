@@ -135,7 +135,7 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 
 ### Success Criteria
 
-The engineering budgets for a release build on the user’s recorded physical Cinnamon machine are p95 hotkey-to-region-overlay at or below 150 ms over 30 warm invocations, idle CPU below 0.5% of one core over five minutes, and idle app RSS at or below 100 MiB. Include attributed helper overhead separately. These are proposed acceptance budgets, not measurements; establish the hardware/display/build baseline in U4 and meet or explicitly revisit them with evidence in U10.
+The engineering budgets for a release build on the user’s recorded physical Cinnamon machine are p95 hotkey-to-region-overlay at or below 150 ms over 30 warm invocations, idle CPU below 0.5% of one core over five minutes, and idle app RSS at or below 100 MiB. The user subsequently requested roughly halving the measured 80.9 MiB empty-history idle RSS: target approximately 40 MiB, with measured attribution and before/after release evidence. Preserve capture, storage, custom visuals, and history behavior; this optimization runs alongside the remaining implementation and desktop acceptance work. Include attributed helper overhead separately. These are proposed acceptance budgets, not measurements; establish the hardware/display/build baseline in U4 and meet or explicitly revisit them with evidence in U10.
 
 The complete workflow must also pass the Verification Contract on every R13 profile. Internet transfer time is reported separately from local capture, encoding, and clipboard latency.
 
@@ -622,6 +622,12 @@ Test scenarios:
 7. Configuration inspection/reload/patch agrees with GUI/file validation, discovers the active path/revision, returns structured conflict/errors, and performs no cloud or capture activity. A synthetic agent edit updates the live settings view.
 
 Verification: CLI/MCP contract tests pass and a fresh agent follows the docs to build, run a desktop scenario, collect diagnostics, and identify a simulated failure.
+
+### Required UI iteration after the first custom visual pass
+
+The user accepts the modern direction but finds the current interface sloppy and its copy too much like AI-generated marketing. Iterate before AE15 acceptance: remove slogans and inflated prose, use short task labels and concrete help, tighten spacing and alignment, improve visual hierarchy and populated/empty/error states, and inspect installed windows at the required sizes/scales. Preserve functional controls, stable object names, keyboard access, settings conflicts, per-item outcomes, and exact deletion confirmations. Screenshots of the first pass are a baseline, not final visual acceptance. Run this independent presentation work alongside native acceptance and memory measurement where file ownership, build directories, and desktop sessions do not collide.
+
+Retain structured test parameters and logs for repeatability: scenario/profile/fixture, exact hotkeys and timing, pre-action geometry/layout/scales, package and runner hashes, expected/actual hashes, operation IDs, outcomes, and JUnit. Keep per-attempt records rather than overwriting earlier results. CI retains headless CTest reports; graphical acceptance requires a native desktop lab/self-hosted job and cannot be claimed from hosted headless CI. Never include credentials, VM authentication material, or real user payloads in these records.
 
 ### U10. Packages, performance, and release acceptance
 

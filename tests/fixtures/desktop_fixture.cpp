@@ -17,6 +17,7 @@
 #include <QScreen>
 #include <QTimer>
 #include <QWidget>
+#include <QWindow>
 
 static bool saveJson(const QString& path, const QJsonObject& value) {
     QSaveFile file(path);
@@ -44,6 +45,7 @@ public:
                 {"rotation", int(screen->orientation())}});
         }
         const auto origin = mapToGlobal(QPoint(0, 0));
+        const auto margins = windowHandle()->frameMargins();
         for (int index = 1; index <= 2; ++index) {
             QFile file(output_ + QString("/synthetic-%1.txt").arg(index));
             if (file.open(QIODevice::WriteOnly)) file.write(QString("putgd synthetic file %1\n").arg(index).toUtf8());
@@ -55,6 +57,8 @@ public:
             {"display_layout", displays},
             {"frame", QJsonObject{{"x", frameGeometry().x()}, {"y", frameGeometry().y()},
                 {"width", frameGeometry().width()}, {"height", frameGeometry().height()}}},
+            {"decorationMargins", QJsonObject{{"left", margins.left()}, {"top", margins.top()},
+                {"right", margins.right()}, {"bottom", margins.bottom()}}},
             {"paint", QJsonObject{{"x", origin.x()}, {"y", origin.y()}, {"width", 640}, {"height", 320}}}});
     }
 protected:

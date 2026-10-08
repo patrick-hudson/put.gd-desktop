@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Private QEMU/QMP graphical acceptance lab. Python stdlib only."""
 import argparse
+import datetime
+import shutil
 import hashlib
 import json
 import os
@@ -31,12 +33,21 @@ def write_json(path, value):
     temporary.replace(target)
 
 
+def test_event(run, event):
+    """Append only controlled test metadata; never generic input or shell traces."""
+    value = {'schemaVersion': 1, 'timestampUtc': datetime.datetime.now(datetime.timezone.utc).isoformat(), **event}
+    with (Path(run) / 'test-events.jsonl').open('a') as stream:
+        stream.write(json.dumps(value) + '\n')
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
 def load_profile(name):
     if not re.fullmatch(r'[a-z][a-z0-9-]+', name):
         raise LabError('Invalid profile name')
     path = HERE / 'profiles' / (name + '.yaml')
     if not path.exists():
-        raise LabError('Profile unavailable; GNOME/KDE await Cinnamon proof and U7/U8')
+        raise LabError('Profile unavailable; see tools/lab/profiles')
     return read_json(path)  # JSON is a YAML subset; avoids a host package dependency.
 
 
@@ -108,7 +119,7 @@ def qemu_command(profile, run, overlay, ssh_port, vnc_display, acceleration):
             '-netdev', f'user,id=net0,hostfwd=tcp:127.0.0.1:{ssh_port}-:22',
             '-device', 'virtio-net-pci,netdev=net0',
             '-qmp', f'unix:{run}/qmp.sock,server=on,wait=off',
-            '-vnc', f'127.0.0.1:{vnc_display}', '-display', 'none', '-no-reboot',
+            '-vnc', f'127.0.0.1:{vnc_display}', '-display', 'none',
             '-daemonize', '-pidfile', str(run / 'qemu.pid')]
     return args
 
@@ -154,6 +165,26 @@ def compare_ppm(path, expected):
             errors.append(f'pixel({x},{y})')
     return {'ok': not errors, 'errors': errors, 'width': width, 'height': height,
             'sha256': hashlib.sha256(Path(path).read_bytes()).hexdigest()}
+
+
+def locate_fixture_paint(path):
+    # Wayland deliberately does not expose a client's global window origin.
+    # Locate the independent four-colour fixture in the pre-action QMP frame,
+    # never in the capture being tested. Require the whole pattern, uniquely.
+    width, height, pixels = ppm(path)
+    top = bytes([220, 30, 40]) * 320 + bytes([20, 180, 70]) * 320
+    bottom = bytes([35, 70, 220]) * 320 + bytes([235, 190, 20]) * 320
+    matches = []
+    offset = pixels.find(top)
+    while offset >= 0:
+        y, remainder = divmod(offset, width * 3)
+        x, alignment = divmod(remainder, 3)
+        if not alignment and x + 640 <= width and y + 320 <= height:
+            if all(pixels[offset + row * width * 3:offset + row * width * 3 + len(top)]
+                   == (top if row < 160 else bottom) for row in range(320)):
+                matches.append({'x': x, 'y': y, 'width': 640, 'height': 320})
+        offset = pixels.find(top, offset + len(top))
+    return matches[0] if len(matches) == 1 else None
 
 
 def compare_paste(actual, expected):
@@ -214,14 +245,20 @@ def get(run, remote, local):
 
 def guest_session(run, body):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
-    user = state(run)['guest_user']
+    info = state(run)
+    user = info['guest_user']
+    profile = load_profile(info['profile'])
+    process = profile['session_process']
+    if process not in ('cinnamon', 'gnome-shell', 'plasmashell'):
+        raise LabError('Unsupported native desktop session process')
     script = f'''set -eu
-pid=$(pgrep -u {shlex.quote(user)} -x cinnamon | head -n 1)
+pid=$(pgrep -u {shlex.quote(user)} -x {shlex.quote(process)} | head -n 1)
 [ -n "$pid" ]
 for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CURRENT_DESKTOP WAYLAND_DISPLAY; do
  value=$(tr '\\0' '\\n' < /proc/$pid/environ | sed -n "s/^$name=//p")
  [ -z "$value" ] || export "$name=$value"
 done
+export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
 export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
@@ -356,7 +393,11 @@ def collect(run):
     versions = guest_session(run, '''printf '{"kernel":'
 uname -r | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().strip()),end="")'
 printf ',"packages":'
-dpkg-query -W -f='${Package} ${Version}\\n' cinnamon muffin xdg-desktop-portal libqt6core6 putgd 2>/dev/null | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()),end="")'
+if command -v dpkg-query >/dev/null; then
+ dpkg-query -W -f='${Package} ${Version}\\n' 'cinnamon' 'muffin' 'gnome-shell' 'mutter*' 'gjs' 'plasma-workspace' 'kwin-wayland' 'xdg-desktop-portal*' 'libqt6core6*' 'putgd' 2>/dev/null || true
+else
+ rpm -q gnome-shell mutter gjs plasma-workspace kwin-wayland xdg-desktop-portal qt6-qtbase putgd 2>/dev/null || true
+fi | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().splitlines()),end="")'
 printf '}\\n'
 ''')
     write_json(Path(run) / 'versions.json', json.loads(versions))
@@ -375,13 +416,22 @@ def cli(run, method, params=None):
 
 def fixture_run(args):
     run = Path(args.run).resolve()
-    result = {'schemaVersion': 1, 'profile': state(run)['profile'],
+    test_id = uuid.uuid4().hex
+    started = time.monotonic()
+    artifacts = []
+    public_files = []
+    for stale in ('parameters.json', 'paste.json', 'paste.ppm', 'artifact.ppm', 'before-head0.ppm', 'final-head0.ppm'):
+        (run / stale).unlink(missing_ok=True)
+    test_event(run, {'event': 'started', 'testId': test_id, 'profile': state(run)['profile'],
+        'scenario': args.scenario, 'clipboardClient': args.clipboard_client, 'timeoutSeconds': args.timeout})
+    result = {'schemaVersion': 1, 'testId': test_id, 'profile': state(run)['profile'],
               'scenario': args.scenario + '-independent-paste', 'ok': False,
               'acceptanceScope': 'single-head named action; no full profile certification'}
     try:
         guest_session(run, '''set -eu
 mkdir -p ~/putgd-lab/fixture
 pkill -x putgd-desktop-f || true
+pkill -f '^python3 /home/[^/]+/putgd-lab/gtk_clipboard_fixture.py --output ' || true
 rm -f ~/putgd-lab/fixture/ready.json
 nohup putgd-launcher --background > ~/putgd-lab/app.log 2>&1 < /dev/null &
 nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fixture.log 2>&1 < /dev/null &
@@ -400,8 +450,34 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
                 time.sleep(1)
         ready = read_json(run / 'ready.json')
         result.update(validate_readiness(load_profile(state(run)['profile']), ready, state(run)['acceleration']))
+        result['clipboardClient'] = args.clipboard_client
+        if args.clipboard_client == 'gtk':
+            put(run, str(HERE / 'gtk_clipboard_fixture.py'), '/home/' + state(run)['guest_user'] + '/putgd-lab/gtk_clipboard_fixture.py')
+            guest_session(run, '''set -eu
+pkill -x putgd-desktop-f || true
+rm -f ~/putgd-lab/fixture/gtk-ready.json
+nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/gtk-fixture.log 2>&1 < /dev/null &
+''')
+            while True:
+                try:
+                    get(run, 'putgd-lab/fixture/gtk-ready.json', run / 'gtk-ready.json')
+                    gtk = read_json(run / 'gtk-ready.json')
+                    if ready['session'] == 'wayland' and 'Wayland' not in gtk['displayBackend']:
+                        raise LabError('GTK clipboard client is not native Wayland')
+                    result['gtkClient'] = gtk
+                    break
+                except (LabError, subprocess.TimeoutExpired):
+                    if time.monotonic() >= deadline:
+                        raise LabError('Independent GTK clipboard client readiness timeout')
+                    time.sleep(.2)
+        actions = ('region', 'window', 'desktop', 'clipboard')
+        profile = load_profile(state(run)['profile'])
+        hotkeys = profile.get('fixture_hotkeys', {action: {'shortcut': f'Ctrl+Shift+{index}',
+            'keys': ['ctrl', 'shift', str(index)]} for index, action in enumerate(actions, 1)})
+        if set(hotkeys) != set(actions) or any(not entry.get('shortcut') or not entry.get('keys') for entry in hotkeys.values()):
+            raise LabError('Profile fixture hotkeys must specify all four actions')
         patch = {'actions': {action: {'destination': 'upload' if args.settings else 'local',
-                    'shortcut': f'Ctrl+Shift+{index}'} for index, action in enumerate(('region', 'window', 'desktop', 'clipboard'), 1)},
+                    'shortcut': hotkeys[action]['shortcut']} for action in actions},
                  'archive': {'root': '/home/' + state(run)['guest_user'] + '/putgd-lab/archive', 'keepUploads': True}}
         if args.settings:
             patch.update(read_json(args.settings))
@@ -412,6 +488,34 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
                 destination = profile.get('settings', {})
                 destination['objectPrefix'] = destination.get('objectPrefix', '').rstrip('/') + '/putgd-lab/' + state(run)['id'] + '/'
         cli(run, 'settings.patch', {'expectedRevision': settings['metadata']['acceptedRevision'], 'patch': patch})
+        binding_deadline = min(deadline, time.monotonic() + 12)
+        while True:
+            bindings = cli(run, 'capabilities')['source']['shortcuts']['bindings']
+            if all(bindings.get(action, {}).get('bound') for action in actions):
+                break
+            if time.monotonic() >= binding_deadline:
+                result['shortcutBindings'] = bindings
+                raise LabError('Configured native fixture shortcuts did not bind')
+            time.sleep(.1)
+        result['shortcutBindings'] = bindings
+        parameters = {'schemaVersion': 1, 'profile': state(run)['profile'],
+            'scenario': args.scenario, 'clipboardClient': args.clipboard_client,
+            'destination': 'upload' if args.settings else 'local',
+            'runnerSha256': hash_file(Path(__file__)), 'hotkeys': hotkeys,
+            'displayLayout': ready['display_layout'], 'qtVersion': ready['qt_version'],
+            'acceleration': state(run)['acceleration'],
+            'goldenSha256': state(run).get('golden_sha256'),
+            'timingSeconds': {'keyHold': .05, 'focusPoll': .1, 'focusAttemptLimit': 2,
+                'clipboardSourceSettle': .3, 'selectorSettle': .5, 'operationPoll': .2},
+            'selection': {'fixtureOffset': {'x': 30, 'y': 30}, 'width': 80, 'height': 60},
+            'timeoutSeconds': args.timeout,
+            'replayCommand': [sys.executable, 'tools/lab/lab.py', 'run', '--run', '<disposable-run>',
+                '--scenario', args.scenario, '--clipboard-client', args.clipboard_client,
+                '--timeout', str(args.timeout), '--keep']}
+        package_path = run / 'package.json'
+        if package_path.exists():
+            parameters['package'] = read_json(package_path)
+        write_json(run / 'parameters.json', parameters)
         before = cli(run, 'operation.recent')
         before_ids = {operation['id'] for operation in before['operations']}
         geometry = ready['paint']
@@ -421,30 +525,96 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
         # Fresh setup can map after the fixture. Verify actual visibility rather
         # than assuming launch order or clicking a window hidden underneath it.
         for attempt in range(3):
-            witness = screenshot(run, 'focus-' + str(attempt))
-            visible = compare_ppm(witness['path'], {'width': width, 'height': height,
-                'samples': [{'x': x, 'y': y, 'rgb': [220, 30, 40]},
-                            {'x': geometry['x'] + 350, 'y': y, 'rgb': [20, 180, 70]}]})
+            focus_deadline = min(deadline, time.monotonic() + 2)
+            while True:
+                witness = screenshot(run, 'focus-' + str(attempt))
+                if ready['session'] == 'wayland':
+                    located = locate_fixture_paint(witness['path'])
+                    if located:
+                        geometry = located
+                        x, y = geometry['x'] + 30, geometry['y'] + 30
+                        result['independentPaintGeometry'] = located
+                        margins = ready.get('decorationMargins')
+                        if margins and args.clipboard_client == 'qt':
+                            ready['frame'] = {'x': geometry['x'] - margins['left'],
+                                'y': geometry['y'] - margins['top'],
+                                'width': 640 + margins['left'] + margins['right'],
+                                'height': 420 + margins['top'] + margins['bottom']}
+                            result['independentWindowFrame'] = ready['frame']
+                visible = compare_ppm(witness['path'], {'width': width, 'height': height,
+                    'samples': [{'x': x, 'y': y, 'rgb': [220, 30, 40]},
+                                {'x': geometry['x'] + 350, 'y': y, 'rgb': [20, 180, 70]}]})
+                if visible['ok'] or time.monotonic() >= focus_deadline:
+                    break
+                time.sleep(.1)
             if visible['ok']:
                 break
             key(run, ['alt', 'tab'])
-            time.sleep(.3)
         else:
             raise LabError('Independent fixture is obscured; focus witnesses preserved')
         pointer(run, x, y, width, height, True)
         pointer(run, x, y, width, height, False)
         time.sleep(.2)
+        if args.scenario == 'window' and state(run)['profile'] == 'kde-wayland':
+            # Server decorations are absent from native Qt Wayland frameMargins.
+            # Ask the compositor's independent, visible picker before capture.
+            guest_session(run, 'rm -f ~/putgd-lab/window-oracle.json\n'
+                'nohup busctl --user --json=short call org.kde.KWin /KWin org.kde.KWin queryWindowInfo '
+                '> ~/putgd-lab/window-oracle.json 2> ~/putgd-lab/window-oracle.err < /dev/null &\n')
+            time.sleep(.3)
+            pointer(run, x, y, width, height, True)
+            pointer(run, x, y, width, height, False)
+            oracle_deadline = min(deadline, time.monotonic() + 10)
+            while True:
+                try:
+                    document = json.loads(guest_session(run, 'cat ~/putgd-lab/window-oracle.json\n'))
+                    values = document['data'][0]
+                    if values['caption']['data'] != 'put.gd independent synthetic paint / paste fixture':
+                        raise LabError('Independent KWin picker selected a different window')
+                    frame = {field: values[field]['data'] for field in ('x', 'y', 'width', 'height')}
+                    if not all(isinstance(value, (int, float)) for value in frame.values()) or frame['width'] <= 0 or frame['height'] <= 0:
+                        raise LabError('Independent KWin frame geometry is invalid')
+                    ready['frame'] = {field: round(value) for field, value in frame.items()}
+                    result['independentWindowFrame'] = {**frame, 'oracle': 'pre-action KWin queryWindowInfo'}
+                    break
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    if time.monotonic() >= oracle_deadline:
+                        raise LabError('Independent KWin window geometry query did not complete')
+                    time.sleep(.1)
+        parameters['selection'].update(start={'x': x, 'y': y},
+            end={'x': x + 80, 'y': y + 60}, inputViewport={'width': width, 'height': height})
+        parameters['independentFixtureGeometry'] = geometry
+        if 'independentWindowFrame' in result:
+            parameters['independentWindowFrame'] = result['independentWindowFrame']
+        write_json(run / 'parameters.json', parameters)
+        result['parameters'] = 'parameters.json'
         screenshot(run, 'before')
         scenario = args.scenario
+        cancelled_region = scenario.startswith('region-cancel-')
+        if cancelled_region:
+            # An independent source must survive cancellation unchanged.
+            key(run, ['ctrl', 'alt', 'shift', 't'])
+            time.sleep(.3)
         if scenario.startswith('clipboard-'):
             source_key = {'clipboard-text': 't', 'clipboard-image': 'i', 'clipboard-files': 'f'}[scenario]
             key(run, ['ctrl', 'alt', 'shift', source_key])
             time.sleep(.3)
-            key(run, ['ctrl', 'shift', '4'])
+            key(run, hotkeys['clipboard']['keys'])
         else:
-            shortcut = {'region': '1', 'window': '2', 'desktop': '3'}[scenario]
-            key(run, ['ctrl', 'shift', shortcut])
-            if scenario == 'region':
+            key(run, hotkeys['region' if cancelled_region else scenario]['keys'])
+            if cancelled_region:
+                time.sleep(.5)
+                screenshot(run, 'selector')
+                if scenario == 'region-cancel-escape':
+                    key(run, ['esc'])
+                elif scenario == 'region-cancel-right-click':
+                    input_events(run, [{'type': 'btn', 'data': {'button': 'right', 'down': True}}])
+                    time.sleep(.05)
+                    input_events(run, [{'type': 'btn', 'data': {'button': 'right', 'down': False}}])
+                else:
+                    pointer(run, x, y, width, height, True)
+                    pointer(run, x, y, width, height, False)
+            elif scenario == 'region':
                 time.sleep(.5)
                 pointer(run, x, y, width, height, True)
                 pointer(run, x + 80, y + 60, width, height)
@@ -453,9 +623,11 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
         while time.monotonic() < deadline:
             recent = cli(run, 'operation.recent')
             found = [item for item in recent['operations'] if item['id'] not in before_ids]
+            if len(found) > 1:
+                raise LabError('One native gesture created multiple operations')
             if found:
                 operation = cli(run, 'operation.inspect', {'id': found[0]['id']})
-                if operation['state'] in ('failed', 'partial', 'cancelled') or (operation['state'] == 'completed' and operation.get('copyStatus') in ('copied', 'failed', 'suppressed', 'no_result')):
+                if operation['state'] in ('failed', 'partial', 'cancelled', 'completed') and operation.get('copyStatus') in ('copied', 'failed', 'suppressed', 'no_result'):
                     break
             time.sleep(.2)
         if operation:
@@ -465,6 +637,21 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
             result['itemOutcomes'] = [{'uploadStatus': item['uploadStatus'],
                 'localStatus': item['local']['status'], 'error': item.get('error', {})}
                 for item in operation['items']]
+        if cancelled_region:
+            if not operation or operation['state'] != 'cancelled' or operation['items']:
+                raise LabError('Cancelled selector created artifacts or did not settle as cancelled')
+            if operation.get('copyStatus') not in ('no_result', 'suppressed'):
+                raise LabError('Cancelled selector left an unresolved copy status')
+            guest_session(run, 'rm -f ~/putgd-lab/fixture/paste.json\n')
+            key(run, ['ctrl', 'v'])
+            time.sleep(.3)
+            get(run, 'putgd-lab/fixture/paste.json', run / 'paste.json')
+            result['paste'] = compare_paste(read_json(run / 'paste.json'),
+                {'text': 'putgd synthetic clipboard text'})
+            result['ok'] = result['paste']['ok']
+            if not result['ok']:
+                raise LabError('Selector cancellation changed the independent clipboard source')
+            return result
         if not operation or operation['state'] != 'completed' or operation.get('copyStatus') != 'copied':
             raise LabError('Sharing operation did not complete with a copied result; inspect recorded stage outcomes')
         artifacts = []
@@ -477,6 +664,8 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
             rectangle = ready['frame'] if scenario == 'window' else screen
             expected = {'width': rectangle['width'], 'height': rectangle['height'], 'samples': [
                 {'x': geometry['x'] + 30 - rectangle['x'], 'y': geometry['y'] + 30 - rectangle['y'], 'rgb': [220, 30, 40]}]}
+        parameters['expectedArtifact'] = expected or {'syntheticBytes': scenario}
+        write_json(run / 'parameters.json', parameters)
         for index, item in enumerate(operation['items']):
             if item['local']['status'] != 'saved':
                 raise LabError('Preserved local result missing')
@@ -550,6 +739,8 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
                 # deletion is a separate explicit production CLI acknowledgement.
                 result['deletionPreparation'] = cli(run, 'delete.prepare', {'ids': history_ids})
         elif expected:
+            if args.clipboard_client == 'gtk':
+                guest_session(run, 'putgd-desktop-fixture --convert "$HOME/putgd-lab/fixture/paste.png" "$HOME/putgd-lab/fixture/paste.ppm"\n')
             get(run, 'putgd-lab/fixture/paste.ppm', run / 'paste.ppm')
             result['paste'] = compare_ppm(run / 'paste.ppm', expected)
         elif scenario == 'clipboard-text':
@@ -569,13 +760,35 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
             collect(run)
         except (LabError, OSError, ValueError, subprocess.TimeoutExpired):
             result['collectionIncomplete'] = True
+        result['elapsedSeconds'] = time.monotonic() - started
+        result['evidenceDirectory'] = 'tests/' + test_id
         write_json(run / 'results.json', result)
         import xml.etree.ElementTree as ET
         suite = ET.Element('testsuite', name='desktop-lab', tests='1', failures='0' if result['ok'] else '1')
-        case = ET.SubElement(suite, 'testcase', name=result['scenario'], classname=result['profile'])
+        case = ET.SubElement(suite, 'testcase', name=result['scenario'], classname=result['profile'], time=str(result['elapsedSeconds']))
         if not result['ok']:
             ET.SubElement(case, 'failure', message=result.get('error', 'mismatch'))
         ET.ElementTree(suite).write(run / 'results.xml', encoding='utf-8', xml_declaration=True)
+        evidence = run / 'tests' / test_id
+        evidence.mkdir(parents=True, exist_ok=False)
+        files = {}
+        for name in ('parameters.json', 'results.json', 'results.xml', 'ready.json', 'paste.json',
+                     'paste.ppm', 'artifact.ppm', 'before-head0.ppm', 'final-head0.ppm',
+                     'versions.json', 'package.json', 'diagnostics.json'):
+            source = run / name
+            if source.exists():
+                shutil.copyfile(source, evidence / name)
+                files[name] = hash_file(evidence / name)
+        for source in artifacts + public_files:
+            if source.exists():
+                shutil.copyfile(source, evidence / source.name)
+                files[source.name] = hash_file(evidence / source.name)
+        write_json(evidence / 'manifest.json', {'schemaVersion': 1, 'testId': test_id,
+            'profile': result['profile'], 'scenario': args.scenario, 'files': files})
+        test_event(run, {'event': 'finished', 'testId': test_id, 'profile': result['profile'],
+            'scenario': args.scenario, 'ok': result['ok'], 'elapsedSeconds': result['elapsedSeconds'],
+            'operationId': result.get('operationId'), 'error': result.get('error'),
+            'evidenceDirectory': result['evidenceDirectory']})
         if not args.keep:
             reset(run)
     return result
@@ -631,13 +844,16 @@ def main():
         if name == 'run':
             child.add_argument('--timeout', type=int, default=45)
             child.add_argument('--keep', action='store_true')
-            child.add_argument('--scenario', choices=['region', 'window', 'desktop', 'clipboard-text', 'clipboard-image', 'clipboard-files'], default='region')
+            child.add_argument('--scenario', choices=['region', 'window', 'desktop', 'clipboard-text', 'clipboard-image', 'clipboard-files', 'region-cancel-escape', 'region-cancel-right-click', 'region-cancel-zero-area'], default='region')
             child.add_argument('--settings', help='Non-secret synthetic destination patch; keychain references only')
             child.add_argument('--history', action='store_true', help='Restart and verify newly uploaded history/link paste; prepare exact deletion effects')
+            child.add_argument('--clipboard-client', choices=['qt', 'gtk'], default='qt', help='Independent native clipboard owner/paste client; GTK requires distro Python GI/GTK4/Cairo')
     args = parser.parse_args()
     try:
         if args.action == 'run' and args.history and not args.settings:
             raise LabError('--history requires --settings upload destination')
+        if args.action == 'run' and args.clipboard_client == 'gtk' and not args.scenario.startswith('clipboard-'):
+            raise LabError('GTK client is currently scoped to clipboard interoperability scenarios')
         if args.action == 'profiles':
             value = [read_json(path) for path in sorted((HERE / 'profiles').glob('*.yaml'))]
         elif args.action == 'launch':
@@ -658,7 +874,7 @@ def main():
             value = cli(args.run, args.method, json.loads(args.params))
         elif args.action == 'install':
             put(args.run, str(Path(args.deb).resolve()), '/tmp/putgd-lab.deb')
-            ssh(args.run, 'sudo -n apt-get install --reinstall -y /tmp/putgd-lab.deb\n', timeout=180)
+            ssh(args.run, 'sudo -n apt-get update\nsudo -n apt-get install --reinstall -y /tmp/putgd-lab.deb\n', timeout=180)
             installed = verify_installed_binaries(args.run, args.deb)
             write_json(Path(args.run) / 'package.json', {'sha256': hash_file(args.deb), 'filename': Path(args.deb).name, 'installedBinarySha256': installed})
             value = {'status': 'installed'}

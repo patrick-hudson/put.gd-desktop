@@ -10,3 +10,6 @@ credentials.txt
 # Local credentials and user-provided installation media must never be committed.
 credentials.txt
 *.iso
+
+# Local measured optimization checkpoints.
+/.context/

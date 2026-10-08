@@ -26,3 +26,36 @@ cases. U9 requires a fresh-agent walkthrough; U10 owns release-package lifecycle
 Keep credentials out of commands, evidence and golden images. Public service tests use
 synthetic objects in an isolated destination and never alter bucket controls or user
 objects. Record actual operation/history IDs and deletion effects before confirmation.
+
+## Structured records and replay
+
+Use `ctest --preset dev --output-junit "$PWD/build/dev/ctest-results.xml"` to retain
+JUnit alongside CTest’s `build/dev/Testing/Temporary/LastTest.log`. GitHub Actions
+uploads these reports on success or failure, with a separate artifact for each
+distribution and 30-day retention. This workflow has been authored; a remote run
+has not yet been observed. Hosted CI covers contracts, not native compositor acceptance.
+
+Each graphical `run` appends start/finish JSON events to `RUN/test-events.jsonl`.
+Each attempt receives a unique ID and a preserved `RUN/tests/ID/` bundle, containing
+`parameters.json`, results JSON/JUnit, package/runner identities, native display
+layout, requested/actual hotkeys, timing, pre-action selection/window geometry,
+synthetic artifacts/paste witnesses, and a SHA256 manifest. Root-level files remain
+the latest attempt for interactive inspection; the per-attempt bundles do not overwrite
+earlier failures. An interrupted attempt retains its start event.
+
+Read the saved `replayCommand`, recreate the same profile/display layout in a new
+disposable overlay, and install the package whose hash is recorded before running it.
+Replace `<disposable-run>` with that overlay’s directory. Verify the current runner
+hash and saved hotkeys/timing; changed inputs are a new experiment, not a replay.
+Remote publication additionally requires the explicit `--settings` keychain-reference
+profile and an isolated destination; the saved metadata cannot silently authorize an upload.
+KDE fixture hotkeys are configured in `tools/lab/profiles/kde-wayland.yaml`; current
+KWin consumes Shift on printable nonletters, so acceptance uses unambiguous function keys.
+
+A GUI/self-hosted CI job can invoke those same lab commands and upload only the
+curated `RUN/tests/` bundles and event journal. Never upload an entire run directory:
+it also contains VM authentication keys and a writable disk. Never archive
+`credentials.txt`, guest passwords, keyrings, configuration with inline secrets,
+or real user clipboard contents. Generic keyboard/shell tracing is deliberately absent;
+parameter records cover only the controlled synthetic scenario. Keep VNC active so
+the user can observe native interactions on the display wall.

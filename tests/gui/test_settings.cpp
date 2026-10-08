@@ -1,4 +1,5 @@
 #include "ui/SettingsWindow.h"
+#include "ui/ShortcutEditor.h"
 #include "fixtures/U2Fixtures.h"
 #include <QComboBox>
 #include <QLineEdit>
@@ -6,12 +7,46 @@
 #include <QLabel>
 #include <QSignalSpy>
 #include <QPlainTextEdit>
+#include <QListWidget>
+#include <QScrollArea>
+#include <QStackedWidget>
+#include <QToolButton>
 #include "storage/s3/S3Provider.h"
 using namespace putgd;using namespace putgd::test;
 class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void shortcutStatesAreReadableAndExactDiagnosticsRemainAvailable() {
+  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());editor.resize(700,450);editor.show();const auto draft=editor.actions({});
+  const QJsonObject diagnostics{{"available",true},{"bindings",QJsonObject{
+   {"region",QJsonObject{{"requested","Ctrl+Shift+1"},{"actual","Ctrl+Alt+R"},{"bound",true}}},
+   {"window",QJsonObject{{"requested","Ctrl+Shift+2"},{"actual",QJsonArray{"Ctrl+Alt+W"}},{"bound",true},{"state","shortcut_conflict"}}},
+   {"desktop",QJsonObject{{"requested","Ctrl+Shift+3"},{"bound",false},{"error","helper_unavailable"}}},
+   {"clipboard",QJsonObject{{"requested",""},{"bound",false},{"error","disabled"}}}}},{"nativeExtra","kept exactly"}};
+  editor.setStatus(diagnostics);
+  auto status=[&](const QString& action){return editor.findChild<QLabel*>("shortcut"+action+"Status");};
+  QVERIFY2(status("Region"),"Each action needs a readable binding status beside its editor");QVERIFY(status("Region")->text().contains("Active"));QVERIFY(status("Region")->text().contains("Ctrl+Alt+R"));
+  QVERIFY(status("Window"));QVERIFY(status("Window")->text().contains("Conflict"));QVERIFY(!status("Window")->text().contains("Active"));
+  QVERIFY(status("Desktop"));QVERIFY(status("Desktop")->text().contains("Unavailable"));QVERIFY(status("Clipboard"));QVERIFY(status("Clipboard")->text().contains("Disabled"));QCOMPARE(editor.actions({}),draft);
+  auto* details=editor.findChild<QPlainTextEdit*>("shortcutDetails");auto* toggle=editor.findChild<QToolButton*>("shortcutDetailsToggle");QVERIFY(details);QVERIFY(toggle);QVERIFY(!details->isVisible());toggle->setFocus();QTest::keyClick(toggle,Qt::Key_Space);QVERIFY(details->isVisible());QCOMPARE(QJsonDocument::fromJson(details->toPlainText().toUtf8()).object(),diagnostics);
+  editor.setStatus({{"available",true},{"bindings",QJsonObject{{"region",QJsonObject{{"requested","Ctrl+Shift+1"},{"actual",QJsonArray{"Ctrl+Alt+R","Meta+R"}},{"bound",true},{"state","bound"}}},{"window",QJsonObject{{"requested","Ctrl+Shift+2"},{"bound",false},{"state","pending"}}}}}});
+  QVERIFY(status("Region")->text().contains("Ctrl+Alt+R"));QVERIFY(status("Region")->text().contains("Meta+R"));QVERIFY(status("Window")->text().contains("Binding"));QVERIFY(!status("Desktop")->text().contains("Active"));
+  editor.setStatus({{"available",false},{"bindings",QJsonObject{}}});for(auto action:QStringList{"Region","Window","Desktop","Clipboard"})QVERIFY(status(action)->text().contains("Unavailable"));QCOMPARE(editor.actions({}),draft);
+ }
+
+ void sectionsAreKeyboardReachableAndFooterStaysInsideCompactWindow() {
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;SettingsWindow window(service,secrets);
+  window.resize(1000,700);window.show();QTest::qWait(20);
+  QVERIFY2(window.width()<=1000&&window.height()<=700,"Settings must fit a 1000×700 logical-pixel window");
+  auto* navigation=window.findChild<QListWidget*>("settingsNavigation");QVERIFY2(navigation,"Settings sections need keyboard-accessible navigation");
+  auto* pages=window.findChild<QStackedWidget*>("settingsPages");QVERIFY(pages);QCOMPARE(navigation->count(),4);
+  navigation->setFocus();QTRY_VERIFY(navigation->hasFocus());
+  for(int i=0;i<4;++i){navigation->setCurrentRow(i);QCOMPARE(pages->currentIndex(),i);auto* scroll=qobject_cast<QScrollArea*>(pages->currentWidget());QVERIFY(scroll);QVERIFY(scroll->widgetResizable());QVERIFY(scroll->viewport()->width()>=500);}
+  navigation->setCurrentRow(0);QTest::keyClick(navigation,Qt::Key_Down);QCOMPARE(pages->currentIndex(),1);
+  auto* save=window.findChild<QPushButton*>("saveSettings");QVERIFY(save->isVisible());QVERIFY(window.rect().contains(save->mapTo(&window,save->rect().bottomRight())));
+ }
+
  void destinationsCanBeCreatedAndRemovedWithoutChangingOtherProfiles() {
   QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(d.filePath("config.json"),[&](auto id,auto value){return id=="s3"?provider.validateSettings(value):Error{"provider_unavailable","Unknown provider",{}};});QVERIFY(service.save(configuration(d.path(),true),{}));SettingsWindow window(service,secrets);
   auto* add=window.findChild<QPushButton*>("addS3Destination");QVERIFY2(add,"Setup must allow a new S3 destination without importing development settings");add->click();

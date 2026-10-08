@@ -4,6 +4,27 @@ using namespace putgd;using namespace putgd::test;
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void newerInvocationInvalidatesDeferredNativeClipboardCommit() {
+  class DeferredSource final:public SourceAdapter {
+  public:
+   int invalidations=0;std::function<void(Error)> pending;
+   quint64 clipboardRevision()const override{return 0;}
+   QJsonObject capabilities()const override{return {};}
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)override{}
+   void cancelAcquisition()override{}
+   void invalidateCopyEligibility()override{++invalidations;if(pending){auto callback=std::move(pending);callback({"copy_suppressed","Newer action superseded native commit",{}});}}
+   void copy(const CopyPayload&,std::function<void(Error)> reply)override{pending=std::move(reply);}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  bool completed=false;Error error;
+  operations.copyHistoryUrl("https://example.invalid/synthetic",[&](Error e,QJsonObject){error=e;completed=true;});
+  QVERIFY(bool(source.pending));
+  operations.invalidateCopyEligibility();
+  QTRY_VERIFY_WITH_TIMEOUT(completed,500);
+  QCOMPARE(error.code,QString("copy_suppressed"));
+  QCOMPARE(source.invalidations,2);
+ }
  void captureTargetIsPreparedBeforeAsynchronousAcceptance() {
   class FocusSource final : public SourceAdapter {
   public:
@@ -62,6 +83,22 @@ private slots:
   QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));
   QVERIFY(journal.operation(id).cancelled);
   QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.copies,0);
+ }
+ void acquisitionFailureSettlesWithoutPendingCopy() {
+  QTemporaryDir directory;ProviderRegistry registry;
+  SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  Source source;source.defer=true;
+  OperationService operations(directory.filePath("data"),settings,registry,source);
+  QTRY_VERIFY(operations.ready());QString id;
+  operations.invoke("clipboard",[&](Error error,QJsonObject response){QVERIFY(!error);id=response["operationId"].toString();});
+  QTRY_COMPARE(source.acquisitions.size(),1);
+  source.acquisitions.takeFirst()({{}, {"source_unsupported","No supported source",{}}});
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryStore journal(operations.databasePath());const auto operation=journal.operation(id);
+  QCOMPARE(operation.state,QString("failed"));
+  QCOMPARE(operation.copyStatus,QString("no_result"));
+  QCOMPARE(source.copies,0);QVERIFY(operation.items.isEmpty());
  }
  void objectLocksRetainOnlyActiveOwners() {
   QTemporaryDir directory;

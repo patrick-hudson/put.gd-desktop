@@ -1,3 +1,4 @@
+#include "ui/VisualStyle.h"
 #include "storage/s3/SdkRuntime.h"
 #include "storage/s3/S3Provider.h"
 #include "app/LocalServer.h"
@@ -20,10 +21,17 @@
 #ifdef PUTGD_NATIVE_X11
 #include "platform/x11/X11SourceAdapter.h"
 #endif
+#ifdef PUTGD_NATIVE_GNOME
+#include "platform/gnome/GnomeAdapter.h"
+#endif
+#ifdef PUTGD_NATIVE_KDE
+#include "platform/kde/KdeSourceAdapter.h"
+#endif
 namespace {
-bool activateResident(const QString& view) {
+bool activateResident(const QString& view,bool background) {
  QLocalSocket socket;const auto path=putgd::LocalServer::defaultSocketPath();socket.connectToServer(path);
  if(!socket.waitForConnected(200))return false;
+ if(background)return true;
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  const QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method","ui.show"},{"params",QJsonObject{{"view",view}}}};
  socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');
@@ -53,34 +61,58 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
 }
 int main(int argc,char* argv[]) {
  QApplication app(argc,argv);
+ putgd::VisualStyle::apply(app);
+ app.setWindowIcon(putgd::VisualStyle::icon("brand"));
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion("0.1.0");
  QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show recent activity"});parser.process(app);
+ const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
- if(activateResident(view))return 0;
+ if(activateResident(view,backgroundOnly))return 0;
  putgd::SdkRuntime sdk;
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
  putgd::SettingsService settings(QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath("config.json"),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
+ std::function<void()> bindSource;
+ const auto bindings=[&settings]{QHash<QString,QString> result;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)result.insert(i.key(),i.value().shortcut);return result;};
+ const auto wayland=QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland";
+ const auto desktop=qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts);
+
 #ifdef PUTGD_NATIVE_X11
  putgd::X11SourceAdapter* native=nullptr;
  if(QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
   auto adapter=std::make_unique<putgd::X11SourceAdapter>();native=adapter.get();source=std::move(adapter);
  }
 #endif
+#ifdef PUTGD_NATIVE_GNOME
+ putgd::GnomeAdapter* gnome=nullptr;
+ if(wayland&&desktop.contains("GNOME",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::GnomeAdapter>();gnome=adapter.get();source=std::move(adapter);bindSource=[gnome,bindings]{gnome->bindShortcuts(bindings());};}
+#endif
+#ifdef PUTGD_NATIVE_KDE
+ putgd::KdeSourceAdapter* kde=nullptr;
+ if(wayland&&desktop.contains("KDE",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::KdeSourceAdapter>();kde=adapter.get();source=std::move(adapter);bindSource=[kde,bindings,&settings]{kde->setResourceLimits(settings.snapshot().limits);kde->bindShortcuts(bindings());};}
+#endif
  if(!source)source=std::make_unique<putgd::UnavailableSource>();
  const auto dataRoot=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
  putgd::OperationService operations(dataRoot,settings,providers,*source);
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
- const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));return listening.error.code=="session_running"?(activateResident(view)?0:1):1;}
+ const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));return listening.error.code=="session_running"?(activateResident(view,backgroundOnly)?0:1):1;}
+ const auto requested=[&operations](const QString& action){operations.invoke(action,[](putgd::Error error,QJsonObject){if(error)qWarning("Action rejected: %s",qPrintable(error.code));});};
 #ifdef PUTGD_NATIVE_X11
  if(native) {
-  const auto bind=[&] {QHash<QString,QString> bindings;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)bindings.insert(i.key(),i.value().shortcut);native->bindShortcuts(bindings);};
+  const auto bind=[&] {native->bindShortcuts(bindings());};
   bind();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bind);
-  QObject::connect(native,&putgd::X11SourceAdapter::actionRequested,&operations,[&](const QString& action){operations.invoke(action,[](putgd::Error error,QJsonObject){if(error)qWarning("Action rejected: %s",qPrintable(error.code));});});
+  QObject::connect(native,&putgd::X11SourceAdapter::actionRequested,&operations,requested);
  }
+#endif
+ if(bindSource){bindSource();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bindSource);}
+#ifdef PUTGD_NATIVE_GNOME
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::actionRequested,&operations,requested);
+#endif
+#ifdef PUTGD_NATIVE_KDE
+ if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&operations,requested);
 #endif
  auto tester=[&](const QString& profileId,const QJsonObject& profile,std::function<void(putgd::Error)> reply) {
   if(profile["provider"]!="s3"){reply({"test_unsupported","This provider has no destination test",{}});return;}
@@ -96,6 +128,15 @@ int main(int argc,char* argv[]) {
  };
  QJsonObject loginStatus;
  putgd::SettingsWindow window(settings,credentials,tester,[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];return diagnostics;});
+#ifdef PUTGD_NATIVE_X11
+ if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&window,&putgd::SettingsWindow::refreshDiagnostics);
+#endif
+#ifdef PUTGD_NATIVE_GNOME
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&window,&putgd::SettingsWindow::refreshDiagnostics);
+#endif
+#ifdef PUTGD_NATIVE_KDE
+ if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&window,&putgd::SettingsWindow::refreshDiagnostics);
+#endif
  putgd::RecentOperations activity(operations);putgd::HistoryWindow historyWindow(history,operations);
  putgd::TrayController tray(operations,window,historyWindow,activity);
  QObject::connect(&tray,&putgd::TrayController::quitRequested,&app,&QCoreApplication::quit);

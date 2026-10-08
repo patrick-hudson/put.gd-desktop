@@ -24,6 +24,15 @@
       "sha256": "1620295f6a00c27c3208f0c00b8ece4eab1ec69b9002152d97488bf26a426ddf",
       "signingFingerprint": "36F612DCF27F7D1A48A835E4DBFCF71C6D9F90A6",
       "checksumUrl": "https://download.fedoraproject.org/pub/fedora/linux/releases/44/Workstation/x86_64/iso/Fedora-Workstation-44-1.7-x86_64-CHECKSUM"
+    },
+    "kde-wayland": {
+      "distribution": "Kubuntu26.04.1 Desktop",
+      "filename": "kubuntu-26.04.1-desktop-amd64.iso",
+      "url": "https://cdimage.ubuntu.com/kubuntu/releases/26.04.1/release/kubuntu-26.04.1-desktop-amd64.iso",
+      "sha256": "831e4d4bb85098339ba43d3502cd6619b27e76daf37246a084cd68a6413090b8",
+      "signingFingerprint": "843938DF228D22F7B3742BC0D94AA3F0EFE21092",
+      "checksumUrl": "https://cdimage.ubuntu.com/kubuntu/releases/26.04.1/release/SHA256SUMS",
+      "signatureUrl": "https://cdimage.ubuntu.com/kubuntu/releases/26.04.1/release/SHA256SUMS.gpg"
     }
   }
 }

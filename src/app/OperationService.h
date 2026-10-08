@@ -30,6 +30,8 @@ public:
  }
  virtual void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)=0;
  virtual void cancelAcquisition()=0;
+ // Invalidates in-flight asynchronous clipboard commits when a newer action is accepted.
+ virtual void invalidateCopyEligibility() {}
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
 };
 class UnavailableSource final:public SourceAdapter {
@@ -54,7 +56,7 @@ public:
  void retryLocalSave(const QString& id,JsonReply);
  void copyResult(const QString& id,JsonReply);
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
- quint64 invalidateCopyEligibility() {return ++invocation_;}
+ quint64 invalidateCopyEligibility() {source_.invalidateCopyEligibility();return ++invocation_;}
  void cleanup(JsonReply);
  void shutdown();
  QJsonObject capabilities() const;
