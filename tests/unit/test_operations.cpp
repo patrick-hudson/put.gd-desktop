@@ -4,6 +4,65 @@ using namespace putgd;using namespace putgd::test;
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void captureTargetIsPreparedBeforeAsynchronousAcceptance() {
+  class FocusSource final : public SourceAdapter {
+  public:
+   QString focus="external-window-at-invocation",copied;
+   int preparations=0,legacyReads=0,copies=0;
+   quint64 clipboardRevision() const override {return 0;}
+   QJsonObject capabilities() const override {return {{"window",true}};}
+   PreparedAcquisition prepareAcquisition(const QString&) override {
+    ++preparations;
+    const auto frozen=focus;
+    return [frozen](const ResourceLimits&,std::function<void(PayloadResult)> reply) {
+     ClipboardPayload payload;payload.kind="text";payload.bytes=frozen.toUtf8();reply({payload,{}});
+    };
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> reply) override {
+    ++legacyReads;ClipboardPayload payload;payload.kind="text";payload.bytes=focus.toUtf8();reply({payload,{}});
+   }
+   void cancelAcquisition() override {}
+   void copy(const CopyPayload& payload,std::function<void(Error)> reply) override {++copies;copied=payload.text;reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;
+  SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);
+  QTRY_VERIFY(operations.ready());
+  operations.invoke("window",[](Error error,QJsonObject) {QVERIFY(!error);});
+  source.focus="different-window-after-invocation";
+  QTRY_COMPARE(source.copies,1);
+  QCOMPARE(source.preparations,1);
+  QCOMPARE(source.legacyReads,0);
+  QCOMPARE(source.copied,QString("external-window-at-invocation"));
+ }
+ void imageResultSuppliesEncodedPngBeforeClipboardOwnership() {
+  QTemporaryDir directory;ProviderRegistry registry;
+  SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  Source source;source.payload.kind="image";source.payload.image=QImage(3,2,QImage::Format_ARGB32);source.payload.image.fill(Qt::magenta);
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  operations.invoke("region",[](Error error,QJsonObject){QVERIFY(!error);});QTRY_COMPARE(source.copies,1);
+  QCOMPARE(source.copied.kind,QString("image"));
+  QVERIFY(source.copied.encodedImage.startsWith(QByteArray::fromHex("89504e470d0a1a0a")));
+  QCOMPARE(QImage::fromData(source.copied.encodedImage),source.payload.image);
+ }
+ void selectorCancellationIsTerminalWithoutPublication() {
+  QTemporaryDir directory;ProviderRegistry registry;
+  auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});
+  QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.defer=true;
+  OperationService operations(directory.filePath("data"),settings,registry,source);
+  QTRY_VERIFY(operations.ready());QString id;
+  operations.invoke("region",[&](Error error,QJsonObject response){QVERIFY(!error);id=response["operationId"].toString();});
+  QTRY_COMPARE(source.acquisitions.size(),1);
+  source.acquisitions.takeFirst()({{}, {"cancelled","Selection cancelled",{}}});
+  HistoryStore journal(operations.databasePath());
+  QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));
+  QVERIFY(journal.operation(id).cancelled);
+  QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.copies,0);
+ }
  void objectLocksRetainOnlyActiveOwners() {
   QTemporaryDir directory;
   ProviderRegistry registry;

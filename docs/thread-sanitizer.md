@@ -8,8 +8,8 @@ reports its race. Do not suppress all Qt or application reports.
 
 Use the normal GCC, CMake and Ninja packages from [build.md](build.md). The
 dependency below lives in ignored `work/`, changes no system library, and uses
-Qt's supported `FEATURE_sanitize_thread` CMake option. This headless build does
-not certify X11 or Wayland behavior.
+Qt's supported `FEATURE_sanitize_thread` CMake option. The headless contracts and isolated X11 protocol tests do
+not certify behavior on a real Cinnamon or Wayland desktop.
 
 Download the official Qt 6.4.2 source archive and its upstream libxkbcommon 1.6
 compatibility patch; verify both before extraction or application:
@@ -37,6 +37,8 @@ not an application workaround or a change to installed libxkbcommon.
 Instrument the matching D-Bus, GLib, libsecret and QtKeychain dependencies too.
 The normal development packages are `meson libdbus-1-dev libglib2.0-dev
 libsecret-1-dev libffi-dev libpcre2-dev libmount-dev libexpat1-dev libgcrypt20-dev`.
+For Qt’s instrumented X11 plugin, also install `libxcb-icccm4-dev
+libxcb-render-util0-dev libxcb-sync-dev`, alongside the XCB packages in build.md.
 Use these official releases; verify the SHA256 before extracting into
 `work/sanitizer-diagnosis/`:
 
@@ -86,11 +88,11 @@ setarch x86_64 -R env PKG_CONFIG_PATH="$putgd_tsan_deps/lib/pkgconfig" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_INSTALL_PREFIX="$PWD/work/sanitizer-diagnosis/qtbase-tsan" \
   -DFEATURE_sanitize_thread=ON -DFEATURE_glib=ON \
-  -DFEATURE_opengl=OFF -DFEATURE_xcb=OFF -DFEATURE_forkfd_pidfd=OFF \
+  -DFEATURE_opengl=OFF -DFEATURE_xcb=ON -DFEATURE_xkbcommon_x11=ON -DFEATURE_forkfd_pidfd=OFF \
   -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF
 setarch x86_64 -R cmake --build work/sanitizer-diagnosis/qtbase-tsan-build \
   --target Core Gui Network Sql Test Widgets DBus \
-    QSQLiteDriverPlugin QOffscreenIntegrationPlugin \
+    QSQLiteDriverPlugin QOffscreenIntegrationPlugin QXcbIntegrationPlugin \
     qtpaths qdbuscpp2xml qdbusxml2cpp --parallel 2
 setarch x86_64 -R env PKG_CONFIG_PATH="$putgd_tsan_deps/lib/pkgconfig" \
   cmake -S "$putgd_tsan_root/qtkeychain-0.14.2" -B "$putgd_tsan_root/qtkeychain-tsan-build" \

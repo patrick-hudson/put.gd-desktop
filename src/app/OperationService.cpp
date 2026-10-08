@@ -1,6 +1,7 @@
 #include "OperationService.h"
 #include "core/UploadNaming.h"
 #include <QDateTime>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -58,21 +59,22 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();
  if(route.destination=="upload") {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(action!="clipboard")selectingId_=op.id;
- const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply](Error e,QJsonObject result) mutable {
+ auto acquisition=source_.prepareAcquisition(action);
+ const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition](Error e,QJsonObject result) mutable {
   if(e) {active_.remove(op.id);if(selectingId_==op.id)selectingId_.clear();reply(e,{});return;}
   reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);
   // Acceptance is durable and observable before a selector starts.
-  QTimer::singleShot(0,this,[this,op,flag]() mutable {
+  QTimer::singleShot(0,this,[this,op,flag,acquisition]() mutable {
    if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
-   op.state="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag](Error e,QJsonObject) mutable {
+   op.state="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition](Error e,QJsonObject) mutable {
     if(e) {op.error=e;op.state="failed";finish(op);return;}
     QPointer<OperationService> guarded(this);
-    source_.acquire(op.action,op.settings.limits,[guarded,op,flag](PayloadResult r) {
+    acquisition(op.settings.limits,[guarded,op,flag](PayloadResult r) {
      if(!guarded)return;
      QMetaObject::invokeMethod(guarded,[guarded,op,flag,r]() mutable {
       if(!guarded||guarded->stopping_)return;
       if(guarded->selectingId_==op.id)guarded->selectingId_.clear();
-      if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load();op.state=op.cancelled?"cancelled":"failed";guarded->finish(op);return;}
+      if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code=="cancelled"||r.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";guarded->finish(op);return;}
       guarded->enqueue({op,r.payload,true,flag});
      },Qt::QueuedConnection);
     });
@@ -215,7 +217,20 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
  if(urls.isEmpty()&&op.items.size()==1&&!op.items[0].artifact.originalFile&&(localKind=="images"||localKind=="text")) {
   auto artifact=op.items[0].artifact;if(!QFile::exists(artifact.path))artifact.path=op.items[0].local.path;
   const auto ticket=invocation_;const auto revision=source_.clipboardRevision();auto prepared=std::make_shared<CopyPayload>();
-  background([artifact,localKind,prepared](Error& e) {if(localKind=="images") {prepared->kind="image";prepared->image=QImage(artifact.path);if(prepared->image.isNull())e={"artifact_missing","Cannot read image result",{}};}else {QFile f(artifact.path);if(!f.open(QIODevice::ReadOnly))e={"artifact_missing","Cannot read text result",{}};else {prepared->kind="text";prepared->text=QString::fromUtf8(f.readAll());}}return QJsonObject{};},[this,op,ticket,revision,record,prepared](Error e,QJsonObject) mutable {
+  background([artifact,localKind,prepared](Error& e) {
+   QFile file(artifact.path);
+   if(!file.open(QIODevice::ReadOnly)) {e={"artifact_missing","Cannot read clipboard result",{}};return QJsonObject{};}
+   if(file.size()!=artifact.bytes) {e={"artifact_changed","Clipboard result changed",{}};return QJsonObject{};}
+   const auto bytes=file.read(artifact.bytes+1);
+   if(bytes.size()!=artifact.bytes||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=artifact.sha256) {
+    e={"artifact_changed","Clipboard result changed",{}};return QJsonObject{};
+   }
+   if(localKind=="images") {
+    prepared->kind="image";prepared->encodedImage=bytes;
+    if(!bytes.startsWith(QByteArray::fromHex("89504e470d0a1a0a")))e={"artifact_invalid","Image result is not a PNG",{}};
+   }else {prepared->kind="text";prepared->text=QString::fromUtf8(bytes);}
+   return QJsonObject{};
+  },[this,op,ticket,revision,record,prepared](Error e,QJsonObject) mutable {
    if(e) {op.copyStatus="failed";op.error=e;record(op);return;}
    if(ticket!=invocation_||revision!=source_.clipboardRevision()) {op.copyStatus="suppressed";record(op);return;}
    deliverCopy(*prepared,[op,record](Error e) mutable {op.copyStatus=e?"failed":"copied";if(e)op.error=e;record(op);});

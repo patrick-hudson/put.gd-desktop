@@ -1,0 +1,50 @@
+profile: cinnamon-x11
+baseline:
+  distribution: Linux Mint 22.3
+  compositor: Cinnamon
+  session: X11
+  qt_platform: xcb
+status: awaiting-real-session-acceptance
+required_environments:
+  - physical-user-host
+  - disposable-qemu-guest
+safety:
+  payloads: synthetic-only
+  destination: isolated-test-destination
+  host_guest_clipboard: disabled
+  physical_display_coordination: root-required
+metadata_required:
+  - iso-sha256
+  - desktop-and-compositor-version
+  - qt-version-and-platform
+  - app-build-identity
+  - display-layout-native-logical-scale-rotation
+  - acceleration
+scenarios:
+  - region-drag-exact-fixture-pixels-upload-and-independent-link-paste
+  - escape-and-right-click-no-publication-no-clipboard-change
+  - invocation-frozen-external-window-with-frame-and-visible-occlusion
+  - disappearing-window-target-error
+  - desktop-all-monitors-panels-negative-origin-rotation-transparent-gaps
+  - mixed-density-single-and-spanning-monitor-capture
+  - display-removal-or-scale-change-cancels-selection
+  - global-hotkeys-unfocused-caps-num-lock-keymap-change
+  - shortcut-conflict-reported-without-stealing
+  - native-clipboard-text-image-two-local-files-matching-bytes-and-paste
+  - nonresponsive-clipboard-owner-responsive-ui-actionable-timeout
+  - local-only-image-text-files-paste-zero-s3-requests
+  - newer-clipboard-owner-and-newer-invocation-suppress-auto-copy
+  - upload-copy-enabled-and-disabled-folder-routing-original-and-generated-names
+  - offline-upload-source-preserved-local-copy-and-explicit-retry
+  - restart-history-search-preview-link-copy-and-synthetic-remote-delete
+  - external-config-valid-invalid-dirty-form-conflict-effective-shortcut-rebind
+  - installed-package-startup
+  - physical-release-build-acquisition-and-interaction-timing
+artifacts_required:
+  - results-json-and-junit
+  - expected-actual-fixture-dimensions-and-sha256
+  - separate-app-paste-results
+  - synthetic-upload-receipts-and-public-get-hashes
+  - sanitized-desktop-logs
+  - qmp-witness-frames-per-display-head
+  - package-and-version-manifest

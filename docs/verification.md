@@ -8,7 +8,8 @@ contract is [issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1
 | U1 bootstrap | Mint 22.3, GCC 13.3, Qt 6.4.2, QtKeychain 0.14.2; AWS 1.11.907 plus 15 pinned submodules built; Debug contracts and no-test Release build passed; ASan/UBSan contracts passed outside process sandbox | Authored CI jobs have not run on Ubuntu 26.04, Windows, or macOS |
 | U2 shared services | Test-first service failures and returned/stored regressions; all 11 current executables pass Debug (16.47s) and ASan/UBSan with leak checking (37.67s); no-test Release builds; actual resident socket/CLI, asynchronous settings, manifest recovery, bounded acquisition/retry, opaque receipts/deletion, previews and 10,000-record history tested | Literal full-filesystem archive failure awaits the lab; GUI binding and production adapters belong to later units. All shared-service thread checks pass with instrumented dependencies; native adapters require separate acceptance |
 | U3 S3 / secrets | Real pinned SDK and signed offline HTTP fixture; QtKeychain jobs through isolated D-Bus peer; full Debug 17/17 (37.00s), ASan/UBSan with leak detection 17/17 (67.81s), no-test Release build; adapter/secret-store TSan 5/5 (41.01s) | Live synthetic S3/public custom-domain smoke awaits explicit setup GUI; real desktop unlock/paste remain later gates |
-| U4–U10 | Not implemented or verified yet | Native workflows, UI/history, real desktop lab, GNOME/KDE adapters, MCP, packaging and release evidence |
+| U4 native foundation | Native XCB/EWMH/RandR capture, unfocused keys, external-focus-preserving selector, bounded asynchronous clipboard transfers and composition; full Debug 19/19 (40.69s). Final changed operations/geometry/native targets pass ASan/UBSan with leak detection 3/3 (11.25s) and TSan with instrumented Qt/X11 3/3 (12.47s). Four reviewed simplifications preserved those checks | Real Cinnamon physical/guest workflow, independent application paste, setup-driven live S3, mixed-display acceptance and release budgets await U5/U6/U10 |
+| U5–U10 remaining delivery | Native foundation is ready for settings and lab work; the optional MCP implementation is tracked separately | UI/history, real desktop lab, GNOME/KDE adapters, complete MCP acceptance, packaging and release evidence |
 
 Configuration tests cover fresh setup without an implicit cloud profile, private atomic
 writes, stale revisions, retained accepted settings after malformed/missing/oversized files,
@@ -88,3 +89,21 @@ pass TSan (41.01s); the remaining twelve contracts also pass (88.23s) with the s
 instrumented dependencies. All 17 executables are covered across these two disjoint runs. The 10,000-row history dataset is retained, with a larger
 TSan-only deadline for instrumented Qt/SQLite. Release SDK/OpenSSL/libcurl internals
 are not instrumented, and neither sanitizer nor offscreen evidence certifies compositors.
+
+
+U4 regression evidence uses genuine X11 selection owners, separate client windows,
+XTest key events and an isolated Xvfb server. It covers target identity frozen before
+asynchronous acceptance, framed visible-window cropping, outward fractional rounding,
+selection cancellation/focus and a held-key grab handoff, lock modifiers and actual
+keymap rebinding, shifted punctuation, ordered clipboard targets and INCR, queue bounds,
+frozen owners, stalled owners with responsive event loops, cancellation isolation and
+preencoded PNG transfer. These are native protocol checks, not a Cinnamon support claim.
+The full pre-cleanup memory run passed the other 18 targets; its native failure was
+reproduced as a held-key fixture cleanup ordering bug. The fixture now waits for the
+server to acknowledge simulated key releases before disconnecting; the strengthened
+assertions and all affected final Debug/memory/thread checks pass.
+
+Qt thread instrumentation includes the official XCB plugin. Its normal required
+extension packages and reproduction commands are in thread-sanitizer.md. No new race
+filter was introduced. Production continues to use distribution Qt. No physical host
+capture, live AWS request or guest desktop acceptance has occurred in this slice.

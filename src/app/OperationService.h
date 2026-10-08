@@ -10,16 +10,24 @@
 #include <future>
 namespace putgd {
 using JsonReply=std::function<void(Error,QJsonObject)>;
-struct CopyPayload { QString kind,text;QStringList files;QImage image; };
+struct CopyPayload { QString kind,text;QStringList files;QByteArray encodedImage; };
 // Calls originate on the session thread. Acquire/copy callbacks may arrive on any
 // thread, including after cancellation; services marshal and lifetime-guard them.
 // cancelAcquisition requests cancellation and need not synchronously drain callbacks.
 // The adapter outlives its services and never reads clipboard payloads for revision queries.
 class SourceAdapter {
 public:
+ using PreparedAcquisition=std::function<void(const ResourceLimits&,std::function<void(PayloadResult)>)>;
  virtual ~SourceAdapter()=default;
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
+ // Freeze native target identity/layout on the session thread before persistence
+ // yields. Starting acquisition remains deferred until its acceptance is durable.
+ virtual PreparedAcquisition prepareAcquisition(const QString& action) {
+  return [this,action](const ResourceLimits& limits,std::function<void(PayloadResult)> reply) {
+   acquire(action,limits,std::move(reply));
+  };
+ }
  virtual void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)=0;
  virtual void cancelAcquisition()=0;
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;

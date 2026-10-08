@@ -8,7 +8,7 @@ sudo apt-get update
 sudo apt-get install build-essential git cmake ninja-build pkg-config \
   qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev \
   qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev \
-  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev \
+  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon \
   libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev \
   zlib1g-dev libwayland-dev wayland-protocols
 ```
@@ -42,8 +42,9 @@ application targets require C++20. SDK headers are isolated to the S3 adapter.
 Use `release`, `asan`, or `tsan` in place of `dev` for application presets. ASan/UBSan
 and TSan are separate builds. The SDK is currently built in Release; sanitizer evidence
 applies to application code, not an instrumented dependency. Set `-DBUILD_TESTING=OFF`
-at configure time to exclude QtTest. `ctest` sets the offscreen Qt platform for headless
-contract tests; it does not certify native capture, clipboard ownership, or global hotkeys.
+at configure time to exclude QtTest. `ctest` uses the offscreen Qt platform for shared
+contract tests and a disposable Xvfb display for native X11 protocol tests. These
+checks do not certify capture, clipboard ownership, or global hotkeys on a real desktop.
 
 Windows/macOS provision the same Qt/QtKeychain/SDK packages with their normal package
 manager and pass their installation prefix using `CMAKE_PREFIX_PATH`. Native desktop

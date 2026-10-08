@@ -46,6 +46,7 @@ endif()
 
 
 add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
+  src/platform/Geometry.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp)
@@ -57,14 +58,37 @@ target_link_libraries(putgd_s3 PUBLIC putgd_core putgd_s3_runtime PRIVATE ${AWSS
 
 add_library(putgd_app STATIC src/app/OperationService.cpp src/app/HistoryService.cpp src/app/LocalServer.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_package(PkgConfig REQUIRED)
+  pkg_check_modules(PUTGD_XCB REQUIRED IMPORTED_TARGET xcb xcb-randr xcb-keysyms xcb-xfixes)
+  add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp
+    src/platform/x11/X11Clipboard.cpp src/platform/x11/X11Shortcuts.cpp
+    src/platform/x11/X11SourceAdapter.cpp src/ui/RegionOverlay.cpp)
+  target_link_libraries(putgd_x11 PUBLIC putgd_app Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB)
+endif()
 add_executable(putgd-cli src/cli/main.cpp)
 target_link_libraries(putgd-cli PRIVATE putgd_app)
 install(TARGETS putgd-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 add_executable(putgd src/main.cpp)
 target_link_libraries(putgd PRIVATE putgd_build_options putgd_s3_runtime putgd_s3 putgd_app Qt6::Widgets)
+if(TARGET putgd_x11)
+  target_link_libraries(putgd PRIVATE putgd_x11)
+  target_compile_definitions(putgd PRIVATE PUTGD_NATIVE_X11)
+endif()
 install(TARGETS putgd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if(BUILD_TESTING)
+  add_executable(test_geometry tests/unit/test_geometry.cpp)
+  target_link_libraries(test_geometry PRIVATE putgd_core Qt6::Test)
+  add_test(NAME geometry_contract COMMAND test_geometry)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    pkg_check_modules(PUTGD_XTEST REQUIRED IMPORTED_TARGET xcb-xtest)
+    find_program(PUTGD_XVFB_RUN xvfb-run REQUIRED)
+    add_executable(test_x11 tests/desktop/x11/test_x11.cpp)
+    target_link_libraries(test_x11 PRIVATE putgd_x11 Qt6::Test PkgConfig::PUTGD_XTEST)
+    add_test(NAME x11_isolated COMMAND ${PUTGD_XVFB_RUN} -a $<TARGET_FILE:test_x11>)
+    set_tests_properties(x11_isolated PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb" TIMEOUT 60)
+  endif()
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_executable(test_keychain_backend tests/integration/test_keychain_backend.cpp)
   target_link_libraries(test_keychain_backend PRIVATE putgd_s3 Qt6::Test Qt6::DBus)
