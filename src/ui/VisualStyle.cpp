@@ -27,9 +27,9 @@ public:StateDelegate(QList<int> columns,QObject* parent):QStyledItemDelegate(par
   else if(QStringList{"failed","denied","interrupted"}.contains(value)){foreground=QColor("#ffc1b9");background=QColor("#4b2c2d");}
   else if(QStringList{"partial","uncertain","pending","running","accepted","superseded","version_retained"}.contains(value)){foreground=QColor("#f8dda8");background=QColor("#423a28");}
   value.replace('_',' ');value=value.left(1).toUpper()+value.mid(1);
-  painter->save();painter->setRenderHint(QPainter::Antialiasing);auto bounds=option.rect.adjusted(8,7,-8,-7);bounds.setWidth(qMin(bounds.width(),option.fontMetrics.horizontalAdvance(value)+22));painter->setPen(Qt::NoPen);painter->setBrush(background);painter->drawRoundedRect(bounds,5,5);painter->setPen(foreground);painter->drawText(bounds.adjusted(10,0,-8,0),Qt::AlignVCenter|Qt::AlignLeft,option.fontMetrics.elidedText(value,Qt::ElideRight,qMax(0,bounds.width()-18)));painter->restore();
+  painter->save();painter->setRenderHint(QPainter::Antialiasing);auto bounds=option.rect.adjusted(8,5,-8,-5);bounds.setWidth(qMin(bounds.width(),option.fontMetrics.horizontalAdvance(value)+22));painter->setPen(Qt::NoPen);painter->setBrush(background);painter->drawRoundedRect(bounds,5,5);painter->setPen(foreground);painter->drawText(bounds.adjusted(10,0,-8,0),Qt::AlignVCenter|Qt::AlignLeft,option.fontMetrics.elidedText(value,Qt::ElideRight,qMax(0,bounds.width()-18)));painter->restore();
  }
- QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override {auto size=QStyledItemDelegate::sizeHint(option,index);size.setHeight(qMax(42,size.height()));if(columns_.contains(index.column()))size.setWidth(size.width()+26);return size;}
+ QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override {auto size=QStyledItemDelegate::sizeHint(option,index);size.setHeight(qMax(36,size.height()));if(columns_.contains(index.column()))size.setWidth(size.width()+26);return size;}
 private:QList<int> columns_;
 };
 }
@@ -44,42 +44,42 @@ void apply(QApplication& app){
  QWidget { color: #edf4f2; font-size: 13px; }
  QLabel { background: transparent; }
  QLabel[visualRole="eyebrow"] { color: #a9f1cb; font-size: 11px; font-weight: 600; }
- QLabel[visualRole="title"] { font-size: 27px; font-weight: 600; }
+ QLabel[visualRole="title"] { font-size: 24px; font-weight: 600; }
  QLabel[visualRole="subtitle"] { color: #a8b9b7; font-size: 13px; }
- QLabel[visualRole="sectionTitle"] { font-size: 16px; font-weight: 600; }
- QLabel[visualRole="status"] { color: #c8dcd6; background: #19312c; border: 1px solid #2a4c41; border-radius: 8px; padding: 10px; }
+ QLabel[visualRole="sectionTitle"] { font-size: 15px; font-weight: 600; }
+ QLabel[visualRole="status"] { color: #c4d3cf; background: #1a2529; border: 1px solid #34464b; border-radius: 6px; padding: 8px 10px; }
  QLabel[visualRole="status"][feedbackError="true"] { color: #ffc1b9; background: #39282b; border-color: #805254; }
  QLabel[visualRole="binding"] { color: #a8b9b7; font-size: 12px; }
  QLabel[visualRole="binding"][bindingTone="active"] { color: #a9f1cb; }
  QLabel[visualRole="binding"][bindingTone="warning"] { color: #f8dda8; }
  QLabel[visualRole="binding"][bindingTone="error"] { color: #ffc1b9; }
  QLabel[visualRole="muted"] { color: #a8b9b7; }
- QFrame[visualRole="card"] { background: #1a2529; border: 1px solid #2c3b40; border-radius: 11px; }
+ QFrame[visualRole="card"] { background: #1a2529; border: 1px solid #2c3b40; border-radius: 8px; }
  QFrame[visualRole="card"] > QWidget { background: transparent; }
  QScrollArea, QStackedWidget { background: transparent; border: none; }
  QScrollArea > QWidget > QWidget { background: transparent; }
- QListWidget#settingsNavigation { background: #152125; border: 1px solid #2b3b3e; border-radius: 10px; padding: 8px; outline: none; }
- QListWidget#settingsNavigation::item { padding: 14px 10px; border: 2px solid transparent; border-radius: 7px; margin-bottom: 5px; }
+ QListWidget#settingsNavigation { background: #152125; border: 1px solid #2b3b3e; border-radius: 8px; padding: 6px; outline: none; }
+ QListWidget#settingsNavigation::item { padding: 10px 8px; border: 2px solid transparent; border-radius: 7px; margin-bottom: 3px; }
  QListWidget#settingsNavigation::item:selected { background: #284438; color: #b5f8d3; }
  QListWidget#settingsNavigation::item:hover { background: #233338; }
  QListWidget#settingsNavigation:focus::item:selected { border: 2px solid #a9f1cb; }
- QLineEdit, QComboBox, QPlainTextEdit { background: #111b1f; border: 1px solid #415259; border-radius: 6px; padding: 8px 10px; selection-background-color: #a9f1cb; selection-color: #10231b; }
+ QLineEdit, QComboBox, QPlainTextEdit { background: #111b1f; border: 1px solid #415259; border-radius: 6px; padding: 6px 8px; selection-background-color: #a9f1cb; selection-color: #10231b; }
  QLineEdit:focus, QComboBox:focus, QPlainTextEdit:focus { border: 1px solid #a9f1cb; background: #152923; }
  QLineEdit:disabled, QComboBox:disabled, QPlainTextEdit:disabled { color: #81908f; border-color: #2a393d; background: #192326; }
  QComboBox { padding-right: 26px; }
  QComboBox::drop-down { border: none; width: 24px; }
  QComboBox QAbstractItemView { background: #1a292b; border: 1px solid #6b9484; selection-background-color: #2d4b3e; }
- QPushButton, QToolButton { background: #27363a; border: 1px solid #43585b; border-radius: 6px; padding: 8px 13px; font-weight: 500; }
+ QPushButton, QToolButton { background: #27363a; border: 1px solid #43585b; border-radius: 6px; padding: 6px 11px; font-weight: 500; }
  QPushButton:hover, QToolButton:hover { background: #334b48; border-color: #6a9b88; }
  QPushButton:pressed, QToolButton:pressed { background: #152b22; }
- QPushButton:focus, QToolButton:focus { border: 2px solid #a9f1cb; padding: 7px 12px; }
+ QPushButton:focus, QToolButton:focus { border: 2px solid #a9f1cb; padding: 5px 10px; }
  QPushButton:disabled, QToolButton:disabled { color: #81908f; background: #202c30; border-color: #2d3c40; }
  QPushButton[visualRole="primary"] { background: #a9f1cb; color: #10291d; border-color: #a9f1cb; font-weight: 600; }
  QPushButton[visualRole="primary"]:hover { background: #c5ffdf; }
  QPushButton[visualRole="primary"]:focus { border: 2px solid #edf4f2; }
  QPushButton[visualRole="primary"]:disabled { background: #34473e; color: #8a9c94; border-color: #43534b; }
  QPushButton[visualRole="danger"] { color: #ffc1b9; background: #38282b; border-color: #775153; }
- QCheckBox { spacing: 10px; padding: 5px 0; }
+ QCheckBox { spacing: 8px; padding: 3px 0; }
  QCheckBox::indicator { width: 18px; height: 18px; border: 1px solid #6a8580; border-radius: 4px; background: #121e20; }
  QCheckBox::indicator:checked { background: #a9f1cb; border: 4px solid #365c49; }
  QCheckBox::indicator:focus { border: 2px solid #edf4f2; }
@@ -87,7 +87,7 @@ void apply(QApplication& app){
  QTableView::item, QTreeView::item { padding: 6px; border-bottom: 1px solid #2b3a3f; }
  QTableView::item:focus, QTreeView::item:focus { border: 1px solid #a9f1cb; }
  QHeaderView { background: #172327; }
- QHeaderView::section { background: #223236; color: #b9cdc7; border: none; border-bottom: 1px solid #42554f; padding: 11px 9px; font-weight: 600; }
+ QHeaderView::section { background: #223236; color: #b9cdc7; border: none; border-bottom: 1px solid #42554f; padding: 8px 9px; font-weight: 600; }
  QTableCornerButton::section { background: #223236; border: none; }
  QScrollBar:vertical { width: 10px; background: #142023; margin: 2px; }
  QScrollBar:horizontal { height: 10px; background: #142023; margin: 2px; }
@@ -118,8 +118,8 @@ QIcon icon(const QString& name,const QColor& color){
  else {p.drawRoundedRect(QRectF(5,2,14,20),2,2);p.drawLine(8,8,16,8);p.drawLine(8,12,16,12);p.drawLine(8,16,13,16);}
  p.end();result.addPixmap(pixmap);}cache.insert(key,result);return result;
 }
-QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,10);layout->setSpacing(6);auto* brand=new QLabel("P U T . G D   /   SHARE IN A MOMENT",widget);role(brand,"eyebrow");layout->addWidget(brand);auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);return widget;}
-QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(20,18,20,18);layout->setSpacing(14);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
-void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(20);form->setVerticalSpacing(12);form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::WrapLongRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignVCenter);}
+QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,4);layout->setSpacing(4);auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
+QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(16,14,16,14);layout->setSpacing(10);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
+void styleForm(QFormLayout* form){form->setContentsMargins(0,0,0,0);form->setHorizontalSpacing(16);form->setVerticalSpacing(8);form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);form->setRowWrapPolicy(QFormLayout::WrapLongRows);form->setLabelAlignment(Qt::AlignLeft|Qt::AlignVCenter);}
 void decorateView(QAbstractItemView* view,const QList<int>& columns){view->setItemDelegate(new StateDelegate(columns,view));view->setAlternatingRowColors(true);view->setIconSize(QSize(22,22));view->setTextElideMode(Qt::ElideMiddle);}
 }

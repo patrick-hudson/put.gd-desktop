@@ -2,6 +2,7 @@
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
   return()
 endif()
+install(FILES putgd.svg DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
 option(PUTGD_LAB_FIXTURE "Package independent synthetic desktop fixture (development only)" OFF)
 configure_file(app.desktop.in putgd.desktop @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"

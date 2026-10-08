@@ -43,7 +43,14 @@ private slots:
   auto* pages=window.findChild<QStackedWidget*>("settingsPages");QVERIFY(pages);QCOMPARE(navigation->count(),4);
   navigation->setFocus();QTRY_VERIFY(navigation->hasFocus());
   for(int i=0;i<4;++i){navigation->setCurrentRow(i);QCOMPARE(pages->currentIndex(),i);auto* scroll=qobject_cast<QScrollArea*>(pages->currentWidget());QVERIFY(scroll);QVERIFY(scroll->widgetResizable());QVERIFY(scroll->viewport()->width()>=500);}
-  navigation->setCurrentRow(0);QTest::keyClick(navigation,Qt::Key_Down);QCOMPARE(pages->currentIndex(),1);
+  navigation->setCurrentRow(0);QTest::qWait(20);
+  auto* captureScroll=qobject_cast<QScrollArea*>(pages->currentWidget());QVERIFY(captureScroll);
+  for(const auto& name:Settings::actionNames()){
+   auto* action=window.findChild<QPushButton*>("invoke"+name.left(1).toUpper()+name.mid(1));QVERIFY(action);QVERIFY(action->isVisible());
+   const QRect bounds(action->mapTo(captureScroll->viewport(),QPoint{}),action->size());
+   QVERIFY2(captureScroll->viewport()->rect().contains(bounds),qPrintable("Capture action requires scrolling: "+name));
+  }
+  QTest::keyClick(navigation,Qt::Key_Down);QCOMPARE(pages->currentIndex(),1);
   auto* save=window.findChild<QPushButton*>("saveSettings");QVERIFY(save->isVisible());QVERIFY(window.rect().contains(save->mapTo(&window,save->rect().bottomRight())));
  }
 

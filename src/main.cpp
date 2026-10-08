@@ -62,6 +62,7 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
 int main(int argc,char* argv[]) {
  QApplication app(argc,argv);
  putgd::VisualStyle::apply(app);
+ app.setDesktopFileName("putgd");
  app.setWindowIcon(putgd::VisualStyle::icon("brand"));
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion("0.1.0");
  QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show recent activity"});parser.process(app);

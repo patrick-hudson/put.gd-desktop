@@ -256,3 +256,16 @@ right-click and zero-area checks remain pending.
 The refreshed host standard Debug suite passes 25/25 in 46.79 seconds outside
 the process sandbox. A sandboxed attempt could not open local test sockets/Xvfb
 and is not a code regression or a passing acceptance result.
+
+The second UI pass removes slogan headers, compacts action/folder/destination layouts,
+and passes six affected host tests (16.38s) and four native KDE GUI tests (7.14s).
+Installed single-scale witnesses cover all settings sections and populated local
+history/activity. Standard desktop icon installation fixes the taskbar icon; the
+window-decoration glyph still needs investigation. Simple setup, human-readable
+size controls, scale/error/confirmation acceptance remain pending.
+
+A fresh independent agent exercised fixed production CLI/official MCP metadata
+inspection, revision patches/conflicts and deliberate configuration-error recovery
+in an isolated offscreen process. Its structured record reports14CLI calls,7MCP
+requests and12discovered tools, with zero operations/provider calls. This is partial
+U9 evidence; real Cinnamon, build and U6 lab walkthrough gates remain pending.

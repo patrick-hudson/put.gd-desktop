@@ -38,13 +38,14 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 - **Immediate sharing is the default.** Governs R5. (session-settled: user-directed — chosen over local-first capture: the user wants immediate upload and URL copying.)
 - **Preserve the daily hotkey experience on Wayland.** Governs R13–R15. (session-settled: user-directed — chosen over accepting a desktop picker for every capture: maintain desktop-specific integrations where needed.)
 - **Linux ships first, with future platform support preserved.** Governs R13, R26.
+- **Simple setup comes first.** Governs R11, R16, R20, R35. (session-settled: user-directed — added 2026-10-08: start with a short “fill this in to get going” section, then expand into the existing advanced settings. Show human-readable file sizes.)
 - **Custom visual design is required.** Governs R35. (session-settled: user-directed — added 2026-10-08: the user rejects the basic Qt layout visuals and wants a custom, attractive interface.)
 
 ### Requirements
 
 #### Capture and clipboard
 
-- R1. Region capture presents a crosshair selection with a visible rectangle and captures the selected desktop content.
+- R1. Region capture shows the desktop underneath a visually transparent selection overlay, with crosshairs and a rectangle outline while dragging, and captures the selected desktop content. No solid colored canvas or opaque selection fill obscures the product capture view. Synthetic performance-test backgrounds are separate, clearly labelled test fixtures.
 - R2. Active-window capture targets the focused external window at invocation, including its frame where available; v1 permits visible-pixel capture on X11 and documents compositor-native occlusion behavior on Wayland.
 - R3. Full-desktop capture includes every enabled monitor and desktop panels, with deterministic handling of layout gaps and per-monitor scaling.
 - R4. Clipboard sharing accepts regular local files, images, and plain text, with precedence in that order; plain-text URLs are uploaded as text rather than fetched.
@@ -102,7 +103,7 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 
 #### Visual design
 
-- R35. The application has a cohesive, custom, polished visual design rather than shipping the basic Qt forms as its finished interface. Design settings, setup, recent activity, history, and confirmation/error states together, with intentional typography, spacing, color, icons, navigation, and content hierarchy. Use the native Qt implementation, preserve keyboard navigation, accessible names, clear focus indicators, readable contrast, and usable layouts at supported display scales, and meet R20 and the existing performance budgets. Cosmetic completeness requires inspection of the actual rendered application; widget tests alone do not prove it.
+- R35. The application has a cohesive, custom, polished visual design rather than shipping the basic Qt forms as its finished interface. Design settings, setup, recent activity, history, and confirmation/error states together, with intentional typography, spacing, color, icons, navigation, and content hierarchy. Use the native Qt implementation, preserve keyboard navigation, accessible names, clear focus indicators, readable contrast, and usable layouts at supported display scales, and meet R20 and the existing performance budgets. Cosmetic completeness requires inspection of the actual rendered application; widget tests alone do not prove it. Default to a simple setup view containing the basic destination details needed to get started, with standard provider defaults and a clear Advanced settings expansion into the full existing controls. Both views edit the same validated draft/configuration; switching views preserves unsaved changes. S3 setup asks for the bucket, region, explicit credentials, and optional public URL base; endpoint/addressing, prefix, storage class, ACL, timeouts, retention and detailed resource controls belong under Advanced settings. Keep an explicit local-only setup path. A fresh installation still requires destination setup and never silently activates the development put.gd template. Size controls and ordinary summaries use readable MiB/GiB or MB/GB units rather than raw byte counts, with a consistent declared unit system; JSON retains exact byte counts and unchanged values round-trip without loss.
 
 ### Key Flows
 
@@ -131,7 +132,7 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 - AE13. A test-only second provider exercises upload → receipt → history → copy link → remote delete through the same GUI/CLI services without AWS types outside the S3 adapter. Covers R33.
 - AE14. With the settings window open, an agent atomically edits the JSON destination, naming policy, and image folder. The GUI shows the new values and a later action uses them; an already accepted upload and history deletion keep their original targets. Invalid JSON preserves the accepted configuration, and an unsaved GUI draft is retained with a conflict notice. Covers R16/R34.
 
-- AE15. Open settings, recent activity, and a populated history in the installed app: they share a custom visual language, readable hierarchy, and deliberate spacing. Empty, loading, success, partial-failure, and remote-deletion states remain clear. Keyboard focus and navigation are visible, and supported scale factors do not clip content. Covers R35.
+- AE15. Open settings, recent activity, and a populated history in the installed app: they share a custom visual language, readable hierarchy, and deliberate spacing. Empty, loading, success, partial-failure, and remote-deletion states remain clear. Keyboard focus and navigation are visible, and supported scale factors do not clip content. Simple setup can configure a usable destination without visiting advanced controls; expansion preserves draft values and exposes all existing options. Size inputs/summaries show declared human-readable units and save the exact corresponding byte values. Covers R35.
 
 ### Success Criteria
 
@@ -532,6 +533,7 @@ Test scenarios:
 11. Covers AE14. External file edits update clean forms, preserve dirty drafts with a conflict notice, and cannot silently overwrite a detected newer revision. Invalid edits show field/parse errors with the accepted settings still active; a later valid replacement recovers without restart.
 
 12. Covers AE15. Inspect rendered settings, setup, activity, populated history, and confirmation/error states for the custom visual design, including keyboard focus and supported display scales. Retain screenshots of the finished design and correct clipping, inconsistent styling, and unclear hierarchy.
+13. Complete initial setup using only the simple section, then expand Advanced settings without losing the draft. Both views and an external JSON edit agree. Save/reload size limits in declared MiB/GiB or MB/GB units, including fractional values, and preserve exact unchanged byte counts. Validate overflow or invalid size input through the existing settings contract.
 
 Verification: Headless/in-process Qt GUI tests prove form/state behavior; real sessions prove tray, launch-at-login, notifications, and clipboard paste. Actual rendered screenshots and visual review prove R35; default-looking functional forms do not satisfy this gate.
 
@@ -625,7 +627,7 @@ Verification: CLI/MCP contract tests pass and a fresh agent follows the docs to 
 
 ### Required UI iteration after the first custom visual pass
 
-The user accepts the modern direction but finds the current interface sloppy and its copy too much like AI-generated marketing. Iterate before AE15 acceptance: remove slogans and inflated prose, use short task labels and concrete help, tighten spacing and alignment, improve visual hierarchy and populated/empty/error states, and inspect installed windows at the required sizes/scales. Preserve functional controls, stable object names, keyboard access, settings conflicts, per-item outcomes, and exact deletion confirmations. Screenshots of the first pass are a baseline, not final visual acceptance. Run this independent presentation work alongside native acceptance and memory measurement where file ownership, build directories, and desktop sessions do not collide.
+The user accepts the modern direction but finds the current interface sloppy and its copy too much like AI-generated marketing. Iterate before AE15 acceptance: remove slogans and inflated prose, use short task labels and concrete help, tighten spacing and alignment, improve visual hierarchy and populated/empty/error states, and inspect installed windows at the required sizes/scales. Preserve functional controls, stable object names, keyboard access, settings conflicts, per-item outcomes, and exact deletion confirmations. Screenshots of the first pass are a baseline, not final visual acceptance. The subsequent user request adds a simple getting-started section with standard defaults, progressive disclosure into Advanced settings, and human-readable size controls/summaries. This next pass remains required before visual acceptance. Run this independent presentation work alongside native acceptance and memory measurement where file ownership, build directories, and desktop sessions do not collide.
 
 Retain structured test parameters and logs for repeatability: scenario/profile/fixture, exact hotkeys and timing, pre-action geometry/layout/scales, package and runner hashes, expected/actual hashes, operation IDs, outcomes, and JUnit. Keep per-attempt records rather than overwriting earlier results. CI retains headless CTest reports; graphical acceptance requires a native desktop lab/self-hosted job and cannot be claimed from hosted headless CI. Never include credentials, VM authentication material, or real user payloads in these records.
 
