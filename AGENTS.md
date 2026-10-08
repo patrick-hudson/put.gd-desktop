@@ -15,7 +15,9 @@ See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers 
 Offscreen tests prove widget/core behavior only. Real desktop support requires graphical
 acceptance evidence for each declared compositor. Never report a mock as desktop proof.
 
-Use synthetic payloads and an isolated test destination. Never put credentials in source,
+Use synthetic payloads and an isolated test destination. Never commit `credentials.txt`, including with force-add. It is user-provided local
+test input only; never include its contents in logs, diagnostics, or review packets.
+Never put credentials in source,
 configuration, logs, history, command lines, or review packets. Never modify bucket policy,
 versioning, or existing user objects during tests. Configuration contains credential references.
 
