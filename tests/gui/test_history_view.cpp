@@ -12,7 +12,12 @@
 #include <QToolButton>
 #include <QImage>
 #include <QPlainTextEdit>
+#include <QPaintEvent>
 using namespace putgd;using namespace putgd::test;
+class HistoryPaintObserver final:public QObject {
+public:int paints=0;QRegion region;
+ bool eventFilter(QObject*,QEvent* event) override {if(event->type()==QEvent::Paint){++paints;region|=static_cast<QPaintEvent*>(event)->region();}return false;}
+};
 class HistoryGui:public QObject {
  Q_OBJECT
 
@@ -34,13 +39,16 @@ private slots:
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
   const auto imagePath=d.filePath("synthetic-preview.png");QImage image(320,180,QImage::Format_RGB32);image.fill(QColor("#a9f1cb"));QVERIFY(image.save(imagePath));
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-image-inspector";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="synthetic-preview-item";item.artifact.name="synthetic-preview.png";item.artifact.mime="image/png";item.artifact.category="images";item.artifact.previewPath=imagePath;item.artifact.bytes=1572864;item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
-  HistoryService history(operations);HistoryWindow window(history,operations);window.resize(1000,700);window.show();auto* table=window.findChild<QTableView*>("historyTable");QTRY_COMPARE(table->model()->rowCount(),1);table->selectRow(0);auto* preview=window.findChild<QLabel*>("historyPreview");QVERIFY(preview);QTRY_VERIFY(!preview->pixmap().isNull());QVERIFY(preview->isVisible());QVERIFY(preview->height()>0);QTRY_VERIFY(window.findChild<QPlainTextEdit*>("historySummary")->toPlainText().contains("1.5 MiB"));
+  HistoryService history(operations);HistoryWindow window(history,operations);HistoryPaintObserver paint;window.installEventFilter(&paint);window.resize(1000,700);window.show();auto* table=window.findChild<QTableView*>("historyTable");QTRY_COMPARE(table->model()->rowCount(),1);table->selectRow(0);auto* preview=window.findChild<QLabel*>("historyPreview");QVERIFY(preview);QTRY_VERIFY(!preview->pixmap().isNull());QVERIFY(preview->isVisible());QVERIFY(preview->height()>0);QTRY_VERIFY(window.findChild<QPlainTextEdit*>("historySummary")->toPlainText().contains("1.5 MiB"));
   QToolButton *filters=nullptr,*manage=nullptr;for(auto* button:window.findChildren<QToolButton*>()){if(button->text()=="Filters")filters=button;if(button->text()=="Manage")manage=button;}QVERIFY(filters);QVERIFY(manage);filters->setChecked(true);manage->setChecked(true);QTest::qWait(20);
   QVERIFY2(window.width()<=1000&&window.height()<=700,qPrintable(QString("Expanded history grew to %1×%2").arg(window.width()).arg(window.height())));
   for(const auto& name:QStringList{"copyHistoryLink","deleteHistoryRemote"}){auto* button=window.findChild<QPushButton*>(name);QVERIFY(button->isVisible());QVERIFY(window.rect().contains(button->mapTo(&window,button->rect().bottomRight())));}
   QVERIFY(window.rect().contains(manage->mapTo(&window,manage->rect().bottomRight())));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
-  window.hide();QVERIFY2(preview->pixmap().isNull(),"Hidden history must release its decoded thumbnail");
-  window.show();QTRY_VERIFY(!preview->pixmap().isNull());
+  for(int cycle=0;cycle<3;++cycle){
+   window.hide();QVERIFY2(preview->pixmap().isNull(),"Hidden history must release its decoded thumbnail");QTRY_VERIFY_WITH_TIMEOUT(!window.testAttribute(Qt::WA_WState_Created),500);QVERIFY(!window.backingStore());
+   QCOMPARE(window.findChild<QTableView*>("historyTable"),table);QVERIFY(filters->isChecked());QVERIFY(manage->isChecked());QCOMPARE(table->selectionModel()->selectedRows().size(),1);
+   paint.paints=0;paint.region=QRegion{};window.show();QTRY_VERIFY(window.testAttribute(Qt::WA_WState_Created));QTRY_VERIFY(paint.paints>0);QVERIFY(paint.region.boundingRect().contains(window.rect()));QTRY_VERIFY(!preview->pixmap().isNull());
+  }
   table->clearSelection();QVERIFY(preview->pixmap().isNull());
 
  }

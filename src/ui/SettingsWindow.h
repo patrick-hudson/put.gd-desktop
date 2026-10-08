@@ -1,12 +1,12 @@
 #pragma once
 #include "core/SettingsService.h"
 #include "secrets/CredentialStore.h"
-#include <QWidget>
+#include "RetainedWindow.h"
 #include <QHash>
 class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
 namespace putgd {
 class ShortcutEditor;
-class SettingsWindow final:public QWidget {
+class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
  using DestinationTester=std::function<void(const QString&,const QJsonObject&,std::function<void(Error)>)>;

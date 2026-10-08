@@ -13,12 +13,48 @@
 #include <QToolButton>
 #include <QMessageBox>
 #include <QPointer>
+#include <QDialog>
+#include <QPaintEvent>
 #include "storage/s3/S3Provider.h"
 using namespace putgd;using namespace putgd::test;
+class SettingsPaintObserver final:public QObject {
+public:int paints=0;QRegion region;
+ bool eventFilter(QObject*,QEvent* event) override {if(event->type()==QEvent::Paint){++paints;region|=static_cast<QPaintEvent*>(event)->region();}return false;}
+};
 class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void explicitCloseReleasesResourcesAndKeepsConflictDraft() {
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;SettingsWindow window(service,secrets);SettingsPaintObserver paint;window.installEventFilter(&paint);
+  window.show();QTRY_VERIFY(window.testAttribute(Qt::WA_WState_Created));QTRY_VERIFY(paint.paints>0);QVERIFY(window.backingStore());
+  auto* root=window.findChild<QLineEdit*>("archiveRoot");auto* advanced=window.findChild<QToolButton*>("advancedSettings");auto* navigation=window.findChild<QListWidget*>("settingsNavigation");auto* save=window.findChild<QPushButton*>("saveSettings");auto* status=window.findChild<QLabel*>("settingsStatus");QVERIFY(root&&advanced&&navigation&&save&&status);advanced->setChecked(true);navigation->setCurrentRow(0);root->setText(d.filePath("unsaved-draft"));
+  auto changed=service.document();auto archive=changed["archive"].toObject();archive["root"]=d.filePath("external");changed["archive"]=archive;QVERIFY(service.save(changed,service.revision()));QVERIFY(!save->isEnabled());const auto conflict=status->text();const auto size=window.size();
+  for(int cycle=0;cycle<3;++cycle){
+   QVERIFY(window.close());QTRY_VERIFY_WITH_TIMEOUT(!window.testAttribute(Qt::WA_WState_Created),500);QCOMPARE(window.internalWinId(),WId(0));QTRY_VERIFY_WITH_TIMEOUT(!window.backingStore(),500);
+   QCOMPARE(window.findChild<QLineEdit*>("archiveRoot"),root);QCOMPARE(root->text(),d.filePath("unsaved-draft"));QCOMPARE(status->text(),conflict);QVERIFY(!save->isEnabled());QVERIFY(advanced->isChecked());QCOMPARE(navigation->currentRow(),0);
+   paint.paints=0;paint.region=QRegion{};window.show();QTRY_VERIFY(window.testAttribute(Qt::WA_WState_Created));QTRY_VERIFY(paint.paints>0);QVERIFY(paint.region.boundingRect().contains(window.rect()));QCOMPARE(window.size(),size);
+  }
+ }
+ void resourceReleaseGuardsReopenMinimizeDialogsAndTeardown() {
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;SettingsWindow window(service,secrets);window.show();QTRY_VERIFY(window.testAttribute(Qt::WA_WState_Created));
+  window.hide();window.show();QTest::qWait(20);QVERIFY(window.testAttribute(Qt::WA_WState_Created));QVERIFY(window.isVisible());QVERIFY(window.close());window.show();QTest::qWait(20);QVERIFY(window.testAttribute(Qt::WA_WState_Created));QVERIFY(window.backingStore());
+  window.showMinimized();QTest::qWait(20);QVERIFY(window.isMinimized());QVERIFY(window.testAttribute(Qt::WA_WState_Created));QVERIFY(window.backingStore());window.hide();QTest::qWait(20);QVERIFY(window.testAttribute(Qt::WA_WState_Created));QVERIFY(window.close());QTRY_VERIFY_WITH_TIMEOUT(!window.backingStore(),500);window.showNormal();QTRY_VERIFY(!window.isMinimized());
+  {QDialog dialog(&window);dialog.setWindowModality(Qt::ApplicationModal);dialog.open();QTRY_VERIFY(dialog.isVisible());window.hide();QTest::qWait(20);QVERIFY(window.testAttribute(Qt::WA_WState_Created));QVERIFY(dialog.isVisible());dialog.close();}
+  window.show();window.hide();QTRY_VERIFY_WITH_TIMEOUT(!window.testAttribute(Qt::WA_WState_Created),500);
+  QPointer<SettingsWindow> dying=new SettingsWindow(service,secrets);dying->show();QTRY_VERIFY(dying->testAttribute(Qt::WA_WState_Created));dying->hide();delete dying.data();QVERIFY(dying.isNull());QTest::qWait(20);
+ }
+ void nativeStateSurvivesCloseRecreation() {
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;SettingsWindow window(service,secrets);
+  for(auto state:{Qt::WindowMaximized,Qt::WindowFullScreen,Qt::WindowMinimized}){
+   window.showNormal();window.setWindowState(state);window.show();QTest::qWait(20);
+   QVERIFY(window.windowHandle());QCOMPARE(window.windowHandle()->windowStates(),Qt::WindowStates(state));
+   QVERIFY(window.close());QTRY_VERIFY_WITH_TIMEOUT(!window.backingStore(),500);
+   window.show();QTest::qWait(20);QVERIFY(window.windowHandle());
+   QCOMPARE(window.windowState()&~Qt::WindowActive,Qt::WindowStates(state));
+   QCOMPARE(window.windowHandle()->windowStates(),Qt::WindowStates(state));
+  }
+ }
  void freshMissingConfigIsNormalSetup() {
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;SettingsWindow window(service,secrets);window.show();bool finished=false;
   service.reloadAsync([&](Result result){QVERIFY(!result);QCOMPARE(result.error.code,QString("config_missing"));finished=true;});

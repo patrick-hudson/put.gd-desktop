@@ -25,7 +25,7 @@
 #include <QShowEvent>
 #include <utility>
 namespace putgd {
-HistoryWindow::HistoryWindow(HistoryService& history,OperationService& operations,QWidget* parent):QWidget(parent),history_(history),operations_(operations){setObjectName("putgdWindow");VisualStyle::apply(*qApp);setWindowIcon(VisualStyle::icon("brand"));setWindowTitle("put.gd — History");resize(1000,700);auto* layout=new QVBoxLayout(this);layout->setContentsMargins(20,18,20,18);layout->setSpacing(12);
+HistoryWindow::HistoryWindow(HistoryService& history,OperationService& operations,QWidget* parent):RetainedWindow(parent),history_(history),operations_(operations){setObjectName("putgdWindow");VisualStyle::apply(*qApp);setWindowIcon(VisualStyle::icon("brand"));setWindowTitle("put.gd — History");resize(1000,700);auto* layout=new QVBoxLayout(this);layout->setContentsMargins(20,18,20,18);layout->setSpacing(12);
  layout->addWidget(VisualStyle::header("History","Stored links and file outcomes. Available offline.",this));
  auto* filters=new QGridLayout;filters->setHorizontalSpacing(10);filters->setVerticalSpacing(10);layout->addLayout(filters);
  auto* search=new QLineEdit(this);search->setObjectName("historySearch");search->setAccessibleName("Search history by stored name");search->setMaxLength(256);search->setPlaceholderText("Search files by name…");filters->addWidget(search,0,0,1,3);auto* filter=new QPushButton("Search",this);filters->addWidget(filter,0,3);
@@ -81,10 +81,10 @@ void HistoryWindow::hideEvent(QHideEvent* event){
  pendingPreviewPath_.clear();
  ++selectionRequest_; // Invalidate pending detail/preview replies before releasing the image.
  preview_->clear();
- QWidget::hideEvent(event);
+ RetainedWindow::hideEvent(event);
 }
 void HistoryWindow::showEvent(QShowEvent* event){
- QWidget::showEvent(event);
+ RetainedWindow::showEvent(event);
  selectionChanged();
 }
 void HistoryWindow::prepareDelete(){auto ids=selectedIds();if(ids.isEmpty())return;history_.prepareDelete(ids,[g=QPointer<HistoryWindow>(this),ids](Error e,QJsonObject preview){if(!g)return;if(e){VisualStyle::feedback(g->status_,e.code+": "+e.message,true);return;}QString text="Delete these original recorded remote targets?\nLocal copies and history records remain. Browser/CDN caches may still serve bytes.\n";for(auto v:preview["targets"].toArray()){auto target=v.toObject();auto receipt=target["receipt"].toObject();text+="\nHistory ID: "+target["historyId"].toString()+"\nOriginal destination / exact target: "+QString::fromUtf8(QJsonDocument(receipt).toJson(QJsonDocument::Compact))+"\nEffect: "+target["effect"].toString()+"\n";}if(QMessageBox::question(g,"Confirm exact remote deletion",text,QMessageBox::Yes|QMessageBox::Cancel,QMessageBox::Cancel)!=QMessageBox::Yes)return;g->history_.deleteConfirmed(ids,preview["acknowledgement"].toString(),[g](Error failure,QJsonObject data){if(!g)return;VisualStyle::feedback(g->status_,failure?failure.code+": "+failure.message:"Remote deletion accepted; individual outcomes will update.",bool(failure));if(!failure){g->deletionId_=data["deleteOperationId"].toString();g->deletionTimer_->start();}});});}

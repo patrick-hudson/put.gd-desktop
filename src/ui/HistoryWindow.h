@@ -1,11 +1,11 @@
 #pragma once
 #include "HistoryModel.h"
-#include <QWidget>
+#include "RetainedWindow.h"
 #include <atomic>
 #include <memory>
 class QTableView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;
 namespace putgd {
-class HistoryWindow final:public QWidget {
+class HistoryWindow final:public RetainedWindow {
 public:HistoryWindow(HistoryService&,OperationService&,QWidget* parent=nullptr);void refresh();
 protected:
  void hideEvent(QHideEvent*) override;

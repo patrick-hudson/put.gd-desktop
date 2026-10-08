@@ -9,7 +9,7 @@
 #include <QPointer>
 #include <QVBoxLayout>
 namespace putgd {
-RecentOperations::RecentOperations(OperationService& operations,QWidget* parent):QWidget(parent),operations_(operations){setObjectName("putgdWindow");VisualStyle::apply(*qApp);setWindowIcon(VisualStyle::icon("brand"));setWindowTitle("put.gd — Activity");resize(1000,700);auto* layout=new QVBoxLayout(this);layout->setContentsMargins(20,18,20,18);layout->setSpacing(12);
+RecentOperations::RecentOperations(OperationService& operations,QWidget* parent):RetainedWindow(parent),operations_(operations){setObjectName("putgdWindow");VisualStyle::apply(*qApp);setWindowIcon(VisualStyle::icon("brand"));setWindowTitle("put.gd — Activity");resize(1000,700);auto* layout=new QVBoxLayout(this);layout->setContentsMargins(20,18,20,18);layout->setSpacing(12);
  layout->addWidget(VisualStyle::header("Activity","Capture, upload and clipboard results.",this));
  count_=new QLabel("Recent operations",this);VisualStyle::role(count_,"sectionTitle");layout->addWidget(count_);
  empty_=new QLabel("No recent activity.\nCapture or use the clipboard to see results here.",this);empty_->setWordWrap(true);empty_->setAlignment(Qt::AlignCenter);VisualStyle::role(empty_,"status");layout->addWidget(empty_);
