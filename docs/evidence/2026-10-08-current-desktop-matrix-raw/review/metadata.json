@@ -1,0 +1,64 @@
+{
+  "branch": "feat/qt-linux-sharing",
+  "completed_at": "2026-10-08T20:52:33.651529+00:00",
+  "cost": {
+    "host": "codex",
+    "scope": {
+      "changed_lines": 98,
+      "depth": "focused",
+      "exec_nontest_lines": 57,
+      "size_band": "small",
+      "unclassified_lines": {
+        ".yml": 16
+      }
+    },
+    "stages": [
+      {
+        "elapsed_seconds": 38.292,
+        "ended_at": "2026-10-08T20:45:29.052871+00:00",
+        "facts": {
+          "changed_lines": 98,
+          "depth": "focused",
+          "exec_nontest_lines": 57,
+          "size_band": "small",
+          "unclassified_lines": {
+            ".yml": 16
+          }
+        },
+        "stage": "scope",
+        "started_at": "2026-10-08T20:44:50.761219+00:00"
+      },
+      {
+        "candidates": 1,
+        "elapsed_seconds": 424.633,
+        "ended_at": "2026-10-08T20:52:33.686065+00:00",
+        "stage": "review",
+        "started_at": "2026-10-08T20:45:29.052871+00:00"
+      },
+      {
+        "candidates": 1,
+        "elapsed_seconds": 424.539,
+        "ended_at": "2026-10-08T20:52:33.646877+00:00",
+        "stage": "peer",
+        "started_at": "2026-10-08T20:45:29.108259+00:00"
+      },
+      {
+        "elapsed_seconds": 0.041,
+        "ended_at": "2026-10-08T20:52:33.726873+00:00",
+        "stage": "receipt",
+        "started_at": "2026-10-08T20:52:33.686065+00:00"
+      }
+    ],
+    "status": "complete",
+    "totals": {
+      "artifact_bytes": 18927,
+      "candidates": 2,
+      "elapsed_seconds": 887.505,
+      "reviewers": 0
+    },
+    "truncated_events": 0
+  },
+  "head_sha": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "run_id": "current-lab-identity",
+  "verdict": "Ready with fixes"
+}

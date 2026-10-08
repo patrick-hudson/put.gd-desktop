@@ -1,0 +1,105 @@
+{
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "ok": true,
+  "requestId": "31308254-a036-4383-97a8-314c118b37b5",
+  "result": {
+    "activeOperations": 0,
+    "backend": "Qt",
+    "capabilities": {
+      "providers": {
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "source": {
+        "adapter": "gnome-wayland",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "consent": "one-time-extension-setup",
+            "mode": "compositor-native"
+          },
+          "region": {
+            "available": true,
+            "consent": "one-time-extension-setup",
+            "mode": "compositor-native"
+          },
+          "window": {
+            "available": true,
+            "consent": "one-time-extension-setup",
+            "mode": "compositor-native"
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "import": "bounded-mutter-selection",
+          "result": "st-clipboard-only",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "helper": {
+          "available": true,
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "extensionVersion": 1,
+          "protocol": 1,
+          "shellMajor": 50,
+          "uuid": "putgd@put.gd"
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "memory": {
+      "allocatorReclamationCount": 5,
+      "allocatorReclamationPending": false,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 271
+    },
+    "qtVersion": "6.10.2",
+    "schemaVersion": 1
+  },
+  "schemaVersion": 1
+}

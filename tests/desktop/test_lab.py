@@ -1,11 +1,14 @@
 """Host contracts only: these tests never establish compositor acceptance."""
 import importlib.util
+import contextlib
+import io
 import json
 from pathlib import Path
 import socket
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('putgd_lab', ROOT / 'tools/lab/lab.py')
@@ -14,6 +17,50 @@ spec.loader.exec_module(lab)
 
 
 class LabContracts(unittest.TestCase):
+    def test_failed_install_cannot_reuse_previous_package_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            receipt = Path(directory) / 'package.json'
+            for failed_stage in ('upload', 'verification'):
+                with self.subTest(failed_stage=failed_stage):
+                    receipt.write_text(json.dumps({'installedBinarySha256': {
+                        '/usr/bin/putgd': 'a' * 64}}))
+                    with patch('sys.argv', ['lab.py', 'install', '--run', directory,
+                                           '--deb', '/tmp/synthetic-new-package.deb']), \
+                            patch.object(lab, 'put', side_effect=lab.LabError('upload failed')
+                                         if failed_stage == 'upload' else None), \
+                            patch.object(lab, 'ssh', return_value=''), \
+                            patch.object(lab, 'verify_installed_binaries',
+                                         side_effect=lab.LabError('verification failed')), \
+                            contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(lab.main(), 1)
+                    self.assertFalse(receipt.exists())
+                    with self.assertRaisesRegex(lab.LabError, 'package receipt'):
+                        lab.verify_running_app(Path(directory))
+
+    def test_running_app_must_match_installed_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = Path(directory)
+            expected = 'a' * 64
+            (run / 'package.json').write_text(json.dumps({
+                'installedBinarySha256': {'/usr/bin/putgd': expected}}))
+            current = {'pid': 42, 'startTicks': 123, 'sha256': expected}
+            with patch.object(lab, 'ssh', return_value=json.dumps([current])):
+                self.assertEqual(lab.verify_running_app(run), current)
+            # An upgrade can replace /usr/bin/putgd while the old inode runs.
+            old = {**current, 'sha256': 'b' * 64}
+            with patch.object(lab, 'ssh', return_value=json.dumps([old])):
+                with self.assertRaisesRegex(lab.LabError, 'running.*package'):
+                    lab.verify_running_app(run)
+            for processes in ([], [current, {**current, 'pid': 43}]):
+                with patch.object(lab, 'ssh', return_value=json.dumps(processes)):
+                    with self.assertRaisesRegex(lab.LabError, 'exactly one'):
+                        lab.verify_running_app(run)
+
+    def test_running_app_requires_verified_install_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(lab.LabError, 'package receipt'):
+                lab.verify_running_app(Path(directory))
+
     def test_test_journal_retains_each_attempt_as_valid_json(self):
         with tempfile.TemporaryDirectory() as directory:
             run = Path(directory)

@@ -67,6 +67,18 @@ Do not teach shared code to decode URLs or provider object keys.
 ## Desktop and release gates
 
 The lab interface is `python3 tools/lab/lab.py`; use [testing](testing.md) and [VM lab](vm-lab.md) for exact package/provisioning/snapshot commands. A real desktop scenario remains unverified until its saved artifact, independent paste and QMP witness pass. U10's full release lifecycle is still pending.
+For memory work, first run the current candidate through the cross-desktop
+functional matrix on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Build and test
+independent profiles in parallel, then wait for build/GUI activity to finish before
+quiet memory samples. Use one frozen source revision/archive across distro-native
+builds, and retain package, app, CLI, S3 module and helper hashes. The lab rejects
+missing install receipts and running app bytes that differ from the installed
+package, including an old process surviving an upgrade. Record every blocked or
+failing profile; a physical Cinnamon memory win does not close its sibling gates.
+Never present an older VM resident as evidence for the current candidate. Stop
+superseded VMs once their packages/evidence are copied; keep needed build caches
+powered off and protect immutable bases. See [VM memory and build identity](testing-vm-memory-audit.md).
+
 Full U9 completion requires a working Cinnamon scenario, U6 lab documentation, and a
 fresh agent successfully following committed instructions to build, run, collect redacted
 diagnostics, and identify a simulated failure. Headless MCP parity alone cannot close it.

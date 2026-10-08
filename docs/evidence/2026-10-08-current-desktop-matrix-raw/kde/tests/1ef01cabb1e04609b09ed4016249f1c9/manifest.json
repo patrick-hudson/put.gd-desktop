@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "testId": "1ef01cabb1e04609b09ed4016249f1c9",
+  "profile": "kde-wayland",
+  "scenario": "clipboard-text",
+  "files": {
+    "results.json": "fc7b327f9b111442806a64001f8c62d5841cea3e57069140c092e75362db07f8",
+    "results.xml": "b3796ec5fc7f8a4a8092a1df5bb62d6fd0292ede24a8d0916fd29054f836adfb",
+    "ready.json": "b4b33876792011b02ad63f8f1b23dd8b4af2639edecda6638963331fc5b0c53c",
+    "final-head0.ppm": "dd6646c28d40cc01383c91cd663ba54903cb5fdbd41c0e306db21a2d8c8c1d9b",
+    "versions.json": "11bb4eefd543cba82b833bdc23b2c00ed19a5ac35982ebf2499e871f103a6f89",
+    "package.json": "f1ca0009f67e560417884d08e510aa2b6242327542b7cf7b19affcf1f4642996",
+    "diagnostics.json": "421d0b762374240c3871cd864be3d2d5a904477b5035b59e72e54a8c19b940ca"
+  }
+}

@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:53:09.506392+00:00",
+  "unit": "KDE current source cross-functional verification",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "archiveSha256": "ec179214a662010c7f6d21a2cc5fe29479423ff6a6e9292433ef35b0aebd3fab",
+  "appSourceChanges": false,
+  "guestBuild": "Standard distro CMake dev preset, Ninja, official pinned SDK1.11.907 +15 submodules; existing old overlay cache. Release preset normal package targets, normal CPack DEB. No substitute toolchain.",
+  "devTests": {
+    "passed": 28,
+    "total": 28,
+    "elapsedSeconds": 129.37,
+    "junit": "dev-tests.xml"
+  },
+  "releasePackage": {
+    "file": "putgd-release_0.1.0_amd64.deb",
+    "sha256": "5a85f0b4117ae0bc5e2f14aebc408e3dc909ec58f58385edc6b1c9710a5e8fbc"
+  },
+  "runningApp": {
+    "pid": 2958,
+    "startTicks": 81226,
+    "executableSha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1",
+    "executableMatchesInstalled": true,
+    "needed": {
+      "unavailable": "Runtime guest has no readelf; exact package ELF inspected on host."
+    }
+  },
+  "nativeCases": [
+    {
+      "scenario": "region-independent-paste",
+      "ok": true,
+      "testId": "f40d55922410492d8e48c814d530f4d7",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/f40d55922410492d8e48c814d530f4d7",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "window-independent-paste",
+      "ok": true,
+      "testId": "0d3739864c454a0a8415574b03a7c798",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/0d3739864c454a0a8415574b03a7c798",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "desktop-independent-paste",
+      "ok": true,
+      "testId": "959a9a06b4fd40baa9be77e37743d7f6",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/959a9a06b4fd40baa9be77e37743d7f6",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "clipboard-text-independent-paste",
+      "ok": true,
+      "testId": "90eadbabfab94805b88ebd036807bf01",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/90eadbabfab94805b88ebd036807bf01",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "clipboard-image-independent-paste",
+      "ok": true,
+      "testId": "5973619c0c6c42059e20a1e8357bcffc",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/5973619c0c6c42059e20a1e8357bcffc",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "clipboard-files-independent-paste",
+      "ok": true,
+      "testId": "bcf3c0718f894e6d8a327eccb48fff42",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/bcf3c0718f894e6d8a327eccb48fff42",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "region-cancel-escape-independent-paste",
+      "ok": true,
+      "testId": "d5051965b7c140b0b585ce4fb4764fb5",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/d5051965b7c140b0b585ce4fb4764fb5",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "region-cancel-right-click-independent-paste",
+      "ok": true,
+      "testId": "550d8534b2474b018e7fe91e59c8e117",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/550d8534b2474b018e7fe91e59c8e117",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "region-cancel-zero-area-independent-paste",
+      "ok": true,
+      "testId": "3e30812142ce413d9a10407780e9012a",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/3e30812142ce413d9a10407780e9012a",
+      "error": null,
+      "clipboardClient": "qt"
+    },
+    {
+      "scenario": "clipboard-text-independent-paste",
+      "ok": false,
+      "testId": "1ef01cabb1e04609b09ed4016249f1c9",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/1ef01cabb1e04609b09ed4016249f1c9",
+      "error": "Independent GTK clipboard client readiness timeout",
+      "clipboardClient": "gtk"
+    },
+    {
+      "scenario": "clipboard-image-independent-paste",
+      "ok": true,
+      "testId": "98a77ab449614050a1fa20e2e7822082",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/98a77ab449614050a1fa20e2e7822082",
+      "error": null,
+      "clipboardClient": "gtk"
+    },
+    {
+      "scenario": "clipboard-files-independent-paste",
+      "ok": true,
+      "testId": "0f3e8e9cbc294d99970de5e2b7a4c704",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/0f3e8e9cbc294d99970de5e2b7a4c704",
+      "error": null,
+      "clipboardClient": "gtk"
+    },
+    {
+      "scenario": "clipboard-text-independent-paste",
+      "ok": true,
+      "testId": "d572b09a31a64655a830de07172b1ac4",
+      "evidenceDirectory": "work/lab-runs/current-kde-a3d70dc/tests/d572b09a31a64655a830de07172b1ac4",
+      "error": null,
+      "clipboardClient": "gtk"
+    }
+  ],
+  "finalUniqueCasesPassed": 12,
+  "attempts": 13,
+  "viewSmoke": {
+    "accepted": true,
+    "cyclesPerView": 2,
+    "views": [
+      "settings",
+      "history",
+      "activity"
+    ],
+    "receipt": "views-smoke-confirmed.json"
+  },
+  "runtimeDependenciesAdded": [
+    "gir1.2-gtk-4.0",
+    "python3-gi-cairo"
+  ],
+  "limits": [
+    "Single-head native Plasma Wayland KVM local-only synthetic matrix; no full compositor certification.",
+    "No S3/cloud/private data used.",
+    "Post-functional state differs from cold physical Cinnamon performance acceptance.",
+    "First GTK fixture startup failed for missing GI Cairo binding; failure retained and successful corrected-environment text rerun separate.",
+    "Initial Settings view smoke obscured by fixture; no full acceptance from that attempt, repeated explicitly focused two cycles.",
+    "Host readelf inspected exact package executable; runtime guest lacks readelf.",
+    "Old KDE cache overlay stopped via owned QMP quit after graceful ACPI/systemd attempts and sync; disk/base not deleted."
+  ],
+  "readyForRootMemorySampler": true,
+  "memorySampleTakenByThisUnit": false
+}

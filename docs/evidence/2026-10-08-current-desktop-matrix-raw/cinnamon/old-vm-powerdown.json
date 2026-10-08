@@ -1,0 +1,8 @@
+{
+  "timestampUtc": "2026-10-08T20:38:51.043318+00:00",
+  "run": "work/lab-runs/fresh-cinnamon-u9-20261008",
+  "pid": 1794904,
+  "action": "QMP system_powerdown",
+  "reason": "Superseded test VM; new current Cinnamon overlay passed nine native scenarios",
+  "preserved": "Disk and prior evidence retained pending cache/evidence inventory; golden untouched"
+}

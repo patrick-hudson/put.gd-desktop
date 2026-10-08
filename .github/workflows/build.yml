@@ -35,6 +35,22 @@ jobs:
           cmake --preset dev
           cmake --build --preset dev
           ctest --preset dev --output-junit "$PWD/build/dev/ctest-results.xml"
+      - name: Verify lab identity and protocol contracts
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          pathlib.Path('build/dev').mkdir(parents=True, exist_ok=True)
+          command = ['python3', 'tests/desktop/test_lab.py']
+          result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+          pathlib.Path('build/dev/lab-contracts.log').write_text(result.stdout)
+          pathlib.Path('build/dev/lab-contracts.json').write_text(json.dumps({
+              'command': command, 'exitCode': result.returncode,
+              'scope': 'Host protocol contracts only; no graphical desktop acceptance'
+          }, indent=2) + '\n')
+          print(result.stdout, end='')
+          raise SystemExit(result.returncode)
+          PY
       - name: Preserve structured test reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -44,6 +60,8 @@ jobs:
             build/dev/ctest-results.xml
             build/dev/Testing/Temporary/LastTest.log
             build/dev/Testing/Temporary/LastTestsFailed.log
+            build/dev/lab-contracts.log
+            build/dev/lab-contracts.json
           if-no-files-found: warn
           retention-days: 30
       - name: Build without test dependencies

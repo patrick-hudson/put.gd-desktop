@@ -1,0 +1,38 @@
+{
+    "decorationMargins": {
+        "bottom": 11,
+        "left": 11,
+        "right": 11,
+        "top": 49
+    },
+    "desktop": "ubuntu:GNOME",
+    "display_layout": [
+        {
+            "height": 800,
+            "name": "Virtual-1",
+            "nativeHeight": 800,
+            "nativeWidth": 1280,
+            "rotation": 2,
+            "scale": 1,
+            "width": 1280,
+            "x": 0,
+            "y": 0
+        }
+    ],
+    "frame": {
+        "height": 420,
+        "width": 640,
+        "x": 0,
+        "y": 0
+    },
+    "paint": {
+        "height": 320,
+        "width": 640,
+        "x": 0,
+        "y": 0
+    },
+    "qt_platform": "wayland",
+    "qt_version": "6.10.2",
+    "schemaVersion": 1,
+    "session": "wayland"
+}

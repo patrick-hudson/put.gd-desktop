@@ -1,0 +1,30 @@
+{
+  "scope": [
+    "tools/lab/lab.py",
+    "tests/desktop/test_lab.py",
+    ".github/workflows/build.yml"
+  ],
+  "depth": "focused",
+  "criteria": [
+    "AGENTS.md fallback"
+  ],
+  "findings": [],
+  "intent": "Require current package bytes in the actual resident throughout graphical tests; correct replacement GTK fixture geometry; run host contracts in CI.",
+  "checked": [
+    "Process start field and UID scope, stale inode hashing, missing/ambiguous receipt errors",
+    "Cancellation early return passes finally; history intentional restart records same-package replacement",
+    "Any late error clears ok before JUnit, evidence and event export",
+    "Independent GTK X11 witness geometry, no self-referential capture oracle",
+    "CI exit status, bounded logs and explicit no graphical-acceptance claim"
+  ],
+  "simplification": {
+    "mode": "Inline reuse/quality/efficiency passes using supplied persona rubrics because further agent contexts hit thread limit",
+    "changes": 0,
+    "reason": "Existing lab SSH/hash/event helpers reused where equivalent. Guest hash cannot use host filesystem helper. Two boundary checks deliberate, streamed executable hashing bounded. No safe substantive simplification identified."
+  },
+  "limits": [
+    "Agent read-only review is supplementary, not external-model identity proof",
+    "Source provenance of a package remains wave receipt responsibility; live guard compares expected package bytes",
+    "No entire product-plan or CI-hosted GUI completion claimed"
+  ]
+}

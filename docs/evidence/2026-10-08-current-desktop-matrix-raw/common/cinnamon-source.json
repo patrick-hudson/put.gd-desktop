@@ -1,0 +1,14 @@
+{
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "archive": "/home/patrick/work/put.gd/work/cross-desktop-current/source-a3d70dc.tar",
+  "archiveSha256": "ec179214a662010c7f6d21a2cc5fe29479423ff6a6e9292433ef35b0aebd3fab",
+  "scope": "Tracked committed source only; no credentials.txt, local VM inputs, user WIP or build artifacts.",
+  "buildKind": "Existing canonical Release build; product source unchanged from pinned commit; rebuilt after startup integration and full Dev/sanitizer evidence retained separately",
+  "buildIdentityEvidence": "docs/evidence/2026-10-08-startup-reclaim-raw/integration.json",
+  "packageSha256": "78d744b30bb2f883ccd543ca57553ee3e3e173944624151427c88b78db14f5ef",
+  "buildBinaries": {
+    "build/release/putgd": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f",
+    "build/release/putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+    "build/release/libputgd-s3.so": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762"
+  }
+}

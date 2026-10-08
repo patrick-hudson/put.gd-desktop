@@ -1,0 +1,17 @@
+{
+  "timestampUtc": "2026-10-08T20:52:28.251093+00:00",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "runningApp": {
+    "pid": 2958,
+    "startTicks": 81226,
+    "sha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1"
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/pre-memory-head0.ppm",
+    "sha256": "ab947b35533fd88d7498a89e3411d0cd2d620f86685b9ba44d6abdeb653f77de"
+  },
+  "remainingIndependentFixturePids": [],
+  "readyForCoordinatedPostFunctionalMemory": true,
+  "noMemorySamplesYet": true,
+  "sequence": "Full Dev CTest28/28; Release package; native Qt9 cases; GTK text fixture first failed for missing runtime binding, then image/files passed and text rerun passed; two initial view cycles with first Settings obscured, followed by two clean focused cycles per view. All own fixtures closed, app background, same current PID."
+}

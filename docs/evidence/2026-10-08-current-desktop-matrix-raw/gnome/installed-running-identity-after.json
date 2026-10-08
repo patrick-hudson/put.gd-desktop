@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:52:14.475038+00:00",
+  "scope": "Read-only exact installed and running artifact identity; no credentials/configuration/payload/environment export",
+  "files": {
+    "/usr/bin/putgd": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3",
+    "/usr/bin/putgd-cli": "41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/extension.js": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+    "/usr/share/gnome-shell/extensions/putgd@put.gd/metadata.json": "8c3c16a23245f6564ccd4542bd00efc7495c8b49e9037aa2a0aa36ce914b75e2",
+    "/usr/share/putgd/aws-runtime-manifest.json": "1898b7425eae34f13371b3fd27709bf7cd3b294513caa57c9762c7f506bf83b8",
+    "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": "199e20a9f12f957af61104082a30575648e7c93aee4385787755352277833490"
+  },
+  "bootId": "8d46b307-fd26-43eb-9261-ac53a23029d0",
+  "residentProcesses": [
+    {
+      "pid": 2775,
+      "startTicks": "4592",
+      "executableSha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3",
+      "installedExecutableMatch": true,
+      "QtNetworkMapped": false,
+      "awsMapped": false,
+      "s3ModuleMapped": false
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "readelf",
+        "-d",
+        "/usr/bin/putgd"
+      ],
+      "exitCode": 0,
+      "stdout": "\nDynamic section at offset 0x225c70 contains 41 entries:\n  Tag        Type                         Name/Value\n 0x0000000000000001 (NEEDED)             Shared library: [libqt6keychain.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libxcb-randr.so.0]\n 0x0000000000000001 (NEEDED)             Shared library: [libxcb-keysyms.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libxcb-xfixes.so.0]\n 0x0000000000000001 (NEEDED)             Shared library: [libxcb.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libQt6Sql.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libQt6Widgets.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libQt6Gui.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libQt6DBus.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libQt6Core.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libwayland-client.so.0]\n 0x0000000000000001 (NEEDED)             Shared library: [libstdc++.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]\n 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]\n 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]\n 0x000000000000000c (INIT)               0x29000\n 0x000000000000000d (FINI)               0x1d1548\n 0x0000000000000019 (INIT_ARRAY)         0x220ef0\n 0x000000000000001b (INIT_ARRAYSZ)       40 (bytes)\n 0x000000000000001a (FINI_ARRAY)         0x220f18\n 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)\n 0x000000006ffffef5 (GNU_HASH)           0x390\n 0x0000000000000005 (STRTAB)             0x76a8\n 0x0000000000000006 (SYMTAB)             0x4f0\n 0x000000000000000a (STRSZ)              43744 (bytes)\n 0x000000000000000b (SYMENT)             24 (bytes)\n 0x0000000000000015 (DEBUG)              0x0\n 0x0000000000000003 (PLTGOT)             0x226f40\n 0x0000000000000002 (PLTRELSZ)           23712 (bytes)\n 0x0000000000000014 (PLTREL)             RELA\n 0x0000000000000017 (JMPREL)             0x22ae8\n 0x0000000000000007 (RELA)               0x12d98\n 0x0000000000000008 (RELASZ)             64848 (bytes)\n 0x0000000000000009 (RELAENT)            24 (bytes)\n 0x000000000000001e (FLAGS)              BIND_NOW\n 0x000000006ffffffb (FLAGS_1)            Flags: NOW PIE\n 0x000000006ffffffe (VERNEED)            0x12b08\n 0x000000006fffffff (VERNEEDNUM)         9\n 0x000000006ffffff0 (VERSYM)             0x12188\n 0x000000006ffffff9 (RELACOUNT)          1667\n 0x0000000000000000 (NULL)               0x0\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "gnome-extensions",
+        "info",
+        "putgd@put.gd"
+      ],
+      "exitCode": 0,
+      "stdout": "putgd@put.gd\n  Name: put.gd native capture\n  Description: Native GNOME 50 capture, global actions and bounded background CLIPBOARD transfer for put.gd.\n  Path: /usr/share/gnome-shell/extensions/putgd@put.gd\n  URL: https://put.gd\n  Version: 1\n  Enabled: Yes\n  State: ACTIVE\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${Package} ${Version}\n",
+        "putgd",
+        "gnome-shell",
+        "mutter-common",
+        "gjs",
+        "libqt6core6t64",
+        "qt6-wayland"
+      ],
+      "exitCode": 0,
+      "stdout": "gjs 1.88.0-1\ngnome-shell 50.1-0ubuntu1.2\nlibqt6core6t64 6.10.2+dfsg-7\nmutter-common 50.1-0ubuntu2.2\nputgd 0.1.0\nqt6-wayland 6.10.2-4\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "loginctl",
+        "list-sessions",
+        "--no-legend"
+      ],
+      "exitCode": 0,
+      "stdout": "  1 1000 lab seat0 1314  user    tty2 no -\n  2 1000 lab -     1365  manager -    no -\n277 1000 lab -     17283 user    -    no -\n  4 1000 lab -     1586  user    -    no -\n  6 1000 lab -     2710  user    -    no -\n",
+      "stderr": ""
+    }
+  ]
+}

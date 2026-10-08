@@ -1,0 +1,454 @@
+Verified AWS SDK 1.11.907 and 15 submodules
+-- The C compiler identification is GNU 15.2.0
+-- The CXX compiler identification is GNU 15.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so
+-- Found WrapOpenGL: TRUE
+-- Found WrapVulkanHeaders: /usr/include
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/lab/putgd-native/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- Found crypto: /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.5.5")
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT - Success
+-- Found PkgConfig: /usr/bin/pkg-config (found version "2.5.1")
+-- Checking for modules 'xcb;xcb-randr;xcb-keysyms;xcb-xfixes'
+--   Found xcb, version 1.17.0
+--   Found xcb-randr, version 1.17.0
+--   Found xcb-keysyms, version 0.4.1
+--   Found xcb-xfixes, version 1.17.0
+-- Checking for module 'wayland-client'
+--   Found wayland-client, version 1.24.0
+-- Checking for module 'xcb-xtest'
+--   Found xcb-xtest, version 1.17.0
+-- Configuring done (2.3s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/lab/putgd-current-a3d70dc/build/dev
+[1/216] Automatic MOC and UIC for target putgd_s3_runtime
+[2/216] Building CXX object CMakeFiles/putgd_s3_runtime.dir/putgd_s3_runtime_autogen/mocs_compilation.cpp.o
+[3/216] Automatic MOC and UIC for target putgd_core
+[4/216] Building CXX object CMakeFiles/putgd_s3_runtime.dir/src/storage/s3/SdkRuntime.cpp.o
+[5/216] Building CXX object CMakeFiles/putgd_core.dir/putgd_core_autogen/mocs_compilation.cpp.o
+[6/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/SettingsService.cpp.o
+[7/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/Settings.cpp.o
+[8/216] Building CXX object CMakeFiles/putgd_core.dir/src/platform/Geometry.cpp.o
+[9/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/ClipboardPayload.cpp.o
+[10/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/LocalArchive.cpp.o
+[11/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/ArtifactStore.cpp.o
+[12/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageReceipt.cpp.o
+[13/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/UploadNaming.cpp.o
+[14/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageProvider.cpp.o
+[15/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/Operation.cpp.o
+[16/216] Linking CXX static library libputgd_s3_runtime.a
+[17/216] Automatic MOC and UIC for target test_build_contract
+[18/216] Automatic MOC and UIC for target test_sdk_contract
+[19/216] Automatic MOC and UIC for target putgd-desktop-fixture
+[20/216] Building CXX object CMakeFiles/test_build_contract.dir/test_build_contract_autogen/mocs_compilation.cpp.o
+[21/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/HistoryStore.cpp.o
+[22/216] Linking CXX static library libputgd_core.a
+[23/216] Automatic MOC and UIC for target putgd_credentials
+[24/216] Automatic MOC and UIC for target putgd_s3_module
+[25/216] Building CXX object CMakeFiles/putgd_credentials.dir/putgd_credentials_autogen/mocs_compilation.cpp.o
+[26/216] Building CXX object CMakeFiles/test_build_contract.dir/tests/unit/test_build_contract.cpp.o
+[27/216] Building CXX object CMakeFiles/putgd_s3_module.dir/putgd_s3_module_autogen/mocs_compilation.cpp.o
+[28/216] Building CXX object CMakeFiles/putgd_credentials.dir/src/secrets/CredentialStore.cpp.o
+[29/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Module.cpp.o
+[30/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3SdkContext.cpp.o
+[31/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/PublicUrl.cpp.o
+[32/216] Linking CXX static library libputgd_credentials.a
+[33/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Driver.cpp.o
+[34/216] Linking CXX shared module libputgd-s3.so
+[35/216] Automatic MOC and UIC for target putgd_s3
+[36/216] Building CXX object CMakeFiles/putgd_s3.dir/putgd_s3_autogen/mocs_compilation.cpp.o
+[37/216] Automatic MOC and UIC for target putgd_app
+[38/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/IpAddress.cpp.o
+[39/216] Building CXX object CMakeFiles/putgd_app.dir/putgd_app_autogen/mocs_compilation.cpp.o
+[40/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/OperationService.cpp.o
+[41/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/HistoryService.cpp.o
+[42/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalIpc.cpp.o
+[43/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalServer.cpp.o
+[44/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/LoginStartup.cpp.o
+[45/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Provider.cpp.o
+[46/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Module.cpp.o
+[47/216] Linking CXX static library libputgd_app.a
+[48/216] Generating wayland-protocols/ext-data-control-v1-client-protocol.h
+[49/216] Generating wayland-protocols/ext-data-control-v1-protocol.c
+[50/216] Automatic MOC and UIC for target putgd_x11
+[51/216] Automatic MOC and UIC for target putgd_gnome
+[52/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/PublicUrl.cpp.o
+[53/216] Linking CXX static library libputgd_s3.a
+[54/216] Automatic MOC and UIC for target putgd_kde
+[55/216] Automatic MOC and UIC for target putgd_ui
+[56/216] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Capture.cpp.o
+[57/216] Building CXX object CMakeFiles/putgd_x11.dir/putgd_x11_autogen/mocs_compilation.cpp.o
+[58/216] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/CinnamonRegionCapture.cpp.o
+[59/216] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Clipboard.cpp.o
+[60/216] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Shortcuts.cpp.o
+[61/216] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11SourceAdapter.cpp.o
+[62/216] Building CXX object CMakeFiles/putgd_x11.dir/src/ui/RegionOverlay.cpp.o
+[63/216] Building CXX object CMakeFiles/putgd_gnome.dir/putgd_gnome_autogen/mocs_compilation.cpp.o
+[64/216] Building CXX object CMakeFiles/putgd_gnome.dir/src/platform/gnome/GnomeProtocol.cpp.o
+[65/216] Building CXX object CMakeFiles/putgd_gnome.dir/src/platform/gnome/GnomeAdapter.cpp.o
+[66/216] Building CXX object CMakeFiles/putgd_kde.dir/putgd_kde_autogen/mocs_compilation.cpp.o
+[67/216] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KWinTransfer.cpp.o
+[68/216] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KWinCapture.cpp.o
+[69/216] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeShortcuts.cpp.o
+[70/216] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeRegionOverlay.cpp.o
+[71/216] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/DataControlClipboard.cpp.o
+[72/216] Building C object CMakeFiles/putgd_kde.dir/wayland-protocols/ext-data-control-v1-protocol.c.o
+[73/216] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/mocs_compilation.cpp.o
+[74/216] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeSourceAdapter.cpp.o
+[75/216] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/VisualStyle.cpp.o
+[76/216] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/ShortcutEditor.cpp.o
+[77/216] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+[78/216] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/RecentOperations.cpp.o
+[79/216] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryWindow.cpp.o
+[80/216] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryModel.cpp.o
+[81/216] Linking CXX static library libputgd_x11.a
+[82/216] Linking CXX static library libputgd_gnome.a
+[83/216] Linking CXX static library libputgd_kde.a
+[84/216] Automatic MOC and UIC for target putgd-cli
+[85/216] Automatic MOC and UIC for target test_s3_incompatible
+AutoMoc: /home/lab/putgd-current-a3d70dc/tests/integration/test_s3_module.cpp: note: No relevant classes found. No output generated.
+[86/216] Automatic MOC and UIC for target test_s3_wrong_build
+AutoMoc: /home/lab/putgd-current-a3d70dc/tests/integration/test_s3_module.cpp: note: No relevant classes found. No output generated.
+[87/216] Automatic MOC and UIC for target test_s3_wrong_transport
+AutoMoc: /home/lab/putgd-current-a3d70dc/tests/integration/test_s3_module.cpp: note: No relevant classes found. No output generated.
+[88/216] Building CXX object CMakeFiles/putgd-cli.dir/putgd-cli_autogen/mocs_compilation.cpp.o
+[89/216] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/TrayController.cpp.o
+[90/216] Linking CXX static library libputgd_ui.a
+[91/216] Automatic MOC and UIC for target putgd
+[92/216] Building CXX object CMakeFiles/putgd.dir/putgd_autogen/mocs_compilation.cpp.o
+[93/216] Building CXX object CMakeFiles/putgd-cli.dir/src/cli/main.cpp.o
+[94/216] Building CXX object CMakeFiles/test_s3_incompatible.dir/test_s3_incompatible_autogen/mocs_compilation.cpp.o
+[95/216] Building CXX object CMakeFiles/putgd.dir/src/main.cpp.o
+[96/216] Building CXX object CMakeFiles/test_s3_wrong_build.dir/test_s3_wrong_build_autogen/mocs_compilation.cpp.o
+[97/216] Building CXX object CMakeFiles/test_s3_incompatible.dir/tests/integration/test_s3_module.cpp.o
+[98/216] Building CXX object CMakeFiles/test_s3_wrong_transport.dir/test_s3_wrong_transport_autogen/mocs_compilation.cpp.o
+[99/216] Building CXX object CMakeFiles/test_s3_wrong_build.dir/tests/integration/test_s3_module.cpp.o
+[100/216] Building CXX object CMakeFiles/test_s3_wrong_transport.dir/tests/integration/test_s3_module.cpp.o
+[101/216] Linking CXX executable putgd-cli
+[102/216] Linking CXX shared module libtest_s3_incompatible.so
+[103/216] Linking CXX shared module libtest_s3_wrong_build.so
+[104/216] Linking CXX shared module libtest_s3_wrong_transport.so
+[105/216] Automatic MOC and UIC for target test_geometry
+[106/216] Linking CXX executable putgd
+[107/216] Automatic MOC and UIC for target test_keychain_backend
+[108/216] Automatic MOC and UIC for target test_x11
+[109/216] Automatic MOC and UIC for target test_keychain
+[110/216] Automatic MOC and UIC for target test_collision_policy
+[111/216] Automatic MOC and UIC for target test_s3_delete
+[112/216] Automatic MOC and UIC for target test_s3_module
+[113/216] Automatic MOC and UIC for target test_s3
+[114/216] Automatic MOC and UIC for target test_public_url
+[115/216] Automatic MOC and UIC for target test_payload
+[116/216] Automatic MOC and UIC for target test_archive
+[117/216] Automatic MOC and UIC for target test_upload_naming
+[118/216] Automatic MOC and UIC for target test_history
+[119/216] Automatic MOC and UIC for target test_operations
+[120/216] Automatic MOC and UIC for target test_storage_contract
+[121/216] Automatic MOC and UIC for target test_cli
+[122/216] Automatic MOC and UIC for target test_config_reload
+[123/216] Automatic MOC and UIC for target test_gnome_bridge
+[124/216] Automatic MOC and UIC for target test_kwin_transfer
+[125/216] Automatic MOC and UIC for target test_settings
+[126/216] Automatic MOC and UIC for target test_gui_settings
+[127/216] Automatic MOC and UIC for target test_gui_operations_view
+[128/216] Automatic MOC and UIC for target test_login_startup
+[129/216] Automatic MOC and UIC for target test_gui_history_view
+[130/216] Automatic MOC and UIC for target test_local_ipc
+[131/216] Building CXX object CMakeFiles/test_geometry.dir/test_geometry_autogen/mocs_compilation.cpp.o
+[132/216] Automatic MOC and UIC for target test_ip_address
+[133/216] Building CXX object CMakeFiles/test_x11.dir/test_x11_autogen/mocs_compilation.cpp.o
+[134/216] Building CXX object CMakeFiles/test_geometry.dir/tests/unit/test_geometry.cpp.o
+[135/216] Building CXX object CMakeFiles/test_keychain_backend.dir/test_keychain_backend_autogen/mocs_compilation.cpp.o
+[136/216] Building CXX object CMakeFiles/test_x11.dir/tests/desktop/x11/test_x11.cpp.o
+[137/216] Building CXX object CMakeFiles/test_keychain.dir/test_keychain_autogen/mocs_compilation.cpp.o
+[138/216] Building CXX object CMakeFiles/test_keychain_backend.dir/tests/integration/test_keychain_backend.cpp.o
+[139/216] Building CXX object CMakeFiles/test_collision_policy.dir/test_collision_policy_autogen/mocs_compilation.cpp.o
+[140/216] Building CXX object CMakeFiles/test_keychain.dir/tests/integration/test_keychain.cpp.o
+[141/216] Building CXX object CMakeFiles/test_s3_delete.dir/test_s3_delete_autogen/mocs_compilation.cpp.o
+[142/216] Building CXX object CMakeFiles/test_collision_policy.dir/tests/integration/test_collision_policy.cpp.o
+[143/216] Building CXX object CMakeFiles/test_s3_module.dir/test_s3_module_autogen/mocs_compilation.cpp.o
+[144/216] Building CXX object CMakeFiles/test_s3_delete.dir/tests/integration/test_s3_delete.cpp.o
+[145/216] Building CXX object CMakeFiles/test_s3.dir/test_s3_autogen/mocs_compilation.cpp.o
+[146/216] Building CXX object CMakeFiles/test_s3_module.dir/tests/integration/test_s3_module.cpp.o
+[147/216] Building CXX object CMakeFiles/test_public_url.dir/test_public_url_autogen/mocs_compilation.cpp.o
+[148/216] Building CXX object CMakeFiles/test_s3.dir/tests/integration/test_s3.cpp.o
+[149/216] Building CXX object CMakeFiles/test_sdk_contract.dir/test_sdk_contract_autogen/mocs_compilation.cpp.o
+[150/216] Building CXX object CMakeFiles/test_public_url.dir/tests/unit/test_public_url.cpp.o
+[151/216] Building CXX object CMakeFiles/test_payload.dir/test_payload_autogen/mocs_compilation.cpp.o
+[152/216] Building CXX object CMakeFiles/test_sdk_contract.dir/tests/storage/s3/test_sdk_contract.cpp.o
+[153/216] Building CXX object CMakeFiles/test_archive.dir/test_archive_autogen/mocs_compilation.cpp.o
+[154/216] Building CXX object CMakeFiles/test_payload.dir/tests/unit/test_payload.cpp.o
+[155/216] Building CXX object CMakeFiles/test_upload_naming.dir/test_upload_naming_autogen/mocs_compilation.cpp.o
+[156/216] Building CXX object CMakeFiles/test_archive.dir/tests/unit/test_archive.cpp.o
+[157/216] Building CXX object CMakeFiles/test_history.dir/test_history_autogen/mocs_compilation.cpp.o
+[158/216] Building CXX object CMakeFiles/test_upload_naming.dir/tests/unit/test_upload_naming.cpp.o
+/home/lab/putgd-current-a3d70dc/tests/unit/test_upload_naming.cpp: In member function ‘void NamingTest::templateTokensHaveExactMeaning()’:
+/home/lab/putgd-current-a3d70dc/tests/unit/test_upload_naming.cpp:24:78: warning: ‘QDateTime::QDateTime(QDate, QTime, Qt::TimeSpec, int)’ is deprecated: Pass QTimeZone instead [-Wdeprecated-declarations]
+   24 |   const auto acquired=QDateTime(QDate(2026,10,8),QTime(4,27,21),Qt::LocalTime);
+      |                                                                              ^
+In file included from /usr/include/x86_64-linux-gnu/qt6/QtCore/qcborvalue.h:11,
+                 from /usr/include/x86_64-linux-gnu/qt6/QtCore/qjsonvalue.h:8,
+                 from /usr/include/x86_64-linux-gnu/qt6/QtCore/qjsonobject.h:8,
+                 from /usr/include/x86_64-linux-gnu/qt6/QtCore/QJsonObject:1,
+                 from /home/lab/putgd-current-a3d70dc/src/core/Error.h:2,
+                 from /home/lab/putgd-current-a3d70dc/src/core/Settings.h:2,
+                 from /home/lab/putgd-current-a3d70dc/src/core/ClipboardPayload.h:2,
+                 from /home/lab/putgd-current-a3d70dc/src/core/ArtifactStore.h:2,
+                 from /home/lab/putgd-current-a3d70dc/src/core/UploadNaming.h:2,
+                 from /home/lab/putgd-current-a3d70dc/tests/unit/test_upload_naming.cpp:1:
+/usr/include/x86_64-linux-gnu/qt6/QtCore/qdatetime.h:362:5: note: declared here
+  362 |     QDateTime(QDate date, QTime time, Qt::TimeSpec spec, int offsetSeconds = 0);
+      |     ^~~~~~~~~
+/home/lab/putgd-current-a3d70dc/tests/unit/test_upload_naming.cpp: In member function ‘void NamingTest::unsafeTemplatesAndEmptyResultsFail()’:
+/home/lab/putgd-current-a3d70dc/tests/unit/test_upload_naming.cpp:52:78: warning: ‘QDateTime::QDateTime(QDate, QTime, Qt::TimeSpec, int)’ is deprecated: Pass QTimeZone instead [-Wdeprecated-declarations]
+   52 |   const auto acquired=QDateTime(QDate(2026,10,8),QTime(4,27,21),Qt::LocalTime);
+      |                                                                              ^
+/usr/include/x86_64-linux-gnu/qt6/QtCore/qdatetime.h:362:5: note: declared here
+  362 |     QDateTime(QDate date, QTime time, Qt::TimeSpec spec, int offsetSeconds = 0);
+      |     ^~~~~~~~~
+[159/216] Building CXX object CMakeFiles/test_operations.dir/test_operations_autogen/mocs_compilation.cpp.o
+[160/216] Building CXX object CMakeFiles/test_history.dir/tests/unit/test_history.cpp.o
+[161/216] Building CXX object CMakeFiles/test_storage_contract.dir/test_storage_contract_autogen/mocs_compilation.cpp.o
+[162/216] Building CXX object CMakeFiles/test_operations.dir/tests/unit/test_operations.cpp.o
+[163/216] Building CXX object CMakeFiles/test_cli.dir/test_cli_autogen/mocs_compilation.cpp.o
+[164/216] Building CXX object CMakeFiles/test_storage_contract.dir/tests/integration/test_storage_contract.cpp.o
+[165/216] Building CXX object CMakeFiles/test_config_reload.dir/test_config_reload_autogen/mocs_compilation.cpp.o
+[166/216] Building CXX object CMakeFiles/test_cli.dir/tests/integration/test_cli.cpp.o
+[167/216] Building CXX object CMakeFiles/test_gnome_bridge.dir/test_gnome_bridge_autogen/mocs_compilation.cpp.o
+[168/216] Building CXX object CMakeFiles/test_config_reload.dir/tests/integration/test_config_reload.cpp.o
+[169/216] Building CXX object CMakeFiles/test_kwin_transfer.dir/test_kwin_transfer_autogen/mocs_compilation.cpp.o
+[170/216] Building CXX object CMakeFiles/test_gnome_bridge.dir/tests/integration/test_gnome_bridge.cpp.o
+[171/216] Building CXX object CMakeFiles/test_settings.dir/test_settings_autogen/mocs_compilation.cpp.o
+[172/216] Building CXX object CMakeFiles/test_settings.dir/tests/unit/test_settings.cpp.o
+[173/216] Building CXX object CMakeFiles/test_gui_settings.dir/test_gui_settings_autogen/mocs_compilation.cpp.o
+[174/216] Building CXX object CMakeFiles/test_kwin_transfer.dir/tests/integration/test_kwin_transfer.cpp.o
+[175/216] Building CXX object CMakeFiles/test_gui_operations_view.dir/test_gui_operations_view_autogen/mocs_compilation.cpp.o
+[176/216] Building CXX object CMakeFiles/test_gui_operations_view.dir/tests/gui/test_operations_view.cpp.o
+[177/216] Building CXX object CMakeFiles/test_gui_history_view.dir/test_gui_history_view_autogen/mocs_compilation.cpp.o
+[178/216] Building CXX object CMakeFiles/test_gui_settings.dir/tests/gui/test_settings.cpp.o
+[179/216] Building CXX object CMakeFiles/test_login_startup.dir/test_login_startup_autogen/mocs_compilation.cpp.o
+[180/216] Building CXX object CMakeFiles/test_login_startup.dir/tests/unit/test_login_startup.cpp.o
+[181/216] Building CXX object CMakeFiles/test_local_ipc.dir/test_local_ipc_autogen/mocs_compilation.cpp.o
+[182/216] Building CXX object CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o
+[183/216] Building CXX object CMakeFiles/test_ip_address.dir/test_ip_address_autogen/mocs_compilation.cpp.o
+[184/216] Building CXX object CMakeFiles/test_local_ipc.dir/tests/integration/test_local_ipc.cpp.o
+[185/216] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/putgd-desktop-fixture_autogen/mocs_compilation.cpp.o
+[186/216] Building CXX object CMakeFiles/test_ip_address.dir/tests/unit/test_ip_address.cpp.o
+[187/216] Linking CXX executable test_geometry
+[188/216] Linking CXX executable test_x11
+[189/216] Linking CXX executable test_keychain_backend
+[190/216] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/__/__/tests/fixtures/desktop_fixture.cpp.o
+[191/216] Linking CXX executable test_keychain
+[192/216] Linking CXX executable test_collision_policy
+[193/216] Linking CXX executable test_s3_delete
+[194/216] Linking CXX executable test_s3
+[195/216] Linking CXX executable test_s3_module
+[196/216] Linking CXX executable test_public_url
+[197/216] Linking CXX executable test_sdk_contract
+[198/216] Linking CXX executable test_build_contract
+[199/216] Linking CXX executable test_payload
+[200/216] Linking CXX executable test_upload_naming
+[201/216] Linking CXX executable test_archive
+[202/216] Linking CXX executable test_history
+[203/216] Linking CXX executable test_operations
+[204/216] Linking CXX executable test_storage_contract
+[205/216] Linking CXX executable test_cli
+[206/216] Linking CXX executable test_config_reload
+[207/216] Linking CXX executable test_gnome_bridge
+[208/216] Linking CXX executable test_settings
+[209/216] Linking CXX executable test_kwin_transfer
+[210/216] Linking CXX executable test_gui_operations_view
+[211/216] Linking CXX executable test_gui_settings
+[212/216] Linking CXX executable test_login_startup
+[213/216] Linking CXX executable test_gui_history_view
+[214/216] Linking CXX executable test_ip_address
+[215/216] Linking CXX executable test_local_ipc
+[216/216] Linking CXX executable packaging/linux/putgd-desktop-fixture
+Test project /home/lab/putgd-current-a3d70dc/build/dev
+      Start  1: geometry_contract
+ 1/28 Test  #1: geometry_contract ................   Passed    0.08 sec
+      Start  2: x11_isolated
+ 2/28 Test  #2: x11_isolated .....................   Passed   17.95 sec
+      Start  3: keychain_backend_integration
+ 3/28 Test  #3: keychain_backend_integration .....   Passed    0.34 sec
+      Start  4: keychain_integration
+ 4/28 Test  #4: keychain_integration .............   Passed    0.13 sec
+      Start  5: collision_policy_integration
+ 5/28 Test  #5: collision_policy_integration .....   Passed    3.74 sec
+      Start  6: s3_delete_integration
+ 6/28 Test  #6: s3_delete_integration ............   Passed    4.27 sec
+      Start  7: s3_module_integration
+ 7/28 Test  #7: s3_module_integration ............   Passed   32.31 sec
+      Start  8: s3_integration
+ 8/28 Test  #8: s3_integration ...................   Passed    2.71 sec
+      Start  9: public_url
+ 9/28 Test  #9: public_url .......................   Passed    0.01 sec
+      Start 10: build_contract
+10/28 Test #10: build_contract ...................   Passed    0.06 sec
+      Start 11: sdk_contract
+11/28 Test #11: sdk_contract .....................   Passed    0.16 sec
+      Start 12: payload_contract
+12/28 Test #12: payload_contract .................   Passed    0.07 sec
+      Start 13: archive_contract
+13/28 Test #13: archive_contract .................   Passed    0.01 sec
+      Start 14: upload_naming_contract
+14/28 Test #14: upload_naming_contract ...........   Passed    0.02 sec
+      Start 15: history_contract
+15/28 Test #15: history_contract .................   Passed    4.59 sec
+      Start 16: operations_contract
+16/28 Test #16: operations_contract ..............   Passed   34.99 sec
+      Start 17: storage_contract_integration
+17/28 Test #17: storage_contract_integration .....   Passed    3.05 sec
+      Start 18: cli_integration
+18/28 Test #18: cli_integration ..................   Passed    0.99 sec
+      Start 19: config_reload_integration
+19/28 Test #19: config_reload_integration ........   Passed    0.63 sec
+      Start 20: gnome_bridge_contract
+20/28 Test #20: gnome_bridge_contract ............   Passed    0.05 sec
+      Start 21: kwin_transfer_contract
+21/28 Test #21: kwin_transfer_contract ...........   Passed    0.17 sec
+      Start 22: settings_contract
+22/28 Test #22: settings_contract ................   Passed    2.86 sec
+      Start 23: gui_settings
+23/28 Test #23: gui_settings .....................   Passed    3.31 sec
+      Start 24: gui_operations_view
+24/28 Test #24: gui_operations_view ..............   Passed    0.41 sec
+      Start 25: gui_history_view
+25/28 Test #25: gui_history_view .................   Passed    3.31 sec
+      Start 26: login_startup_contract
+26/28 Test #26: login_startup_contract ...........   Passed    0.06 sec
+      Start 27: local_ipc_contract
+27/28 Test #27: local_ipc_contract ...............   Passed   13.02 sec
+      Start 28: ip_address_contract
+28/28 Test #28: ip_address_contract ..............   Passed    0.03 sec
+
+100% tests passed, 0 tests failed out of 28
+
+Total Test time (real) = 129.37 sec
+-- The C compiler identification is GNU 15.2.0
+-- The CXX compiler identification is GNU 15.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so
+-- Found WrapOpenGL: TRUE
+-- Found WrapVulkanHeaders: /usr/include
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/lab/putgd-native/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- Found crypto: /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.5.5")
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT - Success
+-- Found PkgConfig: /usr/bin/pkg-config (found version "2.5.1")
+-- Checking for modules 'xcb;xcb-randr;xcb-keysyms;xcb-xfixes'
+--   Found xcb, version 1.17.0
+--   Found xcb-randr, version 1.17.0
+--   Found xcb-keysyms, version 0.4.1
+--   Found xcb-xfixes, version 1.17.0
+-- Checking for module 'wayland-client'
+--   Found wayland-client, version 1.24.0
+-- Checking for module 'xcb-xtest'
+--   Found xcb-xtest, version 1.17.0
+-- Configuring done (3.5s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/lab/putgd-current-a3d70dc/build/release
+[1/216] Automatic MOC and UIC for target putgd_s3_runtime
+[2/216] Building CXX object CMakeFiles/putgd_s3_runtime.dir/putgd_s3_runtime_autogen/mocs_compilation.cpp.o
+[3/216] Automatic MOC and UIC for target putgd_core
+[4/216] Building CXX object CMakeFiles/putgd_core.dir/putgd_core_autogen/mocs_compilation.cpp.o
+[5/216] Building CXX object CMakeFiles/putgd_s3_runtime.dir/src/storage/s3/SdkRuntime.cpp.o
+[6/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/SettingsService.cpp.o
+[7/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/Settings.cpp.o
+[8/216] Building CXX object CMakeFiles/putgd_core.dir/src/platform/Geometry.cpp.o
+[9/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/ClipboardPayload.cpp.o
+[10/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/ArtifactStore.cpp.o
+[11/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/LocalArchive.cpp.o
+[12/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageReceipt.cpp.o
+[13/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/UploadNaming.cpp.o
+[14/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageProvider.cpp.o
+[15/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/Operation.cpp.o
+[16/216] Linking CXX static library libputgd_s3_runtime.a
+[17/216] Automatic MOC and UIC for target test_build_contract
+[18/216] Automatic MOC and UIC for target test_sdk_contract
+[19/216] Automatic MOC and UIC for target putgd-desktop-fixture
+[20/216] Building CXX object CMakeFiles/test_build_contract.dir/test_build_contract_autogen/mocs_compilation.cpp.o
+[21/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/HistoryStore.cpp.o
+[22/216] Linking CXX static library libputgd_core.a
+[23/216] Automatic MOC and UIC for target putgd_credentials
+[24/216] Automatic MOC and UIC for target putgd_s3_module
+[25/216] Building CXX object CMakeFiles/putgd_credentials.dir/putgd_credentials_autogen/mocs_compilation.cpp.o
+[26/216] Building CXX object CMakeFiles/test_build_contract.dir/tests/unit/test_build_contract.cpp.o
+[27/216] Building CXX object CMakeFiles/putgd_s3_module.dir/putgd_s3_module_autogen/mocs_compilation.cpp.o
+[28/216] Building CXX object CMakeFiles/putgd_credentials.dir/src/secrets/CredentialStore.cpp.o
+[29/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Module.cpp.o
+[30/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3SdkContext.cpp.o
+[31/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/PublicUrl.cpp.o
+[32/216] Linking CXX static library libputgd_credentials.a
+[33/216] Automatic MOC and UIC for target putgd_app
+[34/216] Building CXX object CMakeFiles/putgd_app.dir/putgd_app_autogen/mocs_compilation.cpp.o
+[35/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Driver.cpp.o
+[36/216] Linking CXX shared module libputgd-s3.so
+[37/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/HistoryService.cpp.o
+[38/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/OperationService.cpp.o
+[39/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalServer.cpp.o
+[40/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalIpc.cpp.o
+[41/216] Automatic MOC and UIC for target putgd_s3
+[42/216] Building CXX object CMakeFiles/putgd_s3.dir/putgd_s3_autogen/mocs_compilation.cpp.o
+[43/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/LoginStartup.cpp.o
+[44/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/IpAddress.cpp.o
+[45/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Module.cpp.o
+[46/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Provider.cpp.o
+[47/216] Linking CXX static library libputgd_app.a
+[48/216] Generating wayland-protocols/ext-data-control-v1-client-protocol.h
+[49/216] Generating wayland-protocols/ext-data-control-v1-protocol.c
+[50/216] Automatic MOC and UIC for target putgd_x11
+[51/216] Automatic MOC and UIC for target putgd_gnome
+[52/216] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/PublicUrl.cpp.o
+[53/216] Linking CXX static library libputgd_s3.a
+[54/216] Automatic MOC and UIC for target putgd_kde
+ninja: build stopped: interrupted by user.

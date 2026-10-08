@@ -310,3 +310,40 @@ the default 2 GiB file limit already exceeds signed 32-bit range. No production
 integer change was selected. Reconsider only a measured dense population with
 safe bounds and a meaningful `count × stride reduction`, followed by actual
 RSS/latency and regression checks.
+
+## Current-build desktop matrix
+
+Before evaluating a memory candidate, complete the current-source functional wave
+on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Run distro builds, core/widget
+contracts and independent guest scenarios in parallel; serialize actions within
+each guest. Wait for compilation and active GUI testing to drain before collecting
+quiet samples. Physical Cinnamon retains its serial, unchanged workload. VM data
+must be labelled VM data and cannot certify the physical budget.
+
+Pin a source revision/archive and save each distro package hash, installed app,
+CLI, S3 module/helper hashes and the actual running app PID/start/executable hash.
+The same version string is insufficient. Cover region/window/desktop, native
+clipboard text/image/files, three region cancellations, and settings/history/activity
+reopen before post-use measurement. Preserve separate cold, post-view and post-action
+workloads; record missing cloud/publication or other acceptance gates explicitly.
+The lab now verifies the running app against its install receipt before actions
+and again before accepting success, including expected history restarts.
+
+The [2026-10-08 VM audit](evidence/2026-10-08-vm-memory-audit.json) found that the
+8767 dashboard was correct: KDE 179.22 MiB, GNOME 111.27 MiB and Cinnamon 56.11 MiB
+RSS. These were old direct-AWS/QtNetwork builds, not the current cold candidate.
+KDE PSS was 66.67 MiB; shared LLVM/Gallium accounted for 58.40 MiB RSS but 7.37 MiB
+PSS. KWin reported llvmpipe. This explains substantial shared graphics accounting,
+not the app's exact GL context, all retained heap or a leak. [Replay and limits](testing-vm-memory-audit.md)
+retain the measurements and the corrected testing policy. Retire superseded test
+VMs after saving evidence; keep necessary build caches powered off.
+
+The [current-source follow-up](evidence/2026-10-08-current-desktop-matrix.json)
+passed 12 native cases per desktop and repeated view opens before a common
+two-minute observation. Post-use RSS was 83.30 MiB Cinnamon, 114.36 MiB GNOME and
+186.17 MiB KDE; corresponding PSS was 54.51, 71.58 and 64.35 MiB. KDE's high RSS
+therefore persists on current code, with 148.77 MiB shared resident pages and
+37.40 MiB private. These are VM observations, not a cold physical optimization
+comparison. The 40 MiB target remains open. Exact samples, workload differences,
+failure/retry receipts and stopped obsolete VM identities are retained with the
+report and [replay instructions](testing-vm-memory-audit.md).

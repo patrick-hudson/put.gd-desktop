@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "testId": "9cada367f0b143c2aa6f9c26b4cd42ec",
+  "profile": "cinnamon-x11",
+  "scenario": "clipboard-image",
+  "files": {
+    "parameters.json": "6fd34483f8711eae0b430d0e9f6d42c54bf62d235ff1778b1c406428e0cf1640",
+    "results.json": "19ab40a39b2c7ca4834e60b9500d359e95465d747ef2a309f7a1e89e799feb4d",
+    "results.xml": "498b08b86d4ab024ab4a060e836c6a43f4ed30a2aeb795bbdfba749003bfd1f7",
+    "ready.json": "acf992c16f60eaac02d54134904a62d2df0ec6ce66cfe415f41115bf35ffe68a",
+    "paste.json": "97f38ef80be3c02ff0a74ddad2a1958dfca5936d19bd963a96b3281c50f27170",
+    "paste.ppm": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+    "artifact.ppm": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+    "before-head0.ppm": "ef3bba75d59e41d6035c8a0ce692c2641901d4302849d729b3b0e0514fa29b24",
+    "final-head0.ppm": "8a3bf3bcf36f1b01a0a9c601074247ae10361fd5e0c038e53c2399018cb9f786",
+    "versions.json": "211689153a464185176f439e42de54c299f17ccdcc62b44e8ea89d9f3ff47f53",
+    "package.json": "6c5d70331a01264ff48f1644c85b23636256c8e544c6c2521c9cf6da2b9b2423",
+    "diagnostics.json": "ab72717318c5632d9dd7795857edd84ef68e7936e5564c687c38bf1a790ee4aa",
+    "artifact-0": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+  }
+}

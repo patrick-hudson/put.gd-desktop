@@ -1,0 +1,18 @@
+{
+  "timestampUtc": "2026-10-08T20:46:58.116400+00:00",
+  "scope": "Host namespace process check after explicit retirement",
+  "oldVms": [
+    {
+      "pid": 1794904,
+      "processPresent": false
+    },
+    {
+      "pid": 1691093,
+      "processPresent": false
+    },
+    {
+      "pid": 1673704,
+      "processPresent": false
+    }
+  ]
+}

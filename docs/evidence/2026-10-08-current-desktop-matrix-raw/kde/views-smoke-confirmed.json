@@ -1,0 +1,110 @@
+{
+  "timestampUtc": "2026-10-08T20:51:47.700879+00:00",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "runningApp": {
+    "pid": 2958,
+    "startTicks": 81226,
+    "sha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1"
+  },
+  "actions": [
+    {
+      "cycle": 1,
+      "view": "settings",
+      "uiResponse": {
+        "shown": "settings"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-1-settings-open-head0.ppm",
+        "sha256": "4cb0b60691f53276e49cd030483c233c12c5f5ea091e82000ad16a3476ddf286"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-1-settings-closed-head0.ppm",
+        "sha256": "3f5e2c1a56421429f4c5298938965762d8dfe1ac602354d96a5bc22bdf9c19c1"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "uiResponse": {
+        "shown": "history"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-1-history-open-head0.ppm",
+        "sha256": "5afcde3f40e5bd4de243ca2cf0dd9be3b2b757872f627fbac6c7c59961f32821"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-1-history-closed-head0.ppm",
+        "sha256": "3f5e2c1a56421429f4c5298938965762d8dfe1ac602354d96a5bc22bdf9c19c1"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "uiResponse": {
+        "shown": "activity"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-1-activity-open-head0.ppm",
+        "sha256": "37d7ed5376b50b434477ddb7163e4dc3efd3956636f1b8b46a8e486549b4a728"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-1-activity-closed-head0.ppm",
+        "sha256": "3f5e2c1a56421429f4c5298938965762d8dfe1ac602354d96a5bc22bdf9c19c1"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "settings",
+      "uiResponse": {
+        "shown": "settings"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-2-settings-open-head0.ppm",
+        "sha256": "4cb0b60691f53276e49cd030483c233c12c5f5ea091e82000ad16a3476ddf286"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-2-settings-closed-head0.ppm",
+        "sha256": "3f5e2c1a56421429f4c5298938965762d8dfe1ac602354d96a5bc22bdf9c19c1"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "history",
+      "uiResponse": {
+        "shown": "history"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-2-history-open-head0.ppm",
+        "sha256": "5afcde3f40e5bd4de243ca2cf0dd9be3b2b757872f627fbac6c7c59961f32821"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-2-history-closed-head0.ppm",
+        "sha256": "3f5e2c1a56421429f4c5298938965762d8dfe1ac602354d96a5bc22bdf9c19c1"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "activity",
+      "uiResponse": {
+        "shown": "activity"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-2-activity-open-head0.ppm",
+        "sha256": "37d7ed5376b50b434477ddb7163e4dc3efd3956636f1b8b46a8e486549b4a728"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-confirm-2-activity-closed-head0.ppm",
+        "sha256": "3f5e2c1a56421429f4c5298938965762d8dfe1ac602354d96a5bc22bdf9c19c1"
+      },
+      "residentIdentityUnchanged": true
+    }
+  ],
+  "automatedOk": true,
+  "visualReview": "All six open witnesses show the intended unobscured Settings/History/Activity view. All six close witnesses show the desktop, with the same resident alive. Reviewed directly as two six-image montages. No settings changed.",
+  "acceptedAsFullViewSmoke": true
+}

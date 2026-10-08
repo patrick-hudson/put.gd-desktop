@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "testId": "dc0630627011473f8e88cf28017b8f8e",
+  "profile": "gnome-wayland",
+  "scenario": "region-cancel-zero-area",
+  "files": {
+    "parameters.json": "f8f51b0f3f43fe3bc1b5d59ecfaf30f3a552fd8ce8d02ef48808aa6af63fc35c",
+    "results.json": "1c413be1c5de2d7f8bce50061c917057fe319444be2d27a3f275fc79d05cb144",
+    "results.xml": "87f2811d1759c04c6857493269c54a8c3593345abee6eb1de84ff48d530c5996",
+    "ready.json": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+    "paste.json": "cf0904eab4d5535aa0efc63fc685da9aa3c5d50027be73230887fefbc40937d9",
+    "before-head0.ppm": "4c266952672326b22b94082d958bcaca458b168da00aa2f37eaaa28d5bf56a15",
+    "final-head0.ppm": "f07216d283b743fdbed8b0cfdf1f2c13b1d78a59003c2c2937f08a0429272177",
+    "versions.json": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+    "package.json": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+    "diagnostics.json": "9b735d5db239a88ec4776742f3cf24738fa1598937fdf2f12b37bea4ad57c963"
+  }
+}

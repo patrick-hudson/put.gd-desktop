@@ -1,0 +1,8 @@
+{
+  "timestampUtc": "2026-10-08T20:43:45.380107+00:00",
+  "run": "work/lab-runs/kde-001",
+  "pid": 1691093,
+  "method": "QMP system_powerdown",
+  "packageCopiedAndHashVerified": true,
+  "retainedOverlay": "Preserved sole KDE-native SDK source/install/build cache; immutable golden unchanged."
+}

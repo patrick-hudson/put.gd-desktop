@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "startedUtc": "2026-10-08T20:41:12.982448+00:00",
+  "finishedUtc": "2026-10-08T20:43:09.204692+00:00",
+  "exitCode": 0,
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/kde-001/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/kde-001/identity",
+    "-p",
+    "22224",
+    "lab@127.0.0.1",
+    "sh",
+    "-s"
+  ],
+  "reason": "Resume Release package targets after requested interruption of duplicate Release test compilation. Full Dev28/28 already passed."
+}

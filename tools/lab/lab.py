@@ -414,6 +414,47 @@ def cli(run, method, params=None):
     return result['result']
 
 
+def verify_running_app(run):
+    """Reject an old resident inode even when apt installed the new package."""
+    receipt = Path(run) / 'package.json'
+    if not receipt.is_file():
+        raise LabError('Verified package receipt missing; install the requested package first')
+    expected = read_json(receipt).get('installedBinarySha256', {}).get('/usr/bin/putgd')
+    if not isinstance(expected, str) or not re.fullmatch(r'[0-9a-f]{64}', expected):
+        raise LabError('Verified package receipt has no application identity')
+    output = ssh(run, """python3 - <<'PY'
+import hashlib, json, os
+from pathlib import Path
+processes = []
+for process in Path('/proc').iterdir():
+    if not process.name.isdecimal():
+        continue
+    try:
+        if process.stat().st_uid != os.getuid() or (process / 'comm').read_text().strip() != 'putgd':
+            continue
+        before = (process / 'stat').read_text().rsplit(')', 1)[1].split()[19]
+        digest = hashlib.sha256()
+        with (process / 'exe').open('rb') as stream:
+            for block in iter(lambda: stream.read(1048576), b''):
+                digest.update(block)
+        after = (process / 'stat').read_text().rsplit(')', 1)[1].split()[19]
+        if before != after:
+            raise RuntimeError('Resident identity changed during collection')
+        processes.append({'pid': int(process.name), 'startTicks': int(before), 'sha256': digest.hexdigest()})
+    except (FileNotFoundError, ProcessLookupError):
+        continue
+print(json.dumps(processes))
+PY
+""")
+    processes = json.loads(output)
+    if len(processes) != 1:
+        raise LabError('Expected exactly one lab resident; stop stale test processes before retrying')
+    actual = processes[0]
+    if actual.get('sha256') != expected:
+        raise LabError('The running app differs from the installed package; restart the lab resident')
+    return actual
+
+
 def fixture_run(args):
     run = Path(args.run).resolve()
     test_id = uuid.uuid4().hex
@@ -448,6 +489,7 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
                 if time.monotonic() >= deadline:
                     raise LabError('Installed app/fixture readiness timeout')
                 time.sleep(1)
+        result['runningApp'] = verify_running_app(run)
         ready = read_json(run / 'ready.json')
         result.update(validate_readiness(load_profile(state(run)['profile']), ready, state(run)['acceleration']))
         result['clipboardClient'] = args.clipboard_client
@@ -501,6 +543,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         parameters = {'schemaVersion': 1, 'profile': state(run)['profile'],
             'scenario': args.scenario, 'clipboardClient': args.clipboard_client,
             'destination': 'upload' if args.settings else 'local',
+            'runningApp': result['runningApp'],
             'runnerSha256': hash_file(Path(__file__)), 'hotkeys': hotkeys,
             'displayLayout': ready['display_layout'], 'qtVersion': ready['qt_version'],
             'acceleration': state(run)['acceleration'],
@@ -528,7 +571,9 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             focus_deadline = min(deadline, time.monotonic() + 2)
             while True:
                 witness = screenshot(run, 'focus-' + str(attempt))
-                if ready['session'] == 'wayland':
+                # GTK replaces the Qt fixture and has its own window position,
+                # including on X11. Only the independent witness locates it.
+                if ready['session'] == 'wayland' or args.clipboard_client == 'gtk':
                     located = locate_fixture_paint(witness['path'])
                     if located:
                         geometry = located
@@ -723,6 +768,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                     if time.monotonic() >= restart_deadline:
                         raise LabError('Resident restart timeout')
                     time.sleep(.2)
+                result['runningAppAfterRestart'] = verify_running_app(run)
                 history_ids = [item['artifact']['id'] for item in operation['items']]
                 details = [cli(run, 'history.detail', {'id': history_id}) for history_id in history_ids]
                 result['history'] = {'ok': all(detail['receipt']['directUrl'] == item['receipt']['directUrl'] for detail, item in zip(details, operation['items'])), 'ids': history_ids}
@@ -753,8 +799,17 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         if not result['ok']:
             raise LabError('Actual saved pixels or independent paste mismatch')
     except (LabError, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
+        result['ok'] = False
         result['error'] = str(error)
     finally:
+        if result['ok']:
+            try:
+                expected_process = result.get('runningAppAfterRestart', result['runningApp'])
+                if verify_running_app(run) != expected_process:
+                    raise LabError('Resident identity changed during the graphical scenario')
+            except (LabError, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
+                result['ok'] = False
+                result['error'] = str(error)
         try:
             result['witness'] = screenshot(run, 'final')
             collect(run)
@@ -873,6 +928,8 @@ def main():
         elif args.action == 'cli':
             value = cli(args.run, args.method, json.loads(args.params))
         elif args.action == 'install':
+            # A failed new install must not certify the previous package.
+            (Path(args.run) / 'package.json').unlink(missing_ok=True)
             put(args.run, str(Path(args.deb).resolve()), '/tmp/putgd-lab.deb')
             ssh(args.run, 'sudo -n apt-get update\nsudo -n apt-get install --reinstall -y /tmp/putgd-lab.deb\n', timeout=180)
             installed = verify_installed_binaries(args.run, args.deb)

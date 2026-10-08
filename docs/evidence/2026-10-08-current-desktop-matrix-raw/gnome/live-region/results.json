@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:51:22.284541+00:00",
+  "scope": "Synthetic GNOME live background before mouse-down plus outline-free saved80x60 capture; one extra local-only region action; no memory measurement",
+  "scriptSha256": "5e16ebb8a53b0b3a2673ac91f461ae1ac08045ca02831f17a8ca672277e199e6",
+  "runnerSha256": "4e688dd6fab5f766a8274dc76022162f80f0cb29334160be61fd4f0c64a5c6ee",
+  "passed": true,
+  "events": [
+    {
+      "event": "color-control-written",
+      "elapsedSeconds": 3.237214002001565,
+      "revision": "A",
+      "rgb": [
+        12,
+        87,
+        160
+      ]
+    },
+    {
+      "event": "fixture-painted",
+      "elapsedSeconds": 3.5072727329679765,
+      "revision": "A"
+    },
+    {
+      "event": "before-selector",
+      "elapsedSeconds": 3.765340409008786,
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/live-region/before-selector.png",
+        "sha256": "2a5f3f610117890541feff71ac935bbdaa38f31df5d59d4e56fb0905f6caf71b"
+      },
+      "sample": {
+        "x": 503,
+        "y": 325,
+        "expected": [
+          12,
+          87,
+          160
+        ],
+        "actual": [
+          12,
+          87,
+          160
+        ]
+      }
+    },
+    {
+      "event": "selector-hotkey-sent",
+      "elapsedSeconds": 3.821100661996752
+    },
+    {
+      "event": "selector-before-update",
+      "elapsedSeconds": 4.632183926994912,
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/live-region/selector-before-update.png",
+        "sha256": "2a5f3f610117890541feff71ac935bbdaa38f31df5d59d4e56fb0905f6caf71b"
+      },
+      "sample": {
+        "x": 503,
+        "y": 325,
+        "expected": [
+          12,
+          87,
+          160
+        ],
+        "actual": [
+          12,
+          87,
+          160
+        ]
+      }
+    },
+    {
+      "event": "color-control-written",
+      "elapsedSeconds": 4.8624296429916285,
+      "revision": "B",
+      "rgb": [
+        173,
+        48,
+        109
+      ]
+    },
+    {
+      "event": "fixture-painted",
+      "elapsedSeconds": 5.155156324966811,
+      "revision": "B"
+    },
+    {
+      "event": "selector-live-updated-before-drawing",
+      "elapsedSeconds": 5.415439420961775,
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/live-region/selector-live-updated-before-drawing.png",
+        "sha256": "de0da567e6e63268f7d1658b697cbbc0ffe8a465f099139ffc241d3a39c3e1cf"
+      },
+      "sample": {
+        "x": 503,
+        "y": 325,
+        "expected": [
+          173,
+          48,
+          109
+        ],
+        "actual": [
+          173,
+          48,
+          109
+        ]
+      }
+    },
+    {
+      "event": "selection-drawn",
+      "elapsedSeconds": 5.419294361956418,
+      "start": {
+        "x": 383,
+        "y": 255
+      },
+      "end": {
+        "x": 463,
+        "y": 315
+      }
+    },
+    {
+      "event": "selection-released",
+      "elapsedSeconds": 5.836449597962201
+    },
+    {
+      "event": "finished",
+      "elapsedSeconds": 7.485581356973853,
+      "passed": true
+    }
+  ],
+  "parameters": {
+    "initialRgb": [
+      12,
+      87,
+      160
+    ],
+    "updatedRgb": [
+      173,
+      48,
+      109
+    ],
+    "width": 80,
+    "height": 60,
+    "fixturePollMs": 50,
+    "visibleWaitTimeoutSeconds": 10,
+    "operationTimeoutSeconds": 15
+  },
+  "runningAppBefore": {
+    "pid": 2775,
+    "startTicks": 4592,
+    "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+  },
+  "fixtureReady": {
+    "decorationMargins": {
+      "bottom": 11,
+      "left": 11,
+      "right": 11,
+      "top": 49
+    },
+    "desktop": "ubuntu:GNOME",
+    "display_layout": [
+      {
+        "height": 800,
+        "name": "Virtual-1",
+        "nativeHeight": 800,
+        "nativeWidth": 1280,
+        "rotation": 2,
+        "scale": 1,
+        "width": 1280,
+        "x": 0,
+        "y": 0
+      }
+    ],
+    "frame": {
+      "height": 420,
+      "width": 640,
+      "x": 0,
+      "y": 0
+    },
+    "paint": {
+      "height": 320,
+      "width": 640,
+      "x": 0,
+      "y": 0
+    },
+    "qt_platform": "wayland",
+    "qt_version": "6.10.2",
+    "schemaVersion": 1,
+    "session": "wayland"
+  },
+  "independentFixtureGeometry": {
+    "x": 353,
+    "y": 225,
+    "width": 640,
+    "height": 320
+  },
+  "operationCountBefore": 12,
+  "regionHotkey": [
+    "ctrl",
+    "shift",
+    "1"
+  ],
+  "outlineWitness": {
+    "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/live-region/selector-outline.png",
+    "sha256": "72c47937a3dcf901701aecbf6c31de8989d743f15b7fb6ead1e6a261b5e31298"
+  },
+  "operation": {
+    "action": "region",
+    "cancelled": false,
+    "clipboardRevision": "25",
+    "copyStatus": "copied",
+    "created": "2026-10-08T20:51:26.062Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "41beab8b-8ee3-40f9-b267-5719adcb4d56",
+    "invocation": "13",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 329,
+          "category": "images",
+          "id": "efa623f3-d451-406f-a0f6-240199a6643a",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-08-15-51-26.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/home/lab/putgd-lab/data/putgd/putgd/artifacts/../previews/efa623f3-d451-406f-a0f6-240199a6643a.png",
+          "sha256": "62794710928f0a2f15221c9654624e80ed72efc380c84af4efee2e9585cc577e"
+        },
+        "candidate": "",
+        "concurrencyToken": "",
+        "condition": "",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "/home/lab/putgd-lab/archive/images/Screen-Capture-2026-10-08-15-51-26.png",
+          "status": "saved"
+        },
+        "objectReference": {},
+        "publicationId": "4a855eb5-3a6b-4d3d-8243-a73666ebe3d0",
+        "receipt": {
+          "concurrencyToken": "",
+          "destination": {
+            "credentials": {},
+            "profileId": "",
+            "profileRevision": "",
+            "providerId": "",
+            "settings": {}
+          },
+          "directUrl": "",
+          "objectReference": {},
+          "publicationId": "",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "uploadStatus": "local_only"
+      }
+    ],
+    "settingsRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+    "state": "completed"
+  },
+  "operationCountAfter": 13,
+  "capturedImage": {
+    "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/live-region/capture.png",
+    "sha256": "62794710928f0a2f15221c9654624e80ed72efc380c84af4efee2e9585cc577e",
+    "width": 80,
+    "height": 60,
+    "colorCounts": [
+      {
+        "pixels": 4800,
+        "rgb": [
+          173,
+          48,
+          109
+        ]
+      }
+    ],
+    "everyPixelMatchesUpdatedColor": true
+  },
+  "runningAppAfter": {
+    "pid": 2775,
+    "startTicks": 4592,
+    "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+  },
+  "afterCaptureWitness": {
+    "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/live-region/after-capture.png",
+    "sha256": "d74bb3c782fa7a3e8264698af4c5d8dd445cd1fe7008ab9cc2b36cd038cf3100"
+  }
+}

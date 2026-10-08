@@ -1,0 +1,6 @@
+{
+  "timestampUtc": "2026-10-08T20:50:22.346145+00:00",
+  "command": "sudo -n apt-get install -y python3-gi-cairo\n",
+  "exitCode": 0,
+  "reason": "GTK fixture requires gi._gi_cairo in addition to pycairo; first fixture startup failure preserved."
+}

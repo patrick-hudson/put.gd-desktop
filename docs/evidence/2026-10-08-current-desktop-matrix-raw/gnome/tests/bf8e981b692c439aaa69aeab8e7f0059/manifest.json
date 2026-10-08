@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "testId": "bf8e981b692c439aaa69aeab8e7f0059",
+  "profile": "gnome-wayland",
+  "scenario": "region-cancel-right-click",
+  "files": {
+    "parameters.json": "d54c0ec1146d1c0eafce530768416a789db3be33c30a25c2767160bcd897948f",
+    "results.json": "8f38d8faa5b7220ff29a087551754d1c1536055c7c2dfe0bcca4bd75e2382063",
+    "results.xml": "3c876fc6b59c559fc31694c40b3ff72ccdd1701d25571b8d8726fbc3f6595d74",
+    "ready.json": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+    "paste.json": "cf0904eab4d5535aa0efc63fc685da9aa3c5d50027be73230887fefbc40937d9",
+    "before-head0.ppm": "5bae8cf378fc7ebccc4104113ff9b8f01e702df90a9d4e4d5efe81320491163c",
+    "final-head0.ppm": "f07216d283b743fdbed8b0cfdf1f2c13b1d78a59003c2c2937f08a0429272177",
+    "versions.json": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+    "package.json": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+    "diagnostics.json": "91f9aeeb4a258531c225e939722a91d078e6fefa674747e73d95c66db9638895"
+  }
+}

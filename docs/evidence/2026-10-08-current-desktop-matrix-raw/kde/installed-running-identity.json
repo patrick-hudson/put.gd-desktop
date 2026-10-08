@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "timestampUtc": "2026-10-08T20:47:17.091475+00:00",
+  "kernel": "7.0.0-30-generic",
+  "bootId": "7b3d3dee-8a5d-4727-927a-dc02a70323b4",
+  "fileSha256": {
+    "/usr/bin/putgd": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1",
+    "/usr/bin/putgd-cli": "41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85",
+    "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": "199e20a9f12f957af61104082a30575648e7c93aee4385787755352277833490",
+    "/usr/share/applications/putgd.desktop": "d549e6cb36ff341a901d0a4b97b180db107513ead997ccceb720d5888c140fb9",
+    "/usr/share/putgd/aws-runtime-manifest.json": "1898b7425eae34f13371b3fd27709bf7cd3b294513caa57c9762c7f506bf83b8",
+    "/usr/share/putgd/dependency-lock.json": "c6c41e15a56e4f801c1225966b7b6c309eee54745bfa1788a066378a36621333"
+  },
+  "installedAppNeeded": {
+    "unavailable": "Runtime guest has no readelf; exact package ELF inspected on host."
+  },
+  "processes": [
+    {
+      "pid": 2958,
+      "startTicks": 81226,
+      "executableSha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1",
+      "executableMatchesInstalled": true,
+      "needed": {
+        "unavailable": "Runtime guest has no readelf; exact package ELF inspected on host."
+      }
+    }
+  ],
+  "packageVersions": [
+    "kwin-wayland 4:6.6.6-0ubuntu0.1",
+    "liblayershellqtinterface6 6.6.4-0ubuntu1",
+    "libqt6core6t64 6.10.2+dfsg-7",
+    "libqt6gui6 6.10.2+dfsg-7",
+    "libqt6widgets6 6.10.2+dfsg-7",
+    "plasma-workspace 4:6.6.6-0ubuntu0.1",
+    "putgd 0.1.0"
+  ],
+  "limits": "Identity only. No memory comparison, GUI acceptance or user config/environment inspection."
+}

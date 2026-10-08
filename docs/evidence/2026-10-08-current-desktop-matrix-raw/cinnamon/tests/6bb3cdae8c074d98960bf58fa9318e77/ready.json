@@ -1,0 +1,38 @@
+{
+    "decorationMargins": {
+        "bottom": 0,
+        "left": 0,
+        "right": 0,
+        "top": 32
+    },
+    "desktop": "X-Cinnamon",
+    "display_layout": [
+        {
+            "height": 800,
+            "name": "Virtual-1",
+            "nativeHeight": 800,
+            "nativeWidth": 1280,
+            "rotation": 2,
+            "scale": 1,
+            "width": 1280,
+            "x": 0,
+            "y": 0
+        }
+    ],
+    "frame": {
+        "height": 452,
+        "width": 640,
+        "x": 120,
+        "y": 120
+    },
+    "paint": {
+        "height": 320,
+        "width": 640,
+        "x": 120,
+        "y": 152
+    },
+    "qt_platform": "xcb",
+    "qt_version": "6.4.2",
+    "schemaVersion": 1,
+    "session": "x11"
+}

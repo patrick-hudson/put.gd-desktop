@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="desktop-lab" tests="1" failures="1"><testcase name="clipboard-text-independent-paste" classname="kde-wayland" time="91.19796473102178"><failure message="Independent GTK clipboard client readiness timeout" /></testcase></testsuite>

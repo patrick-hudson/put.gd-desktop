@@ -1,0 +1,217 @@
+{
+  "profile": "cinnamon-x11",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "results": [
+    {
+      "testId": "2e383f1a604f414a973cd646a8b9b815",
+      "scenario": "window-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/2e383f1a604f414a973cd646a8b9b815/results.json",
+      "resultsSha256": "4ca38d82583a14e07e5f0c1f409e67a7f1da0f1a2ccade0ff2736766b9323549",
+      "parametersSha256": "2bf33c2a0015ae854959adf6e5cf4398895075949c73f02cad35e062efb2d344",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 8.88467507896712
+    },
+    {
+      "testId": "44ac5ba5a2d44f93b7e53dfc523f8582",
+      "scenario": "clipboard-text-independent-paste",
+      "clipboardClient": "gtk",
+      "ok": false,
+      "error": "Independent fixture is obscured; focus witnesses preserved",
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/44ac5ba5a2d44f93b7e53dfc523f8582/results.json",
+      "resultsSha256": "e22e06951a05e4831297d2ea02e0ec192296c40655f8390c0431e6b3b30241ee",
+      "parametersSha256": "4538181579f7b82e4bfe7219795130c21941d1b53c50aebab80754ab79dd49e3",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 14.270621925999876
+    },
+    {
+      "testId": "5f79e7cdd55b4c1eace3dea4ea7d7e32",
+      "scenario": "region-cancel-right-click-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/5f79e7cdd55b4c1eace3dea4ea7d7e32/results.json",
+      "resultsSha256": "f281cb70c0b057567e15c8f76c2f10b0d9ab8fcbeddef03e40f3ec07a6ea6cc5",
+      "parametersSha256": "d6dd06d1986effbb1bd3e80bfddaf2ef02d71218d7756ad5847094656c36ff22",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 7.797482555033639
+    },
+    {
+      "testId": "6bb3cdae8c074d98960bf58fa9318e77",
+      "scenario": "clipboard-files-independent-paste",
+      "clipboardClient": "gtk",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/6bb3cdae8c074d98960bf58fa9318e77/results.json",
+      "resultsSha256": "5eca12e3286381bc50d2261412525afc621d14af1a77df14ad7847a85ae9d2c1",
+      "parametersSha256": "ed38a08b1302f6cf669f57358e1cd56e5a695cc7baca55a9f6d1e5741918726d",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 8.892005153000355
+    },
+    {
+      "testId": "7a847de2c3214daa955bdbbb107b06ac",
+      "scenario": "region-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/7a847de2c3214daa955bdbbb107b06ac/results.json",
+      "resultsSha256": "ae13178ec70671cc27b2957b989f38e5f936d8321e7d3a8599ba5fd5cdf6080c",
+      "parametersSha256": "b3e6fb7a27ae9ec10fd3a0368b86f17c9ab41e6cf1225fe0ebece1022105a40f",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 13.453034908045083
+    },
+    {
+      "testId": "81abdd55e12a42faadf5254ed5dbeaa7",
+      "scenario": "region-cancel-escape-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/81abdd55e12a42faadf5254ed5dbeaa7/results.json",
+      "resultsSha256": "173b6f05edd3900afb43487b55cd4e0cf619c45e10d6a1f2fa4477a0ea0d9a3d",
+      "parametersSha256": "7964dec63b0db9651adb8bb6358f55f406e277c21c6639be524388107856e9d8",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 10.081807591021061
+    },
+    {
+      "testId": "8d5e99088ca347f58972a31227a763d4",
+      "scenario": "clipboard-text-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/8d5e99088ca347f58972a31227a763d4/results.json",
+      "resultsSha256": "24582e1092e07ce6a252de8313e80c5fc21efaea25259a89d561045fef01a56b",
+      "parametersSha256": "121cfd6397ce3a676aebf5df64b8b60dcc9d017a584be1c4b1620e60838d13b8",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 8.197753791988362
+    },
+    {
+      "testId": "9023f9d6ca4b42a5a242f6c926ede3ff",
+      "scenario": "desktop-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/9023f9d6ca4b42a5a242f6c926ede3ff/results.json",
+      "resultsSha256": "39155aa42de64366c710880d791ded97dc6302a29b226e9a04001366bff3b2c0",
+      "parametersSha256": "281455c1b2308ac41d4d3d98e7a2025efd729bd83c66cd0e78211d9d0d7e984c",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 8.876529651985038
+    },
+    {
+      "testId": "93ac5cc310fe421c8c916665b4b35a4e",
+      "scenario": "clipboard-image-independent-paste",
+      "clipboardClient": "gtk",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/93ac5cc310fe421c8c916665b4b35a4e/results.json",
+      "resultsSha256": "9ef85b17520fbd23ce4ce7a74f1be2f7c333e7a3ba4fa528955c884846236602",
+      "parametersSha256": "c148cbb08a738b755d5c72867f788ce554273f627a8d394f140d67846ba5d2e5",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 13.065320628986228
+    },
+    {
+      "testId": "9a2d93f1369b458c9d1465f21b3cd269",
+      "scenario": "clipboard-files-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/9a2d93f1369b458c9d1465f21b3cd269/results.json",
+      "resultsSha256": "4a23797b0db979ced0a0d535426364ed7b7e34f37f77ee12ade1be94b2185df8",
+      "parametersSha256": "c73aafceecaef6c5c30d44caf2fa3b007f2ba805dbe0c79042290b4d55adc458",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 9.825680766953155
+    },
+    {
+      "testId": "9cada367f0b143c2aa6f9c26b4cd42ec",
+      "scenario": "clipboard-image-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/9cada367f0b143c2aa6f9c26b4cd42ec/results.json",
+      "resultsSha256": "19ab40a39b2c7ca4834e60b9500d359e95465d747ef2a309f7a1e89e799feb4d",
+      "parametersSha256": "6fd34483f8711eae0b430d0e9f6d42c54bf62d235ff1778b1c406428e0cf1640",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 8.889015364984516
+    },
+    {
+      "testId": "c9ff16b9a973495cbdddae69583de1e6",
+      "scenario": "region-cancel-zero-area-independent-paste",
+      "clipboardClient": "qt",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/c9ff16b9a973495cbdddae69583de1e6/results.json",
+      "resultsSha256": "d6a961067ae7c96477074580cee521cba00d6894a0676b0ba8e1d27673fb5d59",
+      "parametersSha256": "ec787e8aec9f365601ab8ce6ff54b4091dcdfa040389ad9f25e67344902b2ca0",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 9.888333463051822
+    },
+    {
+      "testId": "fe6c496bdab14e4ab9dff434d7f6e6f7",
+      "scenario": "clipboard-text-independent-paste",
+      "clipboardClient": "gtk",
+      "ok": true,
+      "error": null,
+      "results": "work/lab-runs/current-cinnamon-a3d70dc/tests/fe6c496bdab14e4ab9dff434d7f6e6f7/results.json",
+      "resultsSha256": "ae0c3b5d251c2bdf11bda9d41e593026376f8b921e11c654b43be1092568afd9",
+      "parametersSha256": "554732198b1c588fb4e0aad62708bd64f7749bdfcd921f3c23319c7c3044a980",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "elapsedSeconds": 10.135907011048403
+    }
+  ],
+  "passed": 12,
+  "failedAttempts": 1,
+  "viewSmoke": "view-smoke.json"
+}

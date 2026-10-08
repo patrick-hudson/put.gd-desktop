@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "commands": [
+    {
+      "argv": [
+        "pkg-config",
+        "--modversion",
+        "Qt6Core",
+        "Qt6Widgets",
+        "Qt6Sql"
+      ],
+      "exitCode": 0,
+      "stdout": "6.10.2\n6.10.2\n6.10.2\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${Package} ${Version}\n",
+        "qtkeychain-qt6-dev",
+        "libqt6keychain1",
+        "libcurl4t64",
+        "libssl3t64"
+      ],
+      "exitCode": 0,
+      "stdout": "libcurl4t64 8.18.0-1ubuntu2.7\nlibqt6keychain1 0.15.0-2\nlibssl3t64 3.5.5-1ubuntu3.7\nqtkeychain-qt6-dev 0.15.0-2\n",
+      "stderr": ""
+    }
+  ]
+}

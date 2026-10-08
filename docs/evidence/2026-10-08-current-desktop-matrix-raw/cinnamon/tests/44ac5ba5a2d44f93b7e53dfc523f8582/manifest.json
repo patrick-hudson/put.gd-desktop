@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "testId": "44ac5ba5a2d44f93b7e53dfc523f8582",
+  "profile": "cinnamon-x11",
+  "scenario": "clipboard-text",
+  "files": {
+    "parameters.json": "4538181579f7b82e4bfe7219795130c21941d1b53c50aebab80754ab79dd49e3",
+    "results.json": "e22e06951a05e4831297d2ea02e0ec192296c40655f8390c0431e6b3b30241ee",
+    "results.xml": "c14e96d2844ec33f4ff97f5c87ac82f37080e0acc5ead050d6c9745945c0581a",
+    "ready.json": "acf992c16f60eaac02d54134904a62d2df0ec6ce66cfe415f41115bf35ffe68a",
+    "final-head0.ppm": "5e4038eea8e7f482dc5660408490366a03f34b8ae345fd3ca4f03168e6ddae97",
+    "versions.json": "211689153a464185176f439e42de54c299f17ccdcc62b44e8ea89d9f3ff47f53",
+    "package.json": "6c5d70331a01264ff48f1644c85b23636256c8e544c6c2521c9cf6da2b9b2423",
+    "diagnostics.json": "8e6183e5f5516443f8d8e6f5e00d32380123d7e8900bf3d3decd622921396df6"
+  }
+}

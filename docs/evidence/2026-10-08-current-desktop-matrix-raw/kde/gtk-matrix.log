@@ -1,0 +1,7 @@
+RUN clipboard-text
+RESULT clipboard-text False Independent GTK clipboard client readiness timeout
+RUN clipboard-image
+RESULT clipboard-image True None
+RUN clipboard-files
+RESULT clipboard-files True None
+matrix finished 3 2

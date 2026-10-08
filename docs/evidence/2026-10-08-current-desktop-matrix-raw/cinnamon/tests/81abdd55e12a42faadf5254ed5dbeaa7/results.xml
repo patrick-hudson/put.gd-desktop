@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="desktop-lab" tests="1" failures="0"><testcase name="region-cancel-escape-independent-paste" classname="cinnamon-x11" time="10.081807591021061" /></testsuite>

@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:49:48.323719+00:00",
+  "scope": "Two visible GNOME cycles opening/closing Settings, History and Activity; no settings edits or memory metrics",
+  "runnerSha256": "4e688dd6fab5f766a8274dc76022162f80f0cb29334160be61fd4f0c64a5c6ee",
+  "scriptSha256": "63f68f384e2273ecc41d2fb225f72e0e11d4ca1ef54024d6f82d456f5a64c0dc",
+  "cases": [
+    {
+      "cycle": 1,
+      "view": "settings",
+      "showReply": {
+        "shown": "settings"
+      },
+      "elapsedSeconds": 3.4259484819485806,
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/1-settings-open.png",
+        "sha256": "1316cb80baffaf7a9c74cd86383b092bc70230cbc916a27e508ac3be95217981"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/1-settings-closed.png",
+        "sha256": "1515b47efd38963f1a52395902786ae4d017c89a167fdaa421b181875fb9c48d"
+      },
+      "residentAfterClose": {
+        "pid": 2775,
+        "startTicks": 4592,
+        "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "showReply": {
+        "shown": "history"
+      },
+      "elapsedSeconds": 3.407130617997609,
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/1-history-open.png",
+        "sha256": "41803b0d1fb9a40510618d61f73aa16428e30892d7d9b1e20c13585df9ce255a"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/1-history-closed.png",
+        "sha256": "1515b47efd38963f1a52395902786ae4d017c89a167fdaa421b181875fb9c48d"
+      },
+      "residentAfterClose": {
+        "pid": 2775,
+        "startTicks": 4592,
+        "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "showReply": {
+        "shown": "activity"
+      },
+      "elapsedSeconds": 3.41206833999604,
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/1-activity-open.png",
+        "sha256": "44983f5033c3dcb43b7d5a585d958d7346e250e2954536b84762c7d436e3c4fb"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/1-activity-closed.png",
+        "sha256": "1515b47efd38963f1a52395902786ae4d017c89a167fdaa421b181875fb9c48d"
+      },
+      "residentAfterClose": {
+        "pid": 2775,
+        "startTicks": 4592,
+        "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+      }
+    },
+    {
+      "cycle": 2,
+      "view": "settings",
+      "showReply": {
+        "shown": "settings"
+      },
+      "elapsedSeconds": 3.452013590023853,
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/2-settings-open.png",
+        "sha256": "08b6e619eb5baf4397dec703a37c78338a0a9c0a3adb6d955df172ae47151fa7"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/2-settings-closed.png",
+        "sha256": "52d3932dd8ddbde477e4f70818c67f64595f984022a6d31cdec5347271c980b2"
+      },
+      "residentAfterClose": {
+        "pid": 2775,
+        "startTicks": 4592,
+        "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+      }
+    },
+    {
+      "cycle": 2,
+      "view": "history",
+      "showReply": {
+        "shown": "history"
+      },
+      "elapsedSeconds": 3.355469794012606,
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/2-history-open.png",
+        "sha256": "2e50a161d28999d521d3c2ecbb8fbc9de802f15732de9f76b708ddeb61cdcbbe"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/2-history-closed.png",
+        "sha256": "52d3932dd8ddbde477e4f70818c67f64595f984022a6d31cdec5347271c980b2"
+      },
+      "residentAfterClose": {
+        "pid": 2775,
+        "startTicks": 4592,
+        "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+      }
+    },
+    {
+      "cycle": 2,
+      "view": "activity",
+      "showReply": {
+        "shown": "activity"
+      },
+      "elapsedSeconds": 3.362690725014545,
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/2-activity-open.png",
+        "sha256": "39916a159af2e023c9e16b25fce341dcb7cb8aa6b2ba7210ce6e6ff9761312b6"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/cross-desktop-current/gnome/views/2-activity-closed.png",
+        "sha256": "52d3932dd8ddbde477e4f70818c67f64595f984022a6d31cdec5347271c980b2"
+      },
+      "residentAfterClose": {
+        "pid": 2775,
+        "startTicks": 4592,
+        "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+      }
+    }
+  ],
+  "proceduralPassed": true,
+  "visualReview": {
+    "timestampUtc": "2026-10-08T20:51:22.218778+00:00",
+    "reviewer": "gnome_current_crosscheck agent",
+    "observed": "Inspected all12 open/closed QMP-derived PNGs: all three named views render both cycles; each closes to desktop; same resident remains responsive. First-cycle views also inspected at full resolution.",
+    "scope": "Window lifecycle/render smoke only; no exhaustive UI interaction, accessibility, settings-save or deletion acceptance"
+  },
+  "initialRunningApp": {
+    "pid": 2775,
+    "startTicks": 4592,
+    "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+  },
+  "passed": true
+}

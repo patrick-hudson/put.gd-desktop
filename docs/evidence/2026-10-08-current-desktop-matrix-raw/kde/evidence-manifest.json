@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "scope": "Owned bounded KDE text records/scripts and synthetic contact sheets; excludes package, extracted binaries, VM disks/keys/config and all private credentials. Per-case raw witnesses/manifests remain in identified test dirs.",
+  "files": {
+    "ready-for-memory.json": {
+      "sha256": "d3a55181fcc0157b248dea0916537c1b6a459a5dbd35aa01c3bd7fe744d1d86a",
+      "bytes": 923
+    },
+    "release-package-result.json": {
+      "sha256": "9a8acfce86b3d3022acc5848f02544e998cbbba77052d66b916bc1421f8c29dc",
+      "bytes": 739
+    },
+    "unit-result.json": {
+      "sha256": "21e26f6e43de84aaf776b66387b5b8b250b466bf651ea7c8a471c749ff794a56",
+      "bytes": 6114
+    },
+    "installed-running-identity.json": {
+      "sha256": "091913f17d0cf7cc41182ef49a99b8dffa54eb8c53a1fd2708362cf111803f4d",
+      "bytes": 1941
+    },
+    "views-smoke.json": {
+      "sha256": "493e54eabe27e31fd8df6e05fee2b0269c3dd23bbc6ad4df515cc6488b41501d",
+      "bytes": 4198
+    },
+    "package-app-dynamic.txt": {
+      "sha256": "263cf64b3e270fcdf72a165fb560614f350869404d0d33f72434c96a916fbd6d",
+      "bytes": 2616
+    },
+    "gtk-cairo-dependency.json": {
+      "sha256": "1c898d6ed3466f8b80e076be209a53a348d46e3158d1d97ec1da5b3488164753",
+      "bytes": 250
+    },
+    "install.log": {
+      "sha256": "aa63f44c0b797213b21c1f7eff114571537f4b3646ba449ed74904cb8034e77a",
+      "bytes": 24
+    },
+    "gtk-matrix-results.json": {
+      "sha256": "2662c78b31f7e1050f41cf846281a41de056df4242b8aed26b8d6d1416943fb5",
+      "bytes": 7603
+    },
+    "putgd-current-kde-build.py": {
+      "sha256": "e5ca447b695ae6e0ca9b13d302e9a8c295d2d7e203bf18ebe6b993722cf4adcd",
+      "bytes": 1921
+    },
+    "putgd-current-kde-matrix.py": {
+      "sha256": "150754b0c5822bd755f2979267962924f28d55621a878d08cf4ecd695bd8fb9e",
+      "bytes": 1305
+    },
+    "known-host-port-adaptation.json": {
+      "sha256": "3760864d1fc4c69ab945d892a8a265719e6aea5d43e7f17bfd8db5ed929c1880",
+      "bytes": 266
+    },
+    "gtk-text-after-dependencies.json": {
+      "sha256": "853c80a842a41400ac49810e1bb4e2c6ef3d9e8e6125e8ff72715710bb3fa397",
+      "bytes": 2512
+    },
+    "dev-CMakeCache.txt": {
+      "sha256": "1d9e9dde34ce2ba56d94f322b525beacfcf6236f83d8ee1a854e5bbb6480a072",
+      "bytes": 83373
+    },
+    "old-resident-stopped.json": {
+      "sha256": "3d0a9b26489954ecb8693d7e76f95c99187ecb5a87f6a1446777e343dc853c86",
+      "bytes": 352
+    },
+    "matrix-results.json": {
+      "sha256": "529938455057ddd85dbff78e3a6359781513078b13eae5bdc58166a197084504",
+      "bytes": 26131
+    },
+    "build-tests.log": {
+      "sha256": "7c61296583c4cb8e22b8e211385ef6f71fb1d69c6b5df296690026957c7dfa7c",
+      "bytes": 31597
+    },
+    "old-vm-shutdown-confirmed.json": {
+      "sha256": "31fe92efd0503e6d5b8365f5706f386f992d36ef1bc38a83a135344630c5277f",
+      "bytes": 438
+    },
+    "release-package-script.sh": {
+      "sha256": "5ff044efab9ec2ecab62cf9ea470c92423ebbc1902ffc371e368466501d48867",
+      "bytes": 313
+    },
+    "views-smoke-confirmed.json": {
+      "sha256": "c5dd1b68ef6bf28b4a0d4f3782e3b2165142c3123d55e6e1c53190dc75e78bd5",
+      "bytes": 4285
+    },
+    "matrix.log": {
+      "sha256": "a2e497c59c31b875ab59ec2ea8100138c16c15966b7d6ac4a3a1b5280d461fb2",
+      "bytes": 489
+    },
+    "gtk-fixture-dependency.log": {
+      "sha256": "a14727b13c26fafa88d1c9598d4e99081e041769037caa686e9f66b841bad67c",
+      "bytes": 2327
+    },
+    "putgd-current-kde-views-closed.png": {
+      "sha256": "b8f3e8e47be68e1f88469d289970588bf7e7bc934c4646644f7a746b5cf63bca",
+      "bytes": 69150
+    },
+    "release-CMakeCache.txt": {
+      "sha256": "9bf76d3ffa09550d65e4d6d6e86d4d5b9786f32ca115b239bf0d5c01116eea55",
+      "bytes": 83391
+    },
+    "putgd-current-kde-views.py": {
+      "sha256": "9b101d3730b2d2613cf0230f16ed2ca6b34f0730d637b59f1e48278f33b11e1e",
+      "bytes": 1310
+    },
+    "identity-initial-attempt.json": {
+      "sha256": "088be118b828e1017e85737359c2a2757b1c84cf9fa1d1ee6f34987d4a5bc7e2",
+      "bytes": 1038
+    },
+    "build-result.json": {
+      "sha256": "36916fab72f68fa17f9f56241e42da4d795f41a1c96b390b0f5ba5d9071077fb",
+      "bytes": 684
+    },
+    "dev-tests.xml": {
+      "sha256": "d9da33c849a1fb8a2edc685d6ad43379075054fa9c050987c670acf5cd943087",
+      "bytes": 26892
+    },
+    "putgd-current-kde-gtk-matrix.py": {
+      "sha256": "8e5814dfc018f7d8c27cc7d324e229d138a8077f88aef223fefdfdc33548f5c8",
+      "bytes": 1205
+    },
+    "build-script.sh": {
+      "sha256": "98427c4e027db80c4aa8a41fd9c7c71b0b4c4e594863e12f5addeefdaa00516b",
+      "bytes": 974
+    },
+    "package-installed-comparison.json": {
+      "sha256": "2dba715b2e0c8689c7cec2d6e66bdcddf2cbcf173944779acfb9e6257b7a3934",
+      "bytes": 1078
+    },
+    "gtk-matrix.log": {
+      "sha256": "fb7ac4155cb8b004543422e11d676111feea11774faca2190a880288b0fec271",
+      "bytes": 224
+    },
+    "gtk-cairo-dependency.log": {
+      "sha256": "e1039a2b0c602f08401f48ad57e4a0cc5a4aba1875f206918b03006f07331a5d",
+      "bytes": 1804
+    },
+    "putgd-current-kde-release.py": {
+      "sha256": "8aaa57a3a424e49ac34139e6fb8fc814186dfb97f3642e59384ce51b378fbd10",
+      "bytes": 1325
+    },
+    "putgd-current-kde-views-confirm.png": {
+      "sha256": "49becdb6a2b68c95ef422d7421001ac69909a565bb26adc489fd2c16ec9b1381",
+      "bytes": 376243
+    },
+    "putgd-current-kde-views-confirm.py": {
+      "sha256": "626899d367f356fcca5eec360118efffe72389bd343dbd5bfb9f4414e0e0d2e6",
+      "bytes": 1607
+    },
+    "release-package.log": {
+      "sha256": "9320b6e7833c0dde2249b4192f4b851d34b79b76f45d826b56e585da63e1549b",
+      "bytes": 3993
+    },
+    "old-vm-shutdown-request.json": {
+      "sha256": "8b6a6a114bbb494752f75364b1fff391fbee6edc91e407e5bc6c41604229354d",
+      "bytes": 295
+    },
+    "old-vm-system-poweroff.json": {
+      "sha256": "800b741c199f69cd1c559ba191b819ee69eb6b29b252ba7cb49abd99fac6ca22",
+      "bytes": 352
+    },
+    "gtk-fixture-dependency.json": {
+      "sha256": "fda2b44c216c7915d9e3a99eaa53276ff58843f5a74b64a230be2ba11f1736c2",
+      "bytes": 226
+    },
+    "putgd-current-kde-identity.py": {
+      "sha256": "0ab57f3cea167eb9ceb0d61456fc7980e0ce49b70066e9c128081ea0ccb08dce",
+      "bytes": 1999
+    }
+  }
+}

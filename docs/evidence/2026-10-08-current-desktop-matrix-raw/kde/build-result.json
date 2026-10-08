@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "archiveSha256": "ec179214a662010c7f6d21a2cc5fe29479423ff6a6e9292433ef35b0aebd3fab",
+  "startedUtc": "2026-10-08T20:30:01.494490+00:00",
+  "finishedUtc": "2026-10-08T20:41:00.279175+00:00",
+  "exitCode": 130,
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/kde-001/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/kde-001/identity",
+    "-p",
+    "22224",
+    "lab@127.0.0.1",
+    "sh",
+    "-s"
+  ]
+}

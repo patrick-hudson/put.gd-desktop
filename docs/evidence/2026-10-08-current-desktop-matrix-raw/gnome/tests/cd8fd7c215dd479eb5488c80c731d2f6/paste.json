@@ -1,0 +1,12 @@
+{
+    "formats": [
+        "image/png",
+        "application/x-qt-image"
+    ],
+    "image": {
+        "height": 60,
+        "saved": true,
+        "width": 80
+    },
+    "schemaVersion": 1
+}

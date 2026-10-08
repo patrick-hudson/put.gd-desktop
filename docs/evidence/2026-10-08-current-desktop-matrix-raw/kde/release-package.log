@@ -1,0 +1,52 @@
+[1/42] Automatic MOC and UIC for target putgd_ui
+[2/42] Building CXX object CMakeFiles/putgd_x11.dir/putgd_x11_autogen/mocs_compilation.cpp.o
+[3/42] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Capture.cpp.o
+[4/42] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/CinnamonRegionCapture.cpp.o
+[5/42] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Clipboard.cpp.o
+[6/42] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Shortcuts.cpp.o
+[7/42] Building CXX object CMakeFiles/putgd_x11.dir/src/ui/RegionOverlay.cpp.o
+[8/42] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11SourceAdapter.cpp.o
+[9/42] Building CXX object CMakeFiles/putgd_gnome.dir/putgd_gnome_autogen/mocs_compilation.cpp.o
+[10/42] Building CXX object CMakeFiles/putgd_gnome.dir/src/platform/gnome/GnomeProtocol.cpp.o
+[11/42] Building CXX object CMakeFiles/putgd_kde.dir/putgd_kde_autogen/mocs_compilation.cpp.o
+[12/42] Building CXX object CMakeFiles/putgd_gnome.dir/src/platform/gnome/GnomeAdapter.cpp.o
+[13/42] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KWinTransfer.cpp.o
+[14/42] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KWinCapture.cpp.o
+[15/42] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeShortcuts.cpp.o
+[16/42] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeRegionOverlay.cpp.o
+[17/42] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/DataControlClipboard.cpp.o
+[18/42] Building C object CMakeFiles/putgd_kde.dir/wayland-protocols/ext-data-control-v1-protocol.c.o
+[19/42] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeSourceAdapter.cpp.o
+[20/42] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/mocs_compilation.cpp.o
+[21/42] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/VisualStyle.cpp.o
+[22/42] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/ShortcutEditor.cpp.o
+[23/42] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+[24/42] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/RecentOperations.cpp.o
+[25/42] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryModel.cpp.o
+[26/42] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryWindow.cpp.o
+[27/42] Linking CXX static library libputgd_x11.a
+[28/42] Linking CXX static library libputgd_gnome.a
+[29/42] Linking CXX static library libputgd_kde.a
+[30/42] Automatic MOC and UIC for target putgd-cli
+[31/42] Building CXX object CMakeFiles/putgd-cli.dir/putgd-cli_autogen/mocs_compilation.cpp.o
+[32/42] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/TrayController.cpp.o
+[33/42] Linking CXX static library libputgd_ui.a
+[34/42] Automatic MOC and UIC for target putgd
+[35/42] Building CXX object CMakeFiles/putgd.dir/putgd_autogen/mocs_compilation.cpp.o
+[36/42] Building CXX object CMakeFiles/putgd-cli.dir/src/cli/main.cpp.o
+[37/42] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/putgd-desktop-fixture_autogen/mocs_compilation.cpp.o
+[38/42] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/__/__/tests/fixtures/desktop_fixture.cpp.o
+[39/42] Linking CXX executable putgd-cli
+[40/42] Linking CXX executable packaging/linux/putgd-desktop-fixture
+[41/42] Building CXX object CMakeFiles/putgd.dir/src/main.cpp.o
+[42/42] Linking CXX executable putgd
+CPack: Create package using DEB
+CPack: Install projects
+CPack: - Install project: putgd []
+CPack: Create package
+CPackDeb: - Generating dependency list
+CPack: - package: /home/lab/putgd-current-a3d70dc/build/packages/putgd_0.1.0_amd64.deb generated.
+8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1  build/release/putgd
+41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85  build/release/putgd-cli
+cdfc3fed552a6740c50e8f82a62f47a2fffe9db215b9aa7e48f79422ca5708aa  build/release/libputgd-s3.so
+5a85f0b4117ae0bc5e2f14aebc408e3dc909ec58f58385edc6b1c9710a5e8fbc  build/packages/putgd_0.1.0_amd64.deb

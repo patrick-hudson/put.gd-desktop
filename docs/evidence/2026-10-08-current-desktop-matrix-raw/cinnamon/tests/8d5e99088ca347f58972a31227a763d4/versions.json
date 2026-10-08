@@ -1,0 +1,17 @@
+{
+  "kernel": "6.14.0-37-generic",
+  "packages": [
+    "cinnamon 6.6.4+zena",
+    "gjs ",
+    "gnome-shell ",
+    "libqt6core6 ",
+    "libqt6core6t64 6.4.2+dfsg-21.1build5",
+    "muffin 6.6.1+zena",
+    "putgd 0.1.0",
+    "xdg-desktop-portal 1.20.0+ds-2ubuntu1",
+    "xdg-desktop-portal-backend ",
+    "xdg-desktop-portal-gnome ",
+    "xdg-desktop-portal-gtk 1.15.1-1build2",
+    "xdg-desktop-portal-xapp 1.1.3+zena"
+  ]
+}

@@ -1,0 +1,1447 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:53:16.974723+00:00",
+  "scope": "Explicit allowlist only; no private SSH keys, guest config, credentials or arbitrary payloads. Package excluded from evidence manifest but separately hashed in summary. Raw synthetic PPM witnesses remain in private test-run evidence directories.",
+  "files": [
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/parameters.json",
+      "sha256": "a26bd1daab6848bc5f47976e520574550d23998daab92a2e6a33028f4eb5743a",
+      "bytes": 3084,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/results.json",
+      "sha256": "3b12d8b0292cd33c9a60e0d0047f2467ef99549ca43bb59ffbfda55b00320680",
+      "bytes": 2339,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/results.xml",
+      "sha256": "bbc14c8f6db37e11fee9278a058e4cad9c3ff3d94cf353dc78372f45a4168465",
+      "bytes": 200,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/paste.json",
+      "sha256": "598eb11d64baa6c179996ddb48891a5a82fe72904b2154edb0ea9af8a11383f8",
+      "bytes": 192,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/paste.ppm",
+      "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c",
+      "bytes": 14413,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/artifact.ppm",
+      "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c",
+      "bytes": 14413,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/before-head0.ppm",
+      "sha256": "b7c182c4d75c5a925e854454784c8283fc56ba08bce3ae992f77c19a05009098",
+      "bytes": 3072016,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/final-head0.ppm",
+      "sha256": "18d44ae11fa234e4436affb92c2faded90df58e396417d722f5366776f91ac8a",
+      "bytes": 3072016,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/diagnostics.json",
+      "sha256": "919f2dec521def9b821ccafee00f9ab8fc5f0fb3002a1918e81a18a19f756adf",
+      "bytes": 2760,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/artifact-0",
+      "sha256": "2787c750bb341f3788ecf80ce72c29e4f529fa88b29cd2cdd700107f32782435",
+      "bytes": 329,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/cd8fd7c215dd479eb5488c80c731d2f6/manifest.json",
+      "sha256": "c7a06d398ecd66064b13699d0a30c2181458e366abf029fec83da7427851e4bf",
+      "bytes": 1293,
+      "case": "qt-region"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/parameters.json",
+      "sha256": "ddfe89df0b409432323fd7ecfe326e667155798ea075176e6ad3e5b949d0c8eb",
+      "bytes": 2966,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/results.json",
+      "sha256": "b7855209b3ffc96b52140f0fa70011cd99ae0fc541609d3fbc5c567bc9883810",
+      "bytes": 2344,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/results.xml",
+      "sha256": "b13956ab519d92acdb3f9f9070e6cc9fce2e098028656dc2cb73b78863fbed26",
+      "bytes": 199,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/paste.json",
+      "sha256": "d82042ee56528f1ef80658b819d779c4fb4b6cf8ed7349e069d334b9622575c4",
+      "bytes": 194,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/paste.ppm",
+      "sha256": "8e32eb138d2f59bca8c53f275a81f334b3727256f7bf8d334096f521c8d68ddd",
+      "bytes": 953295,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/artifact.ppm",
+      "sha256": "8e32eb138d2f59bca8c53f275a81f334b3727256f7bf8d334096f521c8d68ddd",
+      "bytes": 953295,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/before-head0.ppm",
+      "sha256": "651d59985956d96f53c35c7a482616a4ce602822c371db089b78b5ab9edd1db2",
+      "bytes": 3072016,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/final-head0.ppm",
+      "sha256": "76df9e62bd7bbd8226395566727e3dac85ebc70b859f3df29df9c179746594cb",
+      "bytes": 3072016,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/diagnostics.json",
+      "sha256": "1a600478d8cb6240305b8bd0d253bf5bc180f8661c6ddd6a624720aa4ebb45ab",
+      "bytes": 2761,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/artifact-0",
+      "sha256": "aaec5838f6df6bcf254563a90a350060d8605276f94fff4a5ed9ba2602cc7d8c",
+      "bytes": 18116,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/b41cd07fe4354bf7b9dd012a145ea187/manifest.json",
+      "sha256": "d7daebda96f72951af28e0c6e8cccf99facc7a49cc7064ccd7ae13a35c39fae7",
+      "bytes": 1293,
+      "case": "qt-window"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/parameters.json",
+      "sha256": "448a50b8462f26f4097965ed89a8af06439bf8b48277c7baebced5a24d547231",
+      "bytes": 2971,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/results.json",
+      "sha256": "816229aa1e4979ff91b0be85dae79ed4b2959940328fc1192c4ee34e636662e9",
+      "bytes": 2348,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/results.xml",
+      "sha256": "5275baeee80a4220cedcf8c09ccc42f5f24abaf9ae901a43dde3015edd010a7d",
+      "bytes": 200,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/paste.json",
+      "sha256": "7f861c2bc6bf469aea13e3d4e5c32661435a2614945d0e4c4c2112d8b017b6f4",
+      "bytes": 195,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/paste.ppm",
+      "sha256": "fb0b32d3452e9fca37f740013c8c22e7c40dcfbfdcb6bf1ddd924a831f75cf83",
+      "bytes": 3072016,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/artifact.ppm",
+      "sha256": "fb0b32d3452e9fca37f740013c8c22e7c40dcfbfdcb6bf1ddd924a831f75cf83",
+      "bytes": 3072016,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/before-head0.ppm",
+      "sha256": "fb0b32d3452e9fca37f740013c8c22e7c40dcfbfdcb6bf1ddd924a831f75cf83",
+      "bytes": 3072016,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/final-head0.ppm",
+      "sha256": "158a48f865ee4e9875812d69dd18be112ae87051137629abea0195c037422561",
+      "bytes": 3072016,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/diagnostics.json",
+      "sha256": "bc2882acdb4100a32175ef5c9621642c654e3fa1d67247538dcfdbb58412dd49",
+      "bytes": 2760,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/artifact-0",
+      "sha256": "96bc0c0e4d43708bfcdabd87d72820bc3f6f084c26986f41874d6b4978f15972",
+      "bytes": 307451,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8bd3896517f6404782fb705af1359275/manifest.json",
+      "sha256": "7d9a833642efbcae9e2977151298b67a12f2f0ef19712627b69bae0c4a7409a6",
+      "bytes": 1294,
+      "case": "qt-desktop"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/parameters.json",
+      "sha256": "fcbdd1e7d5ae465c15455bc3d280aa837ce6bb8966aff73a71521a27b560ac88",
+      "bytes": 2842,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/results.json",
+      "sha256": "05da75c13ffa8d8776d8de2825f68d89bb8a6c9b731b6f34d4f89d02ffaf378d",
+      "bytes": 2227,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/results.xml",
+      "sha256": "21459bd484d5701a0dc2ea4572a6bb34e2c240d7d9dabc4ca5964327e6e0adf1",
+      "bytes": 207,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/paste.json",
+      "sha256": "adfad37963d16d290b05762db709527596f2459dde215d385e128ecf78f15b3b",
+      "bytes": 118,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/before-head0.ppm",
+      "sha256": "e8ea2a0698f36ea340da8e5afa49de046bc2bfb46c814de0df04efc0e2d86df3",
+      "bytes": 3072016,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/final-head0.ppm",
+      "sha256": "3b6c6bf42ccf066f9f137bee6fe4807b1d0abbc520099ebd4787e3917bad676e",
+      "bytes": 3072016,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/diagnostics.json",
+      "sha256": "4c0991aa52c66f9f2eb31c150e1adba74af833f52693cf15c690cdc459d4f43f",
+      "bytes": 2760,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/artifact-0",
+      "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+      "bytes": 30,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/c88e7d7378784c6abe30650aed98f3bd/manifest.json",
+      "sha256": "149f56c6e990f834a9cea28e2017ef8b31093428fabb10a59075b89dca864448",
+      "bytes": 1128,
+      "case": "qt-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/parameters.json",
+      "sha256": "71ad44003775ab2aadaf8632c8d97690315fb0c0d78d75b719fe3ea9fab9984d",
+      "bytes": 2982,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/results.json",
+      "sha256": "8735c4ffb8d45329cf8b8a1cf6a07d2ae686a50bc1fbaec89ace5a3d96afd3b0",
+      "bytes": 2347,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/results.xml",
+      "sha256": "3dfab14bf40c8f1a271db0193e3b936aedf1c5b3737eb1bf3616ae850b8e604d",
+      "bytes": 208,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/paste.json",
+      "sha256": "2f620c8f9dc58b86247c173cea6b146c038ce08a5901bf96b9dd5cfe0cc5fdd1",
+      "bytes": 192,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/paste.ppm",
+      "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+      "bytes": 18445,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/artifact.ppm",
+      "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+      "bytes": 18445,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/before-head0.ppm",
+      "sha256": "e5f0b867d58d27ce68700bbc7fdd213a6601c651b1082e2497d6ec9764899711",
+      "bytes": 3072016,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/final-head0.ppm",
+      "sha256": "6bf34ff458f6e96b9a8628183ef291ee8107a1a668341f02f68acada69f6809a",
+      "bytes": 3072016,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/diagnostics.json",
+      "sha256": "94bbf026e729b4c4967c8672b8bea1c7f08954ec5e0544f100bef018452e7cb5",
+      "bytes": 2760,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/artifact-0",
+      "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+      "bytes": 234,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/8f073530a87944b4b545c28a16528ba8/manifest.json",
+      "sha256": "586cf345bf4c4ed4de20ea82b849aa8545946ba7132df295eafac6f5f487e370",
+      "bytes": 1302,
+      "case": "qt-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/parameters.json",
+      "sha256": "f199307e5e2e36794452724c275a62dfe9a7b4eddff3330873785f163b572ee9",
+      "bytes": 2845,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/results.json",
+      "sha256": "1eeb4fba107e8c2d44a0aa4c2cb1b593f15c844af0c9fe804396d2e6e0205828",
+      "bytes": 2417,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/results.xml",
+      "sha256": "571d18f202a9e09793b2047dc1eec1d7ad791c0b569c7ce82b294279d401905c",
+      "bytes": 208,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/paste.json",
+      "sha256": "577e826d3596bb35b4926b154efa212e396883c0f68fa843ef0282a4e6886f06",
+      "bytes": 359,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/before-head0.ppm",
+      "sha256": "72a0f6f505719c247c50948debbd16a40f7b2cc0e2cab08a5327b50df9e2d224",
+      "bytes": 3072016,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/final-head0.ppm",
+      "sha256": "e4afdcee8991233bcb1a87e065c525184a7c5c414cbd4b68ccce2b5e22896e55",
+      "bytes": 3072016,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/diagnostics.json",
+      "sha256": "14bbda74bb243e30407ccbabce37fe7f71419365c7da9d24acd7f1d305343500",
+      "bytes": 2760,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/artifact-0",
+      "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+      "bytes": 23,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/artifact-1",
+      "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+      "bytes": 23,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/edc9d4fc3dea426d89638e0af77509a9/manifest.json",
+      "sha256": "880eb25ba9877b9a4bdbb44fa0f47d53ed6d45e860f700676dff5e5b5bf273e9",
+      "bytes": 1215,
+      "case": "qt-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/parameters.json",
+      "sha256": "81d6ef1bf39bbcc72763aa036f1a1f2ae89423d888040f9f48dc56f0c61ff570",
+      "bytes": 2786,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/results.json",
+      "sha256": "b12cafb5ae01a4ce98503c707e84b27a353e97472a034cc83f3b4b545a12436a",
+      "bytes": 1926,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/results.xml",
+      "sha256": "860c9e8425ef02dafdf3d121d597131bcf53120ef9a98dc8fb9698b1d0518191",
+      "bytes": 212,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/paste.json",
+      "sha256": "cf0904eab4d5535aa0efc63fc685da9aa3c5d50027be73230887fefbc40937d9",
+      "bytes": 154,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/before-head0.ppm",
+      "sha256": "e417b0647c9a8b1c8a6237b5fc7422632fbd913f0672675076bedddf48bf6e82",
+      "bytes": 3072016,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/final-head0.ppm",
+      "sha256": "f07216d283b743fdbed8b0cfdf1f2c13b1d78a59003c2c2937f08a0429272177",
+      "bytes": 3072016,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/diagnostics.json",
+      "sha256": "7271b70d47748cf5f34689178db6ac64d34c916642405db26d15342ae9dc48e8",
+      "bytes": 2759,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/47bfb4a7cc6c48f6ac0702806966f9f0/manifest.json",
+      "sha256": "847ad8e9442f33007d7a4eb2adcb5d255697533b8cb2e4d819684dcc91ee4db1",
+      "bytes": 1048,
+      "case": "qt-region-cancel-escape"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/parameters.json",
+      "sha256": "d54c0ec1146d1c0eafce530768416a789db3be33c30a25c2767160bcd897948f",
+      "bytes": 2796,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/results.json",
+      "sha256": "8f38d8faa5b7220ff29a087551754d1c1536055c7c2dfe0bcca4bd75e2382063",
+      "bytes": 1931,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/results.xml",
+      "sha256": "3c876fc6b59c559fc31694c40b3ff72ccdd1701d25571b8d8726fbc3f6595d74",
+      "bytes": 217,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/paste.json",
+      "sha256": "cf0904eab4d5535aa0efc63fc685da9aa3c5d50027be73230887fefbc40937d9",
+      "bytes": 154,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/before-head0.ppm",
+      "sha256": "5bae8cf378fc7ebccc4104113ff9b8f01e702df90a9d4e4d5efe81320491163c",
+      "bytes": 3072016,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/final-head0.ppm",
+      "sha256": "f07216d283b743fdbed8b0cfdf1f2c13b1d78a59003c2c2937f08a0429272177",
+      "bytes": 3072016,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/diagnostics.json",
+      "sha256": "91f9aeeb4a258531c225e939722a91d078e6fefa674747e73d95c66db9638895",
+      "bytes": 2759,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/bf8e981b692c439aaa69aeab8e7f0059/manifest.json",
+      "sha256": "9f5c53443961e9f0e91fe725add83fccee1cc518ce4c4801ce32db8d1bab52e2",
+      "bytes": 1053,
+      "case": "qt-region-cancel-right-click"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/parameters.json",
+      "sha256": "f8f51b0f3f43fe3bc1b5d59ecfaf30f3a552fd8ce8d02ef48808aa6af63fc35c",
+      "bytes": 2792,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/results.json",
+      "sha256": "1c413be1c5de2d7f8bce50061c917057fe319444be2d27a3f275fc79d05cb144",
+      "bytes": 1930,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/results.xml",
+      "sha256": "87f2811d1759c04c6857493269c54a8c3593345abee6eb1de84ff48d530c5996",
+      "bytes": 216,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/paste.json",
+      "sha256": "cf0904eab4d5535aa0efc63fc685da9aa3c5d50027be73230887fefbc40937d9",
+      "bytes": 154,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/before-head0.ppm",
+      "sha256": "4c266952672326b22b94082d958bcaca458b168da00aa2f37eaaa28d5bf56a15",
+      "bytes": 3072016,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/final-head0.ppm",
+      "sha256": "f07216d283b743fdbed8b0cfdf1f2c13b1d78a59003c2c2937f08a0429272177",
+      "bytes": 3072016,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/diagnostics.json",
+      "sha256": "9b735d5db239a88ec4776742f3cf24738fa1598937fdf2f12b37bea4ad57c963",
+      "bytes": 2759,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/dc0630627011473f8e88cf28017b8f8e/manifest.json",
+      "sha256": "690239b09105889690c23f1cacf010fa470201735147848e343963c6da4416a4",
+      "bytes": 1051,
+      "case": "qt-region-cancel-zero-area"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/parameters.json",
+      "sha256": "cd815080d83f4e70dc252ecbe956b0958ac884593c0314c22567d49e21d787a8",
+      "bytes": 2745,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/results.json",
+      "sha256": "9e4430a83032dd2b70e42ddeaf52f606b16664a3e02518a2441de3bdfedd4db8",
+      "bytes": 2333,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/results.xml",
+      "sha256": "020328dc47fb7aa62d014aceef092608e6538c3ef9fe1087c41ffa08723a5b6d",
+      "bytes": 207,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/paste.json",
+      "sha256": "f05fed2b4d2f4ab465c6c0ea1432e7c1d254408e8c8d7ba904cf7d587f782c13",
+      "bytes": 139,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/before-head0.ppm",
+      "sha256": "8f571dc530a24ce5c5b164ec78ea2d85d7c3a546cadffad1ca49c491d6cb94dc",
+      "bytes": 3072016,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/final-head0.ppm",
+      "sha256": "cecebe1323393dfddd3e5011fd53b0e085befd44c2d9ef11982f7d49dddaac2c",
+      "bytes": 3072016,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/diagnostics.json",
+      "sha256": "1eca3368a06abd2d96c1bc2ebca51d5516b217f74d6608754b9f82ec42416996",
+      "bytes": 2761,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/artifact-0",
+      "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+      "bytes": 30,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/fbda695e1ac9445bac8939b0811021c9/manifest.json",
+      "sha256": "8785a9e66fce53c8132cc45314a48a9c8c7371b366b4258ca6ee6de5204e9258",
+      "bytes": 1128,
+      "case": "gtk-clipboard-text"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/parameters.json",
+      "sha256": "b4500f224abc73a255fa27178b9ced648619832af56f6da1da7c4dee05ea2650",
+      "bytes": 2885,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/results.json",
+      "sha256": "77d6add31a51aed0545aeb2c2223b905a9fbb2f44dc6329d7323aa85be5d684c",
+      "bytes": 2371,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/results.xml",
+      "sha256": "a9e3d66c6d0ca36d047a621c7786470ed6437d5a438cb400499eb5ecd5159c51",
+      "bytes": 209,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/paste.json",
+      "sha256": "9d54616d6029209973a208c52c0a52e86ebd6840bb2f304b6806a416f32d8642",
+      "bytes": 151,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/paste.ppm",
+      "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+      "bytes": 18445,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/artifact.ppm",
+      "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+      "bytes": 18445,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/before-head0.ppm",
+      "sha256": "a131948db1191f12da5bd0d35b851427d10971db31bd3499a50b3eda92e29c2a",
+      "bytes": 3072016,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/final-head0.ppm",
+      "sha256": "f05977178db8f73e5198b1d432866b5ac795627aff20311a407d5197aef789dd",
+      "bytes": 3072016,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/diagnostics.json",
+      "sha256": "6979d0fc24c3a519cf34af8871c0c225971f54c3c6b19d61f420eb298abd8640",
+      "bytes": 2761,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/artifact-0",
+      "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+      "bytes": 234,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/2ea60c75515f4738abdecf697d2c70ca/manifest.json",
+      "sha256": "fb1933e866a7f6a7c6d24cb5db021566e23e6686ae28eafddbc41dded5cad145",
+      "bytes": 1302,
+      "case": "gtk-clipboard-image"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/parameters.json",
+      "sha256": "5446687af26896451d334862e07a7b312b361fe7c27045d4133821f03223c6c3",
+      "bytes": 2748,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/results.json",
+      "sha256": "754bdb4ac0f4fcd91ae923208ceeb06ea7f1aa01d08fd809ed2ce27f0d1f0458",
+      "bytes": 2624,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/results.xml",
+      "sha256": "0237b08a149ac783c47d2208e0bbf109d09088b95393663a1ccc4561010628d6",
+      "bytes": 208,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/ready.json",
+      "sha256": "02131b852d877e7e34ac608f11aa77a4a7f159a3228dddb981cc6b385fcc97a6",
+      "bytes": 747,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/paste.json",
+      "sha256": "6f36e339350762b9808e00e04149cc8ccfc7dbe9adb4fbe5cb752159d9a04b4b",
+      "bytes": 506,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/before-head0.ppm",
+      "sha256": "f05977178db8f73e5198b1d432866b5ac795627aff20311a407d5197aef789dd",
+      "bytes": 3072016,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/final-head0.ppm",
+      "sha256": "ccf5859ae664f75483126e5158a819b667b65dafa61483dc2e085d8ff3376b2c",
+      "bytes": 3072016,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/versions.json",
+      "sha256": "3001fa21fc3bed2abe5e536758585e5e9878ea7603913441aeb853c3eb4a2756",
+      "bytes": 469,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/package.json",
+      "sha256": "264c54350a553967cacf121dea243404a1da4ad32023ab12770511c942a0e768",
+      "bytes": 544,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/diagnostics.json",
+      "sha256": "3aae0891b5b702ae4eae32e859f7fc0ea63431f01edc33f419422e2ee72fc723",
+      "bytes": 2761,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/artifact-0",
+      "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+      "bytes": 23,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/artifact-1",
+      "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209",
+      "bytes": 23,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/lab-runs/current-gnome-a3d70dc/tests/06076f40e19147aca797ee98854c6952/manifest.json",
+      "sha256": "e9cccaaae1582cd6fc98872ab7b4c750bd4106828102dfdf74e459d6a013f449",
+      "bytes": 1215,
+      "case": "gtk-clipboard-files"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-environment.json",
+      "sha256": "af107fbd148d8d0a1591212e7ac6fdeda8435962b13ad550530b638d965924d0",
+      "bytes": 2444,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/build-dev.log",
+      "sha256": "b85c1684be64adfe51062a55bf41eaf6be18ff211b01c629e147ebb078e44644",
+      "bytes": 19807,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/build-release-targets.log",
+      "sha256": "95b85c3a2b448a9e4148bbf1eebf1b7de5833d8702702bda1e6f471f7e234323",
+      "bytes": 4559,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/build-release.log",
+      "sha256": "3336a6616a9a251282c5dabf19ca54caf4e6121d601e05b16d9dff63a52c6fb8",
+      "bytes": 3012,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/configure-dev.log",
+      "sha256": "9831684eaec70f22d1a06085c7cceadc603dd2ef8c3f1431c4ea4f0cacac1030",
+      "bytes": 2268,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/configure-release.log",
+      "sha256": "7431dd4160fa0dd777cb85e6a37ebafcda0a700731608bafc108692a8568749b",
+      "bytes": 2272,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/ctest-dev.log",
+      "sha256": "af5c6c0013b3615820906aa5763039ecf535c63762c79f026566c48f638e9d47",
+      "bytes": 3149,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/ctest-dev.xml",
+      "sha256": "08e721376a5344d3eb504da6dd9653a8b3e6c0c07d0d1d2aeaabdadcda71db06",
+      "bytes": 26890,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/dependency-verification.json",
+      "sha256": "9e180064d931ea1bf879ed7bd0a55d1f1c26af6071d8797d615f7faaca3adf6d",
+      "bytes": 425,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/package.log",
+      "sha256": "ce7eb41a51e7481d17ce72a5de4dcec0cc3573e235bdbc75bd8467330da8df2d",
+      "bytes": 250,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/sha256s.txt",
+      "sha256": "435208b0603c1d01c5ae9653dbef3cd8dcec7eb4a5573b02e9cb941528fd8efa",
+      "bytes": 731,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/status",
+      "sha256": "37a40f08d8548dba289b9b0bb35bcf63b359f6d37ee86044ebc6b6da080b9ec1",
+      "bytes": 9,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build.sh",
+      "sha256": "b3a7d20cdbd0176e8d1362118bb38dd6aebe3fb569dfa761ae701901f32c2b28",
+      "bytes": 1533,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/functional-ready.json",
+      "sha256": "8bc3d25ff53f3f0e0a1b295a5e93ff3f7d18c03613adc6e22ae706640a7f8941",
+      "bytes": 748,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/gtk-clipboard-files.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/gtk-clipboard-files.stdout.json",
+      "sha256": "d095da8d9b4dc6d03640c9ea43f5bca9e50bb630820be551f97bc1f89c20ae27",
+      "bytes": 2196,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/gtk-clipboard-image.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/gtk-clipboard-image.stdout.json",
+      "sha256": "30562577442124fdf6b7996d0045776eff928c463330340a14184f7b815a8811",
+      "bytes": 1969,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/gtk-clipboard-text.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/gtk-clipboard-text.stdout.json",
+      "sha256": "e2f97ff2d1f9f83780b28031ece2069d7fe08b76418559d13467d78e66d2d285",
+      "bytes": 1921,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/gtk-fixture-dependency-install.log",
+      "sha256": "a92aeb1170c5c0020ab33790004e4fcd01534fa07e5f730efd16c003a70dad64",
+      "bytes": 2262,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/helper-enable.txt",
+      "sha256": "c5818391a2d6d5427edbb5355c94f30cbf209c66c87f76160ea0f567dc8c5400",
+      "bytes": 311,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/identity.py",
+      "sha256": "504cff34bc6a1c487edab41f0c7996869838567e61a0e792d56f87857b666504",
+      "bytes": 2137,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/install.json",
+      "sha256": "aa63f44c0b797213b21c1f7eff114571537f4b3646ba449ed74904cb8034e77a",
+      "bytes": 24,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/install.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/installed-running-identity-after.json",
+      "sha256": "500b203569fd1abf1733b473810819b8516b87db203be130cd7422c821498b71",
+      "bytes": 5503,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/installed-running-identity-before.json",
+      "sha256": "039c057969e1a8c8ba0343a7988fc8ae566a40d9f5ec4403007a31ac763d42c0",
+      "bytes": 5535,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/launch.json",
+      "sha256": "7b8d8bcb69bfb77641c8f966a72aeec810f7ecf35c144261e9a84ffc0b03c4fe",
+      "bytes": 181,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region/after-capture.png",
+      "sha256": "d74bb3c782fa7a3e8264698af4c5d8dd445cd1fe7008ab9cc2b36cd038cf3100",
+      "bytes": 595019,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region/before-selector.png",
+      "sha256": "2a5f3f610117890541feff71ac935bbdaa38f31df5d59d4e56fb0905f6caf71b",
+      "bytes": 594949,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region/capture.png",
+      "sha256": "62794710928f0a2f15221c9654624e80ed72efc380c84af4efee2e9585cc577e",
+      "bytes": 329,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region/results.json",
+      "sha256": "62e26cd59b3fa4ee0802cb8f1968fbc80e6b9413e1084184f7d1d82f77f852db",
+      "bytes": 7649,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region/selector-before-update.png",
+      "sha256": "2a5f3f610117890541feff71ac935bbdaa38f31df5d59d4e56fb0905f6caf71b",
+      "bytes": 594949,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region/selector-live-updated-before-drawing.png",
+      "sha256": "de0da567e6e63268f7d1658b697cbbc0ffe8a465f099139ffc241d3a39c3e1cf",
+      "bytes": 594949,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region/selector-outline.png",
+      "sha256": "72c47937a3dcf901701aecbf6c31de8989d743f15b7fb6ead1e6a261b5e31298",
+      "bytes": 595046,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region.py",
+      "sha256": "5e16ebb8a53b0b3a2673ac91f461ae1ac08045ca02831f17a8ca672277e199e6",
+      "bytes": 6306,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/live-region.stdout.json",
+      "sha256": "29d5fc5b5f41e7e3b7dd948cd175c74c8b41624dd7f3a3a4f126192bf068f610",
+      "bytes": 387,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/matrix-progress.jsonl",
+      "sha256": "61f65d563ac44a2c49c64cc66f17a39a7680fd0dc6d4232943f63fcc67a25490",
+      "bytes": 1450,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/matrix-runner.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/matrix.json",
+      "sha256": "7e5a3af906e4480639bb7f8749d2f282deb362eaa1aab25982aaf84d9223d45c",
+      "bytes": 40902,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/old-resident-stop.json",
+      "sha256": "d8afbd87f80e8cd66ba081ccf2f7a8928bf22fd1a537d8f380678b09ab3f55f4",
+      "bytes": 237,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/old-vm-shutdown.json",
+      "sha256": "c7735a0c1ce8d60dc14c87b01b6bea1446fe0db9a1c4c7f3eda5b1597d051e1c",
+      "bytes": 491,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/overlay-restart.json",
+      "sha256": "936a21b07635ee0ffd2a38053d85af30e2f2050499d073431fa47ffc943eae79",
+      "bytes": 1701,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/parameters.json",
+      "sha256": "d077695c1884fb49e240a078028d7100410e8aa882433d97f788898080fe8e33",
+      "bytes": 2052,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-clipboard-files.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-clipboard-files.stdout.json",
+      "sha256": "2231e17f657a968eccfd3568de3efe6fca023b170e8cf4a1f637bbb1e3443841",
+      "bytes": 1993,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-clipboard-image.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-clipboard-image.stdout.json",
+      "sha256": "0153713fac922a9e48a03e07b31d9879dce48ddb7985ce0eca4327b77ce96456",
+      "bytes": 1943,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-clipboard-text.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-clipboard-text.stdout.json",
+      "sha256": "9025510043b6c9eecdadfa277f6ec87100c743e4316f8807be93fc2328a56e7a",
+      "bytes": 1825,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-desktop.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-desktop.stdout.json",
+      "sha256": "388ebdc47fef695237405f04f04ec84a23e660f38552d276f865a15f4d681818",
+      "bytes": 1944,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region-cancel-escape.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region-cancel-escape.stdout.json",
+      "sha256": "ef26642efc6394ca9d1b589679fe37ef181fa3912066d14386fa900921a229db",
+      "bytes": 1620,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region-cancel-right-click.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region-cancel-right-click.stdout.json",
+      "sha256": "bb9f587b1ed0d39e996ef67e10fc81d7920036621a5a6879488cf66792a5f705",
+      "bytes": 1625,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region-cancel-zero-area.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region-cancel-zero-area.stdout.json",
+      "sha256": "c746e6c43a4e60febecb35d9f757dfd8a5db203a8e4c32cc0804d2c9cc3deec9",
+      "bytes": 1624,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-region.stdout.json",
+      "sha256": "aa748b6f7193f0fd27e5a5db01d42cb2601d9a63674b62f33f8e47dc1e2b7d2a",
+      "bytes": 1935,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-runtime-versions.json",
+      "sha256": "d90586d4242ee062b7692bd85789ba1a29d96318c635121acca27a99753d178a",
+      "bytes": 659,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-window.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/qt-window.stdout.json",
+      "sha256": "fb428e205c5af92137bcefd6bf3963221063a3e7b3a8aa118e0610184d95e9fb",
+      "bytes": 1940,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/release-target-boundary.json",
+      "sha256": "951ed10f2f153807280d4f9d0d380bc2f04e42620d1decdb77c507b0a3d15b9d",
+      "bytes": 1164,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/release-targets.sh",
+      "sha256": "b518e60ddbbdabb218886b27e22b6b46cf30d9ac6328f3cea308d975824ad201",
+      "bytes": 540,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/restart-overlay.py",
+      "sha256": "9a7c6b2b03a28142a73a24157a168d9034099c44e859700f7653d43bbfd6ff9e",
+      "bytes": 2039,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/run-matrix.py",
+      "sha256": "60b531436535215dbb2d805d676a7b713e5e6cbd3e1fa536fb3428e077fd2a35",
+      "bytes": 2011,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/session-reboot.json",
+      "sha256": "005813166d161a02d50641ec783a9ad2a445311b0e15387c0415a434af8a9265",
+      "bytes": 432,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/1-activity-closed.png",
+      "sha256": "1515b47efd38963f1a52395902786ae4d017c89a167fdaa421b181875fb9c48d",
+      "bytes": 853062,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/1-activity-open.png",
+      "sha256": "44983f5033c3dcb43b7d5a585d958d7346e250e2954536b84762c7d436e3c4fb",
+      "bytes": 346015,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/1-history-closed.png",
+      "sha256": "1515b47efd38963f1a52395902786ae4d017c89a167fdaa421b181875fb9c48d",
+      "bytes": 853062,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/1-history-open.png",
+      "sha256": "41803b0d1fb9a40510618d61f73aa16428e30892d7d9b1e20c13585df9ce255a",
+      "bytes": 316904,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/1-settings-closed.png",
+      "sha256": "1515b47efd38963f1a52395902786ae4d017c89a167fdaa421b181875fb9c48d",
+      "bytes": 853062,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/1-settings-open.png",
+      "sha256": "1316cb80baffaf7a9c74cd86383b092bc70230cbc916a27e508ac3be95217981",
+      "bytes": 264131,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/2-activity-closed.png",
+      "sha256": "52d3932dd8ddbde477e4f70818c67f64595f984022a6d31cdec5347271c980b2",
+      "bytes": 852922,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/2-activity-open.png",
+      "sha256": "39916a159af2e023c9e16b25fce341dcb7cb8aa6b2ba7210ce6e6ff9761312b6",
+      "bytes": 345882,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/2-history-closed.png",
+      "sha256": "52d3932dd8ddbde477e4f70818c67f64595f984022a6d31cdec5347271c980b2",
+      "bytes": 852922,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/2-history-open.png",
+      "sha256": "2e50a161d28999d521d3c2ecbb8fbc9de802f15732de9f76b708ddeb61cdcbbe",
+      "bytes": 316755,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/2-settings-closed.png",
+      "sha256": "52d3932dd8ddbde477e4f70818c67f64595f984022a6d31cdec5347271c980b2",
+      "bytes": 852922,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/2-settings-open.png",
+      "sha256": "08b6e619eb5baf4397dec703a37c78338a0a9c0a3adb6d955df172ae47151fa7",
+      "bytes": 264001,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views/results.json",
+      "sha256": "46295c0e0e8f238939a2a55142616b48765eae4730986efb0a3f313c1a1188db",
+      "bytes": 5731,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views-smoke.py",
+      "sha256": "63f68f384e2273ecc41d2fb225f72e0e11d4ca1ef54024d6f82d456f5a64c0dc",
+      "bytes": 2106,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views-smoke.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/views-smoke.stdout.json",
+      "sha256": "61d90a1618be200361065d26642150bd0a0e733bc6b38c43ce23d9108a087ea1",
+      "bytes": 66,
+      "scope": "owned GNOME build/functional artifact"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/summary.json",
+      "sha256": "e2760fe9129932bf27b46b00862d63d7919d2758bdbd9becd69f75f833c99fbc",
+      "bytes": 2777,
+      "scope": "owned GNOME summary"
+    },
+    {
+      "path": "work/cross-desktop-current/gnome/build-evidence/dependency-verification.stdout.txt",
+      "sha256": "94cbb4f1e5a838548287c5d883de493399d6f89ef37999643fa3f18b26fa8c02",
+      "bytes": 44,
+      "scope": "Original verifier stdout before structured JSON wrapping"
+    }
+  ]
+}

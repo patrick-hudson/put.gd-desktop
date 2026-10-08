@@ -1,0 +1,110 @@
+{
+  "timestampUtc": "2026-10-08T20:18:56.005489+00:00",
+  "scope": "Read-only current memory dashboard; no record action, guest input or process change",
+  "responses": [
+    {
+      "endpoint": "/api",
+      "status": 200,
+      "contentType": "application/json",
+      "cacheControl": "no-store",
+      "bytes": 1876,
+      "sha256": "7a9a18c1871c8e7bdb5e073f6b3c2a436254fd18f8a6fea44e9856f2d2ea6038",
+      "serverNow": 1791490736.0368075,
+      "intervalSeconds": 1,
+      "sourceStates": {
+        "host": {
+          "state": "connected",
+          "last": 1791490735.8943756,
+          "count": 0
+        },
+        "lab/fresh-cinnamon-u9-20261008": {
+          "state": "connected",
+          "last": 1791490735.0380526,
+          "count": 1
+        },
+        "lab/kde-001": {
+          "state": "connected",
+          "last": 1791490735.6886864,
+          "count": 1
+        },
+        "lab/gnome-001": {
+          "state": "connected",
+          "last": 1791490735.7099805,
+          "count": 1
+        }
+      },
+      "sessions": [
+        {
+          "id": "7cbb88b9e0b87707aa564f17",
+          "source": "lab/gnome-001",
+          "pid": 10255,
+          "name": "putgd",
+          "identity": "74fd0dc1-8b33-45f9-ad30-d8cbc57d60a2:10255:114619",
+          "first": 1791489859.650305,
+          "last": 1791490735.7099805,
+          "ended": null,
+          "metric": "RSS",
+          "current": 116670464,
+          "maximum": 116670464,
+          "average": 116670464.0,
+          "count": 861
+        },
+        {
+          "id": "d3c186cb68974c4ee88c192b",
+          "source": "lab/kde-001",
+          "pid": 37517,
+          "name": "putgd",
+          "identity": "9207258b-edaa-49f3-9768-29fe5e3a899f:37517:516634",
+          "first": 1791489859.6440651,
+          "last": 1791490735.6886864,
+          "ended": null,
+          "metric": "RSS",
+          "current": 187928576,
+          "maximum": 187928576,
+          "average": 187928576.0,
+          "count": 863
+        },
+        {
+          "id": "a0dca5c0aa7801ba2329f029",
+          "source": "lab/fresh-cinnamon-u9-20261008",
+          "pid": 28253,
+          "name": "putgd",
+          "identity": "e899c4c0-dab1-4479-988d-929e2fffb2ff:28253:2487381",
+          "first": 1791489859.5703964,
+          "last": 1791490735.0380526,
+          "ended": null,
+          "metric": "RSS",
+          "current": 58830848,
+          "maximum": 58830848,
+          "average": 58830848.0,
+          "count": 860
+        },
+        {
+          "id": "e1819ea4155f6f0167a9bfe1",
+          "source": "host",
+          "pid": 2179649,
+          "name": "putgd",
+          "identity": "58b6029c-9f9e-459b-8f8c-216b5a58d8d4:2179649:26295733",
+          "first": 1791489859.1477706,
+          "last": 1791489940.1576571,
+          "ended": 1791489941.159044,
+          "metric": "RSS",
+          "current": 77410304,
+          "maximum": 77410304,
+          "average": 77311350.63414635,
+          "count": 82
+        }
+      ],
+      "recordingCount": 1
+    },
+    {
+      "endpoint": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "no-store",
+      "bytes": 8593,
+      "sha256": "4cf40e749f91830067e098b9f790643c3ff05e73489e9125f611583a875eb77f",
+      "matchesWorkingTreeIndex": true
+    }
+  ]
+}

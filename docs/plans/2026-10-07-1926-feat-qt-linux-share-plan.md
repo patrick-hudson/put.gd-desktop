@@ -905,3 +905,37 @@ optimization. Keep file sizes, limits and counters wide enough for validated
 values and API/serialization contracts; do not introduce packed structs or blind
 narrowing. Any selected layout change needs repeatable compiler/architecture
 metadata, before/after sizes, range tests and workload RSS/latency evidence.
+
+
+### Current-source cross-desktop memory prerequisite (2026-10-08)
+
+User-directed: memory work must keep cross-functional tests moving in parallel
+across Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Freeze one candidate source
+revision/archive; build with each distro's normal Qt/SDK toolchain, run the core,
+widget and integration contracts, then exercise native capture, clipboard,
+cancellation and view lifecycle scenarios. Retain exact package and actual
+running executable identities; reject an old resident surviving installation.
+Older guest code must never stand in for current-candidate evidence. Independent
+profiles build/test in parallel, with separate run/build state; quiet physical
+measurements retain their serial workload after the functional wave settles.
+
+The 8767 dashboard audit confirmed valid RSS for older VM builds, including
+179.22 MiB KDE RSS with 66.67 MiB PSS. No dashboard fix or leak verdict follows
+from that snapshot. Refresh the test wave on current source, record every blocked
+profile, and keep cold/post-view/post-action memory distinct. Stop superseded
+VMs after copying needed packages and evidence; retain necessary SDK/build caches
+powered off and never remove a referenced golden disk. [Replay and workflow](../testing-vm-memory-audit.md)
+and [the original audit](../evidence/2026-10-08-vm-memory-audit.json) capture the
+reason for this requirement. The 40 MiB target and outstanding desktop/release
+acceptance gates remain open until their own evidence passes.
+
+Execution evidence: [the current-source matrix](../evidence/2026-10-08-current-desktop-matrix.json)
+now records 12 passing native cases per profile, repeated Settings/History/Activity
+opens, GNOME's additional live-background region proof, and new 28/28 Dev suites
+on GNOME/KDE. Cinnamon reused the unchanged product's earlier full Dev/sanitizer
+evidence and passed fresh native cases. A common two-minute post-use observation
+measured RSS 83.30/114.36/186.17 MiB for Cinnamon/GNOME/KDE. The old three VM
+processes were stopped. The runner checks live package identity and retains
+failed attempts; 11/11 host contracts pass and their JSON/log reports are wired
+into Linux CI. This closes the bounded current-source test follow-up, not the
+remaining cloud, mixed-display, package lifecycle, latency or 40 MiB gates.

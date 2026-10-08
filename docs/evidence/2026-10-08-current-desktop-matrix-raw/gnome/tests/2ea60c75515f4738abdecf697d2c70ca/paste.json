@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "client": "GTK",
+  "formats": [
+    "image/png"
+  ],
+  "image": {
+    "width": 96,
+    "height": 64,
+    "saved": true
+  }
+}

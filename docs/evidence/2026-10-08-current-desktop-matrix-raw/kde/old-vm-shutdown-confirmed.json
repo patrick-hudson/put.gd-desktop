@@ -1,0 +1,10 @@
+{
+  "timestampUtc": "2026-10-08T20:46:14.076645+00:00",
+  "result": {
+    "status": "stopped",
+    "evidence": "work/lab-runs/kde-001"
+  },
+  "reason": "Graceful ACPI powerdown did not complete and inactive session rejects systemd poweroff; guest sync completed, all build output copied, user requested retirement. QMP quit stops owned VM only; overlay retained.",
+  "oldHostPidExists": false,
+  "namespace": "escalated host execution"
+}

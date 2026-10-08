@@ -1,0 +1,43 @@
+{
+  "reviewer": "adversarial-claude",
+  "cross_model_route": "claude",
+  "cross_model_target": "claude",
+  "cross_model_harness": "claude",
+  "serving_family": "claude",
+  "independence_verified": true,
+  "model_requested": "claude-opus-5-5",
+  "model_actual": "claude-opus-5-5",
+  "effort_requested": "high",
+  "effort_actual": "unverified",
+  "receipt_supported": true,
+  "findings": [
+    {
+      "title": "Failed reinstall leaves old receipt, so the stale resident still passes",
+      "severity": "P2",
+      "file": "tools/lab/lab.py",
+      "line": 422,
+      "why_it_matters": "The guard checks the running resident only against package.json from the last successful install. It never checks the package that was most recently requested. When an install fails, the earlier receipt stays in place, so an old resident matching the old build passes. The graphical result then looks like a current-source run while it actually tested the previous build. This is the stale-resident pass the change is meant to stop.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "In the `install` action in main(), call `(Path(args.run) / 'package.json').unlink(missing_ok=True)` before `put`/`apt-get`, so a failed or partial install leaves no receipt and verify_running_app fails closed with 'Verified package receipt missing'. Optionally have `run` take the expected deb sha256 and compare it with receipt['sha256'].",
+      "confidence": 50,
+      "evidence": [
+        "tools/lab/lab.py:422 `expected = read_json(receipt).get('installedBinarySha256', {}).get('/usr/bin/putgd')` -- identity comes only from the existing receipt file",
+        "tools/lab/lab.py:932-934 install: `ssh(... apt-get install --reinstall -y /tmp/putgd-lab.deb ...)`; `installed = verify_installed_binaries(...)`; `write_json(... 'package.json', ...)` -- the receipt is overwritten only on success and never removed first",
+        "Scenario: `install --deb A` succeeds and writes receipt A. The resident starts from A. Then `install --deb B` fails, either in apt-get or in verify_installed_binaries, and receipt A remains. A wrapper that ignores install's exit code then calls `run`. verify_running_app sees resident sha == A == receipt and returns it. The scenario passes, and parameters.json records package A while the operator believes B was tested."
+      ],
+      "pre_existing": false,
+      "first_evidence": "tools/lab/lab.py:422 `expected = read_json(receipt).get('installedBinarySha256', {}).get('/usr/bin/putgd')` -- identity comes only from the existing receipt file"
+    }
+  ],
+  "residual_risks": [
+    "The history restart records `runningAppAfterRestart` but never checks that its pid/startTicks differ from `runningApp`. The final check compares only against the post-restart identity. Today SIGTERM has no handler in putgd, so the old resident dies at once and the readiness loop cannot be answered by it. If a SIGTERM/aboutToQuit handler is added later, the old resident could answer `diagnostics` and `history.detail` and pass the restart check without a real restart. Adding `assert result['runningAppAfterRestart']['pid'], startTicks != result['runningApp'][...]` would close this.",
+    "The CI step 'Verify lab identity and protocol contracts' runs after ctest in the same job and has no `if: always()`. Any unrelated ctest failure skips it, so lab-contracts.log/json are missing (upload only warns), and there is no lab-contract signal for that run.",
+    "Identity covers only /usr/bin/putgd. A resident started before an upgrade keeps the old private libraries from /usr/lib/putgd mapped, including the AWS runtime and the dlopen'd putgd-s3 module. A change that touches only those files, such as an AWS SDK lock bump that leaves the main binary unchanged, would pass the guard. The S3 build ID is source-derived and compiled into the main binary, which covers S3 source edits but not every library change."
+  ],
+  "testing_gaps": [
+    "Nothing tests fixture_run's composition: the early `return result` on the cancelled-selector path, the history-restart verify, or the finally-block identity re-check flipping ok to False. The unit tests cover only verify_running_app on its own with `ssh` patched. A test that patches verify_running_app to return a different identity on its second call and asserts results.json has ok == false would cover the green-while-red path.",
+    "Nothing tests the guest-side /proc collection script. That includes the RuntimeError path when startTicks change mid-hash, which surfaces only as a generic 'ssh failed (exit 1)', and the zombie or exiting process cases. All tests replace `ssh` with canned JSON."
+  ]
+}

@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="28"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="128"
+	timestamp="2026-10-08T15:37:23"
+	>
+	<testcase name="geometry_contract" classname="geometry_contract" time="0.0953306" status="run">
+		<properties/>
+		<system-out>********* Start testing of GeometryTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : GeometryTest::initTestCase()
+PASS   : GeometryTest::singleFramePreservesPixels()
+PASS   : GeometryTest::mixedDensityAndTransparentGap()
+PASS   : GeometryTest::fractionalSingleFramePreservesBoundaryPixels()
+PASS   : GeometryTest::rejectsStaleOrUnboundedMetadata()
+PASS   : GeometryTest::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 21ms
+********* Finished testing of GeometryTest *********
+</system-out>
+	</testcase>
+	<testcase name="x11_isolated" classname="x11_isolated" time="18.1294" status="run">
+		<properties/>
+		<system-out>********* Start testing of X11Test *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : X11Test::initTestCase()
+PASS   : X11Test::nativeSelectionTextAndRevision()
+PASS   : X11Test::nativeFilesImageAndUrlPrecedence()
+PASS   : X11Test::remoteUriFallsThroughToText()
+PASS   : X11Test::bmpImageAndIncrementalSelection()
+PASS   : X11Test::incrementalText()
+PASS   : X11Test::invocationRevisionIncludesQueuedOwnerChange()
+PASS   : X11Test::nativeKeyActivationWithLocks()
+PASS   : X11Test::regionCancellationAndExactSelection()
+PASS   : X11Test::encodedImageResultIsServedToNativeClipboardConsumer()
+PASS   : X11Test::simultaneousClipboardImportsAreSerialized()
+PASS   : X11Test::cancellingRegionDoesNotCancelClipboardImport()
+PASS   : X11Test::regionRetainsExternalFocusAndNativeEscape()
+PASS   : X11Test::heldGlobalChordHandsKeyboardToSelector()
+PASS   : X11Test::clipboardQueueBoundAndFrozenOwner()
+PASS   : X11Test::asciiLette...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="keychain_backend_integration" classname="keychain_backend_integration" time="0.331556" status="run">
+		<properties/>
+		<system-out>********* Start testing of KeychainBackendTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : KeychainBackendTest::initTestCase()
+PASS   : KeychainBackendTest::lockedOrDeniedDoesNotPersist(locked-unlock-refused)
+PASS   : KeychainBackendTest::lockedOrDeniedDoesNotPersist(dbus-access-denied)
+PASS   : KeychainBackendTest::explicitUnlockedRoundtrip()
+PASS   : KeychainBackendTest::cleanupTestCase()
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 316ms
+********* Finished testing of KeychainBackendTest *********
+</system-out>
+	</testcase>
+	<testcase name="keychain_integration" classname="keychain_integration" time="0.126122" status="run">
+		<properties/>
+		<system-out>********* Start testing of KeychainTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : KeychainTest::initTestCase()
+PASS   : KeychainTest::sessionReadinessIsExplicitAndForgetRevokesCache()
+PASS   : KeychainTest::unavailableStoreDoesNotFallBackOrCache()
+PASS   : KeychainTest::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 115ms
+********* Finished testing of KeychainTest *********
+</system-out>
+	</testcase>
+	<testcase name="collision_policy_integration" classname="collision_policy_integration" time="3.553" status="run">
+		<properties/>
+		<system-out>********* Start testing of CollisionTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : CollisionTest::initTestCase()
+PASS   : CollisionTest::existingKeyPolicies(rename)
+PASS   : CollisionTest::existingKeyPolicies(skip)
+PASS   : CollisionTest::existingKeyPolicies(overwrite)
+PASS   : CollisionTest::partialBatchRetriesOnlyFailedAndRetainsArchives()
+PASS   : CollisionTest::realHistoryDeletionPersistsSdkPhasesAndPreservesLocalCopy()
+PASS   : CollisionTest::cancellationRetainsCommittedArchivesAndSuppressesCopy()
+PASS   : CollisionTest::archiveFailureDoesNotBlockUpload()
+PASS   : CollisionTest::exhaustedRenameAndDeniedHeadsNeverPut(exhaustion)
+PASS   : CollisionTest::exhaustedRenameAndDeniedHeadsNeverPut(denied)
+PASS   : CollisionTest::exhaustedRenameAndDeniedHeadsNeverPut(timeout)
+PASS   : CollisionTest::cleanupTestCase()
+Totals: 12 passed, 0 failed, 0 skipped, 0 blacklisted, 3501ms
+********* Finished testing...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="s3_delete_integration" classname="s3_delete_integration" time="4.094" status="run">
+		<properties/>
+		<system-out>********* Start testing of S3DeleteTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : S3DeleteTest::initTestCase()
+PASS   : S3DeleteTest::guardedUnversionedAndOriginalDestination()
+PASS   : S3DeleteTest::deniedIdentityAndCheckpointBlockDelete()
+PASS   : S3DeleteTest::unsupportedJournalNeverDeletes(future-schema)
+PASS   : S3DeleteTest::unsupportedJournalNeverDeletes(invalid-schema)
+PASS   : S3DeleteTest::unsupportedJournalNeverDeletes(unknown-phase)
+PASS   : S3DeleteTest::unsupportedJournalNeverDeletes(missing-phase-target)
+PASS   : S3DeleteTest::retentionAndConflict(access)
+PASS   : S3DeleteTest::retentionAndConflict(retention)
+PASS   : S3DeleteTest::retentionAndConflict(mfa)
+PASS   : S3DeleteTest::retentionAndConflict(conflict)
+PASS   : S3DeleteTest::retentionAndConflict(precondition)
+PASS   : S3DeleteTest::enabledCurrentHidesBeforeRemovingExactVersion()
+PASS   : S3DeleteTest::enabledNoncurrentKeepsRep...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="s3_module_integration" classname="s3_module_integration" time="32.0058" status="run">
+		<properties/>
+		<system-out>********* Start testing of S3ModuleContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : S3ModuleContract::initTestCase()
+PASS   : S3ModuleContract::residentPathsDoNotLoadSdk()
+PASS   : S3ModuleContract::missingAndIncompatibleModule()
+PASS   : S3ModuleContract::deployedFailure(missing)
+PASS   : S3ModuleContract::deployedFailure(wrong-version)
+PASS   : S3ModuleContract::deployedFailure(wrong-build)
+PASS   : S3ModuleContract::deployedFailure(wrong-transport)
+SKIP   : S3ModuleContract::unavailableFacadeChild() Subprocess helper
+   Loc: [/home/lab/putgd-current-a3d70dc/tests/integration/test_s3_module.cpp(151)]
+PASS   : S3ModuleContract::concurrentProvidersAndPermanentWorker()
+PASS   : S3ModuleContract::boundedQueueDrainsExactlyOnce()
+PASS   : S3ModuleContract::exceptionsReleaseAdmissionAndPreserveUncertainty()
+PASS   : S3ModuleContract::newRuntimeGenerationAfterDrain()
+PASS   : S3ModuleContract::cleanupTe...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="s3_integration" classname="s3_integration" time="2.70105" status="run">
+		<properties/>
+		<system-out>********* Start testing of S3Test *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : S3Test::initTestCase()
+PASS   : S3Test::routingSignedBodyAndPublicUrl()
+PASS   : S3Test::terminalErrors(ownership)
+PASS   : S3Test::terminalErrors(public-access-block)
+PASS   : S3Test::terminalErrors(authentication)
+PASS   : S3Test::lostPutReplyRecoversOwnMetadata()
+PASS   : S3Test::lostReplyInconclusiveRemainsUnknown()
+PASS   : S3Test::boundedTransientAttemptsKeepWireIdentity()
+PASS   : S3Test::lostReplyWithoutOwnMetadataKeepsUnknownKey()
+PASS   : S3Test::conditionalRaceNeverOverwritesCompetitor()
+PASS   : S3Test::checkedOverwriteDoesNotRefreshToken()
+PASS   : S3Test::headDeniedDoesNotPublishAndCredentialsNeverAmbient()
+PASS   : S3Test::queuedCancellationAndSlowEventLoop()
+PASS   : S3Test::queuedCredentialRevocationPreservesInFlightClient()
+PASS   : S3Test::providerDestructionDrainsSentRequestBeforeRuntime()
+PASS   : S3Test...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="public_url" classname="public_url" time="0.0123145" status="run">
+		<properties/>
+		<system-out>********* Start testing of PublicUrlTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : PublicUrlTest::initTestCase()
+PASS   : PublicUrlTest::encodedBaseAndKey()
+PASS   : PublicUrlTest::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 0ms
+********* Finished testing of PublicUrlTest *********
+</system-out>
+	</testcase>
+	<testcase name="build_contract" classname="build_contract" time="0.0888538" status="run">
+		<properties/>
+		<system-out>********* Start testing of BuildContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : BuildContract::initTestCase()
+PASS   : BuildContract::sqliteTransactions()
+PASS   : BuildContract::keychainAndSdkLink()
+PASS   : BuildContract::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 46ms
+********* Finished testing of BuildContract *********
+</system-out>
+	</testcase>
+	<testcase name="sdk_contract" classname="sdk_contract" time="0.213759" status="run">
+		<properties/>
+		<system-out>********* Start testing of SdkContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : SdkContract::initTestCase()
+PASS   : SdkContract::deferredOwnerLifecycle()
+PASS   : SdkContract::concurrentDeferredInitialization()
+PASS   : SdkContract::conditionalHeaders()
+PASS   : SdkContract::cleanupTestCase()
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 199ms
+********* Finished testing of SdkContract *********
+</system-out>
+	</testcase>
+	<testcase name="payload_contract" classname="payload_contract" time="0.0355599" status="run">
+		<properties/>
+		<system-out>********* Start testing of PayloadTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : PayloadTest::initTestCase()
+PASS   : PayloadTest::precedenceAndLimits()
+PASS   : PayloadTest::contentRoutingAndBoundedPrivatePreviews()
+PASS   : PayloadTest::batchAcquisitionIsAtomic()
+PASS   : PayloadTest::cleanupTestCase()
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 27ms
+********* Finished testing of PayloadTest *********
+</system-out>
+	</testcase>
+	<testcase name="archive_contract" classname="archive_contract" time="0.0119095" status="run">
+		<properties/>
+		<system-out>********* Start testing of ArchiveTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : ArchiveTest::initTestCase()
+PASS   : ArchiveTest::copiesAreIndependentAndUnique()
+PASS   : ArchiveTest::overridesAndFailure()
+PASS   : ArchiveTest::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 1ms
+********* Finished testing of ArchiveTest *********
+</system-out>
+	</testcase>
+	<testcase name="upload_naming_contract" classname="upload_naming_contract" time="0.0251789" status="run">
+		<properties/>
+		<system-out>********* Start testing of NamingTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : NamingTest::initTestCase()
+PASS   : NamingTest::tinyProviderBoundsRemainValidAndCannotLoopOnCollisions()
+PASS   : NamingTest::templateTokensHaveExactMeaning()
+PASS   : NamingTest::unsafeTemplatesAndEmptyResultsFail()
+PASS   : NamingTest::confirmedCollisionKeepsPreparedPrefixAndByteBound()
+PASS   : NamingTest::originalModeKeepsAcquiredCaptureName()
+PASS   : NamingTest::collisionsAndNames()
+PASS   : NamingTest::cleanupTestCase()
+Totals: 8 passed, 0 failed, 0 skipped, 0 blacklisted, 15ms
+********* Finished testing of NamingTest *********
+</system-out>
+	</testcase>
+	<testcase name="history_contract" classname="history_contract" time="4.57019" status="run">
+		<properties/>
+		<system-out>********* Start testing of HistoryTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : HistoryTest::initTestCase()
+PASS   : HistoryTest::schemaThreeBackfillUsesProviderIdentityAcrossProfilesAndPages()
+PASS   : HistoryTest::tenThousandRecordsArePagedAndIndependent()
+PASS   : HistoryTest::clearedHistoryStaysClearedAndRemoteErrorsSurviveUpdates()
+PASS   : HistoryTest::expiryIsExplicitAndRecentActivityIsBounded()
+PASS   : HistoryTest::interruptedStatesNeverPublish()
+PASS   : HistoryTest::populatedLegacyMigrationPreservesReceipts()
+PASS   : HistoryTest::migrationIsTransactional()
+PASS   : HistoryTest::cleanupTestCase()
+Totals: 9 passed, 0 failed, 0 skipped, 0 blacklisted, 4553ms
+********* Finished testing of HistoryTest *********
+</system-out>
+	</testcase>
+	<testcase name="operations_contract" classname="operations_contract" time="34.1628" status="run">
+		<properties/>
+		<system-out>********* Start testing of OperationsTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : OperationsTest::initTestCase()
+PASS   : OperationsTest::startupHeapCleanupRunsOnceAfterSuccessfulInitialization()
+PASS   : OperationsTest::failedInitializationDoesNotRequestHeapCleanup()
+PASS   : OperationsTest::shutdownCancelsPendingStartupHeapCleanup()
+PASS   : OperationsTest::startupHeapCleanupWaitsForBackgroundWorker()
+PASS   : OperationsTest::queuedCaptureNameUsesOriginalActionTime()
+PASS   : OperationsTest::queuedImagesRespectByteBudgetAndCancellationReleasesCapacity()
+PASS   : OperationsTest::decodedImagesReleaseBeforeBlockedUploadAndQueuedCancel()
+PASS   : OperationsTest::imageHeapCleanupWaitsForSelectionAndBackgroundWork()
+PASS   : OperationsTest::capturesReceiveStableTimestampNamesBeforeLocalArchive()
+PASS   : OperationsTest::newerInvocationInvalidatesDeferredNativeClipboardCommit()
+PASS   : OperationsTest:...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="storage_contract_integration" classname="storage_contract_integration" time="2.96458" status="run">
+		<properties/>
+		<system-out>********* Start testing of StorageContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : StorageContract::initTestCase()
+PASS   : StorageContract::deletionDuringBatchCompletionExcludesTheRemovedUrl()
+PASS   : StorageContract::knownRemovedHistoryNeverWritesClipboard()
+PASS   : StorageContract::confirmedOverwriteMarksOnlyOriginalObjectHistory()
+PASS   : StorageContract::opaqueReceiptDeletionAndDurableProgress()
+PASS   : StorageContract::partialDeletionRetainsIdentityAndHistoryClearNeverCallsProvider()
+PASS   : StorageContract::wrongStatDestinationNeverAuthorizesDeletion()
+PASS   : StorageContract::unknownGenericDeletionRetryRejectsReplacement()
+PASS   : StorageContract::shutdownDrainsPendingDeleteBeforeHistoryDestruction()
+PASS   : StorageContract::changedAndUnsupportedEntriesCannotDelete()
+PASS   : StorageContract::cleanupTestCase()
+Totals: 11 passed, 0 failed, 0 skipped, 0 blacklisted, 2952ms
+********* ...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="cli_integration" classname="cli_integration" time="0.903747" status="run">
+		<properties/>
+		<system-out>********* Start testing of CliContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : CliContract::initTestCase()
+PASS   : CliContract::launcherActivationUsesValidatedResidentUiRequest()
+PASS   : CliContract::backgroundLaunchDoesNotRaiseExistingResident()
+PASS   : CliContract::realClientAndMalformedProtocol()
+PASS   : CliContract::settingsTransportAndRedactedDiagnostics()
+PASS   : CliContract::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 863ms
+********* Finished testing of CliContract *********
+</system-out>
+	</testcase>
+	<testcase name="config_reload_integration" classname="config_reload_integration" time="0.627175" status="run">
+		<properties/>
+		<system-out>********* Start testing of ReloadContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : ReloadContract::initTestCase()
+PASS   : ReloadContract::replacementsAndValidationHaveNoSideEffects()
+PASS   : ReloadContract::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 612ms
+********* Finished testing of ReloadContract *********
+</system-out>
+	</testcase>
+	<testcase name="gnome_bridge_contract" classname="gnome_bridge_contract" time="0.0617621" status="run">
+		<properties/>
+		<system-out>********* Start testing of GnomeBridgeTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : GnomeBridgeTest::initTestCase()
+PASS   : GnomeBridgeTest::plainTextUrlsRemainPayloadBytes()
+PASS   : GnomeBridgeTest::forgedStaleAndLengthMismatchAreRejected()
+PASS   : GnomeBridgeTest::boundedTextAndImageBeforeDecode()
+PASS   : GnomeBridgeTest::orderedLocalUrisAndForeignRejection()
+PASS   : GnomeBridgeTest::captureFramesComposeGapsAndRejectMalformedGeometry()
+PASS   : GnomeBridgeTest::malformedImageAndUnsupportedMimeAreRejected()
+PASS   : GnomeBridgeTest::cleanupTestCase()
+Totals: 8 passed, 0 failed, 0 skipped, 0 blacklisted, 48ms
+********* Finished testing of GnomeBridgeTest *********
+</system-out>
+	</testcase>
+	<testcase name="kwin_transfer_contract" classname="kwin_transfer_contract" time="0.180952" status="run">
+		<properties/>
+		<system-out>********* Start testing of KWinTransferTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : KWinTransferTest::initTestCase()
+PASS   : KWinTransferTest::metadataRejectsInvalidAndExcessive()
+PASS   : KWinTransferTest::paddedRowsDetachNativeBytes()
+PASS   : KWinTransferTest::truncatedAndSurplusFail()
+PASS   : KWinTransferTest::delayedTransferKeepsEventLoop()
+PASS   : KWinTransferTest::excessiveTransferIsBounded()
+PASS   : KWinTransferTest::timeoutAndCancelCompleteOnce()
+PASS   : KWinTransferTest::cleanupTestCase()
+Totals: 8 passed, 0 failed, 0 skipped, 0 blacklisted, 164ms
+********* Finished testing of KWinTransferTest *********
+</system-out>
+	</testcase>
+	<testcase name="settings_contract" classname="settings_contract" time="3.01728" status="run">
+		<properties/>
+		<system-out>********* Start testing of SettingsContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : SettingsContract::initTestCase()
+PASS   : SettingsContract::pendingImageBudgetIsOptionalAndValidated()
+PASS   : SettingsContract::filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged()
+PASS   : SettingsContract::asynchronousWritesAndTemplateRemainExplicit()
+PASS   : SettingsContract::freshStartupDoesNotSelectDevelopmentDestination()
+PASS   : SettingsContract::atomicSaveAndConflict()
+PASS   : SettingsContract::invalidEditRetainsAcceptedSettingsAndBadFile()
+PASS   : SettingsContract::repeatedExternalReplacementsAreAccepted()
+PASS   : SettingsContract::strictValidation()
+PASS   : SettingsContract::patchCanClearOptionalFolderOverride()
+PASS   : SettingsContract::lockContentionDoesNotOverwrite()
+PASS   : SettingsContract::missingAndOversizedFilesPreserveAcceptedState()
+PASS   : SettingsContract::fallbackDiscovers...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_settings" classname="gui_settings" time="3.77627" status="run">
+		<properties/>
+		<system-out>********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::freshMissingConfigIsNormalSetup() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::freshMissingConfigIsNormalSetup()
+QWARN  : SettingsGui::advancedFilenameTemplatesUseSharedConfiguration() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::advancedFilenameTemplatesUseSharedConfiguration() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::advancedFilenameTemplatesUseSharedConfiguration()
+QWARN  : SettingsGui::simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::simpleSetupStartsWithoutDevel...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_operations_view" classname="gui_operations_view" time="0.391615" status="run">
+		<properties/>
+		<system-out>********* Start testing of OperationsGui *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : OperationsGui::initTestCase()
+PASS   : OperationsGui::uploadedResultCanRetryCopyWithoutAnotherUpload()
+QWARN  : OperationsGui::localOperationShowsIndependentItemAndCopyStates() This plugin does not support propagateSizeHints()
+QWARN  : OperationsGui::localOperationShowsIndependentItemAndCopyStates() This plugin does not support propagateSizeHints()
+PASS   : OperationsGui::localOperationShowsIndependentItemAndCopyStates()
+PASS   : OperationsGui::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 367ms
+********* Finished testing of OperationsGui *********
+</system-out>
+	</testcase>
+	<testcase name="gui_history_view" classname="gui_history_view" time="3.2121" status="run">
+		<properties/>
+		<system-out>********* Start testing of HistoryGui *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : HistoryGui::initTestCase()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::imageInspectorAndExpandedControlsFitCompactWindow()
+PASS   : HistoryGui::openingHistoryDuringInitializ...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="login_startup_contract" classname="login_startup_contract" time="0.00937436" status="run">
+		<properties/>
+		<system-out>********* Start testing of LoginStartupTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : LoginStartupTest::initTestCase()
+PASS   : LoginStartupTest::preferenceOwnsOnlyManagedAutostartEntry()
+PASS   : LoginStartupTest::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 1ms
+********* Finished testing of LoginStartupTest *********
+</system-out>
+	</testcase>
+	<testcase name="local_ipc_contract" classname="local_ipc_contract" time="12.8808" status="run">
+		<properties/>
+		<system-out>********* Start testing of LocalIpcContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : LocalIpcContract::initTestCase()
+PASS   : LocalIpcContract::slowPeerReceivesCompleteReply()
+PASS   : LocalIpcContract::handledRequestObservesDisconnectBeforeReply()
+PASS   : LocalIpcContract::disconnectedPeerDoesNotInterruptOtherRequests()
+PASS   : LocalIpcContract::incompleteRequestExpires()
+PASS   : LocalIpcContract::clientLimitPreservesAcceptedRequests()
+PASS   : LocalIpcContract::fragmentedRequestAndDuplicateFrames()
+PASS   : LocalIpcContract::endpointOwnershipAndLiveResident()
+PASS   : LocalIpcContract::halfClosedRequestReceivesReply()
+PASS   : LocalIpcContract::teardownPreservesReplacementEndpoint()
+PASS   : LocalIpcContract::recoversOwnedStaleSocket()
+PASS   : LocalIpcContract::cleanupTestCase()
+Totals: 12 passed, 0 failed, 0 skipped, 0 blacklisted, 12856ms
+********* Finished testing of LocalIpcContract ****...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="ip_address_contract" classname="ip_address_contract" time="0.0391402" status="run">
+		<properties/>
+		<system-out>********* Start testing of IpAddressContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : IpAddressContract::initTestCase()
+PASS   : IpAddressContract::normalizedLiteralCompatibility()
+PASS   : IpAddressContract::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 16ms
+********* Finished testing of IpAddressContract *********
+</system-out>
+	</testcase>
+</testsuite>

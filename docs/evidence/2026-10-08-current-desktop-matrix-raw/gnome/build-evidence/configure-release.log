@@ -1,0 +1,48 @@
+-- The C compiler identification is GNU 15.2.0
+-- The CXX compiler identification is GNU 15.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Found OpenGL: /usr/lib/x86_64-linux-gnu/libOpenGL.so
+-- Found WrapOpenGL: TRUE
+-- Found WrapVulkanHeaders: /usr/include
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/lab/putgd-native/build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- Found crypto: /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found OpenSSL: /usr/lib/x86_64-linux-gnu/libcrypto.so (found version "3.5.5")
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT
+-- Performing Test PUTGD_SDK_CURL_TRANSPORT - Success
+-- Found PkgConfig: /usr/bin/pkg-config (found version "2.5.1")
+-- Checking for modules 'xcb;xcb-randr;xcb-keysyms;xcb-xfixes'
+--   Found xcb, version 1.17.0
+--   Found xcb-randr, version 1.17.0
+--   Found xcb-keysyms, version 0.4.1
+--   Found xcb-xfixes, version 1.17.0
+-- Checking for module 'wayland-client'
+--   Found wayland-client, version 1.24.0
+-- LayerShellQt unavailable: KDE native region selection will report unavailable
+-- Checking for module 'xcb-xtest'
+--   Found xcb-xtest, version 1.17.0
+-- Configuring done (3.4s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/lab/putgd-current-a3d70dc/build/release

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "testId": "7a847de2c3214daa955bdbbb107b06ac",
+  "profile": "cinnamon-x11",
+  "scenario": "region",
+  "files": {
+    "parameters.json": "b3e6fb7a27ae9ec10fd3a0368b86f17c9ab41e6cf1225fe0ebece1022105a40f",
+    "results.json": "ae13178ec70671cc27b2957b989f38e5f936d8321e7d3a8599ba5fd5cdf6080c",
+    "results.xml": "9143cddf291db3d918ac0f5754927cade67e119c49b024d80f23dddd86a5d974",
+    "ready.json": "acf992c16f60eaac02d54134904a62d2df0ec6ce66cfe415f41115bf35ffe68a",
+    "paste.json": "eb3b1988fdfb8f04ad51dbdb0514cd44815ece9f4f255c2eb597b7a6c92ada39",
+    "paste.ppm": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c",
+    "artifact.ppm": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c",
+    "before-head0.ppm": "b52833cc9abf4988cdbef03e86ebaeb5c7bb157f0bacd674f7fe69750fac864d",
+    "final-head0.ppm": "e650f8c75ed0f2c176070fdeb033c77dee2a27c763c8c9a10054231c691f552e",
+    "versions.json": "211689153a464185176f439e42de54c299f17ccdcc62b44e8ea89d9f3ff47f53",
+    "package.json": "6c5d70331a01264ff48f1644c85b23636256c8e544c6c2521c9cf6da2b9b2423",
+    "diagnostics.json": "d35464d6813dc8f5e2ce4a3bfa88992a9cfa7666111376afb90230a4453acfec",
+    "artifact-0": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d"
+  }
+}
