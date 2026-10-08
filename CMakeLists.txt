@@ -29,7 +29,9 @@ else()
   endif()
 endif()
 
+find_package(Threads REQUIRED)
 add_library(putgd_s3_runtime STATIC src/storage/s3/SdkRuntime.cpp)
+set_target_properties(putgd_s3_runtime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_s3_runtime PUBLIC src)
 target_link_libraries(putgd_s3_runtime PRIVATE ${AWSSDK_LINK_LIBRARIES} PUBLIC putgd_build_options)
 # The SDK does not export its HTTP backend compile flags. Probe the actual installed
@@ -53,11 +55,54 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp)
+set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_core PUBLIC src)
 target_link_libraries(putgd_core PUBLIC putgd_build_options Qt6::Core Qt6::Gui Qt6::Network Qt6::Sql)
 
-add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/PublicUrl.cpp src/secrets/CredentialStore.cpp)
-target_link_libraries(putgd_s3 PUBLIC putgd_core putgd_s3_runtime PRIVATE ${AWSSDK_LINK_LIBRARIES} qt6keychain)
+add_library(putgd_credentials STATIC src/secrets/CredentialStore.cpp)
+target_link_libraries(putgd_credentials PUBLIC putgd_core PRIVATE qt6keychain)
+# The resident facade and credential cache carry no SDK link requirement.
+add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp src/storage/s3/PublicUrl.cpp)
+target_link_libraries(putgd_s3 PUBLIC putgd_core putgd_credentials PRIVATE Threads::Threads)
+add_library(putgd_s3_module MODULE src/storage/s3/S3Module.cpp src/storage/s3/S3Driver.cpp
+  src/storage/s3/S3SdkContext.cpp src/storage/s3/PublicUrl.cpp)
+target_link_libraries(putgd_s3_module PRIVATE putgd_core putgd_s3_runtime ${AWSSDK_LINK_LIBRARIES} Threads::Threads)
+set_target_properties(putgd_s3_module PROPERTIES OUTPUT_NAME putgd-s3
+  CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_options(putgd_s3_module PRIVATE "LINKER:--exclude-libs,ALL")
+endif()
+# Private C++/Qt ABI requires this exact source, toolchain and transport contract.
+set(s3_contract "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};${Qt6_VERSION};${AWSSDK_VERSION};${CMAKE_BUILD_TYPE};${PUTGD_SANITIZER};${PUTGD_SDK_CURL_TRANSPORT};${CMAKE_SYSTEM_PROCESSOR};${CMAKE_CXX_FLAGS};${CMAKE_CXX_FLAGS_DEBUG};${CMAKE_CXX_FLAGS_RELEASE}")
+foreach(s3_contract_file src/storage/s3/S3Driver.h src/storage/s3/S3Driver.cpp
+    src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp
+    src/storage/s3/S3SdkContext.h src/storage/s3/S3SdkContext.cpp src/storage/s3/SdkRuntime.h
+    src/storage/s3/SdkRuntime.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
+    src/core/StorageProvider.h src/core/StorageReceipt.h src/core/ArtifactStore.h
+    src/core/Error.h src/core/ClipboardPayload.h src/secrets/CredentialStore.h cmake/dependency-lock.json)
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${s3_contract_file}")
+  file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/${s3_contract_file}" s3_contract_hash)
+  string(APPEND s3_contract "${s3_contract_hash}")
+endforeach()
+string(SHA256 PUTGD_S3_BUILD_ID "${s3_contract}")
+if(PUTGD_SDK_CURL_TRANSPORT)
+  set(s3_safe_delete 1)
+else()
+  set(s3_safe_delete 0)
+endif()
+foreach(s3_target putgd_s3 putgd_s3_module)
+  target_compile_definitions(${s3_target} PRIVATE PUTGD_S3_BUILD_ID="${PUTGD_S3_BUILD_ID}"
+    PUTGD_SDK_CURL_TRANSPORT=${s3_safe_delete})
+endforeach()
+target_compile_definitions(putgd_s3_module PRIVATE PUTGD_S3_MODULE_EXPORTS=1)
+file(RELATIVE_PATH s3_install_relative "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}"
+  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd/${CMAKE_SHARED_MODULE_PREFIX}putgd-s3${CMAKE_SHARED_MODULE_SUFFIX}")
+target_compile_definitions(putgd_s3 PRIVATE
+  PUTGD_S3_BUILD_APP_DIR="${CMAKE_CURRENT_BINARY_DIR}"
+  PUTGD_S3_BUILD_MODULE_PATH="$<TARGET_FILE:putgd_s3_module>"
+  PUTGD_S3_INSTALL_MODULE_RELATIVE="${s3_install_relative}")
+add_dependencies(putgd_s3 putgd_s3_module)
+install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 
 add_library(putgd_app STATIC src/app/OperationService.cpp src/app/HistoryService.cpp src/app/LocalServer.cpp src/app/LoginStartup.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core)
@@ -107,7 +152,7 @@ add_executable(putgd-cli src/cli/main.cpp)
 target_link_libraries(putgd-cli PRIVATE putgd_app)
 install(TARGETS putgd-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 add_executable(putgd src/main.cpp)
-target_link_libraries(putgd PRIVATE putgd_build_options putgd_s3_runtime putgd_s3 putgd_app putgd_ui Qt6::Widgets)
+target_link_libraries(putgd PRIVATE putgd_build_options putgd_s3 putgd_app putgd_ui Qt6::Widgets)
 if(TARGET putgd_x11)
   target_link_libraries(putgd PRIVATE putgd_x11)
   target_compile_definitions(putgd PRIVATE PUTGD_NATIVE_X11)
@@ -165,6 +210,28 @@ if(BUILD_TESTING)
   target_link_libraries(test_s3_delete PRIVATE putgd_s3 putgd_app Qt6::Test)
   add_test(NAME s3_delete_integration COMMAND test_s3_delete)
   set_tests_properties(s3_delete_integration PROPERTIES TIMEOUT 120)
+  add_executable(test_s3_module tests/integration/test_s3_module.cpp)
+  target_include_directories(test_s3_module PRIVATE tests)
+  target_compile_definitions(test_s3_module PRIVATE S3_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/s3_server.py"
+    S3_INCOMPATIBLE_PATH="$<TARGET_FILE:test_s3_incompatible>"
+    S3_WRONG_BUILD_PATH="$<TARGET_FILE:test_s3_wrong_build>"
+    S3_WRONG_TRANSPORT_PATH="$<TARGET_FILE:test_s3_wrong_transport>"
+    S3_MODULE_INSTALL_RELATIVE="${s3_install_relative}")
+  target_link_libraries(test_s3_module PRIVATE putgd_s3 Qt6::Test)
+  add_library(test_s3_incompatible MODULE tests/integration/test_s3_module.cpp)
+  add_library(test_s3_wrong_build MODULE tests/integration/test_s3_module.cpp)
+  add_library(test_s3_wrong_transport MODULE tests/integration/test_s3_module.cpp)
+  target_compile_definitions(test_s3_incompatible PRIVATE PUTGD_S3_BAD_VERSION=1)
+  target_compile_definitions(test_s3_wrong_build PRIVATE PUTGD_S3_BAD_BUILD=1)
+  target_compile_definitions(test_s3_wrong_transport PRIVATE PUTGD_S3_BAD_TRANSPORT=1)
+  foreach(s3_fixture test_s3_incompatible test_s3_wrong_build test_s3_wrong_transport)
+    target_compile_definitions(${s3_fixture} PRIVATE PUTGD_S3_BAD_FACTORY=1
+      PUTGD_S3_BUILD_ID="${PUTGD_S3_BUILD_ID}" PUTGD_SDK_CURL_TRANSPORT=${s3_safe_delete})
+    target_link_libraries(${s3_fixture} PRIVATE putgd_core)
+  endforeach()
+  add_dependencies(test_s3_module test_s3_incompatible test_s3_wrong_build test_s3_wrong_transport)
+  add_test(NAME s3_module_integration COMMAND test_s3_module)
+  set_tests_properties(s3_module_integration PROPERTIES TIMEOUT 120)
   add_executable(test_s3 tests/integration/test_s3.cpp)
   target_include_directories(test_s3 PRIVATE tests)
   target_compile_definitions(test_s3 PRIVATE S3_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/s3_server.py")

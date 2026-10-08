@@ -1,7 +1,6 @@
 #pragma once
 #include <QElapsedTimer>
 #include "storage/s3/S3Provider.h"
-#include "storage/s3/SdkRuntime.h"
 #include <QTest>
 #include <QProcess>
 #include <QTemporaryDir>
@@ -20,7 +19,6 @@ class S3Fixture {
 public:
     QProcess process;
     QTemporaryDir directory;
-    SdkRuntime runtime;
     CredentialStore credentials;
     S3Provider provider{credentials};
     QString endpoint;

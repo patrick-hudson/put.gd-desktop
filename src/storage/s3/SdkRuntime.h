@@ -3,8 +3,9 @@
 #include <memory>
 
 namespace putgd {
-// Construct once before providers; destroy after all requests and providers drain.
-// Deferred mode avoids SDK setup until a provider starts real S3 work.
+// An adapter-private owner; destroy after all clients and SDK objects drain.
+// Immediate owners stay on their constructing thread (the production module worker).
+// Standalone deferred owners lazily retain one SDK init/shutdown thread.
 class SdkRuntime final {
 public:
     enum class Initialization { Immediate, Deferred };

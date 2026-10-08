@@ -36,10 +36,22 @@ endforeach()
 string(APPEND runtime_manifest "\n  ]\n}\n")
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/aws-runtime-manifest.json" "${runtime_manifest}")
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/aws-runtime-manifest.json" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd")
-target_link_options(putgd PRIVATE "LINKER:--disable-new-dtags")
-set_target_properties(putgd PROPERTIES INSTALL_RPATH "$ORIGIN/../${CMAKE_INSTALL_LIBDIR}/putgd")
+set(PUTGD_S3_MODULE_FILENAME "$<TARGET_FILE_NAME:putgd_s3_module>")
+set(s3_manifest_install_code [=[
+  set(module_name "@PUTGD_S3_MODULE_FILENAME@")
+  set(module_path "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_INSTALL_LIBDIR@/putgd/${module_name}")
+  file(SHA256 "${module_path}" module_hash)
+  set(manifest_path "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/@CMAKE_INSTALL_DATADIR@/putgd/aws-runtime-manifest.json")
+  file(READ "${manifest_path}" manifest)
+  string(JSON manifest SET "${manifest}" module "{\"file\":\"${module_name}\",\"contractVersion\":1,\"buildIdentity\":\"@PUTGD_S3_BUILD_ID@\",\"sha256\":\"${module_hash}\"}")
+  file(WRITE "${manifest_path}" "${manifest}\n")
+]=])
+string(CONFIGURE "${s3_manifest_install_code}" s3_manifest_install_code @ONLY)
+install(CODE "${s3_manifest_install_code}")
+target_link_options(putgd_s3_module PRIVATE "LINKER:--disable-new-dtags")
+set_target_properties(putgd_s3_module PROPERTIES BUILD_RPATH "${PUTGD_AWS_RUNTIME_DIR}" INSTALL_RPATH "$ORIGIN")
 # Every SDK shared object also resolves its CRT siblings from this private directory.
-# The binary uses DT_RPATH so SDK dependencies resolve transitively; the launcher
+# The S3 module uses DT_RPATH so SDK dependencies resolve transitively; the launcher
 # also scopes the private directory to this process for explicit desktop startup.
 configure_file(putgd-launcher.in putgd-launcher @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/putgd-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME putgd-launcher)

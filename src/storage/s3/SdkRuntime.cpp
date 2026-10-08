@@ -1,6 +1,9 @@
 #include "SdkRuntime.h"
 #include <aws/core/Aws.h>
 #include <mutex>
+#include <condition_variable>
+#include <exception>
+#include <thread>
 #include <stdexcept>
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
 #include <aws/core/http/HttpClientFactory.h>
@@ -70,6 +73,13 @@ public:
 struct SdkRuntime::State {
     Aws::SDKOptions options;
     bool initialized = false;
+    const bool deferred;
+    std::thread owner;
+    std::mutex ownerMutex;
+    std::condition_variable ownerChanged;
+    bool ready = false;
+    bool stopping = false;
+    std::exception_ptr initializationError;
     struct Registry {
         std::mutex mutex;
         State* current = nullptr;
@@ -78,25 +88,56 @@ struct SdkRuntime::State {
         static Registry value;
         return value;
     }
-    State() {
+    explicit State(bool defer) : deferred(defer) {
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
         options.httpOptions.httpClientFactory_create_fn = [] {
             return Aws::MakeShared<NonReplayingHttpFactory>("putgd-http");
         };
 #endif
     }
-    // The registry mutex serializes this with creation and complete shutdown.
+    // Production module owners initialize immediately on their permanent network
+    // worker. Standalone deferred owners accept arbitrary caller threads, so their
+    // lazy SDK init/shutdown pair needs its own permanent owner thread.
     void ensureInitialized() {
-        if (!initialized) {
+        if (initialized) return;
+        if (!deferred) {
             Aws::InitAPI(options);
             initialized = true;
+            return;
         }
+        std::unique_lock lock(ownerMutex);
+        if (!owner.joinable()) owner = std::thread([this] {
+            {
+                std::lock_guard ownerLock(ownerMutex);
+                try {
+                    Aws::InitAPI(options);
+                    initialized = true;
+                } catch (...) {
+                    initializationError = std::current_exception();
+                }
+                ready = true;
+                ownerChanged.notify_all();
+            }
+            std::unique_lock ownerLock(ownerMutex);
+            ownerChanged.wait(ownerLock, [this] { return stopping; });
+            ownerLock.unlock();
+            if (initialized) Aws::ShutdownAPI(options);
+        });
+        ownerChanged.wait(lock, [this] { return ready; });
+        if (initializationError) std::rethrow_exception(initializationError);
     }
     ~State() {
-        if (initialized) Aws::ShutdownAPI(options);
+        if (owner.joinable()) {
+            {
+                std::lock_guard lock(ownerMutex);
+                stopping = true;
+                ownerChanged.notify_one();
+            }
+            owner.join();
+        } else if (initialized) Aws::ShutdownAPI(options);
     }
 };
-SdkRuntime::SdkRuntime(Initialization initialization) : state_(std::make_unique<State>()) {
+SdkRuntime::SdkRuntime(Initialization initialization) : state_(std::make_unique<State>(initialization == Initialization::Deferred)) {
     auto& registry = State::registry();
     std::lock_guard lock(registry.mutex);
     if (registry.current) throw std::logic_error("Only one owning SdkRuntime may exist at a time");
