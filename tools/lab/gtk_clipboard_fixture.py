@@ -82,8 +82,14 @@ class Fixture(Gtk.Application):
             write_json(self.output / 'source.json', {'synthetic': True, 'client': 'GTK', 'mime': mime})
             return True
         if key == Gdk.KEY_v and mods == Gdk.ModifierType.CONTROL_MASK:
-            clipboard.read_async(['text/uri-list', 'image/png', 'text/plain;charset=utf-8', 'text/plain'],
-                                 GLib.PRIORITY_DEFAULT, None, self.paste_ready)
+            formats = clipboard.get_formats()
+            preferred = ['text/uri-list', 'image/png', 'text/plain;charset=utf-8', 'text/plain']
+            supported = [mime for mime in preferred if formats.contain_mime_type(mime)]
+            if not supported:
+                write_json(self.output / 'paste.json', {'schemaVersion': 1, 'client': 'GTK',
+                    'error': 'clipboard_format_unsupported'})
+                return True
+            clipboard.read_async(supported, GLib.PRIORITY_DEFAULT, None, self.paste_ready)
             return True
         return False
 
