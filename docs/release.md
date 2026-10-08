@@ -144,10 +144,11 @@ records; run directories contain private VM material.
 Single-head native local workflows have partial recorded evidence, but the full
 three-profile matrix still needs geometry/scaling/rotation/removal, normal GTK/file
 manager interop, ownership/conflict/failure flows, GUI history/delete/configuration
-flows, installed visual/focus/error states and lifecycle checks. Physical Cinnamon
-workflow evidence, the full fresh-agent/U9 walkthrough and successful live S3
-publication/public bytes/guarded deletion are still required. Live permission
-failures do not establish publication or cleanup acceptance. Windows/macOS native
+flows, installed visual/focus/error states and lifecycle checks. Fresh Cinnamon
+region capture and Qt/GTK clipboard evidence, plus a fresh-agent local MCP/config
+walkthrough, are recorded in [verification.md](verification.md). The remaining full
+U9 scenarios and successful live S3 publication/public bytes/guarded deletion are
+still required. Live permission failures do not establish publication or cleanup acceptance. Windows/macOS native
 support is future work; authored compile CI is not an observed pass.
 
 The retained five-minute physical Cinnamon background run peaked at 55.95 MiB

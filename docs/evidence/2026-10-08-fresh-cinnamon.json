@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "scope": "Fresh agent follows committed build/package/native Cinnamon scenario/MCP/config/debug/collect instructions; synthetic local-only subset. No full U6/U9 or compositor certification.",
+  "run": "work/lab-runs/fresh-cinnamon-u9-20261008",
+  "vmId": "5984bcb6-b56b-4b1d-9f92-274defa6127e",
+  "visibleVnc": "127.0.0.1:5935",
+  "acceleration": "kvm",
+  "hostBuild": {
+    "configure": "cmake --preset dev -DPUTGD_LAB_FIXTURE=ON",
+    "build": "cmake --build --preset dev",
+    "ctest": "ctest --preset dev --output-junit work/fresh-cinnamon-host-ctest.xml",
+    "ctestPassed": 25,
+    "cpack": "cpack --config build/dev/CPackConfig.cmake -G DEB -B work/fresh-cinnamon-packages-20261008",
+    "package": {
+      "sha256": "3fe654f0f2f058b6d85fb193c6db436e02003179712a357bf23e3c21f08557b3",
+      "filename": "putgd_0.1.0_amd64.deb",
+      "installedBinarySha256": {
+        "/usr/bin/putgd": "43d3126b8c4845bb8476e927ad8d71ed2229afe089300343ca136a93798df936",
+        "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+        "/usr/bin/putgd-cli": "42b049f08cf96e53b96a1dfc2d338fb40153f097c8af4470cc93a185d7d1041b",
+        "/usr/bin/putgd-desktop-fixture": "26c8c224e0084911fb364a591e35fb21203f5ee159b4ea3ef8fe180e0268359a"
+      }
+    },
+    "headWhenRecorded": "5bb49ebc449d8280674d6ba04f418fa7765b9055",
+    "buildSourceRevisionExact": "Not embedded; parent supplied starting revision 2f5a7c9, current checkout advanced during independent docs work; binary/package hashes authoritative."
+  },
+  "attempts": [
+    {
+      "testId": "514e309762f246fe905290f13de3b3ac",
+      "ok": false,
+      "scenario": "clipboard-text-independent-paste",
+      "clipboardClient": "gtk",
+      "operationId": "fc9e815f-028c-45f3-92ac-7e32b08be0bf",
+      "error": "Actual saved pixels or independent paste mismatch",
+      "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/514e309762f246fe905290f13de3b3ac"
+    },
+    {
+      "testId": "5a7d2d9a39e6482c92791e5baefc11d0",
+      "ok": true,
+      "scenario": "clipboard-text-independent-paste",
+      "clipboardClient": "qt",
+      "operationId": "a6ea7214-34eb-4624-a844-fca8d2f4f913",
+      "error": null,
+      "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/5a7d2d9a39e6482c92791e5baefc11d0"
+    },
+    {
+      "testId": "665ebc66cd454d17b5e4002dd99088cf",
+      "ok": false,
+      "scenario": "clipboard-text-independent-paste",
+      "clipboardClient": "gtk",
+      "operationId": null,
+      "error": "Independent GTK clipboard client readiness timeout",
+      "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/665ebc66cd454d17b5e4002dd99088cf"
+    },
+    {
+      "testId": "c260ccdf8b2346529f3dc38338f955f4",
+      "ok": true,
+      "scenario": "region-independent-paste",
+      "clipboardClient": "qt",
+      "operationId": "8c896865-e2f4-4f3d-82cf-6ea796779736",
+      "error": null,
+      "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/c260ccdf8b2346529f3dc38338f955f4"
+    },
+    {
+      "testId": "906e1bc7f0534f8491e8cdb57fab136e",
+      "ok": true,
+      "scenario": "clipboard-text-independent-paste",
+      "clipboardClient": "gtk",
+      "operationId": "66be2f63-a3aa-44ad-830f-919787119bf5",
+      "error": null,
+      "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/906e1bc7f0534f8491e8cdb57fab136e"
+    },
+    {
+      "testId": "33e35bfecb3c4532a4d9e4955708cf2c",
+      "ok": true,
+      "scenario": "clipboard-image-independent-paste",
+      "clipboardClient": "gtk",
+      "operationId": "c7e592a3-ba04-42b5-adca-e6edda31c0a8",
+      "error": null,
+      "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/33e35bfecb3c4532a4d9e4955708cf2c"
+    },
+    {
+      "testId": "06cc579e3a7b4af7b2c76607eb580993",
+      "ok": true,
+      "scenario": "clipboard-files-independent-paste",
+      "clipboardClient": "gtk",
+      "operationId": "2c9247ca-63b2-43fb-9f04-a9097c982e3a",
+      "error": null,
+      "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/06cc579e3a7b4af7b2c76607eb580993"
+    }
+  ],
+  "limitations": [
+    "GTK negotiation failure fixed and three named single-head native GTK scenarios pass; full compositor/interop matrix still not certified. Original red attempts remain preserved.",
+    "Publication/public URL/unknown retry/history deletion unavailable by this explicitly local-only authorization. No S3/cloud calls or secret prompts performed.",
+    "Full U9 scenarios 2-6 not independently exhaustively rerun: contract suite and prior evidence remain separate. Metadata-only no-I/O effects are specified; this run has no provider-call instrumentation.",
+    "Full U6 requires second independent overlay, wrong-result/timeout cleanup and complete multihead/scaling cases; one fresh overlay here.",
+    "Full three-desktop matrix, physical performance, release lifecycle and complete GUI conflict/history flows remain open."
+  ],
+  "preservedFailures": [
+    "Sandbox initial KVM/socket denials; elevated standard CTest passed 25/25.",
+    "Initial install before bootstrap completion failed scp; retried after pinned port adaptation.",
+    "MCP initial client omitted explicit socket and default SDK subprocess environment yielded missing configuration envelope; corrected harness with explicit production socket, no resident changes."
+  ],
+  "evidenceSha256": {
+    "work/lab-runs/fresh-cinnamon-u9-20261008/fresh-mcp-walkthrough.json": "2d5f9f574b38f865bd0e4481e468c9bd2d74f0be42ad1451ada4c3323f45a71f",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/mcp-live-patch.json": "71c94b93f33cc3acf43a816a07ccd278b09ba606115b4d40f1156dd5bfd8ac26",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/settings-retention77-head0.ppm": "177fc5ee15c5dd83f860a52ff87b4e8722b684f88e134980d8e0491191f66129",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/settings-retention79-head0.ppm": "281823f8c4f362039d234f51dd68ea91614b757066d43f1526533a1f9ad1a580",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/fresh-mcp-client.py": "5d2a45de32754500617710f291c73ec1d2671b77ac542e4b70d05897a87b338e",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/fresh-mcp-live-client.py": "bb7c8f21340d9039d555681ac59003defd66cfdfa5c6032ce47b293cce79d0b8",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/diagnostics.json": "d368c3db026c7a92a49cc4b48b19c7b1520a998f81f45853d78770cf6fcb6468",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/versions.json": "211689153a464185176f439e42de54c299f17ccdcc62b44e8ea89d9f3ff47f53",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/package.json": "9502bfaa4c291c2fb997d5526bbe80e79102db219ff26faa197e799c30f1151e",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/test-events.jsonl": "ac4bf130725316670945a70809848a7422e544ffc37dcac1ca6f98f78ea71d05",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/gtk-retained-copy-paste.json": "b177c7eccf92132f8be642842715303694fd1199173823846ec4dfdf08cf15b3",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/qt-retained-copy-paste.json": "5a6c12d920a9b034599e7c6d08a61bda4c973064c6526d301482e45b6018dd58",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/retained-copy-operation.json": "38971252f896dc27d9071aabb3a91f3aac31414d8002129473e48d31b4512e0b",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/gtk-read-probe.json": "30861bd60a91bfce30b699b89898e05399fe6cb2c5764c4cb7923d1c7553b258",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/gtk-read-probe-settled.json": "ceb948f1204a68830bd1919b9f15d78aae3fa5ed3105a2468c42a30d368b4fa4",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/gtk-read-probe-client.py": "c25d418746eab5446518abb46034dbef50a130a30c28d379e8d4883f05a1493f",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/gtk-readback-before-head0.ppm": "52967099c078b92313ced0c02c49114245416484631127955e97223189c1bec8",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/qt-readback-before-head0.ppm": "df8fa895cc3c571cd66aacbf02c3507d654782fd6505c63648edffbfeea29903",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/readback-final-head0.ppm": "df8fa895cc3c571cd66aacbf02c3507d654782fd6505c63648edffbfeea29903"
+  },
+  "gtkDiagnosis": {
+    "retainedOperationId": "fc9e815f-028c-45f3-92ac-7e32b08be0bf",
+    "explicitCopyResultRepeatedFailure": true,
+    "qtPaste": {
+      "formats": [
+        "text/plain",
+        "TARGETS",
+        "MULTIPLE",
+        "TIMESTAMP",
+        "SAVE_TARGETS"
+      ],
+      "schemaVersion": 1
+    },
+    "gtkPaste": {
+      "schemaVersion": 1,
+      "client": "GTK",
+      "formats": [
+        "text/uri-list"
+      ],
+      "urls": []
+    },
+    "settledGdkProbe": {
+      "formats": "gchararray text/plain text/plain;charset=utf-8",
+      "probes": [
+        {
+          "requested": [
+            "text/uri-list"
+          ],
+          "mime": "text/uri-list",
+          "bytes": 0
+        },
+        {
+          "requested": [
+            "text/plain"
+          ],
+          "mime": "text/plain",
+          "bytes": 30
+        },
+        {
+          "requested": [
+            "text/uri-list",
+            "image/png",
+            "text/plain;charset=utf-8",
+            "text/plain"
+          ],
+          "mime": "text/uri-list",
+          "bytes": 0
+        }
+      ]
+    },
+    "finding": "Same unchanged producer offers actual text/plain (30 correct bytes) and no URI-list. GTK raw read_async requests URI-list first even when not advertised and receives an empty successful stream; text-only native read returns correct bytes. This narrows failure to MIME negotiation/selection behavior across GDK/Qt X11 and fixture preference list, rather than acquisition corruption or initial ownership race. Exact library-side cause remains unproved; original acceptance oracle/failure preserved.",
+    "handoff": "Resident and both independent readers remain active. Same operation can be copied again through operation.copy. Do not call failed GTK interop done until corrected scenario independently passes."
+  },
+  "gtkFix": {
+    "commit": "2c686f740c12c54a53508d4d01c13a0e18b3717c",
+    "ownedFile": "tools/lab/gtk_clipboard_fixture.py",
+    "sha256": "1cf7060ac76d3002aceb7f8f76098a8533195d2ef796b2690c418b767a280435",
+    "change": "Intersection of preference order with actual advertised GDK MIME types; structured unsupported error for empty intersection. No producer, payload, expected byte/hash/paste oracle changes.",
+    "publicApiProof": "Installed Gdk.ContentFormats.contain_mime_type(self,mime_type:str)->bool; text/plain true, text/uri-list false for text formats. Official GTK API4.0 documented.",
+    "apiReferences": [
+      "https://docs.gtk.org/gdk4/method.Clipboard.read_async.html",
+      "https://docs.gtk.org/gdk4/method.ContentFormats.contain_mime_type.html"
+    ],
+    "checks": [
+      "python3 -m py_compile tools/lab/gtk_clipboard_fixture.py passed",
+      "python3 tests/desktop/test_lab.py passed 8 tests outside socket-restricted sandbox",
+      "git diff --check passed"
+    ],
+    "nativePasses": [
+      {
+        "testId": "906e1bc7f0534f8491e8cdb57fab136e",
+        "scenario": "clipboard-text-independent-paste",
+        "operationId": "66be2f63-a3aa-44ad-830f-919787119bf5",
+        "ok": true,
+        "artifact": {
+          "ok": true
+        },
+        "paste": {
+          "ok": true,
+          "actual": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/plain;charset=utf-8"
+            ]
+          }
+        },
+        "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/906e1bc7f0534f8491e8cdb57fab136e"
+      },
+      {
+        "testId": "33e35bfecb3c4532a4d9e4955708cf2c",
+        "scenario": "clipboard-image-independent-paste",
+        "operationId": "c7e592a3-ba04-42b5-adca-e6edda31c0a8",
+        "ok": true,
+        "artifact": {
+          "ok": true,
+          "errors": [],
+          "width": 96,
+          "height": 64,
+          "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+        },
+        "paste": {
+          "ok": true,
+          "errors": [],
+          "width": 96,
+          "height": 64,
+          "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+        },
+        "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/33e35bfecb3c4532a4d9e4955708cf2c"
+      },
+      {
+        "testId": "06cc579e3a7b4af7b2c76607eb580993",
+        "scenario": "clipboard-files-independent-paste",
+        "operationId": "2c9247ca-63b2-43fb-9f04-a9097c982e3a",
+        "ok": true,
+        "artifact": {
+          "ok": true
+        },
+        "paste": {
+          "ok": true
+        },
+        "evidenceDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/06cc579e3a7b4af7b2c76607eb580993"
+      }
+    ],
+    "originalFailuresPreserved": true,
+    "pushed": false
+  },
+  "mcp": {
+    "toolsDiscovered": [
+      "inspect",
+      "perform_action",
+      "get_operation",
+      "retry_operation",
+      "copy_result",
+      "cancel_operation",
+      "list_history",
+      "get_history_entry",
+      "copy_history_link",
+      "delete_history_uploads",
+      "reload_configuration",
+      "patch_configuration"
+    ],
+    "operationId": "9672384d-3dba-4daa-a501-5fc601283cb6",
+    "operationState": "completed",
+    "cliOperationResultsEqual": true,
+    "localStatus": "saved",
+    "uploadStatus": "local_only",
+    "artifactSha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+    "staleRevisionError": "config_conflict",
+    "simulatedFailure": {
+      "code": "config_invalid",
+      "details": {
+        "path": "/limits/maxFiles"
+      },
+      "message": "Resource limits must be positive bounded integers."
+    },
+    "invalidDiskPreservedAcceptedDocument": true,
+    "recoveryOk": true,
+    "invalidParametersError": "invalid_request",
+    "liveGuiPatch": {
+      "before": 77,
+      "after": 79,
+      "visibleWitnesses": [
+        "settings-retention77-head0.ppm",
+        "settings-retention79-head0.ppm"
+      ],
+      "patchOk": true
+    }
+  },
+  "reviewBoundary": "Synthetic local-only evidence; no credentials, authentication material, source clipboard bytes or guest configuration exported. Raw witnesses retained under local work/ paths; these paths are not distributed artifacts."
+}

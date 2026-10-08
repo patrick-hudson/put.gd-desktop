@@ -745,3 +745,14 @@ checks. These do not replace real desktop, live publication/deletion, package
 lifecycle, or full U9 walkthrough gates. Structured memory comparisons, including
 the rejected candidate, are retained in
 [the machine-readable record](../evidence/2026-10-08-resident-memory.json).
+
+
+The subsequent fresh Cinnamon KVM overlay walkthrough passed normal package
+installation, native region capture, independent Qt/GTK clipboard checks and a
+local official-SDK MCP/CLI parity/configuration recovery subset. A GTK fixture MIME
+negotiation defect was fixed without weakening byte comparisons; its original red
+attempts remain recorded. See
+[the structured receipt](../evidence/2026-10-08-fresh-cinnamon.json) and
+[verification](../verification.md) for parameters, operation IDs and limitations.
+This advances U6/U9 evidence; it does not close the full desktop matrix, remote S3,
+lifecycle or remaining performance gates.

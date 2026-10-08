@@ -34,6 +34,13 @@ a sent action may already have been accepted. Inspect activity through the CLI b
 invoking another action; do not infer rollback from a transport error. The helper never
 starts the resident or retries a mutation automatically.
 
+Some stdio clients launch servers with a minimal environment that omits
+`XDG_RUNTIME_DIR`. In that case, pass the actual resident socket explicitly with
+`--socket`; do not guess another user's endpoint or start a second resident.
+The fresh Cinnamon walkthrough used this explicit endpoint to connect the official
+SDK client to the already-running graphical resident. The omission was a client
+launch-environment issue, not a failed native acquisition.
+
 ## Tools and effects
 
 All tools return version-1 CLI envelopes with `ok`, `result`, `error` and a request ID.

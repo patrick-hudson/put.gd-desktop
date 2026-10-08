@@ -341,3 +341,24 @@ an independent Anthropic Claude Opus 5.5 pass and returned no findings for the
 six-file optimization slice at 016edb8. Its
 [receipt](evidence/2026-10-08-memory-review.json) records exact scope and limitations;
 it does not certify whole-product readiness or the later permanent-test diff.
+
+
+A fresh agent followed the normal dev build, CPack installation, native Cinnamon
+lab and locked official MCP instructions on a new KVM overlay visible at VNC5935.
+The host 25-target suite passed. Native region capture and independent Qt paste,
+then GTK text, image and ordered-file acquisition/paste passed. The GTK fixture
+initially requested an unadvertised URI format and accepted an empty stream;
+filtering its preference list by actual advertised formats fixed negotiation.
+The original failures remain preserved, and byte/pixel/paste comparisons were
+unchanged. Eight lab contracts and Python compilation passed for the fixture fix.
+
+The actual graphical resident exposed all 12 MCP tools. An action through the
+official SDK yielded the same operation result as the production CLI. Stale
+configuration revision rejection, invalid reload recovery and visible settings
+refresh passed. The stdio client needed the explicit resident socket because its
+minimal child environment omitted XDG_RUNTIME_DIR; the documented endpoint option
+worked without launching another resident. The
+[structured receipt](evidence/2026-10-08-fresh-cinnamon.json) retains run parameters,
+package/binary hashes, operation IDs, failures and exact limitations. This local
+single-head subset does not complete full U6/U9, remote publication/deletion, the
+compositor matrix or release lifecycle acceptance.
