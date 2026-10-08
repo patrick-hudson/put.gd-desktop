@@ -1,0 +1,711 @@
+---
+title: Qt Screenshot Sharing for Linux - Plan
+type: feat
+date: 2026-10-07
+artifact_contract: ce-unified-plan/v1
+product_contract_source: ce-plan-bootstrap
+execution: code
+---
+
+# Qt Screenshot Sharing for Linux - Plan
+
+## Goal Capsule
+
+Objective: A Linux user can capture a screen region, the active window, the full desktop, or clipboard content with a hotkey and paste a working public share link moments later.
+
+Means: Qt 6 Widgets and C++20, with native desktop adapters and one shared operation layer (KTD1–KTD7).
+
+Authority: The user’s instructions govern scope. Product requirements govern behavior; technical decisions govern mechanisms within those requirements. Implementation units and examples illustrate those contracts.
+
+Execution: Build the Linux application, its desktop integrations, developer tooling, and release packages in the target project. This document is the implementation plan; it does not establish that any application or graphical test currently works.
+
+Stop conditions: Do not substitute a different capture target or claim desktop support when a required integration fails. Resolve such failures before releasing that desktop profile. No changes to AWS bucket policy, account controls, or DNS are authorized by this plan.
+
+---
+
+## Product Contract
+
+### Summary
+
+Build a small resident screenshot and clipboard sharing app with a configurable native GUI. Its default result is an upload and a copied public URL, with S3 as the first storage provider. Provide local-only actions, optional local copies of uploads with folders by content type, persistent upload history with viewing/link copying/remote deletion, useful failure recovery, and documented CLI/MCP access to the same operations. Design the shared storage contracts for later providers.
+
+### Problem Frame
+
+Dropshare’s quick capture-to-link workflow is the reference. XerahS offers considerably more functionality than this product needs. The product should make frequent sharing fast while keeping configuration, desktop setup, and troubleshooting understandable.
+
+### Key Decisions
+
+- **Immediate sharing is the default.** Governs R5. (session-settled: user-directed — chosen over local-first capture: the user wants immediate upload and URL copying.)
+- **Preserve the daily hotkey experience on Wayland.** Governs R13–R15. (session-settled: user-directed — chosen over accepting a desktop picker for every capture: maintain desktop-specific integrations where needed.)
+- **Linux ships first, with future platform support preserved.** Governs R13, R26.
+
+### Requirements
+
+#### Capture and clipboard
+
+- R1. Region capture presents a crosshair selection with a visible rectangle and captures the selected desktop content.
+- R2. Active-window capture targets the focused external window at invocation, including its frame where available; v1 permits visible-pixel capture on X11 and documents compositor-native occlusion behavior on Wayland.
+- R3. Full-desktop capture includes every enabled monitor and desktop panels, with deterministic handling of layout gaps and per-monitor scaling.
+- R4. Clipboard sharing accepts regular local files, images, and plain text, with precedence in that order; plain-text URLs are uploaded as text rather than fetched.
+- R5. Each action defaults to upload immediately and copy the resulting public URL, with a configurable destination per action.
+- R6. Local-only actions save to the configured local output directory and copy a suitable local result: image MIME for images/screenshots, text for text, and file URIs for local file copies.
+- R7. Cancelling source acquisition publishes nothing, and acquisition/upload errors preserve the source clipboard and expose an actionable result.
+- R8. Automatic result copying respects newer user clipboard changes and newer sharing invocations; skipped copying leaves an explicit copy-result action available.
+- R9. File batches acquire all selected files before publication, then report individual upload results and copy successful URLs in source order when a batch partially succeeds.
+- R10. Source acquisition rejects empty, unsupported, inaccessible, or excessive inputs before publication, using documented configurable resource limits.
+
+#### Desktop experience and settings
+
+- R11. The GUI configures shortcuts, destinations, provider-specific settings, upload naming and duplicate handling, credentials, local paths, launch-at-login, notifications, and retention/resource limits, and provides recent activity plus the persistent history under R31. Non-secret controls share the editable configuration file under R34.
+- R12. Shortcut setup reports actual bindings and conflicts without silently stealing existing shortcuts; actions remain available through the GUI and CLI.
+- R13. The first release covers Linux Mint 22.3 Cinnamon/X11, Ubuntu 26.04 LTS GNOME 50/Wayland, and Kubuntu 26.04 LTS Plasma 6.6/Wayland.
+- R14. After one-time integration setup and OS consent, normal supported capture and clipboard hotkeys work while the app is unfocused, without a per-capture permission picker.
+- R15. Settings and diagnostics report support separately for capture targets, shortcut binding, clipboard import types, and clipboard result types, including missing helpers and permission failures.
+
+#### S3, storage, and recovery
+
+- R16. The development S3 template defaults to bucket put.gd, region us-east-2, regional endpoint s3.us-east-2.amazonaws.com, an empty object prefix, STANDARD storage, public-read ACL, and public URL base https://put.gd. Every value is configurable through the GUI and JSON configuration file. ACL mode can explicitly omit the ACL header, and a custom public URL base is optional. These are development defaults, not a hardcoded production destination; a fresh release requires destination setup.
+- R17. Existing AWS access controls are respected, with distinct errors for upload permission, ACL incompatibility, and public URL reachability; the app does not modify infrastructure to make an upload work.
+- R18. Credentials use an OS secret store or an explicitly selected session-only mode, and never appear in source control, ordinary configuration, operation records, or exported diagnostics.
+- R19. Failed/interrupted operations can retry their retained immutable artifacts. A candidate key may change only for a confirmed name collision under the selected policy; keys stay fixed while publication is uncertain or confirmed. Completed uploads can retry clipboard copying without another upload.
+- R20. The resident app remains responsive during capture, encoding, disk access, and slow or failing uploads.
+
+#### Agent access and delivery
+
+- R21. The session-local CLI exposes the four actions, operation inspection/cancellation/retry, history listing/details/link copying/remote deletion, non-secret settings, configuration path/revision/validation/reload, capabilities, and redacted diagnostics through versioned JSON.
+- R22. An optional local stdio MCP server exposes the same action and inspection services without implementing another capture or upload pipeline.
+- R23. Diagnostic bundles correlate operation stages and backend versions without including credentials, source pixels, clipboard content, authorization headers, or source filenames by default.
+- R24. Committed documentation lets a new human or agent set up dependencies, build, test, run, package, release, and debug the app without undocumented session knowledge.
+- R25. Linux releases include installable packages, dependency/license notices, checksums, and recorded graphical acceptance evidence.
+- R26. Shared UI, operation, configuration, and upload code remain portable, with Windows/macOS compile checks and platform interfaces ready for later native adapters.
+
+#### Local copies of uploads
+
+- R27. A Keep local copies when uploading setting saves upload artifacts to a configurable default folder, with independent folder overrides for images, videos, text, and other files. In v1, videos are existing regular files; screen recording is a future feature.
+- R28. When enabled, attempt local archiving before publication and report archive status independently of uploading; successful copies remain user-owned after completion, failure, or cancellation.
+
+#### Upload filenames and duplicates
+
+- R29. The S3 destination offers generated unique filenames or preservation of an uploaded file’s original basename, plus configurable duplicate handling: auto-rename (default), skip, or overwrite. Captures, clipboard images, and clipboard text receive generated names with appropriate extensions. The app checks each proposed remote object key for duplicates, including other items in the same batch, before uploading.
+- R30. Duplicate handling applies to the exact bucket/prefix/object key. Auto-rename and skip never overwrite an existing object, including one created between checking and uploading. Overwrite is an explicit saved setting and uses the checked object’s ETag as a write precondition; a changed precondition or inconclusive existence check produces an actionable outcome. Retries reuse confirmed receipts and never rename an upload whose publication is still uncertain.
+
+#### Upload history and storage providers
+
+- R31. Maintain persistent per-item upload history across restarts, independently of retry-artifact cleanup. Users can search and filter by date, name, content type, destination, and outcome; view upload details and available image previews; open or copy the stored direct link; and see independent upload, local-copy, and remote-deletion states. A partial batch has individually actionable entries. Browsing history requires no cloud access.
+- R32. Users can delete a selected history upload from its original remote destination, with explicit target/effect confirmation and individual outcomes for multi-selection. Report removed, already missing, changed/superseded, failed, uncertain, and version-retained outcomes accurately. Preserve local copies and the history record; clearing history or caches never deletes remote objects. Delete permissions or retention controls may block removal and must produce an actionable error.
+- R33. Shared operations, history, GUI, CLI, and MCP use provider-neutral upload/stat/delete/capability/receipt contracts. S3 is the first implementation; adding another provider must not require rewriting capture, history, or the operation pipeline. Keep provider-specific authentication, addressing, naming constraints, versioning, and deletion semantics inside adapters and their settings panels.
+
+#### Editable configuration
+
+- R34. All non-secret application and provider settings live in one documented, versioned JSON file that humans and agents can edit. Valid external edits update the running app and its settings view without restart. Invalid or incomplete edits preserve the last accepted settings and show an actionable error; unsaved GUI edits survive external changes with a visible conflict. Credentials remain secret-store references or session-only values under R18. New settings do not retarget accepted operations or historical uploads.
+
+### Key Flows
+
+- F1. Setup → configure destination/credentials → inspect desktop capabilities → install/enable integration where needed → bind shortcuts → ready. Covers R11–R18.
+- F2. Invoke capture → freeze target/settings → acquire and store artifact → upload → copy result → show outcome. Covers R1–R3, R5–R8, R19.
+- F3. Invoke clipboard share → snapshot supported source bytes → store artifacts → upload batch → copy ordered successful URLs → report item outcomes. Covers R4, R5, R8–R10.
+- F4. Inspect a failed operation → retry retained artifact or copy existing receipt → report the new outcome. Covers R19, R21, R22.
+- F5. Open history → search/filter → inspect an item/preview → open or copy its direct link. Covers R31.
+- F6. Select history items → review original destination and deletion effect → explicitly delete → retain records with per-item remote outcomes and unchanged local copies. Covers R32/R33.
+- F7. Human/agent edits JSON → app validates it → valid settings refresh the GUI and later actions; invalid edits or unsaved-form conflicts remain visible without losing accepted settings or drafts. Covers R11, R16, R21, R34.
+
+### Acceptance Examples
+
+- AE1. With another app focused, the region hotkey allows dragging a rectangle; its PNG is uploaded and its public URL pastes into that other app. Covers R1, R5, R14.
+- AE2. Escape during region selection leaves the clipboard unchanged and sends no upload request. Covers R7.
+- AE3. A clipboard containing two local files produces two matching uploaded objects and two newline-separated links in the original order. Covers R4, R9.
+- AE4. If the user copies new text during an upload, that text stays on the clipboard and the completed operation offers Copy URL. Covers R8.
+- AE5. If S3 rejects public-read, the operation reports the specific configuration error and retains the artifact without changing bucket controls. Covers R17, R19.
+- AE6. A local-only screenshot saves a PNG and pastes as an image, while generating zero S3 requests. Covers R6.
+- AE7. With local copies enabled, a screenshot, clipboard video file, and clipboard text save into their respective configured folders while still returning S3 links. Covers R27.
+- AE8. An upload failure leaves its local copy available; an unwritable archive folder reports a local-save failure while the S3 share still succeeds and offers local-save retry. Covers R28.
+- AE9. With original filenames and auto-rename selected, an existing report.pdf causes the new upload to add a unique suffix, such as report-<uuid>.pdf; the original remains unchanged and the copied URL uses the final name. Covers R29/R30.
+- AE10. Skip reports a duplicate without uploading it or copying an unrelated object’s URL. Overwrite replaces the checked object only when its precondition still matches; a competing write cannot turn either option into an unchecked replacement. Covers R29/R30.
+- AE11. After restart and successful-artifact cache cleanup, an older image upload is searchable, shows its details and cached thumbnail when available, and copies its original direct URL. Editing the current destination does not change the record. Covers R31.
+- AE12. Delete an upload from history: the selected remote object is removed, its record reports the actual outcome, and its local copy survives. A denied or uncertain delete remains visible and retryable; a known replacement at the same key is not deleted on behalf of the older entry. Covers R32.
+- AE13. A test-only second provider exercises upload → receipt → history → copy link → remote delete through the same GUI/CLI services without AWS types outside the S3 adapter. Covers R33.
+- AE14. With the settings window open, an agent atomically edits the JSON destination, naming policy, and image folder. The GUI shows the new values and a later action uses them; an already accepted upload and history deletion keep their original targets. Invalid JSON preserves the accepted configuration, and an unsaved GUI draft is retained with a conflict notice. Covers R16/R34.
+
+### Success Criteria
+
+The engineering budgets for a release build on the user’s recorded physical Cinnamon machine are p95 hotkey-to-region-overlay at or below 150 ms over 30 warm invocations, idle CPU below 0.5% of one core over five minutes, and idle app RSS at or below 100 MiB. Include attributed helper overhead separately. These are proposed acceptance budgets, not measurements; establish the hardware/display/build baseline in U4 and meet or explicitly revisit them with evidence in U10.
+
+The complete workflow must also pass the Verification Contract on every R13 profile. Internet transfer time is reported separately from local capture, encoding, and clipboard latency.
+
+### Scope Boundaries
+
+V1 excludes image editing/annotation, screen recording, OCR, embedded AI chat/models, additional production storage-provider implementations, automatic remote deletion, and background clipboard monitoring that reads content without an action. Manual history deletion is included; bucket-wide browsing, cross-device history synchronization, and purging unrecorded versions are deferred.
+
+Deferred for later: screen recording, Windows/macOS capture adapters and distributables, other Linux desktops, Flatpak/Snap/AppImage, HDR fidelity, remote MCP, folders/recursive sharing, and multipart uploads beyond the selected single-PUT limit.
+
+Considered and not built: a custom AWS signer or custom MCP protocol stack, because maintained SDKs serve these contracts; a second VM framework, because one QEMU harness gives reproducible tests; a telemetry service, because local evidence is sufficient. An archive-success prerequisite for S3 sharing is also excluded: an independent visible save error and retained source address the failure without blocking the requested upload. Reconsider only if a measured requirement cannot be met with the selected tools.
+
+---
+
+## Planning Contract
+
+### Grounding and Assumptions
+
+The target repository is patrick-hudson/put.gd-desktop and has no application source, CMake configuration, or existing test commands. All implementation paths below are proposed additions. [Repository](https://github.com/patrick-hudson/put.gd-desktop).
+
+The user has given standing authorization to send project code and planning documents to Anthropic for development review. Preserve that authorization in the project’s agent instructions; it does not add a runtime AI service to the application.
+
+The observed workstation is Mint 22.3/Cinnamon using X11. Cached package candidates include Qt 6.4.2 and QtKeychain 0.14.2; Qt/CMake development dependencies are not installed. QEMU 8.2.2 is installed, but KVM is not visible to the current execution environment. Session D-Bus access was denied, so installed portal packages do not prove runtime support or absence.
+
+The Wayland baselines are deliberate targets rather than verified integrations. Ubuntu’s release notes identify GNOME 50, and Kubuntu’s identify Plasma 6.6. Pin actual image hashes and package manifests in the lab. [Ubuntu release notes](https://documentation.ubuntu.com/release-notes/26.04/summary-for-lts-users/), [Kubuntu release notes](https://www.kubuntu.org/news/kubuntu-26-04-release-notes/).
+
+### Key Technical Decisions
+
+- KTD1. Use Qt 6 Widgets, C++20, and CMake presets, with a Qt 6.4.2 API compatibility floor and a separate current distro-Qt build. Keep Qt dynamically linked and use distro security updates; do not bundle an unsupported frozen Qt runtime. (session-settled: user-directed — chosen over Rust/Tauri: native C++/Qt is the selected direction.) Qt 6.4 upstream standard support has ended, so compatibility and maintenance are separate release concerns. [Qt releases](https://doc.qt.io/qt-6.10/qt-releases.html), [Qt CMake](https://doc.qt.io/qt-6/cmake-get-started.html).
+- KTD2. A single resident user-session process owns typed operations. GUI, hotkeys, and a thin CLI dispatch through those services; the CLI connects through an owner-restricted filesystem socket in the runtime directory. Version and validate request/result schemas, bound message sizes, and keep JSON stdout separate from stderr logs. This prevents duplicate hotkey registrations and differing clipboard behavior. [QLocalServer](https://doc.qt.io/qt-6/qlocalserver.html).
+- KTD3. Persist operation/item metadata and receipts transactionally using Qt SQL/SQLite, with one canonical versioned JSON file for non-secret settings under KTD21 and private artifact files. Snapshot effective destination/settings at acceptance; detach source bytes during acquisition and commit immutable artifacts before publication. Retain failures for explicit retry; reconcile interrupted operations after restart without silently restarting publication. Defaults: one active upload, eight pending operations, a 2 GiB pending-artifact budget, a 100-entry recent-activity view, and seven-day failed-artifact retention, configurable in settings. Successful upload history has no automatic record expiry by default; the activity-view limit and spool cleanup do not prune it. Local-only output files are user-owned and outside automatic cache cleanup.
+- KTD4. Separate capture, global-shortcut, and clipboard capabilities behind desktop adapters. Capability discovery selects a validated adapter per operation, never an implicit substitute. Generic screenshot/clipboard portals are optional disclosed fallbacks, not the primary R14 path. Screenshot portal v3 targets and permission behavior must be checked per backend; the Clipboard portal requires RemoteDesktop/InputCapture sessions. [Screenshot portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Screenshot.html), [Clipboard portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Clipboard.html).
+- KTD5. Cinnamon/X11 uses XCB passive key grabs, EWMH active-window identity/frame extents, pre-overlay desktop frames, and Qt clipboard ownership. Capture the visible framed rectangle for R2 rather than promising hidden-window reconstruction. Account for lock modifiers, keymap changes, and conflicting grabs. [EWMH](https://specifications.freedesktop.org/wm/latest-single/), [QScreen capture limits](https://doc.qt.io/qt-6/qscreen.html), [QClipboard](https://doc.qt.io/qt-6/qclipboard.html).
+- KTD6. GNOME/Wayland uses a small GNOME 50 Shell extension for selection/capture, bindings, and background clipboard MIME transfer. The native app owns storage, encoding, secrets, and networking. Use documented Shell/St interfaces, narrow authenticated IPC, request IDs, payload limits, and complete disable/re-enable cleanup. Do not spoof allowed D-Bus callers or enable Shell unsafe mode. Leave the clipboard shortcut unset until the user assigns it during setup. [Shell screenshot service](https://raw.githubusercontent.com/GNOME/gnome-shell/main/js/ui/screenshot.js), [GNOME 50 clipboard implementation](https://raw.githubusercontent.com/GNOME/gnome-shell/gnome-50/src/st/st-clipboard.c), [extension review rules](https://gjs.guide/extensions/review-guidelines/review-guidelines.html).
+- KTD7. Plasma 6.6/Wayland uses KWin ScreenShot2, current KGlobalAccel D-Bus shortcut APIs, and a native ext-data-control-v1 clipboard adapter. Install the ScreenShot2 restricted-interface desktop entry against the actual executable. Probe interface versions; drain image-transfer FDs asynchronously with validated dimensions, stride, format, and timeouts. Data-control handles unfocused arbitrary MIME import and CLIPBOARD-only writes without depending on Klipper text APIs or an unwanted PRIMARY write. [ScreenShot2 interface](https://raw.githubusercontent.com/KDE/kwin/master/src/plugins/screenshot/org.kde.KWin.ScreenShot2.xml), [KGlobalAccel interface](https://raw.githubusercontent.com/KDE/kglobalaccel/master/src/org.kde.KGlobalAccel.xml), [KWin 6.6 protocol support](https://raw.githubusercontent.com/KDE/kwin/Plasma/6.6/src/wayland_server.cpp), [data-control protocol](https://raw.githubusercontent.com/wayland-mirror/wayland-protocols/main/staging/ext-data-control/ext-data-control-v1.xml).
+- KTD8. Carry backend pixel dimensions, native/logical monitor rectangles, scale, rotation, and identity alongside each capture frame. Crop per monitor, then compose a spanning image at the highest available participating frame density, with explicit rounding and transparent layout gaps. Preserve native pixels for single-frame images, exclude the cursor by default, and invalidate selections on display changes. Widgets must not assume one primary-screen DPR. [Qt high DPI](https://doc.qt.io/qt-6/highdpi.html).
+- KTD9. Use the official AWS SDK C++ S3Client inside the S3 implementation of KTD18, building only S3/core from a pinned source release and transitive dependency manifest. Only the S3 adapter target imports AWS headers. Keep one long-lived client per effective profile and a bounded executor, stream private artifact files, and marshal immutable callback results to the GUI thread. Initialize/shut down the SDK at application lifetime boundaries and drain request resources before destruction. Configure explicit connect/whole-request/low-speed timeouts and three total transient upload attempts; deletion retry rules are governed by KTD20. [SDK build options](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html), [async lifetime](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/async-methods.html), [Qt threading](https://doc.qt.io/qt-6/threads-qobject.html).
+- KTD10. For the R16 development template use verified HTTPS path-style requests to its regional endpoint, since the dotted bucket does not match S3 virtual-host TLS wildcards. Other S3 profiles use their configured endpoint, region, bucket, prefix, and storage class, with a supported addressing mode appropriate to that endpoint/bucket. Persist the candidate key, content hash, unique operation/item marker, and write precondition before PUT. Use If-None-Match: * for new objects and If-Match with the checked ETag for configured overwrite. Keep upload endpoint and public URL base distinct, encode URL path segments once, and send the configured ACL header only when selected; aclMode=omit sends none. Without a custom public URL base, derive the direct object URL from the effective S3 addressing configuration. Never substitute development values for explicit profile settings. Preserve the key/body/precondition across transport retries and ambiguous publication; HEAD with the matching item marker, hash, and size can reconcile a lost reply as success. ETags are opaque preconditions, not content hashes. A 412 after a lost successful reply must not trigger renaming or skipping that item. When reconciliation is inconclusive, expose unknown status and retain the same key. A stable key does not guarantee exactly-once versions in a versioned bucket. [S3 addressing](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html), [PutObject](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html).
+- KTD11. Use QtKeychain with insecure fallback disabled and an explicit credential provider. Resolve credentials during setup/session readiness; do not let a hotkey silently fall through to ambient AWS profiles or hang on secret-store unlock. A missing/locked store yields a setup action or explicit session-only credentials. The destination test uses a synthetic object and an unauthenticated GET of the configured public URL, independently of actual user captures. Never silently change the selected ACL mode after an error to manufacture success; an explicitly configured omit mode is supported and still requires the destination test to verify public reachability. [QtKeychain](https://github.com/frankosterfeld/qtkeychain/), [Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html), [public access controls](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
+- KTD12. Clipboard revisions and invocation tickets govern R8. Observe ownership changes without continuously reading payloads; only the newest accepted share with an unchanged revision auto-copies. Older jobs still retain successful receipts. Serialize interactive source acquisition and return busy_selecting for another selection request. A copy failure or suppression is distinct from an upload failure.
+- KTD13. Provide an optional Python 3.12+ stdio MCP helper using the official SDK and a lockfile. Tools are inspect, perform_action, get_operation, retry_operation, copy_result, cancel_operation, list_history, get_history_entry, copy_history_link, delete_history_uploads, reload_configuration, and patch_configuration; validate and forward CLI JSON through argument-vector process calls. Inspect reports capabilities, redacted diagnostics, and the non-secret configuration path/schema/revisions/validation status. Configuration reload and expected-revision patches use KTD21 services and report config_conflict without a separate settings pipeline. Retry-operation selects failed upload/local-save/delete stages and never repeats a completed upload; copy-result reuses an existing artifact or receipt. Delete requires explicit history IDs and an effect acknowledgement equivalent to the GUI confirmation, never arbitrary URLs, object keys, prefixes, or bucket-wide targets. Existing authorization for the concrete action supplies its scope without repeated app confirmation. No shell tool, remote listener, embedded model, or separate business logic. Inspection/history listing reads local metadata only; capture, publication, clipboard writes, and remote deletion occur only through their explicitly invoked actions. [Python MCP SDK](https://github.com/modelcontextprotocol/python-sdk).
+- KTD14. Use QtTest for core/GUI contracts and a separate QEMU/QMP desktop lab for genuine compositor behavior. QMP injects keyboard/pointer input and captures witness screenshots outside the guest; guest SSH installs/runs the app and retrieves evidence. Use the production CLI for diagnostics and a deterministic guest fixture for content/paste assertions. Headless GUI tests prove widget behavior, not Wayland integration. [Qt Test](https://doc.qt.io/qt-6/qtest-overview.html), [QMP](https://www.qemu.org/docs/master/interop/qemu-qmp-ref.html).
+- KTD15. Ship a Linux .deb and separate GNOME extension artifact first. Include the real executable desktop entry, autostart integration, SQLite/Wayland platform plugins, notices, and reproducible dependency metadata. Test installed packages on all R13 profiles. Compile shared core/UI on Windows/macOS with unsupported native adapters; do not advertise screenshot support there. Bundled dependencies need an update/rebuild path, while distro Qt stays dynamically replaceable. [Qt deployment](https://doc.qt.io/qt-6/deployment.html), [Qt distribution obligations](https://www.qt.io/development/open-source-lgpl-obligations).
+
+- KTD16. Resolve archive folders by content category: screenshots/clipboard images and image files use images, video files use videos, plain text/text files use text, and remaining regular files use other files. An unset override falls back to the configured default root and category subfolder. Use MIME detection with content inspection for regular files, not extension alone. Snapshot routing settings with the operation. With R27 enabled, attempt atomic collision-safe archive creation before the batch PUT per R28, without overwriting existing files. Archive outputs are user-owned; keep retry spools immutable and independent of later archive edits. Share the folder resolver with local-only outputs under R6. Leave the opt-in setting disabled until configured.
+
+- KTD17. Snapshot the S3 naming strategy and collision policy with each operation. Default to generated random names and auto-rename; original-name mode uses only a regular file’s basename, never its full source path. Renames append a random UUID suffix, preserve the extension, and obey S3 key byte limits; cap candidate searches at 32 per item and retain the source on exhaustion. Check signed HeadObject against S3, not a cached custom-domain URL: 200 means present, a definitive 404 means absent, and 403/timeout is inconclusive. Never treat denied access as a free name. Conditional PUT is the final protection against races; classify 409/412, reconcile possible own publication first, and advance a rename candidate only after a confirmed foreign collision. Skip is a terminal non-published item with no share receipt. Resolve same-batch names before the first PUT: rename allocates distinct keys, skip retains the first item, and overwrite marks every item sharing a target key as a non-published conflict while allowing distinct-key items to upload normally. This prevents two misleading receipts for one name without blocking unrelated files. Explicit overwrite retry may refresh a failed precondition after a fresh check, but may not resolve an unknown publication by overwriting blindly. [HeadObject permissions](https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html), [conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html).
+
+- KTD18. Define a small asynchronous StorageProvider contract for capabilities, naming/existence checks, upload, stat, and delete. Receipts carry a provider ID, profile ID/revision, immutable non-secret destination snapshot, versioned opaque object reference, opaque concurrency token where supported, publication identity, and the direct URL as separate fields. Do not reconstruct deletion targets from URLs or the currently selected profile. Persist a credential-store reference, never credentials; missing credentials or a removed profile yields a restore-access action for the recorded destination. Providers describe conditional-write/delete support, version addressing, deletion effects, and URL availability; unsupported required behavior fails explicitly instead of silently dropping safeguards. Use a static provider factory and typed settings validation, with S3 and a test double first. No dynamic plugin ABI, generic AWS-shaped receipt, or speculative adapters are required.
+
+- KTD19. Create one upload-history entry per confirmed item receipt in the same transaction that commits upload success, including receipts recovered after an ambiguous reply. Store item/operation IDs, timestamp, display filename, MIME/category, byte size, original destination/receipt/direct URL, local-copy reference/status, and remote-management state. Unknown publication remains visible in activity/history as an unresolved item without an invented link or delete target; skipped duplicates have no upload receipt. Keep failed attempts inspectable under their retention policy. Use indexed, paginated SQLite queries and a lazy Qt item model; thumbnails are private, bounded, independently evictable cache entries, generated from acquired image artifacts without remote fetching. Missing thumbnails show a type icon and metadata; viewing the remote file uses the stored URL in the browser on an explicit action. Store no permanent source text/video/full-file payload solely for history. History deletion outcomes remain as records, and user-requested history clearing is a separate local action that never touches the cloud. Enforce transactional schema migration and private database/cache permissions. Upload history records, URLs, and filenames are excluded from default diagnostic exports.
+
+- KTD20. Remote deletion is a persisted, separately identified operation over confirmed history receipts. Validate selected entries, show the original destination and provider's deletion effect, then acknowledge the concrete target set; CLI/MCP carry equivalent IDs/acknowledgement. Serialize this app's writes/deletes per destination/object and snapshot the deletion request before network activity. Recheck identity/version/marker and use the provider's conditional deletion where available; known replacements produce changed/superseded instead of being adopted as a new target. Never replace a failed deletion precondition with the latest object's token. A timeout or lost reply becomes delete_unknown; reconcile the recorded target before an explicit retry. Cancellation cannot promise rollback of a DELETE already sent.
+
+  For S3, retain returned VersionId, ETag, and item marker in the receipt. For an unversioned or mutable null-version target, signed HEAD must match the recorded item identity and DELETE uses If-Match with its saved ETag. For an immutable non-null recorded version, delete only that version: if it is current, first conditionally create a delete marker so deleting its bytes cannot expose an older version; if already noncurrent, preserve the current replacement and remove only the recorded version. Before marker creation in a suspended bucket, explicitly check the null version: proceed only on confirmed absence, and return unsupported_safe_removal without DELETE when an unselected null version exists or the check is inconclusive. Creating that marker can erase the unrelated null version. Recheck the bucket state before marker creation and document that external versioning changes during deletion are outside S3's conditional-object guard. Persist each step separately and retain the protective marker. If version removal fails after hiding the link, report hidden_version_retained with retry of that exact version, not full success. Never enumerate or purge unrecorded versions. A missing receipt/version or inconclusive versioning/identity check blocks destructive guessing. S3's ETag guard compares the current content token, not a unique version identity; document the residual race with an external identical-content replacement rather than promise full version compare-and-swap. No automatic SDK retry of a marker-creating DELETE after an ambiguous reply. [Conditional deletes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-deletes.html), [version removal](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjectVersions.html), [suspended versioning](https://docs.aws.amazon.com/AmazonS3/latest/userguide/DeletingObjectsfromVersioningSuspendedBuckets.html).
+
+  Classify permissions, Object Lock/MFA requirements, conflicts, missing objects, partial progress, and unknown results. Do not bypass retention or change bucket settings. A simple delete in a versioned/suspended bucket can retain stored versions; report that effect and do not claim all versions are erased. Explain that custom-domain/browser caches can continue serving prior bytes after origin deletion; this app does not invalidate a CDN. Local copies survive all remote outcomes. [DeleteObject API and permissions](https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html).
+
+- KTD21. Use JSON with Qt's existing parser, one typed SettingsService validator, and config.json in QStandardPaths::AppConfigLocation; the GUI and CLI report the exact active path, accepted content revision, and reload/validation status. Publish schemas/config.schema.json, config/development.example.json, and docs/configuration.md with every non-secret setting, defaults, constraints, migration rules, and credential-reference fields. There is no parallel YAML/preferences store. GUI/CLI writes validate the complete candidate and commit with QSaveFile, direct-write fallback disabled, using private permissions compatible with the Qt 6.4.2 floor. Watch both the file and parent directory with QFileSystemWatcher, re-arm after atomic replacement, debounce bounded reads, and deduplicate own-write notifications by content revision. If watching fails, report it and use a bounded periodic rescan; explicit reload is also available. Invalid JSON, unsupported schema versions/keys, wrong types, invalid profile references, excessive files, or transient removal preserve the last accepted in-memory settings and expose structured errors without rewriting the bad file. Invalid/missing configuration on first startup opens setup/recovery; it never silently activates the development destination. Validation/reload performs no capture, clipboard-content read, provider request, or secret-store unlock prompt. [JSON parsing](https://doc.qt.io/qt-6/qjsondocument.html), [configuration location](https://doc.qt.io/qt-6/qstandardpaths.html), [atomic writes](https://doc.qt.io/qt-6/qsavefile.html), [file replacement and watchers](https://doc.qt.io/qt-6/qfilesystemwatcher.html).
+  - Clean GUI forms refresh after acceptance. Dirty forms retain their draft and show which accepted revision changed; reload/rebase is required before saving. App/CLI writers use an expected file-content revision and an advisory QLockFile, re-read under the lock, and return config_conflict instead of overwriting a detected change. Direct editors remain supported; document atomic-save/locking conventions and recommend CLI patching during concurrent GUI edits. An editor that ignores the lock can race a write, so this is cooperative conflict detection, not a claim of filesystem compare-and-swap. [Cooperative locking](https://doc.qt.io/qt-6/qlockfile.html).
+  - Accepted changes update display preferences and request shortcut rebinding with actual status under R12. Operation-affecting settings apply to later invocations; pending operations, retries, and historical deletion continue using their immutable snapshots/receipts. Changed destination revisions receive distinct provider-client configurations while existing requests drain. Importing the development template is an explicit setup choice; it contains credential references and no access keys.
+
+### High-Level Technical Design
+
+These views expose boundaries and sequencing. Product behavior is owned by R entries and mechanisms by KTD entries; implementation names may follow the project’s eventual conventions.
+
+Future screen recording will reuse the existing boundaries. Keep target selection and geometry metadata reusable independently of one-shot still-image acquisition. A later recording session can own stream capture, encoding, and start/stop/cancel behavior, then hand a finalized video file to the same immutable-artifact, local-copy, upload, and history services used for regular video files today. Those downstream contracts use file bytes and MIME/category metadata rather than requiring QImage or PNG. Discover recording capabilities separately from still capture; working screenshots do not imply a recording-capable backend. Select recording APIs, formats, audio support, and limits when that feature is planned. V1 introduces no recording controls, hotkeys, CLI/MCP actions, session implementation, or codec dependencies.
+
+Component topology — KTD2, KTD4, KTD9, KTD13, KTD18/KTD19:
+
+~~~mermaid
+flowchart LR
+    GUI[Qt settings, history and hotkeys] --> Ops[Resident operation services]
+    MCP[MCP stdio helper] --> CLI[JSON CLI]
+    CLI --> IPC[Session-local IPC]
+    IPC --> Ops
+    Ops --> Native[Desktop adapters]
+    Ops --> Store[Artifact files and SQLite journal/history]
+    Ops --> Providers[StorageProvider contract]
+    Providers --> S3[S3 adapter / official SDK]
+    Providers --> Fake[Test provider / future adapters]
+~~~
+
+Action protocol — F2/F3, KTD2:
+
+~~~mermaid
+sequenceDiagram
+    participant Client as GUI / hotkey / CLI
+    participant App as Resident app
+    participant Desktop as Desktop adapter
+    participant Storage as Artifact store
+    participant Remote as Storage provider
+    Client->>App: Invoke action
+    App-->>Client: Accepted operation ID
+    App->>Desktop: Freeze target and acquire source
+    Desktop-->>App: Bytes, geometry, revision
+    App->>Storage: Commit immutable artifacts and item identities
+    App->>Remote: Upload retained artifact
+    Remote-->>App: Receipt or classified failure
+    App->>Storage: Commit outcome and history entry
+    App->>Desktop: Copy result if eligible
+    App-->>Client: Outcome and clipboard status
+~~~
+
+Operation lifecycle — R19, KTD3, KTD10, KTD12:
+
+~~~mermaid
+stateDiagram-v2
+    [*] --> Acquiring
+    Acquiring --> Stored
+    Acquiring --> Cancelled
+    Acquiring --> AcquisitionFailed
+    Stored --> Uploading
+    Stored --> Completed: local destination
+    Uploading --> Uploaded
+    Uploading --> Failed
+    Uploading --> PublicationUnknown
+    Uploading --> Cancelled
+    Uploaded --> Completed: copy succeeds or is skipped
+    Uploaded --> CopyFailed
+    Failed --> Stored: explicit retry with complete retained artifacts
+    PublicationUnknown --> Uploaded: reconciled successful receipt
+    PublicationUnknown --> Stored: explicit same-key retry
+    CopyFailed --> Completed: explicit copy retry
+~~~
+
+Source data flow — R4/R9, KTD3/KTD8/KTD9:
+
+~~~mermaid
+flowchart LR
+    Source[Screen frames or clipboard MIME] --> Snapshot[Detached immutable snapshot]
+    Snapshot --> Encode[PNG / UTF-8 text / regular-file bytes]
+    Encode --> Spool[Private durable artifacts]
+    Spool --> Archive[Optional user-owned local copy]
+    Archive --> Upload[Stream through storage provider]
+    Upload --> Receipt[Provider object reference and direct URL]
+    Receipt --> History[Durable upload history]
+~~~
+
+Dispatch branches — R6/R7/R15/R18, KTD4/KTD11:
+
+~~~mermaid
+flowchart TD
+    Start[Action invoked] --> Support{Required capabilities ready?}
+    Support -- No --> Setup[Actionable setup failure]
+    Support -- Yes --> Acquire[Acquire and store source]
+    Acquire --> SourceOK{Acquisition complete?}
+    SourceOK -- No --> Stop[Cancel or fail without publication]
+    SourceOK -- Yes --> Destination{Local or remote?}
+    Destination -- Local --> Local[Local result]
+    Destination -- Remote --> Secrets{Provider and credentials ready?}
+    Secrets -- No --> Retain[Retain artifact and show setup action]
+    Secrets -- Yes --> Put[Upload]
+~~~
+
+Mode/result matrix — R5/R6/R9, KTD12:
+
+| Source | Remote result (S3 first) | Local result |
+|---|---|---|
+| Screenshot/image | Public URL text | Saved PNG and image MIME |
+| Plain text | URL to UTF-8 text object | Saved text and captured text |
+| File list | Ordered successful URLs | Stored local copies and file URI list |
+
+Automatic copy eligibility applies to both columns per R8; an explicit copy-result action remains available.
+
+Versioned interface sketch — R21/R22/R34, KTD2/KTD13/KTD21:
+
+| Contract | Information carried |
+|---|---|
+| Invocation | Contract version, request ID, action, explicit destination override |
+| Accepted operation | Operation ID and resolved destination/backend; item identities populate after acquisition |
+| Status/result | State, per-item receipts/errors, artifact references, requested/final upload names and collision outcomes, separate archive/upload/clipboard outcomes |
+| History query/entry | Versioned cursor/filter, immutable entry ID, recorded destination and provider receipt, direct URL, preview availability, independent remote/local states |
+| Remote deletion | Explicit entry IDs and effect acknowledgement; operation ID, per-item progress/outcomes, original object reference and immutable precondition |
+| Configuration | Active file path, schema version, accepted/disk revisions, effective non-secret settings, validation errors; reload or patch with expected revision |
+| Capabilities | Per-operation support, required interaction, reason, tested version |
+| Error | Stable code, retryability, actionable next step; no secrets or source content |
+
+Configuration profile sketch — R16/R18/R34, KTD21. This is the explicit development template's S3 profile, not a complete settings file or an automatically installed destination:
+
+~~~json
+{
+  "id": "dev-s3",
+  "provider": "s3",
+  "credentialRef": "s3/dev-s3",
+  "options": {
+    "bucket": "put.gd",
+    "region": "us-east-2",
+    "endpoint": "https://s3.us-east-2.amazonaws.com",
+    "objectPrefix": "",
+    "storageClass": "STANDARD",
+    "aclMode": "public-read",
+    "publicUrlBase": "https://put.gd"
+  }
+}
+~~~
+
+The enclosing config.json has schemaVersion, stable profile IDs, action-to-profile mappings, and the remaining R11 settings. aclMode can be public-read or omit; publicUrlBase can be null for an endpoint-derived URL. Schema constraints and typed validation govern supported values. Renaming/removing a profile never remaps old receipts. Keep actual credential values in the R18 credential store or explicit session-only mode.
+
+### System-Wide Impact
+
+GUI, hotkeys, CLI, MCP, recovery, and tests share operation IDs, stored artifacts, and error semantics. GUI, CLI, and external JSON edits pass the same validator and expose the same accepted revision. Valid file changes refresh the GUI; validation errors and dirty-form conflicts remain visible. Operation-affecting edits affect subsequent operations; retries retain the original destination and preserve the key except for a confirmed name collision under the operation’s snapshotted policy. Changing destination requires a new explicit share.
+
+Source files are copied into private storage before upload; originals are never removed. Retention cannot delete in-flight artifacts, and user-owned local outputs are not cache entries. Unknown publication and cancellation may leave remote objects, which must be reported rather than described as rollback.
+
+R27's video category accepts existing video files in v1 and is ready to route finalized recordings when that deferred feature is added. Archive folders can sit on different volumes; their write attempts finish before the batch publication boundary, and their outcomes are independent of upload outcomes. A pending setting change does not reroute an existing operation. If an archive write fails, retain its retry source under the configured pending-artifact budget and offer Retry local save without reuploading a completed object.
+
+R29/R30 check remote filename collisions, not identical content. Local archives retain their independent never-overwrite policy, even when S3 overwrite is selected. Confirmed rename candidates can change before publication; once a write may have succeeded, its key is fixed until reconciliation. Copy only URLs for this operation’s confirmed uploads, using final keys in source order; an all-skipped batch leaves the clipboard unchanged. The overwrite setting explains that existing share URLs can point to replacement content and that custom-domain caches may delay its visibility. Record required metadata-read permissions in destination setup; do not change bucket policy to make checks work.
+
+R31–R33 make receipts durable management identities, independent of artifact retention and current settings. Changing a profile does not rewrite historical endpoints, namespaces, object references, or direct URLs. Removing a profile cannot repoint its history to another provider; credentials can be restored for the recorded destination. Mark known overwritten entries superseded; without a retained immutable version, their delete action cannot target replacement content. A copied old direct URL can now serve replacement content, so show that state alongside the link. Copying a history link is an explicit clipboard write and invalidates older automatic-copy eligibility under R8.
+
+Remote deletion does not erase an operation's successful-upload fact, retry the upload, delete local copies, or remove its history identity. Missing/deleted entries retain outcome metadata; ordinary Copy link/Open actions are disabled for a known removed object, while details keep the historical URL. A receipt reports last-known remote state rather than implying continuous cloud synchronization. A fresh upload at a previously deleted key is a distinct item, not a retry of deletion. History/cache clearing cannot run remote deletion, and in-progress deletion records cannot be pruned.
+
+Read-only diagnostics must not acquire pixels or clipboard content, prompt for permissions, or contact a storage provider. Exported bundles redact public URLs and filenames by default; explicit history details/actions can return the requested receipt and link.
+
+### Risks and Execution-Time Evidence
+
+| Risk / prerequisite | Decision and evidence required |
+|---|---|
+| Full Wayland parity | U7/U8 prove unfocused text/image/file acquisition and every result type alongside capture; missing support blocks that profile’s release, not the Qt bootstrap. |
+| GNOME API changes | Package/test for GNOME 50 first; pin the extension compatibility range and test disable/re-enable. Store approval is optional and not a prerequisite to direct installation. |
+| Portal version mismatch | Diagnose runtime interface/backend versions, never infer them from package names or latest documentation. |
+| S3 public-read incompatibility | U3 classifies existing ownership/access errors and tests public reachability; infrastructure changes require a separate instruction. |
+| Duplicate checks and concurrent writes | U3 proves signed HEAD classification and conditional PUT, including 403 ambiguity, a competing writer, and a lost successful reply. An unsupported SDK/endpoint must fail clearly rather than send an unprotected write. |
+| History targets and remote deletion | U2/U3 prove original-destination routing, changed-object rejection, exact-version handling, partial deletion, and lost replies; deny/inconclusive results never become successful deletion. Versioned tests do not change the user's bucket configuration. |
+| History growth and preview cache | U2/U5 prove indexed pagination and bounded preview loading with a synthetic 10,000-entry ledger; U10 checks memory/responsiveness with that ledger on the physical machine. |
+| External configuration edits | U2/U5 prove atomic replacement/re-arming, invalid-edit recovery, dirty-form conflicts, cooperative revision checks, and unchanged accepted operation/history targets; U10 verifies live edits in every installed desktop profile. |
+| Future storage providers | U2's second test provider exercises receipt/history/delete contracts without AWS-shaped assumptions. Missing provider capabilities are actionable setup errors. |
+| GNOME clipboard allocation | Prefer bounded MetaSelection transfer where St.Clipboard would buffer an unlimited offer; native IPC validates bytes before decoding. |
+| Malformed image/FD transfer | Native adapters check dimensions, stride, format, byte budgets, EOF, and deadlines before constructing images. |
+| SDK lifetime / shutdown | U3 stress tests in-flight cancel/restart/shutdown and resource draining, including late callbacks. |
+| VM acceleration unavailable | U6 performs a lab readiness check; use a host that exposes KVM. TCG may provide slow functional evidence, never performance evidence. |
+| GPU/compositor differences | U10 repeats critical checks on the physical user machine; VMs do not prove hardware-specific HDR, driver, or multi-GPU behavior. |
+| Dependency/build feasibility | U1 verifies the exact Mint toolchain and pinned S3/core build before feature construction. |
+| Performance budgets | U4 establishes the real hardware baseline; U10 measures release builds and fixes demonstrated bottlenecks. |
+
+Runtime backend behavior, actual display topology, dependency patch versions, and VM acceleration are deferred to the named executable gates. These do not block beginning U1. They must not be represented as already verified.
+
+### Delivery Sequence and Proposed Layout
+
+First prove a Cinnamon region capture → synthetic S3 upload → pasteable URL using U1–U4, with minimal settings from U5. Build the VM harness in U6 before completing GNOME/KDE work in U7/U8. MCP and full settings can develop after their shared contracts exist; packaging and release evidence finish in U10.
+
+| Area | Proposed location |
+|---|---|
+| Domain contracts, jobs, storage, settings | src/core/ |
+| Configuration schema, development template, guide | schemas/config.schema.json, config/development.example.json, docs/configuration.md |
+| Resident orchestration, IPC, CLI | src/app/, src/cli/ |
+| Capture, shortcut, clipboard adapters | src/platform/ |
+| Qt settings, history, tray, status | src/ui/ |
+| Storage contract and providers; credentials | src/core/StorageProvider.*, src/storage/s3/, src/secrets/ |
+| GNOME helper | integrations/gnome/ |
+| Optional MCP helper | tools/mcp/ |
+| Desktop VM lab and fixtures | tools/lab/, tests/fixtures/, tests/desktop/ |
+| Headless contracts and GUI checks | tests/unit/, tests/gui/, tests/integration/ |
+| Build, packaging, docs | cmake/, packaging/, docs/, AGENTS.md |
+
+---
+
+## Implementation Units
+
+| Unit | Work packet | Primary files | Depends on |
+|---|---|---|---|
+| U1 | Bootstrap reproducible builds | CMakeLists.txt, CMakePresets.json | — |
+| U2 | Shared operations, storage, and CLI | src/core/, src/app/, src/cli/ | U1 |
+| U3 | S3 upload/deletion and secret storage | src/storage/s3/, src/secrets/ | U2 |
+| U4 | Cinnamon/X11 workflow | src/platform/x11/ | U2, U3 |
+| U5 | Settings and resident UX | src/ui/ | U2, U3, U4 |
+| U6 | Graphical VM lab and development package | tools/lab/, tests/fixtures/, packaging/linux/ | U1, U2, U4 |
+| U7 | GNOME Wayland adapter | integrations/gnome/, src/platform/gnome/ | U3, U5, U6 |
+| U8 | KDE Wayland adapter | src/platform/kde/ | U3, U5, U6 |
+| U9 | Agent interface and documentation | tools/mcp/, docs/agents.md | U2, U3, U4, U6 |
+| U10 | Packages, performance, release gates | packaging/, docs/release.md | U4–U9 |
+
+### U1. Bootstrap reproducible Qt/C++ builds
+
+Goal: A clean checkout builds the app skeleton and test targets on the minimum Linux baseline.
+
+Requirements: R24–R26. Dependencies: none.
+
+Files: CMakeLists.txt, CMakePresets.json, cmake/Dependencies.cmake, cmake/dependency-lock.json, src/main.cpp, tests/unit/test_build_contract.cpp, .github/workflows/build.yml, README.md, AGENTS.md.
+
+Approach: Implement KTD1/KTD9 build boundaries and dev, release, ASan/UBSan, and TSan presets. Keep AWS SDK build options separate from app C++20 settings; import SDK targets and pin source/transitive hashes. Add Linux headless tests and shared core/UI compile jobs for Windows/macOS with native stubs. Record dependency provisioning, supported compilers, and the standing Anthropic review authorization in AGENTS.md.
+
+Execution note: Seek a clean dependency compile/link proof on Mint before building features.
+
+Patterns to follow: Official Qt CMake and AWS CMake targets; no existing repository pattern.
+
+Test scenarios:
+1. A clean baseline build links Qt, QtKeychain, SQLite support, and the selected SDK without downloading floating dependencies.
+2. A build with tests disabled excludes test-only dependencies.
+3. Windows/macOS jobs compile shared code without importing Linux-only D-Bus/XCB headers.
+
+Verification: Repeatable build presets and platform compile results exist, and AGENTS.md accurately describes the bootstrap.
+
+### U2. Shared operations, artifacts, history, settings, and CLI
+
+Goal: Every entry point can invoke and inspect one recoverable operation pipeline.
+
+Requirements: R4, R6–R11, R15, R16, R19, R21, R23, R27–R34. Dependencies: U1.
+
+Files: src/core/Operation.*, src/core/ArtifactStore.*, src/core/HistoryStore.*, src/core/StorageProvider.*, src/core/StorageReceipt.*, src/core/Settings.*, src/core/SettingsService.*, schemas/config.schema.json, config/development.example.json, tests/unit/test_settings.cpp, tests/integration/test_config_reload.cpp, docs/configuration.md, src/core/ClipboardPayload.*, src/core/LocalArchive.*, src/core/UploadNaming.*, src/app/OperationService.*, src/app/HistoryService.*, src/app/LocalServer.*, src/cli/main.cpp, tests/unit/test_payload.cpp, tests/unit/test_operations.cpp, tests/unit/test_archive.cpp, tests/unit/test_upload_naming.cpp, tests/unit/test_history.cpp, tests/integration/test_storage_contract.cpp, tests/integration/test_cli.cpp, docs/architecture.md, docs/storage-providers.md, docs/cli.md, docs/errors.md.
+
+Approach: Establish KTD2/KTD3/KTD12 contracts with fake native/provider seams. Implement versioned schemas, transactional journal recovery, file acquisition, MIME precedence, configuration snapshots, capability reporting, and copy-result retry. Implement KTD21 canonical file loading, shared validation, migrations, atomic writes, replacement watching/fallback, accepted revisions, and conflict reporting. Settings inspection is secret-free and read-only. Configuration acceptance may refresh preferences and request shortcut rebinding under KTD21/R12; it performs no capture, clipboard-content read, provider request, or secret-unlock prompt. CLI patching uses expected revisions. Provide the explicit development-template setup path without implicitly activating it. Implement KTD16 routing and the R28 archive boundary in the shared pipeline. Add KTD17 naming, same-batch collision resolution, persisted candidate/precondition identities, and terminal duplicate-skip outcomes. Implement KTD18/KTD19 provider receipts and paginated history, plus KTD20 deletion orchestration against a test provider; U3 supplies S3-specific behavior. Expose history and deliberate deletion through the same typed CLI/GUI services. Preserve the generic finalized-file boundary for future recording; the existing video-file cases prove downstream compatibility without a recorder implementation.
+
+Test scenarios:
+1. Files plus text on the clipboard select files; image plus text selects the image; empty/unsupported MIME produces no upload.
+2. One unavailable file in a two-file acquisition prevents all publication and reports the failing item.
+3. Reverse-order job completion or an intervening clipboard ownership change follows R8 without changing upload receipts.
+4. Restart after stored/unknown/uploaded states preserves artifacts and keys and does not silently publish again.
+5. Local destination returns the R6 result and issues zero uploader calls.
+6. Malformed, oversized, unknown-version, and wrong-session CLI requests fail with structured errors; an accepted operation ID is returned before interactive acquisition so a client can inspect or cancel it.
+7. Covers AE7/AE8. Image/video/text/other-file fixtures use their overrides or default subfolders; an unwritable/full destination reports archive failure while the immutable spool still uploads and supports local-save retry.
+8. Same-named files never overwrite archives; cache cleanup and a later archive edit do not remove user-owned copies or change retry bytes.
+9. Naming preserves extensions and handles Unicode, long keys, case-sensitive keys, prefixes, and two same-named batch files. Skip emits no receipt; an all-skipped batch performs no clipboard write. With two report.pdf files plus notes.txt under overwrite, both report.pdf items become non-published conflicts before any PUT, while notes.txt uploads and contributes its URL normally.
+10. Changing collision settings affects only later operations; restart preserves in-flight candidates, write conditions, and item markers without automatic renaming or publication.
+11. Covers AE11. Success/receipt reconciliation commits exactly one history entry per item; cache cleanup and restart preserve link, destination, local-copy status, and remote status. Paginated filtering/search over 10,000 entries does not load the entire ledger or thumbnail set.
+12. Versioned history migrations preserve populated records and fail transactionally. Explicit history clearing makes zero provider calls and preserves local files; in-progress deletion identities are retained.
+13. Covers AE13. A non-S3 test provider uses its own opaque file/version identifiers and URL format for upload/stat/delete. Shared history and CLI require no bucket/key/ETag fields or AWS headers; unsupported capabilities produce structured errors.
+14. Delete acknowledgement binds selected history IDs/effects; invalid, skipped, local-only, changed, or ambiguous-publication entries issue no destructive provider call. Partial deletion has per-item states, survives restart, and never retries an upload.
+15. Covers AE14. Repeated atomic file replacements refresh the accepted settings once per revision, including watcher re-arming/fallback; own-write events do not loop. GUI/CLI/file round trips preserve all non-secret controls.
+16. Invalid syntax/types/keys/schema/profile references, excessive input, and a temporarily removed file retain accepted settings and the original bad file. Fresh invalid/missing configuration enters setup without activating put.gd. Read/validate/reload makes zero capture, clipboard-content read, provider, or secret-unlock calls; accepted changes may refresh preferences and request shortcut rebinding with actual R12 status.
+17. Cooperative writers with stale expected revisions return config_conflict and preserve the file; failed atomic writes leave prior bytes intact. Mid-upload config changes affect only later actions, not accepted retries or original-receipt deletion.
+
+Verification: GUI/hotkey-ready typed operations and the real JSON CLI agree on IDs, state, and errors; file/schema/CLI validation agree and no source payload appears in diagnostics.
+
+### U3. S3 upload/deletion, public URLs, and secret storage
+
+Goal: Retained artifacts become correctly addressed S3 objects and usable provider receipts; recorded uploads can be deleted with accurate outcomes.
+
+Requirements: R5, R9, R16–R19, R20, R28–R33. Dependencies: U2.
+
+Files: src/storage/s3/S3Provider.*, src/storage/s3/CollisionChecker.*, src/storage/s3/PublicUrl.*, src/secrets/CredentialStore.*, tests/unit/test_public_url.cpp, tests/integration/test_s3.cpp, tests/integration/test_s3_delete.cpp, tests/integration/test_collision_policy.cpp, tests/integration/test_keychain.cpp, tests/fixtures/s3_server.py, docs/s3.md, docs/credentials.md.
+
+Approach: Implement KTD9–KTD11/KTD17/KTD20 inside KTD18's S3 adapter against a controllable offline HTTP/S3 fixture. Verify the pinned SDK supports signed conditional PUT and DELETE headers. Make cancellation stop queued work and suppress late result copying while request resources drain. Provide an explicit synthetic destination test, metadata-check/deletion capability results, and per-item retries. Record effective versioning/deletion effects without changing them; document upload/read/delete and version-delete permissions separately. Preserve credential references and original endpoint/bucket/version details in provider receipts, without leaking secrets into history.
+
+Test scenarios:
+1. A synthetic PNG uses the configured region/endpoint/bucket/prefix, ACL mode, storage class, content type, object key, and public URL base. Exercise both the development template and a different explicit profile; omit sends no ACL header, and a null public URL base derives the effective endpoint URL. No R16 value is hardcoded into routing.
+2. Prefixes/spaces/Unicode encode once, and the custom share domain is never the signing endpoint.
+3. Ownership-enforced/public-access-blocked/auth failures are terminal and do not change policy or silently switch the configured ACL mode.
+4. A server that stores a PUT but drops its reply produces unknown/reconciled status and retains the same key and body on retry.
+5. A two-item partial batch retains successful receipts and retries only failed items.
+6. Locked/unavailable/denied keychain access never writes credentials to fallback storage or diagnostics.
+7. Slow responses, cancellation, and shutdown retain valid SDK lifetimes and leave the GUI event loop responsive.
+8. Covers AE8. An archive failure leaves uploading enabled, with distinct archive status; a later upload failure or cancel retains any committed local copy.
+9. Covers AE9/AE10. Existing keys exercise rename, skip, and configured overwrite; final URLs match stored bytes. HEAD 403, timeout, and exhausted rename candidates produce explicit outcomes without an unchecked PUT.
+10. A competitor creates or changes a key between HEAD and PUT: conditional create never overwrites it, and conditional overwrite fails on changed/deleted content rather than refreshing the precondition automatically.
+11. A conditional PUT succeeds but loses its reply, then a retry receives 412: matching operation/item/hash metadata recovers the existing receipt without renaming, skipping, or uploading another object. Without conclusive metadata, publication stays unknown at the same key.
+12. Covers AE12. Signed deletion addresses the recorded endpoint/bucket/key rather than an edited profile or public URL. Identity/precondition mismatch and HEAD 403 issue no unguarded DELETE; access/retention/MFA errors preserve history and local copies.
+13. Unversioned, enabled-versioning, suspended/null-version, and already-missing fixtures report actual removal effects. Deleting a current immutable version in an enabled bucket hides it before removing its bytes; deleting a noncurrent recorded version leaves the replacement intact. A suspended bucket with an unrecorded null version beneath the selected current non-null version returns unsupported_safe_removal without DELETE and preserves both; a conclusive absence allows guarded marker creation, while denied/inconclusive null-version reads block it. Partial version removal retains its marker and reports hidden_version_retained; unrecorded versions are never purged.
+14. A DELETE or marker creation succeeds but loses its reply: reconciliation/restart retains the exact target and step, does not refresh to a replacement object, and does not blindly create another marker. Concurrent overwrite/delete, 409/412, unresolved absence, cancellation, and shutdown remain correctly classified.
+
+Verification: Offline integration tests exercise the real SDK adapter and versioning failure cases. A live synthetic fixture later proves upload, unauthenticated custom-domain GET, and guarded removal of that fixture only, without using a user screenshot or changing bucket controls. Versioned live evidence uses a preconfigured disposable test profile when available; it never enables versioning on put.gd as a test side effect.
+
+### U4. Cinnamon/X11 capture and global actions
+
+Goal: The four hotkeys work on the user’s Cinnamon session through the complete operation pipeline.
+
+Requirements: R1–R8, R12–R15, R20. Dependencies: U2, U3.
+
+Files: src/platform/x11/X11Capture.*, src/platform/x11/X11Shortcuts.*, src/platform/x11/X11Clipboard.*, src/platform/Geometry.*, src/ui/RegionOverlay.*, tests/unit/test_geometry.cpp, tests/desktop/cinnamon.yaml, docs/desktops/cinnamon.md.
+
+Approach: Implement KTD5/KTD8/KTD12, freezing desktop/window targets before overlay focus changes. Obtain source snapshots on the session thread, then move encoding/storage to workers. Keep target/geometry handling separate from still-frame acquisition as described in the future-recording boundary. Establish the physical performance baseline.
+
+Test scenarios:
+1. Covers AE1/AE2. A region drag captures exact fixture content; Escape/right-click cancels without publication.
+2. Two external windows with an occluding window produce the documented R2 target, never the app’s own overlay.
+3. All-monitor capture includes panels, negative origins, rotated layouts, and defined gaps.
+4. Caps/Num Lock and keymap changes preserve bindings; a conflicting shortcut reports failure.
+5. Text/image/two-file clipboard fixtures upload matching bytes and paste the intended result into a separate app.
+6. A layout change during selection aborts stale acquisition; no active/disappearing window returns a target error.
+
+Verification: Real Cinnamon hotkeys, artifacts, public-link/paste behavior, and release-build timing are recorded. QtTest geometry checks alone do not satisfy this unit.
+
+### U5. Settings, upload history, tray, status, and local workflow
+
+Goal: Users can configure every supported action and understand setup and failures from the GUI.
+
+Requirements: R6, R11, R12, R15, R16, R18–R20, R27–R34. Dependencies: U2, U3, U4.
+
+Files: src/ui/SettingsWindow.*, src/ui/ShortcutEditor.*, src/ui/RecentOperations.*, src/ui/HistoryWindow.*, src/ui/HistoryModel.*, src/ui/TrayController.*, tests/gui/test_settings.cpp, tests/gui/test_operations_view.cpp, tests/gui/test_history_view.cpp, docs/user-guide.md.
+
+Approach: Bind widgets to KTD21 shared settings/services, with stable accessible object names for tests. Expose the configuration path/revision and validation status; refresh clean forms on external acceptance and preserve dirty drafts with conflict/reload handling. All R16 fields are editable, including explicit ACL omission and an optional public URL base. Add destination testing, secret-store/session-only selection, conflict/capability status, copy/retry actions, optional login startup, and notifications. Keep settings/history reachable through the launcher/CLI when a tray icon is unavailable. Add the opt-in upload-copy setting, default-folder chooser, and per-category folder overrides through KTD16, plus local-save status and retry without reupload. Add generated/original upload-name selection and rename/skip/overwrite policy controls, with duplicate-check permission errors and per-item renamed/skipped/conflict outcomes. Implement R31 history search/filters/details, lazy image thumbnails, open/copy-link actions, selected-item remote-delete confirmation/progress, and distinct clear-history/cache controls. Present original destination, last-known state, superseded links, version-retained results, and local-copy status plainly. Provider settings/capabilities drive available controls without S3 assumptions in the history view.
+
+Test scenarios:
+1. Saving invalid endpoint/path/shortcut settings shows actionable validation and does not partially replace valid settings.
+2. Switching one action to local mode follows AE6 while other action destinations remain unchanged.
+3. Changing destination during an upload affects only later operations.
+4. Upload success plus copy failure shows the URL and copy-only retry; partial batches show successful and failed items.
+5. Missing tray integration and missing/disabled Wayland helpers still leave settings and setup instructions reachable.
+6. Changing only the video folder leaves other mappings intact; disabling upload copies leaves local-only saving active and removes no existing files.
+7. Rename is the initial duplicate policy; overwrite requires explicit selection and explains its effect on existing links. Changing that setting leaves pending operations unchanged, and upload overwrite never changes the local archive policy.
+8. Covers AE11. Older and partial-batch items remain searchable after restart/cache eviction; a missing preview uses a type icon. Copying a selected old link is deliberate and respects the newer clipboard state when another job later completes.
+9. Covers AE12. Deletion confirmation identifies original targets/effects, cancellation sends no DELETE, and successful/denied/uncertain/partially removed items have distinct visible states. Local copies survive; clearing history/cache never removes remote objects.
+10. A populated 10,000-entry ledger stays responsive during paging/filtering and bounded thumbnail decoding; history browsing works offline and makes zero provider calls. Known removed links are disabled for ordinary open/copy actions; details preserve the historic receipt.
+11. Covers AE14. External file edits update clean forms, preserve dirty drafts with a conflict notice, and cannot silently overwrite a detected newer revision. Invalid edits show field/parse errors with the accepted settings still active; a later valid replacement recovers without restart.
+
+Verification: Headless/in-process Qt GUI tests prove form/state behavior; real sessions prove tray, launch-at-login, notifications, and clipboard paste.
+
+### U6. Reproducible graphical VM lab
+
+Goal: Humans and agents can run and inspect genuine desktop workflow tests repeatedly.
+
+Requirements: R13–R15, R23–R25. Dependencies: U1, U2, U4.
+
+Files: tools/lab/lab.py, tools/lab/profiles/*.yaml, tools/lab/image-lock.json, tests/fixtures/desktop_fixture.cpp, tests/desktop/common.yaml, tests/desktop/test_lab.py, packaging/linux/CMakeLists.txt, packaging/linux/app.desktop.in, docs/testing.md, docs/vm-lab.md.
+
+Approach: Implement KTD14 with QEMU/QMP, disposable qcow2 overlays, an ephemeral guest SSH channel, and localhost-only interactive display access. Add a minimal CPack .deb target that installs the built app, required runtime components, and launcher entry into each guest. U7/U8 extend this target with their integration assets; U10 completes release packaging and lifecycle validation. Profile readiness checks confirm acceleration, native session type, portal/helper versions, display layout, and input routing. Pin base images/checksums and retain sanitized evidence. Provide bounded lab operations for launch/reset/input/screenshot/collect; these are development tools, separate from production MCP.
+
+Execution note: Prove one complete Cinnamon fixture run before expanding the lab to GNOME and KDE.
+
+Test scenarios:
+1. Two runs from a golden image install the development .deb, start with identical app/settings/clipboard fixtures, and use independent writable disks without source-tree dependencies.
+2. QMP drives a real shortcut, region drag, and paste; stored artifact pixels and pasted content match the guest fixture.
+3. An actual Wayland session is required for Wayland profiles; Xwayland fallback fails a Wayland profile, while missing KVM is reported and any TCG result is labelled functional-only.
+4. A deliberately wrong target/crop/clipboard result fails the scenario and preserves witness screenshots and logs.
+5. Timeout/crash cleanup terminates the VM and preserves diagnostics without leaking credentials or exposing control ports.
+
+Verification: One command interface documented in the repository runs a named desktop profile and exports machine-readable results plus inspectable evidence.
+
+### U7. GNOME 50 Wayland integration
+
+Goal: GNOME delivers the R14 workflow, including background clipboard file/image/text sharing.
+
+Requirements: R1–R15, R18, R23–R25. Dependencies: U3, U5, U6.
+
+Files: integrations/gnome/extension.js, integrations/gnome/metadata.json, integrations/gnome/schemas/*.xml, src/platform/gnome/GnomeAdapter.*, tests/desktop/gnome.yaml, tests/integration/test_gnome_bridge.cpp, docs/desktops/gnome.md.
+
+Approach: Implement KTD6/KTD8/KTD12 with narrow helper requests and bounded content transfer. Extend setup and packaging with install/enable/version status, clipboard shortcut assignment, and clean removal.
+
+Execution note: First prove region/window/full capture, all three background clipboard import types, and local image/file/text paste in the VM before polishing extension UI.
+
+Test scenarios:
+1. After one-time setup, all actions execute from another app without a per-capture consent picker.
+2. Image/file/text offers import correct bytes, and URL/local-result paste works without focusing the Qt app.
+3. Missing/disabled/incompatible extension reports capability failure and does not silently use a different capture target.
+4. Disable/re-enable and Shell/session restart remove/recreate bindings, signals, and IPC endpoints without duplicates.
+5. Oversized MIME offers, forged/stale request IDs, transfer timeout, and selection cancellation produce bounded failures.
+6. Fractional mixed-DPI layout changes and a clipboard change during upload follow R3/R8.
+
+Verification: Installed app plus extension passes the GNOME native Wayland profile, with captured pixels, uploaded bytes, and independent paste evidence.
+
+### U8. Plasma 6.6 Wayland integration
+
+Goal: KDE delivers the four actions without a per-capture picker or focus workaround.
+
+Requirements: R1–R15, R23–R25. Dependencies: U3, U5, U6.
+
+Files: src/platform/kde/KWinCapture.*, src/platform/kde/KdeShortcuts.*, src/platform/kde/DataControlClipboard.*, src/platform/kde/protocols/*, packaging/linux/app.desktop.in, tests/integration/test_kwin_transfer.cpp, tests/desktop/kde.yaml, docs/desktops/kde.md.
+
+Approach: Implement KTD7/KTD8/KTD12 and install the restricted-interface entry against the real executable. Use generated Wayland protocol bindings rather than an X11 clipboard tool. Make current shortcut APIs and returned bindings explicit.
+
+Execution note: Prove the installed desktop entry and all clipboard MIME/result types before treating capture API discovery as parity.
+
+Test scenarios:
+1. Actual global shortcuts capture focused-window, selected-region, and all-monitor fixture content.
+2. An absent/mismatched desktop permission entry fails clearly; the installed real executable succeeds.
+3. Delayed/truncated/oversized FD image transfers fail without blocking the UI or reading beyond bounds.
+4. Data-control imports file/image/text while unfocused and writes CLIPBOARD without directly changing PRIMARY.
+5. Missing protocol/shortcut service, conflicting binding, and compositor restart update capabilities and recover safely.
+6. Fractional scale, rotation, gaps, and monitor removal preserve the KTD8 mapping or invalidate acquisition.
+
+Verification: The installed .deb passes the native Plasma Wayland profile, including clipboard interop with a separate application.
+
+### U9. MCP parity and agent documentation
+
+Goal: An agent can act and debug through stable tools, and work from committed instructions.
+
+Requirements: R21–R24, R27, R31–R34. Dependencies: U2, U3, U4, U6.
+
+Files: tools/mcp/pyproject.toml, tools/mcp/uv.lock, tools/mcp/share_mcp/server.py, tests/integration/test_mcp.py, docs/mcp.md, docs/agents.md, AGENTS.md.
+
+Approach: Implement KTD13 as a strict adapter to the production CLI. Document tool effects, operation/deletion lifecycles, history pagination/filters, original-destination receipts, explicit deletion acknowledgement, redacted inspection, VM evidence collection, and source/build/test/package maps. Document the provider contract and how to add an adapter and its capability tests. Document active configuration discovery, the JSON schema/development example, external-edit reload behavior, expected-revision CLI patches, atomic-save/locking conventions, and invalid-edit/conflict recovery. Add examples using synthetic data.
+
+Execution note: MCP implementation and headless contract tests can begin after U2/U3; completion waits for the working Cinnamon scenario and documented U6 lab runner.
+
+Test scenarios:
+1. An official SDK client discovers schemas and performs an action with matching CLI operation IDs and results.
+2. Inspection/history queries generate zero capture, clipboard-content reads/writes, permissions prompts, or provider network activity.
+3. Invalid parameters, unavailable session, paths containing spaces, malformed CLI output, and startup timeout return useful structured errors.
+4. Capture/upload tools state the configured publication effect; helper invocation never uses a shell or receives raw credentials.
+5. Retry/cancel/copy-result behavior matches the GUI/CLI, including completed uploads and unknown publication.
+6. History listing/details/copy-link/delete match GUI/CLI entry IDs and per-item outcomes. Missing target IDs/effect acknowledgement issue no DELETE, and deleting never changes the current upload destination or retries a successful upload.
+7. Configuration inspection/reload/patch agrees with GUI/file validation, discovers the active path/revision, returns structured conflict/errors, and performs no cloud or capture activity. A synthetic agent edit updates the live settings view.
+
+Verification: CLI/MCP contract tests pass and a fresh agent follows the docs to build, run a desktop scenario, collect diagnostics, and identify a simulated failure.
+
+### U10. Packages, performance, and release acceptance
+
+Goal: Installable releases meet the desktop contract and have reproducible support evidence.
+
+Requirements: R13–R15, R20, R24–R34. Dependencies: U4–U9.
+
+Files: packaging/linux/CMakeLists.txt, packaging/linux/autostart.desktop.in, packaging/gnome/*, .github/workflows/release.yml, tests/desktop/package_smoke.yaml, tests/performance/bench_capture.cpp, docs/release.md, docs/troubleshooting.md, THIRD_PARTY_NOTICES.md.
+
+Approach: Complete KTD15 and the Verification Contract using the development package target established in U6 and extended in U7/U8. Exercise fresh install, upgrade, login startup, removal, extension lifecycle, and versioned settings recovery. Inventory licenses, dependency security maintenance, and rebuild inputs before distribution. Build and validate locally before any externally authorized publication.
+
+Execution note: Packaging is verified by installed-session smoke tests, not tests that mirror installer files.
+
+Test scenarios:
+1. A fresh VM installs the .deb/extension and completes setup and all actions without source-tree files; it does not activate the put.gd development template automatically.
+2. Upgrade preserves customized JSON values, keychain references, retained operations, populated upload history, and deletion outcomes through schema migrations; uninstall removes integration hooks while preserving user-owned outputs.
+3. Release builds meet the Success Criteria with the populated 10,000-entry history fixture and stay responsive during history browsing, an upload burst, and induced slow network.
+4. The package contains required platform/SQLite plugins, desktop authorization entries, notices, and checksums.
+5. A physical Cinnamon run confirms capture geometry, clipboard interop, and actual hardware performance beyond VM evidence.
+
+Verification: Release evidence records every required profile/case, package install outcome, measured budget, and remaining explicitly scoped limitation.
+
+---
+
+## Verification Contract
+
+### Test Layers and Boundaries
+
+| Layer | Runs where | Proves | Does not prove |
+|---|---|---|---|
+| Unit/contract QtTest | Headless CI | MIME parsing, geometry, state/retry/retention, configuration validation/revisions, history/migrations, provider-neutral receipts | Actual compositor or hotkeys |
+| In-process GUI QtTest | Offscreen/Xvfb | Settings/file refresh/conflicts, history search/paging/previews, deletion acknowledgement/states, retry actions | Wayland permissions or background clipboard |
+| Offline SDK/IPC/MCP integration | CI with fixture servers | Real adapter requests, upload/deletion lifecycle, versioning effects, JSON/config reload/tool parity, second-provider contract | AWS bucket policy or public custom domain |
+| Desktop acceptance | Logged-in QEMU guests and physical host | Global keys, selection, focused target, native Wayland clipboard, paste | Every GPU/driver combination |
+| Live S3 smoke | Explicit synthetic fixture | PUT/ACL, unauthenticated public URL bytes, guarded fixture deletion and recorded effect | General capture correctness or instantaneous cache invalidation |
+
+U1 creates the dev/release/sanitizer CMake configure/build/test presets; U6 creates the lab profile runner; U10 creates package validation. These are future repository interfaces, not existing or already-run commands. Exact recipes belong in AGENTS.md and docs/testing.md once the tooling exists.
+
+### Graphical Profiles
+
+| Profile | Baseline | Required evidence |
+|---|---|---|
+| cinnamon-x11 | Mint 22.3 / Cinnamon X11 | Real user host plus disposable VM |
+| gnome-wayland | Ubuntu 26.04 LTS / GNOME 50 | Native Qt Wayland session, installed Shell helper |
+| kde-wayland | Kubuntu 26.04 LTS / Plasma 6.6 | Native Qt Wayland session, installed ScreenShot2 entry and data-control |
+
+Each manifest records ISO hash, desktop/compositor/portal/interface versions, Qt platform/backend, app build, display layout, and acceleration. Use two virtual displays with different resolutions/scales plus single-display coverage. Run guests serially if host resources are limited; start with two vCPUs and 6 GiB RAM per guest, then record any required adjustment.
+
+QEMU/KVM is the primary lab; VirtualBox is an optional human reproduction route. QMP key/pointer injection avoids reliance on xdotool inside Wayland. Query supported QMP features and use witness dumps for each display head. Keep host–guest clipboard sharing disabled so it cannot fake the app’s clipboard success.
+
+### Required Desktop Scenarios
+
+Every profile verifies upload-copy enable/disable, content-category folder routing, preserved local copies after upload failure, archive-failure behavior, and remote filename policies with final-name URL paste and all-skipped clipboard preservation. Every profile runs region selection and cancellation, active-window target/focus changes, full desktop, clipboard text/image/two files, local-only result paste, shortcut conflict, offline upload, copy suppression after a new clipboard owner, and installed-package startup.
+
+Every profile also opens persisted history after restart, searches a past item, views available preview/details, copies its direct link into another app, and deletes a selected synthetic upload through the GUI. Verify its remote outcome and surviving local copy/history record. History browsing works offline and uses no cloud listing calls; selection cancellation and local history/cache clearing issue no remote deletion.
+
+Every profile edits config.json externally while the settings GUI is open, using atomic replacement through the lab SSH channel. Verify valid values appear without restart, invalid edits leave accepted values active, dirty forms retain drafts with conflicts, and later actions use the new destination/folder/naming settings while accepted operations keep their original snapshots. Record actual shortcut rebind status when bindings change.
+
+Geometry cases include mixed DPI/fractional scaling, negative origins, gaps, rotation, and display removal during selection. The fixture paints known solid regions and reports intended content/geometry; compare artifact dimensions and stable interior pixels, avoiding decoration/font antialiasing as the oracle. For native interop, repeat image/text paste and file-copy acquisition with a normal GTK/Qt app or file manager.
+
+Every pass needs the actual saved/uploaded bytes plus paste into a second app. A screenshot of the uploader’s own window or a portal capability response is insufficient.
+
+### Failure, Resource, and Native Code Checks
+
+Controlled fixtures cover timeouts, auth/ACL failures, malformed responses, lost successful PUT replies, partial batches, retry identity, unavailable keychain/helper, malformed IPC/native image metadata, cancellation, restart, and shutdown with requests in flight.
+
+History/delete fixtures additionally cover database migration failure, cache eviction, edited/removed destination profiles, partial selection outcomes, replaced objects, missing objects, denied deletion, immutable/noncurrent/null versions, protective markers, interrupted multi-step deletion, and lost DELETE replies. The non-S3 test adapter validates that opaque object references and provider capabilities survive history/CLI/MCP round trips.
+
+Run ASan+UBSan and a separate TSan job over app-owned core/providers/adapters, with dependency instrumentation limitations recorded. Exercise rapid hotkeys, bounded queue/storage exhaustion, late callbacks, and pending-artifact cleanup. Exclude sanitizer/TCG runs from performance results.
+
+Live S3 verification uses only synthetic bytes and unique test objects; record receipt/hash/public GET and the deletion/cleanup outcome. Never delete pre-existing user objects or mutate bucket versioning/retention to create a test. Exercise versioned service behavior through a preconfigured disposable test profile when available and deterministic offline fixtures otherwise; label the evidence accordingly. No credentials are baked into VM images or committed fixtures.
+
+### CI and Evidence Gates
+
+Each change runs appropriate headless and interface tests. Changes to a desktop adapter also require its real-session profile before declaring that behavior verified. The full three-profile matrix runs on a lab/self-hosted runner with a real display session before release; hosted CI is not assumed to expose KVM.
+
+Artifacts include results JSON/JUnit, app/CLI/MCP trace IDs, relevant desktop logs, expected/actual image dimensions and hashes, QMP witness frames, clipboard sink results, upload receipts, and package/version manifests. Sanitize diagnostic exports per R23; intentional synthetic fixture captures remain useful test artifacts.
+
+Windows/macOS CI proves compilation of shared components only. Physical Cinnamon validation and measured release-build budgets supplement VM tests.
+
+---
+
+## Definition of Done
+
+- All R1–R34 requirements are implemented or, for future native platform support under R26, satisfied by the portable boundary and compile checks.
+- Each U-ID’s scenarios pass at its stated layer, and every R13 profile has complete real-session evidence for the required workflow.
+- AE1–AE14 pass, including public link bytes, duplicate-name policy, persistent history, remote deletion outcomes, provider-neutral contracts, and independent paste behavior.
+- No graphical profile is called supported because mocks, offscreen widgets, or portal discovery passed.
+- The Success Criteria have recorded physical-machine measurements and no unexplained regression.
+- A clean environment can build, test, install, debug, and package through committed documentation; CLI/MCP effects and errors agree with the GUI.
+- History survives artifact cleanup and upgrade, remains searchable offline, and reports the original storage destination and accurate deletion state. Remote removal preserves local copies; clearing history never deletes remote data.
+- AWS types remain inside the S3 adapter, and the second test provider passes upload/history/link/delete contracts through shared services.
+- The documented JSON file and GUI represent the same accepted non-secret configuration; external edits reload with validation/conflict handling, and every development S3 default is configurable.
+- Credentials and source content are absent from ordinary configuration, source history, default exported diagnostics, and VM images.
+- Release packages contain dependency notices, checksums, integration hooks, and a documented update/rebuild path.
+- Abandoned prototypes, temporary workarounds, dead adapters, and unused dependencies are removed from the deliverable.
