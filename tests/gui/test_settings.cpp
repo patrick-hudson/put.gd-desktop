@@ -17,6 +17,39 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);int tests=0;
+  SettingsService service(d.filePath("config.json"),[&](auto id,auto value){return id=="s3"?provider.validateSettings(value):Error{"provider_unavailable","Unknown provider",{}};});
+  SettingsWindow window(service,secrets,[&](auto,auto,auto){++tests;});window.show();
+  auto* advanced=window.findChild<QToolButton*>("advancedSettings");QVERIFY2(advanced,"Setup needs an explicit Advanced settings expansion");QVERIFY(!advanced->isChecked());
+  QVERIFY(!window.findChild<QListWidget*>("settingsNavigation")->isVisible());QVERIFY(service.revision().isEmpty());QVERIFY(!QFile::exists(service.path()));QVERIFY(service.document()["profiles"].toArray().isEmpty());for(const auto& action:Settings::actionNames())QVERIFY(service.snapshot().actions[action].profileId.isEmpty());QCOMPARE(tests,0);
+  window.findChild<QPushButton*>("addS3Destination")->click();
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");QVERIFY(bucket->isVisible());bucket->setText("synthetic-bucket");
+  window.findChild<QLineEdit*>("s3Region")->setText("eu-west-1");QVERIFY(!window.findChild<QComboBox*>("credentialMode")->isVisible());QVERIFY(!window.findChild<QLineEdit*>("credentialSessionToken")->isVisible());QVERIFY(!window.findChild<QComboBox*>("destinationProfile")->isVisible());
+  auto* access=window.findChild<QLineEdit*>("credentialAccessKey");auto* secret=window.findChild<QLineEdit*>("credentialSecretKey");auto* token=window.findChild<QLineEdit*>("credentialSessionToken");for(auto* field:{access,secret,token})QCOMPARE(field->echoMode(),QLineEdit::Password);access->setText("synthetic-access");secret->setText("synthetic-secret");
+  QVERIFY(!window.findChild<QLineEdit*>("s3Endpoint")->isVisible());window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(!service.revision().isEmpty());
+  const auto profile=service.document()["profiles"].toArray().first().toObject();const auto settings=profile["settings"].toObject();
+  QCOMPARE(settings["endpoint"].toString(),QString("https://s3.eu-west-1.amazonaws.com"));QCOMPARE(settings["aclMode"].toString(),QString("omit"));QCOMPARE(settings["storageClass"].toString(),QString("STANDARD"));QVERIFY(settings["publicUrlBase"].isNull());
+  for(const auto& action:Settings::actionNames())QCOMPARE(service.snapshot().actions[action].profileId,profile["id"].toString());
+  QVERIFY(profile["id"].toString()!="development-s3");QCOMPARE(tests,0);const auto encoded=QJsonDocument(service.document()).toJson();QVERIFY(!encoded.contains("synthetic-access"));QVERIFY(!encoded.contains("synthetic-secret"));QVERIFY(!encoded.contains("synthetic-token"));QVERIFY(!secrets.cached(profile["id"].toString(),profile["credentials"].toObject()));
+  advanced->setChecked(true);QVERIFY(window.findChild<QComboBox*>("credentialMode")->isVisible());QVERIFY(token->isVisible());window.findChild<QComboBox*>("credentialMode")->setCurrentText("session");token->setText("synthetic-token");advanced->setChecked(false);window.findChild<QPushButton*>("saveSettings")->click();QTRY_COMPARE(service.document()["profiles"].toArray().first().toObject()["credentials"].toObject()["mode"].toString(),QString("session"));
+  const auto sessionProfile=service.document()["profiles"].toArray().first().toObject();QVERIFY(!QJsonDocument(service.document()).toJson().contains("synthetic-token"));QVERIFY(!secrets.cached(sessionProfile["id"].toString(),sessionProfile["credentials"].toObject()));window.findChild<QPushButton*>("storeCredentials")->click();QVERIFY(secrets.cached(sessionProfile["id"].toString(),sessionProfile["credentials"].toObject()));QVERIFY(access->text().isEmpty());QVERIFY(secret->text().isEmpty());QVERIFY(token->text().isEmpty());QCOMPARE(tests,0);
+ }
+ void advancedExpansionPreservesDraftAndCustomEndpoint() {
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;SettingsWindow window(service,secrets);window.show();
+  auto* toggle=window.findChild<QToolButton*>("advancedSettings");QVERIFY(toggle);window.findChild<QPushButton*>("addS3Destination")->click();
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("draft-bucket");window.findChild<QPushButton*>("addS3Destination")->click();auto* profiles=window.findChild<QComboBox*>("destinationProfile");QVERIFY(profiles->isVisible());profiles->setCurrentIndex(0);QCOMPARE(bucket->text(),QString("draft-bucket"));toggle->setFocus();QTest::keyClick(toggle,Qt::Key_Space);QVERIFY(toggle->isChecked());
+  auto* endpoint=window.findChild<QLineEdit*>("s3Endpoint");endpoint->setText("https://objects.example.invalid");toggle->click();QCOMPARE(bucket->text(),QString("draft-bucket"));
+  window.findChild<QLineEdit*>("s3Region")->setText("eu-north-1");QCOMPARE(endpoint->text(),QString("https://objects.example.invalid"));toggle->click();QCOMPARE(endpoint->text(),QString("https://objects.example.invalid"));QVERIFY(service.revision().isEmpty());
+ }
+ void sizeInputsSaveFractionalMiBAndPreserveExactAcceptedBytes() {
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));auto doc=configuration(d.path(),true);auto limits=doc["limits"].toObject();limits["maxBatchBytes"]=qint64(2147483649LL);doc["limits"]=limits;QVERIFY(service.save(doc,{}));CredentialStore secrets;SettingsWindow window(service,secrets);
+  auto* field=window.findChild<QLineEdit*>("maxFileBytes");QVERIFY2(field->accessibleName().contains("MiB"),"Size controls must declare binary units");field->setText("1.5");window.findChild<QPushButton*>("saveSettings")->click();
+  QTRY_COMPARE(service.document()["limits"].toObject()["maxFileBytes"].toInteger(),qint64(1572864));QCOMPARE(service.document()["limits"].toObject()["maxBatchBytes"].toInteger(),qint64(2147483649LL));
+  window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(window.findChild<QPushButton*>("saveSettings")->isEnabled());QCOMPARE(service.document()["limits"].toObject()["maxBatchBytes"].toInteger(),qint64(2147483649LL));
+  auto revision=service.revision();for(const auto& invalid:QStringList{"0.0000001","999999999999999999999999","bad"}){field->setText(invalid);window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(window.findChild<QPushButton*>("saveSettings")->isEnabled());QCOMPARE(service.revision(),revision);QVERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("config_invalid"));}
+ }
+
  void shortcutStatesAreReadableAndExactDiagnosticsRemainAvailable() {
   ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());editor.resize(700,450);editor.show();const auto draft=editor.actions({});
   const QJsonObject diagnostics{{"available",true},{"bindings",QJsonObject{
@@ -40,6 +73,7 @@ private slots:
   window.resize(1000,700);window.show();QTest::qWait(20);
   QVERIFY2(window.width()<=1000&&window.height()<=700,"Settings must fit a 1000×700 logical-pixel window");
   auto* navigation=window.findChild<QListWidget*>("settingsNavigation");QVERIFY2(navigation,"Settings sections need keyboard-accessible navigation");
+  auto* advanced=window.findChild<QToolButton*>("advancedSettings");QVERIFY(advanced);advanced->setChecked(true);navigation->setCurrentRow(0);
   auto* pages=window.findChild<QStackedWidget*>("settingsPages");QVERIFY(pages);QCOMPARE(navigation->count(),4);
   navigation->setFocus();QTRY_VERIFY(navigation->hasFocus());
   for(int i=0;i<4;++i){navigation->setCurrentRow(i);QCOMPARE(pages->currentIndex(),i);auto* scroll=qobject_cast<QScrollArea*>(pages->currentWidget());QVERIFY(scroll);QVERIFY(scroll->widgetResizable());QVERIFY(scroll->viewport()->width()>=500);}
@@ -81,7 +115,7 @@ private slots:
  }
  void localSetupAndAtomicValidation() {
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;SettingsWindow window(service,secrets);
-  auto* local=window.findChild<QPushButton*>("setupLocal");QVERIFY(local);local->click();
+  window.show();auto* local=window.findChild<QPushButton*>("setupLocalSimple");QVERIFY(local);QVERIFY(local->isVisible());local->click();
   auto* save=window.findChild<QPushButton*>("saveSettings");QVERIFY(save);save->click();QTRY_VERIFY(!service.revision().isEmpty());
   QCOMPARE(service.snapshot().actions["region"].destination,QString("local"));
   auto old=service.document();auto* root=window.findChild<QLineEdit*>("archiveRoot");QVERIFY(root);root->setText("relative/path");save->click();
@@ -89,7 +123,7 @@ private slots:
  }
  void externalAcceptancePreservesDraftAndRequiresReload() {
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;SettingsWindow window(service,secrets);
-  auto* root=window.findChild<QLineEdit*>("archiveRoot");root->setText(d.filePath("draft"));auto changed=service.document();auto archive=changed["archive"].toObject();archive["root"]=d.filePath("external");changed["archive"]=archive;QVERIFY(service.save(changed,service.revision()));
+  auto* advanced=window.findChild<QToolButton*>("advancedSettings");QVERIFY(advanced);advanced->setChecked(true);auto* root=window.findChild<QLineEdit*>("archiveRoot");root->setText(d.filePath("draft"));advanced->setChecked(false);auto changed=service.document();auto archive=changed["archive"].toObject();archive["root"]=d.filePath("external");changed["archive"]=archive;QVERIFY(service.save(changed,service.revision()));
   QCOMPARE(root->text(),d.filePath("draft"));QVERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("conflict",Qt::CaseInsensitive));QVERIFY(!window.findChild<QPushButton*>("saveSettings")->isEnabled());
   window.findChild<QPushButton*>("reloadSettings")->click();QTRY_COMPARE(root->text(),d.filePath("external"));
  }

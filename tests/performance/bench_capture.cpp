@@ -27,14 +27,21 @@ namespace {
 class Canvas:public QWidget {
 public:
  explicit Canvas(QScreen* screen):QWidget(nullptr,Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint|Qt::X11BypassWindowManagerHint){setScreen(screen);setGeometry(screen->geometry());show();raise();}
- void paintEvent(QPaintEvent*)override{QPainter painter(this);painter.fillRect(rect(),QColor(220,30,40));}
+ void paintEvent(QPaintEvent*)override{QPainter painter(this);painter.fillRect(rect(),QColor(80,90,100));painter.setPen(Qt::white);auto font=painter.font();font.setPixelSize(22);painter.setFont(font);painter.drawText(QRect(40,45,width()-80,100),Qt::AlignLeft|Qt::TextWordWrap,"Capture performance test\nSynthetic background — your desktop is not saved. Selections cancel automatically.");}
 };
 xcb_atom_t atom(xcb_connection_t* c,const char* name){auto* r=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,strlen(name),name),nullptr);if(!r)throw std::runtime_error("X11 atom lookup failed");const auto a=r->atom;free(r);return a;}
 bool color(xcb_connection_t* c,xcb_window_t w,bool shaded){
  auto* r=xcb_get_image_reply(c,xcb_get_image(c,XCB_IMAGE_FORMAT_Z_PIXMAP,w,20,20,1,1,~0u),nullptr);
  if(!r)return false;
  const auto* p=xcb_get_image_data(r);const bool ok=xcb_get_image_data_length(r)>=4 &&
-  (shaded?(p[2]>=140&&p[2]<=144&&p[1]>=18&&p[1]<=21&&p[0]>=24&&p[0]<=28):(p[2]==220&&p[1]==30&&p[0]==40));free(r);return ok;
+  (shaded?(p[2]>=50&&p[2]<=53&&p[1]>=57&&p[1]<=60&&p[0]>=63&&p[0]<=66):(p[2]==80&&p[1]==90&&p[0]==100));free(r);return ok;
+ }
+bool visibleCanvas(xcb_connection_t* c,xcb_window_t root,xcb_window_t canvas){
+ auto* location=xcb_translate_coordinates_reply(c,xcb_translate_coordinates(c,canvas,root,20,20),nullptr);
+ if(!location)return false;
+ auto* pixels=xcb_get_image_reply(c,xcb_get_image(c,XCB_IMAGE_FORMAT_Z_PIXMAP,root,location->dst_x,location->dst_y,1,1,~0u),nullptr);free(location);
+ if(!pixels)return false;
+ const auto* p=xcb_get_image_data(pixels);const bool ok=xcb_get_image_data_length(pixels)>=4&&p[2]==80&&p[1]==90&&p[0]==100;free(pixels);return ok;
 }
 }
 int main(int argc,char** argv){
@@ -61,6 +68,11 @@ int main(int argc,char** argv){
   settle(500);
   for(const auto& canvas:canvases)if(!color(connection,canvas->winId(),false))throw std::runtime_error("Synthetic covering window has not painted");
   for(int iteration=0;iteration<35;++iteration){
+   QElapsedTimer ready;ready.start();
+   while(!std::all_of(canvases.cbegin(),canvases.cend(),[&](const auto& canvas){return visibleCanvas(connection,root,canvas->winId());})){
+    if(ready.elapsed()>2000)throw std::runtime_error("Synthetic covering windows are not visibly ready on every display");
+    settle(5);
+   }
    while(auto* event=xcb_poll_for_event(connection))free(event);
    QElapsedTimer timer;timer.start();input(0xffe3,true);input(0xffe1,true);input(0xffc9,true);input(0xffc9,false);input(0xffe1,false);input(0xffe3,false);xcb_flush(connection);
    QList<xcb_window_t> overlays;double mappedMs=-1,paintedMs=-1;

@@ -59,3 +59,32 @@ it also contains VM authentication keys and a writable disk. Never archive
 or real user clipboard contents. Generic keyboard/shell tracing is deliberately absent;
 parameter records cover only the controlled synthetic scenario. Keep VNC active so
 the user can observe native interactions on the display wall.
+
+## Physical performance records
+
+The release idle harness is `tests/performance/bench_idle.py`; use a short private
+output path under `/tmp` because its local socket must fit the Unix path limit.
+Only a full 300-second run establishes the idle budget. Results include binary hash,
+hardware/session identity, warmup, time-series RSS/CPU and attributed mapped pages.
+
+Enable the non-installed capture driver with `cmake --preset release
+-DPUTGD_PHYSICAL_BENCHMARKS=ON`, then build normally. On the physical Cinnamon X11
+session, run:
+
+```sh
+python3 tests/performance/run_capture.py \
+  --app build/release/putgd --cli build/release/putgd-cli \
+  --driver build/release/putgd-bench-capture --output work/capture-run-unique
+```
+
+Use a new output directory per attempt. The supervisor records exact binary hashes,
+shortcut, warmup/sample counts, timeout, capabilities, owned operation outcomes and
+logs; driver results add display geometry/scale and all 30 timing samples. Every
+screen is covered by a labelled grey synthetic canvas, all selections are cancelled,
+and the isolated profile is local-only. The driver waits for the fixture to be visible
+on every head before each invocation, then independently checks owned selector
+mapping and exact painted pixels. This avoids confusing compositor fade with a
+failed capture. A completed run can still fail its 150 ms budget: retain that result.
+Run physical capture and memory measurements serially. Hosted virtual CI cannot
+establish the physical budget; a suitable self-hosted desktop can run these commands
+and retain only their controlled report directory. Never include credentials or VM keys.

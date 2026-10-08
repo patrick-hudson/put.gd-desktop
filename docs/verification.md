@@ -269,3 +269,42 @@ inspection, revision patches/conflicts and deliberate configuration-error recove
 in an isolated offscreen process. Its structured record reports14CLI calls,7MCP
 requests and12discovered tools, with zero operations/provider calls. This is partial
 U9 evidence; real Cinnamon, build and U6 lab walkthrough gates remain pending.
+
+### Simple setup and measured performance follow-up (2026-10-08)
+
+The simple destination form now opens with Advanced settings collapsed. Standard
+S3 defaults and an explicit local-only choice share the validated settings draft;
+expansion retains values. Credential storage remains a separate explicit action.
+MiB/GiB controls preserve exact byte counts, including previously accepted odd-byte
+values; activity/history summaries use readable units without changing JSON receipts.
+The native KDE test first failed for missing disclosure and size controls, then
+passed after implementation. The host full suite passed 25/25 (40.47s); the final
+compact form passed the three affected host GUI targets (6.17s) and native KDE Qt
+targets (5.16s). Those widget tests run offscreen and do not certify KWin rendering.
+The standard CPack DEB was installed and its binary fingerprint verified. Installed
+single-scale inspection is partial: complete scale, focus, error, and remote-deletion
+visual acceptance remains open. Simple setup is implemented; AE15 is not complete.
+
+The physical capture supervisor records private isolated configuration, hardware,
+binary hashes, parameters, logs, operation IDs, and result data. The final actual
+Cinnamon three-head run completed five warmups and 30 measurements with 35 cancelled
+operations and no saved payloads. Its p95 painted overlay latency was 235.821ms,
+which fails the 150ms budget. Earlier fixture-readiness failures remain recorded.
+The fixture background is labelled neutral grey. The actual KDE selector was
+separately inspected over the normal desktop with a drawn rectangle. Capture
+latency still requires attribution and correction; this is not a passing U10 gate.
+
+The VNC viewer showed fragmented incremental updates after a KDE window drag,
+while contemporaneous direct QMP framebuffer witnesses remained clean. The exact
+viewer/codec cause is unconfirmed. Investigation was parked at the user's request;
+no viewer source was changed and this evidence does not establish a Qt paint bug.
+
+An unchanged 300-second physical Cinnamon idle comparison at baseline 1e3735d measured
+87.0 MiB peak. Deferred AWS initialization measured79.0 MiB peak and 0.1366% of one core,
+passing the original idle budgets. All 25 existing release tests passed (47.83s),
+as did 12 deferred runtime generations, 3072 concurrent initialization calls, eager
+and unused-deferred lifecycles, and the production safe DELETE factory. No network
+requests occurred. This candidate is retained on the isolated optimization branch
+at 23102be; application integration and further optimization are pending. The 40 MiB
+target is unmet. The earlier lazy-view candidate remains rejected because its
+five-minute CPU gate failed; short diagnostics do not replace that result.
