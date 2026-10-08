@@ -1,0 +1,510 @@
+{
+  "status": "complete",
+  "readiness": "verification-ready; source and builds quiet",
+  "plan_path": null,
+  "changed_files": [
+    "CMakeLists.txt",
+    "src/storage/s3/S3Module.cpp",
+    "tests/integration/test_s3_module.cpp"
+  ],
+  "u_ids_attempted": [
+    "experiment001.late-sdk-module.review-fix-1",
+    "experiment001.late-sdk-module.review-fix-2"
+  ],
+  "u_ids_completed": [
+    "experiment001.late-sdk-module.review-fix-1",
+    "experiment001.late-sdk-module.review-fix-2"
+  ],
+  "findings": [
+    {
+      "number": 1,
+      "title": "Restart recovery after an incompatible module is cached",
+      "status": "resolved",
+      "productionChange": "Error now says to restart put.gd after an update and reinstall this build only if support remains unavailable. Stable s3_module_unavailable code, all compatibility guards, negative cache and PreventUnloadHint are unchanged.",
+      "changedFiles": [
+        "src/storage/s3/S3Module.cpp",
+        "tests/integration/test_s3_module.cpp"
+      ],
+      "redControl": "message",
+      "verification": "Both callbacks in each deployed failure row require restart and reinstall guidance plus inconclusive/s3_module_unavailable and no AWS/CRT/s2n mapping. Dev, Release, ASan/UBSan, TSan and installed deployment pass."
+    },
+    {
+      "number": 2,
+      "title": "Independently exercise same-version build and transport mismatch rejection",
+      "status": "resolved",
+      "productionChange": "None to compatibility checks. Separate CMake fixture modules now differ in exactly version, build identity, or safeDeleteTransport, with all remaining fields matching and nonnull fatal-if-called create/destroy pointers.",
+      "changedFiles": [
+        "CMakeLists.txt",
+        "tests/integration/test_s3_module.cpp"
+      ],
+      "redControls": [
+        "build-guard",
+        "transport-guard"
+      ],
+      "verification": "Removing only the build-ID comparison makes wrong-build child CrashExit and parent fail; removing only transport comparison with build-ID check restored makes wrong-transport child CrashExit and parent fail. Both guards restored exactly before final builds. Real deployed facade checks two repeated failures, no factory creation, stable code/status and no SDK mapping for missing/wrong-version/wrong-build/wrong-transport."
+    }
+  ],
+  "verification_results": {
+    "dev": {
+      "exit": 0,
+      "passed": 8,
+      "total": 8,
+      "receipts": [
+        {
+          "path": "/home/patrick/work/put.gd/work/memory-sdk-module-dev-review-fixes-tests.xml",
+          "sha256": "33f2de27f4509c31aa68a4c34466e05a5877b1a2bce900d45d21cf1b13c9a554",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 52.0
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/memory-sdk-module-dev-review-fixes-storage-tests.xml",
+          "sha256": "b857c08818b60cc26900db67c4561b598406819b60e2c61981508e3c84c2832f",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 4.0
+        }
+      ]
+    },
+    "release": {
+      "exit": 0,
+      "passed": 8,
+      "total": 8,
+      "receipts": [
+        {
+          "path": "/home/patrick/work/put.gd/work/memory-sdk-module-release-review-fixes-tests.xml",
+          "sha256": "f5beebf1d2ad22f2c597a9db2420c8bbfbdfb031bde7103c4acc2068601f62cf",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 53.0
+        }
+      ]
+    },
+    "asan": {
+      "exit": 0,
+      "passed": 8,
+      "total": 8,
+      "receipts": [
+        {
+          "path": "/home/patrick/work/put.gd/work/memory-sdk-module-asan-review-fixes-tests.xml",
+          "sha256": "31bdb0644afa148dd0738e9287e47d6b76e9196730326fba5473be1c81e13019",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 77.0
+        }
+      ]
+    },
+    "tsan": {
+      "exit": 0,
+      "passed": 8,
+      "total": 8,
+      "receipts": [
+        {
+          "path": "/home/patrick/work/put.gd/work/memory-sdk-module-tsan-review-fixes-tests.xml",
+          "sha256": "f12e2e9f5791b44b12680d6205a9f2185ee3740a8809dd550b1da3bac1f5dd1b",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 98.0
+        }
+      ]
+    },
+    "installed": {
+      "exit": 0,
+      "passed": 10,
+      "total": 10,
+      "receipts": [
+        {
+          "path": "/home/patrick/work/put.gd/work/memory-sdk-module-package-review-fixes-tests.xml",
+          "sha256": "49a36ab715fae69eb27bf40609c5206f850461ff094555abc789ba27b053658c",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 1.106
+        }
+      ]
+    },
+    "fresh-process-reload": {
+      "exit": 0,
+      "passed": 4,
+      "total": 4,
+      "receipts": [
+        {
+          "path": "/home/patrick/work/put.gd/work/memory-sdk-module-package-review-fixes-reload-tests.xml",
+          "sha256": "9d356048e5e2511b7478b0109d0ba94cd3e3137a3922bd3cabe15baae1cd563c",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "seconds": 0.283
+        }
+      ]
+    }
+  },
+  "verification_evidence": [
+    {
+      "unit": "experiment001.late-sdk-module.review-fix-1",
+      "behavior_changed": true,
+      "existing_tests_inspected": [
+        "Original module fixture/deployed-facade tests and production S3Module guard/cache/error implementation"
+      ],
+      "tests_added_or_changed": [
+        "Independent wrong-version/wrong-build/wrong-transport fixtures and deployed rows; restart/reinstall message assertions; repeat callback/failure and SDK mapping assertions retained"
+      ],
+      "tests_used_unchanged": [
+        "s3_integration",
+        "s3_delete_integration",
+        "collision_policy_integration",
+        "sdk_contract",
+        "build_contract",
+        "storage_contract_integration",
+        "public_url"
+      ],
+      "red_failure_or_characterization": [
+        "message"
+      ],
+      "verification_commands": [
+        "ctest --preset {preset} -R '^(s3_module_integration|s3_integration|s3_delete_integration|collision_policy_integration|sdk_contract|build_contract|storage_contract_integration|public_url)$' --output-junit <receipt>",
+        "cmake --build --preset {preset} --parallel 1 (TSan scoped targets under setarch -R)",
+        "Installed QtTest executable with LD_LIBRARY_PATH removed, plus separate fresh-process reload"
+      ],
+      "verification_results": {
+        "dev": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-dev-review-fixes-tests.xml",
+              "sha256": "33f2de27f4509c31aa68a4c34466e05a5877b1a2bce900d45d21cf1b13c9a554",
+              "tests": 7,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 52.0
+            },
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-dev-review-fixes-storage-tests.xml",
+              "sha256": "b857c08818b60cc26900db67c4561b598406819b60e2c61981508e3c84c2832f",
+              "tests": 1,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 4.0
+            }
+          ]
+        },
+        "release": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-release-review-fixes-tests.xml",
+              "sha256": "f5beebf1d2ad22f2c597a9db2420c8bbfbdfb031bde7103c4acc2068601f62cf",
+              "tests": 8,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 53.0
+            }
+          ]
+        },
+        "asan": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-asan-review-fixes-tests.xml",
+              "sha256": "31bdb0644afa148dd0738e9287e47d6b76e9196730326fba5473be1c81e13019",
+              "tests": 8,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 77.0
+            }
+          ]
+        },
+        "tsan": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-tsan-review-fixes-tests.xml",
+              "sha256": "f12e2e9f5791b44b12680d6205a9f2185ee3740a8809dd550b1da3bac1f5dd1b",
+              "tests": 8,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 98.0
+            }
+          ]
+        },
+        "installed": {
+          "exit": 0,
+          "passed": 10,
+          "total": 10,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-package-review-fixes-tests.xml",
+              "sha256": "49a36ab715fae69eb27bf40609c5206f850461ff094555abc789ba27b053658c",
+              "tests": 10,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 1.106
+            }
+          ]
+        },
+        "fresh-process-reload": {
+          "exit": 0,
+          "passed": 4,
+          "total": 4,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-package-review-fixes-reload-tests.xml",
+              "sha256": "9d356048e5e2511b7478b0109d0ba94cd3e3137a3922bd3cabe15baae1cd563c",
+              "tests": 4,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 0.283
+            }
+          ]
+        }
+      },
+      "exception_reason": null
+    },
+    {
+      "unit": "experiment001.late-sdk-module.review-fix-2",
+      "behavior_changed": false,
+      "existing_tests_inspected": [
+        "Original module fixture/deployed-facade tests and production S3Module guard/cache/error implementation"
+      ],
+      "tests_added_or_changed": [
+        "Independent wrong-version/wrong-build/wrong-transport fixtures and deployed rows; restart/reinstall message assertions; repeat callback/failure and SDK mapping assertions retained"
+      ],
+      "tests_used_unchanged": [
+        "s3_integration",
+        "s3_delete_integration",
+        "collision_policy_integration",
+        "sdk_contract",
+        "build_contract",
+        "storage_contract_integration",
+        "public_url"
+      ],
+      "red_failure_or_characterization": [
+        "build-guard",
+        "transport-guard"
+      ],
+      "verification_commands": [
+        "ctest --preset {preset} -R '^(s3_module_integration|s3_integration|s3_delete_integration|collision_policy_integration|sdk_contract|build_contract|storage_contract_integration|public_url)$' --output-junit <receipt>",
+        "cmake --build --preset {preset} --parallel 1 (TSan scoped targets under setarch -R)",
+        "Installed QtTest executable with LD_LIBRARY_PATH removed, plus separate fresh-process reload"
+      ],
+      "verification_results": {
+        "dev": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-dev-review-fixes-tests.xml",
+              "sha256": "33f2de27f4509c31aa68a4c34466e05a5877b1a2bce900d45d21cf1b13c9a554",
+              "tests": 7,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 52.0
+            },
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-dev-review-fixes-storage-tests.xml",
+              "sha256": "b857c08818b60cc26900db67c4561b598406819b60e2c61981508e3c84c2832f",
+              "tests": 1,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 4.0
+            }
+          ]
+        },
+        "release": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-release-review-fixes-tests.xml",
+              "sha256": "f5beebf1d2ad22f2c597a9db2420c8bbfbdfb031bde7103c4acc2068601f62cf",
+              "tests": 8,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 53.0
+            }
+          ]
+        },
+        "asan": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-asan-review-fixes-tests.xml",
+              "sha256": "31bdb0644afa148dd0738e9287e47d6b76e9196730326fba5473be1c81e13019",
+              "tests": 8,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 77.0
+            }
+          ]
+        },
+        "tsan": {
+          "exit": 0,
+          "passed": 8,
+          "total": 8,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-tsan-review-fixes-tests.xml",
+              "sha256": "f12e2e9f5791b44b12680d6205a9f2185ee3740a8809dd550b1da3bac1f5dd1b",
+              "tests": 8,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 98.0
+            }
+          ]
+        },
+        "installed": {
+          "exit": 0,
+          "passed": 10,
+          "total": 10,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-package-review-fixes-tests.xml",
+              "sha256": "49a36ab715fae69eb27bf40609c5206f850461ff094555abc789ba27b053658c",
+              "tests": 10,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 1.106
+            }
+          ]
+        },
+        "fresh-process-reload": {
+          "exit": 0,
+          "passed": 4,
+          "total": 4,
+          "receipts": [
+            {
+              "path": "/home/patrick/work/put.gd/work/memory-sdk-module-package-review-fixes-reload-tests.xml",
+              "sha256": "9d356048e5e2511b7478b0109d0ba94cd3e3137a3922bd3cabe15baae1cd563c",
+              "tests": 4,
+              "failures": 0,
+              "errors": 0,
+              "seconds": 0.283
+            }
+          ]
+        }
+      },
+      "exception_reason": null
+    }
+  ],
+  "red_controls": [
+    {
+      "control": "message",
+      "exit": 1,
+      "expectedFailureObserved": true,
+      "receipt": "/home/patrick/work/put.gd/work/memory-sdk-module-review-message-red.xml",
+      "receiptSha256": "f1b64bb91b7e19d91270c16ac4706e71226c8574845ecff7d9a2530244aa30da",
+      "identity": "/home/patrick/work/put.gd/work/memory-sdk-module-review-message-red-identity.json"
+    },
+    {
+      "control": "build-guard",
+      "exit": 1,
+      "expectedFailureObserved": true,
+      "receipt": "/home/patrick/work/put.gd/work/memory-sdk-module-review-build-guard-red.xml",
+      "receiptSha256": "4a093132bfa4220d69469eadd3f87548e41340d910aee0b2d18aa7611fcfee6e",
+      "identity": "/home/patrick/work/put.gd/work/memory-sdk-module-review-build-guard-red-identity.json"
+    },
+    {
+      "control": "transport-guard",
+      "exit": 1,
+      "expectedFailureObserved": true,
+      "receipt": "/home/patrick/work/put.gd/work/memory-sdk-module-review-transport-guard-red.xml",
+      "receiptSha256": "6050e5a761c1b15ba9987929b8fe41c8acd4517daaffa9f3f7960c764745c835",
+      "identity": "/home/patrick/work/put.gd/work/memory-sdk-module-review-transport-guard-red-identity.json"
+    }
+  ],
+  "implementation_engine_binding": null,
+  "requested_route": "native",
+  "actual_route": "native; inherited worker context",
+  "requested_model": null,
+  "actual_model": "unverified native model identity",
+  "requested_effort": null,
+  "fallback_reason": null,
+  "run_id": null,
+  "source_kind": "prompt",
+  "source_digest": {
+    "boundedTaskSummarySha256": "2c4235f926c075de29574889433be18f2f35af02b6895bc252d9423b05f2ce4c",
+    "fixedSpecSha256": "782c8f065d6edd76849577f0cc87fae0f127daece67c176326c3769b09d75490",
+    "originalReviewSha256": "379bcef4369db2bcb268799bd06bf698a43ca62a53437cffd7a12412474c2aef",
+    "finalOwnedSourceSha256": "805e449b0be798bd43e94d6fdef56612b79efde7574afcd67a6b9a31a6a77827"
+  },
+  "source_task_summary": "Resolve reviewed P2 findings #1 and #2 from frozen review 379bcef4369db2bcb268799bd06bf698a43ca62a53437cffd7a12412474c2aef in the existing isolated experiment001 SDK module; preserve exact ABI guards/pinning/error code, add independent wrong-build and wrong-transport fatal factories, prove red guard-removal controls, run focused Dev/Release/ASan/TSan and installed packaging checks, retain old receipts/measurements, return verification-ready without index/commit/benchmark.",
+  "unit_receipts": [
+    {
+      "unit": 1,
+      "route": "native",
+      "model": "unverified",
+      "detached_process": null,
+      "integration": "isolated working-tree changes only; caller owns index/integration",
+      "verification": "all focused and installed checks pass",
+      "canonical_commit": "explicitly caller-owned; no worker index or commit action",
+      "cleanup": "all compile/test/package processes exited; original source and receipts preserved"
+    },
+    {
+      "unit": 2,
+      "route": "native",
+      "model": "unverified",
+      "detached_process": null,
+      "integration": "isolated working-tree changes only; caller owns index/integration",
+      "verification": "all focused and installed checks pass",
+      "canonical_commit": "explicitly caller-owned; no worker index or commit action",
+      "cleanup": "all compile/test/package processes exited; original source and receipts preserved"
+    }
+  ],
+  "plan_checkpoint": null,
+  "blockers": [],
+  "recovery_path": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-memory-continuation-exp-001",
+  "settled_decision_conflicts": [],
+  "behavior_change": true,
+  "standalone_shipping_skipped": true,
+  "verification_author": "SDK implementation author; no claim of independent author corroboration",
+  "expectedHEAD": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "branch": "optimize-exp/resident-memory-continuation/exp-001",
+  "originalFrozenIndexDiffSha256": "43a840eacd4e5caa692abbc9c82da9be581093686e97a04b5d6836f12f822fb1",
+  "source_identity": "/home/patrick/work/put.gd/work/memory-sdk-module-source-identity.json",
+  "build_identity": "/home/patrick/work/put.gd/work/memory-sdk-module-build-identity.json",
+  "implementation_notes": "/home/patrick/work/put.gd/work/memory-sdk-module-implementation.md",
+  "review_fix_diff": "/home/patrick/work/put.gd/work/memory-sdk-module-review-fixes.diff",
+  "previousOwnedSourceSha256": "bee9b3021dab5aa5d96d1321543d3bda2802ec6f15a0e41ec44c65a2bd6cccdc",
+  "previousRootOwnedScoreMiB": 51.996,
+  "oldMeasurements": "untouched; no new benchmark or result marker written",
+  "preservedOriginalReceipts": {
+    "/home/patrick/work/put.gd/work/memory-sdk-module-dev-tests-final.xml": "020f3a01757d73baa8543ec30bc82ca8fd55f2c3d722291d3e3ba6a9139d5f38",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-release-tests.xml": "0b86d8c89554f60e9b0fb9ca17cdd7aca4ada12b287bf7beb9b3ae2a11069ae2",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-asan-tests.xml": "7147588a5fe3fdadc84f636fd3728fe695437dae9074235d2147244eab59fd85",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-tsan-tests.xml": "8d391e507926d8021e18ada55253f38b39a5483cb8e84259b128c92c1cc5f788",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-package-tests.xml": "c2aca487d32440eeb7cea229b5522e17be04eb476674ba418d58297464f6d622",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-dev-simplify-tests.xml": "6673f287726869613129004fc6d0519fb934852b02dbb877380b5c9150cfb078",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-release-simplify-tests.xml": "3aacdc3656f7fb62d7bba2538d199d6d6ace4c074788ff0a3c255573dd78aad9",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-asan-simplify-tests.xml": "3479f22a1bb69f037d123ad555047d56dd856218506affb524c8b0abd1d7026b",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-tsan-simplify-tests.xml": "1cc057d0850cc2da4ae2c3de90ad952b7f09508f874d3fddd016493b0b5e4576",
+    "/home/patrick/work/put.gd/work/memory-sdk-module-package-simplify-tests.xml": "c6ab0faa61523e4880d4087b0d2234afd95bea8b3f3787ed0accaf30449b4d84"
+  },
+  "originalPackagePreserved": {
+    "path": "build/release/putgd_0.1.0_amd64.deb",
+    "sha256": "36e8e7752109e4574d9eb8e5af19f2268fb5f752b117356e884f7df1a5a593a1"
+  },
+  "sameThreadLifetimeProof": "Unchanged S3SdkContext records owner before immediate SDK initialization and fatally rejects shutdown on another thread; driver clients are declared after context and destroyed before it. Permanent-worker/coexisting-provider/31s-idle/queue-drain/fresh-runtime-generation and unchanged direct SDK contract all pass in focused suites.",
+  "sanitizerScope": "Application code; TSan uses already-provisioned documented Qt/QtKeychain/D-Bus prefixes, setarch -R and only existing dependency-only suppression. Existing Release SDK/OpenSSL/curl not internally instrumented. No new dependency or suppression.",
+  "focusedSelectionCorrection": "Initial anchored Dev regex used storage_contract instead of storage_contract_integration and selected 7; retained receipt plus separate passing storage run cover all8. Corrected exact eight-name selection used for Release/ASan/TSan. No full26 rerun claimed.",
+  "remainingCallerGates": [
+    "Fresh matching-observer physical reference/candidate measurements; scoring/result marker/commit/integration belong to root",
+    "Full product/graphical acceptance and 40 MiB target remain open"
+  ]
+}

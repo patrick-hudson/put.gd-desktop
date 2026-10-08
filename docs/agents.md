@@ -18,6 +18,8 @@ Implement its dependencies in order and record blocked acceptance separately fro
 | Disposable desktop VM lab / development package | `tools/lab/`, `packaging/linux/` | `tests/desktop/test_lab.py`, [VM lab](vm-lab.md) |
 | Session JSON transport | `src/app/LocalServer.*`, `src/cli/main.cpp` | `test_cli.cpp`, [CLI](cli.md) |
 | Optional stdio MCP | `tools/mcp/` | `tests/integration/test_mcp.py`, [MCP](mcp.md) |
+| Resident/post-use memory and capture latency | `tests/performance/`, `src/app/OperationService.*` | [physical replay](testing-memory.md); synthetic lab results are separate from physical budgets |
+| Integer widths / member layout | `tools/diagnostics/layout/` | [read-only probe and replay](../tools/diagnostics/layout/README.md); sizes alone do not prove RSS savings |
 | Build, dependency pins, sanitizers | `CMakePresets.json`, `cmake/`, `tools/verify_dependencies.py` | [build](build.md), [thread checks](thread-sanitizer.md) |
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.

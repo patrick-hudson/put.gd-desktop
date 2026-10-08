@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "profile": "cinnamon-x11",
+  "scope": "single-display live region and independent Qt paste",
+  "ok": true,
+  "originalConfigRevision": "1cdf6dc83362403a16f9da128e65cbad14f7c9da013779ffc944b14d0efddf19",
+  "vncPort": 5935,
+  "sshPort": 22235,
+  "witnesses": {
+    "beforeDrag": [
+      [
+        20,
+        180,
+        70
+      ],
+      [
+        20,
+        180,
+        70
+      ]
+    ],
+    "duringDrag": [
+      [
+        35,
+        70,
+        220
+      ],
+      [
+        35,
+        70,
+        220
+      ]
+    ],
+    "outline": [
+      255,
+      255,
+      255
+    ]
+  },
+  "sourceIdentityFile": "source-build-identity.json",
+  "binarySha256": "eee79e359dbf26709b293b370cda0d55fa2cd740095edf9b1836075ef25f3bb8",
+  "fixtureSha256": "e1ef38b161a6545d65afb1b8aa6629485909aa13d3a7a6802b8e52c7969c03e1",
+  "parameters": {
+    "display": {
+      "height": 800,
+      "name": "Virtual-1",
+      "nativeHeight": 800,
+      "nativeWidth": 1280,
+      "rotation": 2,
+      "scale": 1,
+      "width": 1280,
+      "x": 0,
+      "y": 0
+    },
+    "fixturePaint": {
+      "height": 320,
+      "width": 640,
+      "x": 120,
+      "y": 152
+    },
+    "dragStart": [
+      150,
+      182
+    ],
+    "normalEnd": [
+      230,
+      242
+    ],
+    "rapidEnd": [
+      290,
+      282
+    ],
+    "outlineProbe": [
+      190,
+      182
+    ],
+    "beforeDragRgb": [
+      20,
+      180,
+      70
+    ],
+    "duringDragRgb": [
+      35,
+      70,
+      220
+    ],
+    "rapidFinalRgb": [
+      130,
+      45,
+      210
+    ]
+  },
+  "operationId": "5dcf7a0f-bb6c-438a-9125-f94e668dcadc",
+  "artifact": {
+    "width": 80,
+    "height": 60,
+    "sha256": "523e727c7b3c692515bab238041f160a807c0c31fece13b7a271201522e5394f",
+    "colors": [
+      [
+        4800,
+        [
+          35,
+          70,
+          220
+        ]
+      ]
+    ]
+  },
+  "paste": {
+    "width": 80,
+    "height": 60,
+    "colors": [
+      [
+        4800,
+        [
+          35,
+          70,
+          220
+        ]
+      ]
+    ],
+    "pixelsMatch": true
+  },
+  "fastReleaseOperationId": "0783231d-6d3f-412d-baf3-73afa2a0d9dd",
+  "fastRelease": {
+    "operationId": "0783231d-6d3f-412d-baf3-73afa2a0d9dd",
+    "width": 140,
+    "height": 100,
+    "colors": [
+      [
+        14000,
+        [
+          130,
+          45,
+          210
+        ]
+      ]
+    ],
+    "sha256": "d76d7e7efbf23d4cc55b6fd6b70f35eb9abd71d42e5509eab4bfe29278478111"
+  },
+  "fastPaste": {
+    "width": 140,
+    "height": 100,
+    "colors": [
+      [
+        14000,
+        [
+          130,
+          45,
+          210
+        ]
+      ]
+    ],
+    "pixelsMatch": true
+  },
+  "cancellation": [
+    {
+      "mode": "escape",
+      "operationId": "6cc0f5d6-ec2a-48bc-bb3f-d0efe910a52f",
+      "clipboardTextPreserved": true
+    },
+    {
+      "mode": "right-click",
+      "operationId": "41594e92-e953-4d27-b487-acc27e64d0de",
+      "clipboardTextPreserved": true
+    }
+  ],
+  "restoredConfig": true
+}

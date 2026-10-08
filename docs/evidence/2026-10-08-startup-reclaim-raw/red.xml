@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite name="OperationsTest" timestamp="2026&#x002D;10&#x002D;08T14:54:31" hostname="patrick&#x002D;Precision&#x002D;5540" tests="6" failures="3" errors="0" skipped="0" time="2.465">
+  <properties>
+    <property name="QTestVersion" value="6.4.2"/>
+    <property name="QtVersion" value="6.4.2"/>
+    <property name="QtBuild" value="Qt 6.4.2 (x86_64&#x002D;little_endian&#x002D;lp64 shared (dynamic) release build; by GCC 13.2.0)"/>
+  </properties>
+  <testcase name="initTestCase" classname="OperationsTest" time="0.000"/>
+  <testcase name="startupHeapCleanupRunsOnceAfterSuccessfulInitialization" classname="OperationsTest" time="0.052">
+    <failure type="fail" message="&apos;operations.diagnostics()[&quot;memory&quot;].toObject()[&quot;allocatorReclamationPending&quot;].toBool()&apos; returned FALSE. ()"/>
+  </testcase>
+  <testcase name="failedInitializationDoesNotRequestHeapCleanup" classname="OperationsTest" time="2.252"/>
+  <testcase name="shutdownCancelsPendingStartupHeapCleanup" classname="OperationsTest" time="0.107">
+    <failure type="fail" message="&apos;operations.diagnostics()[&quot;memory&quot;].toObject()[&quot;allocatorReclamationPending&quot;].toBool()&apos; returned FALSE. ()"/>
+  </testcase>
+  <testcase name="startupHeapCleanupWaitsForBackgroundWorker" classname="OperationsTest" time="0.053">
+    <failure type="fail" message="&apos;operations.diagnostics()[&quot;memory&quot;].toObject()[&quot;allocatorReclamationPending&quot;].toBool()&apos; returned FALSE. ()"/>
+  </testcase>
+  <testcase name="cleanupTestCase" classname="OperationsTest" time="0.000"/>
+</testsuite>

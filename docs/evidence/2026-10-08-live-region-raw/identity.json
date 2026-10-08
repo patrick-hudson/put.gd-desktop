@@ -1,0 +1,87 @@
+{
+  "timestampUtc": "2026-10-08T17:08:28.524502+00:00",
+  "head": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "sourceSha256": {
+    "src/ui/RegionOverlay.cpp": "506268546f0e6d60fbde35a096265d630bbd608a9731e4a9bf2c8092c68f3255",
+    "src/platform/x11/X11SourceAdapter.cpp": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+    "src/platform/x11/X11SourceAdapter.h": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+    "src/platform/x11/X11Capture.cpp": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+    "src/platform/x11/X11Capture.h": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+    "src/platform/x11/CinnamonRegionCapture.cpp": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+    "src/platform/x11/CinnamonRegionCapture.h": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+    "src/platform/kde/KdeRegionOverlay.cpp": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+    "src/platform/kde/KdeRegionOverlay.h": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+    "src/platform/kde/KdeSourceAdapter.cpp": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+    "src/platform/kde/KdeSourceAdapter.h": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+    "integrations/gnome/extension.js": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+    "tests/desktop/x11/test_x11.cpp": "a71a1851d04f9f531165a1abce660d828a763b24558ddd4dfe375092f161d718",
+    "tests/fixtures/desktop_fixture.cpp": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+    "CMakeLists.txt": "4983f6239471a823a9b95e0fcb77a986ac8b4a96b635834770b15da22f5dfc2a",
+    "CMakePresets.json": "e2465d3f3331c19d3077245169cf1d6e8a7637432d8f197a33a61dd24f3859ed",
+    "tests/sanitizer/tsan.supp": "bd364f5df8a645e52bac2f8ba0f43faf09111062bf7e79fc6b70d97b39c2ab65",
+    "cmake/Dependencies.cmake": "ffb28f1c98619035be1a48722d55086fe4bf2bc8c636183f8e7df4ec63402bec"
+  },
+  "buildDirectories": [
+    "/tmp/putgd-live-region-asan",
+    "/tmp/putgd-live-region-tsan"
+  ],
+  "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+  "sanitizerSuppressionsChanged": false,
+  "sdkInstrumented": false,
+  "additionalDirtyInputSha256": {
+    "src/app/OperationService.cpp": "464ec149919e5d89adb81709125c0eefae113170fd5a83536d01e943f3472eff",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "tests/unit/test_operations.cpp": "26dadc3aab38e65c30f8c2c47dbe04d63e9a7f6529213970a5d8a6ce81d0e0f1"
+  },
+  "additionalDirtyInputRecordedUtc": "2026-10-08T17:13:40.064978+00:00",
+  "coherentRebuildReason": "Root authored idle allocator reclamation in transitive putgd_app dependency after initial ASan test; final platform checks rebuild current source without claiming reclamation coverage.",
+  "asanBinarySha256": {
+    "test_x11": "70d454d63fee799dfaf9baf1e1fa2df0bc53c48730494219111b645245c13c02",
+    "test_gnome_bridge": "8b41e4b82ed75552eeb3b08a8a1284d39ffee05b5b66e1c5ecc18a903971cf4d",
+    "test_kwin_transfer": "eeaccdd8ab29a76b0664b2b92cef5de3ea9dbe4a5fa295deda7ac70dacd71229",
+    "test_geometry": "e23e7cd0010bd880a75d45469987b09cf43c9d20fb89cfcac3bdb24907f96e69"
+  },
+  "asanCacheSha256": "a068d1a0d50cee53f37de0cbf6e35a7a143ac904be19db06f3a23183e1c1e70f",
+  "tsanBinarySha256": {
+    "test_x11": "0674352f9cd813c7a52a1701d0c43f11dce9e450d242033bb4b17f18540efe82",
+    "test_gnome_bridge": "8f3133e886255a476bb89c83acd2e1ecfb7d1153914c55fbb86d2876ffc39f18",
+    "test_kwin_transfer": "d19f67455435d7bbe3316e8b333296b4eff2a369125235cef2917d8efca7ebb5",
+    "test_geometry": "bdb1ee7f2d4bf46968e1e3acd74d1384c9846d2b75eab9a4b2da837ed9ba05c6"
+  },
+  "tsanCacheSha256": "e2f6fe48e4859a0b55b491c31b8da55a0b416deb5dad2f4207b76829386e7b25",
+  "completedUtc": "2026-10-08T17:19:21.289943+00:00",
+  "finalSourceSha256": {
+    "src/ui/RegionOverlay.cpp": "506268546f0e6d60fbde35a096265d630bbd608a9731e4a9bf2c8092c68f3255",
+    "src/platform/x11/X11SourceAdapter.cpp": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+    "src/platform/x11/X11SourceAdapter.h": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+    "src/platform/x11/X11Capture.cpp": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+    "src/platform/x11/X11Capture.h": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+    "src/platform/x11/CinnamonRegionCapture.cpp": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+    "src/platform/x11/CinnamonRegionCapture.h": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+    "src/platform/kde/KdeRegionOverlay.cpp": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+    "src/platform/kde/KdeRegionOverlay.h": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+    "src/platform/kde/KdeSourceAdapter.cpp": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+    "src/platform/kde/KdeSourceAdapter.h": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+    "integrations/gnome/extension.js": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+    "tests/desktop/x11/test_x11.cpp": "a71a1851d04f9f531165a1abce660d828a763b24558ddd4dfe375092f161d718",
+    "tests/fixtures/desktop_fixture.cpp": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+    "CMakeLists.txt": "4983f6239471a823a9b95e0fcb77a986ac8b4a96b635834770b15da22f5dfc2a",
+    "CMakePresets.json": "e2465d3f3331c19d3077245169cf1d6e8a7637432d8f197a33a61dd24f3859ed",
+    "tests/sanitizer/tsan.supp": "bd364f5df8a645e52bac2f8ba0f43faf09111062bf7e79fc6b70d97b39c2ab65",
+    "cmake/Dependencies.cmake": "ffb28f1c98619035be1a48722d55086fe4bf2bc8c636183f8e7df4ec63402bec"
+  },
+  "finalAdditionalDirtyInputSha256": {
+    "src/app/OperationService.cpp": "464ec149919e5d89adb81709125c0eefae113170fd5a83536d01e943f3472eff",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "tests/unit/test_operations.cpp": "5c0b5af76df5ee45202f8898679f59ba96bd10a02a60644767d24775f27573b2"
+  },
+  "sourceStayedStableForFinalRebuildChecks": true,
+  "outsideTargetClosureChangedInputs": [
+    {
+      "path": "tests/unit/test_operations.cpp",
+      "beforeSha256": "26dadc3aab38e65c30f8c2c47dbe04d63e9a7f6529213970a5d8a6ce81d0e0f1",
+      "afterSha256": "5c0b5af76df5ee45202f8898679f59ba96bd10a02a60644767d24775f27573b2"
+    }
+  ],
+  "exportAttempt1": "Initial report export assertion caught changed test_operations.cpp, an uncompiled caller-owned test; preserved before/after hashes, no platform test rerun required."
+}

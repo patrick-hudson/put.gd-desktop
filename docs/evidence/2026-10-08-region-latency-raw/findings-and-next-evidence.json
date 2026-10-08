@@ -1,0 +1,11 @@
+{
+  "supportedFinding": "Large pre-map tail is in HistoryStore after sqlite db_.open returns, during QFile::setPermissions(path) plus initialize(); previous cancelled operation commit overlaps that interval.",
+  "exactBoundaryStillNeeded": "A narrowly expanded transient trace around file permission setting and the two PRAGMAs would distinguish filesystem permission work from SQLite read-lock/busy retries. Current trace does not choose a journal behavior fix.",
+  "postInputFinding": "Input is issued while initial selector work is still pending. Surface press receipt median51.73 ms after drag injection; final drag move to first UpdateRequest begins within0.26 ms. Painter CPU total median4.59 ms and native setup median5.88 ms do not explain the long pre-map tail. Repeated synchronous driver Translate/GetImage probes can overlap X11/Qt waits; observation is intrusive.",
+  "nextEvidenceProposal": [
+    "Before any app/journal edit, split the remaining permission/PRAGMA boundary with a transient probe and retain both durable journal writes.",
+    "Before a paint/grab fix, bracket the Surface press handler end and initial Qt update intervals to distinguish explicit grab wait from event delivery/backing-store wait.",
+    "A separately identified diagnostic driver that caches validated selector position/geometry once and reads only the fixed white witness thereafter can test observer interference. It must retain the150 ms gate and never be represented as the same earlier driver or compositor-present proof."
+  ],
+  "productionChanges": "None proposed as established or implemented; ownership/measurement coordination remains with root."
+}

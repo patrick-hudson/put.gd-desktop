@@ -1,0 +1,95 @@
+{
+  "createdAt": "2026-10-08T18:32:19.362215+00:00",
+  "sourceRoot": "/home/patrick/work/put.gd",
+  "buildRoot": "/tmp/putgd-live-outline-latency-probe/build",
+  "files": [
+    {
+      "path": "src/app/OperationService.cpp",
+      "beforeSha256": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+      "instrumentedSha256": "742a862e4777b39afa62f015743e389b94a4e675a5ea867507c1db900239cf38"
+    },
+    {
+      "path": "src/core/HistoryStore.cpp",
+      "beforeSha256": "a92f1558ea55676ef3ee4ef7b7cba0654fed7b35138378ba6e7e65f86fef29ef",
+      "instrumentedSha256": "4325305594cdb1e19aa72ccb790e882da931e96057397f2f86bf4803df15b477"
+    },
+    {
+      "path": "src/platform/x11/X11SourceAdapter.cpp",
+      "beforeSha256": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+      "instrumentedSha256": "bf63c3bcb0d70c6c16a1d666bba08d088e5154f2289cc436475aa21e262a070b"
+    },
+    {
+      "path": "src/platform/x11/X11Shortcuts.cpp",
+      "beforeSha256": "c4da27d8c5ceefad646254250eca250bd7d11047c7a45e424de9735228268dd0",
+      "instrumentedSha256": "1caa94248d535061108b02cf91e6ca7d9858cbce4a01d932559096b59cdb0399"
+    },
+    {
+      "path": "src/ui/RegionOverlay.cpp",
+      "beforeSha256": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1",
+      "instrumentedSha256": "25ff27590d808a5fee01ca9b36461658e3d6bbf9ce26cca56be0762e926f278c"
+    },
+    {
+      "path": "tests/performance/bench_capture.cpp",
+      "beforeSha256": "6ee9b45beccc05016de5d91e39c833d16a1cd6b4d80421e4c34e6658638e25bd",
+      "instrumentedSha256": "3b6036b183c3d2523dbd535dc00aa1582aa901347e339713d9376fa4fc02286e"
+    }
+  ],
+  "restored": true,
+  "measurement": "Unscored locating trace only; no physical or VM run performed by build script.",
+  "traceHeaderSha256": "35a55dad9d20a3cde7ba140d3b9f1ce9b11a93a2aa260fbf00b37d3bb5731f96",
+  "instrumentationPatchSha256": "b2dc3806f099fbd65b0179be7991096d79f6213a95875124eaceaa93ede4ed83",
+  "commands": [
+    [
+      "cmake",
+      "--preset",
+      "release",
+      "-B",
+      "/tmp/putgd-live-outline-latency-probe/build",
+      "-DBUILD_TESTING=OFF",
+      "-DPUTGD_PHYSICAL_BENCHMARKS=ON"
+    ],
+    [
+      "cmake",
+      "--build",
+      "/tmp/putgd-live-outline-latency-probe/build",
+      "--target",
+      "putgd",
+      "putgd-cli",
+      "putgd-bench-capture",
+      "--parallel",
+      "1"
+    ]
+  ],
+  "exitCodes": [
+    0,
+    0
+  ],
+  "binarySha256": {
+    "putgd": "c2770f14f72fb614f42b1e65fe909f0c0328e1db1aa49a37385f591df2749adb",
+    "putgd-cli": "6446645d6e749ee4ce22a465c996c6dec4cd0b2c88fe110308a96dacba0daf54",
+    "putgd-bench-capture": "6b08fa9bc8585088dd7e718d1da91f9cf1ca767fa39710930503cfcb7b0770e9"
+  },
+  "buildReady": true,
+  "evidenceSha256": {
+    "configure.log": "00679b935e310a5065ea72065f078697127e24e2a66eebe5b149fab6b451061c",
+    "build.log": "3976913e2983f45e7f4cba08eb1e86174065e9db74279b280938eb2ae8f66f47",
+    "build_probe.py": "6f7e11645a1ddab061c06f0b93c3c1ad50d94231d0d285179c097f1bf33a8872",
+    "trace.h": "35a55dad9d20a3cde7ba140d3b9f1ce9b11a93a2aa260fbf00b37d3bb5731f96",
+    "instrumentation.patch": "b2dc3806f099fbd65b0179be7991096d79f6213a95875124eaceaa93ede4ed83",
+    "compiled-sources.json": "5d819cd09714233d9c94cef50f7b11448b2d0b791df1a4b895b622c0c35e8b99"
+  },
+  "traceProtocol": {
+    "prefix": "PUTGD_CAPTURE_TRACE ",
+    "fields": [
+      "phase",
+      "tNs",
+      "operationId",
+      "ordinal"
+    ],
+    "clock": "CLOCK_MONOTONIC nanoseconds; shared Linux monotonic clock across resident/driver processes",
+    "initialPaintMeaning": "Surface painter invoked while owner.dragging_ is false; first actual paint per surface is determined by first occurrence, not phase label.",
+    "updateRequestMeaning": "QWidget::event(QEvent::UpdateRequest) entry/return; does not acknowledge compositor presentation.",
+    "runtimeStatus": "Not launched or measured; serial lock release required.",
+    "measurement": "Unscored locating trace only; journal ordering, driver query order and 150 ms threshold retained."
+  }
+}

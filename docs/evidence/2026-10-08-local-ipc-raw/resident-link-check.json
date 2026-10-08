@@ -1,0 +1,5 @@
+{
+  "binarySha256": "2a940ffcdaae95fba0eb97e578b464b33bcb09b2f18241916aa754741a5af677",
+  "networkInLddClosure": false,
+  "limitation": "ELF closure only; native GTK plugin and runtime maps verified during separate quiet run."
+}

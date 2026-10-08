@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "scope": "synthetic covering windows; local-only; all selections cancelled",
+  "desktop": "X-Cinnamon",
+  "session": "x11",
+  "kernel": "6.14.0-37-generic",
+  "shortcut": "Ctrl+Shift+F12",
+  "warmupInvocations": 5,
+  "sampleCount": 30,
+  "timeoutSeconds": 240,
+  "witnessMode": "live-outline",
+  "harnessSha256": "28b1a035fac1756ba53db7816dd5c61a77b2c969c7659965eec0e92c706acaa7",
+  "binarySha256": {
+    "app": "c2770f14f72fb614f42b1e65fe909f0c0328e1db1aa49a37385f591df2749adb",
+    "cli": "6446645d6e749ee4ce22a465c996c6dec4cd0b2c88fe110308a96dacba0daf54",
+    "driver": "6b08fa9bc8585088dd7e718d1da91f9cf1ca767fa39710930503cfcb7b0770e9"
+  }
+}

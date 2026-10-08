@@ -1,0 +1,66 @@
+[
+  {
+    "file": "identity.json",
+    "sha256": "c78ea9468677f952769f419cde1cf0514005380d9c6ca661455a75262cab2599"
+  },
+  {
+    "file": "runtime-parameters.json",
+    "sha256": "2bc144d7a9bf379a39eff0f69bd80fa291468d07438fa265e4f977d4b515412a"
+  },
+  {
+    "file": "runtime-results.json",
+    "sha256": "f800c3bc7e4f0525efab82f80cd8f98657c36e207e97eda25e548b5a0bdfdb38"
+  },
+  {
+    "file": "runtime-operations.json",
+    "sha256": "e1612859f6bac1a79306239949b4f9ab76ef08036b8962e0fd2bd9f6a9919545"
+  },
+  {
+    "file": "runtime-manifest.json",
+    "sha256": "61c98daf8ccf9adab47bd69b49edd27f2463bae6ddd767273462a6e8da169207"
+  },
+  {
+    "file": "runtime-driver.log",
+    "sha256": "d280e568f87ef68bb841b2e8cbd8c652817b2d03a3dbe6033c84d0e96d0123f8"
+  },
+  {
+    "file": "runtime-resident.log",
+    "sha256": "9f160b721ff2cf9965026e7dd9a8f47b4630b2275ba874c5eb46db05467ccc40"
+  },
+  {
+    "file": "latency-attribution.json",
+    "sha256": "27d4a9ba5cd01f5cde59055ed06c8cef76c249fead4b35b695a07ff5f0cca737"
+  },
+  {
+    "file": "findings-and-next-evidence.json",
+    "sha256": "c8e203b0aa40bd6315063368e34e92b527d642451cb1db84b6b67572aacf3d50"
+  },
+  {
+    "file": "instrumentation.patch",
+    "sha256": "b2dc3806f099fbd65b0179be7991096d79f6213a95875124eaceaa93ede4ed83"
+  },
+  {
+    "file": "trace.h",
+    "sha256": "35a55dad9d20a3cde7ba140d3b9f1ce9b11a93a2aa260fbf00b37d3bb5731f96"
+  },
+  {
+    "file": "analyze_trace.py",
+    "sha256": "6240a5ddab63f774dc616f0a1809bc36f9a9fa3870ba948f6c4d69e5b0b1c283"
+  },
+  {
+    "file": "build_probe.py",
+    "sha256": "6f7e11645a1ddab061c06f0b93c3c1ad50d94231d0d285179c097f1bf33a8872"
+  },
+  {
+    "file": "compiled-sources.json",
+    "sha256": "5d819cd09714233d9c94cef50f7b11448b2d0b791df1a4b895b622c0c35e8b99"
+  },
+  {
+    "file": "configure.log",
+    "sha256": "00679b935e310a5065ea72065f078697127e24e2a66eebe5b149fab6b451061c"
+  },
+  {
+    "file": "build.log",
+    "sha256": "3976913e2983f45e7f4cba08eb1e86174065e9db74279b280938eb2ae8f66f47"
+  }
+]

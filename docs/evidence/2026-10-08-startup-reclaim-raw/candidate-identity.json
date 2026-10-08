@@ -1,0 +1,34 @@
+{
+  "baseCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+  "branch": "optimize-exp/resident-startup-reclaim/exp-001",
+  "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-startup-reclaim-exp-001",
+  "files": {
+    "src/app/OperationService.cpp": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8",
+    "tests/unit/test_operations.cpp": "7bac570f50e0a075c945c2d16fcd8719c814851ddfb33787a1a000062f3dba65"
+  },
+  "immutableTrackedScopeVerified": true,
+  "binaries": {
+    "putgd": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+    "putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+    "libputgd-s3.so": "a00feb50110a965f8af5ebfe4af91e4e8b0276300904483c33c7fdbe4fd65783"
+  },
+  "harnesses": {
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+  },
+  "build": {
+    "commands": [
+      "cmake --preset dev",
+      "cmake --build --preset dev --target test_operations",
+      "cmake --preset release",
+      "cmake --build --preset release --target putgd putgd-cli test_operations"
+    ],
+    "configuration": [
+      "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+      "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp"
+    ],
+    "sdk": "official1.11.907, already provisioned; standard existing build/sdk symlink",
+    "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+    "qt": "6.4.2 distro dynamic"
+  }
+}

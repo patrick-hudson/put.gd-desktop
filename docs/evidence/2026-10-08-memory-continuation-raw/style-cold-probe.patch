@@ -1,0 +1,13 @@
+diff --git a/src/main.cpp b/src/main.cpp
+index 9aa84a6..104fcb4 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -61,7 +61,7 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
+ }
+ int main(int argc,char* argv[]) {
+  QApplication app(argc,argv);
+- putgd::VisualStyle::apply(app);
++ if(!qEnvironmentVariableIsSet("PUTGD_PROBE_NO_CUSTOM_STYLE"))putgd::VisualStyle::apply(app);
+  app.setDesktopFileName("putgd");
+  app.setWindowIcon(putgd::VisualStyle::icon("brand"));
+  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion("0.1.0");

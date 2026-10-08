@@ -1,0 +1,1581 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "exportedAt": "2026-10-08T16:32:05.061396+00:00",
+  "scope": "Completed physical cold idle and empty-view memory attribution only; source-hashed sanitized export, no new measurements",
+  "sourceRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "sourceJournal": {
+    "path": ".context/compound-engineering/ce-optimize/resident-memory-continuation/experiment-log.json",
+    "sha256": "3d998178b3a7f9428615a776ed550b72369b0505c4a80b9dfb1ce16e7c67de81",
+    "exportedSnapshot": "2026-10-08-memory-continuation-raw/experiment-log.sanitized.json"
+  },
+  "sanitization": {
+    "footprintMappings": "Basenames or anonymous mapping labels only",
+    "checkoutPaths": "User checkout/worktree prefixes normalized",
+    "excluded": [
+      "credentials",
+      "configuration contents",
+      "pixels",
+      "clipboard/source payloads",
+      "SQLite row contents",
+      "unrelated window titles",
+      "unfiltered resident logs"
+    ],
+    "rawCompleteness": "All fields and footprint rows from listed result/progress JSON retained after path sanitization; unavailable results are explicit in manifest."
+  },
+  "environment": {
+    "measurementHost": {
+      "kernel": "6.14.0-37-generic",
+      "machine": "x86_64",
+      "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+      "desktop": "X-Cinnamon",
+      "session": "x11"
+    },
+    "packageVersionsAtExport": {
+      "cinnamon": "6.6.4+zena",
+      "cmake": "3.28.3-1build7",
+      "gcc-13": "13.3.0-6ubuntu2~24.04",
+      "libc6": "2.39-0ubuntu8.9",
+      "libcairo2": "1.18.0-3build1",
+      "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+      "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+      "muffin": "6.6.1+zena",
+      "ninja-build": "1.11.1-2",
+      "python3": "3.12.3-0ubuntu2.1"
+    },
+    "versionLimit": "Package inventory was read at export, not embedded by the historical scratch harness.",
+    "pythonAtExport": "3.12.3",
+    "awsSdkLock": {
+      "path": "cmake/dependency-lock.json",
+      "sha256": "c6c41e15a56e4f801c1225966b7b6c309eee54745bfa1788a066378a36621333",
+      "release": "1.11.907",
+      "commit": "a9f0ffcc276664b475230206fa554841ad5bc3de"
+    }
+  },
+  "protocol": {
+    "seconds": 300,
+    "warmupSeconds": 5,
+    "samplingSeconds": 30,
+    "physicalSession": "Cinnamon X11",
+    "serialPhysicalMeasurements": true,
+    "maxIdleCpuPercentOneCore": 0.5,
+    "maxIdleRssBytes": 104857600
+  },
+  "targetPeakRssBytes": 41943040,
+  "canonicalHarnesses": [
+    {
+      "path": "tests/performance/bench_idle.py",
+      "sha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    },
+    {
+      "path": "tests/performance/observe_idle.py",
+      "sha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    },
+    {
+      "path": "tests/performance/bench_views.py",
+      "sha256": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    }
+  ],
+  "historicalScratchSourceSnapshots": [
+    {
+      "path": "work/memory-bench-observed-idle.py",
+      "sha256": "79c209675e06e333fc62a9f782c7200c7408a7bb273d6a54c0cfd5c3c7533343",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    },
+    {
+      "path": "work/memory-bench-views.py",
+      "sha256": "9b43472683dd9192b5b7a3d89ad85e4f211d55ebaad26ae825bd1e2065948129",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    },
+    {
+      "path": "work/memory-run-stage-probe.py",
+      "sha256": "9f1ed0d5f48f4489ed498b961f0025deedc280346180d471512ab324f15db27a",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    },
+    {
+      "path": "work/memory-main-stage-probe.cpp",
+      "sha256": "318c9e65fbbbbf5374cb8ed193b6a892eeef841f849e0b44f9a78a4e00ce3841",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    },
+    {
+      "path": "work/memory-main-allocator-probe.cpp",
+      "sha256": "bf837871937822fa38950c0f78967c873df7fafc3ed149aed0f67fa13827ec7c",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    },
+    {
+      "path": "work/memory-main-cold-trim-probe.cpp",
+      "sha256": "ffeb28d5a75833009bdf55eed87a9628f9a2cc20a2a46d6c64cf5fabe20c0f69",
+      "provenance": "export-time source snapshot; each raw measurement hash remains authoritative"
+    }
+  ],
+  "coldBaseline": {
+    "revision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+    "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+    "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "elapsedSeconds": 300.17868739398546,
+    "peakSampledRssBytes": 59027456,
+    "peakSampledRssMiB": 56.29296875,
+    "idleCpuPercentOneCore": 0.016656745498515306,
+    "budgetPassed": true,
+    "targetReached": false,
+    "ownedWindowObservation": {
+      "schemaVersion": 1,
+      "scope": "independent owner-window observation alongside unchanged physical idle benchmark; no pixels, payloads or unrelated window titles exported",
+      "observerSha256": "f0839dfac81e67343e81b051385c840d2257da07fc00f17d816ae7d185381722",
+      "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+      "parameters": {
+        "seconds": 300,
+        "ownerWindowPollingSeconds": 1
+      },
+      "observations": [
+        {
+          "elapsedSeconds": 1.0085517380211968,
+          "residentPid": 1946991,
+          "mappedOwnedWindows": []
+        }
+      ],
+      "benchmarkExitCode": 0,
+      "coldIdleUninterrupted": true
+    },
+    "samples": [
+      {
+        "elapsedSeconds": 0.029501710989279673,
+        "cpuTicks": 0,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 30.04540125699714,
+        "cpuTicks": 0,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 60.065458148979815,
+        "cpuTicks": 1,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 90.08112150599482,
+        "cpuTicks": 1,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 120.09594136098167,
+        "cpuTicks": 2,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 150.10958339000354,
+        "cpuTicks": 2,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 180.122955208004,
+        "cpuTicks": 3,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 210.13745543599362,
+        "cpuTicks": 3,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 240.15047099097865,
+        "cpuTicks": 4,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 270.16355043899966,
+        "cpuTicks": 4,
+        "rssBytes": 59027456
+      },
+      {
+        "elapsedSeconds": 300.17868739398546,
+        "cpuTicks": 5,
+        "rssBytes": 59027456
+      }
+    ],
+    "rawArtifact": "2026-10-08-memory-continuation-raw/cold-uninterrupted.results.json"
+  },
+  "failedBaselineAttempts": [
+    {
+      "timestamp": "2026-10-08T15:53:38.339303+00:00",
+      "sourceRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+      "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+      "rawResults": "/tmp/putgd-memory-continuation-current/results.json",
+      "rawSha256": "1a2bf2775b53d44ebad8a0734fc6c22d174aff7eea25bb69c482bc0de522ef3e",
+      "metrics": {
+        "peakSampledRssBytes": 102387712,
+        "finalRssBytes": 102264832,
+        "idleCpuPercentOneCore": 0.5496666657025512,
+        "budgetPassed": false
+      },
+      "status": "failed-idle-CPU-gate",
+      "cause": "Not an idle workload: isolated journal contains one user-invoked capture operation. Failed CPU/memory result retained; no payloads inspected/exported. Repeat cold run with independent owned-window observation.",
+      "journalMetadata": {
+        "operationCount": 1,
+        "sourceActionStateErrorOnly": [
+          [
+            "region",
+            "cancelled",
+            "cancelled"
+          ]
+        ]
+      }
+    }
+  ],
+  "startupAttribution": [
+    {
+      "probe": "normal",
+      "temporaryInstrumentedAppSha256": "99dec59ec24eff1e866923d7cd698290e7ee88fb4093809a53fbfe398f872409",
+      "path": "/tmp/putgd-stage-normal/results.json",
+      "sha256": "c0f4c5bddb36904dcf94b0d1c383db88e3c66a960536ffb170d787772537a834",
+      "stages": [
+        {
+          "stage": "before-application",
+          "rssBytes": 27783168,
+          "pssBytes": 16203776,
+          "privateBytes": 14815232
+        },
+        {
+          "stage": "application",
+          "rssBytes": 51556352,
+          "pssBytes": 30985216,
+          "privateBytes": 28098560
+        },
+        {
+          "stage": "visual-style",
+          "rssBytes": 51879936,
+          "pssBytes": 31308800,
+          "privateBytes": 28422144
+        },
+        {
+          "stage": "app-icon",
+          "rssBytes": 52600832,
+          "pssBytes": 31964160,
+          "privateBytes": 29077504
+        },
+        {
+          "stage": "parser-resident-check",
+          "rssBytes": 53399552,
+          "pssBytes": 32762880,
+          "privateBytes": 29876224
+        },
+        {
+          "stage": "settings-providers",
+          "rssBytes": 53817344,
+          "pssBytes": 33180672,
+          "privateBytes": 30294016
+        },
+        {
+          "stage": "source-adapter",
+          "rssBytes": 54059008,
+          "pssBytes": 33422336,
+          "privateBytes": 30535680
+        },
+        {
+          "stage": "operation-history-server",
+          "rssBytes": 54280192,
+          "pssBytes": 33643520,
+          "privateBytes": 30756864
+        },
+        {
+          "stage": "tray",
+          "rssBytes": 58253312,
+          "pssBytes": 36594688,
+          "privateBytes": 33525760
+        },
+        {
+          "stage": "before-event-loop",
+          "rssBytes": 58261504,
+          "pssBytes": 36602880,
+          "privateBytes": 33533952
+        },
+        {
+          "stage": "event-loop-idle",
+          "rssBytes": 58744832,
+          "pssBytes": 36946944,
+          "privateBytes": 33869824
+        }
+      ],
+      "passed": true,
+      "scope": "locating attribution only; no performance acceptance"
+    },
+    {
+      "probe": "gnome",
+      "temporaryInstrumentedAppSha256": "99dec59ec24eff1e866923d7cd698290e7ee88fb4093809a53fbfe398f872409",
+      "path": "/tmp/putgd-stage-gnome/results.json",
+      "sha256": "bfd3a40587119e453742868ef0af2c0abe2fbc2d0bc781c759337027dbf55b81",
+      "stages": [
+        {
+          "stage": "before-application",
+          "rssBytes": 27717632,
+          "pssBytes": 16252928,
+          "privateBytes": 14905344
+        },
+        {
+          "stage": "application",
+          "rssBytes": 36786176,
+          "pssBytes": 24115200,
+          "privateBytes": 22446080
+        },
+        {
+          "stage": "visual-style",
+          "rssBytes": 37109760,
+          "pssBytes": 24438784,
+          "privateBytes": 22769664
+        },
+        {
+          "stage": "app-icon",
+          "rssBytes": 37896192,
+          "pssBytes": 25159680,
+          "privateBytes": 23490560
+        },
+        {
+          "stage": "parser-resident-check",
+          "rssBytes": 38694912,
+          "pssBytes": 25958400,
+          "privateBytes": 24289280
+        },
+        {
+          "stage": "settings-providers",
+          "rssBytes": 39219200,
+          "pssBytes": 26482688,
+          "privateBytes": 24813568
+        },
+        {
+          "stage": "source-adapter",
+          "rssBytes": 39534592,
+          "pssBytes": 26798080,
+          "privateBytes": 25128960
+        },
+        {
+          "stage": "operation-history-server",
+          "rssBytes": 39768064,
+          "pssBytes": 27031552,
+          "privateBytes": 25362432
+        },
+        {
+          "stage": "tray",
+          "rssBytes": 44654592,
+          "pssBytes": 30886912,
+          "privateBytes": 29024256
+        },
+        {
+          "stage": "before-event-loop",
+          "rssBytes": 44679168,
+          "pssBytes": 30911488,
+          "privateBytes": 29048832
+        },
+        {
+          "stage": "event-loop-idle",
+          "rssBytes": 45424640,
+          "pssBytes": 31444992,
+          "privateBytes": 29573120
+        }
+      ],
+      "passed": true,
+      "scope": "locating attribution only; no performance acceptance"
+    }
+  ],
+  "desktopDecision": {
+    "userAnswer": "Keep Cinnamon-native dialogs and fonts",
+    "excludedHypothesis": "Skip GTK3 platform theme",
+    "reason": "Public Qt lightweight selection changes desktop font/settings and native dialogs. User chose preservation."
+  },
+  "failedViewObserverAttempts": [
+    {
+      "directory": "/tmp/putgd-mem-views-current",
+      "status": "observer-error",
+      "reason": "A withdrawn transient X11 window disappeared between enumeration and xprop; no app failure established. Saved partial samples."
+    },
+    {
+      "directory": "/tmp/putgd-mem-views-current-two",
+      "status": "observer-error",
+      "reason": "Observer incorrectly expected stable native IDs across hide/show; Qt can recreate IDs without recreating cached widgets. Cold/visible/hidden samples preserved; use mapped-window counts for repeated lifecycle diagnostic."
+    }
+  ],
+  "viewAttribution": {
+    "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+    "workloadSha256": "699b93d5d559fd74281dc7e988108b32d3687ef397263a8169bf642ad936e2f1",
+    "parameters": {
+      "cycles": 3,
+      "startupWarmupSeconds": 5,
+      "visibleSettlingSeconds": 2,
+      "hiddenIdleSeconds": 30
+    },
+    "allThreeViewsReopened": true,
+    "finalHiddenRssBytes": 88088576,
+    "peakSampledRssBytes": 88088576,
+    "samples": [
+      {
+        "stage": "cold-idle",
+        "elapsedSeconds": 5.281614895997336,
+        "rssBytes": 58961920,
+        "pssBytes": 36657152,
+        "privateBytes": 33804288,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-settings-visible",
+        "elapsedSeconds": 7.554848637984833,
+        "rssBytes": 79884288,
+        "pssBytes": 51374080,
+        "privateBytes": 46723072,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-history-visible",
+        "elapsedSeconds": 9.62280648300657,
+        "rssBytes": 84201472,
+        "pssBytes": 54290432,
+        "privateBytes": 48238592,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-activity-visible",
+        "elapsedSeconds": 11.685859224002343,
+        "rssBytes": 87588864,
+        "pssBytes": 56276992,
+        "privateBytes": 48824320,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-hidden-idle",
+        "elapsedSeconds": 41.778424012998585,
+        "rssBytes": 87670784,
+        "pssBytes": 56311808,
+        "privateBytes": 48857088,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-settings-visible",
+        "elapsedSeconds": 43.84016814100323,
+        "rssBytes": 87711744,
+        "pssBytes": 56352768,
+        "privateBytes": 48898048,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-history-visible",
+        "elapsedSeconds": 45.9691077650059,
+        "rssBytes": 87736320,
+        "pssBytes": 56377344,
+        "privateBytes": 48922624,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-activity-visible",
+        "elapsedSeconds": 48.03949380898848,
+        "rssBytes": 87736320,
+        "pssBytes": 56377344,
+        "privateBytes": 48922624,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-hidden-idle",
+        "elapsedSeconds": 78.13222579399007,
+        "rssBytes": 87736320,
+        "pssBytes": 56384512,
+        "privateBytes": 48918528,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-settings-visible",
+        "elapsedSeconds": 80.22723723298986,
+        "rssBytes": 87838720,
+        "pssBytes": 56485888,
+        "privateBytes": 49020928,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-history-visible",
+        "elapsedSeconds": 82.30707304898533,
+        "rssBytes": 88072192,
+        "pssBytes": 56720384,
+        "privateBytes": 49254400,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-activity-visible",
+        "elapsedSeconds": 84.3809042009816,
+        "rssBytes": 88088576,
+        "pssBytes": 56614912,
+        "privateBytes": 49270784,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-hidden-idle",
+        "elapsedSeconds": 114.50379466998857,
+        "rssBytes": 88088576,
+        "pssBytes": 56957952,
+        "privateBytes": 49410048,
+        "threads": 7
+      }
+    ],
+    "coldToFinalHiddenMappingDeltas": [
+      {
+        "mapping": "[heap]",
+        "rssBytes": 11567104,
+        "pssBytes": 11567104,
+        "privateBytes": 11567104
+      },
+      {
+        "mapping": "memfd:xorg",
+        "rssBytes": 8404992,
+        "pssBytes": 4202496,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "Ubuntu[wdth,wght].ttf",
+        "rssBytes": 2650112,
+        "pssBytes": 124928,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libQt6Widgets.so.6.4.2",
+        "rssBytes": 2015232,
+        "pssBytes": 2015232,
+        "privateBytes": 2015232
+      },
+      {
+        "mapping": "libharfbuzz.so.0.60830.0",
+        "rssBytes": 892928,
+        "pssBytes": 474112,
+        "privateBytes": 397312
+      },
+      {
+        "mapping": "libQt6Gui.so.6.4.2",
+        "rssBytes": 765952,
+        "pssBytes": 765952,
+        "privateBytes": 765952
+      },
+      {
+        "mapping": "libfreetype.so.6.20.1",
+        "rssBytes": 565248,
+        "pssBytes": 29696,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "0bd3dc0958fa2205aaaa8ebb13e2872b-le64.cache-9",
+        "rssBytes": 479232,
+        "pssBytes": 14336,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "2300eef321c393bfd76478a5c0e95b23-le64.cache-9",
+        "rssBytes": 385024,
+        "pssBytes": 11264,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "putgd",
+        "rssBytes": 262144,
+        "pssBytes": 262144,
+        "privateBytes": 262144
+      },
+      {
+        "mapping": "libQt6Core.so.6.4.2",
+        "rssBytes": 253952,
+        "pssBytes": 253952,
+        "privateBytes": 253952
+      },
+      {
+        "mapping": "libfontconfig.so.1.12.1",
+        "rssBytes": 196608,
+        "pssBytes": 5120,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libexpat.so.1.9.1",
+        "rssBytes": 94208,
+        "pssBytes": 7168,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "9b89f8e3dae116d678bbf48e5f21f69b-le64.cache-9",
+        "rssBytes": 69632,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "e13b20fdb08344e0e664864cc2ede53d-le64.cache-9",
+        "rssBytes": 69632,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "6cc790b63b123a6a96ee260fcdad32a9-le64.cache-9",
+        "rssBytes": 65536,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "a4e60e8d1e10d2fdff3fe3037a1845fb-le64.cache-9",
+        "rssBytes": 57344,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libfribidi.so.0.4.0",
+        "rssBytes": 53248,
+        "pssBytes": 32768,
+        "privateBytes": 32768
+      },
+      {
+        "mapping": "[stack]",
+        "rssBytes": 49152,
+        "pssBytes": 49152,
+        "privateBytes": 49152
+      },
+      {
+        "mapping": "d0972c3d32f097851eb916381fc38920-le64.cache-9",
+        "rssBytes": 45056,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libxkbcommon.so.0.0.0",
+        "rssBytes": 40960,
+        "pssBytes": 39936,
+        "privateBytes": 40960
+      },
+      {
+        "mapping": "libX11.so.6.4.0",
+        "rssBytes": 36864,
+        "pssBytes": 16384,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libgdk-3.so.0.2409.32",
+        "rssBytes": 28672,
+        "pssBytes": 3072,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "d589a48862398ed80a3d6066f4f56f4c-le64.cache-9",
+        "rssBytes": 24576,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "3047814df9a2f067bd2d96a2b9c36e5a-le64.cache-9",
+        "rssBytes": 24576,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "[anonymous]",
+        "rssBytes": 20480,
+        "pssBytes": 20480,
+        "privateBytes": 20480
+      },
+      {
+        "mapping": "3f7329c5293ffd510edef78f73874cfd-le64.cache-9",
+        "rssBytes": 4096,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "da43223dd54fb3bb4243ae19d4b583b2-le64.cache-9",
+        "rssBytes": 4096,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libgobject-2.0.so.0.8000.0",
+        "rssBytes": 0,
+        "pssBytes": -10240,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "librtmp.so.1",
+        "rssBytes": 0,
+        "pssBytes": 20480,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libGLdispatch.so.0.0.0",
+        "rssBytes": 0,
+        "pssBytes": -2048,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libstdc++.so.6.0.33",
+        "rssBytes": 0,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libldap.so.2.0.200",
+        "rssBytes": 0,
+        "pssBytes": 30720,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libgnutls.so.30.37.1",
+        "rssBytes": 0,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libpcre2-16.so.0.11.2",
+        "rssBytes": 0,
+        "pssBytes": 33792,
+        "privateBytes": 61440
+      },
+      {
+        "mapping": "libsasl2.so.2.0.25",
+        "rssBytes": 0,
+        "pssBytes": 15360,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "SYS_LC_MESSAGES",
+        "rssBytes": 0,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libxml2.so.2.9.14",
+        "rssBytes": 0,
+        "pssBytes": 11264,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libblkid.so.1.1.0",
+        "rssBytes": 0,
+        "pssBytes": -7168,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libgmp.so.10.5.0",
+        "rssBytes": 0,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libcrypto.so.3",
+        "rssBytes": 0,
+        "pssBytes": 72704,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libssh.so.4.9.6",
+        "rssBytes": 0,
+        "pssBytes": 50176,
+        "privateBytes": 4096
+      },
+      {
+        "mapping": "libmount.so.1.1.0",
+        "rssBytes": 0,
+        "pssBytes": -6144,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libglib-2.0.so.0.8000.0",
+        "rssBytes": 0,
+        "pssBytes": -21504,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libcurl.so.4.8.0",
+        "rssBytes": 0,
+        "pssBytes": 91136,
+        "privateBytes": 135168
+      },
+      {
+        "mapping": "libgmodule-2.0.so.0.8000.0",
+        "rssBytes": 0,
+        "pssBytes": -1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libgcrypt.so.20.4.3",
+        "rssBytes": 0,
+        "pssBytes": -1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "LC_CTYPE",
+        "rssBytes": 0,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libnghttp2.so.14.26.0",
+        "rssBytes": 0,
+        "pssBytes": 21504,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libicuuc.so.74.2",
+        "rssBytes": 0,
+        "pssBytes": 49152,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libgio-2.0.so.0.8000.0",
+        "rssBytes": 0,
+        "pssBytes": -16384,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libssl.so.3",
+        "rssBytes": 0,
+        "pssBytes": 47104,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libpsl.so.5.3.4",
+        "rssBytes": 0,
+        "pssBytes": 4096,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libp11-kit.so.0.3.1",
+        "rssBytes": 0,
+        "pssBytes": 1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "libbsd.so.0.12.1",
+        "rssBytes": 0,
+        "pssBytes": -1024,
+        "privateBytes": 0
+      },
+      {
+        "mapping": "liblber.so.2.0.200",
+        "rssBytes": 0,
+        "pssBytes": 10240,
+        "privateBytes": 0
+      }
+    ],
+    "rawArtifact": "2026-10-08-memory-continuation-raw/views-stable.results.json",
+    "interpretation": "Repeated empty GUI view lifecycle approaches a plateau near 84 MiB after hidden windows. This distinguishes post-use resident from cold idle; allocation liveness not yet attributed, no leak or reclaim claim."
+  },
+  "failedAllocatorObserverAttempts": [
+    {
+      "directory": "/tmp/putgd-mem-allocator-views",
+      "status": "environment-startup-error",
+      "reason": "Sandbox prevented physical X11 display connection; app never reached initialization or workload. Retained resident/observer logs; retry using the host session permission."
+    },
+    {
+      "directory": "/tmp/putgd-mem-allocator-views-host",
+      "status": "observer-error",
+      "reason": "Whole-tree xwininfo failed on a window destroyed during traversal. Saved partial samples/cold allocator counters. Replaced view observer enumeration with EWMH client IDs and existing PID ownership checks; not an application failure."
+    },
+    {
+      "directory": "/tmp/putgd-mem-cold-allocator",
+      "status": "observer-error",
+      "reason": "Buffered stderr readline prefetched the stop-stage marker, so select did not wake to resume the probe. Aggregate before-trim counters saved; observer now uses an unbuffered stderr pipe. Temporary production source was already restored."
+    }
+  ],
+  "viewAllocatorAttribution": {
+    "timestamp": "2026-10-08T16:24:16.645757+00:00",
+    "raw": "/tmp/putgd-mem-allocator-views-stable/results.json",
+    "rawSha256": "1d5b2a3ce7d0d75fc6b4d38033e451d118908b7631b27b26468dbded7bdf904e",
+    "temporaryInstrumentedAppSha256": "2c9cc23f378ee12dfe1c377dc0566a58cb76440ea6ea355ab5e3b18689f0cadb",
+    "sourceRestored": true,
+    "workloadSha256": "9b43472683dd9192b5b7a3d89ad85e4f211d55ebaad26ae825bd1e2065948129",
+    "parameters": {
+      "cycles": 3,
+      "startupWarmupSeconds": 5,
+      "visibleSettlingSeconds": 2,
+      "hiddenIdleSeconds": 30
+    },
+    "allocatorCounters": [
+      {
+        "stage": "cold-before",
+        "arenaBytes": 5771264,
+        "allocatedBytes": 3378960,
+        "freeArenaBytes": 2392304,
+        "mmapBytes": 364544,
+        "topFreeBytes": 83440
+      },
+      {
+        "stage": "views-hidden-before",
+        "arenaBytes": 16977920,
+        "allocatedBytes": 15615600,
+        "freeArenaBytes": 1362320,
+        "mmapBytes": 364544,
+        "topFreeBytes": 129936
+      },
+      {
+        "stage": "before-trim",
+        "arenaBytes": 16977920,
+        "allocatedBytes": 15612944,
+        "freeArenaBytes": 1364976,
+        "mmapBytes": 364544,
+        "topFreeBytes": 129936
+      },
+      {
+        "stage": "after-trim",
+        "arenaBytes": 16850944,
+        "allocatedBytes": 15612944,
+        "freeArenaBytes": 1238000,
+        "mmapBytes": 364544,
+        "topFreeBytes": 2960
+      },
+      {
+        "stage": "second-hidden",
+        "arenaBytes": 16998400,
+        "allocatedBytes": 15635216,
+        "freeArenaBytes": 1363184,
+        "mmapBytes": 364544,
+        "topFreeBytes": 93760
+      },
+      {
+        "stage": "third-hidden",
+        "arenaBytes": 16998400,
+        "allocatedBytes": 15651840,
+        "freeArenaBytes": 1346560,
+        "mmapBytes": 364544,
+        "topFreeBytes": 93760
+      }
+    ],
+    "samples": [
+      {
+        "stage": "cold-idle",
+        "elapsedSeconds": 5.311294376006117,
+        "rssBytes": 58789888,
+        "pssBytes": 36652032,
+        "privateBytes": 33894400,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-settings-visible",
+        "elapsedSeconds": 7.6076404610066675,
+        "rssBytes": 79642624,
+        "pssBytes": 51069952,
+        "privateBytes": 46673920,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-history-visible",
+        "elapsedSeconds": 9.781498361000558,
+        "rssBytes": 84021248,
+        "pssBytes": 54106112,
+        "privateBytes": 48250880,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-activity-visible",
+        "elapsedSeconds": 11.951031964010326,
+        "rssBytes": 87416832,
+        "pssBytes": 56100864,
+        "privateBytes": 48844800,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-hidden-idle",
+        "elapsedSeconds": 42.39494821400149,
+        "rssBytes": 87216128,
+        "pssBytes": 56057856,
+        "privateBytes": 48644096,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-settings-visible",
+        "elapsedSeconds": 44.46242605801672,
+        "rssBytes": 87261184,
+        "pssBytes": 56103936,
+        "privateBytes": 48689152,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-history-visible",
+        "elapsedSeconds": 46.560765601025196,
+        "rssBytes": 87441408,
+        "pssBytes": 56284160,
+        "privateBytes": 48869376,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-activity-visible",
+        "elapsedSeconds": 48.6900937880273,
+        "rssBytes": 87441408,
+        "pssBytes": 56284160,
+        "privateBytes": 48869376,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-hidden-idle",
+        "elapsedSeconds": 78.99087962001795,
+        "rssBytes": 87441408,
+        "pssBytes": 56609792,
+        "privateBytes": 49008640,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-settings-visible",
+        "elapsedSeconds": 81.07307379500708,
+        "rssBytes": 87441408,
+        "pssBytes": 56609792,
+        "privateBytes": 49008640,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-history-visible",
+        "elapsedSeconds": 83.15583773000981,
+        "rssBytes": 87449600,
+        "pssBytes": 56617984,
+        "privateBytes": 49016832,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-activity-visible",
+        "elapsedSeconds": 85.27609083300922,
+        "rssBytes": 87457792,
+        "pssBytes": 56626176,
+        "privateBytes": 49025024,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-hidden-idle",
+        "elapsedSeconds": 115.41492603102233,
+        "rssBytes": 87457792,
+        "pssBytes": 56639488,
+        "privateBytes": 49025024,
+        "threads": 7
+      }
+    ],
+    "interpretation": "Empty-view retained heap is predominantly live allocation. At first hidden idle allocated arena bytes 15612944, free 1364976; malloc_trim reduced arena by 126976 only. No production trimming change justified by this view workload. Capture/drained allocator attribution remains separate.",
+    "trimArenaReductionBytes": 126976,
+    "rawArtifact": "2026-10-08-memory-continuation-raw/allocator-views-stable.results.json"
+  },
+  "coldAllocatorAttribution": {
+    "timestamp": "2026-10-08T16:29:58.924697+00:00",
+    "raw": "/tmp/putgd-mem-cold-allocator-unbuffered/results.json",
+    "rawSha256": "d9770bff01c8183d7fd367e78d7b34822b18602b7e48d9eaadeaec56ee7f4814",
+    "temporaryInstrumentedAppSha256": "71da6eb8f9c5726b3ece1adf3e698d919e5551f54e1b846a132a11bf00bca463",
+    "sourceRestored": true,
+    "stages": [
+      {
+        "stage": "cold-before-trim",
+        "rssBytes": 58683392,
+        "pssBytes": 36904960,
+        "privateBytes": 33718272
+      },
+      {
+        "stage": "event-loop-idle",
+        "rssBytes": 57466880,
+        "pssBytes": 35688448,
+        "privateBytes": 32501760
+      }
+    ],
+    "allocatorCounters": [
+      {
+        "stage": "cold-before-trim",
+        "arenaBytes": 5771264,
+        "allocatedBytes": 3372032,
+        "freeArenaBytes": 2399232,
+        "mmapBytes": 364544,
+        "topFreeBytes": 84928
+      },
+      {
+        "stage": "cold-after-trim",
+        "arenaBytes": 5689344,
+        "allocatedBytes": 3372032,
+        "freeArenaBytes": 2317312,
+        "mmapBytes": 364544,
+        "topFreeBytes": 3008
+      }
+    ],
+    "rssReductionBytes": 1216512,
+    "interpretation": "Locating cold allocator attribution only; not a scored implementation or budget acceptance.",
+    "rawArtifact": "2026-10-08-memory-continuation-raw/allocator-cold-unbuffered.results.json"
+  },
+  "temporaryProbeParameters": {
+    "startup": {
+      "stagePause": "SIGSTOP markers externally sampled then SIGCONT; final idle marker at 5 seconds",
+      "gnomeThemeProbe": "Temporary public Qt selection only; excluded by user decision to preserve native Cinnamon fonts/dialogs"
+    },
+    "viewAllocator": {
+      "coldCounterSeconds": 4,
+      "viewsHiddenCounterSeconds": 15,
+      "trimCounterSeconds": 35,
+      "secondHiddenCounterSeconds": 75,
+      "thirdHiddenCounterSeconds": 110,
+      "allocator": "glibc mallinfo2",
+      "trim": "One malloc_trim(0) in temporary instrumented app only"
+    },
+    "coldAllocator": {
+      "warmupSeconds": 5,
+      "allocator": "glibc mallinfo2",
+      "trim": "One malloc_trim(0), paused before/after for external smaps sampling",
+      "observerCorrection": "stderr pipe bufsize=0; original buffered failure retained"
+    }
+  },
+  "commands": {
+    "recordedFrozenMeasurement": {
+      "source": "resident-memory-continuation/spec.yaml",
+      "argv": [
+        "python3",
+        "tests/performance/bench_idle.py",
+        "--app",
+        "build/release/putgd",
+        "--cli",
+        "build/release/putgd-cli",
+        "--output",
+        "/tmp/putgd-memory-continuation-current",
+        "--seconds",
+        "300"
+      ]
+    },
+    "reconstructedColdObservation": {
+      "originalArgvNotRecorded": true,
+      "argv": [
+        "python3",
+        "work/memory-bench-observed-idle.py",
+        "--app",
+        "build/release/putgd",
+        "--cli",
+        "build/release/putgd-cli",
+        "--output",
+        "/tmp/putgd-mem-cold-repeat",
+        "--seconds",
+        "300"
+      ]
+    },
+    "reconstructedViewDiagnostic": {
+      "originalArgvNotRecorded": true,
+      "argv": [
+        "python3",
+        "work/memory-bench-views.py",
+        "--app",
+        "build/release/putgd",
+        "--cli",
+        "build/release/putgd-cli",
+        "--fixture",
+        "/tmp/putgd-mem-cold-repeat",
+        "--output",
+        "/tmp/putgd-mem-views-current-three",
+        "--cycles",
+        "3",
+        "--idle-seconds",
+        "30"
+      ]
+    },
+    "replay": "Use the canonical commands in docs/testing-memory.md with new output paths and recorded binary hashes."
+  },
+  "candidateStatusAtExport": {
+    "physicalMeasurement": "not recorded in this export; do not infer an SDK-module candidate result",
+    "correctnessReportedByCaller": "Dev 26/26, Release 26/26, ASan 6/6 passed; caller owns final evidence/integration"
+  },
+  "limitations": [
+    "Cold idle uses the unchanged five-minute/100 MiB/0.5% benchmark; approximately 40 MiB target remains unmet by this baseline.",
+    "View diagnostics are sparse post-use samples, not cold idle, a leak proof, a permanent plateau proof, populated-history/upload acceptance, or a 40 MiB gate.",
+    "Temporary startup/theme/allocator probes were locating-only; production source restored, no runtime switches installed.",
+    "A 126976-byte post-view arena reduction does not justify production trimming; cold allocator RSS delta is a separate locating result.",
+    "Historical argv absent from raw view/observer metadata is labeled reconstructed, and canonical harnesses have different hashes after validation/metadata improvements.",
+    "Raw failed baseline scope string says capture not invoked, but the retained source journal records a user-invoked cancelled region operation; this attempt is invalid idle evidence.",
+    "No new app/CLI/desktop/VM runs, captures, allocator probes, dependencies or product code changes were performed while preparing this export."
+  ],
+  "verification": {
+    "scope": "canonical harness syntax and help only; no runtime measurement",
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "py_compile",
+          "tests/performance/observe_idle.py",
+          "tests/performance/bench_views.py"
+        ],
+        "exitCode": 0
+      },
+      {
+        "argv": [
+          "python3",
+          "tests/performance/observe_idle.py",
+          "--help"
+        ],
+        "exitCode": 0
+      },
+      {
+        "argv": [
+          "python3",
+          "tests/performance/bench_views.py",
+          "--help"
+        ],
+        "exitCode": 0
+      }
+    ]
+  },
+  "rawManifest": [
+    {
+      "name": "experiment-log.sanitized.json",
+      "kind": "source-journal-snapshot",
+      "source": "$REPO_ROOT/.context/compound-engineering/ce-optimize/resident-memory-continuation/experiment-log.json",
+      "sourceSha256": "3d998178b3a7f9428615a776ed550b72369b0505c4a80b9dfb1ce16e7c67de81",
+      "sourceBytes": 27183,
+      "artifact": "2026-10-08-memory-continuation-raw/experiment-log.sanitized.json",
+      "artifactSha256": "f4ba4f4ebbbed6f0cca7ea46f0f739c7e20741681d161e3179732d04c19392b8",
+      "artifactBytes": 27018,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "cold-disrupted.results.json",
+      "kind": "failed-idle-workload",
+      "source": "/tmp/putgd-memory-continuation-current/results.json",
+      "sourceSha256": "1a2bf2775b53d44ebad8a0734fc6c22d174aff7eea25bb69c482bc0de522ef3e",
+      "sourceBytes": 52874,
+      "artifact": "2026-10-08-memory-continuation-raw/cold-disrupted.results.json",
+      "artifactSha256": "1a2bf2775b53d44ebad8a0734fc6c22d174aff7eea25bb69c482bc0de522ef3e",
+      "artifactBytes": 52874,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "cold-uninterrupted.results.json",
+      "kind": "successful-cold-idle",
+      "source": "/tmp/putgd-mem-cold-repeat/results.json",
+      "sourceSha256": "47441dceb0128a7498529377bb2da083838b1ec82e601bf6d578a4c12910d54d",
+      "sourceBytes": 50976,
+      "artifact": "2026-10-08-memory-continuation-raw/cold-uninterrupted.results.json",
+      "artifactSha256": "47441dceb0128a7498529377bb2da083838b1ec82e601bf6d578a4c12910d54d",
+      "artifactBytes": 50976,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "cold-uninterrupted.windows.json",
+      "kind": "owned-window-observer",
+      "source": "/tmp/putgd-mem-cold-repeat-windows.json",
+      "sourceSha256": "06e4f1ac90818550159eb8b62caf5246bfd294d49bf758b85ecd269990fae8ef",
+      "sourceBytes": 631,
+      "artifact": "2026-10-08-memory-continuation-raw/cold-uninterrupted.windows.json",
+      "artifactSha256": "06e4f1ac90818550159eb8b62caf5246bfd294d49bf758b85ecd269990fae8ef",
+      "artifactBytes": 631,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "startup-native.results.json",
+      "kind": "temporary-startup-locating-probe",
+      "source": "/tmp/putgd-stage-normal/results.json",
+      "sourceSha256": "c0f4c5bddb36904dcf94b0d1c383db88e3c66a960536ffb170d787772537a834",
+      "sourceBytes": 304681,
+      "artifact": "2026-10-08-memory-continuation-raw/startup-native.results.json",
+      "artifactSha256": "c0f4c5bddb36904dcf94b0d1c383db88e3c66a960536ffb170d787772537a834",
+      "artifactBytes": 304681,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "startup-public-gnome-probe.results.json",
+      "kind": "temporary-excluded-theme-locating-probe",
+      "source": "/tmp/putgd-stage-gnome/results.json",
+      "sourceSha256": "bfd3a40587119e453742868ef0af2c0abe2fbc2d0bc781c759337027dbf55b81",
+      "sourceBytes": 249986,
+      "artifact": "2026-10-08-memory-continuation-raw/startup-public-gnome-probe.results.json",
+      "artifactSha256": "bfd3a40587119e453742868ef0af2c0abe2fbc2d0bc781c759337027dbf55b81",
+      "artifactBytes": 249986,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "views-transient-observer-failed.progress.json",
+      "kind": "partial-failed-observer",
+      "source": "/tmp/putgd-mem-views-current/progress.json",
+      "sourceSha256": "d15a02765d9c2b4f4d7930808f552d4eddc2d07ae7e9add4fc6cf399a01cd624",
+      "sourceBytes": 125081,
+      "artifact": "2026-10-08-memory-continuation-raw/views-transient-observer-failed.progress.json",
+      "artifactSha256": "d15a02765d9c2b4f4d7930808f552d4eddc2d07ae7e9add4fc6cf399a01cd624",
+      "artifactBytes": 125081,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "views-native-id-observer-failed.progress.json",
+      "kind": "partial-failed-observer",
+      "source": "/tmp/putgd-mem-views-current-two/progress.json",
+      "sourceSha256": "2b18730c7a6fbf4cc86a98834050a020116b74e79ba397af6204c2c4b6cea761",
+      "sourceBytes": 156657,
+      "artifact": "2026-10-08-memory-continuation-raw/views-native-id-observer-failed.progress.json",
+      "artifactSha256": "2b18730c7a6fbf4cc86a98834050a020116b74e79ba397af6204c2c4b6cea761",
+      "artifactBytes": 156657,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "views-stable.results.json",
+      "kind": "successful-view-diagnostic",
+      "source": "/tmp/putgd-mem-views-current-three/results.json",
+      "sourceSha256": "189208d73feb7b8e8e4334fa48d0ea06805ada4597fae03ed8f6fecc289c4bc7",
+      "sourceBytes": 410195,
+      "artifact": "2026-10-08-memory-continuation-raw/views-stable.results.json",
+      "artifactSha256": "189208d73feb7b8e8e4334fa48d0ea06805ada4597fae03ed8f6fecc289c4bc7",
+      "artifactBytes": 410195,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "allocator-views-tree-observer-failed.progress.json",
+      "kind": "partial-failed-observer",
+      "source": "/tmp/putgd-mem-allocator-views-host/progress.json",
+      "sourceSha256": "39f2320dd233db6232d144f7e4ba7e6b478d3d5be96399cc523c657513accffb",
+      "sourceBytes": 125026,
+      "artifact": "2026-10-08-memory-continuation-raw/allocator-views-tree-observer-failed.progress.json",
+      "artifactSha256": "39f2320dd233db6232d144f7e4ba7e6b478d3d5be96399cc523c657513accffb",
+      "artifactBytes": 125026,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "allocator-views-stable.results.json",
+      "kind": "temporary-allocator-locating-probe",
+      "source": "/tmp/putgd-mem-allocator-views-stable/results.json",
+      "sourceSha256": "1d5b2a3ce7d0d75fc6b4d38033e451d118908b7631b27b26468dbded7bdf904e",
+      "sourceBytes": 410194,
+      "artifact": "2026-10-08-memory-continuation-raw/allocator-views-stable.results.json",
+      "artifactSha256": "1d5b2a3ce7d0d75fc6b4d38033e451d118908b7631b27b26468dbded7bdf904e",
+      "artifactBytes": 410194,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "allocator-cold-buffered-observer-failed.results.json",
+      "kind": "failed-buffered-observer",
+      "source": "/tmp/putgd-mem-cold-allocator/results.json",
+      "status": "not-present",
+      "rawResultAvailable": false
+    },
+    {
+      "name": "allocator-cold-unbuffered.results.json",
+      "kind": "successful-temporary-cold-allocator-locating-probe",
+      "source": "/tmp/putgd-mem-cold-allocator-unbuffered/results.json",
+      "sourceSha256": "d9770bff01c8183d7fd367e78d7b34822b18602b7e48d9eaadeaec56ee7f4814",
+      "sourceBytes": 58889,
+      "artifact": "2026-10-08-memory-continuation-raw/allocator-cold-unbuffered.results.json",
+      "artifactSha256": "d9770bff01c8183d7fd367e78d7b34822b18602b7e48d9eaadeaec56ee7f4814",
+      "artifactBytes": 58889,
+      "rawResultAvailable": true
+    },
+    {
+      "name": "allocator-counters.sanitized.json",
+      "kind": "sanitized-allocator-log-extract",
+      "artifact": "2026-10-08-memory-continuation-raw/allocator-counters.sanitized.json",
+      "artifactSha256": "728a870982f93632939e99986e45df990858c77c218d7e0b9aa3d925dcd62ad2",
+      "artifactBytes": 4011,
+      "sourceLogHashes": [
+        "09e4768735405d01fc707e8d20e5c56581c99fa62bc1be4a2dff7b3555f2d4ae",
+        "8ac2001f4413ddffb654c4d6eca4c89e770ee6fa938aba262296a859c60ca8c7",
+        "bba185865fc8717779552ed66aa487f0202b0d1b91984553f6e66cd2afefdd03",
+        "f0866c5b9aec81bf7b1a0e7ff10db8b1f1b824b0e971889d8f44056b5f1ef1e2",
+        "65dd548a786af1254d1ab163c2112abf9e24db43f1c6b15edbea4b610836015b"
+      ]
+    },
+    {
+      "name": "native-qt-CMakeLists.txt",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-CMakeLists.txt",
+      "artifactSha256": "d20b393d88395d4dd52b2b02174f2b662b8304a2ed09393898fd70311260e99f",
+      "artifactBytes": 266,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-measure.py",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-measure.py",
+      "artifactSha256": "225bc25eb96d4b89f07700ae049af0b1a17471a96f7220ad84a48b1e0919d066",
+      "artifactBytes": 3001,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-network-CMakeLists.txt",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-network-CMakeLists.txt",
+      "artifactSha256": "ebbda7b7a6a409a6e15f3241b3b4a5926dc1b2bfb576bdb5853279a0ef6ac26c",
+      "artifactBytes": 483,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-network-measure.py",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-network-measure.py",
+      "artifactSha256": "a8e4ea514475c791111a731e56cee3924bed0d1a89f609e946529aa35819198b",
+      "artifactBytes": 3170,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-network-network-comparison.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-network-network-comparison.json",
+      "artifactSha256": "d9654abe2f8d6b1c8287585ec451c4a34b10ace95f3b03f5033a1471943cfde8",
+      "artifactBytes": 760,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-network-probe.cpp",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-network-probe.cpp",
+      "artifactSha256": "ba91e6a94383b61254e3113fdc69b41971175fd6365abec4a40fcea5b750fb4a",
+      "artifactBytes": 1044,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-network-results-network.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-network-results-network.json",
+      "artifactSha256": "988de0dc121b1965faabd24ff3d81cea3db216b814ca1b5a0b64890747071895",
+      "artifactBytes": 402630,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-network-results-plain.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-network-results-plain.json",
+      "artifactSha256": "54f71996ccee432df28a30a1eb65cee1b5b977634f050312bfbf7359f28b9948",
+      "artifactBytes": 329288,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-probe.cpp",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-probe.cpp",
+      "artifactSha256": "2241836f3769d5dc40ec88fb707d9776d8cc1b0e96c006baf286ccfcc2a2252b",
+      "artifactBytes": 934,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "native-qt-results.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/native-qt-results.json",
+      "artifactSha256": "645cd25915c70fd3a14b70788bef0d388b20830363582a124bbd2c32b1aa1026",
+      "artifactBytes": 329284,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "style-cold-identity.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/style-cold-identity.json",
+      "artifactSha256": "57c6f5f1f645eef790ff13f3caa60edc07d194cd41591fe4fa957c83b89ea153",
+      "artifactBytes": 772,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "style-cold-normal-raw.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/style-cold-normal-raw.json",
+      "artifactSha256": "2598f396d7360f019e28b295351bddbfa0004185b03d7e30f0f12fa8b169a871",
+      "artifactBytes": 45414,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "style-cold-probe.patch",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/style-cold-probe.patch",
+      "artifactSha256": "529d6bb2c1c7844297ff1f6370a44c9c4225811929cdb2d0012eac204fe08b03",
+      "artifactBytes": 636,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "style-cold-results.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/style-cold-results.json",
+      "artifactSha256": "f0e51bec40e2db7ac62e133bfd329a25726e8c378781a819b3539fe7e2d99e87",
+      "artifactBytes": 2605,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    },
+    {
+      "name": "style-cold-without-custom-style-raw.json",
+      "kind": "later-exported-locating-evidence",
+      "artifact": "2026-10-08-memory-continuation-raw/style-cold-without-custom-style-raw.json",
+      "artifactSha256": "16dabf47035b37761c2aaffc83c319d9278aef3a07516ad64f547ef6eccf6838",
+      "artifactBytes": 45403,
+      "provenance": "Checksum added for an already exported file during documentation-only closure; no new measurement or source snapshot."
+    }
+  ],
+  "customStyleAttribution": {
+    "scope": "15-second locating comparison, not a performance gate; unchanged native GTK/fonts/dialogs, no capture/network",
+    "identity": {
+      "scope": "Temporary locating probe only; custom palette/stylesheet initialization, native GTK/theme remains unchanged; not a production switch or candidate",
+      "baseRevision": "cadd9ed7463ee51888ae0a2b0ddc4650e27157a5",
+      "originalMainSha256": "f2d21ba631eb98e20deef0adef53765d528835846ace67664229ca71d279db39",
+      "probeMainSha256": "16322219f5e5aa070a64ef84dfaacf50d144cbb9ef299b239bc099963ff09ac6",
+      "flag": "PUTGD_PROBE_NO_CUSTOM_STYLE",
+      "sourceRestored": true,
+      "binaries": {
+        "putgd": "2e0b492ee201c157f4bbb15c35eea73ee7f2808058605e7b9c120c131be613e9",
+        "putgd-cli": "d653b7c495bfe6bff54522a5490e1afb59475e573f7859506b88d22c64d3da47",
+        "libputgd-s3.so": "12f9cd023f2458a9c67d8878b6453cb5d551d521802d24bdcfb045552ba7fac6"
+      },
+      "buildPassed": true
+    },
+    "runs": [
+      {
+        "mode": "normal",
+        "raw": "/tmp/putgd-style-cold-normal/results.json",
+        "rawSha256": "2598f396d7360f019e28b295351bddbfa0004185b03d7e30f0f12fa8b169a871",
+        "exitCode": 1,
+        "expectedShortRunBudgetFailure": true,
+        "seconds": 15.076381051010685,
+        "peakSampledRssBytes": 54493184,
+        "finalRssBytes": 54493184,
+        "command": [
+          "python3",
+          "/home/patrick/work/put.gd/tests/performance/bench_idle.py",
+          "--app",
+          "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd",
+          "--cli",
+          "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd-cli",
+          "--output",
+          "/tmp/putgd-style-cold-normal",
+          "--seconds",
+          "15"
+        ],
+        "temporaryFlag": false
+      },
+      {
+        "mode": "without-custom-style",
+        "raw": "/tmp/putgd-style-cold-without-custom-style/results.json",
+        "rawSha256": "16dabf47035b37761c2aaffc83c319d9278aef3a07516ad64f547ef6eccf6838",
+        "exitCode": 1,
+        "expectedShortRunBudgetFailure": true,
+        "seconds": 15.039253376016859,
+        "peakSampledRssBytes": 53739520,
+        "finalRssBytes": 53739520,
+        "command": [
+          "python3",
+          "/home/patrick/work/put.gd/tests/performance/bench_idle.py",
+          "--app",
+          "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd",
+          "--cli",
+          "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd-cli",
+          "--output",
+          "/tmp/putgd-style-cold-without-custom-style",
+          "--seconds",
+          "15"
+        ],
+        "temporaryFlag": true
+      }
+    ],
+    "differenceBytes": 753664,
+    "decision": "Do not implement delayed custom styling from this probe: 753664-byte change is below declared 1MiB noise and 5% threshold; native GTK stays enabled.",
+    "temporaryBinaryWarning": "Parent source restored; parent release binary remains locating-only until rebuilt. Winning experiment binary was unchanged."
+  },
+  "nativeQtAttribution": {
+    "raw": "work/native-qt-cold-probe/results.json",
+    "rawSha256": "645cd25915c70fd3a14b70788bef0d388b20830363582a124bbd2c32b1aa1026",
+    "rssBytes": [
+      41390080,
+      41283584
+    ],
+    "scope": "Locating native QApplication overhead only; no product, no windows/tray/actions/network, not a lower-bound proof or performance gate",
+    "gtkPlatformThemeMapped": true
+  },
+  "nativeQtNetworkAttribution": {
+    "scope": "Same-source two-target native GTK locating comparison; inert QLocalSocket, no connect/listen, 5s warmup, two serial runs each; not product scoring",
+    "plainRssBytes": [
+      41340928,
+      41238528
+    ],
+    "networkRssBytes": [
+      47693824,
+      47763456
+    ],
+    "differenceBytes": [
+      6352896,
+      6524928
+    ],
+    "rawSha256": {
+      "results-plain.json": "54f71996ccee432df28a30a1eb65cee1b5b977634f050312bfbf7359f28b9948",
+      "results-network.json": "988de0dc121b1965faabd24ff3d81cea3db216b814ca1b5a0b64890747071895"
+    },
+    "finding": "QtNetwork dependency adds about6.1MiB native idle RSS before any connection. Eliminating its resident dependency is credible but requires preserving local IPC and IP validation; native theme stays unchanged."
+  }
+}

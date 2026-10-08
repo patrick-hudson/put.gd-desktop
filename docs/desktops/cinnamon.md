@@ -4,7 +4,28 @@ The adapter requires the Qt `xcb` backend, RandR, XFixes, and a resident process
 
 Window capture freezes `_NET_ACTIVE_WINDOW` and the framed target rectangle before journal work can change focus. The frame is captured from visible desktop pixels; overlapping windows appear in the image. A disappeared, unmapped, moved, resized, or app-owned target produces an actionable target error. There is no hidden-window reconstruction. Frame extents follow [EWMH](https://specifications.freedesktop.org/wm/latest/ar01s05.html).
 
-Region capture freezes desktop pixels before the selection windows appear. Drag with the left button; Escape or the right button cancels. Changes to enabled monitor identity, geometry, scale, or rotation invalidate the selection. Each monitor has its own selection surface and carries native and logical geometry. Selection surfaces keep external application input focus and take a temporary keyboard grab for Escape; dispatch releases the shortcut connection’s own passive grab before the selector starts, including when trigger keys remain held. Composition preserves the original pixel grid for an entirely single-monitor selection, using floor/ceiling on local native edges. Spanning composition uses the highest participating native density, rounds the global output pixel-grid boundaries outward, and leaves layout gaps transparent. Already displayed rotated frames are not rotated a second time.
+Region selection appears over the live desktop. Windows, animation and video keep
+updating before and during the drag. Drag with the left button; Escape or the right
+button cancels. Monitor identity, geometry, scale and rotation are fixed when the
+action starts; a changed layout invalidates the selection. Each monitor has a
+transparent selection surface carrying native and logical geometry. Surfaces keep
+external application input focus and take a temporary keyboard grab for Escape;
+dispatch releases the shortcut connection's passive grab before selection starts,
+including when trigger keys remain held.
+
+Pixels are acquired after the selection surfaces are removed. On an identified
+Cinnamon/Muffin session, the native compositor screenshot service captures its
+scene into private files. Its D-Bus reply can precede the PNG write, so decoding
+waits for the writer's close event, validates the PNG and accepted geometry, and
+uses a ten-second deadline. Cancellation discards pending results. Other X11
+sessions use post-selection root capture and require their own compositor
+acceptance; an X11 round trip alone does not prove presentation completed.
+
+Composition preserves the original pixel grid for an entirely single-monitor
+selection, using floor/ceiling on local native edges. Spanning composition uses the
+highest participating native density, rounds global pixel-grid boundaries outward,
+and leaves layout gaps transparent. Already displayed rotated frames are not
+rotated a second time.
 
 Clipboard import requests supported X11 selection targets without waiting synchronously on the owner. It prefers local files, images supported by the installed QImageReader plugins (PNG first), and UTF-8 plain text, using the existing payload contract; plain-text URLs remain text. A remote URI list falls through to the owner’s actual image or text representation when available. Each selection transfer has a five-second deadline and resource bounds, and owner changes invalidate acquisition. Imports are queued in frozen-revision order within the accepted operation limit; cancelling a capture leaves independent clipboard imports active. PNG decoding and capture composition run on workers. Results use Qt clipboard ownership, with local image results supplied as previously encoded PNG bytes by the shared copy worker so paste does not encode screenshots on the session thread. The resident application must continue running to serve clipboard results. The transfer protocol follows [ICCCM selections](https://xorg.freedesktop.org/archive/X11R7.7/doc/xorg-docs/icccm/icccm.html).
 

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="4"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="50"
+	timestamp="2026-10-08T13:43:42"
+	>
+	<testcase name="s3_module_integration" classname="s3_module_integration" time="35.5028" status="run">
+		<properties/>
+		<system-out>********* Start testing of S3ModuleContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : S3ModuleContract::initTestCase()
+PASS   : S3ModuleContract::residentPathsDoNotLoadSdk()
+PASS   : S3ModuleContract::missingAndIncompatibleModule()
+PASS   : S3ModuleContract::deployedFailure(missing)
+PASS   : S3ModuleContract::deployedFailure(wrong-version)
+PASS   : S3ModuleContract::deployedFailure(wrong-build)
+PASS   : S3ModuleContract::deployedFailure(wrong-transport)
+SKIP   : S3ModuleContract::unavailableFacadeChild() Subprocess helper
+   Loc: [/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001/tests/integration/test_s3_module.cpp(151)]
+PASS   : S3ModuleContract::concurrentProvidersAndPermanentWorker()
+PASS   : S3ModuleContract::boundedQueueDrainsExactlyOnce()
+PASS   : S3ModuleContract::exceptionsReleaseAdmissionAndPreserveUncertainty()
+PASS   : S3ModuleContract::...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="cli_integration" classname="cli_integration" time="1.64203" status="run">
+		<properties/>
+		<system-out>********* Start testing of CliContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : CliContract::initTestCase()
+PASS   : CliContract::launcherActivationUsesValidatedResidentUiRequest()
+PASS   : CliContract::backgroundLaunchDoesNotRaiseExistingResident()
+PASS   : CliContract::realClientAndMalformedProtocol()
+PASS   : CliContract::settingsTransportAndRedactedDiagnostics()
+PASS   : CliContract::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 1612ms
+********* Finished testing of CliContract *********
+</system-out>
+	</testcase>
+	<testcase name="local_ipc_contract" classname="local_ipc_contract" time="13.2127" status="run">
+		<properties/>
+		<system-out>********* Start testing of LocalIpcContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : LocalIpcContract::initTestCase()
+PASS   : LocalIpcContract::slowPeerReceivesCompleteReply()
+PASS   : LocalIpcContract::disconnectedPeerDoesNotInterruptOtherRequests()
+PASS   : LocalIpcContract::incompleteRequestExpires()
+PASS   : LocalIpcContract::clientLimitPreservesAcceptedRequests()
+PASS   : LocalIpcContract::fragmentedRequestAndDuplicateFrames()
+PASS   : LocalIpcContract::endpointOwnershipAndLiveResident()
+PASS   : LocalIpcContract::halfClosedRequestReceivesReply()
+PASS   : LocalIpcContract::teardownPreservesReplacementEndpoint()
+PASS   : LocalIpcContract::recoversOwnedStaleSocket()
+PASS   : LocalIpcContract::cleanupTestCase()
+Totals: 11 passed, 0 failed, 0 skipped, 0 blacklisted, 13183ms
+********* Finished testing of LocalIpcContract *********
+</system-out>
+	</testcase>
+	<testcase name="ip_address_contract" classname="ip_address_contract" time="0.260746" status="run">
+		<properties/>
+		<system-out>********* Start testing of IpAddressContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : IpAddressContract::initTestCase()
+PASS   : IpAddressContract::normalizedLiteralCompatibility()
+PASS   : IpAddressContract::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 237ms
+********* Finished testing of IpAddressContract *********
+</system-out>
+	</testcase>
+</testsuite>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite name="HalfCloseProbe" timestamp="2026&#x002D;10&#x002D;08T14:18:04" hostname="patrick&#x002D;Precision&#x002D;5540" tests="4" failures="0" errors="0" skipped="0" time="0.002">
+  <properties>
+    <property name="QTestVersion" value="6.4.2"/>
+    <property name="QtVersion" value="6.4.2"/>
+    <property name="QtBuild" value="Qt 6.4.2 (x86_64&#x002D;little_endian&#x002D;lp64 shared (dynamic) release build; by GCC 13.2.0)"/>
+  </properties>
+  <testcase name="initTestCase" classname="HalfCloseProbe" time="0.000"/>
+  <testcase name="originalQtObservesHalfCloseBeforeReply" classname="HalfCloseProbe" time="0.001"/>
+  <testcase name="nativeObservesHalfCloseBeforeReply" classname="HalfCloseProbe" time="0.000"/>
+  <testcase name="cleanupTestCase" classname="HalfCloseProbe" time="0.000"/>
+</testsuite>

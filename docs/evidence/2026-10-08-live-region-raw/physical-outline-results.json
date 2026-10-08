@@ -1,0 +1,224 @@
+{
+    "budgetPassed": false,
+    "displays": [
+        {
+            "height": 1080,
+            "name": "eDP-1",
+            "scale": 1,
+            "width": 1920,
+            "x": 2560,
+            "y": 0
+        },
+        {
+            "height": 1440,
+            "name": "DP-1-2",
+            "scale": 1,
+            "width": 2560,
+            "x": 0,
+            "y": 0
+        },
+        {
+            "height": 1440,
+            "name": "DP-3",
+            "scale": 1,
+            "width": 2560,
+            "x": 4480,
+            "y": 0
+        }
+    ],
+    "error": "",
+    "measurementLimit": "Includes external press/drag injection after mapping; differs from historical shaded-first-frame workload. Not native capture/outline-removal or mixed-DPI proof.",
+    "p95PaintMs": 759.319823,
+    "samples": [
+        {
+            "inputIssuedMs": 35.6098,
+            "mapMs": 34.092056,
+            "paintAfterInputMs": 117.77463699999998,
+            "paintMs": 153.384437
+        },
+        {
+            "inputIssuedMs": 39.271911,
+            "mapMs": 36.765967,
+            "paintAfterInputMs": 136.74575299999998,
+            "paintMs": 176.017664
+        },
+        {
+            "inputIssuedMs": 27.338966,
+            "mapMs": 25.306638,
+            "paintAfterInputMs": 107.84000800000001,
+            "paintMs": 135.178974
+        },
+        {
+            "inputIssuedMs": 37.773162,
+            "mapMs": 35.166537,
+            "paintAfterInputMs": 145.99427000000003,
+            "paintMs": 183.767432
+        },
+        {
+            "inputIssuedMs": 288.842901,
+            "mapMs": 287.965041,
+            "paintAfterInputMs": 106.62888800000002,
+            "paintMs": 395.471789
+        },
+        {
+            "inputIssuedMs": 21.420129,
+            "mapMs": 20.245473,
+            "paintAfterInputMs": 85.48731,
+            "paintMs": 106.907439
+        },
+        {
+            "inputIssuedMs": 43.433582,
+            "mapMs": 40.967506,
+            "paintAfterInputMs": 98.82064,
+            "paintMs": 142.254222
+        },
+        {
+            "inputIssuedMs": 675.078436,
+            "mapMs": 673.366961,
+            "paintAfterInputMs": 84.24138700000003,
+            "paintMs": 759.319823
+        },
+        {
+            "inputIssuedMs": 43.496523,
+            "mapMs": 41.934528,
+            "paintAfterInputMs": 117.244395,
+            "paintMs": 160.740918
+        },
+        {
+            "inputIssuedMs": 29.722586,
+            "mapMs": 28.323445,
+            "paintAfterInputMs": 130.397403,
+            "paintMs": 160.119989
+        },
+        {
+            "inputIssuedMs": 26.553657,
+            "mapMs": 25.39799,
+            "paintAfterInputMs": 138.26976000000002,
+            "paintMs": 164.823417
+        },
+        {
+            "inputIssuedMs": 20.916537,
+            "mapMs": 19.628867,
+            "paintAfterInputMs": 120.38736399999999,
+            "paintMs": 141.303901
+        },
+        {
+            "inputIssuedMs": 725.655186,
+            "mapMs": 721.250294,
+            "paintAfterInputMs": 137.61678100000006,
+            "paintMs": 863.271967
+        },
+        {
+            "inputIssuedMs": 42.137658,
+            "mapMs": 40.521806,
+            "paintAfterInputMs": 92.542523,
+            "paintMs": 134.680181
+        },
+        {
+            "inputIssuedMs": 279.044056,
+            "mapMs": 276.618881,
+            "paintAfterInputMs": 161.551558,
+            "paintMs": 440.595614
+        },
+        {
+            "inputIssuedMs": 26.427208,
+            "mapMs": 23.240996,
+            "paintAfterInputMs": 140.029236,
+            "paintMs": 166.456444
+        },
+        {
+            "inputIssuedMs": 350.534535,
+            "mapMs": 349.65036,
+            "paintAfterInputMs": 189.88137700000004,
+            "paintMs": 540.415912
+        },
+        {
+            "inputIssuedMs": 23.564359,
+            "mapMs": 22.101678,
+            "paintAfterInputMs": 138.645299,
+            "paintMs": 162.209658
+        },
+        {
+            "inputIssuedMs": 27.392416,
+            "mapMs": 19.403292,
+            "paintAfterInputMs": 128.375285,
+            "paintMs": 155.767701
+        },
+        {
+            "inputIssuedMs": 25.317432,
+            "mapMs": 23.840751,
+            "paintAfterInputMs": 151.500411,
+            "paintMs": 176.817843
+        },
+        {
+            "inputIssuedMs": 20.229054,
+            "mapMs": 19.014928,
+            "paintAfterInputMs": 146.78843600000002,
+            "paintMs": 167.01749
+        },
+        {
+            "inputIssuedMs": 24.096892,
+            "mapMs": 21.085528,
+            "paintAfterInputMs": 170.245621,
+            "paintMs": 194.342513
+        },
+        {
+            "inputIssuedMs": 30.798538,
+            "mapMs": 28.959057,
+            "paintAfterInputMs": 157.334711,
+            "paintMs": 188.133249
+        },
+        {
+            "inputIssuedMs": 24.510619,
+            "mapMs": 23.217739,
+            "paintAfterInputMs": 113.36332300000001,
+            "paintMs": 137.873942
+        },
+        {
+            "inputIssuedMs": 27.04068,
+            "mapMs": 25.282547,
+            "paintAfterInputMs": 120.082362,
+            "paintMs": 147.123042
+        },
+        {
+            "inputIssuedMs": 28.224889,
+            "mapMs": 25.664647,
+            "paintAfterInputMs": 145.261808,
+            "paintMs": 173.486697
+        },
+        {
+            "inputIssuedMs": 18.546586,
+            "mapMs": 17.438215,
+            "paintAfterInputMs": 150.272425,
+            "paintMs": 168.819011
+        },
+        {
+            "inputIssuedMs": 21.677985,
+            "mapMs": 20.289652,
+            "paintAfterInputMs": 111.247218,
+            "paintMs": 132.925203
+        },
+        {
+            "inputIssuedMs": 25.690948,
+            "mapMs": 24.388763,
+            "paintAfterInputMs": 168.077045,
+            "paintMs": 193.767993
+        },
+        {
+            "inputIssuedMs": 23.02611,
+            "mapMs": 21.626683,
+            "paintAfterInputMs": 153.559344,
+            "paintMs": 176.585454
+        }
+    ],
+    "schemaVersion": 2,
+    "scope": "physical Cinnamon X11 release hotkey to first drawn white outline on every actual transparent selector; synthetic canvases; scale1 shared vertical strip; Escape cancellation",
+    "syntheticDrag": {
+        "endX": 6999,
+        "endY": 1040,
+        "startX": 40,
+        "startY": 20
+    },
+    "warmupInvocations": 5,
+    "witnessMode": "live-outline"
+}

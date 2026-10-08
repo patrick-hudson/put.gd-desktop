@@ -81,6 +81,12 @@ do not substitute a shorter run or a hosted CI measurement. Raw local logs remai
 in the private per-run directory and optimization journal. These empty-history
 records do not certify populated-history or upload memory usage.
 
+Use the owned-window observer and repeatable view/payload protocols in
+[testing-memory.md](testing-memory.md) for new comparisons. Each reference and
+candidate must use the same observer version. Preserve complete controlled JSON
+and JUnit reports with their source/binary hashes; keep private configuration,
+resident logs and payload directories out of CI artifact uploads.
+
 Enable the non-installed capture driver with `cmake --preset release
 -DPUTGD_PHYSICAL_BENCHMARKS=ON`, then build normally. On the physical Cinnamon X11
 session, run:
@@ -88,7 +94,7 @@ session, run:
 ```sh
 python3 tests/performance/run_capture.py \
   --app build/release/putgd --cli build/release/putgd-cli \
-  --driver build/release/putgd-bench-capture --output work/capture-run-unique
+  --driver build/release/putgd-bench-capture --output work/capture-run-unique --live-outline
 ```
 
 Use a new output directory per attempt. The supervisor records exact binary hashes,
@@ -99,6 +105,12 @@ and the isolated profile is local-only. The driver waits for the fixture to be v
 on every head before each invocation, then independently checks owned selector
 mapping and exact painted pixels. This avoids confusing compositor fade with a
 failed capture. A completed run can still fail its 150 ms budget: retain that result.
+For the current transparent selector, `--live-outline` draws a synthetic rectangle
+and witnesses its first white edge on every head before cancelling with Escape.
+This workload includes external drag injection and supports only scale-one heads
+with a shared vertical strip. It differs from the historical shaded-first-frame
+workload (retained as the default for replay) and proves neither final saved pixels
+nor mixed-scale support. Record its witness mode with every comparison.
 Run physical capture and memory measurements serially. Hosted virtual CI cannot
 establish the physical budget; a suitable self-hosted desktop can run these commands
 and retain only their controlled report directory. Never include credentials or VM keys.

@@ -1,0 +1,88 @@
+--- a/src/app/LocalIpc.cpp
++++ b/src/app/LocalIpc.cpp
+@@ -88,9 +88,12 @@
+  qsizetype limit=1024*1024+1;
+  QByteArray output;
+  qsizetype sent=0;
++ bool requestHandled=false;
+  State(LocalIpcConnection* q,int handle):owner(q),fd(handle),readable(new QSocketNotifier(fd,QSocketNotifier::Read,q)),writable(new QSocketNotifier(fd,QSocketNotifier::Write,q)) {
+   writable->setEnabled(false);
+-  QObject::connect(readable,&QSocketNotifier::activated,q,[this]{emit owner->readyRead();});
++  QObject::connect(readable,&QSocketNotifier::activated,q,[this]{
++   if(requestHandled)discardInput();else emit owner->readyRead();
++  });
+   QObject::connect(writable,&QSocketNotifier::activated,q,[this]{flush();});
+  }
+  ~State(){if(fd>=0)::close(fd);}
+@@ -102,6 +105,20 @@
+   fd=-1;
+   output.clear();
+   emit owner->disconnected();
++ }
++ // Keep observing EOF while an asynchronous reply is pending. Ignore further
++ // request bytes without retaining them or monopolizing an event-loop turn.
++ void discardInput() {
++  char chunk[16384];
++  qsizetype drained=0;
++  while(fd>=0&&drained<64*1024) {
++   const auto count=::recv(fd,chunk,sizeof(chunk),0);
++   if(count>0){drained+=count;continue;}
++   if(count<0&&errno==EINTR)continue;
++   if(count<0&&(errno==EAGAIN||errno==EWOULDBLOCK))return;
++   close();
++   return;
++  }
+  }
+  void flush() {
+   while(fd>=0&&sent<output.size()) {
+@@ -132,7 +149,10 @@
+  }
+  return bytes;
+ }
+-void LocalIpcConnection::stopReading(){state_->readable->setEnabled(false);}
++void LocalIpcConnection::stopReading(){
++ state_->requestHandled=true;
++ state_->readable->setEnabled(state_->fd>=0);
++}
+ void LocalIpcConnection::sendAndClose(QByteArray bytes) {
+  if(state_->fd<0)return;
+  state_->readable->setEnabled(false);
+--- a/src/app/LocalIpc.h
++++ b/src/app/LocalIpc.h
+@@ -14,6 +14,7 @@
+  ~LocalIpcConnection() override;
+  void setReadBufferSize(qsizetype size);
+  QByteArray readAll();
++ // Stop request delivery while still observing a peer disconnect.
+  void stopReading();
+  void sendAndClose(QByteArray bytes);
+  void disconnectFromServer();
+--- a/tests/integration/test_local_ipc.cpp
++++ b/tests/integration/test_local_ipc.cpp
+@@ -43,6 +43,26 @@
+   QByteArray reply;QElapsedTimer elapsed;elapsed.start();
+   while(elapsed.elapsed()<5000&&reply.size()<payload.size()){QCoreApplication::processEvents();reply+=peer.readAll();QTest::qWait(1);}
+   QCOMPARE(reply,payload);
++ }
++ void handledRequestObservesDisconnectBeforeReply() {
++  QTemporaryDir d;LocalIpcServer server;QVERIFY(server.listen(d.filePath("session.sock")));
++  LocalIpcConnection* accepted=nullptr;int notifications=0;
++  connect(&server,&LocalIpcServer::newConnection,this,[&]{
++   accepted=server.nextPendingConnection();
++   connect(accepted,&LocalIpcConnection::readyRead,this,[&]{
++    ++notifications;QCOMPARE(accepted->readAll(),QByteArray("request"));accepted->stopReading();
++   });
++  });
++  QLocalSocket peer;peer.connectToServer(server.fullServerName());QVERIFY(peer.waitForConnected(1000));
++  peer.write("request");QVERIFY(peer.waitForBytesWritten(1000));QTRY_COMPARE(notifications,1);
++  QSignalSpy disconnected(accepted,&LocalIpcConnection::disconnected);
++  // A response may be waiting on asynchronous work when the CLI exits.
++  peer.write(QByteArray(128*1024,'x'));QVERIFY(peer.waitForBytesWritten(1000));
++  QTest::qWait(10);peer.abort();
++  QTRY_COMPARE_WITH_TIMEOUT(disconnected.count(),1,1000);
++  QCOMPARE(notifications,1);
++  accepted->sendAndClose("late reply\n");
++  QCoreApplication::processEvents();QCOMPARE(disconnected.count(),1);
+  }
+  void disconnectedPeerDoesNotInterruptOtherRequests() {
+   QTemporaryDir d;LocalIpcServer server;QVERIFY(server.listen(d.filePath("session.sock")));int replies=0;

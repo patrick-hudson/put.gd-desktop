@@ -1,0 +1,446 @@
+{
+  "schemaVersion": 1,
+  "scope": "Standalone local Qt SQL rollback/FULL locating; no product data/native desktop evidence or selected product optimization.",
+  "rawDirectory": "2026-10-08-sqlite-locating-raw",
+  "manifest": {
+    "build/build-identity.json": {
+      "sha256": "91eb335bbd85a6ea5cf482e0b411e47f6281c551f7082c9bc4895938f7996d09",
+      "bytes": 1758,
+      "source": "work/sqlite-latency-probe/build-identity.json",
+      "role": "source/build identity",
+      "transformation": "verbatim"
+    },
+    "build/build-readout.log": {
+      "sha256": "fb2c861301352daa6a6dadb83142dd8f9f275f93c77dc19f702b44b33f0de56d",
+      "bytes": 1257,
+      "source": "work/sqlite-latency-probe/build-readout.log",
+      "role": "library/compiler/hash readout",
+      "transformation": "verbatim"
+    },
+    "build/build.log": {
+      "sha256": "bed57d1592768f994f612ac20e74c9cccae746cae929d58bcf98a60bb5021d6b",
+      "bytes": 124,
+      "source": "work/sqlite-latency-probe/build.log",
+      "role": "build log",
+      "transformation": "verbatim"
+    },
+    "build/configure.log": {
+      "sha256": "6e7e529aff5a467d91a5235f950ffbf1079da1f0a05b3ca3cf4bba6827425152",
+      "bytes": 614,
+      "source": "work/sqlite-latency-probe/configure.log",
+      "role": "configure log",
+      "transformation": "verbatim"
+    },
+    "official-sources.json": {
+      "sha256": "234db7ffebb28f172ca92ff41ad924217b1943b132be7a9cc4fd6808f59f8d77",
+      "bytes": 1672,
+      "role": "primary-source links",
+      "transformation": "portable derived text/metadata"
+    },
+    "parameters.json": {
+      "sha256": "5b9785056e7a0314df41330a12d7eba12668161b95a2a24242d4d52a275b1ff3",
+      "bytes": 6069,
+      "role": "portable parameters and exact original argv",
+      "transformation": "portable derived text/metadata"
+    },
+    "raw/01-repeat1-reopen-cache2000.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/01-repeat1-reopen-cache2000.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/01-repeat1-reopen-cache2000.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/01-repeat1-reopen-cache2000.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/01-repeat1-reopen-cache2000/results.json": {
+      "sha256": "592aa6a197d33958f3b58db664adec98e4c5408e53e856f155f956c3ac868e6f",
+      "bytes": 68598,
+      "source": "work/sqlite-latency-probe-evidence/raw/01-repeat1-reopen-cache2000/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/02-repeat1-connection-cache2000.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/02-repeat1-connection-cache2000.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/02-repeat1-connection-cache2000.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/02-repeat1-connection-cache2000.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/02-repeat1-connection-cache2000/results.json": {
+      "sha256": "0ef4d23a68e64c1993ff3cdcc0071f65cfe41992b4781433364f9f5f535b252f",
+      "bytes": 38208,
+      "source": "work/sqlite-latency-probe-evidence/raw/02-repeat1-connection-cache2000/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/03-repeat1-statements-cache2000.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/03-repeat1-statements-cache2000.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/03-repeat1-statements-cache2000.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/03-repeat1-statements-cache2000.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/03-repeat1-statements-cache2000/results.json": {
+      "sha256": "eccb1faac88eb29952972392351b624c5fc1162f5dff7cc4be8861b14278b787",
+      "bytes": 37773,
+      "source": "work/sqlite-latency-probe-evidence/raw/03-repeat1-statements-cache2000/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/04-repeat1-reopen-cache512.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/04-repeat1-reopen-cache512.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/04-repeat1-reopen-cache512.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/04-repeat1-reopen-cache512.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/04-repeat1-reopen-cache512/results.json": {
+      "sha256": "9ac3b3c9cb6490b841959e9dbdfa75dfbb5fb95d6c7c81692f149880fa2616e4",
+      "bytes": 68482,
+      "source": "work/sqlite-latency-probe-evidence/raw/04-repeat1-reopen-cache512/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/05-repeat1-connection-cache512.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/05-repeat1-connection-cache512.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/05-repeat1-connection-cache512.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/05-repeat1-connection-cache512.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/05-repeat1-connection-cache512/results.json": {
+      "sha256": "b5eb3c145bc0cb1449bf6d654d3ea607bf315b588b8be094486e277824a08969",
+      "bytes": 38144,
+      "source": "work/sqlite-latency-probe-evidence/raw/05-repeat1-connection-cache512/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/06-repeat1-statements-cache512.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/06-repeat1-statements-cache512.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/06-repeat1-statements-cache512.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/06-repeat1-statements-cache512.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/06-repeat1-statements-cache512/results.json": {
+      "sha256": "c07c69a7e72a1866add67dc708c2d89c6351a844a2ca7353fbcf89055be001cf",
+      "bytes": 37757,
+      "source": "work/sqlite-latency-probe-evidence/raw/06-repeat1-statements-cache512/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/07-repeat2-statements-cache512.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/07-repeat2-statements-cache512.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/07-repeat2-statements-cache512.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/07-repeat2-statements-cache512.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/07-repeat2-statements-cache512/results.json": {
+      "sha256": "a118e481c716e6c17443a1e0d28051141f4b5d6f5da46a2d797cdc8329b27954",
+      "bytes": 37724,
+      "source": "work/sqlite-latency-probe-evidence/raw/07-repeat2-statements-cache512/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/08-repeat2-connection-cache512.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/08-repeat2-connection-cache512.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/08-repeat2-connection-cache512.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/08-repeat2-connection-cache512.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/08-repeat2-connection-cache512/results.json": {
+      "sha256": "0d6386b5dcc7ad0b6b0dba6cae18036cc1eb7b82bea71aa7ed8f1f270ac2a063",
+      "bytes": 38186,
+      "source": "work/sqlite-latency-probe-evidence/raw/08-repeat2-connection-cache512/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/09-repeat2-reopen-cache512.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/09-repeat2-reopen-cache512.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/09-repeat2-reopen-cache512.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/09-repeat2-reopen-cache512.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/09-repeat2-reopen-cache512/results.json": {
+      "sha256": "1149fa8e271b3e4cc9406866db55d6456c5c310693e64cb0409798abed300099",
+      "bytes": 68785,
+      "source": "work/sqlite-latency-probe-evidence/raw/09-repeat2-reopen-cache512/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/10-repeat2-statements-cache2000.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/10-repeat2-statements-cache2000.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/10-repeat2-statements-cache2000.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/10-repeat2-statements-cache2000.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/10-repeat2-statements-cache2000/results.json": {
+      "sha256": "0f9811e84ba58509d9b8865773c8b2de9c3eada51efa427cc779cb2ed56c4d6f",
+      "bytes": 37779,
+      "source": "work/sqlite-latency-probe-evidence/raw/10-repeat2-statements-cache2000/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/11-repeat2-connection-cache2000.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/11-repeat2-connection-cache2000.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/11-repeat2-connection-cache2000.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/11-repeat2-connection-cache2000.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/11-repeat2-connection-cache2000/results.json": {
+      "sha256": "980336bff1cbebb150281d0b3ed319ae734618058732be4f35522633576451c2",
+      "bytes": 38118,
+      "source": "work/sqlite-latency-probe-evidence/raw/11-repeat2-connection-cache2000/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/12-repeat2-reopen-cache2000.stderr.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/12-repeat2-reopen-cache2000.stderr.log",
+      "role": "raw stderr",
+      "transformation": "verbatim"
+    },
+    "raw/12-repeat2-reopen-cache2000.stdout.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "source": "work/sqlite-latency-probe-evidence/raw/12-repeat2-reopen-cache2000.stdout.log",
+      "role": "raw stdout",
+      "transformation": "verbatim"
+    },
+    "raw/12-repeat2-reopen-cache2000/results.json": {
+      "sha256": "553182a06c3c474dd602d3f595769cb11df9854521b83290ea01bbad9cab6788",
+      "bytes": 68577,
+      "source": "work/sqlite-latency-probe-evidence/raw/12-repeat2-reopen-cache2000/results.json",
+      "role": "complete raw result",
+      "transformation": "verbatim"
+    },
+    "raw/manifest.json": {
+      "sha256": "7346f9f7ff64657bd2ffd39a84d66f0dfad63d400008ea95fb49fd6f5a28611e",
+      "bytes": 45638,
+      "source": "work/sqlite-latency-probe-evidence/raw/manifest.json",
+      "role": "original parameters/results/library hashes",
+      "transformation": "verbatim"
+    },
+    "replay.md": {
+      "sha256": "698550374a7b987d49b8a349dad133b72173f540c784b9e819de5fbc7e04eca1",
+      "bytes": 3031,
+      "role": "portable repository-relative replay recipe",
+      "transformation": "portable derived text/metadata"
+    },
+    "report.md": {
+      "sha256": "aba41e778c8f3902696728b8c81646d68c1d9c1adefe0b8536ed7086f7ba2289",
+      "bytes": 5591,
+      "role": "portable narrative with limitations",
+      "transformation": "portable derived text/metadata"
+    },
+    "run.log": {
+      "sha256": "f7fd459a027d321b7fbd8c25abee1763e81633a2a89fd70bc90cc8886288cdc5",
+      "bytes": 954,
+      "source": "work/sqlite-latency-probe-evidence/run.log",
+      "role": "controller output",
+      "transformation": "verbatim"
+    },
+    "source/CMakeLists.txt": {
+      "sha256": "0e61c53f1baec41fe6cd047ef30c182fd5e546b0c35a58e54167a63fe9662ee2",
+      "bytes": 370,
+      "source": "work/sqlite-latency-probe/CMakeLists.txt",
+      "role": "compiled CMake",
+      "transformation": "verbatim"
+    },
+    "source/analyze-original.py": {
+      "sha256": "27d609b0a29b3b8f24d24ab5a934664ff35bbd5be2c09b4c5846a4183665de4d",
+      "bytes": 6231,
+      "source": "work/sqlite-latency-probe-evidence/analyze.py",
+      "role": "derived-analysis source",
+      "transformation": "verbatim"
+    },
+    "source/probe.cpp": {
+      "sha256": "2e6ebb66aaf667018027e5c87f411d952b8d748bea14a478b477d00ce1150c2a",
+      "bytes": 11476,
+      "source": "work/sqlite-latency-probe/probe.cpp",
+      "role": "compiled source",
+      "transformation": "verbatim"
+    },
+    "source/run-controller-original.py": {
+      "sha256": "411671c18caee05c4be7c16501b9b1b0d618864bbe7dc7d4ec961e2b073c868b",
+      "bytes": 5462,
+      "source": "work/sqlite-latency-probe-evidence/run-controller.py",
+      "role": "exact executed controller",
+      "transformation": "verbatim"
+    },
+    "summary.json": {
+      "sha256": "cf1b08f44b0ef638c9d0f455869e42408b11c4116f65725e097913425b1d9afb",
+      "bytes": 43181,
+      "source": "work/sqlite-latency-probe-evidence/summary.json",
+      "role": "structured analysis",
+      "transformation": "verbatim"
+    },
+    "export-validation.json": {
+      "sha256": "0e8d56d75cb55c97f1f42abfa9b22bb44e857028dd2e45927bcd75e5166f4b7e",
+      "bytes": 1306,
+      "role": "read-only export verification",
+      "transformation": "generated export validation"
+    }
+  },
+  "exportPolicy": {
+    "explicitAllowlistOnly": true,
+    "generatedDatabasesExcluded": true,
+    "payloadsExcluded": true,
+    "credentialsOrConfigInputs": false,
+    "binaryFilesExcluded": true,
+    "syntheticDatasetsRegeneratedBy": "replay.md",
+    "originalRawBytesPreserved": true,
+    "portableReportLinks": true
+  },
+  "build": {
+    "identity": "build/build-identity.json",
+    "sourceSha256": "2e6ebb66aaf667018027e5c87f411d952b8d748bea14a478b477d00ce1150c2a",
+    "cmakeSha256": "0e61c53f1baec41fe6cd047ef30c182fd5e546b0c35a58e54167a63fe9662ee2",
+    "binarySha256": "d4419f7c36fee1b21fd6435f72ff1d36946ec4b86432880e7bcf0605c89051fb",
+    "unchangedDuringRun": true,
+    "qtVersion": "6.4.2",
+    "sqliteVersion": "3.45.1",
+    "sqliteSourceId": "2024-01-30 16:01:20 e876e51a0ed5c5b3126f52e532044363a014bc594cfefa87ffb5b82257ccalt1",
+    "libraryHashes": "raw/manifest.json"
+  },
+  "run": {
+    "parameters": "parameters.json",
+    "results": "summary.json",
+    "report": "report.md",
+    "session": 37398,
+    "exitCode": 0,
+    "cases": 12,
+    "rawSamples": 420,
+    "scoredSamples": 360,
+    "matchedRepeats": 2,
+    "order": "forward then reverse",
+    "journal": "DELETE",
+    "synchronous": 2,
+    "walExecuted": false,
+    "allValid": true,
+    "errors": 0,
+    "stderrEmpty": true,
+    "startUtc": "2026-10-08T19:35:48.692034+00:00",
+    "endUtc": "2026-10-08T19:36:01.231151+00:00",
+    "allJobsTerminal": true
+  },
+  "findings": {
+    "wholeIteration": "No consistent connection/statement latency winner; FULL commits dominate slow samples.",
+    "prepareMedianPerThreeStatesMs": [
+      0.062414000000000004,
+      0.2021385
+    ],
+    "maxScoredCommitSumMs": 347.064852,
+    "controlledUserVersionWaitMs": [
+      103.892243,
+      229.409904
+    ],
+    "firstScanRssGrowthMedianKiB": {
+      "cache2000": 2098,
+      "cache512": 552,
+      "difference": 1546
+    },
+    "shrinkRssReducedCases": 1,
+    "shrinkRssUnchangedCases": 11
+  },
+  "limits": [
+    "No product, compositor, clipboard, user history/config/data, WAL or physical idle gate exercised; no 150 ms or 40 MiB acceptance claim.",
+    "Thirty scored iterations and two reversed-order repeats are locating evidence with filesystem tails, not a selected product winner.",
+    "QSqlQuery scan/result allocations and glibc retention can influence process RSS; sqlite3_db_status was not measured.",
+    "The prepared source reused reader beginNs for the following write begin duration; controlled-lock absolute reader-start timestamp is unavailable. Individual phase durations and writer start/commit/release remain usable; source was not changed or rerun.",
+    "SQLite compile options do not list ENABLE_MEMORY_MANAGEMENT; optional global sqlite3_release_memory would therefore not be a supported plan. shrink_memory connection-local API remains available.",
+    "Fresh same-mode connection does not by itself remove a competing writer; subsequent product accepted/acquiring writes can still wait."
+  ],
+  "productGates": {
+    "approximately40MiBColdIdle": "not tested/established here",
+    "region150Ms": "not tested/established here",
+    "nativeCompositor": "not tested here",
+    "populatedProductHistory": "not tested here",
+    "productionRecoveryConcurrencyDurability": "not tested here",
+    "productionChanges": "none"
+  },
+  "officialSources": "official-sources.json",
+  "nextWork": "Keep IPC independent; split actual product permission/PRAGMA phases before journal changes. Test bounded batch statement reuse/cache caps only under separately measured product workloads; no WAL selection.",
+  "exportValidation": "export-validation.json"
+}

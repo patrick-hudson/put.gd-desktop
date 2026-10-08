@@ -1,0 +1,206 @@
+{
+  "schemaVersion": 1,
+  "originalManifest": "raw/manifest.json",
+  "sourceDirectory": "source",
+  "controller": "source/run-controller-original.py",
+  "replay": "replay.md",
+  "freshProcessPerCase": true,
+  "journal": "DELETE",
+  "synchronous": 2,
+  "walExecuted": false,
+  "caseOrder": [
+    {
+      "ordinal": 1,
+      "repeat": 1,
+      "mode": "reopen",
+      "cacheKiB": 2000,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/01-repeat1-reopen-cache2000",
+        "reopen",
+        "2000",
+        "--lock"
+      ],
+      "result": "raw/01-repeat1-reopen-cache2000/results.json"
+    },
+    {
+      "ordinal": 2,
+      "repeat": 1,
+      "mode": "connection",
+      "cacheKiB": 2000,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/02-repeat1-connection-cache2000",
+        "connection",
+        "2000",
+        "--lock"
+      ],
+      "result": "raw/02-repeat1-connection-cache2000/results.json"
+    },
+    {
+      "ordinal": 3,
+      "repeat": 1,
+      "mode": "statements",
+      "cacheKiB": 2000,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/03-repeat1-statements-cache2000",
+        "statements",
+        "2000",
+        "--lock"
+      ],
+      "result": "raw/03-repeat1-statements-cache2000/results.json"
+    },
+    {
+      "ordinal": 4,
+      "repeat": 1,
+      "mode": "reopen",
+      "cacheKiB": 512,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/04-repeat1-reopen-cache512",
+        "reopen",
+        "512",
+        "--lock"
+      ],
+      "result": "raw/04-repeat1-reopen-cache512/results.json"
+    },
+    {
+      "ordinal": 5,
+      "repeat": 1,
+      "mode": "connection",
+      "cacheKiB": 512,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/05-repeat1-connection-cache512",
+        "connection",
+        "512",
+        "--lock"
+      ],
+      "result": "raw/05-repeat1-connection-cache512/results.json"
+    },
+    {
+      "ordinal": 6,
+      "repeat": 1,
+      "mode": "statements",
+      "cacheKiB": 512,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/06-repeat1-statements-cache512",
+        "statements",
+        "512",
+        "--lock"
+      ],
+      "result": "raw/06-repeat1-statements-cache512/results.json"
+    },
+    {
+      "ordinal": 7,
+      "repeat": 2,
+      "mode": "statements",
+      "cacheKiB": 512,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/07-repeat2-statements-cache512",
+        "statements",
+        "512",
+        "--lock"
+      ],
+      "result": "raw/07-repeat2-statements-cache512/results.json"
+    },
+    {
+      "ordinal": 8,
+      "repeat": 2,
+      "mode": "connection",
+      "cacheKiB": 512,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/08-repeat2-connection-cache512",
+        "connection",
+        "512",
+        "--lock"
+      ],
+      "result": "raw/08-repeat2-connection-cache512/results.json"
+    },
+    {
+      "ordinal": 9,
+      "repeat": 2,
+      "mode": "reopen",
+      "cacheKiB": 512,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/09-repeat2-reopen-cache512",
+        "reopen",
+        "512",
+        "--lock"
+      ],
+      "result": "raw/09-repeat2-reopen-cache512/results.json"
+    },
+    {
+      "ordinal": 10,
+      "repeat": 2,
+      "mode": "statements",
+      "cacheKiB": 2000,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/10-repeat2-statements-cache2000",
+        "statements",
+        "2000",
+        "--lock"
+      ],
+      "result": "raw/10-repeat2-statements-cache2000/results.json"
+    },
+    {
+      "ordinal": 11,
+      "repeat": 2,
+      "mode": "connection",
+      "cacheKiB": 2000,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/11-repeat2-connection-cache2000",
+        "connection",
+        "2000",
+        "--lock"
+      ],
+      "result": "raw/11-repeat2-connection-cache2000/results.json"
+    },
+    {
+      "ordinal": 12,
+      "repeat": 2,
+      "mode": "reopen",
+      "cacheKiB": 2000,
+      "argvAsExecuted": [
+        "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+        "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea/12-repeat2-reopen-cache2000",
+        "reopen",
+        "2000",
+        "--lock"
+      ],
+      "result": "raw/12-repeat2-reopen-cache2000/results.json"
+    }
+  ],
+  "warmups": 5,
+  "scoredSamplesPerCase": 30,
+  "states": [
+    "accepted",
+    "acquiring",
+    "cancelled"
+  ],
+  "syntheticIdScheme": "fixture-(zero-based iteration), isolated per database",
+  "memoryScan": {
+    "rows": 10000,
+    "bytesPerRow": 256,
+    "generation": "constant synthetic byte z; only in regenerated database",
+    "shrink": "PRAGMA shrink_memory",
+    "allocatorTrim": false
+  },
+  "controlledLock": {
+    "begin": "BEGIN EXCLUSIVE",
+    "injectedHoldMs": 100,
+    "following": [
+      "user_version read",
+      "accepted synthetic upsert/commit"
+    ]
+  },
+  "perCaseTimeoutSeconds": 45,
+  "totalCapSeconds": 600
+}

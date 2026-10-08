@@ -6,10 +6,21 @@ use this service. `HistoryService` owns offline browsing, explicit link copying 
 separately identified remote deletion. Neither service includes AWS headers.
 
 The resident process owns one `SettingsService`, provider registry, native source
-adapter, operation service, history service and owner-only `QLocalServer`. U2's resident
-source adapter reports every native action/result/shortcut unavailable. The registry is
-empty until real providers are registered. Unit fixtures register an opaque non-S3
-provider only in tests; these tests do not prove compositor or cloud support.
+adapter, operation service, history service and owner-only local command server. It registers
+the S3 provider and selects the X11, GNOME Wayland or KDE Wayland adapter from the
+actual Qt/session backend. Unsupported sessions use an unavailable adapter. Diagnostics
+report actual capture, shortcut and clipboard capabilities separately. Unit fixtures
+register an opaque non-S3 provider only in tests; these tests do not prove compositor
+or cloud support.
+
+The S3 provider facade has no eager AWS dependency. Its first network request loads
+a private module from the exact build/install path and validates its application,
+source, toolchain, Qt and transport identity before creating a driver. A mismatch
+requires reinstalling a matching package and restarting the resident. The module
+stays pinned. A lazy permanent worker owns SDK initialization, client/request
+lifetimes and SDK shutdown on the same thread, with bounded admission and client
+caching. This is internal packaging; the provider registry remains static and
+provider-neutral. Local-only startup does not map AWS or its curl dependency.
 
 Acceptance stores the action, configuration revision, complete non-secret settings,
 original destination and credential reference before source acquisition starts. The
@@ -22,6 +33,16 @@ new acquisition can start. PNG encoding, file copying,
 SQL, history queries, runtime configuration I/O and provider work run on workers. Acquisition never fetches URLs:
 clipboard file URLs take precedence over image MIME, which takes precedence over text.
 Finalized image/video/text/other files all use the same pipeline.
+
+On glibc Linux, successful startup recovery, accepted capture/clipboard actions
+(including cancellation) and explicit local image/text copying mark an
+idle allocator cleanup as pending. A single two-second quiet timer waits until
+selectors, active/queued operations, tracked background threads and image leases
+have drained. New background work stops the timer. It calls the public
+`malloc_trim(0)` once, returning free allocator pages without discarding live
+widgets, native fonts/dialogs or clipboard MIME. Other allocators do not run
+this pass. Redacted diagnostics expose pending/count/duration for reproduction;
+idle cleanup has no repeating timer and stops during shutdown.
 
 The per-operation journal and per-item history commit in one SQLite transaction.
 Unknown publication has no invented URL or delete target. Restart changes interrupted
@@ -55,3 +76,20 @@ original receipt and versioned opaque progress for explicit retry. Cancellation 
 undo an already sent mutation. Shutdown cancels queued deletion targets and drains
 the sent request before destroying history services, retaining its truthful result.
 Browser/CDN cache invalidation is outside this pipeline.
+
+## Linux local command transport
+
+The Linux resident uses Unix-domain sockets with Qt Core
+socket notifications. The versioned JSON protocol, CLI and MCP interfaces stay
+the same. The CLI and the lazy S3 module may use Qt Network; the Linux resident
+has no eager Qt Network link requirement. Other platforms retain Qt local sockets.
+
+The runtime directory is owner-only; the socket is mode 0600. A live or
+indeterminate endpoint is preserved. Only an explicitly refused/missing owned
+socket is eligible for stale cleanup. Requests retain their 1 MiB limit,
+10-second framing deadline and 64-client limit. Replies drain through a
+nonblocking write notification, including when the client reads slowly.
+After a request is dispatched, bounded input draining continues to observe peer
+disconnection while its reply is pending. Disconnected clients release their
+admission slot; guarded late replies are harmless. The reviewed transport is
+integrated in commit `1fdfff0`.

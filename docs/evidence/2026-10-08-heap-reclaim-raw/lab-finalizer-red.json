@@ -1,0 +1,82 @@
+{
+  "scope": "Fault injection of actual script finalizer AST only; not VM acceptance",
+  "sourceSha256": "01761e2bf83c492889e886ff9c23209e06dad0889ca3d38752b0e40e3a021fad",
+  "cases": [
+    {
+      "fault": "none",
+      "calls": [
+        "input",
+        "restore"
+      ],
+      "errorType": null,
+      "checks": {
+        "restorationAttempted": true,
+        "savedOnce": true,
+        "errorPropagated": true,
+        "failedCleanupNotSuccess": true,
+        "restorationStatus": true
+      },
+      "passed": true
+    },
+    {
+      "fault": "input",
+      "calls": [
+        "input"
+      ],
+      "errorType": "InputError",
+      "checks": {
+        "restorationAttempted": false,
+        "savedOnce": false,
+        "errorPropagated": true,
+        "failedCleanupNotSuccess": false,
+        "restorationStatus": false
+      },
+      "passed": false
+    },
+    {
+      "fault": "restore",
+      "calls": [
+        "input",
+        "restore"
+      ],
+      "errorType": "RestoreError",
+      "checks": {
+        "restorationAttempted": true,
+        "savedOnce": true,
+        "errorPropagated": true,
+        "failedCleanupNotSuccess": false,
+        "restorationStatus": true
+      },
+      "passed": false
+    },
+    {
+      "fault": "both",
+      "calls": [
+        "input"
+      ],
+      "errorType": "InputError",
+      "checks": {
+        "restorationAttempted": false,
+        "savedOnce": false,
+        "errorPropagated": false,
+        "failedCleanupNotSuccess": false,
+        "restorationStatus": true
+      },
+      "passed": false
+    },
+    {
+      "fault": "not-started",
+      "calls": [],
+      "errorType": null,
+      "checks": {
+        "restorationAttempted": true,
+        "savedOnce": false,
+        "errorPropagated": true,
+        "failedCleanupNotSuccess": true,
+        "restorationStatus": true
+      },
+      "passed": false
+    }
+  ],
+  "passed": false
+}

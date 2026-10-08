@@ -71,3 +71,11 @@ file using the atomic-save/locking convention in [configuration.md](configuratio
 reload, then verify validation and both revisions. `diagnostics` reports backend,
 Qt version, journal readiness, active operation count, and capabilities; inspect
 configuration separately to diagnose a settings error.
+
+`diagnostics.result.memory` contains `allocatorReclamationSupported`,
+`allocatorReclamationPending`, `allocatorReclamationCount` and
+`lastAllocatorReclamationUsec`. On glibc Linux the count records one-shot attempts
+to return free heap pages after successful startup or payload work and background workers drain, followed
+by two seconds of quiet. An attempt need not reclaim any pages. These fields carry
+no payloads or addresses; measure RSS separately using [testing-memory.md](testing-memory.md).
+Other allocators report unsupported and keep the existing cleanup behavior.

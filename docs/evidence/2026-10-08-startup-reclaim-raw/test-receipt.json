@@ -1,0 +1,50 @@
+{
+  "red": {
+    "path": "/tmp/putgd-startup-reclaim-red.xml",
+    "sha256": "49e03d5b3a297b89beab7883e79d941e8de3b1a79ce8476aeb2d5273b21e3bb4",
+    "rootAttributes": {
+      "name": "OperationsTest",
+      "timestamp": "2026-10-08T14:54:31",
+      "hostname": "patrick-Precision-5540",
+      "tests": "6",
+      "failures": "3",
+      "errors": "0",
+      "skipped": "0",
+      "time": "2.465"
+    },
+    "suites": [],
+    "failures": 3
+  },
+  "dev": {
+    "path": "/tmp/putgd-startup-reclaim-dev.xml",
+    "sha256": "880a5440709828590656165b4aa45cfbd9a20b7ca29be1e3825520a233b76ab6",
+    "rootAttributes": {
+      "name": "Linux-c++",
+      "tests": "1",
+      "failures": "0",
+      "disabled": "0",
+      "skipped": "0",
+      "hostname": "patrick-Precision-5540",
+      "time": "36",
+      "timestamp": "2026-10-08T14:56:47"
+    },
+    "suites": [],
+    "failures": 0
+  },
+  "release": {
+    "path": "/tmp/putgd-startup-reclaim-release.xml",
+    "sha256": "e8a2a510df1445ada242ad8f7d1ac03a2ad908939acd85797425719ee733018b",
+    "rootAttributes": {
+      "name": "Linux-c++",
+      "tests": "1",
+      "failures": "0",
+      "disabled": "0",
+      "skipped": "0",
+      "hostname": "patrick-Precision-5540",
+      "time": "36",
+      "timestamp": "2026-10-08T14:56:40"
+    },
+    "suites": [],
+    "failures": 0
+  }
+}

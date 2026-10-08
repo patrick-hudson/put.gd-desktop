@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "scope": "Standalone synthetic SQLite locating probe; configure/build only; no measurement executed.",
+  "commands": [
+    {
+      "argv": [
+        "cmake",
+        "-S",
+        "work/sqlite-latency-probe",
+        "-B",
+        "/tmp/putgd-sqlite-latency-probe-build",
+        "-G",
+        "Ninja",
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "cwd": "/home/patrick/work/put.gd",
+      "exitCode": 0,
+      "log": "configure.log"
+    },
+    {
+      "argv": [
+        "cmake",
+        "--build",
+        "/tmp/putgd-sqlite-latency-probe-build",
+        "--parallel",
+        "1"
+      ],
+      "cwd": "/home/patrick/work/put.gd",
+      "exitCode": 0,
+      "log": "build.log"
+    }
+  ],
+  "compiler": "GNU 13.3.0 /usr/bin/c++",
+  "qtPackage": "6.4.2+dfsg-21.1build5",
+  "flags": "-O3 -DNDEBUG -std=gnu++20 -fPIC",
+  "sourceSha256": {
+    "probe.cpp": "2e6ebb66aaf667018027e5c87f411d952b8d748bea14a478b477d00ce1150c2a",
+    "CMakeLists.txt": "0e61c53f1baec41fe6cd047ef30c182fd5e546b0c35a58e54167a63fe9662ee2"
+  },
+  "logsSha256": {
+    "configure.log": "6e7e529aff5a467d91a5235f950ffbf1079da1f0a05b3ca3cf4bba6827425152",
+    "build.log": "bed57d1592768f994f612ac20e74c9cccae746cae929d58bcf98a60bb5021d6b"
+  },
+  "binary": "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe",
+  "binarySha256": "d4419f7c36fee1b21fd6435f72ff1d36946ec4b86432880e7bcf0605c89051fb",
+  "dynamicQt": [
+    "libQt6Sql.so.6",
+    "libQt6Core.so.6"
+  ],
+  "sqliteLoadedRuntimeIdentity": "not queried; no execution",
+  "compileRepairs": [],
+  "runtimeExecuted": false,
+  "timingResults": [],
+  "permittedNextRuntime": "Await root release; rollback journal/FULL only. WAL not authorized.",
+  "productionChanges": false,
+  "buildQuiet": true
+}

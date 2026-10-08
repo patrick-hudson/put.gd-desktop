@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "method": "Read-only evidence hash/allowlist/JSON/link verification, no runtime or build",
+  "manifestEntriesVerified": 51,
+  "allRawFilesManifested": true,
+  "sourceAndCMakeMatchBuildIdentity": true,
+  "originalSummaryBytesPreserved": true,
+  "resultCounts": {
+    "cases": 12,
+    "raw": 420,
+    "scored": 360
+  },
+  "allResultsDeleteFullValid": true,
+  "stderrEmpty": true,
+  "noDbOrBinaryFiles": true,
+  "portableLinks": [
+    {
+      "file": "report.md",
+      "target": "summary.json"
+    },
+    {
+      "file": "report.md",
+      "target": "build/build-identity.json"
+    },
+    {
+      "file": "report.md",
+      "target": "official-sources.json"
+    },
+    {
+      "file": "replay.md",
+      "target": "source/"
+    },
+    {
+      "file": "replay.md",
+      "target": "build/build-identity.json"
+    },
+    {
+      "file": "replay.md",
+      "target": "raw/manifest.json"
+    },
+    {
+      "file": "replay.md",
+      "target": "parameters.json"
+    },
+    {
+      "file": "replay.md",
+      "target": "report.md"
+    },
+    {
+      "file": "replay.md",
+      "target": "summary.json"
+    },
+    {
+      "file": "replay.md",
+      "target": "official-sources.json"
+    }
+  ],
+  "overwrittenReaderBeginNsLimitationPreserved": true,
+  "productGatesRemainSeparate": true
+}

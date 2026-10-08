@@ -1,0 +1,11 @@
+{
+  "baseRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "scope": "Temporary allocator attribution, synthetic native clipboard/capture only; no scored optimization or production switches.",
+  "files": {
+    "main.cpp": "0cae0b8c85c38acf75e2969a904378acb8a2a9c7f74d0879e8024a0201ce95b7",
+    "putgd": "1910d94f8bbfc66a256a4c12f98b8f3a71977ac66ba5eaed1669d55a0a746b72",
+    "putgd-cli": "d2e4f90efa8a9987a33c0569636ad2442ed8c5854df01eb06380838a2ad4a715"
+  },
+  "fixtureSha256": "e1ef38b161a6545d65afb1b8aa6629485909aa13d3a7a6802b8e52c7969c03e1",
+  "controllerSha256": "28c92fa74f56d478b5109cc1c818c0ffbb164d5d560d73b1e90a5f976a569811"
+}

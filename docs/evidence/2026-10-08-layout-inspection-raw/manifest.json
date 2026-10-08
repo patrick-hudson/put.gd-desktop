@@ -1,0 +1,37 @@
+[
+  {
+    "file": "layout.json",
+    "sha256": "f3c0ca21d8def63f49f2e3eed14ce870bd8f6bc0df202c700793937a4684b474",
+    "bytes": 10745
+  },
+  {
+    "file": "identity.json",
+    "sha256": "e66f4785b1201bd8f4d1234265d5953b18015629601582baf090e5a81bc258f4",
+    "bytes": 6952
+  },
+  {
+    "file": "commands.json",
+    "sha256": "c26063daf69bd2b34bcbc04d885f03c6fc8d310fce6f368dc99e689bdd87b148",
+    "bytes": 929
+  },
+  {
+    "file": "configure.log",
+    "sha256": "b93e2be1ebebb8d314031e1fb67addbbb18aafcdf9db886bd49ebe8316a16309",
+    "bytes": 893
+  },
+  {
+    "file": "build.log",
+    "sha256": "60508ca3942b76b5bf2fa4f80b644b73f49a3d7426a0dd8907b12beca3513416",
+    "bytes": 123
+  },
+  {
+    "file": "run.stderr.log",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "file": "compiler-dependencies.txt",
+    "sha256": "18a44da9a1136c11fb55c0aff7538bde9d19706390d645679bf5685b3607b2be",
+    "bytes": 25035
+  }
+]

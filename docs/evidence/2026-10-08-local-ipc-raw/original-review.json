@@ -1,0 +1,381 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "scope": {
+    "base": "3b8ea0ea68d2e18644223526a89256a3bde8dbd4",
+    "branch": "optimize-exp/resident-local-ipc/exp-001",
+    "head_sha": "3b8ea0ea68d2e18644223526a89256a3bde8dbd4",
+    "pr_url": null,
+    "files_changed": 11,
+    "diff_sha256": "9bc9f1f2da055fe81dc333a37f74f20eba7d46c12c4d51b731ba421081aaf13b",
+    "inspection_snapshot": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/peer-packet"
+  },
+  "intent": "Remove Linux resident QtNetwork linkage through native AF_UNIX transport with Qt Core notification, preserving the existing versioned JSON protocol, CLI/MCP behavior, owner-only endpoint, live-resident protection, framing, request/client limits, deadlines, response delivery and shutdown. Retain Qt local sockets on non-Linux, QtNetwork in the CLI/lazy S3 module as needed, numeric-address/loopback validation equivalence, and native fonts/dialogs. This source review does not certify performance or the 40 MiB target.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "project-standards",
+    "testing",
+    "maintainability",
+    "security",
+    "performance",
+    "api-contract",
+    "reliability",
+    "agent-native",
+    "adversarial",
+    "adversarial-claude"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan_source": "explicit",
+    "scope": "preservation of existing product contracts under bounded approved IPC optimization; no claimed product unit completion",
+    "requirements": [
+      {
+        "id": "R1",
+        "status": "not addressed"
+      },
+      {
+        "id": "R2",
+        "status": "not addressed"
+      },
+      {
+        "id": "R3",
+        "status": "not addressed"
+      },
+      {
+        "id": "R4",
+        "status": "not addressed"
+      },
+      {
+        "id": "R5",
+        "status": "not addressed"
+      },
+      {
+        "id": "R6",
+        "status": "not addressed"
+      },
+      {
+        "id": "R7",
+        "status": "not addressed"
+      },
+      {
+        "id": "R8",
+        "status": "not addressed"
+      },
+      {
+        "id": "R9",
+        "status": "not addressed"
+      },
+      {
+        "id": "R10",
+        "status": "not addressed"
+      },
+      {
+        "id": "R11",
+        "status": "not addressed"
+      },
+      {
+        "id": "R12",
+        "status": "not addressed"
+      },
+      {
+        "id": "R13",
+        "status": "not addressed"
+      },
+      {
+        "id": "R14",
+        "status": "not addressed"
+      },
+      {
+        "id": "R15",
+        "status": "not addressed"
+      },
+      {
+        "id": "R16",
+        "status": "not addressed"
+      },
+      {
+        "id": "R17",
+        "status": "not addressed"
+      },
+      {
+        "id": "R18",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R19",
+        "status": "not addressed"
+      },
+      {
+        "id": "R20",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R21",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R22",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R23",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R24",
+        "status": "not addressed"
+      },
+      {
+        "id": "R25",
+        "status": "not addressed"
+      },
+      {
+        "id": "R26",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R27",
+        "status": "not addressed"
+      },
+      {
+        "id": "R28",
+        "status": "not addressed"
+      },
+      {
+        "id": "R29",
+        "status": "not addressed"
+      },
+      {
+        "id": "R30",
+        "status": "not addressed"
+      },
+      {
+        "id": "R31",
+        "status": "not addressed"
+      },
+      {
+        "id": "R32",
+        "status": "not addressed"
+      },
+      {
+        "id": "R33",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R34",
+        "status": "partially addressed"
+      },
+      {
+        "id": "R35",
+        "status": "partially addressed"
+      }
+    ],
+    "implementation_units": [
+      {
+        "id": "U1",
+        "status": "partially addressed"
+      },
+      {
+        "id": "U2",
+        "status": "partially addressed"
+      },
+      {
+        "id": "U3",
+        "status": "partially addressed"
+      },
+      {
+        "id": "U4",
+        "status": "not addressed"
+      },
+      {
+        "id": "U5",
+        "status": "not addressed"
+      },
+      {
+        "id": "U6",
+        "status": "not addressed"
+      },
+      {
+        "id": "U7",
+        "status": "not addressed"
+      },
+      {
+        "id": "U8",
+        "status": "not addressed"
+      },
+      {
+        "id": "U9",
+        "status": "partially addressed"
+      },
+      {
+        "id": "U10",
+        "status": "partially addressed"
+      }
+    ],
+    "preservation_ids": [
+      "R18",
+      "R20",
+      "R21",
+      "R22",
+      "R23",
+      "R26",
+      "R33",
+      "R34",
+      "R35"
+    ],
+    "intentional_scope_limits": true,
+    "unrequested_behavior_rules": [],
+    "note": "Partial statuses describe the affected preservation surface only; other product requirements and units are intentionally outside this eleven-path optimization. No full unit completion is claimed. The approved AF_UNIX specification supersedes the QLocalServer implementation example. The R20/client lifecycle surface retains the pending-reply disconnect risk.",
+    "exact_extraction": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/plan-extraction.json"
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "Pending-reply disconnect retention on Linux: LocalServer.cpp:59 stops both further request reading and the incomplete-request timer; LocalIpc.cpp:135 disables the sole read notifier while the write notifier remains disabled until a reply needs drainage. A client that fully closes during this phase is not observed until sendAndClose/flush or explicit server teardown, so LocalServer.cpp:52 cannot promptly remove it from the 64-client set. Public OperationService.cpp:33-35,194-195 and SettingsService.cpp:138-155 confirm real asynchronous disk/journal reply paths. The frozen root-supplied Qt6.4.2 probe observed original Qt disconnected=1 and native disconnected=0 before any reply (native red after 3.036s); this is author-run narrow transport evidence, not independently executed production or 64-slot saturation proof. The peer confidence remains 50 and the broader saturation/activation cascade is unmeasured. Preserve full-close monitoring without treating SHUT_WR as a full close, then verify the pending-reply and half-close scenarios before relying on prompt slot recovery."
+  ],
+  "testing_gaps": [
+    "Pending-reply abort regression: tests/integration/test_local_ipc.cpp:47-53 schedules a reply after 30ms and checks subsequent requests; it never asserts disconnected before that reply or admission-slot recovery. Add a synthetic held-reply case that aborts after stopReading and requires disconnected before reply, plus a LocalServer-level case requiring the accepted-client budget to recover while dispatch is pending. The supplied external differential red probe covers only the transport signal and is not this committed production-path regression.",
+    "Half-close composition regression: tests/integration/test_local_ipc.cpp:82-86 uses an immediate test-only LocalIpcServer reply. Add a complete newline JSON request with SHUT_WR through real LocalServer framing/handled/deadline, hold its asynchronous reply, and require that reply to arrive; also distinguish a later full peer close so any disconnect-monitoring fix does not discard supported half-closed requests."
+  ],
+  "coverage": {
+    "depth": "full",
+    "suppressed_by_confidence": {
+      "50": 1
+    },
+    "mode_aware_demotions": 1,
+    "malformed_findings": 0,
+    "malformed_returns": 0,
+    "first_evidence_backfilled": 0,
+    "quote_demotions": 0,
+    "validator": {
+      "outcome": "empty-batch",
+      "selected": 0,
+      "confirmed": 0,
+      "rejected": 0,
+      "unresolved": 0,
+      "malformed": 0,
+      "failed": 0,
+      "shortcut_skipped": 0,
+      "protected_subject_reclassifications": 0,
+      "degraded_blockers": 0,
+      "reason": "No admitted primary findings survive; the sole peer P2 stayed at anchor50 and was retained as a source-qualified residual risk. No validator was launched and no independent validation verdict is claimed."
+    },
+    "cross_model": {
+      "outcome": "folded",
+      "coverage": "Independent cross-model adversarial retry completed after explicit user authorization overrode the same-route authentication no-retry rule. First attempt OAuth refresh collision and attributed local fallback are preserved; retry verified and cleaned. Route claude; model_requested claude-opus-5-5; effort_requested high; receipt_supported true; model_actual claude-opus-5-5; effort_actual unverified; independence_verified true. Supplemental merge must fold artifact exactly once.",
+      "identity": {
+        "cross_model_route": "claude",
+        "model_requested": "claude-opus-5-5",
+        "effort_requested": "high",
+        "receipt_supported": true,
+        "model_actual": "claude-opus-5-5",
+        "effort_actual": "unverified",
+        "independence_verified": true,
+        "fold_count": 1,
+        "job_cleanup_complete": true
+      }
+    },
+    "reviewer_selection": [
+      {
+        "reviewer": "correctness",
+        "tier": "session",
+        "reason": "Native stream/activation lifecycle and address-validation equivalence"
+      },
+      {
+        "reviewer": "project-standards",
+        "tier": "mid-tier",
+        "reason": "AGENTS instruction fallback governs all11 paths"
+      },
+      {
+        "reviewer": "testing",
+        "tier": "mid-tier",
+        "reason": "New IPC and IP differential fixtures plus transport failures"
+      },
+      {
+        "reviewer": "maintainability",
+        "tier": "mid-tier",
+        "reason": "New cross-platform transport abstraction and301 executable non-test lines"
+      },
+      {
+        "reviewer": "security",
+        "tier": "session",
+        "reason": "Owned endpoint/stale removal, request limits and loopback transport guard"
+      },
+      {
+        "reviewer": "performance",
+        "tier": "mid-tier",
+        "reason": "Concrete resident QtNetwork dynamic-link removal and event-loop/resource impact"
+      },
+      {
+        "reviewer": "api-contract",
+        "tier": "mid-tier",
+        "reason": "Externally consumed versioned local JSON stream boundary used by unchanged CLI"
+      },
+      {
+        "reviewer": "reliability",
+        "tier": "mid-tier",
+        "reason": "Nonblocking socket read/write, EOF, timeout, shutdown and reply drainage"
+      },
+      {
+        "reviewer": "agent-native",
+        "tier": "mid-tier",
+        "reason": "CLI/MCP access depends on this resident IPC boundary; preserve same service/effect contracts"
+      },
+      {
+        "reviewer": "adversarial",
+        "tier": "session",
+        "reason": "Restored no-review peer fallback; deep cross-component failure/fidelity pass"
+      }
+    ],
+    "standards_fallback": "AGENTS.md governs all eleven paths; active user instructions apply.",
+    "compound_packs": {
+      "roots": [],
+      "errors": [],
+      "warnings": []
+    },
+    "failed_reviewers": [],
+    "bound_exceeded": [],
+    "source_only": true,
+    "local_context_reused": true,
+    "authored_changed_paths": false,
+    "fresh_local_independence": false,
+    "supplied_validation": {
+      "path": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/supplied-abort-validation",
+      "manifest": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/supplied-abort-validation/manifest.json",
+      "proven": "narrow connection-disconnected behavior only",
+      "not_proven": "actual64-slot saturation or production incidence",
+      "author_run": true,
+      "independently_executed_by_review": false
+    },
+    "notes": [
+      "Eleven root-authored IPC paths only versus3b8ea0ea68d2e18644223526a89256a3bde8dbd4. Dispatcher authored none. No source/index/build/runtime/UI/VM/storage work, credentials.txt/private config/payload/user WIP reads.",
+      "Full depth mandatory:523 changed lines,431 executable,301 executable non-test,size_band large,hard_block_full true. No untracked exclusions.",
+      "Nine selected local lenses plus restored adversarial lens completed as attributed in-dispatch fallback under permanent registered-agent cap, not fresh independent local contexts; no local independent_reviewers or agreement promotion. Intended tiers are in roster.json; no parent-fallback selector exists.",
+      "AGENTS.md instruction-file fallback governs all11. Current user instructions govern, including immutable VM additions beyond packet baseline. No relevant written-rule violation supported.",
+      "Original canonical diff SHA2567833db4d23e45127e56e938ec79c55955a25357591351bcd27ee632d2b75c977; full diff-U10 SHA2569bc9f1f2da055fe81dc333a37f74f20eba7d46c12c4d51b731ba421081aaf13b. All11 worktree/packet hashes verified before original merge. Frozen packet26 public dependencies plus stripped plan/spec,184 omitted baseline paths, own shallow Git/no shared objects, not buildable. Targeted unchanged test_cli.cpp and cmake/Dependencies.cmake were read locally.",
+      "Explicit plan R1-R35/U1-U10 extracted in exact_extraction. Bounded preservation/spec review; no full product unit completion claim. R18,R20-R23,R26,R33-R35 directly relevant; others unchanged/outside IPC refactor. Approved spec permits Linux AF_UNIX+QtCore and preserves nonLinux Qt local sockets, CLI/module Network, native fonts/dialogs; it supersedes KTD2 QLocalServer implementation example without changing owner-only versioned protocol.",
+      "Root-reported, not independently certified: Dev28/28 102.25s, Release focused2/2 13.52s, MCP+productionCLI3/3 2.184s synthetic peers (not actual resident), ASan/UBSan4/4 49.74s, instrumented Qt TSan4/4 50.62s. ldd/readelf reports resident noQtNetwork dynamic closure; no fresh runtime-map validation here. Later root reports paired physical300s candidate45.625MiB vs reference52.0117MiB, decide keep,target false; source review does not certify those measures.40MiB/full product/graphical gates remain open.",
+      "First Claude attempt terminal with no review/artifact due OAuth refresh collision; provider-capable launch established. Recovery initially prohibited same-route retry, so attributed local adversarial fallback completed. First failure and original merge0 candidates preserved under before-user-authorized-peer-retry/. No auth secrets/locks edited.",
+      "Root relayed direct human instruction \u201cclaude auth works just fine, you shoudl be able to try agian\u201d; this explicitly overrode skill no-retry restriction. SAME route/frozen11/base/packet retained. Second job20261008T185639Z-26f2380a terminal verified runner result; job directory deleted. Requested/actual model claude-opus-5-5, requested high/actual effort unverified,receipt_supported true,independence_verified true. Only supplemental peer artifact may be folded once; no local lens rerun.",
+      "Merge/report worker /root/memory_late_sdk_module authored none of11 IPC paths but retains SDK/other review context. Not fresh local independence. Inspect frozen packet plus explicitly needed unchanged public source only; no canonical source/index mutations. Requirements/external measurements are proof-bounded.",
+      "After peer retry, root supplied an actual Qt6.4.2 differential abort probe against frozen LocalIpc.cpp/h. Review read/hash-checked source and XML (native disconnected0 vs originalQt1; native red3.036s) without executing it. Frozen evidence is supplied-abort-validation/. This proves narrow stopped-notifier disconnect retention; author-run proof does not establish64-slot saturation or production incidence. No confidence promotion from author assertion alone.",
+      "Independent cross-model adversarial retry completed after explicit user authorization overrode the same-route authentication no-retry rule. First attempt OAuth refresh collision and attributed local fallback are preserved; retry verified and cleaned. Route claude; model_requested claude-opus-5-5; effort_requested high; receipt_supported true; model_actual claude-opus-5-5; effort_actual unverified; independence_verified true. Supplemental merge must fold artifact exactly once.",
+      "Supplemental Stage5 input was freshly constructed from the original nine compact local returns and their complete artifacts, agent-native prose, and the verified adversarial-claude artifact exactly once. Previous synthesized/mechanical findings were not reused as peer input. Original first merge remains preserved in before-user-authorized-peer-retry/.",
+      "Mechanics: one P2 suppressed at anchor50; primary0, pre-existing0, malformed_findings0, malformed_returns0, first_evidence_backfilled0, quote demotions0. No confidence promotion: the peer is the sole originating reviewer and local empty passes were not manufactured into corroboration.",
+      "Mode-aware soft routing: one suppressed lifecycle candidate retained as a precise residual risk; two distinct production-path testing gaps retained. Three supplied speculative/pre-existing residual claims and one hypothetical future-link testing suggestion were discarded rather than recycled into soft buckets.",
+      "The peer settings.patch/keychain example is unsupported: public SettingsService.cpp:138-155 performs asynchronous settings file validation/write/reload, not a keychain operation. The retained risk cites asynchronous settings/journal work without asserting an observed long stall, permanent missing reply,64-slot saturation,or activation cascade.",
+      "Targeted public OperationService.cpp and SettingsService.cpp from the reviewed isolated tree match base3b8ea0ea68d2e18644223526a89256a3bde8dbd4 byte-for-byte; changed bytes were inspected only in the frozen packet. No newer root fix was inspected.",
+      "Supplied author probe files and XML were read and SHA256-checked against supplied-abort-validation/manifest.json. No product/test process was launched by this merge leaf. Reused non-author SDK worker context is not a freshly allocated independent local review context.",
+      "Stage5b selected0 and shortcut-skipped0. The batch is empty because no confidence-admitted primary findings survive, not because author-run evidence or local agreement licenses an independent-validator shortcut. Report/validator dispatch belongs to the orchestrator.",
+      "Final report covers only the original frozen packet. The subsequent separate disconnect fix was not inspected, incorporated, or certified. Stage5c was skipped under mode:agent/apply_local:false."
+    ]
+  },
+  "verdict_reason": "No confidence-admitted primary findings remain in this bounded source review. Preserve the precise pending-reply disconnect risk and add the abort/SHUT_WR regression scenarios as follow-up;64-slot saturation and production incidence were not measured. Full product/graphical acceptance and the40MiB target remain open. This receipt covers the original snapshot only.",
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765",
+  "run_id": "20261008-133701-bc4bb765"
+}

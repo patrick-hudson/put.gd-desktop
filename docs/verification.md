@@ -408,3 +408,98 @@ binary and package fingerprints, commands, parameters, failure/green log hashes,
 JUnit hashes, controlled GUI inputs, screenshots and separate review/fix receipts.
 Only synthetic local workflows were exercised here. Successful live S3, full
 desktop/profile, release lifecycle, MCP and physical performance gates remain open.
+
+### Memory continuation (2026-10-08)
+
+The final reviewed SDK module completed the same-observer five-minute physical
+Cinnamon cold workload at 54,407,168 bytes (51.887 MiB), compared with 59,002,880
+bytes (56.270 MiB) for its reference repeat. CPU was 0.003331% of one core, with
+zero operations and no observed mapped owned window. The 7.789% improvement is
+retained at optimization revision `cadd9ed` and integrated into canonical source.
+The original 51.996 MiB candidate result is preserved rather than replaced.
+Native Cinnamon fonts and dialogs remain enabled; approximately 40 MiB is unmet.
+
+The actual review's two P2 findings were fixed: package mismatch errors explain
+restart recovery, and wrong-build/wrong-transport rejection fixtures fail when
+the corresponding guards are removed. Eight affected SDK contracts pass in
+Dev, Release, ASan and TSan; installed-package checks pass. The combined canonical
+SDK/live-region/cleanup development suite passes 26/26 (112.90 seconds).
+[The SDK record](evidence/2026-10-08-sdk-memory.json) retains exact source, binaries,
+review and raw measurements. Third-party uninstrumented library limits remain.
+
+Three empty-view cycles on the reviewed binary finish at 79.551 MiB; no operations
+or cloud requests occurred. This is a view-lifecycle diagnostic, not a permanent
+plateau or leak proof. The module remains pinned after first S3 use, so cold gains
+do not establish post-S3 memory savings. The [replay instructions](testing-memory.md)
+describe private inputs, timing, logs and the physical-machine/CI boundary.
+
+### Live selection and post-use cleanup (2026-10-08)
+
+The region selector now leaves the desktop live while drawing its white outline.
+Native Cinnamon proof changed the independent fixture color during dragging,
+then verified both normal and rapid-release saved pixels and independent Qt paste
+contained the final color without the outline. Escape and right-click cancellation
+preserved clipboard text. The single-head record is in
+[live-region evidence](evidence/2026-10-08-live-region.json); fresh GNOME/KDE
+graphical proof, mixed displays and the physical latency gate remain open.
+
+After five local capture/clipboard cycles, production idle heap reclamation
+finished at 66.473 MiB in the disposable Cinnamon lab, versus 75.648 MiB in the
+earlier attribution run. It performs one glibc pass after work drains, retaining
+live UI and native clipboard state; the longest observed call was 750 microseconds.
+This comparison uses different binary identities and establishes neither cold
+40 MiB acceptance nor post-S3 savings. A test-first cancellation fix also covers
+acquisition that never enqueues a payload. Final coherent development tests pass
+25/25 (81.39s); affected operation ASan/UBSan with leak detection passes 1/1
+(24.70s), and instrumented-Qt TSan passes 1/1 (26.34s), with no new suppression.
+[The cleanup record](evidence/2026-10-08-heap-reclaim.json) retains source identities,
+complete controlled samples, JUnit reports and the cancellation test delta.
+
+A test-first lab-finalizer correction also verifies that input cleanup failures do
+not skip restoring the original resident/configuration. Five actual-finalizer AST
+fault cases pass, including restoration failure and startup that never completed.
+Cleanup failures are saved as failed runs and still propagate. This is synthetic
+orchestration proof; the prior native payload measurement remains separately labeled.
+
+### Combined memory and live-selection checkpoint — 2026-10-08
+
+The Linux native IPC implementation is committed as `1fdfff0`; live transparent
+selection and one-pass image-heap reclamation are committed as `2e789b8`. Source
+closure checks match the earlier full/follow-up reviews and the separate IPC
+review, including the successful Claude retry and reproduced disconnect fix.
+The combined Debug suite passed 28/28 in 127.35 seconds; the four affected
+Release contracts passed in 46.79 seconds. Separate IPC ASan/UBSan and
+instrumented-Qt TSan runs each passed 4/4; those are not a new whole-tree
+sanitizer certification.
+
+The isolated fixed IPC source measured 46.020 MiB against a paired 52.012 MiB
+reference over five minutes. The committed combined
+source measured 46.188 MiB over another 300 seconds at 0.00666% of one core,
+without operations or owned window activation. Full identities are recorded
+in [the IPC evidence](evidence/2026-10-08-local-ipc.json). Keep the
+40 MiB target, post-S3/populated-history memory and full desktop acceptance open.
+The temporary region trace still fails the unchanged 150 ms warm p95 gate at
+160.004 ms; it points to journal initialization overlapping a prior cancellation
+commit, with individual permission/PRAGMA waits not yet resolved.
+
+### Startup cleanup checkpoint — 2026-10-08
+
+Successful startup now requests one pass through the existing two-second idle
+cleanup gate on glibc. Failed initialization requests none; active workers,
+uploads, selectors and shutdown retain their existing protections. Three new
+success-path assertions failed before the change; the failed-startup test passed.
+The reviewed change is kept as `68e5549` and integrated as `fc69d38`.
+
+The unchanged five-minute physical Cinnamon workload fell from 46.1875 to
+44.9648 MiB, a 1.2227 MiB saving. CPU was 0.0133% of one core. The predeclared
+1 MiB threshold and existing idle budgets pass; the 40 MiB target does not.
+Native GTK remains mapped. Three empty-view cycles reopened Settings, History
+and Activity and ended at 73.8242 MiB hidden RSS; that is a distinct post-use
+measurement, not cold idle or a long-session plateau.
+
+Integrated development tests pass 28/28 (144.57s). The affected operations
+contract passes Debug and Release, ASan/UBSan with leak checking (37.56s), and
+instrumented-Qt TSan with unchanged suppressions (39.47s). These are bounded
+application checks, not new desktop/cloud or whole-dependency certifications.
+[Complete evidence](evidence/2026-10-08-startup-reclaim.json) preserves exact
+source/binary identities, tests, review and both physical workloads.

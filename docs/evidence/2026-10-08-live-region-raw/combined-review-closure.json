@@ -1,0 +1,260 @@
+{
+  "status": "complete",
+  "scope": "Read-only closure of root-owned live-region/one-pass idle heap reclamation/performance harness code; no new full review or runtime acceptance",
+  "checked_at_utc": "2026-10-08T19:27:09.880633+00:00",
+  "canonical_head": "1fdfff0a71c98e82d7f0e7f17e326f1a2a8a7197",
+  "original_scope_base": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "receipts": {
+    "full_review": {
+      "path": "/tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823/review.json",
+      "sha256": "9799270b16a4f45e1fda902f4ae1f10782b891e13bfa80819415c08bc160908f"
+    },
+    "cancellation_and_harness_followup": {
+      "path": "/tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823/followup-delta-review.json",
+      "sha256": "a7d3c59350af319c3cbbf0b8cc6c31987893c0009e3430fe25c40acb0296469a"
+    },
+    "outline_and_timing_followup": {
+      "path": "/tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823/outline-delta-review.json",
+      "sha256": "18763ea4bf0b53f760cea505f488317fe01f0b14657e8b5a01dccaf6280a05bd"
+    },
+    "separate_ipc": {
+      "path": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/review.json",
+      "sha256": "f39a83be27e9e13074891ca5d2b41cbb12d532ca45259eaf77b258f6d10f3278",
+      "followup": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta-review.json"
+    }
+  },
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "receipt": "full_review",
+      "reviewed_sha256": "4983f6239471a823a9b95e0fcb77a986ac8b4a96b635834770b15da22f5dfc2a",
+      "current_sha256": "db29858a9ba57a554f1c24272fd52be3dca5eb36eb59fdce23fef586ccf3bd9f",
+      "match": true,
+      "match_kind": "reviewed live-region changed-lines equality over separately reviewed/committed SDK+IPC CMake base",
+      "committed_base_sha256": "85c3275f84e9c8da7f6a46babb33641feade9759f29ec6585cc64deedc491033"
+    },
+    {
+      "path": "integrations/gnome/extension.js",
+      "receipt": "full_review",
+      "reviewed_sha256": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+      "current_sha256": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+      "match": true
+    },
+    {
+      "path": "src/app/OperationService.cpp",
+      "receipt": "cancellation_and_harness_followup",
+      "reviewed_sha256": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+      "current_sha256": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+      "match": true
+    },
+    {
+      "path": "src/app/OperationService.h",
+      "receipt": "full_review",
+      "reviewed_sha256": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+      "current_sha256": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+      "match": true
+    },
+    {
+      "path": "src/platform/kde/KdeRegionOverlay.cpp",
+      "receipt": "full_review",
+      "reviewed_sha256": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+      "current_sha256": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+      "match": true
+    },
+    {
+      "path": "src/platform/kde/KdeRegionOverlay.h",
+      "receipt": "full_review",
+      "reviewed_sha256": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+      "current_sha256": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+      "match": true
+    },
+    {
+      "path": "src/platform/kde/KdeSourceAdapter.cpp",
+      "receipt": "full_review",
+      "reviewed_sha256": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+      "current_sha256": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+      "match": true
+    },
+    {
+      "path": "src/platform/kde/KdeSourceAdapter.h",
+      "receipt": "full_review",
+      "reviewed_sha256": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+      "current_sha256": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+      "match": true
+    },
+    {
+      "path": "src/platform/x11/CinnamonRegionCapture.cpp",
+      "receipt": "full_review",
+      "reviewed_sha256": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+      "current_sha256": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+      "match": true
+    },
+    {
+      "path": "src/platform/x11/CinnamonRegionCapture.h",
+      "receipt": "full_review",
+      "reviewed_sha256": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+      "current_sha256": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+      "match": true
+    },
+    {
+      "path": "src/platform/x11/X11Capture.cpp",
+      "receipt": "full_review",
+      "reviewed_sha256": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+      "current_sha256": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+      "match": true
+    },
+    {
+      "path": "src/platform/x11/X11Capture.h",
+      "receipt": "full_review",
+      "reviewed_sha256": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+      "current_sha256": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+      "match": true
+    },
+    {
+      "path": "src/platform/x11/X11SourceAdapter.cpp",
+      "receipt": "full_review",
+      "reviewed_sha256": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+      "current_sha256": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+      "match": true
+    },
+    {
+      "path": "src/platform/x11/X11SourceAdapter.h",
+      "receipt": "full_review",
+      "reviewed_sha256": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+      "current_sha256": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+      "match": true
+    },
+    {
+      "path": "src/ui/RegionOverlay.cpp",
+      "receipt": "outline_and_timing_followup",
+      "reviewed_sha256": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1",
+      "current_sha256": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1",
+      "match": true
+    },
+    {
+      "path": "tests/desktop/x11/test_x11.cpp",
+      "receipt": "outline_and_timing_followup",
+      "reviewed_sha256": "94b306b20004b94ba9bcf9d350415d373900de9a78c65590010dae84e0164756",
+      "current_sha256": "94b306b20004b94ba9bcf9d350415d373900de9a78c65590010dae84e0164756",
+      "match": true
+    },
+    {
+      "path": "tests/fixtures/desktop_fixture.cpp",
+      "receipt": "full_review",
+      "reviewed_sha256": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+      "current_sha256": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+      "match": true
+    },
+    {
+      "path": "tests/performance/bench_capture.cpp",
+      "receipt": "outline_and_timing_followup",
+      "reviewed_sha256": "6ee9b45beccc05016de5d91e39c833d16a1cd6b4d80421e4c34e6658638e25bd",
+      "current_sha256": "6ee9b45beccc05016de5d91e39c833d16a1cd6b4d80421e4c34e6658638e25bd",
+      "match": true
+    },
+    {
+      "path": "tests/performance/bench_payload_lab.py",
+      "receipt": "cancellation_and_harness_followup",
+      "reviewed_sha256": "cfc787158a23685f44cc9ff69abe6b8461c09af179c2fbf53a5365cf6e4f3b93",
+      "current_sha256": "cfc787158a23685f44cc9ff69abe6b8461c09af179c2fbf53a5365cf6e4f3b93",
+      "match": true
+    },
+    {
+      "path": "tests/performance/bench_views.py",
+      "receipt": "full_review",
+      "reviewed_sha256": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+      "current_sha256": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+      "match": true
+    },
+    {
+      "path": "tests/performance/observe_idle.py",
+      "receipt": "full_review",
+      "reviewed_sha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "current_sha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "match": true
+    },
+    {
+      "path": "tests/performance/run_capture.py",
+      "receipt": "full_review",
+      "reviewed_sha256": "28b1a035fac1756ba53db7816dd5c61a77b2c969c7659965eec0e92c706acaa7",
+      "current_sha256": "28b1a035fac1756ba53db7816dd5c61a77b2c969c7659965eec0e92c706acaa7",
+      "match": true
+    },
+    {
+      "path": "tests/unit/test_operations.cpp",
+      "receipt": "cancellation_and_harness_followup",
+      "reviewed_sha256": "cffaa33273194981a9d52361a06cce20af42d8783a29b5807ebf661c1a47f2fb",
+      "current_sha256": "cffaa33273194981a9d52361a06cce20af42d8783a29b5807ebf661c1a47f2fb",
+      "match": true
+    }
+  ],
+  "cmake_composition": {
+    "committed_head": "1fdfff0a71c98e82d7f0e7f17e326f1a2a8a7197",
+    "committed_CMake_sha256": "85c3275f84e9c8da7f6a46babb33641feade9759f29ec6585cc64deedc491033",
+    "matches_separately_reviewed_ipc_CMake": true,
+    "remaining_changes_equal_original_reviewed_live_hunks": true,
+    "change_count": 3,
+    "changes": [
+      {
+        "removed": [
+          "  add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp\n"
+        ],
+        "added": [
+          "  add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp src/platform/x11/CinnamonRegionCapture.cpp\n"
+        ]
+      },
+      {
+        "removed": [
+          "  target_link_libraries(putgd_x11 PUBLIC putgd_app Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB)\n"
+        ],
+        "added": [
+          "  target_link_libraries(putgd_x11 PUBLIC putgd_app Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB Qt6::DBus)\n"
+        ]
+      },
+      {
+        "removed": [
+          "    target_link_libraries(test_x11 PRIVATE putgd_x11 Qt6::Test PkgConfig::PUTGD_XTEST)\n",
+          "    add_test(NAME x11_isolated COMMAND ${PUTGD_XVFB_RUN} -a $<TARGET_FILE:test_x11>)\n"
+        ],
+        "added": [
+          "    target_link_libraries(test_x11 PRIVATE putgd_x11 Qt6::Test Qt6::DBus PkgConfig::PUTGD_XTEST)\n",
+          "    add_test(NAME x11_isolated COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} -a $<TARGET_FILE:test_x11>)\n"
+        ]
+      }
+    ]
+  },
+  "scope_inventory": {
+    "root_owned_tracked_code_changes": [
+      "CMakeLists.txt",
+      "integrations/gnome/extension.js",
+      "src/app/OperationService.cpp",
+      "src/app/OperationService.h",
+      "src/platform/kde/KdeRegionOverlay.cpp",
+      "src/platform/kde/KdeRegionOverlay.h",
+      "src/platform/kde/KdeSourceAdapter.cpp",
+      "src/platform/kde/KdeSourceAdapter.h",
+      "src/platform/x11/X11Capture.cpp",
+      "src/platform/x11/X11Capture.h",
+      "src/platform/x11/X11SourceAdapter.cpp",
+      "src/platform/x11/X11SourceAdapter.h",
+      "src/ui/RegionOverlay.cpp",
+      "tests/desktop/x11/test_x11.cpp",
+      "tests/fixtures/desktop_fixture.cpp",
+      "tests/performance/bench_capture.cpp",
+      "tests/performance/run_capture.py",
+      "tests/unit/test_operations.cpp"
+    ],
+    "root_owned_untracked_code": [
+      "src/platform/x11/CinnamonRegionCapture.cpp",
+      "src/platform/x11/CinnamonRegionCapture.h",
+      "tests/performance/bench_payload_lab.py"
+    ],
+    "all_within_reviewed23": true
+  },
+  "remaining_code_gaps": [],
+  "limitations": [
+    "Existing review context reused; this verifies byte/hunk coverage and does not create fresh independent review.",
+    "No source/index mutations, builds/tests/processes, UI/VM, external review, credentials/config/payload reads. Only this ignored closure artifact was written.",
+    "User-owned AGENTS.md, docs/vm-lab.md, docs/windows-vm-lab.md and tools/qemu-grid were excluded. Documentation/evidence outside this code mapping and runtime/measurement acceptance remain caller-owned."
+  ]
+}

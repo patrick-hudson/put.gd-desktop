@@ -1,0 +1,64 @@
+{
+  "scope": "Original Qt vs frozen native candidate, abort after complete request while no reply is supplied. No product source modifications.",
+  "redXml": "/tmp/putgd-ipc-abort-red.xml",
+  "redSha256": "fbac98bb13b51cc7f5710508f1cfc14633c5dbeb8c0a7404bd870b0776e1e7fb",
+  "cases": [
+    {
+      "name": "initTestCase",
+      "classname": "AbortProbe",
+      "time": "0.000",
+      "failed": false
+    },
+    {
+      "name": "originalQtObservesAbortBeforeReply",
+      "classname": "AbortProbe",
+      "time": "0.001",
+      "failed": false
+    },
+    {
+      "name": "nativeObservesAbortBeforeReply",
+      "classname": "AbortProbe",
+      "time": "3.036",
+      "failed": true
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "AbortProbe",
+      "time": "0.000",
+      "failed": false
+    }
+  ],
+  "followUp": {
+    "reason": "Keep read notifier active after request dispatch to observe EOF; discard bounded trailing input without retaining it.",
+    "fixedSourceManifest": "work/local-ipc-review-fixed/manifest.json",
+    "runs": [
+      {
+        "path": "/tmp/putgd-ipc-disconnect-regression-red.xml",
+        "sha256": "552c0bbfc581f46cfa9cf00bed1defc05ec8d721ce05302181cb7dc099e3a679"
+      },
+      {
+        "path": "/tmp/putgd-ipc-disconnect-regression-green.xml",
+        "sha256": "9c6444274bd9a1fdf932ec99ee20a3f7412e63ae4ad22a2518b73bdc73470b03"
+      },
+      {
+        "path": "/tmp/putgd-ipc-disconnect-regression-unix-green.xml",
+        "sha256": "eb2686f3a6963079d8ca590a9975323816b4eabfba8a5470ead892449a789070"
+      },
+      {
+        "path": "/tmp/putgd-ipc-abort-fixed-green.xml",
+        "sha256": "62aea1d25232fd78f4f525fdc37ed678eb4fe23991d01f8009e760c5be25a313"
+      },
+      {
+        "path": "/tmp/putgd-ipc-abort-fixed-unix-green.xml",
+        "sha256": "c949d3268a0528133120654ad9c511dbb71f039eb5b0775c8b75a912a8323f71"
+      }
+    ],
+    "environmentFailure": {
+      "paths": [
+        "/tmp/putgd-ipc-abort-green.xml",
+        "/tmp/putgd-ipc-abort-unix-green.xml"
+      ],
+      "reason": "Initial sandbox execution could not bind either old Qt or new native listener; repeat with local-socket access passed. These are not green results."
+    }
+  }
+}

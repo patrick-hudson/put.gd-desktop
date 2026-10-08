@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "scope": "Separate bounded source inspection of three post-freeze correction paths; not a new full ce-code-review round",
+  "originalReview": {
+    "path": "/tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823/review.json",
+    "sha256": "9799270b16a4f45e1fda902f4ae1f10782b891e13bfa80819415c08bc160908f",
+    "unchanged": true,
+    "sourceSha256": "6dfe84ee16e22e1e856cc6574588e371108e7315832d406aecde97b12a17b0f0"
+  },
+  "currentSources": {
+    "src/app/OperationService.cpp": {
+      "frozen_sha256": "464ec149919e5d89adb81709125c0eefae113170fd5a83536d01e943f3472eff",
+      "current_sha256": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a"
+    },
+    "tests/unit/test_operations.cpp": {
+      "frozen_sha256": "5c0b5af76df5ee45202f8898679f59ba96bd10a02a60644767d24775f27573b2",
+      "current_sha256": "cffaa33273194981a9d52361a06cce20af42d8783a29b5807ebf661c1a47f2fb"
+    },
+    "tests/performance/bench_payload_lab.py": {
+      "frozen_sha256": "01761e2bf83c492889e886ff9c23209e06dad0889ca3d38752b0e40e3a021fad",
+      "current_sha256": "cfc787158a23685f44cc9ff69abe6b8461c09af179c2fbf53a5365cf6e4f3b93"
+    }
+  },
+  "findings": [],
+  "resolvedCorrections": [
+    {
+      "originalNumber": 2,
+      "originalStatus": "confirmed",
+      "deltaStatus": "source-correction-verified",
+      "evidence": [
+        "OperationService.cpp:85-89 sets the glibc pending flag after all invoke admission/route checks and active insertion, before prepareAcquisition.",
+        "Only that three-line conditional mark is added; heapReclamationIdle, timer, background drain, shutdown, enqueue and copy ownership logic are unchanged against the frozen file.",
+        "The first selectorCancellationIsTerminalWithoutPublication scenario now waits for allocatorReclamationCount==1 after its terminal cancellation; prior publication/copy assertions remain."
+      ],
+      "testEvidence": {
+        "receipt": "work/heap-cancel-delta.json",
+        "testFirst": {
+          "red": {
+            "log": "/tmp/putgd-idle-reclaim-cancel-red.txt",
+            "exitCode": 1,
+            "actualCount": 0,
+            "expectedCount": 1
+          },
+          "green": {
+            "xml": "/tmp/putgd-idle-reclaim-cancel-green.xml",
+            "exitCode": 0
+          }
+        },
+        "finalVerification": {
+          "dev": {
+            "passed": 25,
+            "total": 25,
+            "seconds": 81.39,
+            "receiptSha256": "b02e8f2e8139b2f59e1c5e2389ef8734d60eabe07a2c69ffa823402a5d11d870"
+          },
+          "asan": {
+            "passed": 1,
+            "total": 1,
+            "seconds": 24.7,
+            "receiptSha256": "3a64ebd2eb68c56ba089e618d7c1a2e99e9622032d2cc2a1f4afc2dcaca64783"
+          },
+          "tsan": {
+            "passed": 1,
+            "total": 1,
+            "seconds": 26.34,
+            "receiptSha256": "19d85f7cb4761bd4673f217f121f30a123cddb7455ca0519a1d048693dd4a07d"
+          }
+        },
+        "independentlyExecutedByReviewer": false
+      }
+    },
+    {
+      "originalNumber": 1,
+      "originalStatus": "unresolved-helper-contract-omitted",
+      "deltaStatus": "source-correction-verified-with-separate-parent-helper-evidence",
+      "evidence": [
+        "The finalizer catches ordinary input-release exceptions, stores only the exception type, and continues into resident/config restoration.",
+        "Restoration success still requires original acceptedRevision. Restoration failure marks ok=false and stores its type, then propagates; a retained input failure propagates after successful restoration.",
+        "The outer finally attempts results.json persistence and console reporting for started and not-started cases; it cannot guarantee persistence if the save itself fails.",
+        "Only finalizer control flow changes against the frozen harness; no guest interaction was performed by this review."
+      ],
+      "helperPrecondition": {
+        "source": "root-provided unchanged helper inspection; helper not read by this reviewer",
+        "sha256": "ad06cea0227790573d9d47866a1251ede73f483d33b6d16f10f11911aa523984",
+        "claim": "Unchanged tools/lab/lab.py input_events uses QMP.execute, which raises LabError or OSError on transport/reply errors.",
+        "notRetroactiveValidatorConfirmation": true
+      },
+      "testEvidence": {
+        "sourceHashMatchesFrozenRedAndCurrentGreen": true,
+        "redPassed": false,
+        "greenPassed": true,
+        "cases": [
+          {
+            "fault": "none",
+            "calls": [
+              "input",
+              "restore"
+            ],
+            "errorType": null,
+            "checks": {
+              "restorationAttempted": true,
+              "savedOnce": true,
+              "errorPropagated": true,
+              "failedCleanupNotSuccess": true,
+              "restorationStatus": true
+            },
+            "passed": true
+          },
+          {
+            "fault": "input",
+            "calls": [
+              "input",
+              "restore"
+            ],
+            "errorType": "InputError",
+            "checks": {
+              "restorationAttempted": true,
+              "savedOnce": true,
+              "errorPropagated": true,
+              "failedCleanupNotSuccess": true,
+              "restorationStatus": true
+            },
+            "passed": true
+          },
+          {
+            "fault": "restore",
+            "calls": [
+              "input",
+              "restore"
+            ],
+            "errorType": "RestoreError",
+            "checks": {
+              "restorationAttempted": true,
+              "savedOnce": true,
+              "errorPropagated": true,
+              "failedCleanupNotSuccess": true,
+              "restorationStatus": true
+            },
+            "passed": true
+          },
+          {
+            "fault": "both",
+            "calls": [
+              "input",
+              "restore"
+            ],
+            "errorType": "RestoreError",
+            "checks": {
+              "restorationAttempted": true,
+              "savedOnce": true,
+              "errorPropagated": true,
+              "failedCleanupNotSuccess": true,
+              "restorationStatus": true
+            },
+            "passed": true
+          },
+          {
+            "fault": "not-started",
+            "calls": [],
+            "errorType": null,
+            "checks": {
+              "restorationAttempted": true,
+              "savedOnce": true,
+              "errorPropagated": true,
+              "failedCleanupNotSuccess": true,
+              "restorationStatus": true
+            },
+            "passed": true
+          }
+        ],
+        "method": "Read and inspected the actual-finalbody AST injection script and saved red/green JSON; did not execute them",
+        "scriptSha256": "b291b8522e2b4befcdd04c303b700e46e40c1afb5137fd06a1d24a328e664341",
+        "independentlyExecutedByReviewer": false
+      }
+    }
+  ],
+  "limitations": [
+    "This reused dispatcher context previously orchestrated the original review and authored observe_idle.py/bench_views.py, but authored none of these three correction paths. This is not a fresh-context review.",
+    "No product tests, builds, benchmarks, UI, VM, storage operations, secrets/config/payload reads, source/index changes or new peer job.",
+    "Parent-provided test and combined build results were not rerun or certified by this source inspection.",
+    "The original frozen receipt and its unresolved #1 status are preserved; this separate correction proof does not rewrite its validation outcome.",
+    "Full graphical/compositor matrix and 40 MiB acceptance remain open."
+  ]
+}

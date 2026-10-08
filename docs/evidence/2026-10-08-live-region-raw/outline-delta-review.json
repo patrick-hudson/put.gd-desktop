@@ -1,0 +1,54 @@
+{
+  "status": "complete",
+  "scope": "Bounded source-only post-review outline invalidation and timing diagnostic delta, three paths",
+  "packet": "/home/patrick/work/put.gd/work/live-region-outline-delta-review",
+  "deltaSha256": "0181be24e466879b48595ad76f2af25668086d2a77bc6daf380e5ec4b82a388c",
+  "files": [
+    {
+      "path": "src/ui/RegionOverlay.cpp",
+      "beforeSha256": "506268546f0e6d60fbde35a096265d630bbd608a9731e4a9bf2c8092c68f3255",
+      "afterSha256": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1"
+    },
+    {
+      "path": "tests/desktop/x11/test_x11.cpp",
+      "beforeSha256": "a71a1851d04f9f531165a1abce660d828a763b24558ddd4dfe375092f161d718",
+      "afterSha256": "94b306b20004b94ba9bcf9d350415d373900de9a78c65590010dae84e0164756"
+    },
+    {
+      "path": "tests/performance/bench_capture.cpp",
+      "beforeSha256": "ef9161c4d44b1c59d693524a61bf3bb140f91deed0e108dcf4ac914200ddb2c2",
+      "afterSha256": "6ee9b45beccc05016de5d91e39c833d16a1cd6b4d80421e4c34e6658638e25bd"
+    }
+  ],
+  "findings": [],
+  "sourceChecks": [
+    {
+      "path": "src/ui/RegionOverlay.cpp",
+      "lines": "13,21-26,41",
+      "result": "The dirty region is the union of previous/current clipped outlines, with conservative logical-pixel raster margins. Each move contributes both rings to QWidget pending invalidation; successive coalesced moves preserve earlier dirty rings. The Source-mode transparent clear respects widget paint clipping, then the newest selection is redrawn. Empty/small clipped rectangles keep conservative outer coverage. No stale-stroke defect is supported by this delta."
+    },
+    {
+      "path": "tests/desktop/x11/test_x11.cpp",
+      "lines": "100-113",
+      "result": "The new checks observe queued paint regions and X11 window backing pixels for grow/shrink, avoiding render() between those transitions. They assert erased old right/bottom strokes, current white stroke, and interior exclusion. This is isolated backing-pixel proof; it does not prove native compositor presentation, HiDPI or cross-output repaint behavior."
+    },
+    {
+      "path": "tests/performance/bench_capture.cpp",
+      "lines": "113-165",
+      "result": "Hotkey, press/drag, cancellation, 35 invocations with 5 warmups, 30-sample p95 index 28 and <=150ms gate are unchanged. New costs/timestamps use the same monotonic elapsed timer and remain included in paintMs. Ownership-query time is explicitly a subset of event-drain time; first-white times are driver-observed drawable evidence, explicitly not compositor presentation. Do not sum overlapping cost fields or subtract them to assert renderer latency."
+    }
+  ],
+  "acceptance": {
+    "sourceReviewCertifiesLatency": false,
+    "rootReportedP95Ms": 498.124292,
+    "rootReportedPriorP95Ms": 759.32,
+    "budgetMs": 150,
+    "budgetMet": false,
+    "testEvidence": "Root reports Dev4/4 and focused red-to-green; not executed or independently validated by this review."
+  },
+  "limitations": [
+    "Existing reviewer context reused; no fresh-context independence claim. Reviewer authored none of these three delta paths but has prior Cinnamon audit/review context.",
+    "Only packet before/after, manifest, brief and patch inspected; no canonical/source/index changes, product builds/tests/runtime, UI/VM operations or new peer job.",
+    "Original frozen23-path review.json is preserved; this artifact does not rewrite it. Full graphical/compositor matrix and 40MiB gates remain open."
+  ]
+}

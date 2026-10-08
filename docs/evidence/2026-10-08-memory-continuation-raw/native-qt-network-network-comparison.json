@@ -1,0 +1,20 @@
+{
+  "scope": "Same-source two-target native GTK locating comparison; inert QLocalSocket, no connect/listen, 5s warmup, two serial runs each; not product scoring",
+  "plainRssBytes": [
+    41340928,
+    41238528
+  ],
+  "networkRssBytes": [
+    47693824,
+    47763456
+  ],
+  "differenceBytes": [
+    6352896,
+    6524928
+  ],
+  "rawSha256": {
+    "results-plain.json": "54f71996ccee432df28a30a1eb65cee1b5b977634f050312bfbf7359f28b9948",
+    "results-network.json": "988de0dc121b1965faabd24ff3d81cea3db216b814ca1b5a0b64890747071895"
+  },
+  "finding": "QtNetwork dependency adds about6.1MiB native idle RSS before any connection. Eliminating its resident dependency is credible but requires preserving local IPC and IP validation; native theme stays unchanged."
+}

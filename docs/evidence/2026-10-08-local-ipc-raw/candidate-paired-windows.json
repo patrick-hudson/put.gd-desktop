@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 2,
+  "scope": "PID-owned EWMH window observations beside the frozen physical idle workload; no pixels, payloads, clipboard or unrelated titles exported",
+  "observerSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+  "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+  "appSha256": "2a940ffcdaae95fba0eb97e578b464b33bcb09b2f18241916aa754741a5af677",
+  "cliSha256": "1fc1f5e2755a54e1b666c2a5df132670617d914ee26feaf8569e9535abbc9a32",
+  "benchmarkCommand": [
+    "/usr/bin/python3",
+    "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001/tests/performance/bench_idle.py",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001/build/release/putgd-cli",
+    "--output",
+    "/tmp/putgd-ipc-candidate-paired",
+    "--seconds",
+    "300"
+  ],
+  "workingDirectory": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001",
+  "environment": {
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "desktop": "X-Cinnamon",
+    "session": "x11",
+    "python": "3.12.3",
+    "packages": {
+      "cinnamon": "6.6.4+zena",
+      "libc6": "2.39-0ubuntu8.9",
+      "libcairo2": "1.18.0-3build1",
+      "libgtk-3-0t64": "3.24.41-4ubuntu1.3",
+      "libqt6core6t64": "6.4.2+dfsg-21.1build5",
+      "muffin": "6.6.1+zena"
+    }
+  },
+  "parameters": {
+    "seconds": 300,
+    "ownerWindowPollingSeconds": 1
+  },
+  "limitations": [
+    "Window visibility is sampled, so a window can appear and disappear between polls.",
+    "The observer adds host work without changing the frozen resident workload.",
+    "An uninterrupted observation and zero operations do not establish the approximately 40 MiB target."
+  ],
+  "observations": [
+    {
+      "elapsedSeconds": 1.084681754000485,
+      "residentPid": 2116708,
+      "mappedOwnedWindows": []
+    }
+  ],
+  "pollCount": 292,
+  "status": "complete",
+  "benchmarkExitCode": 0,
+  "operationCount": 0,
+  "noOwnedActivationObserved": true,
+  "coldIdleUninterrupted": true
+}

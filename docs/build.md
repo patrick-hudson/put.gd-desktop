@@ -39,6 +39,24 @@ define the dependency. Refresh the manifest deliberately when updating the SDK.
 Only S3/core and their CRT dependencies are built. The SDK uses its own C++ settings;
 application targets require C++20. SDK headers are isolated to the S3 adapter.
 
+The build creates `putgd`, `putgd-cli`, and the private `putgd_s3_module` target
+(`libputgd-s3.so` on Linux). Keep the app and module from the same build together.
+Build-tree lookup uses its configured absolute directory. Installed applications
+resolve the module under the package's private library directory; there is no
+working-directory or user-configured plugin search. The module validates its
+contract, source/toolchain/Qt build identity and safe-delete transport before use.
+After a package update, restart a running resident before using S3; an incompatible
+or missing module produces `s3_module_unavailable` with restart/reinstall guidance.
+
+Local-only startup does not initialize or load the AWS SDK. The first provider
+request starts its dedicated worker and loads the module. That worker owns SDK
+initialization, requests and shutdown; the module's code remains mapped until
+process exit. The official SDK runtime and module are packaged privately with
+hashes in `share/putgd/aws-runtime-manifest.json`. Qt remains dynamically linked
+to distribution libraries. The `s3_module_integration` contract covers absent,
+wrong-contract, wrong-build and wrong-transport modules, concurrent first use,
+shutdown and recovery in a new process.
+
 Use `release`, `asan`, or `tsan` in place of `dev` for application presets. ASan/UBSan
 and TSan are separate builds. The SDK is currently built in Release; sanitizer evidence
 applies to application code, not an instrumented dependency. Set `-DBUILD_TESTING=OFF`
@@ -67,3 +85,10 @@ for Ubuntu 24.04/26.04, Windows, and macOS; they have not run yet.
 U1 changes build configuration and introduces the skeleton. No prior implementation or
 tests existed. Replacement evidence is the actual dependency compile/link and runtime
 contract tests above; the first app configure failed as expected before SDK provisioning.
+
+The Linux resident uses Unix-domain sockets through Qt Core notifications. Qt
+Network remains a build dependency for the CLI, compatibility tests and lazy S3
+module; non-Linux builds retain Qt local sockets. The native IPC contracts join
+the ordinary `ctest --preset dev` run and its existing CI JUnit artifact. Physical
+Cinnamon RSS measurements use the separate procedure in
+[testing-memory.md](testing-memory.md), not a headless CI substitute.

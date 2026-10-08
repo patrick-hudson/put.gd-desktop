@@ -1,0 +1,46 @@
+{
+  "experimentCommit": "68e55493e71d6220ed34634073b355087ac6db0b",
+  "sourceBase": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+  "sourceFiles": {
+    "src/app/OperationService.cpp": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8",
+    "tests/unit/test_operations.cpp": "7bac570f50e0a075c945c2d16fcd8719c814851ddfb33787a1a000062f3dba65"
+  },
+  "status": "integrated and verified",
+  "canonicalCommit": "fc69d387003e25dd2f7a4a38bafd15fd413ecaf4",
+  "optimizationBranch": "optimize/resident-startup-reclaim",
+  "optimizationCommit": "68e55493e71d6220ed34634073b355087ac6db0b",
+  "exactSourceHashesVerified": true,
+  "validation": [
+    {
+      "name": "integratedDev",
+      "raw": "/tmp/putgd-startup-reclaim-combined-dev.xml",
+      "sha256": "961c23e35d017048d479f8aad4ab8be351a4d93b1ed8e4fb0bb05e9b63fc623d",
+      "tests": 28,
+      "failures": 0,
+      "seconds": 144.57
+    },
+    {
+      "name": "asanUbsan",
+      "raw": "/tmp/putgd-startup-reclaim-asan.xml",
+      "sha256": "4abbd6d709045a97459df9f9934abb7744d980cdec84aa50b02ddfd45fc5c633",
+      "tests": 1,
+      "failures": 0,
+      "seconds": 37.56
+    },
+    {
+      "name": "instrumentedQtTsan",
+      "raw": "/tmp/putgd-startup-reclaim-tsan.xml",
+      "sha256": "993dbdfa1493d067e78d3d9e38d960fdfeb1a193332b9aa0fa6d25ccb33ae9cd",
+      "tests": 1,
+      "failures": 0,
+      "seconds": 39.47
+    }
+  ],
+  "canonicalReleaseBinaries": {
+    "putgd": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f",
+    "putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+    "libputgd-s3.so": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762"
+  },
+  "canonicalReleaseBuild": "cmake --preset release && cmake --build --preset release --target putgd putgd-cli test_operations",
+  "measurementIdentityNote": "Reported RSS belongs to preserved isolated Release binary with identical reviewed source; canonical Release was rebuilt, not remeasured. PUTGD_PHYSICAL_BENCHMARKS is ON only in canonical and adds a separate driver executable; it changes no resident compile definition or link per CMakeLists.txt172-177."
+}

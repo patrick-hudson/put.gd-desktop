@@ -45,7 +45,7 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 
 #### Capture and clipboard
 
-- R1. Region capture shows the desktop underneath a visually transparent selection overlay, with crosshairs and a rectangle outline while dragging, and captures the selected desktop content. No solid colored canvas or opaque selection fill obscures the product capture view. Synthetic performance-test backgrounds are separate, clearly labelled test fixtures.
+- R1. Region capture shows the live desktop underneath a visually transparent selection overlay before and during dragging, with crosshairs and a rectangle outline. Windows, animations and video continue updating throughout selection. Freeze the accepted target, display layout and settings, then acquire the selected content only after the overlay is removed, with no selection outline in the saved pixels. No solid colored canvas or opaque selection fill obscures the product capture view. Synthetic performance-test backgrounds are separate, clearly labelled test fixtures.
 - R2. Active-window capture targets the focused external window at invocation, including its frame where available; v1 permits visible-pixel capture on X11 and documents compositor-native occlusion behavior on Wayland.
 - R3. Full-desktop capture includes every enabled monitor and desktop panels, with deterministic handling of layout gaps and per-monitor scaling.
 - R4. Clipboard sharing accepts regular local files, images, and plain text, with precedence in that order; plain-text URLs are uploaded as text rather than fetched.
@@ -117,7 +117,7 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 
 ### Acceptance Examples
 
-- AE1. With another app focused, the region hotkey allows dragging a rectangle; its PNG is uploaded and its public URL pastes into that other app. Covers R1, R5, R14.
+- AE1. With another app focused, the region hotkey allows dragging a rectangle over its live, updating content; its PNG contains the latest selected pixels and no current or previous rectangle outline, is uploaded, and its public URL pastes into that other app. Covers R1, R5, R14.
 - AE2. Escape during region selection leaves the clipboard unchanged and sends no upload request. Covers R7.
 - AE3. A clipboard containing two local files produces two matching uploaded objects and two newline-separated links in the original order. Covers R4, R9.
 - AE4. If the user copies new text during an upload, that text stays on the clipboard and the completed operation offers Copy URL. Covers R8.
@@ -168,11 +168,11 @@ The Wayland baselines are deliberate targets rather than verified integrations. 
 - KTD2. A single resident user-session process owns typed operations. GUI, hotkeys, and a thin CLI dispatch through those services; the CLI connects through an owner-restricted filesystem socket in the runtime directory. Version and validate request/result schemas, bound message sizes, and keep JSON stdout separate from stderr logs. This prevents duplicate hotkey registrations and differing clipboard behavior. [QLocalServer](https://doc.qt.io/qt-6/qlocalserver.html).
 - KTD3. Persist operation/item metadata and receipts transactionally using Qt SQL/SQLite, with one canonical versioned JSON file for non-secret settings under KTD21 and private artifact files. Snapshot effective destination/settings at acceptance; detach source bytes during acquisition and commit immutable artifacts before publication. Retain failures for explicit retry; reconcile interrupted operations after restart without silently restarting publication. Defaults: one active upload, eight pending operations, a 2 GiB pending-artifact budget, a 100-entry recent-activity view, and seven-day failed-artifact retention, configurable in settings. Successful upload history has no automatic record expiry by default; the activity-view limit and spool cleanup do not prune it. Local-only output files are user-owned and outside automatic cache cleanup.
 - KTD4. Separate capture, global-shortcut, and clipboard capabilities behind desktop adapters. Capability discovery selects a validated adapter per operation, never an implicit substitute. Generic screenshot/clipboard portals are optional disclosed fallbacks, not the primary R14 path. Screenshot portal v3 targets and permission behavior must be checked per backend; the Clipboard portal requires RemoteDesktop/InputCapture sessions. [Screenshot portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Screenshot.html), [Clipboard portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.Clipboard.html).
-- KTD5. Cinnamon/X11 uses XCB passive key grabs, EWMH active-window identity/frame extents, pre-overlay desktop frames, and Qt clipboard ownership. Capture the visible framed rectangle for R2 rather than promising hidden-window reconstruction. Account for lock modifiers, keymap changes, and conflicting grabs. [EWMH](https://specifications.freedesktop.org/wm/latest-single/), [QScreen capture limits](https://doc.qt.io/qt-6/qscreen.html), [QClipboard](https://doc.qt.io/qt-6/qclipboard.html).
+- KTD5. Cinnamon/X11 uses XCB passive key grabs, EWMH active-window identity/frame extents, a live transparent region overlay, and Qt clipboard ownership. Freeze target/layout before selection, then obtain region pixels after the selector is withdrawn. On Cinnamon, use the compositor screenshot service and wait for its private PNG write to close before worker decoding; X11 surface unmapping alone does not prove that Muffin has removed the outline from its rendered scene. Capture the visible framed rectangle for R2 rather than promising hidden-window reconstruction. Account for lock modifiers, keymap changes, and conflicting grabs. [EWMH](https://specifications.freedesktop.org/wm/latest-single/), [QScreen capture limits](https://doc.qt.io/qt-6/qscreen.html), [QClipboard](https://doc.qt.io/qt-6/qclipboard.html).
 - KTD6. GNOME/Wayland uses a small GNOME 50 Shell extension for selection/capture, bindings, and background clipboard MIME transfer. The native app owns storage, encoding, secrets, and networking. Use documented Shell/St interfaces, narrow authenticated IPC, request IDs, payload limits, and complete disable/re-enable cleanup. Do not spoof allowed D-Bus callers or enable Shell unsafe mode. Leave the clipboard shortcut unset until the user assigns it during setup. [Shell screenshot service](https://raw.githubusercontent.com/GNOME/gnome-shell/main/js/ui/screenshot.js), [GNOME 50 clipboard implementation](https://raw.githubusercontent.com/GNOME/gnome-shell/gnome-50/src/st/st-clipboard.c), [extension review rules](https://gjs.guide/extensions/review-guidelines/review-guidelines.html).
 - KTD7. Plasma 6.6/Wayland uses KWin ScreenShot2, current KGlobalAccel D-Bus shortcut APIs, and a native ext-data-control-v1 clipboard adapter. Install the ScreenShot2 restricted-interface desktop entry against the actual executable. Probe interface versions; drain image-transfer FDs asynchronously with validated dimensions, stride, format, and timeouts. Data-control handles unfocused arbitrary MIME import and CLIPBOARD-only writes without depending on Klipper text APIs or an unwanted PRIMARY write. [ScreenShot2 interface](https://raw.githubusercontent.com/KDE/kwin/master/src/plugins/screenshot/org.kde.KWin.ScreenShot2.xml), [KGlobalAccel interface](https://raw.githubusercontent.com/KDE/kglobalaccel/master/src/org.kde.KGlobalAccel.xml), [KWin 6.6 protocol support](https://raw.githubusercontent.com/KDE/kwin/Plasma/6.6/src/wayland_server.cpp), [data-control protocol](https://raw.githubusercontent.com/wayland-mirror/wayland-protocols/main/staging/ext-data-control/ext-data-control-v1.xml).
 - KTD8. Carry backend pixel dimensions, native/logical monitor rectangles, scale, rotation, and identity alongside each capture frame. Crop per monitor, then compose a spanning image at the highest available participating frame density, with explicit rounding and transparent layout gaps. Preserve native pixels for single-frame images, exclude the cursor by default, and invalidate selections on display changes. Widgets must not assume one primary-screen DPR. [Qt high DPI](https://doc.qt.io/qt-6/highdpi.html).
-- KTD9. Use the official AWS SDK C++ S3Client inside the S3 implementation of KTD18, building only S3/core from a pinned source release and transitive dependency manifest. Only the S3 adapter target imports AWS headers. Keep one long-lived client per effective profile and a bounded executor, stream private artifact files, and marshal immutable callback results to the GUI thread. Initialize/shut down the SDK at application lifetime boundaries and drain request resources before destruction. Configure explicit connect/whole-request/low-speed timeouts and three total transient upload attempts; deletion retry rules are governed by KTD20. [SDK build options](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html), [async lifetime](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/async-methods.html), [Qt threading](https://doc.qt.io/qt-6/threads-qobject.html).
+- KTD9. Use the official AWS SDK C++ S3Client inside the S3 implementation of KTD18, building only S3/core from a pinned source release and transitive dependency manifest. Only the S3 adapter target imports AWS headers. Keep one long-lived client per effective profile and a bounded executor, stream private artifact files, and marshal immutable callback results to the GUI thread. Load the private S3 module on first provider request. A permanent bounded worker initializes the SDK, owns clients and requests, drains them, and shuts down the SDK on that same thread; the module remains pinned until process exit. Local-only startup maps no AWS dependency libraries. Configure explicit connect/whole-request/low-speed timeouts and three total transient upload attempts; deletion retry rules are governed by KTD20. [SDK build options](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html), [async lifetime](https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/async-methods.html), [Qt threading](https://doc.qt.io/qt-6/threads-qobject.html).
 - KTD10. For the R16 development template use verified HTTPS path-style requests to its regional endpoint, since the dotted bucket does not match S3 virtual-host TLS wildcards. Other S3 profiles use their configured endpoint, region, bucket, prefix, and storage class, with a supported addressing mode appropriate to that endpoint/bucket. Persist the candidate key, content hash, unique operation/item marker, and write precondition before PUT. Use If-None-Match: * for new objects and If-Match with the checked ETag for configured overwrite. Keep upload endpoint and public URL base distinct, encode URL path segments once, and send the configured ACL header only when selected; aclMode=omit sends none. Without a custom public URL base, derive the direct object URL from the effective S3 addressing configuration. Never substitute development values for explicit profile settings. Preserve the key/body/precondition across transport retries and ambiguous publication; HEAD with the matching item marker, hash, and size can reconcile a lost reply as success. ETags are opaque preconditions, not content hashes. A 412 after a lost successful reply must not trigger renaming or skipping that item. When reconciliation is inconclusive, expose unknown status and retain the same key. A stable key does not guarantee exactly-once versions in a versioned bucket. [S3 addressing](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html), [PutObject](https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html).
 - KTD11. Use QtKeychain with insecure fallback disabled and an explicit credential provider. Resolve credentials during setup/session readiness; do not let a hotkey silently fall through to ambient AWS profiles or hang on secret-store unlock. A missing/locked store yields a setup action or explicit session-only credentials. The destination test uses a synthetic object and an unauthenticated GET of the configured public URL, independently of actual user captures. Never silently change the selected ACL mode after an error to manufacture success; an explicitly configured omit mode is supported and still requires the destination test to verify public reachability. [QtKeychain](https://github.com/frankosterfeld/qtkeychain/), [Object Ownership](https://docs.aws.amazon.com/AmazonS3/latest/userguide/about-object-ownership.html), [public access controls](https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html).
 - KTD12. Clipboard revisions and invocation tickets govern R8. Observe ownership changes without continuously reading payloads; only the newest accepted share with an unchanged revision auto-copies. Older jobs still retain successful receipts. Serialize interactive source acquisition and return busy_selecting for another selection request. A copy failure or suppression is distinct from an upload failure.
@@ -184,7 +184,7 @@ The Wayland baselines are deliberate targets rather than verified integrations. 
 
 - KTD17. Snapshot the S3 naming strategy and collision policy with each operation. Default fresh configurations to original filenames and timestamped captures with auto-rename; expose random and template naming under Advanced. Existing generated-mode configurations retain their choice. Original-name mode uses only a regular file’s basename, never its full source path. Renames append a random UUID suffix, preserve the extension, and obey S3 key byte limits; cap candidate searches at 32 per item and retain the source on exhaustion. Check signed HeadObject against S3, not a cached custom-domain URL: 200 means present, a definitive 404 means absent, and 403/timeout is inconclusive. Never treat denied access as a free name. Conditional PUT is the final protection against races; classify 409/412, reconcile possible own publication first, and advance a rename candidate only after a confirmed foreign collision. Skip is a terminal non-published item with no share receipt. Resolve same-batch names before the first PUT: rename allocates distinct keys, skip retains the first item, and overwrite marks every item sharing a target key as a non-published conflict while allowing distinct-key items to upload normally. This prevents two misleading receipts for one name without blocking unrelated files. Explicit overwrite retry may refresh a failed precondition after a fresh check, but may not resolve an unknown publication by overwriting blindly. [HeadObject permissions](https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadObject.html), [conditional writes](https://docs.aws.amazon.com/AmazonS3/latest/userguide/conditional-writes.html).
 
-- KTD18. Define a small asynchronous StorageProvider contract for capabilities, naming/existence checks, upload, stat, and delete. Receipts carry a provider ID, profile ID/revision, immutable non-secret destination snapshot, versioned opaque object reference, opaque concurrency token where supported, publication identity, and the direct URL as separate fields. Do not reconstruct deletion targets from URLs or the currently selected profile. Persist a credential-store reference, never credentials; missing credentials or a removed profile yields a restore-access action for the recorded destination. Providers describe conditional-write/delete support, version addressing, deletion effects, and URL availability; unsupported required behavior fails explicitly instead of silently dropping safeguards. Use a static provider factory and typed settings validation, with S3 and a test double first. No dynamic plugin ABI, generic AWS-shaped receipt, or speculative adapters are required.
+- KTD18. Define a small asynchronous StorageProvider contract for capabilities, naming/existence checks, upload, stat, and delete. Receipts carry a provider ID, profile ID/revision, immutable non-secret destination snapshot, versioned opaque object reference, opaque concurrency token where supported, publication identity, and the direct URL as separate fields. Do not reconstruct deletion targets from URLs or the currently selected profile. Persist a credential-store reference, never credentials; missing credentials or a removed profile yields a restore-access action for the recorded destination. Providers describe conditional-write/delete support, version addressing, deletion effects, and URL availability; unsupported required behavior fails explicitly instead of silently dropping safeguards. Use a static provider factory and typed settings validation, with S3 and a test double first. No public dynamic provider-plugin ABI, generic AWS-shaped receipt, or speculative adapters are required. The S3 implementation may use an internal lazy-loaded module with an exact application/build/transport identity check and absolute owned build/install path; it is not an extension mechanism.
 
 - KTD19. Create one upload-history entry per confirmed item receipt in the same transaction that commits upload success, including receipts recovered after an ambiguous reply. Store item/operation IDs, timestamp, display filename, MIME/category, byte size, original destination/receipt/direct URL, local-copy reference/status, and remote-management state. Unknown publication remains visible in activity/history as an unresolved item without an invented link or delete target; skipped duplicates have no upload receipt. Keep failed attempts inspectable under their retention policy. Use indexed, paginated SQLite queries and a lazy Qt item model; thumbnails are private, bounded, independently evictable cache entries, generated from acquired image artifacts without remote fetching. Missing thumbnails show a type icon and metadata; viewing the remote file uses the stored URL in the browser on an explicit action. Store no permanent source text/video/full-file payload solely for history. History deletion outcomes remain as records, and user-requested history clearing is a separate local action that never touches the cloud. Enforce transactional schema migration and private database/cache permissions. Upload history records, URLs, and filenames are excluded from default diagnostic exports.
 
@@ -497,7 +497,7 @@ Requirements: R1–R8, R12–R15, R20. Dependencies: U2, U3.
 
 Files: src/platform/x11/X11Capture.*, src/platform/x11/X11Shortcuts.*, src/platform/x11/X11Clipboard.*, src/platform/Geometry.*, src/ui/RegionOverlay.*, tests/unit/test_geometry.cpp, tests/desktop/cinnamon.yaml, docs/desktops/cinnamon.md.
 
-Approach: Implement KTD5/KTD8/KTD12, freezing desktop/window targets before overlay focus changes. Obtain source snapshots on the session thread, then move encoding/storage to workers. Keep target/geometry handling separate from still-frame acquisition as described in the future-recording boundary. Establish the physical performance baseline.
+Approach: Implement KTD5/KTD8/KTD12, freezing desktop/window targets, display geometry and settings before overlay focus changes. Keep desktop content live during region selection and acquire its latest pixels after the overlay is withdrawn. Native session-thread requests handle target/selection/clipboard ownership; PNG decoding, encoding and storage run on workers. Keep target/geometry handling separate from still-frame acquisition as described in the future-recording boundary. Establish the physical performance baseline.
 
 Test scenarios:
 1. Covers AE1/AE2. A region drag captures exact fixture content; Escape/right-click cancels without publication.
@@ -786,3 +786,122 @@ per row. These checks prove lifetime/admission behavior, not post-use RSS or the
 40 MiB target. Full AE15 scales/states, remote S3 and remaining desktop, lifecycle,
 MCP and performance gates remain open. Exact parameters, hashes and receipts are
 in [the structured record](../evidence/2026-10-08-settings-refinement.json).
+
+The memory continuation preserves Cinnamon-native fonts and dialogs by explicit
+user choice. The reviewed private CMake S3 module defers mapping the official SDK
+until network work begins. A same-observer five-minute physical comparison falls
+from 56.270 to 51.887 MiB peak RSS, with idle CPU at 0.003331% of one core. The
+7.789% improvement is retained at optimization revision `cadd9ed` and integrated
+into the canonical source; all 26 combined development tests pass. Approximately
+40 MiB and post-S3 memory acceptance remain open. Three empty-view cycles finish
+at 79.551 MiB; populated history and upload costs require separate measurements.
+[The SDK evidence](../evidence/2026-10-08-sdk-memory.json) retains both original and
+final comparisons, exact identities, full raw results and the actual review.
+Commands and observation limits are in [testing-memory.md](../testing-memory.md).
+A temporary custom-style probe saved only 0.719 MiB, below the declared threshold;
+keep the custom appearance and pursue larger measured opportunities.
+
+The synthetic post-use allocator probe found 9,547,776 bytes (9.105 MiB) of reclaimable RSS after five desktop/image cycles, with allocated arena bytes unchanged at 3,366,480. Add a bounded idle heap reclamation pass after payloads and operation workers drain, preserve native clipboard ownership and live UI state, and measure repeated-use RSS, idle CPU and next-action latency. This R20 follow-up is separate from the fixed cold-idle optimization metric: it cannot establish the 40 MiB target. [Protocol, complete sanitized raw results and temporary probe source](../evidence/2026-10-08-payload-allocator.json) are retained for replay.
+
+### R1/R20 implementation checkpoint (2026-10-08)
+
+Live transparent region selection is implemented across the adapter paths. Native
+Cinnamon evidence verifies a changing background, normal and rapid-release pixels
+without the outline, independent Qt paste, and Escape/right-click cancellation.
+New GNOME/KDE graphical and mixed-display evidence remains required.
+[The bounded record](../evidence/2026-10-08-live-region.json) preserves the exact
+source, binary, protocol and sanitizer identities.
+
+Production glibc cleanup runs once after accepted capture/clipboard work and local
+image/text decoding become idle. It also covers cancelled acquisition. Five local
+capture/image cycles finished at 66.473 MiB, compared with 75.648 MiB in the earlier
+attribution build; the maximum observed allocator call was 750 microseconds.
+Final coherent development contracts passed 25/25 and affected memory/thread
+checks passed. This is separate from cold idle and post-S3 memory acceptance.
+[Cleanup evidence](../evidence/2026-10-08-heap-reclaim.json) and
+[replay instructions](../testing-memory.md) retain exact parameters and structured
+results. Keep approximately 40 MiB, populated-history/upload memory, next-action
+latency and the remaining desktop/release gates open until measured.
+
+The post-use lab runner now attempts restoration even when VNC input cleanup fails,
+saves the failure status, and propagates the error. Fault injection covers input,
+restoration, combined and pre-start failures; this is orchestration proof, not a
+new graphical acceptance result. Combined SDK/live-selection/cleanup development
+verification passes 26/26 (112.90 seconds).
+
+### Native IPC memory follow-up (2026-10-08)
+
+The user approved replacing the Linux resident's Qt local sockets with native
+Unix sockets to remove its eager Qt Network dependency. Preserve the versioned
+JSON protocol, private socket ownership, live-resident protection, framing and
+client limits, deadlines, response delivery, and CLI/MCP behavior. Other platforms
+retain Qt local sockets; native Cinnamon fonts/dialogs remain required. The
+experiment is bounded to three variants/two hours with no new dependencies.
+
+The reviewed implementation is committed as `1fdfff0`. All 28 development
+contracts and four affected Release, ASan/UBSan and instrumented-Qt TSan contracts
+pass. IPv6 compatibility and pending-reply disconnect regressions were reproduced
+and fixed without loosening validation. The final isolated five-minute physical
+comparison measured 46.020 MiB versus 52.012 MiB for the retained reference
+(11.52% lower). Native GTK remains loaded, with no operations or view activation
+observed. The earlier 45.625 MiB sample predates the disconnect fix and is retained
+separately. Combined integration passed 28 development and four affected Release contracts;
+the committed whole app measured 46.188 MiB over another five minutes. Keep 40 MiB and
+post-upload memory acceptance open. [Raw results and commands](../evidence/2026-10-08-local-ipc.json)
+record the baselines, fix, review receipts and all comparisons.
+
+### Journal latency follow-up (2026-10-08)
+
+Investigate SQLite connection reuse, prepared-statement reuse and page-cache
+management alongside the memory work, as requested. Preserve durable operation
+ordering, crash recovery and private journal files. Attribute the actual waiting
+call before choosing a change; lower memory use alone does not prove lower latency.
+
+The temporary native trace measured warm p95 160.004 ms against the unchanged
+150 ms gate. All 35 operations cancelled without artifacts. Long journal
+initialization intervals overlapped the previous cancellation commit; the trace
+has not split permissions, foreign-key setup and schema-version reads. Repeated
+query preparation is present, but is not established as the cause of that wait.
+Retain separate tests for populated history and capture/cancellation journaling.
+[Source identities, parameters and complete traces](../evidence/2026-10-08-region-latency-raw/manifest.json)
+remain available for replay; the timing gate remains open.
+
+The standalone rollback/FULL probe completed twelve fresh-process cases with two
+matched repeats. Prepared-statement cost was small: explicit prepare medians
+were 0.062–0.202 ms across three durable states. Connection/statement reuse had
+no consistent timing winner; durable commits and controlled lock contention
+dominated the synthetic timings. This does not identify every waiting call in
+the actual product. No product SQLite change was made from this probe, and the
+150 ms gate remains unpassed. The controlled reader's `beginNs` is overwritten
+by its later write, so absolute reader start is unavailable; phase durations and
+writer timestamps remain usable. [Evidence](../evidence/2026-10-08-sqlite-locating.json)
+and [the bounded report/replay](../evidence/2026-10-08-sqlite-locating-raw/report.md)
+preserve all samples and source/build/library identities, without databases or
+payload bytes. Synthetic cache RSS findings do not establish product memory
+savings or populated-history/recovery/concurrency acceptance; no WAL case ran.
+
+The approved startup reclamation follow-up is kept as `68e5549`, integrated as
+`fc69d38`. It requests one pass through the existing two-second idle gate after
+successful recovery. The unchanged five-minute physical comparison fell from
+46.1875 to 44.9648 MiB, a 1.2227 MiB (2.65%) saving, above the predeclared 1 MiB
+threshold. Native Cinnamon fonts/dialogs remain enabled; no dependency was added.
+Three native empty-view cycles reopened Settings, History and Activity, ending
+at 73.8242 MiB after hiding them. Track that post-use retention separately from
+cold idle. [The evidence](../evidence/2026-10-08-startup-reclaim.json) retains the
+test-first regressions, source review, frozen commands and complete measurements.
+The 40 MiB target remains open. Further work needs an attributed source of savings
+outside the once-only startup request; repeated trimming is not this experiment.
+
+The next post-view investigation is native backing-store retention: source and
+buffer-size attribution account for roughly 8 MiB of Xorg shared mappings after
+the three empty windows close. Preserve widget state and unsaved drafts, native
+fonts/dialogs, complete repaint and minimize/reopen behavior while measuring any
+release strategy. This is separate from the cold 40 MiB target; heap live/free
+allocation accounting is still needed before proposing additional cleanup.
+
+Evaluate integer-width and member-layout suggestions only against measured live
+object counts and actual ABI sizes. Fixed-width aliases alone are not a memory
+optimization. Keep file sizes, limits and counters wide enough for validated
+values and API/serialization contracts; do not introduce packed structs or blind
+narrowing. Any selected layout change needs repeatable compiler/architecture
+metadata, before/after sizes, range tests and workload RSS/latency evidence.

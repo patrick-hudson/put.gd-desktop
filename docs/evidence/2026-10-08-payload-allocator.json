@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "scope": "Unscored synthetic disposable Cinnamon lab allocator attribution; no scored optimization, physical idle acceptance, or production cleanup implementation.",
+  "baseRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "rawDirectory": "2026-10-08-payload-allocator-raw",
+  "manifest": {
+    "results.json": {
+      "sha256": "772585e5b6b935949c2e98b421a721f13fa928aba3747555c5d1d5fb021d23a9",
+      "bytes": 941841
+    },
+    "source-build-identity.json": {
+      "sha256": "229daa4de970f187f43c83ed17f0de569a03e0ff35efadc21a266b5695496d6b",
+      "bytes": 644
+    },
+    "restoration.json": {
+      "sha256": "6eb895ffc559bfb42ed26bcd2abe16db5c15cdf90f4ebfeb6f1ad9564bb35c1e",
+      "bytes": 985
+    },
+    "controller.py": {
+      "sha256": "28c92fa74f56d478b5109cc1c818c0ffbb164d5d560d73b1e90a5f976a569811",
+      "bytes": 16099
+    },
+    "temporary-probe.patch": {
+      "sha256": "90533b9ee673c5583c32d00cd87913902a139ac93fa8bc87c160e25e1be34f38",
+      "bytes": 1945
+    }
+  },
+  "summary": {
+    "coldRssBytes": 57602048,
+    "drainedRssBytes": 79323136,
+    "oneTrimRssBytes": 69775360,
+    "afterFiveSecondsRssBytes": 69791744,
+    "reclaimedRssBytes": 9547776,
+    "beforeAllocator": {
+      "revision": 6,
+      "phase": "before",
+      "arenaBytes": 26370048,
+      "allocatedBytes": 3366480,
+      "freeArenaBytes": 23003568,
+      "mmapBytes": 364544,
+      "topFreeBytes": 4231056
+    },
+    "afterAllocator": {
+      "revision": 7,
+      "phase": "after-trim",
+      "arenaBytes": 22142976,
+      "allocatedBytes": 3366480,
+      "freeArenaBytes": 18776496,
+      "mmapBytes": 364544,
+      "topFreeBytes": 3984
+    }
+  },
+  "protocol": {
+    "coldSeconds": 5,
+    "settleSeconds": 5,
+    "cycleCount": 5,
+    "desktopSize": [
+      1280,
+      800
+    ],
+    "clipboardImageSize": [
+      96,
+      64
+    ],
+    "trimCount": 1,
+    "allocatorControlWrite": "SCP control.tmp followed by atomic mv to control.json"
+  },
+  "nativeVersions": {
+    "qt": "6.4.2",
+    "desktop": "X-Cinnamon",
+    "session": "x11",
+    "packages": [
+      "cinnamon 6.6.4+zena",
+      "libc6 2.39-0ubuntu8.6",
+      "libqt6core6 ",
+      "libqt6core6t64 6.4.2+dfsg-21.1build5",
+      "libqt6dbus6 ",
+      "libqt6dbus6t64 6.4.2+dfsg-21.1build5",
+      "libqt6gui6 ",
+      "libqt6gui6t64 6.4.2+dfsg-21.1build5",
+      "libqt6keychain1 0.14.2-1build5",
+      "libqt6network6 ",
+      "libqt6network6t64 6.4.2+dfsg-21.1build5",
+      "libqt6opengl6 ",
+      "libqt6opengl6t64 6.4.2+dfsg-21.1build5",
+      "libqt6qml6 6.4.2+dfsg-4build3",
+      "libqt6qmlmodels6 6.4.2+dfsg-4build3",
+      "libqt6quick6 6.4.2+dfsg-4build3",
+      "libqt6sql6 ",
+      "libqt6sql6-ibase ",
+      "libqt6sql6-mysql ",
+      "libqt6sql6-odbc ",
+      "libqt6sql6-psql ",
+      "libqt6sql6-sqlite 6.4.2+dfsg-21.1build5",
+      "libqt6sql6t64 6.4.2+dfsg-21.1build5",
+      "libqt6waylandclient6 6.4.2-5build3",
+      "libqt6waylandcompositor6 6.4.2-5build3",
+      "libqt6waylandeglclienthwintegration6 6.4.2-5build3",
+      "libqt6waylandeglcompositorhwintegration6 6.4.2-5build3",
+      "libqt6widgets6 ",
+      "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+      "libqt6wlshellintegration6 6.4.2-5build3",
+      "muffin 6.6.1+zena"
+    ]
+  },
+  "cycleRssBytes": [
+    63344640,
+    75526144,
+    79323136,
+    79323136,
+    79323136
+  ],
+  "operations": [
+    {
+      "action": "desktop",
+      "operationId": "3f1af891-5512-4904-8d8e-8ec726eb985c",
+      "width": 1280,
+      "height": 800,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "ad30e8b87f93ed0b5d2fd3d8feda8db1fc1432e34c7531e5705d9e44a6e9eb33"
+    },
+    {
+      "action": "clipboard",
+      "operationId": "fcc01cd1-b171-4533-b526-35f357f6af5b",
+      "width": 96,
+      "height": 64,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+    },
+    {
+      "action": "desktop",
+      "operationId": "ffe8fcad-46e5-4c50-ae64-91f78494cca7",
+      "width": 1280,
+      "height": 800,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "ad30e8b87f93ed0b5d2fd3d8feda8db1fc1432e34c7531e5705d9e44a6e9eb33"
+    },
+    {
+      "action": "clipboard",
+      "operationId": "39ab7099-76da-4320-bc4f-bf8de7f3d17d",
+      "width": 96,
+      "height": 64,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+    },
+    {
+      "action": "desktop",
+      "operationId": "43a15542-cdc6-4bf7-82ea-249a09e54c04",
+      "width": 1280,
+      "height": 800,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "ad30e8b87f93ed0b5d2fd3d8feda8db1fc1432e34c7531e5705d9e44a6e9eb33"
+    },
+    {
+      "action": "clipboard",
+      "operationId": "6a6289fc-b321-4ace-854e-016166ff18d6",
+      "width": 96,
+      "height": 64,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+    },
+    {
+      "action": "desktop",
+      "operationId": "4ff121fd-0f8a-4eff-aaf0-735e5db35e1d",
+      "width": 1280,
+      "height": 800,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "ad30e8b87f93ed0b5d2fd3d8feda8db1fc1432e34c7531e5705d9e44a6e9eb33"
+    },
+    {
+      "action": "clipboard",
+      "operationId": "aa7ce7e5-f3dd-4d6e-b5f9-736f189be6db",
+      "width": 96,
+      "height": 64,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+    },
+    {
+      "action": "desktop",
+      "operationId": "75c50407-22a7-4411-b320-02c3738c430d",
+      "width": 1280,
+      "height": 800,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "ad30e8b87f93ed0b5d2fd3d8feda8db1fc1432e34c7531e5705d9e44a6e9eb33"
+    },
+    {
+      "action": "clipboard",
+      "operationId": "e61f0531-ab8a-4369-b4da-8e7e412ef145",
+      "width": 96,
+      "height": 64,
+      "state": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+    }
+  ],
+  "restoration": {
+    "sourceRestored": true,
+    "originalConfigRestored": true,
+    "probeStopped": true,
+    "fixtureStopped": true
+  },
+  "replay": {
+    "controller": "Historical controller has fixed disposable lab/probe paths and requires the matching lab session and temporary probe built with normal CMake; adapt paths explicitly. Do not run against the physical desktop or a user session.",
+    "syntheticOnly": true,
+    "trimCount": 1,
+    "baselineProbe": "Apply temporary-probe.patch only to the recorded base in an isolated checkout; no probe switches are production configuration."
+  },
+  "limitations": [
+    "Single 1280x800 Cinnamon VM with Qt 6.4.2, not the physical host memory gate.",
+    "Ten synthetic local-only actions; no S3 upload or populated history.",
+    "RSS reduction is freed allocator pages, allocatedBytes unchanged; persistence beyond the five-second final sample is unmeasured.",
+    "Raw logs, images, configurations and user session screenshots excluded from this export.",
+    "Automatic idle reclamation remains a separate implementation decision; 40 MiB target remains unmet."
+  ]
+}

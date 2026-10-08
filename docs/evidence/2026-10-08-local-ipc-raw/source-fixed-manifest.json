@@ -1,0 +1,17 @@
+{
+  "base": "3b8ea0e",
+  "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001",
+  "files": {
+    "CMakeLists.txt": "85c3275f84e9c8da7f6a46babb33641feade9759f29ec6585cc64deedc491033",
+    "src/app/LocalIpc.cpp": "65917736dd9dc30a8cfdce75f0e81dba39931c9d3fff7c31f587cee7ba2f41bb",
+    "src/app/LocalIpc.h": "8c63ad8aa72ecccb970f5c17ed1667e2a10bf4f3266e99be6badf3c8c005e36b",
+    "src/app/LocalServer.cpp": "975e85a5a6146ba658369480e06070ef1794f00e12a17737ff15b60093a536e4",
+    "src/app/LocalServer.h": "4d8a6edd559ef19e7825a6e0163085ec88545994ec1aead91d9cbc2caf054a22",
+    "src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+    "src/storage/s3/IpAddress.cpp": "84466c749bac34f239e2460ddde9bbf8b3e51703db2c3064282ff7b426d7da41",
+    "src/storage/s3/IpAddress.h": "153e9c8aba1d56ed6e019f7e09c92377cbbf406a0aaf032e58323d20bada7d5d",
+    "src/storage/s3/S3Provider.cpp": "2dfaeeef97a0e95a3ca8cf9ab0ca997c2f9b1a97459fe295e36c260eef9f182c",
+    "tests/integration/test_local_ipc.cpp": "85e4046f8be901be1d3da7dd5b7243b8ef8231a72153faaca198094798b01969",
+    "tests/unit/test_ip_address.cpp": "186a50904e03f19deb27755d212bae9e9f5526bce44c9af7291a35875bcabc89"
+  }
+}

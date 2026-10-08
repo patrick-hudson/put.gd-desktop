@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "scope": "Automatic glibc idle heap reclamation on production Release, synthetic disposable Cinnamon VM; not physical cold-idle or40MiB acceptance",
+  "rawDirectory": "2026-10-08-heap-reclaim-raw",
+  "manifest": {
+    "results.json": {
+      "sha256": "03f28335c321292d3edd6cc4205c1d641104106a0305d7b9a3283147498e01a3",
+      "bytes": 806706
+    },
+    "source-build-identity.json": {
+      "sha256": "9f763b4602fdc5acd828451965eb61162fd1c81a828fab878cce6dd16eaaf4af",
+      "bytes": 1377
+    },
+    "putgd-idle-reclaim-cancel-green.xml": {
+      "sha256": "18687076ed06aefa51ab07986b08e9283cd2f3331a0c862250433767403521fe",
+      "bytes": 765
+    },
+    "putgd-heap-cancel-asan.xml": {
+      "sha256": "3a64ebd2eb68c56ba089e618d7c1a2e99e9622032d2cc2a1f4afc2dcaca64783",
+      "bytes": 1487
+    },
+    "putgd-heap-cancel-tsan.xml": {
+      "sha256": "19d85f7cb4761bd4673f217f121f30a123cddb7455ca0519a1d048693dd4a07d",
+      "bytes": 1487
+    },
+    "putgd-live-heap-cancel-dev.xml": {
+      "sha256": "b02e8f2e8139b2f59e1c5e2389ef8734d60eabe07a2c69ffa823402a5d11d870",
+      "bytes": 23748
+    },
+    "simplification.json": {
+      "sha256": "d418ec27acffaff9beec93cac43aeeefcc784e4c1ab8e254da81cd6bfe6d7098",
+      "bytes": 2725
+    },
+    "cancel-test-first-red.txt": {
+      "sha256": "3588dc44ddd40147f25e326fa0f1a135fd07aaec856be28d2a64ca3f3829686e",
+      "bytes": 768
+    },
+    "check-lab-finalizer.py": {
+      "sha256": "b291b8522e2b4befcdd04c303b700e46e40c1afb5137fd06a1d24a328e664341",
+      "bytes": 2744
+    },
+    "combined-dev.xml": {
+      "sha256": "6ccd14741c4d440cb3671d6bea7fef8c86bd76f668a651ca01897c89019acc89",
+      "bytes": 25022
+    },
+    "combined-release.xml": {
+      "sha256": "719f169e53bbb8646efb36dc56e49b61df7c227c5a82e916c109e4875a7de6fb",
+      "bytes": 25024
+    },
+    "lab-finalizer-green.json": {
+      "sha256": "a3971378433caf262ccf154c18e6eb4334131b67effa513189caa31dec6fd9f8",
+      "bytes": 1921
+    },
+    "lab-finalizer-red.json": {
+      "sha256": "13575ac9ef0301c49fd594a3f872a0a8ae3c61f23e6643dec44bcbb99289d6ad",
+      "bytes": 1896
+    }
+  },
+  "summary": {
+    "coldRssBytes": 57757696,
+    "finalDrainedRssBytes": 69701632,
+    "cycleRssBytes": [
+      61980672,
+      66113536,
+      65929216,
+      69861376,
+      69701632
+    ],
+    "maxObservedReclamationUsec": 750
+  },
+  "baselineDrainedRssBytes": 79323136,
+  "postUseDifferenceBytes": 9621504,
+  "comparisonLimit": "Sequential same5-cycle synthetic lab protocol, original1d4 temporary attribution build versus production Release with live-region and idle-reclamation changes; separate binary identities, not a formal cold-idle optimization experiment.",
+  "replay": "See tests/performance/bench_payload_lab.py --help; requires existing disposable Cinnamon VNC lab, production Release and independent fixture. Five cycles, five-second settle by default.",
+  "correctness": {
+    "tenLocalImageActions": "completed/copied with expected pixel geometry/colors",
+    "heapCleanup": "one after each paired cycle; none pending at eachdrained sample",
+    "nativeFontsAndDialogs": true,
+    "originalResidentConfigRestored": true
+  },
+  "verification": {
+    "testFirst": "/tmp/putgd-idle-reclaim-red.txt then two strengthened production-operation regressions pass",
+    "dev": "25/25 integrated contracts pass78.07s",
+    "asan": "operations_contract pass21.70s leak-enabled",
+    "tsan": "operations_contract pass23.53s with existing instrumentedQt/dependencies, no new suppression",
+    "externalReview": "Complete; original bounded review and explicit corrections are recorded in sourceReview. Source review does not certify measurements or all product requirements.",
+    "asanFinal": "operations_contract pass24.70s leak-enabled including cancelled acquisition",
+    "tsanFinal": "operations_contract pass26.34s with existing instrumented Qt/dependencies, unchanged suppression",
+    "devFinal": "25/25 coherent development contracts pass81.39s including cancelled acquisition"
+  },
+  "limits": [
+    "No S3 traffic or network payloads.",
+    "Single1280x800 VM/Qt6.4.2 and five cycles cannot prove a permanent plateau or all desktop support.",
+    "Maximum last recorded allocator call750usec is not an end-to-end UI latency measurement.",
+    "Cold 40 MiB and post-S3/populated-history memory gates remain open. The completed SDK-module score is recorded separately in 2026-10-08-sdk-memory.json."
+  ],
+  "labSourceHash": {
+    "src/app/OperationService.cpp": "464ec149919e5d89adb81709125c0eefae113170fd5a83536d01e943f3472eff",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "tests/unit/test_operations.cpp": "5c0b5af76df5ee45202f8898679f59ba96bd10a02a60644767d24775f27573b2",
+    "tests/performance/bench_payload_lab.py": "01761e2bf83c492889e886ff9c23209e06dad0889ca3d38752b0e40e3a021fad"
+  },
+  "currentSourceHash": {
+    "src/app/OperationService.cpp": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "tests/unit/test_operations.cpp": "cffaa33273194981a9d52361a06cce20af42d8783a29b5807ebf661c1a47f2fb",
+    "tests/performance/bench_payload_lab.py": "01761e2bf83c492889e886ff9c23209e06dad0889ca3d38752b0e40e3a021fad"
+  },
+  "cancelledAcquisitionDelta": {
+    "testFirstRed": {
+      "exitCode": 1,
+      "allocatorCount": 0,
+      "expected": 1,
+      "raw": "cancel-test-first-red.txt"
+    },
+    "green": {
+      "exitCode": 0,
+      "xml": "putgd-idle-reclaim-cancel-green.xml"
+    },
+    "change": "Mark pending after validated action acceptance, before native acquisition. Cancelled/failed acquisitions now request one cleanup once existing idle guards pass.",
+    "labLimit": "The existing ten-action lab score predates this additive cancellation fix; successful workload semantics and idle guards are unchanged."
+  },
+  "simplification": {
+    "mode": "three inline serial rubric passes",
+    "changes": 0,
+    "freshIndependentReview": false,
+    "actualCodeReview": "separate terminal receipt pending"
+  },
+  "verificationCommands": {
+    "build": [
+      "cmake --preset dev",
+      "cmake --build --preset dev"
+    ],
+    "dev": [
+      "ctest",
+      "--preset",
+      "dev",
+      "--output-junit",
+      "<private-output>/ctest-results.xml"
+    ],
+    "cancelFocused": [
+      "env",
+      "QT_QPA_PLATFORM=offscreen",
+      "build/dev/test_operations",
+      "selectorCancellationIsTerminalWithoutPublication"
+    ],
+    "sanitizerNote": "Use docs/build.md and docs/thread-sanitizer.md; final operation checks used existing isolated instrumented dependency builds, no new suppression."
+  },
+  "labFinalizerCorrection": {
+    "scope": "Review correction to finalizer; AST fault injection, no graphical lab rerun",
+    "sourcePath": "tests/performance/bench_payload_lab.py",
+    "sourceSha256": "cfc787158a23685f44cc9ff69abe6b8461c09af179c2fbf53a5365cf6e4f3b93",
+    "helperPrecondition": "Unchanged tools/lab/lab.py input_events uses QMP.execute, which raises LabError or OSError on transport/reply errors.",
+    "helperSha256": "ad06cea0227790573d9d47866a1251ede73f483d33b6d16f10f11911aa523984",
+    "red": "docs/evidence/2026-10-08-heap-reclaim-raw/lab-finalizer-red.json",
+    "green": "docs/evidence/2026-10-08-heap-reclaim-raw/lab-finalizer-green.json",
+    "cases": [
+      "normal",
+      "input failure",
+      "restore failure",
+      "both failures",
+      "not started"
+    ],
+    "restorationAttemptedAfterInputFailure": true,
+    "cleanupFailureSavedAsFailure": true
+  },
+  "combinedDev": {
+    "passed": 26,
+    "failed": 0,
+    "seconds": 112.9,
+    "junit": "docs/evidence/2026-10-08-heap-reclaim-raw/combined-dev.xml",
+    "scope": "Canonical SDK module, live-region and allocator-cleanup integration"
+  },
+  "sourceReview": {
+    "runId": "20261008-122340-af497823",
+    "status": "complete",
+    "reviewSha256": "9799270b16a4f45e1fda902f4ae1f10782b891e13bfa80819415c08bc160908f",
+    "deltaReviewSha256": "a7d3c59350af319c3cbbf0b8cc6c31987893c0009e3430fe25c40acb0296469a",
+    "originalVerdict": "Ready with fixes",
+    "resolved": "Accepted-action allocator marking before native preparation; separate three-path delta review found no new findings. Finalizer input failure precondition proved separately using original lab helper; corrected and fault-tested.",
+    "scopeLimit": "Original 23 frozen source paths, followed by 3 explicit correction paths. Does not certify native measurements or all requirements. Reused local author/reviewer contexts disclosed in receipt; independent Anthropic pass verified Claude Opus 5.5, effort unverified."
+  },
+  "combinedRelease": {
+    "passed": 26,
+    "failed": 0,
+    "seconds": 110.41,
+    "junit": "docs/evidence/2026-10-08-heap-reclaim-raw/combined-release.xml",
+    "scope": "Canonical SDK module, live-region and allocator-cleanup integration"
+  },
+  "combinedCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+  "combinedVerification": {
+    "developmentTests": 28,
+    "releaseAffectedTests": 4,
+    "evidence": "2026-10-08-local-ipc.json",
+    "limitation": "Separate IPC sanitizer evidence; no new post-payload or cold gate inferred from shared contracts."
+  },
+  "historicalStatusLabels": {
+    "verification.externalReview": {
+      "value": "pending",
+      "scope": "Previous checkpoint label retained as historical provenance; later sibling results establish the completed state."
+    },
+    "limits[3]": {
+      "value": "Cold40MiB and updated SDK-module score remain open.",
+      "scope": "Previous checkpoint label retained as historical provenance; later sibling results establish the completed state."
+    }
+  }
+}

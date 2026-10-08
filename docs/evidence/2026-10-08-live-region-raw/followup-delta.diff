@@ -1,0 +1,108 @@
+--- frozen/src/app/OperationService.cpp
++++ current/src/app/OperationService.cpp
+@@ -78,16 +78,19 @@
+  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+  if(!Settings::actionNames().contains(action)) {reply({"invalid_action","Unknown sharing action",{}},{});return;}
+  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
+  if(action!="clipboard"&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
+  const auto route=snapshot.actions.value(action);if(route.destination=="upload"&&route.profileId.isEmpty()) {reply({"destination_required","Configure a destination before sharing",{}},{});return;}
+  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
+  if(route.destination=="upload") {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
+  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(action!="clipboard")selectingId_=op.id;
++#ifdef __GLIBC__
++ heapReclamationPending_=true;
++#endif
+  auto acquisition=source_.prepareAcquisition(action);
+  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition](Error e,QJsonObject result) mutable {
+   if(e) {active_.remove(op.id);if(selectingId_==op.id)selectingId_.clear();reply(e,{});return;}
+   reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);
+   // Acceptance is durable and observable before a selector starts.
+   QTimer::singleShot(0,this,[this,op,flag,acquisition]() mutable {
+    if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
+    op.state="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition](Error e,QJsonObject) mutable {
+--- frozen/tests/unit/test_operations.cpp
++++ current/tests/unit/test_operations.cpp
+@@ -184,16 +184,19 @@
+   QTRY_VERIFY(operations.ready());QString id;
+   operations.invoke("region",[&](Error error,QJsonObject response){QVERIFY(!error);id=response["operationId"].toString();});
+   QTRY_COMPARE(source.acquisitions.size(),1);
+   source.acquisitions.takeFirst()({{}, {"cancelled","Selection cancelled",{}}});
+   HistoryStore journal(operations.databasePath());
+   QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));
+   QVERIFY(journal.operation(id).cancelled);
+   QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.copies,0);
++#ifdef __GLIBC__
++  QTRY_COMPARE_WITH_TIMEOUT(operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt(),1,5000);
++#endif
+  }
+  void acquisitionFailureSettlesWithoutPendingCopy() {
+   QTemporaryDir directory;ProviderRegistry registry;
+   SettingsService settings(directory.filePath("config.json"));
+   QVERIFY(settings.save(configuration(directory.path(),true),{}));
+   Source source;source.defer=true;
+   OperationService operations(directory.filePath("data"),settings,registry,source);
+   QTRY_VERIFY(operations.ready());QString id;
+--- frozen/tests/performance/bench_payload_lab.py
++++ current/tests/performance/bench_payload_lab.py
+@@ -250,30 +250,44 @@
+     sample('final-drained-idle',args.cycles+1)
+     results['summary']={'coldRssBytes':results['samples'][0]['process']['rssBytes'],'finalDrainedRssBytes':results['samples'][-1]['process']['rssBytes'],'cycleRssBytes':[item['sample']['process']['rssBytes'] for item in results['cycles']],'maxObservedReclamationUsec':max(item['memory']['lastAllocatorReclamationUsec'] for item in results['samples'])}
+     witness('final-fullscreen-synthetic-fixture')
+     results['ok']=True
+ except Exception as error:
+     results['error']=type(error).__name__+': '+str(error)
+     raise
+ finally:
+-    if started:
+-        lab.input_events(RUN,[{'type':'btn','data':{'button':'left','down':False}}])
+-        try:
+-            restore='''set -eu
++    try:
++        if started:
++            input_error = None
++            try:
++                lab.input_events(RUN,[{'type':'btn','data':{'button':'left','down':False}}])
++            except Exception as error:
++                results['ok'] = False
++                results['inputCleanupErrorType'] = type(error).__name__
++                input_error = error
++            results['restoredConfig'] = False
++            try:
++                restore='''set -eu
+ pkill -u lab -x putgd || true
+ for attempt in $(seq 1 100); do if ! pgrep -u lab -x putgd >/dev/null; then break; fi; sleep 0.05; done
+ pkill -u lab -f '^/home/lab/putgd-lab/payload-allocator/bin/putgd-desktop-fixture ' || true
+ nohup putgd-launcher --background > /home/lab/putgd-lab/app.log 2>&1 < /dev/null &
+ '''
+-            lab.guest_session(RUN,restore.replace('/home/lab/putgd-lab/payload-allocator',GUEST))
+-            end=time.monotonic()+10
+-            while True:
+-                try:
+-                    restored=lab.cli(RUN,'settings.get')
+-                    if restored['metadata']['acceptedRevision']==original_revision:
+-                        results['restoredConfig']=True;break
+-                except lab.LabError:pass
+-                if time.monotonic()>end:raise RuntimeError('Original resident/config did not restore')
+-                time.sleep(.1)
+-        finally:
+-            save('results.json',results)
+-            print(json.dumps({key:value for key,value in results.items() if key not in ('samples','cycles')},indent=2),flush=True)
++                lab.guest_session(RUN,restore.replace('/home/lab/putgd-lab/payload-allocator',GUEST))
++                end=time.monotonic()+10
++                while True:
++                    try:
++                        restored=lab.cli(RUN,'settings.get')
++                        if restored['metadata']['acceptedRevision']==original_revision:
++                            results['restoredConfig']=True;break
++                    except lab.LabError:pass
++                    if time.monotonic()>end:raise RuntimeError('Original resident/config did not restore')
++                    time.sleep(.1)
++            except Exception as error:
++                results['ok'] = False
++                results['restoreErrorType'] = type(error).__name__
++                raise
++            if input_error is not None:
++                raise input_error
++    finally:
++        save('results.json',results)
++        print(json.dumps({key:value for key,value in results.items() if key not in ('samples','cycles')},indent=2),flush=True)

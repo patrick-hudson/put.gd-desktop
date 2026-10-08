@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "scope": "independent owner-window observation alongside unchanged physical idle benchmark; no pixels, payloads or unrelated window titles exported",
+  "observerSha256": "79c209675e06e333fc62a9f782c7200c7408a7bb273d6a54c0cfd5c3c7533343",
+  "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+  "parameters": {
+    "seconds": 300,
+    "ownerWindowPollingSeconds": 1
+  },
+  "observations": [
+    {
+      "elapsedSeconds": 1.0159254379977938,
+      "residentPid": 1996648,
+      "mappedOwnedWindows": []
+    }
+  ],
+  "benchmarkExitCode": 0,
+  "operationCount": 0,
+  "coldIdleUninterrupted": true
+}

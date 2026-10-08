@@ -1,0 +1,36 @@
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -8,6 +8,9 @@
+ #include "ui/HistoryWindow.h"
+ #include "ui/TrayController.h"
+ #include <QApplication>
++#include <QTimer>
++#include <malloc.h>
++#include <cstdio>
+ #include <QCommandLineParser>
+ #include <QStandardPaths>
+ #include <QDir>
+@@ -174,5 +177,23 @@
+  app.setQuitOnLastWindowClosed(!tray.available());
+  if(!parser.isSet("background")||!tray.available()||settings.revision().isEmpty()) {if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();}
+  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,&putgd::OperationService::shutdown);
++
++ // Temporary attribution build only; never part of the production configuration.
++ const auto allocatorControl=qEnvironmentVariable("PUTGD_ALLOCATOR_CONTROL");
++ if(!allocatorControl.isEmpty()) {
++  auto* timer=new QTimer(&app);
++  const auto revision=std::make_shared<qint64>(-1);
++  QObject::connect(timer,&QTimer::timeout,&app,[allocatorControl,revision] {
++   QFile control(allocatorControl);if(!control.open(QIODevice::ReadOnly))return;
++   const auto document=QJsonDocument::fromJson(control.readAll()).object();
++   const auto requested=document["revision"].toInteger(-1);if(requested<0||requested==*revision)return;
++   *revision=requested;
++   const auto stats=[](qint64 rev,const char* phase){const auto m=mallinfo2();std::fprintf(stderr,"PUTGD_ALLOCATOR {\"revision\":%lld,\"phase\":\"%s\",\"arenaBytes\":%zu,\"allocatedBytes\":%zu,\"freeArenaBytes\":%zu,\"mmapBytes\":%zu,\"topFreeBytes\":%zu}\n",static_cast<long long>(rev),phase,static_cast<size_t>(m.arena),static_cast<size_t>(m.uordblks),static_cast<size_t>(m.fordblks),static_cast<size_t>(m.hblkhd),static_cast<size_t>(m.keepcost));std::fflush(stderr);};
++   stats(requested,"before");
++   if(document["trim"].toBool()){malloc_trim(0);stats(requested,"after-trim");}
++  });
++  timer->start(100);
++ }
++
+  return app.exec();
+ }
