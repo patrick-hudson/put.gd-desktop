@@ -1,0 +1,71 @@
+name: Build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    container: ubuntu:${{ matrix.distribution }}
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution: ['24.04', '26.04']
+    steps:
+      - name: Install distro dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates python3 cmake ninja-build qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Provision pinned AWS SDK
+        run: |
+          git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
+          python3 tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
+          cmake -S build/dependencies/aws-sdk-cpp -B build/aws -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/sdk" -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF -DAUTORUN_UNIT_TESTS=OFF -DENABLE_UNITY_BUILD=ON -DUSE_OPENSSL=ON
+          cmake --build build/aws --parallel 2
+          cmake --install build/aws
+      - name: Build and test
+        run: |
+          cmake --preset dev
+          cmake --build --preset dev
+          ctest --preset dev
+      - name: Build without test dependencies
+        run: |
+          cmake --preset release -DBUILD_TESTING=OFF
+          cmake --build --preset release
+
+  portable:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+      - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: '6.8.3'
+          cache: false
+      - name: Build QtKeychain and AWS SDK
+        shell: bash
+        run: |
+          git clone https://github.com/frankosterfeld/qtkeychain.git build/dependencies/qtkeychain
+          git -C build/dependencies/qtkeychain checkout 8eac9889775ca45c106d077bb0d3744754a1570a
+          cmake -S build/dependencies/qtkeychain -B build/keychain -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/sdk" -DBUILD_WITH_QT6=ON -DBUILD_TEST_APPLICATION=OFF -DBUILD_TRANSLATIONS=OFF
+          cmake --build build/keychain --parallel 2
+          cmake --install build/keychain
+          git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
+          python tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
+          cmake -S build/dependencies/aws-sdk-cpp -B build/aws -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/sdk" -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF -DAUTORUN_UNIT_TESTS=OFF -DENABLE_UNITY_BUILD=ON
+          cmake --build build/aws --parallel 2
+          cmake --install build/aws
+      - name: Compile shared application
+        shell: bash
+        run: |
+          cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$PWD/build/sdk;$QT_ROOT_DIR"
+          cmake --build --preset release
