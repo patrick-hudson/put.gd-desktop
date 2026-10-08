@@ -336,3 +336,8 @@ The four affected SDK/GUI targets also passed ASan/UBSan with leak detection
 (14.33s) and the documented instrumented-Qt TSan environment (42.72s). The release
 AWS SDK/OpenSSL/libcurl remain uninstrumented; this does not certify their internal
 race freedom. No new suppression was introduced.
+The focused Compound Engineering review combined a local correctness read with
+an independent Anthropic Claude Opus 5.5 pass and returned no findings for the
+six-file optimization slice at 016edb8. Its
+[receipt](evidence/2026-10-08-memory-review.json) records exact scope and limitations;
+it does not certify whole-product readiness or the later permanent-test diff.
