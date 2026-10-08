@@ -27,7 +27,7 @@ Stop conditions: Do not substitute a different capture target or claim desktop s
 
 ### Summary
 
-Build a small resident screenshot and clipboard sharing app with a configurable native GUI. Its default result is an upload and a copied public URL, with S3 as the first storage provider. Provide local-only actions, optional local copies of uploads with folders by content type, persistent upload history with viewing/link copying/remote deletion, useful failure recovery, and documented CLI/MCP access to the same operations. Design the shared storage contracts for later providers.
+Build a small resident screenshot and clipboard sharing app with a configurable native GUI and a polished, custom visual design. Its default result is an upload and a copied public URL, with S3 as the first storage provider. Provide local-only actions, optional local copies of uploads with folders by content type, persistent upload history with viewing/link copying/remote deletion, useful failure recovery, and documented CLI/MCP access to the same operations. Design the shared storage contracts for later providers.
 
 ### Problem Frame
 
@@ -38,6 +38,7 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 - **Immediate sharing is the default.** Governs R5. (session-settled: user-directed — chosen over local-first capture: the user wants immediate upload and URL copying.)
 - **Preserve the daily hotkey experience on Wayland.** Governs R13–R15. (session-settled: user-directed — chosen over accepting a desktop picker for every capture: maintain desktop-specific integrations where needed.)
 - **Linux ships first, with future platform support preserved.** Governs R13, R26.
+- **Custom visual design is required.** Governs R35. (session-settled: user-directed — added 2026-10-08: the user rejects the basic Qt layout visuals and wants a custom, attractive interface.)
 
 ### Requirements
 
@@ -99,6 +100,10 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 
 - R34. All non-secret application and provider settings live in one documented, versioned JSON file that humans and agents can edit. Valid external edits update the running app and its settings view without restart. Invalid or incomplete edits preserve the last accepted settings and show an actionable error; unsaved GUI edits survive external changes with a visible conflict. Credentials remain secret-store references or session-only values under R18. New settings do not retarget accepted operations or historical uploads.
 
+#### Visual design
+
+- R35. The application has a cohesive, custom, polished visual design rather than shipping the basic Qt forms as its finished interface. Design settings, setup, recent activity, history, and confirmation/error states together, with intentional typography, spacing, color, icons, navigation, and content hierarchy. Use the native Qt implementation, preserve keyboard navigation, accessible names, clear focus indicators, readable contrast, and usable layouts at supported display scales, and meet R20 and the existing performance budgets. Cosmetic completeness requires inspection of the actual rendered application; widget tests alone do not prove it.
+
 ### Key Flows
 
 - F1. Setup → configure destination/credentials → inspect desktop capabilities → install/enable integration where needed → bind shortcuts → ready. Covers R11–R18.
@@ -125,6 +130,8 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 - AE12. Delete an upload from history: the selected remote object is removed, its record reports the actual outcome, and its local copy survives. A denied or uncertain delete remains visible and retryable; a known replacement at the same key is not deleted on behalf of the older entry. Covers R32.
 - AE13. A test-only second provider exercises upload → receipt → history → copy link → remote delete through the same GUI/CLI services without AWS types outside the S3 adapter. Covers R33.
 - AE14. With the settings window open, an agent atomically edits the JSON destination, naming policy, and image folder. The GUI shows the new values and a later action uses them; an already accepted upload and history deletion keep their original targets. Invalid JSON preserves the accepted configuration, and an unsaved GUI draft is retained with a conflict notice. Covers R16/R34.
+
+- AE15. Open settings, recent activity, and a populated history in the installed app: they share a custom visual language, readable hierarchy, and deliberate spacing. Empty, loading, success, partial-failure, and remote-deletion states remain clear. Keyboard focus and navigation are visible, and supported scale factors do not clip content. Covers R35.
 
 ### Success Criteria
 
@@ -505,11 +512,11 @@ Verification: Real Cinnamon hotkeys, artifacts, public-link/paste behavior, and 
 
 Goal: Users can configure every supported action and understand setup and failures from the GUI.
 
-Requirements: R6, R11, R12, R15, R16, R18–R20, R27–R34. Dependencies: U2, U3, U4.
+Requirements: R6, R11, R12, R15, R16, R18–R20, R27–R35. Dependencies: U2, U3, U4.
 
 Files: src/ui/SettingsWindow.*, src/ui/ShortcutEditor.*, src/ui/RecentOperations.*, src/ui/HistoryWindow.*, src/ui/HistoryModel.*, src/ui/TrayController.*, tests/gui/test_settings.cpp, tests/gui/test_operations_view.cpp, tests/gui/test_history_view.cpp, docs/user-guide.md.
 
-Approach: Bind widgets to KTD21 shared settings/services, with stable accessible object names for tests. Expose the configuration path/revision and validation status; refresh clean forms on external acceptance and preserve dirty drafts with conflict/reload handling. All R16 fields are editable, including explicit ACL omission and an optional public URL base. Add destination testing, secret-store/session-only selection, conflict/capability status, copy/retry actions, optional login startup, and notifications. Keep settings/history reachable through the launcher/CLI when a tray icon is unavailable. Add the opt-in upload-copy setting, default-folder chooser, and per-category folder overrides through KTD16, plus local-save status and retry without reupload. Add generated/original upload-name selection and rename/skip/overwrite policy controls, with duplicate-check permission errors and per-item renamed/skipped/conflict outcomes. Implement R31 history search/filters/details, lazy image thumbnails, open/copy-link actions, selected-item remote-delete confirmation/progress, and distinct clear-history/cache controls. Present original destination, last-known state, superseded links, version-retained results, and local-copy status plainly. Provider settings/capabilities drive available controls without S3 assumptions in the history view.
+Approach: Establish and apply a custom Qt visual system for all user-facing windows: typography, spacing, palette, icons, navigation, and reusable controls. Treat the existing basic forms as functional scaffolding; redesign their composition and visual hierarchy before release. Bind widgets to KTD21 shared settings/services, with stable accessible object names for tests. Expose the configuration path/revision and validation status; refresh clean forms on external acceptance and preserve dirty drafts with conflict/reload handling. All R16 fields are editable, including explicit ACL omission and an optional public URL base. Add destination testing, secret-store/session-only selection, conflict/capability status, copy/retry actions, optional login startup, and notifications. Keep settings/history reachable through the launcher/CLI when a tray icon is unavailable. Add the opt-in upload-copy setting, default-folder chooser, and per-category folder overrides through KTD16, plus local-save status and retry without reupload. Add generated/original upload-name selection and rename/skip/overwrite policy controls, with duplicate-check permission errors and per-item renamed/skipped/conflict outcomes. Implement R31 history search/filters/details, lazy image thumbnails, open/copy-link actions, selected-item remote-delete confirmation/progress, and distinct clear-history/cache controls. Present original destination, last-known state, superseded links, version-retained results, and local-copy status plainly. Provider settings/capabilities drive available controls without S3 assumptions in the history view.
 
 Test scenarios:
 1. Saving invalid endpoint/path/shortcut settings shows actionable validation and does not partially replace valid settings.
@@ -524,7 +531,9 @@ Test scenarios:
 10. A populated 10,000-entry ledger stays responsive during paging/filtering and bounded thumbnail decoding; history browsing works offline and makes zero provider calls. Known removed links are disabled for ordinary open/copy actions; details preserve the historic receipt.
 11. Covers AE14. External file edits update clean forms, preserve dirty drafts with a conflict notice, and cannot silently overwrite a detected newer revision. Invalid edits show field/parse errors with the accepted settings still active; a later valid replacement recovers without restart.
 
-Verification: Headless/in-process Qt GUI tests prove form/state behavior; real sessions prove tray, launch-at-login, notifications, and clipboard paste.
+12. Covers AE15. Inspect rendered settings, setup, activity, populated history, and confirmation/error states for the custom visual design, including keyboard focus and supported display scales. Retain screenshots of the finished design and correct clipping, inconsistent styling, and unclear hierarchy.
+
+Verification: Headless/in-process Qt GUI tests prove form/state behavior; real sessions prove tray, launch-at-login, notifications, and clipboard paste. Actual rendered screenshots and visual review prove R35; default-looking functional forms do not satisfy this gate.
 
 ### U6. Reproducible graphical VM lab
 
