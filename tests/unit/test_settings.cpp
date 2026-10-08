@@ -24,6 +24,14 @@ class SettingsContract final : public QObject {
         return file.readAll();
     }
 private slots:
+    void asynchronousWritesAndTemplateRemainExplicit() {
+        QTemporaryDir dir;putgd::SettingsService service(dir.filePath("config.json"));
+        const auto templ=putgd::Settings::developmentTemplate();QVERIFY(!templ["profiles"].toArray().isEmpty());QVERIFY(service.document()["profiles"].toArray().isEmpty());
+        bool saved=false;service.saveAsync(putgd::Settings::defaults(),{},[&](putgd::Result result){QVERIFY(result);saved=true;});QTRY_VERIFY(saved);const auto revision=service.revision();QVERIFY(!revision.isEmpty());
+        bool patched=false;service.patchAsync({{"preferences",QJsonObject{{"notifications",false}}}},revision,[&](putgd::Result result){QVERIFY(result);patched=true;});QTRY_VERIFY(patched);QVERIFY(!service.snapshot().notifications);
+        bool conflict=false;service.patchAsync({},revision,[&](putgd::Result result){QCOMPARE(result.error.code,QString("config_conflict"));conflict=true;});QTRY_VERIFY(conflict);QVERIFY(!service.snapshot().notifications);
+        bool rejected=false;service.saveAsync(templ,service.revision(),[&](putgd::Result result){QCOMPARE(result.error.code,QString("config_invalid"));rejected=true;});QTRY_VERIFY(rejected);QVERIFY(service.document()["profiles"].toArray().isEmpty());
+    }
     void freshStartupDoesNotSelectDevelopmentDestination() {
         QTemporaryDir dir;
         const auto path = dir.filePath(QStringLiteral("config.json"));

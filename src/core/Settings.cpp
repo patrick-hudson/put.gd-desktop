@@ -63,6 +63,14 @@ QJsonObject Settings::defaults() {
         {"preferences", QJsonObject{{"notifications", true}, {"launchAtLogin", false}}}};
 }
 
+QJsonObject Settings::developmentTemplate() {
+    auto document=defaults();
+    document["profiles"]=QJsonArray{QJsonObject{{"id","development-s3"},{"label","put.gd development destination"},{"provider","s3"},
+        {"settings",QJsonObject{{"bucket","put.gd"},{"region","us-east-2"},{"endpoint","https://s3.us-east-2.amazonaws.com"},{"objectPrefix",""},{"storageClass","STANDARD"},{"aclMode","public-read"},{"publicUrlBase","https://put.gd"},{"addressing","path"},{"connectTimeoutMs",5000},{"requestTimeoutMs",60000},{"lowSpeedBytesPerSecond",1},{"lowSpeedTimeSeconds",30}}},
+        {"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/development-s3"}}}}};
+    auto actions=document["actions"].toObject();for(const auto& name:actionNames()) {auto action=actions[name].toObject();action["profileId"]="development-s3";actions[name]=action;}document["actions"]=actions;return document;
+}
+
 Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validateProfile) {
     if (!keys(doc, {"schemaVersion", "actions", "profiles", "archive", "naming", "limits", "retention", "preferences"}))
         return invalid("/", "Configuration has missing or unsupported fields.");

@@ -1,13 +1,13 @@
 # Configuration
 
 The resident app owns one `config.json` under Qt's `AppConfigLocation`. GUI and CLI
-will report the exact path. No separate YAML file or preferences database exists.
+report the exact path. No separate YAML file or preferences database exists.
 The schema is [config.schema.json](../schemas/config.schema.json). The shared
 `SettingsService` is the authoritative validator, including registered provider rules,
 absolute paths, shortcut syntax, and cross-profile references.
 
-The service is implemented and tested; GUI/CLI integration is still being implemented.
-Do not interpret these interface descriptions as release acceptance evidence.
+The resident JSON CLI uses this service; full settings GUI/native integration belongs
+to its subsequent implementation units. Headless evidence is not desktop acceptance.
 
 The entire document is required and unknown fields are rejected. Schema version 1
 has no predecessor to migrate. Unsupported versions stay untouched for explicit recovery.
@@ -78,3 +78,18 @@ or rebase before saving; that GUI behavior is implemented in the settings unit.
 Access keys, secrets, session tokens, and source payloads are never configuration values.
 Provider adapters must reject secret-bearing settings fields. Credential references identify
 OS-secret-store records; session credentials are explicitly supplied to the running process.
+
+The session CLI exposes `settings.developmentTemplate` for inspection and
+`settings.importDevelopment` with `expectedRevision` for deliberate setup. Import
+validates the full candidate through the registered S3 adapter; without that adapter
+it fails and keeps current configuration. The example never activates itself. Its
+bucket/region/HTTPS endpoint/prefix/storage class/ACL/public URL/addressing and all
+connect/request/low-speed timeout controls are explicit non-secret values. Replace
+its placeholder local root before using the file directly. Credentials remain references.
+
+Watcher reload and CLI writes/reads run on a serialized configuration worker. Public
+synchronous APIs remain available for startup/tools/tests; acceptance signals and watcher
+updates always run on the service's owner thread. Indexed history has no automatic
+expiry with null `historyRetentionDays`; a positive value expires old confirmed records
+at startup and hourly, retaining active deletion identities. Cache cleanup leaves
+history and user-owned local files intact.

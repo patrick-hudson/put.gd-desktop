@@ -46,6 +46,7 @@ struct Settings {
     bool launchAtLogin = false;
 
     static QJsonObject defaults();
+    static QJsonObject developmentTemplate();
     static Error validate(const QJsonObject&, const ProfileValidator& = {});
     static Settings fromValidated(const QJsonObject&);
     static QStringList actionNames();

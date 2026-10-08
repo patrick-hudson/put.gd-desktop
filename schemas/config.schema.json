@@ -1,42 +1,269 @@
 {
   "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "actions",
+    "profiles",
+    "archive",
+    "naming",
+    "limits",
+    "retention",
+    "preferences"
+  ],
   "properties": {
     "schemaVersion": {
       "const": 1
     },
     "actions": {
       "type": "object",
-      "properties": {
-        "region": {
-          "$ref": "#/$defs/action"
-        },
-        "window": {
-          "$ref": "#/$defs/action"
-        },
-        "desktop": {
-          "$ref": "#/$defs/action"
-        },
-        "clipboard": {
-          "$ref": "#/$defs/action"
-        }
-      },
+      "additionalProperties": false,
       "required": [
         "region",
         "window",
         "desktop",
         "clipboard"
       ],
-      "additionalProperties": false
+      "properties": {
+        "region": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "desktop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "clipboard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        }
+      }
     },
     "profiles": {
       "type": "array",
       "maxItems": 32,
       "items": {
-        "$ref": "#/$defs/profile"
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "provider",
+          "settings",
+          "credentials"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "provider": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "settings": {
+            "type": "object"
+          },
+          "credentials": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "reference"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "keychain",
+                  "session"
+                ]
+              },
+              "reference": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 256
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "const": "keychain"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "reference": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "reference": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "s3"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/s3Settings"
+                }
+              }
+            }
+          }
+        ]
       }
     },
     "archive": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keepUploads",
+        "root",
+        "folders"
+      ],
       "properties": {
         "keepUploads": {
           "type": "boolean"
@@ -44,17 +271,26 @@
         "root": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 4096
+          "maxLength": 4096,
+          "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
         },
         "folders": {
           "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "images",
+            "videos",
+            "text",
+            "other"
+          ],
           "properties": {
             "images": {
               "anyOf": [
                 {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 4096
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
                 },
                 {
                   "type": "null"
@@ -66,7 +302,8 @@
                 {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 4096
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
                 },
                 {
                   "type": "null"
@@ -78,7 +315,8 @@
                 {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 4096
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
                 },
                 {
                   "type": "null"
@@ -90,32 +328,25 @@
                 {
                   "type": "string",
                   "minLength": 1,
-                  "maxLength": 4096
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
                 },
                 {
                   "type": "null"
                 }
               ]
             }
-          },
-          "required": [
-            "images",
-            "videos",
-            "text",
-            "other"
-          ],
-          "additionalProperties": false
+          }
         }
-      },
-      "required": [
-        "keepUploads",
-        "root",
-        "folders"
-      ],
-      "additionalProperties": false
+      }
     },
     "naming": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "collisionPolicy"
+      ],
       "properties": {
         "mode": {
           "enum": [
@@ -130,15 +361,22 @@
             "overwrite"
           ]
         }
-      },
-      "required": [
-        "mode",
-        "collisionPolicy"
-      ],
-      "additionalProperties": false
+      }
     },
     "limits": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxFiles",
+        "pendingOperations",
+        "concurrentUploads",
+        "maxFileBytes",
+        "maxBatchBytes",
+        "pendingArtifactBytes",
+        "clipboardTextBytes",
+        "imagePixels",
+        "imageBytes"
+      ],
       "properties": {
         "maxFiles": {
           "type": "integer",
@@ -185,22 +423,17 @@
           "minimum": 1,
           "maximum": 1099511627776
         }
-      },
-      "required": [
-        "maxFiles",
-        "pendingOperations",
-        "concurrentUploads",
-        "maxFileBytes",
-        "maxBatchBytes",
-        "pendingArtifactBytes",
-        "clipboardTextBytes",
-        "imagePixels",
-        "imageBytes"
-      ],
-      "additionalProperties": false
+      }
     },
     "retention": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "failedArtifactDays",
+        "recentActivityLimit",
+        "previewCacheBytes",
+        "historyRetentionDays"
+      ],
       "properties": {
         "failedArtifactDays": {
           "type": "integer",
@@ -229,17 +462,15 @@
             }
           ]
         }
-      },
-      "required": [
-        "failedArtifactDays",
-        "recentActivityLimit",
-        "previewCacheBytes",
-        "historyRetentionDays"
-      ],
-      "additionalProperties": false
+      }
     },
     "preferences": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notifications",
+        "launchAtLogin"
+      ],
       "properties": {
         "notifications": {
           "type": "boolean"
@@ -247,129 +478,92 @@
         "launchAtLogin": {
           "type": "boolean"
         }
-      },
-      "required": [
-        "notifications",
-        "launchAtLogin"
-      ],
-      "additionalProperties": false
+      }
     }
   },
-  "required": [
-    "schemaVersion",
-    "actions",
-    "profiles",
-    "archive",
-    "naming",
-    "limits",
-    "retention",
-    "preferences"
-  ],
-  "additionalProperties": false,
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://put.gd/schemas/desktop-config-v1.json",
-  "title": "put.gd desktop non-secret configuration",
+  "$id": "https://put.gd/schemas/config.schema.json",
+  "title": "put.gd non-secret configuration",
   "$defs": {
-    "action": {
+    "s3Settings": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket",
+        "region",
+        "endpoint",
+        "objectPrefix",
+        "storageClass",
+        "aclMode",
+        "publicUrlBase",
+        "addressing",
+        "connectTimeoutMs",
+        "requestTimeoutMs",
+        "lowSpeedBytesPerSecond",
+        "lowSpeedTimeSeconds"
+      ],
       "properties": {
-        "destination": {
+        "bucket": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "endpoint": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "objectPrefix": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "storageClass": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "aclMode": {
           "enum": [
-            "upload",
-            "local"
+            "public-read",
+            "omit"
           ]
         },
-        "profileId": {
-          "anyOf": [
-            {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-            },
-            {
-              "type": "null"
-            }
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
           ]
         },
-        "shortcut": {
-          "type": "string",
-          "minLength": 0,
-          "maxLength": 128
+        "addressing": {
+          "enum": [
+            "path",
+            "virtual",
+            "auto"
+          ]
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "lowSpeedBytesPerSecond": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "lowSpeedTimeSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
         }
-      },
-      "required": [
-        "destination",
-        "profileId",
-        "shortcut"
-      ],
-      "additionalProperties": false
-    },
-    "profile": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-        },
-        "label": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
-        "provider": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
-        },
-        "settings": {
-          "type": "object"
-        },
-        "credentials": {
-          "oneOf": [
-            {
-              "type": "object",
-              "properties": {
-                "mode": {
-                  "const": "keychain"
-                },
-                "reference": {
-                  "type": "string",
-                  "minLength": 1,
-                  "maxLength": 256
-                }
-              },
-              "required": [
-                "mode",
-                "reference"
-              ],
-              "additionalProperties": false
-            },
-            {
-              "type": "object",
-              "properties": {
-                "mode": {
-                  "const": "session"
-                },
-                "reference": {
-                  "type": "null"
-                }
-              },
-              "required": [
-                "mode",
-                "reference"
-              ],
-              "additionalProperties": false
-            }
-          ]
-        }
-      },
-      "required": [
-        "id",
-        "label",
-        "provider",
-        "settings",
-        "credentials"
-      ],
-      "additionalProperties": false
+      }
     }
   },
-  "$comment": "The shared SettingsService also validates absolute paths, shortcut syntax, unique profile IDs, profile references, total file size, and registered provider settings. Actual credential values are never valid configuration fields."
+  "description": "SettingsService is authoritative for profile references, uniqueness, shortcuts and registered provider validation."
 }

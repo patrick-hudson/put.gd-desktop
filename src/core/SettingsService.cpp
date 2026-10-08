@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QLockFile>
 #include <QSaveFile>
+#include <QPointer>
 
 namespace putgd {
 namespace {
@@ -32,6 +33,57 @@ QJsonObject overlay(const QJsonObject& original, const QJsonObject& patch) {
     }
     return result;
 }
+struct LoadedSettings { QJsonObject candidate; QString revision; Error error; };
+LoadedSettings loadValidated(const QString& path,const ProfileValidator& validator) {
+    LoadedSettings loaded;
+    QByteArray bytes;
+    bool exists = false;
+    auto error = readConfig(path, bytes, exists);
+    loaded.revision = exists && !error ? revisionOf(bytes) : QString{};
+    if (!error && !exists) error = {"config_missing", "Choose or restore a configuration in setup.", {}};
+    QJsonObject candidate;
+    if (!error) {
+        QJsonParseError parseError;
+        const auto json = QJsonDocument::fromJson(bytes, &parseError);
+        if (parseError.error != QJsonParseError::NoError || !json.isObject())
+            error = {"config_invalid", "Configuration must be a valid JSON object.", {{"offset", parseError.offset}}};
+        else {
+            candidate = json.object();
+            error = Settings::validate(candidate, validator);
+        }
+    }
+    loaded.candidate=candidate;loaded.error=error;return loaded;
+}
+Error writeCandidate(const QString& path,const ProfileValidator& validator,const QJsonObject& candidate,const QString& expectedRevision) {
+    if (auto error = Settings::validate(candidate, validator)) return error;
+    const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
+    if (bytes.size() > maximumConfigBytes) return {"config_too_large", "Configuration exceeds the 1 MiB limit.", {}};
+    const auto parent = QFileInfo(path).absolutePath();
+    if (!QDir(parent).exists()) {
+        if (!QDir().mkpath(parent) || !QFile::setPermissions(parent, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
+            return {"config_unwritable", "Cannot create a private configuration directory.", {}};
+    }
+    QLockFile lock(path + QStringLiteral(".lock"));
+    lock.setStaleLockTime(30000);
+    if (!lock.tryLock(0)) {
+        if (lock.error() == QLockFile::LockFailedError)
+            return {"config_busy", "Another cooperative writer holds the configuration lock.", {}};
+        return {"config_unwritable", "Cannot create the configuration lock file.", {}};
+    }
+    QByteArray current;
+    bool exists = false;
+    if (auto error = readConfig(path, current, exists)) return error;
+    const auto actualRevision = exists ? revisionOf(current) : QString{};
+    if (actualRevision != expectedRevision)
+        return {"config_conflict", "Configuration changed; reload or rebase before saving.", {{"observedRevision", actualRevision}}};
+    QSaveFile output(path);
+    output.setDirectWriteFallback(false);
+    if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner) ||
+        output.write(bytes) != bytes.size() || !output.commit())
+        return {"config_unwritable", "Atomic configuration save failed; prior bytes were preserved.", {}};
+    return {};
+}
+
 }
 
 SettingsService::SettingsService(QString path, ProfileValidator validator, QObject* parent)
@@ -42,8 +94,10 @@ SettingsService::SettingsService(QString path, ProfileValidator validator, QObje
     fallback_.setInterval(2000);
     connect(&watcher_, &QFileSystemWatcher::fileChanged, this, &SettingsService::scheduleReload);
     connect(&watcher_, &QFileSystemWatcher::directoryChanged, this, &SettingsService::scheduleReload);
-    connect(&debounce_, &QTimer::timeout, this, [this] { reload(); });
-    connect(&fallback_, &QTimer::timeout, this, [this] { if (!watching_) reload(); });
+    connect(&debounce_, &QTimer::timeout, this, [this] { reloadAsync(); });
+    connect(&fallback_, &QTimer::timeout, this, [this] { if (!watching_) reloadAsync(); });
+    worker_=new QObject;worker_->moveToThread(&workerThread_);
+    connect(&workerThread_,&QThread::finished,worker_,&QObject::deleteLater);workerThread_.start();
     reload();
     fallback_.start();
 }
@@ -63,67 +117,41 @@ QJsonObject SettingsService::metadata() const {
         {"validation", QJsonObject{{"ok", !lastError_}, {"error", lastError_.toJson()}}}};
 }
 
+Result SettingsService::acceptLoaded(const QJsonObject& candidate,const QString& revision,const Error& error,quint64 sequence) {
+    if(sequence<appliedSequence_)return {error,false};
+    appliedSequence_=sequence;observedRevision_=revision;
+    bool changed=false;
+    if(!error&&revision!=acceptedRevision_) {settings_=Settings::fromValidated(candidate);acceptedRevision_=revision;changed=true;}
+    lastError_=error;armWatcher();if(changed)emit accepted(acceptedRevision_);emit statusChanged();return {error,changed};
+}
 Result SettingsService::reload() {
-    QByteArray bytes;
-    bool exists = false;
-    auto error = readConfig(path_, bytes, exists);
-    observedRevision_ = exists && !error ? revisionOf(bytes) : QString{};
-    if (!error && !exists) error = {"config_missing", "Choose or restore a configuration in setup.", {}};
-    QJsonObject candidate;
-    if (!error) {
-        QJsonParseError parseError;
-        const auto json = QJsonDocument::fromJson(bytes, &parseError);
-        if (parseError.error != QJsonParseError::NoError || !json.isObject())
-            error = {"config_invalid", "Configuration must be a valid JSON object.", {{"offset", parseError.offset}}};
-        else {
-            candidate = json.object();
-            error = Settings::validate(candidate, validator_);
-        }
-    }
-    bool changed = false;
-    if (!error && observedRevision_ != acceptedRevision_) {
-        settings_ = Settings::fromValidated(candidate);
-        acceptedRevision_ = observedRevision_;
-        changed = true;
-    }
-    lastError_ = error;
-    armWatcher();
-    if (changed) emit accepted(acceptedRevision_);
-    emit statusChanged();
-    return {error, changed};
+    std::lock_guard guard(ioMutex_);auto loaded=loadValidated(path_,validator_);
+    return acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);
 }
-
-Result SettingsService::save(const QJsonObject& candidate, const QString& expectedRevision) {
-    if (auto error = Settings::validate(candidate, validator_)) return {error};
-    const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
-    if (bytes.size() > maximumConfigBytes) return {{"config_too_large", "Configuration exceeds the 1 MiB limit.", {}}};
-    const auto parent = QFileInfo(path_).absolutePath();
-    if (!QDir(parent).exists()) {
-        if (!QDir().mkpath(parent) || !QFile::setPermissions(parent, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
-            return {{"config_unwritable", "Cannot create a private configuration directory.", {}}};
-    }
-    QLockFile lock(path_ + QStringLiteral(".lock"));
-    lock.setStaleLockTime(30000);
-    if (!lock.tryLock(0)) {
-        if (lock.error() == QLockFile::LockFailedError)
-            return {{"config_busy", "Another cooperative writer holds the configuration lock.", {}}};
-        return {{"config_unwritable", "Cannot create the configuration lock file.", {}}};
-    }
-    QByteArray current;
-    bool exists = false;
-    if (auto error = readConfig(path_, current, exists)) return {error};
-    const auto actualRevision = exists ? revisionOf(current) : QString{};
-    if (actualRevision != expectedRevision)
-        return {{"config_conflict", "Configuration changed; reload or rebase before saving.", {{"observedRevision", actualRevision}}}};
-    QSaveFile output(path_);
-    output.setDirectWriteFallback(false);
-    if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner) ||
-        output.write(bytes) != bytes.size() || !output.commit())
-        return {{"config_unwritable", "Atomic configuration save failed; prior bytes were preserved.", {}}};
-    return reload();
+Result SettingsService::save(const QJsonObject& candidate,const QString& expectedRevision) {
+    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,candidate,expectedRevision))return {error};return reload();
 }
-
 Result SettingsService::patch(const QJsonObject& patchObject, const QString& expectedRevision) {
     return save(overlay(document(), patchObject), expectedRevision);
 }
+SettingsService::~SettingsService() {workerThread_.quit();workerThread_.wait();}
+void SettingsService::asyncLoad(const QJsonObject& candidate,const QString& expected,bool write,std::function<void(Result)> callback) {
+    QPointer<SettingsService> guarded(this);const auto path=path_;const auto validator=validator_;
+    QMetaObject::invokeMethod(worker_,[guarded,path,validator,candidate,expected,write,callback] {
+        if(!guarded)return;
+        std::lock_guard guard(guarded->ioMutex_);
+        Error error;if(write)error=writeCandidate(path,validator,candidate,expected);
+        LoadedSettings loaded;if(!error)loaded=loadValidated(path,validator);
+        const auto sequence=++guarded->sequence_;
+        QMetaObject::invokeMethod(guarded,[guarded,loaded,error,sequence,callback] {
+            if(!guarded)return;
+            const auto result=error?Result{error}:guarded->acceptLoaded(loaded.candidate,loaded.revision,loaded.error,sequence);
+            if(callback)callback(result);
+        },Qt::QueuedConnection);
+    },Qt::QueuedConnection);
+}
+void SettingsService::reloadAsync(std::function<void(Result)> callback) {asyncLoad({}, {},false,std::move(callback));}
+void SettingsService::saveAsync(const QJsonObject& candidate,const QString& expected,std::function<void(Result)> callback) {asyncLoad(candidate,expected,true,std::move(callback));}
+void SettingsService::patchAsync(const QJsonObject& patch,const QString& expected,std::function<void(Result)> callback) {saveAsync(overlay(document(),patch),expected,std::move(callback));}
+
 }
