@@ -80,6 +80,12 @@ origin deletion cannot invalidate browser/CDN caches. See [S3 behavior](s3.md).
 
 For configuration, inspect before patching, then use the reported file-content revision
 `metadata.observedRevision` as `expected_revision` (see [configuration.md](configuration.md) for metadata).
+The `inspect` tool nests the three CLI envelopes under `result.capabilities`,
+`result.diagnostics`, and `result.configuration`. Read the accepted document from
+`result.configuration.result.document` and the revision from
+`result.configuration.result.metadata.observedRevision`; check each nested `ok`
+and the configuration metadata's `validation.ok`. The outer successful inspection
+envelope alone does not establish that the on-disk configuration validates.
 A synthetic change is `{"patch":{"preferences":{"notifications":false}},
 "expected_revision":"RETURNED-FILE-REVISION"}`. A stale revision returns `config_conflict`:
 reread and rebase; never silently overwrite. Object patches recurse; arrays/scalars replace,

@@ -51,3 +51,23 @@ or skipped entries never issue a deletion. Clearing history/cache never removes 
 objects. Copy retry never reuploads. No source or credential value is accepted in the
 CLI's JSON configuration. Native sources and S3 become available only when their real
 adapters are implemented and registered; current unsupported capabilities are explicit.
+
+For a configuration walkthrough, inspect `capabilities`, `settings.get`, and
+`diagnostics` before invoking an action. `settings.get` returns the accepted JSON at
+`result.document` and file state at `result.metadata`: `path`, `acceptedRevision`,
+`observedRevision`, `validation`, and watcher status. Use `observedRevision` as the
+patch's `expectedRevision` and reread after a successful patch or conflict:
+
+```sh
+putgd-cli settings.patch '{"patch":{"retention":{"recentActivityLimit":77}},"expectedRevision":"RETURNED-OBSERVED-REVISION"}'
+putgd-cli settings.get
+```
+
+A successful `settings.get` envelope can still report
+`result.metadata.validation.ok: false` for invalid on-disk bytes; `result.document`
+remains the last accepted document. `settings.reload` returns `config_invalid` with
+the failing JSON path in `error.details.path`. Correct that field in the complete
+file using the atomic-save/locking convention in [configuration.md](configuration.md),
+reload, then verify validation and both revisions. `diagnostics` reports backend,
+Qt version, journal readiness, active operation count, and capabilities; inspect
+configuration separately to diagnose a settings error.

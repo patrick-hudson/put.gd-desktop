@@ -57,6 +57,12 @@ The service watches both the file and parent directory, debounces notifications 
 and re-arms after atomic replacements. If watching fails, it rescans every two seconds.
 Content SHA-256 revisions deduplicate accepted changes. Metadata distinguishes the
 accepted revision from observed file bytes and reports validation/watch status.
+In CLI `settings.get`, these fields are under `result.metadata`, while
+`result.document` is the accepted configuration. When external bytes are invalid,
+`metadata.validation.ok` is false and its error identifies the failing JSON path;
+`acceptedRevision` continues to identify the accepted document and
+`observedRevision` identifies the invalid file. Metadata inspection itself can
+still succeed. Backend `diagnostics` does not include this validation state.
 Loading, validating, and inspecting configuration performs no capture, clipboard-content
 read, provider request, or secret-store unlock. Accepted changes notify consumers so they
 can refresh preferences and request shortcut rebinding. Operations use immutable snapshots;
