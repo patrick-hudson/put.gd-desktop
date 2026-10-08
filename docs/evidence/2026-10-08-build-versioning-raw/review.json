@@ -1,0 +1,284 @@
+{
+  "status": "complete",
+  "verdict": "Ready with fixes",
+  "verdict_reason": "Two confirmed P2 defects remain: packages can mix newer runtime source assets with an older compiled identity, and modal About can block region-capture input. Address #1 and #2, then verify their focused regressions; incidence was not measured during this read-only review.",
+  "fix_order": [
+    1,
+    2
+  ],
+  "scope": {
+    "base": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+    "branch": "",
+    "head_sha": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+    "pr_url": null,
+    "files_changed": 19,
+    "mode": "standalone",
+    "workspace": "/tmp/putgd-version-review"
+  },
+  "intent": "Give every commit a distinguishable development software version derived from SemVer base 0.1.1 plus Git count/hash, refreshed by an ordinary incremental build. Expose one compiled identity through app/CLI --version, tray About, diagnostics and installed/package metadata; preserve JSON schema compatibility. Support syntax-validated supplied archive provenance or explicit unknown.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "project-standards",
+    "testing",
+    "maintainability",
+    "agent-native",
+    "security",
+    "api-contract",
+    "reliability",
+    "adversarial-claude"
+  ],
+  "findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "cmake/CheckBuildIdentity.cmake.in:16-18 checks executable --version output against the built manifest; cmake/PackageBuildIdentity.cmake.in:2 assigns that package version.",
+        "packaging/linux/CMakeLists.txt:10-11 installs integrations/gnome/extension.js and metadata.json directly from PROJECT_SOURCE_DIR; extension.js:20-35 defines the runtime bridge interface.",
+        "docs/versioning.md:43-44 explicitly supports advancing Git without rebuilding while retaining the old package identity.",
+        "tests/cmake/version_contract.cmake:31-47,94-116 tests stale-build packaging with executables and a manifest but no installed source runtime asset."
+      ],
+      "file": "cmake/CheckBuildIdentity.cmake.in",
+      "first_evidence": "cmake/CheckBuildIdentity.cmake.in:16 -- execute_process(COMMAND \"${binary}\" --version RESULT_VARIABLE result",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 16,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Snapshot installed source runtime assets, especially the GNOME extension and its metadata, into the build tree when producing the matching build identity, then install those snapshots. Preserve packaging of the existing compiled build after Git advances. Add a fixture source asset, change it after the build without rebuilding, and assert that the package retains the built asset and compiled identity.",
+      "title": "Packaging reads newer source assets under the compiled version",
+      "why_it_matters": "After building commit N, advancing to N+1 with a GNOME extension edit and packaging without rebuilding ships the current source extension under N's compiled version. The package mixes runtime code from different revisions, and an incompatible extension can break its bridge to the resident. This ordering is explicitly supported by the new package identity contract.",
+      "validation_status": "confirmed",
+      "validation_reason": "When Git advances with a GNOME extension edit after both executables were built and packaging runs without rebuilding, the new compiled-only guard (cmake/CheckBuildIdentity.cmake.in:7-18) and package version assignment (cmake/PackageBuildIdentity.cmake.in:2) retain the old identity while packaging/linux/CMakeLists.txt:10-11 installs the current source extension implementing the runtime bridge (integrations/gnome/extension.js:20-35), newly exposing a mixed artifact under the supported ordering in docs/versioning.md:41-46; the fixture at tests/cmake/version_contract.cmake:31-47,94-116 has no runtime source asset to catch this, and incidence was not measured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 2,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/ui/TrayController.cpp:26-31 creates About and calls box.exec(); the other tray windows use show/raise/activateWindow at line 15.",
+        "src/main.cpp:107,112 connects X11 actionRequested to operations.invoke; src/app/OperationService.cpp:84-106 accepts and schedules acquisition without an About/modal guard.",
+        "src/ui/RegionOverlay.cpp:12,34 creates and shows a parentless Qt::Tool overlay; lines 16-19 require mouse/key events for selection and cancellation. src/platform/kde/KdeRegionOverlay.cpp:17 also creates a parentless tool window.",
+        "The Qt QDialog exec/modal contract establishes the nested event loop and application modality: https://doc.qt.io/qt-6/qdialog.html#exec and https://doc.qt.io/qt-6/qdialog.html#modal-prop."
+      ],
+      "file": "src/ui/TrayController.cpp",
+      "first_evidence": "src/ui/TrayController.cpp:31 -- box.exec();",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 31,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Create About as a nonmodal heap-allocated QMessageBox with WA_DeleteOnClose, retain a QPointer so repeated actions reuse it, and show/raise/activate it. Update the GUI test to inspect that box instead of activeModalWidget(). Add a regression that starts region selection with About open and verifies selection and cancellation input. Keep offscreen widget evidence separate from native desktop acceptance.",
+      "title": "Modal About dialog freezes region-capture overlay input",
+      "why_it_matters": "QMessageBox::exec() makes About application-modal while its nested event loop continues processing capture requests. Opening About and then starting region capture can show a parentless overlay whose mouse and keyboard input, including Escape, is blocked until About closes. Settings, History and Activity windows are also blocked while About remains open.",
+      "validation_status": "confirmed",
+      "validation_reason": "With the newly added About dialog still open (src/ui/TrayController.cpp:26-31), a ready resident can accept region capture through src/main.cpp:107-112 and OperationService.cpp:84-106 without a modal guard, reaching X11SourceAdapter.cpp:36-42 and the separate parentless overlay in RegionOverlay.cpp:12,34 whose selection and cancellation depend on input events at lines 16-19; the official Qt QDialog contract (https://doc.qt.io/qt-6/qdialog.html#exec and #modal-prop) establishes that exec runs a nested loop with application modality blocking other application windows, so the input freeze is reachable, but incidence and real-compositor behavior were not measured.",
+      "protected_subject": null
+    }
+  ],
+  "actionable_findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "cmake/CheckBuildIdentity.cmake.in:16-18 checks executable --version output against the built manifest; cmake/PackageBuildIdentity.cmake.in:2 assigns that package version.",
+        "packaging/linux/CMakeLists.txt:10-11 installs integrations/gnome/extension.js and metadata.json directly from PROJECT_SOURCE_DIR; extension.js:20-35 defines the runtime bridge interface.",
+        "docs/versioning.md:43-44 explicitly supports advancing Git without rebuilding while retaining the old package identity.",
+        "tests/cmake/version_contract.cmake:31-47,94-116 tests stale-build packaging with executables and a manifest but no installed source runtime asset."
+      ],
+      "file": "cmake/CheckBuildIdentity.cmake.in",
+      "first_evidence": "cmake/CheckBuildIdentity.cmake.in:16 -- execute_process(COMMAND \"${binary}\" --version RESULT_VARIABLE result",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 16,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Snapshot installed source runtime assets, especially the GNOME extension and its metadata, into the build tree when producing the matching build identity, then install those snapshots. Preserve packaging of the existing compiled build after Git advances. Add a fixture source asset, change it after the build without rebuilding, and assert that the package retains the built asset and compiled identity.",
+      "title": "Packaging reads newer source assets under the compiled version",
+      "why_it_matters": "After building commit N, advancing to N+1 with a GNOME extension edit and packaging without rebuilding ships the current source extension under N's compiled version. The package mixes runtime code from different revisions, and an incompatible extension can break its bridge to the resident. This ordering is explicitly supported by the new package identity contract.",
+      "validation_status": "confirmed",
+      "validation_reason": "When Git advances with a GNOME extension edit after both executables were built and packaging runs without rebuilding, the new compiled-only guard (cmake/CheckBuildIdentity.cmake.in:7-18) and package version assignment (cmake/PackageBuildIdentity.cmake.in:2) retain the old identity while packaging/linux/CMakeLists.txt:10-11 installs the current source extension implementing the runtime bridge (integrations/gnome/extension.js:20-35), newly exposing a mixed artifact under the supported ordering in docs/versioning.md:41-46; the fixture at tests/cmake/version_contract.cmake:31-47,94-116 has no runtime source asset to catch this, and incidence was not measured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 2,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/ui/TrayController.cpp:26-31 creates About and calls box.exec(); the other tray windows use show/raise/activateWindow at line 15.",
+        "src/main.cpp:107,112 connects X11 actionRequested to operations.invoke; src/app/OperationService.cpp:84-106 accepts and schedules acquisition without an About/modal guard.",
+        "src/ui/RegionOverlay.cpp:12,34 creates and shows a parentless Qt::Tool overlay; lines 16-19 require mouse/key events for selection and cancellation. src/platform/kde/KdeRegionOverlay.cpp:17 also creates a parentless tool window.",
+        "The Qt QDialog exec/modal contract establishes the nested event loop and application modality: https://doc.qt.io/qt-6/qdialog.html#exec and https://doc.qt.io/qt-6/qdialog.html#modal-prop."
+      ],
+      "file": "src/ui/TrayController.cpp",
+      "first_evidence": "src/ui/TrayController.cpp:31 -- box.exec();",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 31,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Create About as a nonmodal heap-allocated QMessageBox with WA_DeleteOnClose, retain a QPointer so repeated actions reuse it, and show/raise/activate it. Update the GUI test to inspect that box instead of activeModalWidget(). Add a regression that starts region selection with About open and verifies selection and cancellation input. Keep offscreen widget evidence separate from native desktop acceptance.",
+      "title": "Modal About dialog freezes region-capture overlay input",
+      "why_it_matters": "QMessageBox::exec() makes About application-modal while its nested event loop continues processing capture requests. Opening About and then starting region capture can show a parentless overlay whose mouse and keyboard input, including Escape, is blocked until About closes. Settings, History and Activity windows are also blocked while About remains open.",
+      "validation_status": "confirmed",
+      "validation_reason": "With the newly added About dialog still open (src/ui/TrayController.cpp:26-31), a ready resident can accept region capture through src/main.cpp:107-112 and OperationService.cpp:84-106 without a modal guard, reaching X11SourceAdapter.cpp:36-42 and the separate parentless overlay in RegionOverlay.cpp:12,34 whose selection and cancellation depend on input events at lines 16-19; the official Qt QDialog contract (https://doc.qt.io/qt-6/qdialog.html#exec and #modal-prop) establishes that exec runs a nested loop with application modality blocking other application windows, so the input freeze is reachable, but incidence and real-compositor behavior were not measured.",
+      "protected_subject": null
+    }
+  ],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": null,
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [],
+  "testing_gaps": [
+    "tests/cmake/version_contract.cmake:78-85 checks only the generated manifest after the empty commit and incremental build. Assert both fixture executables' --version and embedded manifest against second before editing main.cpp at line 86. This directly proves the central documentation-only/empty-commit binary refresh contract; the later source edit forces relinking and can conceal a regression that refreshes JSON without refreshing executables. The production integration test proves agreement for its current build but does not exercise that transition."
+  ],
+  "coverage": {
+    "depth": "full",
+    "reviewer_selection": [
+      {
+        "reviewer": "correctness",
+        "tier": "session",
+        "reason": "always-on"
+      },
+      {
+        "reviewer": "project-standards",
+        "tier": "mid-tier:gpt-6.1-sol",
+        "reason": "AGENTS instruction-file fallback governs all changed files"
+      },
+      {
+        "reviewer": "testing",
+        "tier": "mid-tier:gpt-6.1-sol",
+        "reason": "New CMake contract harness and integration/GUI tests"
+      },
+      {
+        "reviewer": "maintainability",
+        "tier": "mid-tier:gpt-6.1-sol",
+        "reason": "New shared generated identity target and coordinated CMake install helpers"
+      },
+      {
+        "reviewer": "agent-native",
+        "tier": "mid-tier:gpt-6.1-sol",
+        "reason": "CLI, diagnostics and agent discovery documentation expose GUI identity"
+      },
+      {
+        "reviewer": "security",
+        "tier": "session",
+        "reason": "Supplied source provenance is validated before generated code/JSON interpolation"
+      },
+      {
+        "reviewer": "api-contract",
+        "tier": "mid-tier:gpt-6.1-sol",
+        "reason": "Externally consumed CLI, diagnostic build schema and package version behavior"
+      },
+      {
+        "reviewer": "reliability",
+        "tier": "mid-tier:gpt-6.1-sol",
+        "reason": "Build subprocess error propagation and install/package guard fidelity"
+      }
+    ],
+    "standards": "AGENTS.md instruction-file fallback governs all 19 reviewed paths; no CODING_STANDARDS.md or CLAUDE.md was found.",
+    "suppressed_by_confidence": {},
+    "first_evidence_backfilled": 0,
+    "first_evidence_demoted": 0,
+    "mode_aware_demotions": 0,
+    "malformed_findings": 0,
+    "malformed_returns": 0,
+    "settlement_suppression_evaluated": false,
+    "settlement_note": "Settlement suppression was not evaluated because no plan was discovered; no preference findings were suppressed.",
+    "validator": {
+      "outcome": "verdicts",
+      "batch_count": 1,
+      "selected": 2,
+      "confirmed": 2,
+      "rejected": 0,
+      "unresolved": 0,
+      "malformed": 0,
+      "failed": 0,
+      "shortcut_skipped": 0,
+      "shortcut_basis": "Neither finding had ordinary-reviewer plus verified cross-model-peer corroboration; both were independently validated in one batch.",
+      "bound_exceeded": false,
+      "protected_subject_reclassifications": [],
+      "degraded_blockers": [],
+      "per_finding": [
+        {
+          "#": 1,
+          "status": "confirmed",
+          "protected_subject": "public-contract",
+          "reason": "When Git advances with a GNOME extension edit after both executables were built and packaging runs without rebuilding, the new compiled-only guard (cmake/CheckBuildIdentity.cmake.in:7-18) and package version assignment (cmake/PackageBuildIdentity.cmake.in:2) retain the old identity while packaging/linux/CMakeLists.txt:10-11 installs the current source extension implementing the runtime bridge (integrations/gnome/extension.js:20-35), newly exposing a mixed artifact under the supported ordering in docs/versioning.md:41-46; the fixture at tests/cmake/version_contract.cmake:31-47,94-116 has no runtime source asset to catch this, and incidence was not measured."
+        },
+        {
+          "#": 2,
+          "status": "confirmed",
+          "protected_subject": null,
+          "reason": "With the newly added About dialog still open (src/ui/TrayController.cpp:26-31), a ready resident can accept region capture through src/main.cpp:107-112 and OperationService.cpp:84-106 without a modal guard, reaching X11SourceAdapter.cpp:36-42 and the separate parentless overlay in RegionOverlay.cpp:12,34 whose selection and cancellation depend on input events at lines 16-19; the official Qt QDialog contract (https://doc.qt.io/qt-6/qdialog.html#exec and #modal-prop) establishes that exec runs a nested loop with application modality blocking other application windows, so the input freeze is reachable, but incidence and real-compositor behavior were not measured."
+        }
+      ],
+      "note": "Both findings were confirmed from code and applicable contracts. Incidence was not measured; severity, confidence and action routes were retained."
+    },
+    "peer": {
+      "selected": true,
+      "target": "claude",
+      "route": "claude",
+      "preference_source": "instructions",
+      "outcome": "folded",
+      "artifact": "/tmp/compound-engineering-1000/ce-code-review/20261008-173621-0050ff81/adversarial-claude.json",
+      "coverage": "Cross-model adversarial review completed: cross_model_route=claude; model_requested=claude-opus-5-5; effort_requested=high; receipt_supported=true; model_actual=claude-opus-5-5; effort_actual=unverified; independence_verified=true. Peer result verified through runner; terminal job directory deleted."
+    },
+    "failed_reviewers": [],
+    "compound_packs": {
+      "roots": [],
+      "errors": [],
+      "warnings": []
+    },
+    "admission": {
+      "peer_residual_risks_not_admitted": 6,
+      "peer_testing_gaps_not_admitted": 2,
+      "testing_gaps_retained": 1,
+      "about_input_test": "Folded into finding #2.",
+      "details": "/tmp/compound-engineering-1000/ce-code-review/20261008-173621-0050ff81/synthesized-findings.json"
+    },
+    "notes": [
+      "Exactly 19 staged versioning-owned files were reviewed in /tmp/putgd-version-review against 0862bdade82994da23f4a11cb32b9fd31d483c26; no untracked files were excluded.",
+      "The bounded versioning unit is the reviewed intent. This receipt makes no claim that the broader product plan is complete.",
+      "No product edits, staging, commits, compilation, tests, GUI or guest work were performed by this review; credentials.txt was not read.",
+      "Caller-run production receipt work/versioning/production/receipt.json records a Dev build and 31/31 CTest passing. Preserve its source SHA-256 matches; this review did not rerun those checks.",
+      "Caller-run Release receipt work/versioning/release/receipt.json records CPack, extracted binaries and installed manifest agreeing on 0.1.1~dev.33+g0862bdade829.dirty; package SHA-256 is 8b3e63be8313999a4dc5b9fe0b0b9c6a109071767ddb1912d3f5e44a5f7223fb. That receipt includes separately scoped X11 changes and predates retained-view memory integration.",
+      "Planned follow-up assertions of both fixture executables immediately after the empty-commit build, CI fetch-depth:0 and retained build-info.json artifacts are absent from this reviewed snapshot.",
+      "Agent-native review found all three reviewed information capabilities accessible to agents; no parity gap was admitted.",
+      "No real compositor acceptance is claimed. Both confirmed findings still require focused regression verification after any fix.",
+      "No triage groups: the two findings have unrelated fixes, and grouping:auto excludes single-finding groups."
+    ]
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-173621-0050ff81",
+  "run_id": "20261008-173621-0050ff81"
+}

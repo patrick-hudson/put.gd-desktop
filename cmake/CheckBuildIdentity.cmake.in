@@ -1,0 +1,21 @@
+# Shared by ordinary cmake --install and CPack. Inspect the compiled snapshot,
+# never the current Git checkout, before installing any files.
+set(manifest_path "@PUTGD_BUILD_IDENTITY_DIR@/build-info.json")
+if(NOT EXISTS "${manifest_path}")
+  message(FATAL_ERROR "Build putgd and putgd-cli before installation or packaging")
+endif()
+file(READ "${manifest_path}" manifest)
+string(JSON compiled_version GET "${manifest}" version)
+string(JSON package_version GET "${manifest}" packageVersion)
+foreach(program putgd putgd-cli)
+  if(program STREQUAL "putgd")
+    set(binary "@PUTGD_PACKAGE_APP@")
+  else()
+    set(binary "@PUTGD_PACKAGE_CLI@")
+  endif()
+  execute_process(COMMAND "${binary}" --version RESULT_VARIABLE result
+    OUTPUT_VARIABLE actual ERROR_VARIABLE error OUTPUT_STRIP_TRAILING_WHITESPACE TIMEOUT 15)
+  if(NOT result EQUAL 0 OR NOT actual STREQUAL "${program} ${compiled_version}")
+    message(FATAL_ERROR "${program} does not match compiled build manifest; build both executables before installation or packaging (${error})")
+  endif()
+endforeach()

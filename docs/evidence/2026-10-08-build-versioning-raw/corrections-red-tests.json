@@ -1,0 +1,12 @@
+{
+  "command": [
+    "ctest",
+    "--preset",
+    "dev",
+    "-R",
+    "^(version_contract|gui_version)$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/versioning/review-fixes/red-results.xml"
+  ],
+  "exitCode": 8
+}

@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.24)
-project(putgd VERSION 0.1.0 LANGUAGES C CXX)
+project(putgd VERSION 0.1.1 LANGUAGES C CXX)
 
 include(CTest)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Installation prefix" FORCE)
 endif()
 include(GNUInstallDirs)
+include(cmake/BuildVersion.cmake)
 include(cmake/Dependencies.cmake)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
@@ -57,7 +58,7 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_core PUBLIC src)
-target_link_libraries(putgd_core PUBLIC putgd_build_options Qt6::Core Qt6::Gui Qt6::Sql)
+target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity Qt6::Core Qt6::Gui Qt6::Sql)
 
 add_library(putgd_credentials STATIC src/secrets/CredentialStore.cpp)
 target_link_libraries(putgd_credentials PUBLIC putgd_core PRIVATE qt6keychain)
@@ -177,6 +178,25 @@ if(PUTGD_PHYSICAL_BENCHMARKS AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 if(BUILD_TESTING)
+  add_test(NAME version_contract COMMAND "${CMAKE_COMMAND}"
+    "-DREPO_ROOT=${CMAKE_CURRENT_SOURCE_DIR}"
+    "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/Testing/version-contract-$<CONFIG>"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/version_contract.cmake")
+  set_tests_properties(version_contract PROPERTIES TIMEOUT 90)
+  add_executable(test_version tests/integration/test_version.cpp)
+  target_link_libraries(test_version PRIVATE putgd_app Qt6::Test)
+  target_include_directories(test_version PRIVATE tests)
+  target_compile_definitions(test_version PRIVATE PUTGD_CLI_PATH="$<TARGET_FILE:putgd-cli>"
+    PUTGD_APP_PATH="$<TARGET_FILE:putgd>"
+    PUTGD_MANIFEST_PATH="${PUTGD_BUILD_IDENTITY_DIR}/build-info.json")
+  add_dependencies(test_version putgd-cli putgd)
+  add_test(NAME version_integration COMMAND test_version)
+  set_tests_properties(version_integration PROPERTIES TIMEOUT 30)
+  add_executable(test_gui_version tests/gui/test_version.cpp)
+  target_include_directories(test_gui_version PRIVATE tests)
+  target_link_libraries(test_gui_version PRIVATE putgd_ui Qt6::Test)
+  add_test(NAME gui_version COMMAND test_gui_version)
+  set_tests_properties(gui_version PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
   add_executable(test_geometry tests/unit/test_geometry.cpp)
   target_link_libraries(test_geometry PRIVATE putgd_core Qt6::Test)
   add_test(NAME geometry_contract COMMAND test_geometry)

@@ -23,6 +23,8 @@ jobs:
             apt-get install -y liblayershellqtinterface-dev
           fi
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - name: Provision pinned AWS SDK
         run: |
           git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
@@ -62,6 +64,7 @@ jobs:
             build/dev/Testing/Temporary/LastTestsFailed.log
             build/dev/lab-contracts.log
             build/dev/lab-contracts.json
+            build/dev/build-identity/build-info.json
           if-no-files-found: warn
           retention-days: 30
       - name: Build without test dependencies
@@ -77,6 +80,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
       - if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
       - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
@@ -101,3 +106,11 @@ jobs:
         run: |
           cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$PWD/build/sdk;$QT_ROOT_DIR"
           cmake --build --preset release
+      - name: Preserve compiled build identity
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-identity-${{ matrix.os }}
+          path: build/release/build-identity/build-info.json
+          if-no-files-found: warn
+          retention-days: 30

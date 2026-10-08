@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T22:59:43.318527+00:00",
+  "scope": "Per-commit software identity; base0.1.1 plus count/hash and dirty state. Current native resident memory work is a separate unit.",
+  "status": "Implemented, reviewed, corrected, full Dev and Release package checks passed before commit",
+  "versions": {
+    "application": "putgd --version",
+    "client": "putgd-cli --version",
+    "diagnostics": "build object, schemaVersion1 unchanged",
+    "gui": "modeless About put.gd",
+    "installed": "/usr/share/putgd/build-info.json"
+  },
+  "evidenceRoot": "2026-10-08-build-versioning-raw",
+  "checks": {
+    "fullDev": {
+      "passed": 31,
+      "failed": 0,
+      "receipt": "corrected-dev-receipt.json"
+    },
+    "release": "corrected-release.json",
+    "regression": "corrections-green-results.xml",
+    "review": "review.json",
+    "resolvedFindings": "corrections-parent-resolution.json"
+  },
+  "limitations": [
+    "Precommit build honestly reports .dirty. Commit-specific output requires the ordinary build after committing.",
+    "Native compositor About/capture check belongs to the combined package matrix; widget checks are not native desktop proof.",
+    "Hosted CI not run locally.",
+    "Historical release and original Dev receipts predate review corrections; use corrected-* for the final reviewed source."
+  ],
+  "sourceScope": "Full test and package build also contain the independently tested X11 fix, not yet committed. Retained-window candidate is not included."
+}

@@ -1,0 +1,33 @@
+Test project /home/patrick/work/put.gd/build/dev
+    Start 1: version_contract
+1/2 Test #1: version_contract .................***Failed    0.82 sec
+-- Version contract artifacts: /home/patrick/work/put.gd/build/dev/Testing/version-contract-Debug/730b92eaee61
+CMake Error at /home/patrick/work/put.gd/tests/cmake/version_contract.cmake:40 (message):
+  Installed runtime asset differs from the compiled snapshot:
+  /home/patrick/work/put.gd/build/dev/Testing/version-contract-Debug/730b92eaee61/unpacked/putgd-0.1.1~dev.2+gdf73b46a10ed.dirty-Linux/share/putgd/runtime-asset.js
+Call Stack (most recent call first):
+  /home/patrick/work/put.gd/tests/cmake/version_contract.cmake:143 (check_asset)
+
+
+
+    Start 3: gui_version
+2/2 Test #3: gui_version ......................***Failed    0.04 sec
+********* Start testing of VersionView *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : VersionView::initTestCase()
+QWARN  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() This plugin does not support propagateSizeHints()
+FAIL!  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() '!enteredModalLoop' returned FALSE. (About must not block capture input with a modal event loop)
+   Loc: [/home/patrick/work/put.gd/tests/gui/test_version.cpp(42)]
+PASS   : VersionView::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 23ms
+********* Finished testing of VersionView *********
+
+
+0% tests passed, 2 tests failed out of 2
+
+Total Test time (real) =   0.87 sec
+
+The following tests FAILED:
+	  1 - version_contract (Failed)
+	  3 - gui_version (Failed)
+Errors while running CTest

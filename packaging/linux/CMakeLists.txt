@@ -2,13 +2,16 @@
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
   return()
 endif()
-install(FILES putgd.svg DESTINATION "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
+include("${PROJECT_SOURCE_DIR}/cmake/InstallPackageSnapshot.cmake")
+putgd_install_snapshot(putgd.svg "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
 option(PUTGD_LAB_FIXTURE "Package independent synthetic desktop fixture (development only)" OFF)
 configure_file(app.desktop.in putgd.desktop @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
   DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
-install(FILES "${PROJECT_SOURCE_DIR}/integrations/gnome/extension.js" "${PROJECT_SOURCE_DIR}/integrations/gnome/metadata.json"
-  DESTINATION "${CMAKE_INSTALL_DATADIR}/gnome-shell/extensions/putgd@put.gd")
+foreach(gnome_asset extension.js metadata.json)
+  putgd_install_snapshot("${PROJECT_SOURCE_DIR}/integrations/gnome/${gnome_asset}"
+    "${CMAKE_INSTALL_DATADIR}/gnome-shell/extensions/putgd@put.gd")
+endforeach()
 # This is an opt-in XDG autostart template; preferences.launchAtLogin owns enabling it.
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
   DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd/autostart")
@@ -55,16 +58,16 @@ set_target_properties(putgd_s3_module PROPERTIES BUILD_RPATH "${PUTGD_AWS_RUNTIM
 # also scopes the private directory to this process for explicit desktop startup.
 configure_file(putgd-launcher.in putgd-launcher @ONLY)
 install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/putgd-launcher" DESTINATION "${CMAKE_INSTALL_BINDIR}" RENAME putgd-launcher)
-install(FILES "${PROJECT_SOURCE_DIR}/cmake/dependency-lock.json" DESTINATION "${CMAKE_INSTALL_DATADIR}/putgd")
-install(FILES runtime-notices.txt DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd")
-install(FILES "${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml"
-  DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/cmake/dependency-lock.json" "${CMAKE_INSTALL_DATADIR}/putgd")
+putgd_install_snapshot(runtime-notices.txt "${CMAKE_INSTALL_DATADIR}/doc/putgd")
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
 # SDK license must come from the exact source tree provisioned by the build contract.
 set(PUTGD_AWS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/build/dependencies/aws-sdk-cpp" CACHE PATH "Pinned official SDK source")
 if(NOT EXISTS "${PUTGD_AWS_SOURCE_DIR}/LICENSE")
   message(FATAL_ERROR "Pinned SDK LICENSE required for packaging")
 endif()
-install(FILES "${PUTGD_AWS_SOURCE_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME aws-sdk-LICENSE)
+putgd_install_snapshot("${PUTGD_AWS_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME aws-sdk-LICENSE)
 foreach(aws_component aws-crt-cpp aws-crt-cpp/crt/aws-c-auth aws-crt-cpp/crt/aws-c-cal
     aws-crt-cpp/crt/aws-c-common aws-crt-cpp/crt/aws-c-compression aws-crt-cpp/crt/aws-c-event-stream
     aws-crt-cpp/crt/aws-c-http aws-crt-cpp/crt/aws-c-io aws-crt-cpp/crt/aws-c-mqtt
@@ -72,8 +75,8 @@ foreach(aws_component aws-crt-cpp aws-crt-cpp/crt/aws-c-auth aws-crt-cpp/crt/aws
     aws-crt-cpp/crt/s2n)
   if(EXISTS "${PUTGD_AWS_SOURCE_DIR}/crt/${aws_component}/LICENSE")
     string(REPLACE "/" "-" license_name "${aws_component}")
-    install(FILES "${PUTGD_AWS_SOURCE_DIR}/crt/${aws_component}/LICENSE"
-      DESTINATION "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME "${license_name}-LICENSE")
+    putgd_install_snapshot("${PUTGD_AWS_SOURCE_DIR}/crt/${aws_component}/LICENSE"
+      "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME "${license_name}-LICENSE")
   else()
     message(FATAL_ERROR "Pinned SDK component LICENSE missing: ${aws_component}")
   endif()
@@ -81,6 +84,8 @@ endforeach()
 set(CPACK_GENERATOR DEB)
 set(CPACK_PACKAGE_NAME putgd)
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+configure_file("${PROJECT_SOURCE_DIR}/cmake/PackageBuildIdentity.cmake.in" package-identity.cmake @ONLY)
+set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_CURRENT_BINARY_DIR}/package-identity.cmake")
 set(CPACK_PACKAGE_CONTACT "put.gd maintainers")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Native Linux screen and clipboard sharing")
 set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")

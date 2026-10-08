@@ -21,8 +21,13 @@ Implement its dependencies in order and record blocked acceptance separately fro
 | Resident/post-use memory and capture latency | `tests/performance/`, `src/app/OperationService.*` | [physical replay](testing-memory.md); synthetic lab results are separate from physical budgets |
 | Integer widths / member layout | `tools/diagnostics/layout/` | [read-only probe and replay](../tools/diagnostics/layout/README.md); sizes alone do not prove RSS savings |
 | Build, dependency pins, sanitizers | `CMakePresets.json`, `cmake/`, `tools/verify_dependencies.py` | [build](build.md), [thread checks](thread-sanitizer.md) |
+| Commit/build identity and package versions | `cmake/BuildVersion.cmake`, `src/core/BuildInfo.h` | `version_contract`, `version_integration`, `gui_version`; [versioning](versioning.md) |
 
 Use `cmake --preset dev`, `cmake --build --preset dev`, and `ctest --preset dev`.
+After each commit, run the ordinary build before reporting that commit as the
+running version. Retain `--version`, `build-info.json` and binary hashes with test
+receipts. Archive/VM builds must carry the exact exported commit/tree/count as
+documented in versioning.md; unknown provenance must remain labeled unknown.
 Provision the pinned official AWS SDK following build.md; preserve dynamic distro Qt
 linking and the Qt 6.4.2 API floor. Administrator package installation requires the user.
 Run the MCP contract suite separately as documented in mcp.md. Never interpret a fixture,

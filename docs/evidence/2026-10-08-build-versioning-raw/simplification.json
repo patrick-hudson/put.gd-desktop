@@ -1,0 +1,77 @@
+{
+  "timestampUtc": "2026-10-08T22:35:43.405269+00:00",
+  "reviewers": {
+    "reuse": {
+      "reviewer": "code-reuse",
+      "status": "complete",
+      "scope": "19 paths from work/versioning/review-paths.json; staged versioning diff against 0862bdade82994da23f4a11cb32b9fd31d483c26",
+      "findings": [],
+      "summary": "No worthwhile behavior-preserving reuse findings. Both binaries share the generated BuildInfo API; package and install validation already share CheckBuildIdentity. The GUI's early version path is necessary to avoid QApplication display initialization, and cannot simply reuse its later parser path. Retain JSON projection/formatting and provenance validation rather than substituting superficially similar primitives.",
+      "verification": "Read-only source/diff review in /tmp/putgd-version-review. No builds, product edits, staging, commits, or credential reads."
+    },
+    "quality": {
+      "reviewer": "code-quality",
+      "status": "complete",
+      "scope": "19 paths in work/versioning/review-paths.json; changes relative to 0862bdade82994da23f4a11cb32b9fd31d483c26",
+      "checkout": "/tmp/putgd-version-review",
+      "findings": [
+        {
+          "location": "tests/gui/test_version.cpp:21",
+          "priority": "low",
+          "issue": "The About action lookup combines two loops and two conditions across two unbraced lines, producing four nested control-flow levels for a simple widget search.",
+          "fix": "Expand the outer widget loop with braces, assign the QMenu cast, and continue when it is null. Keep the inner action loop and matching assignment, including its existing last-match behavior; do not add a break or otherwise change the lookup result. This lowers nesting and makes ownership of the action loop obvious."
+        }
+      ],
+      "observations": [
+        "The generated version and manifest have one production source of truth and provider-neutral declarations.",
+        "Separate semantic and Debian package versions encode deliberate different ordering rules; their parallel construction is not a consolidation finding.",
+        "The manifest and generated C++ file are deliberate compiled/install representations, not redundant application state.",
+        "Archive provenance, stale/mixed binary checks and configure_file timestamp preservation are constraints that should remain intact.",
+        "Structural searches found consumers for the new identity declarations and provenance settings; no newly introduced unused export was identified.",
+        "No production code simplification is recommended."
+      ],
+      "verification": "Read-only diff/file review and structural searches only. No builds, tests, product edits, staging, commits, or credential reads were performed."
+    },
+    "efficiency": {
+      "reviewer": "efficiency",
+      "status": "complete",
+      "scope": "The 19 files listed in work/versioning/review-paths.json, using review.patch and the faithful /tmp/putgd-version-review checkout",
+      "findings": [
+        {
+          "location": "cmake/GenerateBuildInfo.cmake:66",
+          "priority": "low",
+          "inefficiency": "Every ordinary build writes a temporary manifest, reads it through configure_file, and removes it even when identity is unchanged. The final output already correctly preserves its timestamp, but the temporary-file round trip is unnecessary.",
+          "concrete_fix": "Replace the final file(WRITE), configure_file(COPYONLY), and file(REMOVE) calls with file(CONFIGURE OUTPUT \"${OUTPUT_DIR}/build-info.json\" CONTENT \"${manifest}\\n\" @ONLY). This retains write-only-on-content-change behavior and the exact manifest bytes while removing the temporary-file operations."
+        }
+      ],
+      "notes": [
+        "The always-run Git refresh is required to detect commits and working-tree changes; skipping it based solely on existing outputs would change behavior.",
+        "Generated C++ uses configure_file, which avoids recompilation when identity is unchanged.",
+        "Packaging and install validation are safety checks and should remain intact.",
+        "Repeated parsing of the small immutable manifest on explicit diagnostics/About requests does not justify additional cache state in this scope.",
+        "No new unbounded resource retention, listener leak, blocking application startup work, or worthwhile concurrency change found."
+      ],
+      "verification": "Read-only inspection only; no builds or tests run, no product edits, staging, commits, or credentials reads."
+    }
+  },
+  "applied": {
+    "reuse": 0,
+    "quality": 0,
+    "efficiency": 0
+  },
+  "skipped": [
+    {
+      "area": "About test lookup",
+      "reason": "Small test-only scan; flattening yields no meaningful comprehension or behavior benefit."
+    },
+    {
+      "area": "Manifest temporary file",
+      "reason": "Tiny build-only write; existing configure_file path preserves exact bytes/timestamps and measured runtime is trivial. No product hot-path cost."
+    }
+  ],
+  "verification": {
+    "compiler": "Standard full Dev build passed",
+    "tests": "31/31 CTest passed; no simplification edits to retest",
+    "lint": "No dedicated project-wide lint configured; git diff --check passes"
+  }
+}

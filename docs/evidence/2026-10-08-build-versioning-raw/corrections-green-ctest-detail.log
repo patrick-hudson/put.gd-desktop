@@ -1,0 +1,47 @@
+Start testing: Oct 08 17:50 CDT
+----------------------------------------------------------
+1/31 Testing: version_contract
+1/31 Test: version_contract
+Command: "/usr/bin/cmake" "-DREPO_ROOT=/home/patrick/work/put.gd" "-DTEST_ROOT=/home/patrick/work/put.gd/build/dev/Testing/version-contract-Debug" "-P" "/home/patrick/work/put.gd/tests/cmake/version_contract.cmake"
+Directory: /home/patrick/work/put.gd/build/dev
+"version_contract" start time: Oct 08 17:50 CDT
+Output:
+----------------------------------------------------------
+-- Version contract artifacts: /home/patrick/work/put.gd/build/dev/Testing/version-contract-Debug/294fd89a597e
+-- Version contract passed: commits, dirty state, compiled package identity/assets and source archives
+<end of output>
+Test time =   3.28 sec
+----------------------------------------------------------
+Test Passed.
+"version_contract" end time: Oct 08 17:50 CDT
+"version_contract" time elapsed: 00:00:03
+----------------------------------------------------------
+
+3/31 Testing: gui_version
+3/31 Test: gui_version
+Command: "/home/patrick/work/put.gd/build/dev/test_gui_version"
+Directory: /home/patrick/work/put.gd/build/dev
+"gui_version" start time: Oct 08 17:50 CDT
+Output:
+----------------------------------------------------------
+********* Start testing of VersionView *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : VersionView::initTestCase()
+QWARN  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() This plugin does not support propagateSizeHints()
+QWARN  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() This plugin does not support raise()
+QWARN  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() This plugin does not support raise()
+QWARN  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() This plugin does not support propagateSizeHints()
+QWARN  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() This plugin does not support raise()
+PASS   : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews()
+PASS   : VersionView::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 25ms
+********* Finished testing of VersionView *********
+<end of output>
+Test time =   0.04 sec
+----------------------------------------------------------
+Test Passed.
+"gui_version" end time: Oct 08 17:50 CDT
+"gui_version" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 08 17:50 CDT

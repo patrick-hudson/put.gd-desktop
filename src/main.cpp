@@ -1,4 +1,5 @@
 #include "ui/VisualStyle.h"
+#include "core/BuildInfo.h"
 #include "storage/s3/S3Provider.h"
 #include "app/LocalServer.h"
 #include "app/LoginStartup.h"
@@ -18,6 +19,8 @@
 #include <atomic>
 #include <mutex>
 #include <memory>
+#include <cstdio>
+#include <cstring>
 #ifdef PUTGD_NATIVE_X11
 #include "platform/x11/X11SourceAdapter.h"
 #endif
@@ -59,11 +62,14 @@ putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
 }
 }
 int main(int argc,char* argv[]) {
+ if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)) {
+  std::printf("putgd %s\n",putgd::buildVersion());return 0;
+ }
  QApplication app(argc,argv);
  putgd::VisualStyle::apply(app);
  app.setDesktopFileName("putgd");
  app.setWindowIcon(putgd::VisualStyle::icon("brand"));
- QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion("0.1.0");
+ QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion(putgd::buildVersion());
  QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show recent activity"});parser.process(app);
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");

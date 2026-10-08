@@ -1,0 +1,7 @@
+[1/41] cd /home/patrick/work/put.gd/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/put.gd -DOUTPUT_DIR=/home/patrick/work/put.gd/build/dev/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/patrick/work/put.gd/cmake/GenerateBuildInfo.cmake
+[2/9] Automatic MOC and UIC for target putgd-desktop-fixture
+[3/7] Linking CXX executable test_gui_settings
+[4/7] Linking CXX executable test_gui_operations_view
+[5/7] Linking CXX executable test_gui_history_view
+[6/7] Building CXX object CMakeFiles/putgd.dir/src/main.cpp.o
+[7/7] Linking CXX executable putgd

@@ -1,0 +1,10 @@
+{
+  ".github/workflows/build.yml": "287b3772affde443c6c9c64648aa416ce3935197dc951b5695559ab6dabc0e6d",
+  "cmake/InstallPackageSnapshot.cmake": "e7bcba33b8b64601ac395e703357211f31c745b9c642a6b308c2df7d10bbae60",
+  "docs/versioning.md": "71ced2a4a879e11a19cdaaec0f076698399ae5113c3f162123ee47baecbaa4b5",
+  "packaging/linux/CMakeLists.txt": "eb309aa5e0834dc9ea19349d394621c9c5a9a9777aa876c6dfb6d1bbfae88a39",
+  "src/ui/TrayController.cpp": "faf5f938c850add2c99d546aaed96ff98cbbbe4e25b1ec6ed224be43b0afe099",
+  "src/ui/TrayController.h": "70ec140fcb952eb908e9e15b523f76a7d26c65d48c456fc5c62c288866f9db89",
+  "tests/cmake/version_contract.cmake": "7665e3bc334c852634b89fe613e74b3a2ee20a9f978129fc05fbd4b717eff043",
+  "tests/gui/test_version.cpp": "13e10cad08fde65c161dc16a48ea779a402624fb222ae51dff94d10f26b37eca"
+}

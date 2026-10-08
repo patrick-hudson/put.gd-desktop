@@ -33,6 +33,12 @@ ctest --preset dev
 ./build/dev/putgd
 ```
 
+Every ordinary build refreshes its software version from the release base and Git
+commit, including a dirty marker for local changes. `putgd --version` and
+`putgd-cli --version` work without a display. See [versioning](versioning.md) for
+the installed build manifest, package identity, and required provenance when
+building exported source archives in the desktop lab.
+
 `cmake/dependency-lock.json` records the source commit and transitive submodule commits.
 Verify these before configuring the SDK. Source hashes, rather than a floating branch,
 define the dependency. Refresh the manifest deliberately when updating the SDK.
