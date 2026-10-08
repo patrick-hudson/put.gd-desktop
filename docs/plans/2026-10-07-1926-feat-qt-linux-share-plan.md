@@ -105,6 +105,14 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 
 - R35. The application has a cohesive, custom, polished visual design rather than shipping the basic Qt forms as its finished interface. Design settings, setup, recent activity, history, and confirmation/error states together, with intentional typography, spacing, color, icons, navigation, and content hierarchy. Use the native Qt implementation, preserve keyboard navigation, accessible names, clear focus indicators, readable contrast, and usable layouts at supported display scales, and meet R20 and the existing performance budgets. Cosmetic completeness requires inspection of the actual rendered application; widget tests alone do not prove it. Default to a simple setup view containing the basic destination details needed to get started, with standard provider defaults and a clear Advanced settings expansion into the full existing controls. Both views edit the same validated draft/configuration; switching views preserves unsaved changes. S3 setup asks for the bucket, region, explicit credentials, and optional public URL base; endpoint/addressing, prefix, storage class, ACL, timeouts, retention and detailed resource controls belong under Advanced settings. Keep an explicit local-only setup path. A fresh installation still requires destination setup and never silently activates the development put.gd template. Size controls and ordinary summaries use readable MiB/GiB or MB/GB units rather than raw byte counts, with a consistent declared unit system; JSON retains exact byte counts and unchanged values round-trip without loss. Every editable setting has a specific, detailed help explanation reachable from an adjacent info icon by mouse and keyboard; explanations describe effect, units and relevant consequences. Keep primary labels concise, use neutral charcoal surfaces with a restrained blue accent, and make fresh S3 fields editable without an Add prerequisite. Offer searchable editable region suggestions and preserve custom regions/endpoints. Cancel discards unsaved settings and credential input and closes the window; Reload from file explicitly rereads external configuration and discards the draft. Saving gives visible in-app success feedback only after accepted persistence. The local-mode action clearly explains that all four actions save locally after Save settings.
 
+#### Software identity
+
+- R36. Every commit's build has a distinct, inspectable software version. Use a semantic release base plus a commit identifier; distinguish uncommitted builds. Show the compiled identity in the GUI, app/CLI version commands, diagnostics and installed package metadata. Preserve the exact source and binary identity in test evidence, including builds from exported source archives. Rebuilding after a commit refreshes identity through the normal build tools. Packaging must not relabel old binaries with a later checkout's version. Unknown archive provenance must be explicit.
+
+#### Resident and UI lifetime
+
+- R37. Run Settings, History, Activity and About in an on-demand UI process that can exit when its windows close. Keep a resident tray icon and menu with capture/upload actions and entries that reopen the views. Closing the UI must preserve hotkeys, clipboard ownership, accepted operations and durable recovery; Quit explicitly exits the app. Preserve native Cinnamon fonts/dialogs, safe unsaved drafts, configuration conflicts and view state across ordinary reopen. Keep credential input out of persisted drafts. UI and CLI share the resident's operation engine. Record total memory across live processes and reopen latency; moving memory between process counters does not establish a saving.
+
 ### Key Flows
 
 - F1. Setup → configure destination/credentials → inspect desktop capabilities → install/enable integration where needed → bind shortcuts → ready. Covers R11–R18.
@@ -133,6 +141,9 @@ Dropshare’s quick capture-to-link workflow is the reference. XerahS offers con
 - AE14. With the settings window open, an agent atomically edits the JSON destination, naming policy, and image folder. The GUI shows the new values and a later action uses them; an already accepted upload and history deletion keep their original targets. Invalid JSON preserves the accepted configuration, and an unsaved GUI draft is retained with a conflict notice. Covers R16/R34.
 
 - AE15. Open settings, recent activity, and a populated history in the installed app: they share a custom visual language, readable hierarchy, and deliberate spacing. Empty, loading, success, partial-failure, and remote-deletion states remain clear. Keyboard focus and navigation are visible, and supported scale factors do not clip content. Simple setup can configure a usable destination without visiting advanced controls; expansion preserves draft values and exposes all existing options. Size inputs/summaries show declared human-readable units and save the exact corresponding byte values. Covers R35.
+
+- AE16. Build two successive commits with the ordinary incremental command: version inspection distinguishes them. App, CLI, diagnostics, GUI and installed package metadata agree on the compiled build. Advancing the checkout without rebuilding does not relabel the package; mismatched binaries are rejected before installation. Dirty and exported-source builds disclose their provenance. Covers R36.
+- AE17. Close every UI window and verify its process exits while the tray stays usable. Invoke all four actions, use CLI/MCP, paste a copied result, and complete an already-running upload with the UI absent. Reopen each view through the tray; preserve safe drafts/conflicts/state and handle helper failure or version mismatch explicitly. Repeat on Cinnamon, GNOME and KDE with visible VNC evidence and total-process memory accounting. Covers R37.
 
 ### Success Criteria
 
@@ -407,7 +418,8 @@ First prove a Cinnamon region capture → synthetic S3 upload → pasteable URL 
 | U7 | GNOME Wayland adapter | integrations/gnome/, src/platform/gnome/ | U3, U5, U6 |
 | U8 | KDE Wayland adapter | src/platform/kde/ | U3, U5, U6 |
 | U9 | Agent interface and documentation | tools/mcp/, docs/agents.md | U2, U3, U4, U6 |
-| U10 | Packages, performance, release gates | packaging/, docs/release.md | U4–U9 |
+| U11 | On-demand UI with a persistent tray | src/app/, src/ui/, src/main.cpp, CMakeLists.txt | U2–U5, U7–U9 interfaces |
+| U10 | Packages, performance, release gates | packaging/, docs/release.md | U4–U9, U11 |
 
 ### U1. Bootstrap reproducible Qt/C++ builds
 
@@ -631,11 +643,49 @@ The user accepts the modern direction but finds the current interface sloppy and
 
 Retain structured test parameters and logs for repeatability: scenario/profile/fixture, exact hotkeys and timing, pre-action geometry/layout/scales, package and runner hashes, expected/actual hashes, operation IDs, outcomes, and JUnit. Keep per-attempt records rather than overwriting earlier results. CI retains headless CTest reports; graphical acceptance requires a native desktop lab/self-hosted job and cannot be claimed from hosted headless CI. Never include credentials, VM authentication material, or real user payloads in these records.
 
+### U11. On-demand UI with a persistent tray
+
+Goal: Closing Settings, History, Activity and About releases their process while
+the resident tray, shortcuts, clipboard and operations keep working.
+
+Requirements: R4–R15, R19–R22, R24, R26, R31–R37. Dependencies: existing U2–U5,
+U7–U9 service and desktop interfaces. This user-approved follow-up runs before
+final U10 release acceptance; it does not renumber the earlier units.
+
+Approach: Keep one resident operation/history/configuration owner. Add an
+asynchronous UI client over the existing private command transport; retain CLI
+and MCP compatibility. Move view construction and native settings dialogs into
+a separately packaged UI executable. Keep the tray/menu and capture adapters
+resident initially; further toolkit removal requires measured evidence and must
+preserve the tray. Add bounded service methods for currently direct-only setup
+actions, preserving credential isolation, destination-test journaling and exact
+deletion acknowledgement. Preserve safe draft/view state without retaining
+widget trees or serializing credential entry fields. Supervise helper activation,
+duplicate requests, exit, failure and version agreement.
+
+Test scenarios:
+1. AE17 across all three desktops, including an ongoing operation when the last
+   UI window closes and each tray action while the UI is absent.
+2. Settings save/reload/Cancel, external-file edits, conflicts, session credentials
+   and native folder dialogs behave as before. UI exit clears typed secrets.
+3. History pagination, preview disposal, copying links and confirmed deletion use
+   the resident's exact IDs and outcomes. No second database/operation owner.
+4. Repeated open/close, simultaneous activation, helper crash, unavailable resident
+   and mismatched helper versions give bounded outcomes; Quit shuts down cleanly.
+5. Compare total RSS/PSS/private memory with UI absent and present, cold startup,
+   post-capture/upload/history and reopen latency using the frozen protocols.
+   Save source/package/process identities, raw results and visible native evidence.
+
+Verification: Normal dev/release builds, meaningful headless client/lifecycle
+contracts, sanitizer checks for asynchronous ownership changes, and current-source
+Cinnamon/GNOME/KDE graphical acceptance. The 40 MiB target remains a measurement
+goal, not an assumed outcome of the split. See [the analysis](../resident-ui-process.md).
+
 ### U10. Packages, performance, and release acceptance
 
 Goal: Installable releases meet the desktop contract and have reproducible support evidence.
 
-Requirements: R13–R15, R20, R24–R34. Dependencies: U4–U9.
+Requirements: R13–R15, R20, R24–R34, R36–R37. Dependencies: U4–U9, U11.
 
 Files: packaging/linux/CMakeLists.txt, packaging/linux/autostart.desktop.in, packaging/gnome/*, .github/workflows/release.yml, tests/desktop/package_smoke.yaml, tests/performance/bench_capture.cpp, docs/release.md, docs/troubleshooting.md, THIRD_PARTY_NOTICES.md.
 
@@ -714,7 +764,7 @@ Windows/macOS CI proves compilation of shared components only. Physical Cinnamon
 
 ## Definition of Done
 
-- All R1–R35 requirements are implemented or, for future native platform support under R26, satisfied by the portable boundary and compile checks.
+- All R1–R37 requirements are implemented or, for future native platform support under R26, satisfied by the portable boundary and compile checks.
 - Each U-ID’s scenarios pass at its stated layer, and every R13 profile has complete real-session evidence for the required workflow.
 - AE1–AE15 pass, including public link bytes, duplicate-name policy, persistent history, remote deletion outcomes, provider-neutral contracts, and independent paste behavior.
 - No graphical profile is called supported because mocks, offscreen widgets, or portal discovery passed.
@@ -954,7 +1004,14 @@ shared buffers. The next proposed experiment releases native drawing resources
 after Settings, History and Activity close while retaining their logical state.
 Unsaved drafts, selection, filters, active dialogs, minimize behavior, rapid
 reopen, complete repaint and first-reopen latency are acceptance requirements.
-This experiment remains pending approval; no implementation or saving is claimed.
+The user approved this experiment. Candidate 001b has completed its frozen
+measurements: physical Cinnamon median RSS fell from 73.59 to 65.38 MiB;
+GNOME post-use RSS fell from 114.36 to 86.05 MiB; KDE post-use RSS fell from
+186.17 to 157.23 MiB. These are standalone candidate measurements. Native state/dialog checks passed
+with recorded compositor limits; the change is integrated as `0a2b104`. The
+[replay and structured evidence](../testing-view-surfaces.md) preserve source and
+binary identities, failed attempts and comparison caveats. The candidate's
+five-minute cold run ended at 44.91 MiB, so the 40 MiB target remains open.
 
 Record RSS, PSS and private memory independently. KDE's shared LLVM/Gallium
 libraries explain part of its higher RSS but are not a reason to discard the RSS
@@ -963,3 +1020,17 @@ visible VNC evidence for every candidate. Save the frozen measurement parameters
 commands, failed attempts and raw structured observations. The [attribution and
 replay notes](../testing-memory-attribution.md) distinguish this post-use work
 from the still-open approximately 40 MiB cold-start target.
+
+### On-demand UI process investigation (2026-10-08)
+
+The user approved a process split and explicitly requires keeping the tray icon.
+Build an on-demand UI process which exits after
+its windows close, preserving native fonts/dialogs, safe drafts, live status,
+clipboard ownership and ongoing uploads. The CLI already calls the resident;
+keep one operation engine behind both interfaces. The tray and capture overlays
+also depend on Qt Widgets, so moving the large windows alone does not unload it.
+The [feasibility analysis and experiment gates](../resident-ui-process.md) record
+the current dependencies, IPC gaps and required measurements. This is a separate
+implementation after the current tested changes; no process split or saving is
+claimed yet. Replacing Qt with a custom visual framework was considered; first
+measure the split while retaining the existing toolkit and native integration.

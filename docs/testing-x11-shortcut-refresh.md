@@ -73,7 +73,9 @@ On 2026-10-08, the new regression failed against the original product source at
 `0862bdade82994da23f4a11cb32b9fd31d483c26`: `activated` was zero instead of one.
 The mapping barrier had fired and a refresh had completed. After the product
 change, the regression and the complete isolated X11 suite passed on Linux Mint
-22.3 with distro Qt 6.4.2 and GCC 13.2.0. The original diagnostic delay probe also
+22.3 with distro Qt 6.4.2 and the system GCC 13.3.0 compiler.
+The QtTest banner identifies Qt's own GCC 13.2.0 build; that is not the
+application compiler version. The original diagnostic delay probe also
 passed; unchanged mappings no longer reached its destructive rebind boundary.
 
 Structured local evidence is under `work/memory-surfaces/x11-grab-fix/`:

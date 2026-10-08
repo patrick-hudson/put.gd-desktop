@@ -1,0 +1,13 @@
+Test project /home/patrick/work/put.gd/build/dev
+    Start  3: gui_version
+1/4 Test  #3: gui_version ......................   Passed    0.05 sec
+    Start 26: gui_settings
+2/4 Test #26: gui_settings .....................   Passed    3.26 sec
+    Start 27: gui_operations_view
+3/4 Test #27: gui_operations_view ..............   Passed    0.73 sec
+    Start 28: gui_history_view
+4/4 Test #28: gui_history_view .................   Passed    4.56 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =   8.66 sec

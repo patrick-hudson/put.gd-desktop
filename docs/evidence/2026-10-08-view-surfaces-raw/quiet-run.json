@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-08T22:37:41.745184+00:00",
+  "hostBuildProcesses": [],
+  "hostLoadAverage": [
+    9.4482421875,
+    9.0654296875,
+    8.94384765625
+  ],
+  "steps": [
+    {
+      "label": "native-wave",
+      "command": [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/work/memory-surfaces/sample-wave.py"
+      ],
+      "startedUtc": "2026-10-08T22:37:42.641775+00:00",
+      "exitCode": 0,
+      "finishedUtc": "2026-10-08T22:39:51.406214+00:00"
+    },
+    {
+      "label": "physical-1",
+      "command": [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/work/memory-next/measure-views.py",
+        "--app",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/build/release/putgd",
+        "--cli",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/build/release/putgd-cli",
+        "--output",
+        "/home/patrick/work/put.gd/work/memory-surfaces/physical-1"
+      ],
+      "startedUtc": "2026-10-08T22:39:51.406535+00:00",
+      "exitCode": 0,
+      "finishedUtc": "2026-10-08T22:41:47.604332+00:00"
+    },
+    {
+      "label": "physical-2",
+      "command": [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/work/memory-next/measure-views.py",
+        "--app",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/build/release/putgd",
+        "--cli",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/build/release/putgd-cli",
+        "--output",
+        "/home/patrick/work/put.gd/work/memory-surfaces/physical-2"
+      ],
+      "startedUtc": "2026-10-08T22:41:47.604751+00:00",
+      "exitCode": 0,
+      "finishedUtc": "2026-10-08T22:43:42.814968+00:00"
+    },
+    {
+      "label": "cold-300s",
+      "command": [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/tests/performance/bench_idle.py",
+        "--app",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/build/release/putgd",
+        "--cli",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/build/release/putgd-cli",
+        "--output",
+        "/home/patrick/work/put.gd/work/memory-surfaces/cold-300s",
+        "--seconds",
+        "300"
+      ],
+      "startedUtc": "2026-10-08T22:43:42.815363+00:00",
+      "exitCode": 0,
+      "finishedUtc": "2026-10-08T22:48:48.828714+00:00"
+    }
+  ],
+  "guestBuildChecks": {
+    "cinnamon": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    "gnome": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": ""
+    },
+    "kde": {
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "finishedUtc": "2026-10-08T22:48:48.829109+00:00"
+}

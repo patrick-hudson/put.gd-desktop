@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T22:32:42.694423+00:00",
+  "candidateReceipt": "candidate-receipt.json",
+  "buildReceipt": "build-receipt.json",
+  "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "sourceDescription": "Exact frozen staged source tree, not claimed a committed candidate",
+  "commands": [
+    "sh /home/lab/incremental-001b.sh",
+    "python3 work/memory-surfaces/gnome/collect-build-001b.py",
+    "python3 work/memory-surfaces/gnome/transition-to-001b.py",
+    "python3 work/memory-surfaces/gnome/frozen/tools/lab/lab.py install --run /home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc --deb /home/patrick/work/put.gd/work/memory-surfaces/gnome/candidate-001b/putgd_0.1.0_amd64.deb",
+    "python3 work/memory-surfaces/gnome/run-matrix.py",
+    "python3 work/memory-surfaces/gnome/views-smoke.py",
+    "python3 work/memory-surfaces/gnome/live-region.py",
+    "python3 work/memory-surfaces/gnome/finish-matched-workload.py"
+  ],
+  "tests": {
+    "original001FullDev": "27/28; first x11_isolated failed before lock cases. Original failure retained and no source changed to retry.",
+    "unchangedX11Focused": "3/3 passes; root owns separate investigation, cause not established.",
+    "corrected001bIncrementalDev": "Normal full dev target build succeeds with only two changed source files and unchanged mtimes preserved.",
+    "corrected001bGui": "3/3 pass, 9.21 seconds; JUnit build-evidence/ctest-gui.xml.",
+    "nativeCases": "12/12 pass; ../matrix.json",
+    "views": "2 cycles, six opens/closes; all twelve frames visually reviewed, ../views/results.json",
+    "liveBackground": "Pass: extra operation13,80x60 with all4800 pixels updatedRGB173/48/109; ../live-region/results.json"
+  },
+  "limitations": [
+    "No current claim of complete desktop certification; this is single-head named-action acceptance.",
+    "Original unchanged-X11 intermittent failure remains unexplained; it was not silently converted to a pass.",
+    "No cold-memory comparison or additional native window-state/dialog stress has run yet.",
+    "Baseline and candidate share overlay/boot but have distinct preserved synthetic configuration/history state; installed distro build environment changed before candidate."
+  ],
+  "readyForParentSampler": true,
+  "handoff": "../functional-ready.json",
+  "harnessCorrection": "../fixture-cleanup-harness-correction.json; same-user protected process scan narrowed before identity checks, no additional operations or source changes"
+}

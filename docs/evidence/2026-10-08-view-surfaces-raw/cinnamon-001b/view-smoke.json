@@ -1,0 +1,89 @@
+{
+  "results": [
+    {
+      "cycle": 0,
+      "view": "settings",
+      "shown": {
+        "shown": "settings"
+      },
+      "openedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-0-settings-open.png",
+      "closedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-0-settings-closed.png",
+      "runningApp": {
+        "pid": 17990,
+        "startTicks": 657928,
+        "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+      }
+    },
+    {
+      "cycle": 0,
+      "view": "history",
+      "shown": {
+        "shown": "history"
+      },
+      "openedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-0-history-open.png",
+      "closedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-0-history-closed.png",
+      "runningApp": {
+        "pid": 17990,
+        "startTicks": 657928,
+        "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+      }
+    },
+    {
+      "cycle": 0,
+      "view": "activity",
+      "shown": {
+        "shown": "activity"
+      },
+      "openedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-0-activity-open.png",
+      "closedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-0-activity-closed.png",
+      "runningApp": {
+        "pid": 17990,
+        "startTicks": 657928,
+        "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "settings",
+      "shown": {
+        "shown": "settings"
+      },
+      "openedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-1-settings-open.png",
+      "closedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-1-settings-closed.png",
+      "runningApp": {
+        "pid": 17990,
+        "startTicks": 657928,
+        "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "shown": {
+        "shown": "history"
+      },
+      "openedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-1-history-open.png",
+      "closedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-1-history-closed.png",
+      "runningApp": {
+        "pid": 17990,
+        "startTicks": 657928,
+        "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "shown": {
+        "shown": "activity"
+      },
+      "openedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-1-activity-open.png",
+      "closedWitness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/view-1-activity-closed.png",
+      "runningApp": {
+        "pid": 17990,
+        "startTicks": 657928,
+        "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+      }
+    }
+  ],
+  "visualReview": "pending"
+}

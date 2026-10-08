@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T23:00:31.030617+00:00",
+  "status": "completed-with-observations",
+  "scope": "Bounded additional native GNOME guards after frozen primary memory wave; no source/package changes, no rerun of matched workflow",
+  "candidate": "candidate-001b",
+  "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+  "runningApp": {
+    "pid": 31221,
+    "startTicks": 617110,
+    "sha256": "514a33cd6eda3b155f2fd7067280f614e6d9443a75f3c59dd9e217a6c07c1dd4"
+  },
+  "startedUtc": "2026-10-08T22:51:09.911810+00:00",
+  "lastGuiActionUtc": "2026-10-08T22:56:08.518201+00:00",
+  "operationCount": 13,
+  "additionalOperations": 0,
+  "sameOperationIds": true,
+  "allTerminal": true,
+  "packageReceiptUnchanged": true,
+  "acceptedSettingsUnchanged": true,
+  "cloudUsed": false,
+  "credentialsUsed": false,
+  "vncPort": 5936,
+  "cases": [
+    {
+      "name": "maximize_close_reopen",
+      "status": "pass",
+      "witnesses": [
+        "work/memory-surfaces/gnome/extra-ui-checks/settings-initial.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/settings-maximized.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/maximized-closed.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/maximized-reopened.png"
+      ],
+      "observation": "Alt+F10 maximized Settings; after Alt+F4 and five seconds hidden, production ui.show reopened the same complete maximized frame, with identical screenshot SHA."
+    },
+    {
+      "name": "minimize_restore",
+      "status": "pass_with_activation_limit",
+      "witnesses": [
+        "work/memory-surfaces/gnome/extra-ui-checks/settings-minimized.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/settings-restored.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/minimized-dock-restore.png"
+      ],
+      "observation": "Existing Super+h minimized Settings. CLI ui.show produced GNOME Settings-is-ready notification and did not foreground the window; clicking its visible dock entry restored complete maximized content. No attribution versus baseline; compositor activation limitation retained."
+    },
+    {
+      "name": "unmaximize_normal_geometry",
+      "status": "reproduced_in_plain_control_no_candidate_specific_difference",
+      "witnesses": [
+        "work/memory-surfaces/gnome/extra-ui-checks/settings-initial.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/settings-maximized.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/minimized-dock-restore.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/settings-normal-restored.png"
+      ],
+      "observation": "Initial normal frame about x172/y45,1002x740. After maximize/close/reopen/minimize/dock restore and an actually focused Alt+F10, rounded normal decorations return but geometry remains about x67/y32,1213x768. Potential normal-geometry loss; no baseline comparison or causal regression claim. Parent notified; no further investigation in this bounded unit. Follow-up native plain QWidget versus exact001b RetainedWindow comparison reproduces identical normal-size loss in both; see geometry-probe/conclusion.json."
+    },
+    {
+      "name": "fullscreen_close_reopen",
+      "status": "not_exercised_missing_capability",
+      "witnesses": [],
+      "observation": "GNOME existing toggle-fullscreen keybinding is empty. Installed product exposes no fullscreen action; no keybinding or product change made. Earlier widget state tests remain distinct from installed-app native proof."
+    },
+    {
+      "name": "region_popup_after_recreation",
+      "status": "pass",
+      "witnesses": [
+        "work/memory-surfaces/gnome/extra-ui-checks/region-popup-observed-position.png"
+      ],
+      "observation": "An unsaved empty destination draft enabled the combo. Popup left edge aligns with field at x245, opens directly below at y350, stays onscreen and shows region names. Dismissed then Cancel discarded the destination. Earlier clicks were unsuccessful locating attempts after layout shifted, preserved in actions; never counted as popup proof."
+    },
+    {
+      "name": "dirty_draft_and_cancel",
+      "status": "pass",
+      "witnesses": [
+        "work/memory-surfaces/gnome/extra-ui-checks/capture-folders-visible.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/local-draft-entered.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/local-draft-hidden.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/local-draft-reopened.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/after-local-draft-cancel.png"
+      ],
+      "observation": "Synthetic /tmp/putgd-native-draft survived close/five-second wait/reopen with Capture section and scroll position intact. Cancel restored /home/lab/putgd-lab/archive. Accepted metadata and canonical document hash remain identical; no settings save."
+    },
+    {
+      "name": "native_folder_dialog_parent_lifecycle",
+      "status": "pass_with_scope_limit",
+      "witnesses": [
+        "work/memory-surfaces/gnome/extra-ui-checks/native-folder-dialog-open.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/modal-parent-show-request.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/native-folder-dialog-cancel.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/native-parent-closed.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/native-parent-reopened.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/native-folder-dialog-reopened.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/native-dialog-altf4.png"
+      ],
+      "observation": "Real GTK Local output folder chooser opened, remained fully painted beyond delay and across parent ui.show, cancelled normally, then reopened after parent close/recreation and closed independently with Alt+F4. GTK3 platform theme mapping corroborates native appearance. Modal chooser fills the parent workarea, so direct parent-decoration close while modal was not exercised."
+    },
+    {
+      "name": "history_preview_lifecycle",
+      "status": "pass_with_selection_observation",
+      "witnesses": [
+        "work/memory-surfaces/gnome/extra-ui-checks/history-image-selected.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/history-preview-hidden.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/history-preview-reopened.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/history-image-reselected.png",
+        "work/memory-surfaces/gnome/extra-ui-checks/history-text-selected.png"
+      ],
+      "observation": "Selecting the synthetic live-region item displays its magenta preview. After close/five-second wait/reopen, History has no selected entry (first-row focus rectangle persists), so no automatic preview. Explicit reselection restores image; choosing text clears image and displays text/plain preview unavailable. Selection persistence is not claimed and baseline was not rechecked."
+    }
+  ],
+  "actions": {
+    "path": "work/memory-surfaces/gnome/extra-ui-checks/actions.jsonl",
+    "count": 41,
+    "sha256": "6cb44a2617fd8b3e308d6bc0e0b9c0bc070481f8d0c7be46ce5c2373f79ccd0d"
+  },
+  "postExtraMemory": {
+    "schemaVersion": 1,
+    "timestampUtc": "2026-10-08T22:56:46.774512+00:00",
+    "pid": 31221,
+    "startTicks": 617110,
+    "observedHiddenSeconds": 37.88018,
+    "executableSha256": "514a33cd6eda3b155f2fd7067280f614e6d9443a75f3c59dd9e217a6c07c1dd4",
+    "scope": "Single post-extra-UI attribution observation. Additional native GTK chooser and image-preview workload; NOT primary matched-memory comparison.",
+    "mappings": [
+      {
+        "name": "memfd:wayland-shm",
+        "backingGroup": "backing-1",
+        "mappedBytes": 643072,
+        "permissions": "rw-s",
+        "RssBytes": 643072,
+        "PssBytes": 321536,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 643072,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0
+      },
+      {
+        "name": "memfd:other",
+        "backingGroup": "backing-2",
+        "mappedBytes": 2359296,
+        "permissions": "rw-s",
+        "RssBytes": 253952,
+        "PssBytes": 253952,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 0,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 253952
+      }
+    ],
+    "openMemfdCounts": {
+      "memfd:other": 1
+    },
+    "backingGroupCount": 2,
+    "smapsRollup": {
+      "RssBytes": 113713152,
+      "PssBytes": 76073984,
+      "Shared_CleanBytes": 43040768,
+      "Shared_DirtyBytes": 647168,
+      "Private_CleanBytes": 24997888,
+      "Private_DirtyBytes": 45027328
+    },
+    "observerSha256": "1e03707655c0d7dceee28ec2dd93f39206b61fcc4c2ebc45c5ae4cf49fa327e3",
+    "hostScriptSha256": "da53710c77ff83d1076a0511ca6bd2adc7b2cec910d63fc82fb3175d3cb3434b"
+  },
+  "primaryComparisonPreserved": {
+    "RssBytes": 90226688,
+    "PssBytes": 59119616,
+    "source": "parent supplied completed primary wave; not replaced by post-extra observation"
+  },
+  "finalWitness": {
+    "path": "/home/patrick/work/put.gd/work/memory-surfaces/gnome/extra-ui-checks/extra-ui-finished.png",
+    "sha256": "3a10abb7ef02d3ff6c2f262635736db92571273374ea299ea2ea0dc955de0b0f"
+  },
+  "limits": [
+    "Native fullscreen and direct parent-decoration close during a fully covering modal chooser were not exercised.",
+    "Normal-size restoration issue reproduces identically in native plain QWidget control; History selection reset remains observed without baseline product comparison.",
+    "Post-extra memory includes native GTK chooser, destination draft, combo, window states and selected previews; cannot be compared causally to the primary13-operation workload.",
+    "One643072-byte wayland-shm mapping remains after extras; no ownership inference from its label.",
+    "No extra native GUI test binary run; prior offscreen GUI CTest is separate evidence."
+  ],
+  "focusedGeometryControl": "work/memory-surfaces/gnome/geometry-probe/conclusion.json"
+}

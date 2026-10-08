@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "completedUtc": "2026-10-08T23:05:54.643080+00:00",
+  "candidate": "candidate-001b",
+  "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "candidateCommitted": false,
+  "runningApp": {
+    "pid": 58990,
+    "startTicks": 731554,
+    "sha256": "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426"
+  },
+  "operationCount": 12,
+  "sourceArchiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+  "packageSha256": "c116e1a1bd2785cafb5b6d85967da8717227615030d813eff50d6f061db5319e",
+  "frozenRunnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "vncPort": 5934,
+  "acceptedPrimaryCycles": 2,
+  "acceptedExtraCycles": 2,
+  "cycleAccounting": "One extra visible cycle in extra-views.json plus the independently foreground-confirmed conservative repeat in verified-extra-cycle.json. Locked six activations and the imperfect first visible pass remain preserved and are excluded from accepted counts. Native control stress adds further individual Settings openings, not functional cycles.",
+  "primarySampleUntouched": true,
+  "checks": [
+    {
+      "name": "maximized close/reopen",
+      "status": "passed",
+      "witnesses": [
+        "native-maximized.png",
+        "native-max-close.png",
+        "native-max-reopened.png"
+      ],
+      "observation": "Reopened Settings fills maximized desktop work area and is completely painted.",
+      "witnessHashes": {
+        "native-maximized.png": "a74e69c0c1828458432bb95bf77319b89b301fbabc84865fbe66385af818bcc4",
+        "native-max-close.png": "63b1f0b113d670d4c0a14d5121676b7d37fe6a8d0f5588e361b698eae6fa7e11",
+        "native-max-reopened.png": "8e4222e8ff98d507c1b14ba94f625ec44eb035204c1ceb58463342f8fa074c62"
+      }
+    },
+    {
+      "name": "fullscreen close/reopen",
+      "status": "passed",
+      "witnesses": [
+        "native-fullscreen-requested.png",
+        "native-fullscreen-closed.png",
+        "native-fullscreen-reopened.png"
+      ],
+      "observation": "KDE More Actions Fullscreen supported; reopened Settings fills entire display without frame or panel.",
+      "witnessHashes": {
+        "native-fullscreen-requested.png": "49d5d5601637db2ed94c7b9abd574e5aead5e6cba128e0e157f7151cfd4e274f",
+        "native-fullscreen-closed.png": "49d5d5601637db2ed94c7b9abd574e5aead5e6cba128e0e157f7151cfd4e274f",
+        "native-fullscreen-reopened.png": "49d5d5601637db2ed94c7b9abd574e5aead5e6cba128e0e157f7151cfd4e274f"
+      }
+    },
+    {
+      "name": "minimize/restore",
+      "status": "passed",
+      "witnesses": [
+        "native-final-minimized.png",
+        "native-alt-tab-restored.png"
+      ],
+      "observation": "Native minimize hides the view; Alt-Tab restores complete Settings. Earlier taskbar click witness remained desktop and is not accepted as proof of taskbar restore.",
+      "witnessHashes": {
+        "native-final-minimized.png": "116cab0f052e34771d102e8e00fe669b06f108d77089f102b12e18bf96dac445",
+        "native-alt-tab-restored.png": "3db39dafa0d3c5b22cbba847d10e5ed121a08bb918302c7a97368cb302b23f10"
+      }
+    },
+    {
+      "name": "dirty draft retention and Cancel",
+      "status": "passed",
+      "witnesses": [
+        "native-draft-edited.png",
+        "native-draft-reopened.png",
+        "native-after-draft-cancel.png"
+      ],
+      "observation": "Synthetic archive path ending archivedraft remains after close/reopen, including section/scroll state. Cancel discards suffix and restores saved archive path. Save never clicked.",
+      "witnessHashes": {
+        "native-draft-edited.png": "941d714347563ae6c1fe5f9315c8829497ae59e0584828778d012c98b597692c",
+        "native-draft-reopened.png": "92de7cc26c615ed5563e0c81b6321b041b0e02e1c96c9695deecec81a3e28e24",
+        "native-after-draft-cancel.png": "c80c2916b765e863314faba139d91f024d6c423b7ff9ec56ab5004a84ee3c697"
+      }
+    },
+    {
+      "name": "dropdown placement after native recreation",
+      "status": "passed",
+      "witnesses": [
+        "native-dropdown-after-recreation.png"
+      ],
+      "observation": "Output dropdown appears directly below its owning combo with correctly positioned local/upload options; Escape dismisses without changing selection.",
+      "witnessHashes": {
+        "native-dropdown-after-recreation.png": "43685fcf2e8878b0ff14a197b1c40f298a091352bc4f96b187fa4925768197da"
+      }
+    },
+    {
+      "name": "native folder dialog cancellation and owner protection",
+      "status": "passed",
+      "witnesses": [
+        "native-native-folder-open.png",
+        "native-parent-close-with-dialog.png",
+        "native-dialog-cancel-escape.png"
+      ],
+      "observation": "KDE native folder picker remains visible with its owner when owner close is clicked. Escape cancels picker; Settings remains completely painted with unchanged saved folder. No folder selected/created.",
+      "witnessHashes": {
+        "native-native-folder-open.png": "138866c1802ac7fabd1f2764a5e95ce52183e1e875334426b7087c23c5121fea",
+        "native-parent-close-with-dialog.png": "a26106b56390129d49443de4e8751de204ddd7664496642d036de887518c1f15",
+        "native-dialog-cancel-escape.png": "b61b1ec98d0f75adf37a0c1100ab6441b63d536a7ad6fad6ca1e16cbd1efbf4f"
+      }
+    },
+    {
+      "name": "final desktop state",
+      "status": "passed",
+      "witnesses": [
+        "native-all-controls-final-close.png"
+      ],
+      "observation": "All app views closed, owned native session visible through VNC, resident identity and twelve-operation count unchanged.",
+      "witnessHashes": {
+        "native-all-controls-final-close.png": "d3f4220863ac0887f7b79a61d8a70b40a1ba00c83195264342398d554b0f62a7"
+      }
+    }
+  ],
+  "observations": {
+    "additional-cycle": {
+      "path": "/home/patrick/work/put.gd/work/memory-surfaces/kde/attempts/candidate-001b/additional-cycle-memory-sample.json",
+      "sha256": "f1b60da3f767f56323e184bf490b4120c747d8220735ea2952e9e80db81a489e",
+      "parameters": {
+        "durationSeconds": 120.0,
+        "intervalSeconds": 5.0,
+        "warmupSeconds": 5
+      },
+      "finalRssBytes": 164954112,
+      "finalPssBytes": 57162752,
+      "peakSampledRssBytes": 164954112,
+      "processIdentityUnchanged": true,
+      "cpuClaim": false
+    },
+    "verified-extra-cycle": {
+      "path": "/home/patrick/work/put.gd/work/memory-surfaces/kde/attempts/candidate-001b/verified-extra-cycle-memory-sample.json",
+      "sha256": "c81cd2f0efb9d94a89e3a512e126dbd92129a1cf20d99e1daebfd97c2d00c308",
+      "parameters": {
+        "durationSeconds": 120.0,
+        "intervalSeconds": 5.0,
+        "warmupSeconds": 5
+      },
+      "finalRssBytes": 164954112,
+      "finalPssBytes": 57168896,
+      "peakSampledRssBytes": 164954112,
+      "processIdentityUnchanged": true,
+      "cpuClaim": false
+    },
+    "after-verified-extra-cycles": {
+      "path": "/home/patrick/work/put.gd/work/memory-surfaces/kde/attempts/candidate-001b/observation-after-verified-extra-cycles.json",
+      "sha256": "f13dcdb93295f71bfd4b6e4f7ce68fe039b7d42eb8fd42156cc67b7e48a3e4ff",
+      "waylandShmCount": 0,
+      "waylandShmBytes": 0,
+      "rollup": {
+        "RssBytes": 164954112,
+        "PssBytes": 57178112,
+        "Shared_CleanBytes": 122134528,
+        "Shared_DirtyBytes": 0,
+        "Private_CleanBytes": 11976704,
+        "Private_DirtyBytes": 30842880,
+        "SwapBytes": 0
+      }
+    },
+    "after-native-controls": {
+      "path": "/home/patrick/work/put.gd/work/memory-surfaces/kde/attempts/candidate-001b/observation-after-native-controls.json",
+      "sha256": "9f303ce7a16a99701fb6a59aaac41724e7b4ad27f0e25083b8a1b2bbd37e16d0",
+      "waylandShmCount": 1,
+      "waylandShmBytes": 94208,
+      "rollup": {
+        "RssBytes": 179134464,
+        "PssBytes": 64928768,
+        "Shared_CleanBytes": 131457024,
+        "Shared_DirtyBytes": 94208,
+        "Private_CleanBytes": 9969664,
+        "Private_DirtyBytes": 37613568,
+        "SwapBytes": 0
+      }
+    }
+  },
+  "commandLog": {
+    "path": "/home/patrick/work/put.gd/work/memory-surfaces/kde/attempts/candidate-001b/native-steps.jsonl",
+    "sha256": "1bc303c5b9600a0731eb51bbb6ea2f860beea9ba43e835624f799c053f2ebb5b",
+    "description": "Exact ordered QMP/CLI steps, coordinates, settling time, timestamp and original witness path/hash; helper native-steps.py uses frozen runner and strict same-process identity gate."
+  },
+  "helpers": {
+    "native-steps.py": "b19aebc82b4a8d1b46f567c6ea1c10248a62b5e6799ca3fb56b544610053aa6c",
+    "extra-visible-cycles.py": "a39483763a07b7afca56fc45b0d50bce1e9b6dcafd5217dc7f3ab59ce0ed9a17",
+    "additional-sample.py": "3abc34d0f8f6d0bc71eb89988641732381883eebc516b10cb5d5b4cbcd7b6f77",
+    "observe.py": "1348e4f5a7f02c934445f404e17a4673907e9f86489a082f5a9ec8b4595d906a",
+    "guest-observe-shm.py": "bb24dcf870831d1abaf4af5f0ed9041e7ff0d756cc93415cb0f3b8c5c3566222"
+  },
+  "limits": [
+    "Additional-cycle samples are separate from quiet primary and are not cold/physical performance acceptance. No CPU claim.",
+    "Two accepted extra cycles plus failed/partial activation attempts; do not describe as exactly four total attempts.",
+    "Native state/draft/dialog stress applies to Settings; all three views had separate full-paint cycle checks.",
+    "Owner-close while native modal dialog is active is tested. This does not force a programmatic parent hide or prove every private guard branch.",
+    "Normal-size restore geometry after maximized/fullscreen recreation was not asserted; the frame changed to non-maximized icon while occupying full work area. No causal regression conclusion from this test.",
+    "After native control/dialog stress, one 94208-byte Wayland SHM mapping remains; its owner is not attributed. There are no full-size Settings/History/Activity buffers. The stress-only RSS/PSS is not compared causally to quiet primary because native dialog loading and additional actions changed the workload.",
+    "No source edits, builds, package changes, S3 requests, credentials or saved configuration changes during this follow-up."
+  ],
+  "ok": true
+}

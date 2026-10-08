@@ -1,0 +1,27 @@
+{
+  "timestampUtc": "2026-10-08T22:13:17.427530+00:00",
+  "sourceTree": "52667aa0291bf3eb1eeb30f1e6d11ef1cc8d5ce3",
+  "archiveSha256": "979883ab4d3c7a91c5f6247bcec09d8a6b837ef470d630c305d65a8d21b03a76",
+  "dev": {
+    "passed": 28,
+    "total": 28,
+    "workerReceipt": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/work/view-surfaces/implementation-result.json"
+  },
+  "asan": {
+    "passed": 3,
+    "total": 3,
+    "exitCode": 0
+  },
+  "tsan": {
+    "passed": 3,
+    "total": 3,
+    "exitCode": 0
+  },
+  "release": {
+    "built": true,
+    "packageCreated": true,
+    "hashes": "host-release/sha256s-corrected.txt"
+  },
+  "interruptions": "Original foreground launchers exited143 after build completion. Cause unproven. Same frozen source/build caches resumed with separately logged normal build/test commands; no source changes.",
+  "metadataCorrection": "Release package passed. Final hash command used wrong fixture path; corrected to build/release/packaging/linux/putgd-desktop-fixture. Preserved exit1 and original partial hashes."
+}

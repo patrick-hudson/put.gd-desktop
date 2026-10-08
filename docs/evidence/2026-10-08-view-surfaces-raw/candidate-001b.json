@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T22:19:13.656801+00:00",
+  "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "archive": "/home/patrick/work/put.gd/work/memory-surfaces/candidate-001b.tar",
+  "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+  "patchSha256": "aef12ee24f0005ccb3cccec522bb68841156524fd623acb6add780a473554315",
+  "sourceHashes": {
+    "src/ui/RetainedWindow.h": "1df97f83fb32f6954b11895f17062fd10ffe923d2cc810566fff4297f409eb05",
+    "src/ui/SettingsWindow.h": "c28e488710608b5dd1366ea097df70286cca3e2dd1d892394517be700b338b6d",
+    "src/ui/SettingsWindow.cpp": "46726a792da084e0e8ca965ce0f75f39ea5551e4a48011f25adfa9ec8dc1e99a",
+    "src/ui/HistoryWindow.h": "1aa2e83b8984309db0f03b34b48dc64ad35c74d7a06b9b4b66b49ec6fb66f24b",
+    "src/ui/HistoryWindow.cpp": "f5a863440bc8a553bf515e9b8d309e3e1ef80829072a0cff77c5832ca6a69c18",
+    "src/ui/RecentOperations.h": "b0838c14f21240ffd63454f7e5fe38254d4cf7e8ba59916666d94559bfbe3180",
+    "src/ui/RecentOperations.cpp": "7f356eb18334769bd1fcda69058bdcde5221d4bea1d982d6f322b333c8f412eb",
+    "tests/gui/test_settings.cpp": "c657a34bdff3b6df36cae69df5ff05f19cd787c245d255b882486b69f7198c47",
+    "tests/gui/test_history_view.cpp": "7de08fd777ebb7c16d091b05333b8b90f8bca7e98a8122301a1c77196e5a023b",
+    "tests/gui/test_operations_view.cpp": "8d37f832be4b007d0ea6fce2f710b8da93096f01e4d8ecfcaac3c35534068fc7"
+  },
+  "supersedesUnmeasuredCandidate": "52667aa0291bf3eb1eeb30f1e6d11ef1cc8d5ce3",
+  "reason": "Confirmed native/logical window-state mismatch; showEvent synchronizes native states. Test failed red then all3GUItests passed. No memory measurements existed for001."
+}

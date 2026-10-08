@@ -1,0 +1,162 @@
+{
+  "runningApp": {
+    "pid": 17990,
+    "startTicks": 657928,
+    "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+  },
+  "scope": "Post-primary-sample native state checks; VNC5938 remains visible",
+  "steps": [
+    {
+      "command": "lab_session=$(loginctl show-user \"$(id -un)\" -p Display --value)\n[ -n \"$lab_session\" ]\nloginctl unlock-session \"$lab_session\"\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:20.680229+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:22.689615+00:00"
+    },
+    {
+      "stage": "console-restored",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/console-restored.png",
+      "state": ""
+    },
+    {
+      "command": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e00051  0 17990  putgd-lab put.gd \u2014 Settings\n",
+      "timestampUtc": "2026-10-08T22:50:24.386958+00:00"
+    },
+    {
+      "command": "wmctrl -i -r 0x02e00051 -b add,maximized_vert,maximized_horz\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:24.701958+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_HORZ, _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:25.995804+00:00"
+    },
+    {
+      "stage": "maximized-before-close",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/maximized-before-close.png",
+      "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_HORZ, _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_FOCUSED\n"
+    },
+    {
+      "command": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e0005a  0 17990  putgd-lab put.gd \u2014 Settings\n",
+      "timestampUtc": "2026-10-08T22:50:28.430214+00:00"
+    },
+    {
+      "command": "xprop -id 0x02e0005a _NET_WM_STATE\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_HORZ, _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:28.742575+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_HORZ, _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:29.098923+00:00"
+    },
+    {
+      "stage": "maximized-reopened",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/maximized-reopened.png",
+      "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_MAXIMIZED_HORZ, _NET_WM_STATE_MAXIMIZED_VERT, _NET_WM_STATE_FOCUSED\n"
+    },
+    {
+      "command": "wmctrl -i -r 0x02e0005a -b remove,maximized_vert,maximized_horz\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:29.385979+00:00"
+    },
+    {
+      "command": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e0005a  0 17990  putgd-lab put.gd \u2014 Settings\n",
+      "timestampUtc": "2026-10-08T22:50:31.765251+00:00"
+    },
+    {
+      "command": "wmctrl -i -r 0x02e0005a -b add,fullscreen\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:32.104841+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:33.453907+00:00"
+    },
+    {
+      "stage": "fullscreen-before-close",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/fullscreen-before-close.png",
+      "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_FOCUSED\n"
+    },
+    {
+      "command": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e00065  0 17990  putgd-lab put.gd \u2014 Settings\n",
+      "timestampUtc": "2026-10-08T22:50:36.041516+00:00"
+    },
+    {
+      "command": "xprop -id 0x02e00065 _NET_WM_STATE\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:36.341770+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:36.655719+00:00"
+    },
+    {
+      "stage": "fullscreen-reopened",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/fullscreen-reopened.png",
+      "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FULLSCREEN, _NET_WM_STATE_FOCUSED\n"
+    },
+    {
+      "command": "wmctrl -i -r 0x02e00065 -b remove,fullscreen\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:36.921451+00:00"
+    },
+    {
+      "command": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e00065  0 17990  putgd-lab put.gd \u2014 Settings\n",
+      "timestampUtc": "2026-10-08T22:50:37.992802+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:39.083301+00:00"
+    },
+    {
+      "stage": "minimized",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/minimized.png",
+      "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FOCUSED\n"
+    },
+    {
+      "command": "wmctrl -i -a 0x02e00065\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:39.403537+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:40.715118+00:00"
+    },
+    {
+      "stage": "restored-from-minimize",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/restored-from-minimize.png",
+      "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FOCUSED\n"
+    },
+    {
+      "command": "wmctrl -i -r 0x02e00065 -e 0,50,0,1000,700\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:50:40.993593+00:00"
+    },
+    {
+      "command": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:50:42.053048+00:00"
+    },
+    {
+      "stage": "normal-for-controls",
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/normal-for-controls.png",
+      "state": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FOCUSED\n"
+    }
+  ],
+  "operationCount": 12,
+  "status": "native-state-flags-passed; image inspection and controls pending"
+}

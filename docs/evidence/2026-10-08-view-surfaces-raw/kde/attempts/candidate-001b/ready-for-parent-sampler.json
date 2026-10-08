@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T22:37:16.024193+00:00",
+  "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "candidateCommitted": false,
+  "packageSha256": "c116e1a1bd2785cafb5b6d85967da8717227615030d813eff50d6f061db5319e",
+  "runningApp": {
+    "pid": 58990,
+    "startTicks": 731554,
+    "sha256": "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426"
+  },
+  "run": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc",
+  "sshPort": 22234,
+  "vnc": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "service": "5934"
+  },
+  "operationCount": 12,
+  "functionalCasesPassed": 12,
+  "functionalTestIds": [
+    "d09ec4b59413444a9b39f4b1c93412d7",
+    "017e3fbf951346e8aa34b402b3740195",
+    "b821823babe54a219d56c82010ed7dde",
+    "fda30e2656114c3789643b2bb7eb63a7",
+    "d9f8762c7b60478999e21ae0e7372224",
+    "b8cfe09c74804f73bd0a37357b485e60",
+    "0b8cd97105454b5d8fe60d1770e514c1",
+    "9e5398617c774fd5b6df66d1403e1853",
+    "d6018df35aef4f8d90cce47b061bfe0a",
+    "be451edd8bfb4fdea1c7ae8db38ee77a",
+    "ed380918a9914c00ac96068effb1657a",
+    "50b779d5741b428db6251869a737f6a2"
+  ],
+  "viewCycles": 2,
+  "viewNames": [
+    "settings",
+    "history",
+    "activity"
+  ],
+  "viewReceipt": "views.json",
+  "visualReview": "views-visual-review.json",
+  "matrixReceipt": "matrix.json",
+  "lastClosedWitness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-views-2-activity-closed-head0.ppm",
+    "sha256": "1acfba1501c5139532154dabda3d29d5dd45cc71fc135cfd08ef9385d06678d1"
+  },
+  "guestIdle": {
+    "fixtureProcesses": [],
+    "buildProcesses": []
+  },
+  "idleVerificationScript": "python3 - <<'GUEST'\nimport pathlib,os,json\nfixtures=[];builds=[]\nfor p in pathlib.Path('/proc').iterdir():\n if not p.name.isdigit():continue\n try:\n  if p.stat().st_uid!=os.getuid():continue\n  name=(p/'comm').read_text().strip()\n  if name=='putgd-desktop-f':fixtures.append({'pid':int(p.name),'comm':name})\n  elif name=='python3' and b'gtk_clipboard_fixture.py' in (p/'cmdline').read_bytes():fixtures.append({'pid':int(p.name),'comm':'owned-gtk-fixture'})\n  elif name in ('ninja','cmake','cc1plus','g++','c++','clang','clang++'):builds.append({'pid':int(p.name),'comm':name})\n except OSError:pass\nprint(json.dumps({'fixtureProcesses':fixtures,'buildProcesses':builds}))\nGUEST\n",
+  "sampler": {
+    "durationSeconds": 120,
+    "intervalSeconds": 5,
+    "warmupSeconds": 5
+  },
+  "readyForParentSampler": true,
+  "noCandidateMemoryMeasurementYet": true,
+  "limits": [
+    "Prior full28 passed on001; root-authorized affected3GUI passed on corrected001b.",
+    "First region replay failed after completed local operation because frozen snapshot omitted fixed oracle; failure/profile retained and exact same runner restarted on fresh synthetic profile before all12passed.",
+    "Baseline had two initially attempted view cycles plus two accepted cycles; primary candidate follows frozen two-cycle protocol; separate extra cycles follow only after root sample.",
+    "No draft/dialog/window-state stress before primary sample; no cloud or private payloads."
+  ]
+}
