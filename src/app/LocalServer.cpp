@@ -70,6 +70,11 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
  const auto method=request["method"].toString();const auto p=request["params"].toObject();
  if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear")) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(method=="ui.show") {
+  if(!fields(p,{"view"})||!QStringList{"settings","history","activity"}.contains(p["view"].toString())){reply(invalid(),{});return;}
+  if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiActivation_(p["view"].toString());reply({},{{"shown",p["view"]}});return;
+ }
  if(method=="action.invoke") {if(!fields(p,{"action"})||!string(p,"action"))reply(invalid(),{});else operations_.invoke(p["action"].toString(),reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
  if(method.startsWith("operation.")) {if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="operation.inspect")operations_.inspect(id,reply);else if(method=="operation.cancel")operations_.cancel(id,reply);else if(method=="operation.retry")operations_.retry(id,reply);else if(method=="operation.copy")operations_.copyResult(id,reply);else if(method=="operation.retryLocalSave")operations_.retryLocalSave(id,reply);else reply({"unknown_method","Unknown operation method",{}},{});return;}

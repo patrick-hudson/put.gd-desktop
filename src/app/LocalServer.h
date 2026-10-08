@@ -13,8 +13,10 @@ public:
  static QString defaultSocketPath();
  static QJsonObject response(const QString& requestId,const Error&,const QJsonObject&);
  void dispatch(const QJsonObject&,JsonReply);
+ void setUiActivation(std::function<void(const QString&)> callback) {uiActivation_=std::move(callback); }
 private:
  void accept();
+ std::function<void(const QString&)> uiActivation_;
  SettingsService& settings_;
  OperationService& operations_;
  HistoryService& history_;

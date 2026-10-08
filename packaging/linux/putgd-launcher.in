@@ -1,0 +1,5 @@
+#!/bin/sh
+# Scope private official SDK libraries to this process; Qt stays in distro paths.
+bindir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+export LD_LIBRARY_PATH="$bindir/../@CMAKE_INSTALL_LIBDIR@/putgd${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$bindir/putgd" "$@"

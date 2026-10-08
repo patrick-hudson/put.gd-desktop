@@ -8,6 +8,12 @@ class CliContract:public QObject {
  Q_OBJECT
  static QJsonObject raw(const QString& path,const QByteArray& bytes) {QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(1000))return {};socket.write(bytes);QElapsedTimer timer;timer.start();QByteArray response;while(timer.elapsed()<5000&&!response.contains('\n')) {QCoreApplication::processEvents();response+=socket.readAll();QTest::qWait(1);}return QJsonDocument::fromJson(response).object();}
 private slots:
+ void launcherActivationUsesValidatedResidentUiRequest() {
+  QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);QVERIFY(server.listen(d.filePath("runtime")));QString view;
+  server.setUiActivation([&](const QString& requested){view=requested;});
+  QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"history\"}"});QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);QCOMPARE(view,QString("history"));
+  view.clear();client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"ui.show","{\"view\":\"arbitrary\"}"});QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);QVERIFY(view.isEmpty());QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+ }
  void realClientAndMalformedProtocol() {
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);LocalServer server(settings,ops,history);QVERIFY(server.listen(d.filePath("runtime")));QTRY_VERIFY(ops.ready());
   QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.socketPath(),"--request-id","fixture-request","capabilities"});QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),0);auto response=QJsonDocument::fromJson(client.readAllStandardOutput()).object();QCOMPARE(response["schemaVersion"].toInt(),1);QCOMPARE(response["requestId"].toString(),QString("fixture-request"));QVERIFY(response["ok"].toBool());QVERIFY(client.readAllStandardError().isEmpty());

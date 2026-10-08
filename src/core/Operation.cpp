@@ -1,5 +1,6 @@
 #include "Operation.h"
 namespace putgd {
+bool OperationItem::linkAvailable() const {return uploadStatus=="uploaded"&&!receipt.directUrl.isEmpty()&&!QStringList{"removed","already_missing","changed","hidden_version_retained"}.contains(remoteStatus);}
 namespace {Error errorFrom(const QJsonObject& o) {return {o["code"].toString(),o["message"].toString(),o["details"].toObject()};}}
 QJsonObject OperationItem::toJson() const {return {{"artifact",artifact.toJson()},{"uploadStatus",uploadStatus},{"candidate",candidate},{"condition",condition},{"concurrencyToken",concurrencyToken},{"publicationId",publicationId},{"objectReference",objectReference},{"receipt",receipt.toJson()},{"local",local.toJson()},{"remoteStatus",remoteStatus},{"error",error.toJson()}};}
 OperationItem OperationItem::fromJson(const QJsonObject& o) {OperationItem i; i.artifact=Artifact::fromJson(o["artifact"].toObject());i.uploadStatus=o["uploadStatus"].toString();i.candidate=o["candidate"].toString();i.condition=o["condition"].toString();i.concurrencyToken=o["concurrencyToken"].toString();i.publicationId=o["publicationId"].toString();i.objectReference=o["objectReference"].toObject();i.receipt=StorageReceipt::fromJson(o["receipt"].toObject());i.local=LocalCopy::fromJson(o["local"].toObject());i.remoteStatus=o["remoteStatus"].toString();i.error=errorFrom(o["error"].toObject());return i;}

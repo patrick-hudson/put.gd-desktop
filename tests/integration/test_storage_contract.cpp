@@ -3,6 +3,38 @@ using namespace putgd;using namespace putgd::test;
 class StorageContract:public QObject {
  Q_OBJECT
 private slots:
+ void deletionDuringBatchCompletionExcludesTheRemovedUrl() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"first.txt","first synthetic file"),fixture(d.path(),"second.txt","second synthetic file")};OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);QTRY_VERIFY(ops.ready());QString id;ops.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);id=result["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(provider->completions.size(),1);
+  HistoryStore ledger(ops.databasePath());auto first=ledger.operation(id).items.first();QCOMPARE(first.uploadStatus,QString("uploaded"));QJsonObject prepared;history.prepareDelete({first.artifact.id},[&](Error e,QJsonObject result){QVERIFY(!e);prepared=result;});QTRY_VERIFY(!prepared.isEmpty());history.deleteConfirmed({first.artifact.id},prepared["acknowledgement"].toString(),[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(ledger.detail(first.artifact.id)["remoteStatus"].toString(),QString("removed"));provider->completions.takeFirst()();
+  QTRY_COMPARE(source.copies,1);auto completed=ledger.operation(id);QCOMPARE(source.copied.text,completed.items.last().receipt.directUrl);QCOMPARE(provider->uploads.load(),2);QCOMPARE(provider->deletes.load(),1);
+ }
+ void knownRemovedHistoryNeverWritesClipboard() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));Source source;
+  OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);QTRY_VERIFY(ops.ready());
+  HistoryStore store(ops.databasePath());Operation op;op.id="removed-operation";op.created="2026-10-07T00:00:00.000Z";op.settings=settings.snapshot();
+  OperationItem item;item.artifact.id="removed-item";item.artifact.name="fixture.txt";item.uploadStatus="uploaded";item.receipt.directUrl="https://example.invalid/original";op.items={item};QVERIFY(!store.saveOperation(op));
+  for(const auto& status:QStringList{"removed","already_missing","hidden_version_retained","changed"}) {
+   QVERIFY(!store.updateRemote(item.artifact.id,status));bool replied=false;QString code;
+   history.copyLink(item.artifact.id,[&](Error e,QJsonObject){code=e.code;replied=true;});QTRY_VERIFY(replied);
+   QCOMPARE(source.copies,0);QCOMPARE(code,QString("link_unavailable"));QCOMPARE(store.detail(item.artifact.id)["receipt"].toObject()["directUrl"].toString(),item.receipt.directUrl);
+   replied=false;ops.copyResult(op.id,[&](Error,QJsonObject){replied=true;});QTRY_VERIFY(replied);QCOMPARE(source.copies,0);
+  }
+ }
+ void confirmedOverwriteMarksOnlyOriginalObjectHistory() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());doc["naming"]=QJsonObject{{"mode","original"},{"collisionPolicy","overwrite"}};QVERIFY(settings.save(doc,{}));
+  Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"same.txt","first synthetic version")};OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());
+  QString first;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});QTRY_COMPARE(source.copies,1);
+  HistoryStore store(ops.databasePath());const auto original=store.operation(first).items[0];const auto originalReceipt=original.receipt.toJson();
+  source.payload.files={fixture(d.path(),"same.txt","replacement synthetic version")};QString second;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});QTRY_COMPARE(source.copies,2);
+  QCOMPARE(store.detail(original.artifact.id)["remoteStatus"].toString(),QString("superseded"));QCOMPARE(store.detail(original.artifact.id)["receipt"].toObject(),originalReceipt);
+  const auto replacement=store.operation(second).items[0];QCOMPARE(store.detail(original.artifact.id)["supersededBy"].toString(),replacement.artifact.id);
+  QCOMPARE(store.detail(replacement.artifact.id)["remoteStatus"].toString(),QString("not_requested"));
+  // Late copy bookkeeping cannot restore the older entry to its former current state.
+  auto late=store.operation(first);late.copyStatus="suppressed";QVERIFY(!store.saveOperation(late));QCOMPARE(store.detail(original.artifact.id)["remoteStatus"].toString(),QString("superseded"));
+  QCOMPARE(provider->uploads.load(),2);QCOMPARE(provider->deletes.load(),0);
+ }
  void opaqueReceiptDeletionAndDurableProgress() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);HistoryService history(ops);QTRY_VERIFY(ops.ready());QString operation;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);operation=r["operationId"].toString();});QTRY_COMPARE(source.copies,1);HistoryStore store(ops.databasePath());const auto uploaded=store.operation(operation);const auto id=uploaded.items[0].artifact.id;auto record=store.detail(id);auto receipt=StorageReceipt::fromJson(record["receipt"].toObject());QVERIFY(receipt.objectReference["fileId"].toString().contains("/%?#"));QVERIFY(!record.contains("bucket"));QVERIFY(!record.contains("key"));
   // Remove the current profile: deletion still uses the recorded destination/reference.

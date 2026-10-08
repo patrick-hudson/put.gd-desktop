@@ -13,6 +13,7 @@ struct OperationItem {
  QJsonObject toJson() const;
  static OperationItem fromJson(const QJsonObject&);
  UploadRequest uploadRequest(const Destination&) const;
+ bool linkAvailable() const;
 };
 struct Operation {
  QString id,action,state="accepted",settingsRevision,created;

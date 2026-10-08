@@ -1,21 +1,66 @@
 #include "storage/s3/SdkRuntime.h"
 #include "storage/s3/S3Provider.h"
 #include "app/LocalServer.h"
+#include "app/LoginStartup.h"
+#include "ui/SettingsWindow.h"
+#include "ui/RecentOperations.h"
+#include "ui/HistoryWindow.h"
+#include "ui/TrayController.h"
 #include <QApplication>
-#include <QLabel>
-#include <QMainWindow>
+#include <QCommandLineParser>
 #include <QStandardPaths>
 #include <QDir>
+#include <QFileInfo>
+#include <QSaveFile>
+#include <QJsonDocument>
+#include <QLocalSocket>
+#include <QUuid>
+#include <atomic>
+#include <mutex>
 #ifdef PUTGD_NATIVE_X11
 #include "platform/x11/X11SourceAdapter.h"
 #endif
+namespace {
+bool activateResident(const QString& view) {
+ QLocalSocket socket;const auto path=putgd::LocalServer::defaultSocketPath();socket.connectToServer(path);
+ if(!socket.waitForConnected(200))return false;
+ const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
+ const QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method","ui.show"},{"params",QJsonObject{{"view",view}}}};
+ socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');
+ if(!socket.waitForBytesWritten(3000))return true;
+ if(!socket.waitForReadyRead(3000))qWarning("Resident activation response unavailable");
+ return true;
+}
+putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
+ const auto parent=QFileInfo(path).absolutePath();
+ if(!QDir().mkpath(parent)||!QFile::setPermissions(parent,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner))return {"setup_journal_io","Cannot create private destination test journal",{}};
+ QJsonArray checkpoints;
+ QFile existing(path);
+ if(existing.exists()) {
+  if(!existing.open(QIODevice::ReadOnly)||existing.size()>1024*1024)return {"setup_journal_io","Cannot read bounded destination test journal",{}};
+  QJsonParseError parse;const auto previous=QJsonDocument::fromJson(existing.readAll(),&parse);
+  if(parse.error!=QJsonParseError::NoError||!previous.isObject())return {"setup_journal_io","Destination test journal is invalid; original target preserved",{}};
+  checkpoints=previous.object()["checkpoints"].toArray();
+ }
+ if(checkpoints.size()>=64)return {"setup_journal_io","Destination test checkpoint limit reached; target preserved",{}};
+ checkpoints.append(data);
+ QSaveFile file(path);file.setDirectWriteFallback(false);
+ if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return {"setup_journal_io","Cannot open destination test journal",{}};
+ const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson(QJsonDocument::Compact);
+ if(file.write(bytes)!=bytes.size()||!file.commit())return {"setup_journal_io","Cannot commit destination test journal",{}};
+ return {};
+}
+}
 int main(int argc,char* argv[]) {
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion("0.1.0");
+ QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show recent activity"});parser.process(app);
+ const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
+ if(activateResident(view))return 0;
  putgd::SdkRuntime sdk;
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
- providers.add("s3",std::make_shared<putgd::S3Provider>(credentials));
+ auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
  putgd::SettingsService settings(QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath("config.json"),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
 #ifdef PUTGD_NATIVE_X11
@@ -25,7 +70,11 @@ int main(int argc,char* argv[]) {
  }
 #endif
  if(!source)source=std::make_unique<putgd::UnavailableSource>();
- putgd::OperationService operations(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation),settings,providers,*source);
+ const auto dataRoot=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+ putgd::OperationService operations(dataRoot,settings,providers,*source);
+ putgd::HistoryService history(operations);
+ putgd::LocalServer server(settings,operations,history);
+ const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));return listening.error.code=="session_running"?(activateResident(view)?0:1):1;}
 #ifdef PUTGD_NATIVE_X11
  if(native) {
   const auto bind=[&] {QHash<QString,QString> bindings;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)bindings.insert(i.key(),i.value().shortcut);native->bindShortcuts(bindings);};
@@ -33,8 +82,37 @@ int main(int argc,char* argv[]) {
   QObject::connect(native,&putgd::X11SourceAdapter::actionRequested,&operations,[&](const QString& action){operations.invoke(action,[](putgd::Error error,QJsonObject){if(error)qWarning("Action rejected: %s",qPrintable(error.code));});});
  }
 #endif
- putgd::HistoryService history(operations);
- putgd::LocalServer server(settings,operations,history);
- const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));return listening.error.code=="session_running"?0:1;}
- QMainWindow window;window.setWindowTitle("put.gd");window.setCentralWidget(new QLabel("Shared operation services ready. Destination and native desktop integration setup required.",&window));window.resize(720,480);window.show();return app.exec();
+ auto tester=[&](const QString& profileId,const QJsonObject& profile,std::function<void(putgd::Error)> reply) {
+  if(profile["provider"]!="s3"){reply({"test_unsupported","This provider has no destination test",{}});return;}
+  const putgd::Destination destination{"s3",profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+  const auto path=dataRoot+"/destination-tests/"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".json";
+  auto checkpoint=[path](const QJsonObject& data,std::function<void(putgd::Error)> ack){ack(checkpointFile(path,data));};
+  s3->testDestination(destination,checkpoint,[path,reply](QJsonObject result,putgd::Error error){
+   auto journalError=checkpointFile(path,{{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}});
+   if(!error&&journalError)error=journalError;
+   if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
+   reply(error);
+  });
+ };
+ QJsonObject loginStatus;
+ putgd::SettingsWindow window(settings,credentials,tester,[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];return diagnostics;});
+ putgd::RecentOperations activity(operations);putgd::HistoryWindow historyWindow(history,operations);
+ putgd::TrayController tray(operations,window,historyWindow,activity);
+ QObject::connect(&tray,&putgd::TrayController::quitRequested,&app,&QCoreApplication::quit);
+ server.setUiActivation([&](const QString& requested){if(requested=="history")tray.showHistory();else if(requested=="activity")tray.showActivity();else tray.showSettings();});
+ const auto loginMutex=std::make_shared<std::mutex>();
+ const auto loginGeneration=std::make_shared<std::atomic_ullong>(0);
+ const auto configureLogin=[&] {
+  const auto ticket=++*loginGeneration;
+  const auto configRoot=QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation);
+  const auto launcher=QFileInfo(QCoreApplication::applicationFilePath()).dir().filePath("putgd-launcher");
+  const auto executable=QFileInfo::exists(launcher)?launcher:QCoreApplication::applicationFilePath();
+  const auto enabled=settings.snapshot().launchAtLogin;
+  operations.background([configRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();window.refreshDiagnostics();});
+ };
+ configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
+ app.setQuitOnLastWindowClosed(!tray.available());
+ if(!parser.isSet("background")||!tray.available()||settings.revision().isEmpty()) {if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();}
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,&putgd::OperationService::shutdown);
+ return app.exec();
 }

@@ -6,11 +6,22 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QUuid>
+#include <QCryptographicHash>
 namespace putgd {
 namespace {
 Error sqlError() {return {"history_io","Persistent journal could not be read or committed",{}};}
 QByteArray encode(const QJsonObject& o) {return QJsonDocument(o).toJson(QJsonDocument::Compact);}
 QJsonObject decode(const QVariant& v) {return QJsonDocument::fromJson(v.toByteArray()).object();}
+QString publicationIdentity(const StorageReceipt& receipt,const ProviderRegistry& providers) {
+ if(receipt.validate())return {};
+ const auto provider=providers.find(receipt.destination.providerId);if(!provider)return {};
+ const auto key=provider->serializationKey(receipt.destination,receipt.objectReference,{});if(key.isEmpty())return {};
+ return QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(QJsonArray{receipt.destination.providerId,key}).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
+}
+QJsonObject publicRecord(QJsonObject data) {
+ data["linkAvailable"]=OperationItem::fromJson(data).linkAvailable();
+ return data;
+}
 QString createHistory(const QString& table) {return "CREATE TABLE "+table+"(id TEXT PRIMARY KEY, operation_id TEXT NOT NULL,item_id TEXT NOT NULL,created TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,category TEXT NOT NULL,profile_id TEXT NOT NULL,upload_status TEXT NOT NULL,local_status TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,UNIQUE(operation_id,item_id))";}
 }
 QJsonObject HistoryPage::toJson() const {return {{"records",records},{"total",double(total)}};}
@@ -22,8 +33,8 @@ HistoryStore::HistoryStore(QString path) {
 HistoryStore::~HistoryStore() {db_.close();db_=QSqlDatabase{};QSqlDatabase::removeDatabase(connection_);}
 Error HistoryStore::initialize() {
  QSqlQuery q(db_);if(!q.exec("PRAGMA foreign_keys=ON")||!q.exec("PRAGMA user_version")||!q.next()) return sqlError(); const int version=q.value(0).toInt();
- if(version>3) return {"history_version","Unsupported history schema version",{}};
- if(version==3) return {};
+ if(version>4) return {"history_version","Unsupported history schema version",{}};
+ if(version==4) return {};
  if(!db_.transaction()) return sqlError();
  auto exec=[&](const QString& s) {return q.exec(s);}; bool ok=true;
  if(version==0) ok=exec(createHistory("history"));
@@ -34,11 +45,12 @@ Error HistoryStore::initialize() {
   if(ok) ok=exec("INSERT INTO history_next SELECT id,json_extract(data,'$.operationId'),json_extract(data,'$.itemId'),json_extract(data,'$.created'),json_extract(data,'$.name'),json_extract(data,'$.mime'),json_extract(data,'$.category'),json_extract(data,'$.profileId'),json_extract(data,'$.uploadStatus'),json_extract(data,'$.local.status'),json_extract(data,'$.remoteStatus'),data FROM history");
   if(ok) ok=exec("DROP TABLE history")&&exec("ALTER TABLE history_next RENAME TO history");
  }
- if(ok) ok=exec("CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletions(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletion_targets(deletion_id TEXT NOT NULL,history_id TEXT NOT NULL,active INTEGER NOT NULL,PRIMARY KEY(deletion_id,history_id))")&&exec("CREATE INDEX IF NOT EXISTS operations_created ON operations(json_extract(data,'$.created') DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_category ON history(category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_upload ON history(upload_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_local ON history(local_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_created ON history(created DESC,id)")&&exec("CREATE INDEX IF NOT EXISTS history_filters ON history(profile_id,upload_status,category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_name ON history(name)")&&exec("CREATE INDEX IF NOT EXISTS history_mime ON history(mime,created)")&&exec("CREATE INDEX IF NOT EXISTS history_remote ON history(remote_status,local_status)")&&exec("CREATE TABLE IF NOT EXISTS cleared_history(id TEXT PRIMARY KEY)")&&exec("PRAGMA user_version=3");
+ if(ok) ok=exec("CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletions(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletion_targets(deletion_id TEXT NOT NULL,history_id TEXT NOT NULL,active INTEGER NOT NULL,PRIMARY KEY(deletion_id,history_id))")&&exec("CREATE INDEX IF NOT EXISTS operations_created ON operations(json_extract(data,'$.created') DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_category ON history(category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_upload ON history(upload_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_local ON history(local_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_created ON history(created DESC,id)")&&exec("CREATE INDEX IF NOT EXISTS history_filters ON history(profile_id,upload_status,category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_name ON history(name)")&&exec("CREATE INDEX IF NOT EXISTS history_mime ON history(mime,created)")&&exec("CREATE INDEX IF NOT EXISTS history_remote ON history(remote_status,local_status)")&&exec("CREATE TABLE IF NOT EXISTS cleared_history(id TEXT PRIMARY KEY)");
+ if(ok)ok=exec("ALTER TABLE history ADD COLUMN publication_identity TEXT NOT NULL DEFAULT ''")&&exec("CREATE INDEX history_publication ON history(publication_identity,upload_status)")&&exec("PRAGMA user_version=4");
  if(!ok||!db_.commit()) {db_.rollback();return {"history_migration","History migration failed; original records preserved",{}};}
  return {};
 }
-Error HistoryStore::saveOperation(const Operation& op) {
+Error HistoryStore::saveOperation(const Operation& op,const ProviderRegistry* providers) {
  if(error_) return error_;
  if(!db_.transaction()) return sqlError();
  QSqlQuery q(db_);
@@ -46,23 +58,48 @@ Error HistoryStore::saveOperation(const Operation& op) {
  for(const auto& item:op.items) {
   if(!ok) break;
   q.prepare("SELECT 1 FROM cleared_history WHERE id=?");q.addBindValue(item.artifact.id);if(!q.exec()) {ok=false;break;}if(q.next())continue;
-  QJsonObject remote; q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(item.artifact.id);if(!q.exec()) {ok=false;break;}if(q.next()) {const auto retained=decode(q.value(0));for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress"})if(retained.contains(key))remote[key]=retained[key];}
+  QString identity;bool newlyUploaded=true;QJsonObject remote; q.prepare("SELECT data,publication_identity,upload_status FROM history WHERE id=?");q.addBindValue(item.artifact.id);if(!q.exec()) {ok=false;break;}if(q.next()) {identity=q.value(1).toString();newlyUploaded=q.value(2).toString()!="uploaded";const auto retained=decode(q.value(0));for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy"})if(retained.contains(key))remote[key]=retained[key];}
+  if(providers&&item.uploadStatus=="uploaded")identity=publicationIdentity(item.receipt,*providers);
   auto data=item.toJson();for(auto it=remote.begin();it!=remote.end();++it)data[it.key()]=it.value();auto artifact=data.take("artifact").toObject();artifact.remove("path");
   for(auto it=artifact.begin();it!=artifact.end();++it) data[it.key()]=it.value();
   data["operationId"]=op.id;data["itemId"]=item.artifact.id;data["id"]=item.artifact.id;data["created"]=op.created;data["profileId"]=op.destination.profileId;
-  q.prepare("INSERT INTO history VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET upload_status=excluded.upload_status,local_status=excluded.local_status,data=excluded.data");
-  for(const auto& value:QVariantList{item.artifact.id,op.id,item.artifact.id,op.created,item.artifact.name,item.artifact.mime,item.artifact.category,op.destination.profileId,item.uploadStatus,item.local.status,item.remoteStatus,encode(data)}) q.addBindValue(value.metaType().id()==QMetaType::QString&&value.toString().isNull()?QVariant(QStringLiteral("")):value);
+  q.prepare("INSERT INTO history(id,operation_id,item_id,created,name,mime,category,profile_id,upload_status,local_status,remote_status,data,publication_identity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET upload_status=excluded.upload_status,local_status=excluded.local_status,data=excluded.data,publication_identity=excluded.publication_identity");
+  for(const auto& value:QVariantList{item.artifact.id,op.id,item.artifact.id,op.created,item.artifact.name,item.artifact.mime,item.artifact.category,op.destination.profileId,item.uploadStatus,item.local.status,item.remoteStatus,encode(data),identity}) q.addBindValue(value.metaType().id()==QMetaType::QString&&value.toString().isNull()?QVariant(QStringLiteral("")):value);
   ok=q.exec();
-  // Remote management is independent: operation retry must never overwrite a delete result.
-  if(ok) {q.prepare("SELECT remote_status,data FROM history WHERE id=?");q.addBindValue(item.artifact.id);ok=q.exec()&&q.next();if(ok) {auto retained=decode(q.value(1));retained["remoteStatus"]=q.value(0).toString();q.prepare("UPDATE history SET data=? WHERE id=?");q.addBindValue(encode(retained));q.addBindValue(item.artifact.id);ok=q.exec();}}
+  if(ok&&newlyUploaded&&item.uploadStatus=="uploaded"&&item.condition=="match"&&!identity.isEmpty()) {
+   QSqlQuery older(db_);older.prepare("SELECT id,data FROM history WHERE publication_identity=? AND id<>? AND upload_status='uploaded' AND remote_status NOT IN ('removed','already_missing','changed','hidden_version_retained','superseded')");older.addBindValue(identity);older.addBindValue(item.artifact.id);ok=older.exec();
+   while(ok&&older.next()) {auto previous=decode(older.value(1));previous["remoteStatus"]="superseded";previous["supersededBy"]=item.artifact.id;QSqlQuery update(db_);update.prepare("UPDATE history SET remote_status='superseded',data=? WHERE id=?");update.addBindValue(encode(previous));update.addBindValue(older.value(0));ok=update.exec();}
+  }
+
  }
  if(!ok||!db_.commit()) {db_.rollback();return sqlError();}return {};
+}
+Error HistoryStore::indexPublications(const ProviderRegistry& providers) {
+ if(error_)return error_;
+ // Stream bounded pages; unknown/unavailable providers remain unindexed until restored.
+ QString after=QStringLiteral("");
+ for(;;) {
+  QSqlQuery rows(db_);rows.prepare("SELECT id,data FROM history WHERE id>? AND publication_identity='' AND upload_status='uploaded' ORDER BY id LIMIT 200");rows.addBindValue(after);if(!rows.exec())return sqlError();
+  QList<QPair<QString,QString>> identities;int count=0;
+  while(rows.next()) {++count;after=rows.value(0).toString();const auto receipt=StorageReceipt::fromJson(decode(rows.value(1))["receipt"].toObject());const auto identity=publicationIdentity(receipt,providers);if(!identity.isEmpty())identities.append({after,identity});}
+  rows.finish();
+  if(count==0)return {};
+  if(!db_.transaction())return sqlError();
+  bool ok=true;
+  for(const auto& entry:identities) {QSqlQuery update(db_);update.prepare("UPDATE history SET publication_identity=? WHERE id=? AND publication_identity=''");update.addBindValue(entry.second);update.addBindValue(entry.first);if(!update.exec()){ok=false;break;}}
+  if(!ok||!db_.commit()){db_.rollback();return sqlError();}
+  // The next keyset query ends naturally when all remaining IDs have been inspected.
+  QSqlQuery remaining(db_);remaining.prepare("SELECT 1 FROM history WHERE id>? AND publication_identity='' AND upload_status='uploaded' LIMIT 1");remaining.addBindValue(after);if(!remaining.exec())return sqlError();if(!remaining.next())return {};
+ }
 }
 Operation HistoryStore::operation(const QString& id,Error* error) const {
  if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM operations WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}
  if(!q.next()) {if(error)*error={"operation_not_found","Operation not found",{}};return {};}
- return Operation::fromJson(decode(q.value(0)));
+ auto op=Operation::fromJson(decode(q.value(0)));
+ QSqlQuery remote(db_);remote.prepare("SELECT item_id,remote_status FROM history WHERE operation_id=?");remote.addBindValue(id);if(!remote.exec()){if(error)*error=sqlError();return {};}
+ QHash<QString,QString> statuses;while(remote.next())statuses.insert(remote.value(0).toString(),remote.value(1).toString());for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);
+ return op;
 }
 QList<Operation> HistoryStore::recover(Error* error) {
  QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
@@ -91,10 +128,10 @@ HistoryPage HistoryStore::list(const HistoryQuery& query) const {
  QSqlQuery q(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);
  if(!q.exec()||!q.next()) {r.error=sqlError();return r;}r.total=q.value(0).toLongLong();
  q.prepare("SELECT data FROM history"+where+" ORDER BY created DESC,id LIMIT ? OFFSET ?");for(const auto& v:values) q.addBindValue(v);q.addBindValue(query.limit);q.addBindValue(query.offset);
- if(!q.exec()) {r.error=sqlError();return r;}while(q.next()) r.records.append(decode(q.value(0)));return r;
+ if(!q.exec()) {r.error=sqlError();return r;}while(q.next()) r.records.append(publicRecord(decode(q.value(0))));return r;
 }
 QJsonObject HistoryStore::detail(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
- QSqlQuery q(db_);q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"history_not_found","History record not found",{}};return {};}return decode(q.value(0));}
+ QSqlQuery q(db_);q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"history_not_found","History record not found",{}};return {};}return publicRecord(decode(q.value(0)));}
 QJsonArray HistoryStore::recent(int limit,Error* error) const {
  QJsonArray result;if(error_) {if(error)*error=error_;return result;}
  if(limit<1||limit>10000) {if(error)*error={"invalid_query","Invalid recent activity limit",{}};return result;}

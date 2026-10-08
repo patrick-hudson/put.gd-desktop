@@ -1,0 +1,16 @@
+put.gd development package dependency notice
+
+Qt 6 and QtKeychain are dynamically linked distribution packages. Their licenses,
+source and security updates are supplied through the distribution package manager.
+Qt platform plugins and SQLite SQL driver remain distribution owned.
+
+The official AWS SDK for C++ and its CRT shared libraries are privately installed
+under the putgd library directory. Pinned source identities are recorded in
+/usr/share/putgd/dependency-lock.json. AWS SDK and CRT Apache-2.0 license texts are
+installed alongside this notice; s2n-tls uses Apache-2.0. Rebuild the pinned official
+SDK following docs/build.md, update the lock deliberately, and rebuild the DEB to
+update these libraries. No compiler or Qt runtime is bundled.
+
+This development package and its optional synthetic fixture are inputs to graphical
+acceptance. Installation alone does not certify compositor support. Release lifecycle,
+complete license audit, integration assets and checksums remain U10 release gates.

@@ -14,9 +14,10 @@ public:
  ~HistoryStore();
  HistoryStore(const HistoryStore&)=delete;
  Error error() const {return error_;}
- Error saveOperation(const Operation&); // operation and item ledger in one transaction
+ Error saveOperation(const Operation&,const ProviderRegistry* = nullptr); // operation and item ledger in one transaction
  Operation operation(const QString&,Error* = nullptr) const;
  QList<Operation> recover(Error* = nullptr);
+ Error indexPublications(const ProviderRegistry&);
  HistoryPage list(const HistoryQuery&) const;
  QJsonObject detail(const QString&,Error* = nullptr) const;
  QJsonArray recent(int limit,Error* = nullptr) const;

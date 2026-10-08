@@ -14,6 +14,8 @@ Implement its dependencies in order and record blocked acceptance separately fro
 | Persistent history and remote deletion | `src/core/HistoryStore.*`, `src/app/HistoryService.*` | history/storage/deletion integration tests |
 | Provider contract | `src/core/StorageProvider.h`, `StorageReceipt.h` | `tests/fixtures/U2Fixtures.h`, storage contract tests |
 | S3 / explicit credential resolution | `src/storage/s3/`, `src/secrets/` | isolated S3/keychain fixtures; [credentials](credentials.md), [S3](s3.md) |
+| Settings/activity/history widgets and login startup | `src/ui/`, `src/app/LoginStartup.*` | `tests/gui/`, `test_login_startup.cpp`, [user guide](user-guide.md) |
+| Disposable desktop VM lab / development package | `tools/lab/`, `packaging/linux/` | `tests/desktop/test_lab.py`, [VM lab](vm-lab.md) |
 | Session JSON transport | `src/app/LocalServer.*`, `src/cli/main.cpp` | `test_cli.cpp`, [CLI](cli.md) |
 | Optional stdio MCP | `tools/mcp/` | `tests/integration/test_mcp.py`, [MCP](mcp.md) |
 | Build, dependency pins, sanitizers | `CMakePresets.json`, `cmake/`, `tools/verify_dependencies.py` | [build](build.md), [thread checks](thread-sanitizer.md) |
@@ -47,7 +49,7 @@ patches when editing alongside a GUI or another agent. A conflict requires rerea
 rebasing the intended edit. Invalid external JSON preserves accepted settings: correct the
 file, then reload. Save external documents atomically in the same directory and cooperate
 with `config.json.lock`; an editor ignoring the lock can race app writes. Dirty GUI drafts
-must survive external acceptance and show conflicts when that GUI unit is implemented.
+survive external acceptance and show conflicts; discard/reload or reconcile the draft before saving.
 Validation/reload must cause no capture, provider network request, or secret-store prompt.
 See configuration.md for complete fields, routing, snapshots, and development import.
 
@@ -62,8 +64,7 @@ Do not teach shared code to decode URLs or provider object keys.
 
 ## Desktop and release gates
 
-U6's lab runner and U10's package validation commands are pending interfaces until their
-implementation and documentation land. Do not invent commands or claim they ran.
+The lab interface is `python3 tools/lab/lab.py`; use [testing](testing.md) and [VM lab](vm-lab.md) for exact package/provisioning/snapshot commands. A real desktop scenario remains unverified until its saved artifact, independent paste and QMP witness pass. U10's full release lifecycle is still pending.
 Full U9 completion requires a working Cinnamon scenario, U6 lab documentation, and a
 fresh agent successfully following committed instructions to build, run, collect redacted
 diagnostics, and identify a simulated failure. Headless MCP parity alone cannot close it.

@@ -23,7 +23,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
   journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);
   if(!journalOwner_->tryLock(0)) {e={"journal_busy","Another resident owns this operation journal",{}};return QJsonObject{};}
-  HistoryStore store(path);e=store.error();if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
+  HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
   for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:batch.artifacts) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
   return QJsonObject{};
  },[this](Error e,QJsonObject) {startupError_=e;ready_=!e;emit initialized();});
@@ -88,7 +88,7 @@ void OperationService::pump() {
 }
 Operation OperationService::run(Job job) {
  auto op=job.op;HistoryStore store(databasePath());ArtifactStore artifacts(root_+"/artifacts");
- auto save=[&]() {auto e=store.saveOperation(op);if(e) {op.error=e;op.state="failed";}return !e;};
+ auto save=[&]() {auto e=store.saveOperation(op,&providers_);if(e) {op.error=e;op.state="failed";}return !e;};
  if(job.acquire) {std::lock_guard acquisitionGuard(acquisitionMutex_);auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits);if(acquired.error) {op.error=acquired.error;op.state="failed";save();return op;}
   for(const auto& a:acquired.artifacts) {OperationItem item;item.artifact=a;item.artifact.previewPath=artifacts.preview(a,op.settings.previewCacheBytes,op.settings.limits.imagePixels);item.publicationId=uuid();op.items.append(item);}op.state="stored";if(!save())return op;
  }
@@ -166,9 +166,10 @@ Operation OperationService::run(Job job) {
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  if(selectingId_==op.id)selectingId_.clear();
- const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.toJson();},[this,op,reply](Error e,QJsonObject) {
-  emit changed(op.id);
-  if(e) {active_.remove(op.id);if(reply)reply(e,{});return;}
+ const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
+  emit changed(id);
+  if(e) {active_.remove(id);if(reply)reply(e,{});return;}
+  const auto op=Operation::fromJson(document);
   if(op.cancelled||op.state=="failed"||op.state=="interrupted") {active_.remove(op.id);if(reply)reply({},op.publicJson());return;}
   performCopy(op,false,[this,id=op.id,reply](Error error,QJsonObject result) {active_.remove(id);if(reply)reply(error,result);});
  });
@@ -208,7 +209,7 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
  auto record=[guarded,path,reply](Operation value) {if(!guarded)return;guarded->background([path,value](Error& e) {HistoryStore store(path);e=store.saveOperation(value);return value.publicJson();},[guarded,value,reply](Error e,QJsonObject result) {if(!guarded)return;emit guarded->changed(value.id);if(reply)reply(e,result);});};
  if(!eligible) {op.copyStatus="suppressed";record(op);return;}
  QStringList urls,files;QString localKind;
- for(const auto& item:op.items) {if(item.uploadStatus=="uploaded"&&!item.receipt.directUrl.isEmpty())urls.append(item.receipt.directUrl);if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
+ for(const auto& item:op.items) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
  if(urls.isEmpty()&&files.isEmpty()) {op.copyStatus="no_result";record(op);return;}
  CopyPayload payload;
  if(!urls.isEmpty()) {payload.kind="text";payload.text=urls.join('\n');}

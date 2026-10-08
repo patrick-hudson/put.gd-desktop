@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "implementedScenario": "region-local-image-independent-paste",
+  "input": {
+    "shortcut": [
+      "ctrl",
+      "shift",
+      "1"
+    ],
+    "drag": {
+      "paintOffset": [
+        30,
+        30
+      ],
+      "size": [
+        80,
+        60
+      ]
+    }
+  },
+  "oracle": {
+    "width": 80,
+    "height": 60,
+    "samples": [
+      {
+        "x": 20,
+        "y": 20,
+        "rgb": [
+          220,
+          30,
+          40
+        ]
+      },
+      {
+        "x": 60,
+        "y": 40,
+        "rgb": [
+          220,
+          30,
+          40
+        ]
+      }
+    ]
+  },
+  "requiredEvidence": [
+    "artifact.png",
+    "artifact.ppm",
+    "paste.json",
+    "paste.ppm",
+    "before-head0.ppm",
+    "final-head0.ppm",
+    "ready.json",
+    "diagnostics.json",
+    "versions.json",
+    "package.json",
+    "results.json",
+    "results.xml"
+  ],
+  "pendingScenarios": [
+    "cancel-no-publication",
+    "shortcut-conflict",
+    "offline-upload",
+    "clipboard-owner-suppression",
+    "history-restart-copy-delete",
+    "external-config-conflicts",
+    "multi-head-mixed-dpi-rotation-removal",
+    "normal-GTK-Qt-interop"
+  ],
+  "certifiesFullProfile": false,
+  "implementedScenarios": [
+    "region",
+    "window",
+    "desktop",
+    "clipboard-text",
+    "clipboard-image",
+    "clipboard-files",
+    "configured-synthetic-upload-public-get-url-paste",
+    "uploaded-history-restart-detail-copyLink-delete-prepare"
+  ]
+}
