@@ -1,0 +1,20 @@
+{
+  "timestampUtc": "2026-10-08T21:26:16.665246+00:00",
+  "method": "read-only KWin org.kde.KWin /KWin org.kde.KWin.supportInformation; only rendering lines exported",
+  "exportedLines": [
+    "Compositing is active",
+    "Compositing Type: OpenGL",
+    "OpenGL vendor string: Mesa",
+    "OpenGL renderer string: llvmpipe (LLVM 21.1.8, 256 bits)",
+    "OpenGL version string: 4.5 (Core Profile) Mesa 26.0.8-1ubuntu0.3",
+    "OpenGL shading language version string: 4.50",
+    "Driver: LLVMpipe",
+    "GPU class: Unknown",
+    "OpenGL version: 4.5",
+    "GLSL version: 4.50",
+    "Mesa version: 26.0.8",
+    "Direct rendering: Requires strict binding: no"
+  ],
+  "exitCode": 0,
+  "limit": "This identifies KWin compositor renderer only; it does not identify putgd GL context renderer or attribute LLVM allocations causally."
+}

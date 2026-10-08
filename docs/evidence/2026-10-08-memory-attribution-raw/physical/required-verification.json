@@ -1,0 +1,25 @@
+{
+  "scope": "Required verification for any hidden drawing-resource candidate; preparation only, no test execution claimed",
+  "sourceReference": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "platforms": [
+    "physical Cinnamon X11",
+    "installed Cinnamon X11 VM",
+    "installed GNOME Wayland VM",
+    "installed KDE Wayland VM"
+  ],
+  "functionalChecks": [
+    "All existing28Dev contracts on affecteddistro builds; GUI checks with distro minimumQt6.4.2 and WaylanddistroQt6.10.2",
+    "Retain dirty settings field/profile/section and conflicting external config draft across explicit close/hide; Cancel continues intentional discard",
+    "Retain history query/selection and deletion-cancel behavior; clear hidden preview and reload it on show",
+    "Retain activity rows/selection/retry/copy behavior",
+    "Defer native destruction until eventdispatch returns; quick hide/show leaves reopened window intact; deletion with queued callback is safe",
+    "Minimize/restore does not discard a visible/minimized surface; child/modal/native dialog behavior remains correct",
+    "Inspect real rendered QMP witnesses for eachreopen on GNOME/KDE/Cinnamon with VNC intact; do not infer painting from offscreen tests",
+    "Run existing12native capture/clipboard/cancellation scenarios perVM on frozen candidatepackage and check actual resident identity before/after",
+    "Run serialtwo physical3viewcycles/30sclosed measurements and separate unchanged300secondcoldCPU/RSS gate; ordinaryCinnamonfonts/dialogs remain active",
+    "Run matching Waylandpostfunctional120secondsmaps sampler; compare sameprofile RSS/PSS/shared/private andSHM counts; preserve differentworkload scopes",
+    "Record first-reopen delay separately; no claim that viewcleanup closes existingcapturelatencygate",
+    "Save any failure/retry, source/package/module/helper hashes, commandvectors, sampleparameters and JSON/JUnit/logs; no credentials/personalcontent"
+  ],
+  "integrationGate": "No keep/integration if painting/state/crossdesktop behavior regresses. A score-only gain is insufficient. Native surface release is not widget destruction, and cold40MiB remains independent."
+}

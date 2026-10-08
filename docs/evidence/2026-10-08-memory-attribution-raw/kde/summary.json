@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T21:28:37.726334+00:00",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "pid": 2958,
+  "startTicks": 81226,
+  "appSha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1",
+  "current": {
+    "rssBytes": 195211264,
+    "pssBytes": 65049600,
+    "privateBytes": 38981632,
+    "sharedBytes": 156229632,
+    "categoryRssReconciles": true
+  },
+  "largestGroups": [
+    {
+      "name": "libLLVM.so.21.1",
+      "rssBytes": 50622464,
+      "pssBytes": 5963776,
+      "privateBytes": 2244608,
+      "sharedBytes": 48377856,
+      "mappingCount": 4
+    },
+    {
+      "name": "memfd:[other]",
+      "rssBytes": 28016640,
+      "pssBytes": 14360576,
+      "privateBytes": 704512,
+      "sharedBytes": 27312128,
+      "mappingCount": 11
+    },
+    {
+      "name": "[heap]",
+      "rssBytes": 17510400,
+      "pssBytes": 17510400,
+      "privateBytes": 17510400,
+      "sharedBytes": 0,
+      "mappingCount": 1
+    },
+    {
+      "name": "libgallium-26.0.8-1ubuntu0.3.so",
+      "rssBytes": 10616832,
+      "pssBytes": 1760256,
+      "privateBytes": 1019904,
+      "sharedBytes": 9596928,
+      "mappingCount": 5
+    },
+    {
+      "name": "[anonymous]",
+      "rssBytes": 5890048,
+      "pssBytes": 5890048,
+      "privateBytes": 5890048,
+      "sharedBytes": 0,
+      "mappingCount": 89
+    },
+    {
+      "name": "libQt6Network.so.6.10.2",
+      "rssBytes": 557056,
+      "pssBytes": 91136,
+      "privateBytes": 65536,
+      "sharedBytes": 491520,
+      "mappingCount": 5
+    }
+  ],
+  "waylandBuffers": {
+    "count": 10,
+    "bytesEach": 2801664,
+    "matchesPageRounded1000x700x4": true,
+    "ownership": "Consistent with retained Qt view backing stores, not yet individually attributed or proven unbounded."
+  },
+  "loadedFamilies": {
+    "officialAwsSdkOrCrt": false,
+    "llvm": true,
+    "gallium": true,
+    "privateS3Module": false,
+    "curl": true,
+    "qtNetwork": true,
+    "gtk": false,
+    "wayland": true,
+    "xcb": true,
+    "tlsCrypto": true
+  },
+  "oldObservation": {
+    "run": "kde-001",
+    "pid": 37517,
+    "timestampUtc": "2026-10-08T20:17:55.363497+00:00",
+    "ageHours": 10.4133,
+    "rssMiB": 179.22265625,
+    "pssMiB": 66.666015625,
+    "privateMiB": 52.9765625,
+    "sharedCleanMiB": 118.67578125,
+    "sharedDirtyMiB": 7.5703125,
+    "rssHighWaterMiB": 181.9609375,
+    "swapMiB": 0.0,
+    "heapRssMiB": 30.12109375,
+    "anonymousRssMiB": 2.3125,
+    "sharedMemfdRssMiB": 7.5703125,
+    "awsSdkCrtRssMiB": 6.5234375,
+    "qtNetworkRssMiB": 1.28125,
+    "elfDirectAwsSdkLinkage": true,
+    "elfDirectCurlLinkage": true,
+    "elfDirectQtNetworkLinkage": true,
+    "matchesMeasuredBinary": false,
+    "matchesCanonicalRebuiltBinary": false,
+    "identifiedLlvmGalliumRssMiB": 58.40234375,
+    "identifiedLlvmGalliumPssMiB": 7.3662109375,
+    "categoryRssEqualsRollup": true
+  },
+  "comparisonLimit": "Different source/process age/workload and shared-page attribution. No causal before-after saving or regression claim.",
+  "nextLocatingMeasurement": "Staged cold\u2192eachviewopen/close\u2192repeatcycles mapping count/RSS/PSS/private measurements with current exact package, native integration, same dimensions, visible console and controlled synthetic history. Not executed in this unit.",
+  "firstCandidate": "Release native backing resources after eligible view hides, retaining logical objects and all drafts/state; preserve active dialogs and repaint/reopen behavior. Source-supported, unmeasured.",
+  "secondaryCandidate": "Defer global image-codec discovery for preferred local-file/proven text-only imports while preserving arbitrary codec MIME fallback and image priority. Separate workload/measurement.",
+  "noStateChanges": true,
+  "buildPreparation": "Scripts prepared only; awaiting root physical-window release. Normal native SDK build from verified official source, no Mint binaries or obsoleteVMboot."
+}

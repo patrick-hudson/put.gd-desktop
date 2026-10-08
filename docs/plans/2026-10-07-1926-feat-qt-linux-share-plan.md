@@ -939,3 +939,27 @@ processes were stopped. The runner checks live package identity and retains
 failed attempts; 11/11 host contracts pass and their JSON/log reports are wired
 into Linux CI. This closes the bounded current-source test follow-up, not the
 remaining cloud, mixed-display, package lifecycle, latency or 40 MiB gates.
+
+### Memory improvements on all three desktops (2026-10-08)
+
+User-directed: GNOME and KDE are optimization targets as well as functional
+regression profiles. Measure each desktop before and after the same candidate
+and workload. A Cinnamon saving alone does not establish a Wayland improvement.
+Keep native integration enabled, including Cinnamon fonts and folder dialogs.
+
+Read-only attribution found 26.68 MiB of resident Wayland shared buffers on
+GNOME and 26.72 MiB on KDE after the current native test wave. Two fresh physical
+Cinnamon view runs ended at a median 73.59 MiB RSS, including 8.02 MiB of Xorg
+shared buffers. The next proposed experiment releases native drawing resources
+after Settings, History and Activity close while retaining their logical state.
+Unsaved drafts, selection, filters, active dialogs, minimize behavior, rapid
+reopen, complete repaint and first-reopen latency are acceptance requirements.
+This experiment remains pending approval; no implementation or saving is claimed.
+
+Record RSS, PSS and private memory independently. KDE's shared LLVM/Gallium
+libraries explain part of its higher RSS but are not a reason to discard the RSS
+goal. Preserve current-source build identities, all native functional cases and
+visible VNC evidence for every candidate. Save the frozen measurement parameters,
+commands, failed attempts and raw structured observations. The [attribution and
+replay notes](../testing-memory-attribution.md) distinguish this post-use work
+from the still-open approximately 40 MiB cold-start target.

@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "scope": "Bounded completed cold attribution export; no new run or production changes",
+  "createdAtUtc": "2026-10-08T21:37:16.107086+00:00",
+  "sourceHead": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "entries": [
+    {
+      "bundlePath": "probe/CMakeLists.txt",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/CMakeLists.txt",
+      "originalSha256": "4f5de79097233d667c82785bfdb6ad0a30d10fd97f22b9d9fb152d09fa2f1de7",
+      "bundleSha256": "4f5de79097233d667c82785bfdb6ad0a30d10fd97f22b9d9fb152d09fa2f1de7",
+      "role": "exact probe build source"
+    },
+    {
+      "bundlePath": "probe/main.cpp",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/main.cpp",
+      "originalSha256": "2acfaf649c0491857ff9e9b11dcadf25946484251c85509a6e1ec86c09d21b07",
+      "bundleSha256": "2acfaf649c0491857ff9e9b11dcadf25946484251c85509a6e1ec86c09d21b07",
+      "role": "exact probe C++ source"
+    },
+    {
+      "bundlePath": "probe/measure.py",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/measure.py",
+      "originalSha256": "fccb647f8fa8a6c9feb7a255901034c5a786345132d4b5b58aa6b6511122f3b7",
+      "bundleSha256": "fccb647f8fa8a6c9feb7a255901034c5a786345132d4b5b58aa6b6511122f3b7",
+      "role": "exact external sampler"
+    },
+    {
+      "bundlePath": "probe/README-original.md",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/README.md",
+      "originalSha256": "e1f99b397652726a43230b28e2a4fd6e31e07fb08accc6abf9119a8c9bfc2a7f",
+      "bundleSha256": "e1f99b397652726a43230b28e2a4fd6e31e07fb08accc6abf9119a8c9bfc2a7f",
+      "role": "original working probe notes"
+    },
+    {
+      "bundlePath": "consumed-source/src/ui/VisualStyle.cpp",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/consumed-source/src/ui/VisualStyle.cpp",
+      "originalSha256": "b1d5a0662916b3899245e72ab65f5b8c0c1d8c2b00df1335fa0493f9dc3f56e8",
+      "bundleSha256": "b1d5a0662916b3899245e72ab65f5b8c0c1d8c2b00df1335fa0493f9dc3f56e8",
+      "role": "exact compiled product VisualStyle snapshot"
+    },
+    {
+      "bundlePath": "consumed-source/src/ui/VisualStyle.h",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/consumed-source/src/ui/VisualStyle.h",
+      "originalSha256": "abcdf4c74f4a53619c86a4dea4a573a5efe3381fe76d5f817fdf8b0608ec8891",
+      "bundleSha256": "abcdf4c74f4a53619c86a4dea4a573a5efe3381fe76d5f817fdf8b0608ec8891",
+      "role": "exact compiled product VisualStyle header snapshot"
+    },
+    {
+      "bundlePath": "consumed-source/src/ui/TrayController.cpp",
+      "originalPath": "/home/patrick/work/put.gd/src/ui/TrayController.cpp",
+      "originalSha256": "f931d1061e173ec193131cd0eee00d2afa8ba5bce7c0f40279a8d917b28340eb",
+      "bundleSha256": "f931d1061e173ec193131cd0eee00d2afa8ba5bce7c0f40279a8d917b28340eb",
+      "role": "frozen menu labels/icons/order guide; not compiled into probe"
+    },
+    {
+      "bundlePath": "raw/run-001.json",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/run-001.json",
+      "originalSha256": "0144ed5a1101415c128f194a010bd56b4aecf2b80c2b922ea4481582c3f77c70",
+      "bundleSha256": "0144ed5a1101415c128f194a010bd56b4aecf2b80c2b922ea4481582c3f77c70",
+      "role": "completed seven-stage external /proc receipt"
+    },
+    {
+      "bundlePath": "build-identity.json",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-probe/build-identity.json",
+      "originalSha256": "7d65da1d9d4ac90316d6440bf44b028eb2ac44f1ee0ff20974ba12f6a528d1a5",
+      "bundleSha256": "7d65da1d9d4ac90316d6440bf44b028eb2ac44f1ee0ff20974ba12f6a528d1a5",
+      "role": "exact original build/source/command receipt; binary hash only"
+    },
+    {
+      "bundlePath": "cold-analysis.json",
+      "originalPath": "/home/patrick/work/put.gd/work/memory-next/cold-analysis.json",
+      "originalSha256": "b5c032a975f6156c8d0ddcdccd89e88ebb8fb852c93c031228c5029aa7c664ce",
+      "bundleSha256": "b5c032a975f6156c8d0ddcdccd89e88ebb8fb852c93c031228c5029aa7c664ce",
+      "role": "exact completed bounded cold analysis"
+    },
+    {
+      "bundlePath": "baseline/candidate-idle.json",
+      "originalPath": "/home/patrick/work/put.gd/docs/evidence/2026-10-08-startup-reclaim-raw/candidate-idle.json",
+      "originalSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+      "bundleSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+      "role": "existing physical cold baseline receipt"
+    },
+    {
+      "bundlePath": "baseline/footprint-comparison.json",
+      "originalPath": "/home/patrick/work/put.gd/docs/evidence/2026-10-08-startup-reclaim-raw/footprint-comparison.json",
+      "originalSha256": "6ccf8800ac36d5d3a8b53d34a8ee81c0e724bde6a5467e0cb9908a0e24d0e159",
+      "bundleSha256": "6ccf8800ac36d5d3a8b53d34a8ee81c0e724bde6a5467e0cb9908a0e24d0e159",
+      "role": "existing startup reclamation footprint comparison"
+    },
+    {
+      "bundlePath": "baseline/native-qt-empty-results.json",
+      "originalPath": "/home/patrick/work/put.gd/work/native-qt-cold-probe/results.json",
+      "originalSha256": "645cd25915c70fd3a14b70788bef0d388b20830363582a124bbd2c32b1aa1026",
+      "bundleSha256": "645cd25915c70fd3a14b70788bef0d388b20830363582a124bbd2c32b1aa1026",
+      "role": "earlier minimal native QApplication locating results"
+    },
+    {
+      "bundlePath": "README.md",
+      "originalPath": null,
+      "originalSha256": null,
+      "bundleSha256": "be2c81c6a673fd72b8242ab1d9a658d66b071d9d29bd40251cafb8832a624cc5",
+      "role": "generated durable replay instructions"
+    },
+    {
+      "bundlePath": "secret-scan.json",
+      "originalPath": null,
+      "originalSha256": null,
+      "bundleSha256": "f52501965624c941c0046ecdddaf1012856dab7c88e880baf2d7b9912a339529",
+      "role": "generated count-only exported-file scan"
+    }
+  ],
+  "excluded": [
+    "probe binary and ELF/object/archive files",
+    "build directories/CMake caches",
+    "credentials.txt and all credential/private configuration/payload inputs",
+    "unrelated user files"
+  ],
+  "manifestSelfHash": "Report SHA256 externally; self-reference intentionally omitted",
+  "entryCount": 15,
+  "totalPayloadBytes": 765442
+}

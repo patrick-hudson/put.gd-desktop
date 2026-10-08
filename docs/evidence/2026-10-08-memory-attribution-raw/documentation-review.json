@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T21:41:06.442344+00:00",
+  "reviewer": "independent local agent memory_late_sdk_module",
+  "scope": "Memory attribution documentation and appended plan section; no production code or approval of the proposed experiment",
+  "findings": [
+    {
+      "issue": "GNOME supplemental shape collector hard-codes process identity although main collector accepts arguments.",
+      "resolution": "Replay instructions now name both scripts and require separately hashed replay copies with every identity assertion updated."
+    }
+  ],
+  "checks": [
+    "Numeric claims agree with evidence",
+    "Root and cold manifest hashes verified",
+    "All exported JSON parses and Python source parses",
+    "Documentation local links resolve",
+    "Count-only AWS access-key/private-key pattern scan zero matches"
+  ],
+  "documents": [
+    {
+      "path": "docs/testing-memory-attribution.md",
+      "sha256": "81322151729d5922c19903f4c15536e38a98cf3b601b791ad89ebee824ab7f9b"
+    },
+    {
+      "path": "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+      "sha256": "5474b56600fb82c6cc145b67115283a86722aacf880824157a7cf43a7be32261"
+    }
+  ],
+  "productionChanges": false,
+  "experimentApproval": "pending"
+}

@@ -1,0 +1,91 @@
+{
+  "spec": "resident-view-surfaces",
+  "run_id": "resident-view-surfaces-20261008",
+  "started_at": "2026-10-08T21:25:30.148820+00:00",
+  "phase": "phase1-complete-awaiting-user-approval",
+  "baseline": {
+    "timestamp": "2026-10-08T21:25:30.148820+00:00",
+    "metrics": {
+      "finalHiddenRssBytes": {
+        "aggregate": 77166592.0,
+        "samples": [
+          77488128,
+          76845056
+        ]
+      },
+      "gnomePostFunctionalRssBytes": {
+        "aggregate": 119918592,
+        "samples": [
+          119918592
+        ]
+      },
+      "kdePostFunctionalRssBytes": {
+        "aggregate": 195211264,
+        "samples": [
+          195211264
+        ]
+      }
+    },
+    "gates": {
+      "allProfilesPassed": 1,
+      "physicalViewsReopened": 1,
+      "operationCount": 0
+    },
+    "diagnostics": {
+      "coldSnapshotRssBytes": 47091712.0,
+      "gnomePssBytes": 75053056,
+      "kdePssBytes": 67477504
+    },
+    "physicalReferenceRuns": [
+      "work/memory-next/baseline-views-1/results.json",
+      "work/memory-next/baseline-views-2/results.json"
+    ],
+    "physicalSpreadBytes": 643072,
+    "desktopWave": "work/cross-desktop-current/memory-wave.json",
+    "method": "Two physical runs; one quiet120s observation per Wayland guest with25flatRSS samples after frozen functional workflow. Different workloads are compared only within each profile. No new desktop baseline was invented."
+  },
+  "experiments": [],
+  "best": {
+    "iteration": 0,
+    "metrics": {
+      "finalHiddenRssBytes": {
+        "aggregate": 77166592.0,
+        "samples": [
+          77488128,
+          76845056
+        ]
+      },
+      "gnomePostFunctionalRssBytes": {
+        "aggregate": 119918592,
+        "samples": [
+          119918592
+        ]
+      },
+      "kdePostFunctionalRssBytes": {
+        "aggregate": 195211264,
+        "samples": [
+          195211264
+        ]
+      }
+    }
+  },
+  "hypothesis_backlog": [],
+  "specSha256": "a11531fbc21c57ffe83975cf9aff344e43118d6d824fed3bb069c321ca3bc1a3",
+  "harnesses": {
+    "tests/performance/bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "work/memory-next/measure-views.py": "8f51d0fb328bdeccc9797ff8214f4b12d3e491d93a6094e3f1a62e875a013d5d",
+    "work/memory-next/score-surfaces.py": "68efb51ee9742df94ff0aa7765b28767fc4247265a729205884ea3b7689eca3c"
+  },
+  "cost": "No new packages or paid infrastructure. Ordinary model usage has no separate dollar cap; no judge scoring. Up to2variants/2hours after implementation begins.",
+  "cleanTree": "All mutable/product/harness tracked paths clean; unrelated AGENTS/lab docs/dashboard WIP excluded. Ignored adapters newly prepared and frozen by hash.",
+  "worktreeBudget": {
+    "existing": 9,
+    "projected": 10,
+    "limit": 12
+  },
+  "parallelReadiness": "Measurements serial on physical Cinnamon, independent native VM functional work parallel after quiet physical runs. Read-only analysis parallel. Bundled probe reports no blocker and grep warning; actualexclusivephysicalrule wins.",
+  "sourceEquivalence": "git diff a3d70dc dac46af -- src CMakeLists.txt CMakePresets.json cmake is empty; canonical currentbuild hashes match prior native-wave receipt.",
+  "validation": "Requiredschemafields/gateoperators/uniquemetricnames/hardmetric/native2.0hstop/worktree1concurrency/serialexclusivity/immutableharness verified. Aggregator executed through bundled measure.sh and checks actual12case/profile receipts,25samplememory identities and2physicalviewworkloads."
+}

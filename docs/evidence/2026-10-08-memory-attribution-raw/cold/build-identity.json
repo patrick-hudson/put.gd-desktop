@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "scope": "standalone native cold locator only; no product changes or product saving claim",
+  "repoHeadAtPreparation": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "cwd": "/home/patrick/work/put.gd",
+  "commands": [
+    {
+      "argv": [
+        "cmake",
+        "-S",
+        "work/memory-next/cold-probe",
+        "-B",
+        "work/memory-next/cold-probe/build",
+        "-G",
+        "Ninja",
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "cmake",
+        "--build",
+        "work/memory-next/cold-probe/build",
+        "--parallel",
+        "2"
+      ],
+      "exitCode": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "work/memory-next/cold-probe/measure.py",
+        "--binary",
+        "work/memory-next/cold-probe/build/native-cold-stages",
+        "--output",
+        "work/memory-next/cold-probe/run-001.json"
+      ],
+      "exitCode": 0,
+      "physicalQuietWindowApprovedByRoot": true,
+      "execution": "read-only desktop-session escalation, native xcb; synthetic owned tray/menu only"
+    }
+  ],
+  "build": {
+    "compiler": "GNU 13.3.0",
+    "compilerPath": "/usr/bin/x86_64-linux-gnu-g++-13",
+    "compilerSha256": "52f1ddb33fe78b9441e0f42e9cd22c571f1101938e046c8a26582494e041cc73",
+    "cxxStandard": 20,
+    "qtVersion": "6.4.2",
+    "qtLinkage": "dynamic distro Qt",
+    "cmakeVersion": "3.28.3",
+    "generator": "Ninja",
+    "releaseFlags": "-O3 -DNDEBUG",
+    "elfBuildId": "4f7cdcc2f989957c9dcab826b11e9aa7841cab51",
+    "directNeeded": [
+      "libQt6Widgets.so.6",
+      "libQt6Gui.so.6",
+      "libQt6Core.so.6",
+      "libstdc++.so.6",
+      "libgcc_s.so.1",
+      "libc.so.6"
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/main.cpp",
+      "sha256": "2acfaf649c0491857ff9e9b11dcadf25946484251c85509a6e1ec86c09d21b07"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/CMakeLists.txt",
+      "sha256": "4f5de79097233d667c82785bfdb6ad0a30d10fd97f22b9d9fb152d09fa2f1de7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/measure.py",
+      "sha256": "fccb647f8fa8a6c9feb7a255901034c5a786345132d4b5b58aa6b6511122f3b7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/README.md",
+      "sha256": "e1f99b397652726a43230b28e2a4fd6e31e07fb08accc6abf9119a8c9bfc2a7f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/build/native-cold-stages",
+      "sha256": "05925583c6f03df843f325eb5e74536028a14bb119d346f6f86765ead2aab187"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/run-001.json",
+      "sha256": "0144ed5a1101415c128f194a010bd56b4aecf2b80c2b922ea4481582c3f77c70"
+    }
+  ],
+  "consumedSource": [
+    {
+      "path": "/home/patrick/work/put.gd/src/ui/VisualStyle.cpp",
+      "sha256": "b1d5a0662916b3899245e72ab65f5b8c0c1d8c2b00df1335fa0493f9dc3f56e8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/src/ui/VisualStyle.h",
+      "sha256": "abcdf4c74f4a53619c86a4dea4a573a5efe3381fe76d5f817fdf8b0608ec8891"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/src/ui/TrayController.cpp",
+      "sha256": "f931d1061e173ec193131cd0eee00d2afa8ba5bce7c0f40279a8d917b28340eb"
+    }
+  ],
+  "sourceSnapshot": [
+    "consumed-source/src/ui/VisualStyle.cpp",
+    "consumed-source/src/ui/VisualStyle.h"
+  ],
+  "replayLimits": [
+    "Coordinate a fresh physical quiet window with root before every run.",
+    "Choose a fresh output path; the sampler refuses overwrite.",
+    "CMake compiles repo src/ui/VisualStyle.cpp; verify recorded hashes or restore the saved consumed bytes in an isolated reproduction tree first.",
+    "Use the same native Cinnamon desktop and closed menu; no forced style/platform overrides.",
+    "No product tests or graphical acceptance are implied by configure/build/probe success."
+  ],
+  "completedAtUtc": "2026-10-08T21:33:45.634662+00:00"
+}
