@@ -24,7 +24,8 @@ public:
 signals:
  void actionRequested(const QString&);void capabilitiesChanged();
 private:
- void captureScreens(QString,QList<CaptureFrame>,ResourceLimits,std::function<void(PayloadResult)>);
+ void capture(QString,QList<CaptureFrame>,ResourceLimits,std::function<void(PayloadResult)>);
+ void captureScreens(QList<CaptureFrame>,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  void compose(QList<CaptureFrame>,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
  ResourceLimits limits_;
  KWinCapture capture_;DataControlClipboard clipboard_;KdeShortcuts shortcuts_;

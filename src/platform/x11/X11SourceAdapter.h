@@ -5,7 +5,9 @@
 #include "X11Shortcuts.h"
 #include "ui/RegionOverlay.h"
 #include <QPointer>
+#include <QSet>
 namespace putgd {
+class CinnamonRegionCapture;
 class X11SourceAdapter final:public QObject,public SourceAdapter {
  Q_OBJECT
 public:
@@ -23,12 +25,14 @@ signals:
  void capabilitiesChanged();
 private:
  void capture(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void captureSelected(const X11Target&,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>,quint64);
  void compose(QList<CaptureFrame>,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
  X11Capture capture_;
  X11Clipboard clipboard_;
  X11Shortcuts shortcuts_;
  QPointer<RegionOverlay> overlay_;
  QList<QThread*> workers_;
+ QSet<CinnamonRegionCapture*> regionCaptures_;
  quint64 generation_=0;
 };
 }

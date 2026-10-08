@@ -72,7 +72,7 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         super._init({reactive: true, visible: false, x: 0, y: 0});
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
-        this._rectangle = new St.Widget({visible: false, style: 'border: 2px solid #8bc6ff; background-color: rgba(35,105,180,0.15);'});
+        this._rectangle = new St.Widget({visible: false, style: 'border: 2px solid #8bc6ff; background-color: transparent;'});
         this.add_child(this._rectangle);
         this._start = null;
         this._finish = null;
@@ -454,6 +454,26 @@ export default class PutgdExtension extends Extension {
             parts.push(data);
             total = data.length;
         } else {
+            check(request.layout.length > 0, 'capture_geometry', 'No enabled monitor is available');
+            const xs = request.layout.map(m => m.logical[0]);
+            const ys = request.layout.map(m => m.logical[1]);
+            const right = request.layout.map(m => m.logical[0] + m.logical[2]);
+            const bottom = request.layout.map(m => m.logical[1] + m.logical[3]);
+            selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
+            if (request.action === 'region') {
+                check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
+                const selector = new RegionSelector();
+                this._selector = request.selector = selector;
+                request.stage = 'region-select';
+                const selected = await selector.selectAsync();
+                request.selector = null;
+                this._selector = null;
+                this._alive(request);
+                check(selected, 'cancelled', 'GNOME region selection cancelled');
+                selection = rectangle(selected);
+            }
+            // selectAsync removes its actors and modal grab before resolving.
+            // Shell.Screenshot now reads the live desktop after selection.
             for (const monitor of request.layout) {
                 const [x, y, width, height] = monitor.logical;
                 const estimated = Math.ceil(width * monitor.density) * Math.ceil(height * monitor.density);
@@ -473,24 +493,6 @@ export default class PutgdExtension extends Extension {
                     offset: total, length: data.length});
                 total += data.length;
                 parts.push(data);
-            }
-            check(frames.length > 0, 'capture_geometry', 'No enabled monitor is available');
-            const xs = request.layout.map(m => m.logical[0]);
-            const ys = request.layout.map(m => m.logical[1]);
-            const right = request.layout.map(m => m.logical[0] + m.logical[2]);
-            const bottom = request.layout.map(m => m.logical[1] + m.logical[3]);
-            selection = [Math.min(...xs), Math.min(...ys), Math.max(...right) - Math.min(...xs), Math.max(...bottom) - Math.min(...ys)];
-            if (request.action === 'region') {
-                check(!this._selector, 'busy_selecting', 'Another GNOME region selection is active');
-                const selector = new RegionSelector();
-                this._selector = request.selector = selector;
-                request.stage = 'region-select';
-                const selected = await selector.selectAsync();
-                request.selector = null;
-                this._selector = null;
-                this._alive(request);
-                check(selected, 'cancelled', 'GNOME region selection cancelled');
-                selection = rectangle(selected);
             }
         }
         this._alive(request);

@@ -2,6 +2,10 @@
 #include "platform/x11/X11Shortcuts.h"
 #include "platform/x11/X11Capture.h"
 #include "platform/x11/X11SourceAdapter.h"
+#include "platform/x11/CinnamonRegionCapture.h"
+#include <QDBusConnection>
+#include <QDBusContext>
+#include <QFileInfo>
 #include <QtTest>
 #include <QClipboard>
 #include <QGuiApplication>
@@ -12,6 +16,7 @@
 #include <QUrl>
 #include <QApplication>
 #include <QKeySequence>
+#include <QPaintEvent>
 #include "ui/RegionOverlay.h"
 #include "../../fixtures/X11SelectionFixture.h"
 #include "../../fixtures/X11DesktopFixture.h"
@@ -20,6 +25,32 @@
 #include <xcb/xcb.h>
 #include <xcb/xtest.h>
 using namespace putgd;
+class RegionPaintProbe final:public QObject {
+public:
+ QRegion painted;int count=0;
+ bool eventFilter(QObject*,QEvent* event)override{if(event->type()==QEvent::Paint){painted+=static_cast<QPaintEvent*>(event)->region();++count;}return false;}
+};
+// This service runs only on the disposable bus supplied by x11_isolated.
+// It proves native transport/lifetime contracts, not compositor behavior.
+class CinnamonScreenshotFixture:public QObject,protected QDBusContext {
+ Q_OBJECT
+ Q_CLASSINFO("D-Bus Interface","org.Cinnamon")
+public:
+ enum Mode {Open,WrongSize,WideDepth,Malformed,ServiceError};
+ explicit CinnamonScreenshotFixture(Mode mode=Open):mode(mode){auto bus=QDBusConnection::sessionBus();registered=bus.registerObject("/org/Cinnamon",this,QDBusConnection::ExportAllSlots)&&bus.registerService("org.Cinnamon");}
+ ~CinnamonScreenshotFixture(){close();auto bus=QDBusConnection::sessionBus();if(registered)bus.unregisterService("org.Cinnamon");bus.unregisterObject("/org/Cinnamon");}
+ void close(){output.reset();}
+ Mode mode;bool registered=false;int requests=0;QString path;QRect rectangle;bool cursor=true,flash=true;std::unique_ptr<QFile> output;
+public slots:
+ void ScreenshotArea(bool includeCursor,int x,int y,int width,int height,bool includeFlash,const QString& filename){
+  ++requests;path=filename;rectangle={x,y,width,height};cursor=includeCursor;flash=includeFlash;
+  if(mode==ServiceError){sendErrorReply("org.Cinnamon.SyntheticFailure","arbitrary synthetic payload must stay private");return;}
+  output=std::make_unique<QFile>(filename);if(!output->open(QIODevice::WriteOnly))return;
+  if(mode==Malformed)output->write("incomplete native image");
+  else{QImage image(width+(mode==WrongSize),height,mode==WideDepth?QImage::Format_RGBA64:QImage::Format_RGB32);image.fill(Qt::cyan);image.save(output.get(),"PNG");}
+  output->flush(); // Complete bytes are present while the writer is still open.
+ }
+};
 class X11Test:public QObject {
  Q_OBJECT
 private slots:
@@ -61,7 +92,39 @@ private slots:
   auto surface=[]()->QWidget*{for(auto* w:QApplication::topLevelWidgets())if(w->objectName()=="putgd-region-overlay"&&w->isVisible())return w;return nullptr;};
   {RegionOverlay overlay({frame});bool cancelled=false;connect(&overlay,&RegionOverlay::cancelled,this,[&](const Error& e){cancelled=e.code=="cancelled";});overlay.start();QVERIFY(surface());QTest::keyClick(surface(),Qt::Key_Escape);QVERIFY(cancelled);}
   {RegionOverlay overlay({frame});bool cancelled=false;connect(&overlay,&RegionOverlay::cancelled,this,[&](const Error& e){cancelled=e.code=="cancelled";});overlay.start();QVERIFY(surface());QTest::mouseClick(surface(),Qt::RightButton);QVERIFY(cancelled);}
-  {RegionOverlay overlay({frame});QRectF selected;connect(&overlay,&RegionOverlay::selected,this,[&](QRectF r){selected=r;});overlay.start();QVERIFY(surface());auto* w=surface();QTest::mousePress(w,Qt::LeftButton,Qt::NoModifier,QPoint(10,20));QTest::mouseRelease(w,Qt::LeftButton,Qt::NoModifier,QPoint(60,70));QCOMPARE(selected,QRectF(10,20,50,50));Error error;auto image=composeFrames({frame},selected,100000,error);QVERIFY(!error);QCOMPARE(image.size(),QSize(50,50));QCOMPARE(image.pixelColor(2,2),QColor(Qt::red));}
+  {RegionOverlay overlay({frame});QRectF selected;connect(&overlay,&RegionOverlay::selected,this,[&](QRectF r){selected=r;});overlay.start();QVERIFY(surface());auto* w=surface();
+   auto rendered=[w]{QImage image(w->size(),QImage::Format_ARGB32);image.fill(Qt::transparent);w->render(&image);return image;};
+   QCOMPARE(rendered().pixelColor(30,40).alpha(),0);
+   QTest::mousePress(w,Qt::LeftButton,Qt::NoModifier,QPoint(10,20));QTest::mouseMove(w,QPoint(60,70));
+   const auto dragging=rendered();QCOMPARE(dragging.pixelColor(30,40).alpha(),0);QCOMPARE(dragging.pixelColor(80,80).alpha(),0);QCOMPARE(dragging.pixelColor(10,20),QColor(Qt::white));
+   // Observe actual queued paints and backing pixels: render() would repaint
+   // the full widget and hide a stale stroke left by an incomplete dirty region.
+   QTest::qWait(20);RegionPaintProbe paints;w->installEventFilter(&paints);
+   auto* connection=xcb_connect(nullptr,nullptr);
+   auto backing=[&]{QImage image;auto* reply=xcb_get_image_reply(connection,xcb_get_image(connection,XCB_IMAGE_FORMAT_Z_PIXMAP,w->winId(),0,0,w->width(),w->height(),~0u),nullptr);
+    if(reply&&reply->depth==32&&xcb_get_image_data_length(reply)>=w->width()*w->height()*4){image=QImage(xcb_get_image_data(reply),w->width(),w->height(),w->width()*4,QImage::Format_ARGB32).copy();}free(reply);return image;};
+   QTest::mouseMove(w,QPoint(90,90));QTRY_VERIFY(paints.count>0);
+   QVERIFY(!paints.painted.contains(QPoint(30,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
+   auto grown=backing();QVERIFY(!grown.isNull());QCOMPARE(grown.pixelColor(59,40).alpha(),0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::white));
+   paints.painted={};paints.count=0;QTest::mouseMove(w,QPoint(60,70));QTRY_VERIFY(paints.count>0);
+   QVERIFY(!paints.painted.contains(QPoint(30,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
+   auto shrunk=backing();QVERIFY(!shrunk.isNull());QCOMPARE(shrunk.pixelColor(89,40).alpha(),0);QCOMPARE(shrunk.pixelColor(30,89).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::white));
+   w->removeEventFilter(&paints);xcb_disconnect(connection);
+   QTest::mouseRelease(w,Qt::LeftButton,Qt::NoModifier,QPoint(60,70));QCOMPARE(selected,QRectF(10,20,50,50));QVERIFY(!surface());Error error;auto image=composeFrames({frame},selected,100000,error);QVERIFY(!error);QCOMPARE(image.size(),QSize(50,50));QCOMPARE(image.pixelColor(2,2),QColor(Qt::red));}
+  const CaptureFrame native{"fixture",QRectF(30,40,10,8),QRect(30,40,10,8),1,0,{}};
+  {CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);auto* request=new CinnamonRegionCapture({native},{});QPointer<CinnamonRegionCapture> guard=request;bool done=false;QList<CaptureFrame> frames;Error error;
+   connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame> captured,Error value){frames=std::move(captured);error=value;done=true;});request->start();QTRY_COMPARE(fixture.requests,1);
+   QCOMPARE(fixture.rectangle,native.nativeRect);QVERIFY(!fixture.cursor&&!fixture.flash);QVERIFY(QFileInfo(fixture.path).size()>0);QTest::qWait(50);QVERIFY(!done);
+   fixture.close();QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(frames.size(),1);QCOMPARE(frames[0].pixels.size(),native.nativeRect.size());QCOMPARE(frames[0].pixels.pixelColor(4,3),QColor(Qt::cyan));QVERIFY(!QFileInfo::exists(fixture.path));QTRY_VERIFY(guard.isNull());}
+  {CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);auto* request=new CinnamonRegionCapture({native},{});QPointer<CinnamonRegionCapture> guard=request;int completed=0;Error error;
+   connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame>,Error value){error=value;++completed;});request->start();QTRY_COMPARE(fixture.requests,1);request->cancel();QCOMPARE(completed,1);QCOMPARE(error.code,QString("cancelled"));QVERIFY(!QFileInfo::exists(QFileInfo(fixture.path).absolutePath()));fixture.close();QTest::qWait(50);QCOMPARE(completed,1);QTRY_VERIFY(guard.isNull());}
+  for(auto mode:{CinnamonScreenshotFixture::WrongSize,CinnamonScreenshotFixture::WideDepth,CinnamonScreenshotFixture::Malformed,CinnamonScreenshotFixture::ServiceError}){CinnamonScreenshotFixture fixture(mode);QVERIFY(fixture.registered);auto* request=new CinnamonRegionCapture({native},{});bool done=false;Error error;
+   connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame> frames,Error value){QVERIFY(frames.isEmpty());error=value;done=true;});request->start();QTRY_COMPARE(fixture.requests,1);
+   if(mode==CinnamonScreenshotFixture::WideDepth){QFile png(fixture.path);QVERIFY(png.open(QIODevice::ReadOnly));const auto header=png.read(33);QCOMPARE(header.size(),33);QCOMPARE(static_cast<unsigned char>(header[24]),16);}
+   fixture.close();QTRY_VERIFY(done);
+   QCOMPARE(error.code,QString(mode==CinnamonScreenshotFixture::WrongSize?"capture_geometry":mode==CinnamonScreenshotFixture::ServiceError?"capture_unavailable":"capture_failed"));QVERIFY(error.details.isEmpty());QVERIFY(!error.message.contains("arbitrary synthetic payload"));}
+  {CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);ResourceLimits limits;limits.imageBytes=10*8*4-1;auto* request=new CinnamonRegionCapture({native},limits);bool done=false;Error error;
+   connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame>,Error value){error=value;done=true;});request->start();QVERIFY(done);QCOMPARE(error.code,QString("input_excessive"));QCOMPARE(fixture.requests,0);}
  }
  void encodedImageResultIsServedToNativeClipboardConsumer() {
   QImage expected(17,11,QImage::Format_ARGB32);expected.fill(Qt::yellow);
@@ -83,6 +146,15 @@ private slots:
   X11DesktopFixture desktop;QVERIFY(desktop.window);QCOMPARE(desktop.inputFocus(),desktop.window);
   bool cancelled=false;X11SourceAdapter source;source.acquire("region",{},[&](PayloadResult r){cancelled=r.error.code=="cancelled";});QTest::qWait(20);QCOMPARE(desktop.inputFocus(),desktop.window);
   desktop.key(XK_Escape,true);desktop.key(XK_Escape,false);QTRY_VERIFY(cancelled);QCOMPARE(desktop.inputFocus(),desktop.window);
+  bool completed=false;PayloadResult captured;source.acquire("region",{},[&](PayloadResult result){captured=std::move(result);completed=true;});
+  QWidget* surface=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(widget->objectName()=="putgd-region-overlay"&&widget->isVisible())surface=widget;QVERIFY(surface);
+  auto repaintDesktop=[&](uint32_t color){xcb_change_window_attributes(desktop.connection,desktop.window,XCB_CW_BACK_PIXEL,&color);xcb_clear_area(desktop.connection,0,desktop.window,0,0,0,0);xcb_flush(desktop.connection);desktop.inputFocus();};
+  repaintDesktop(0xff0000); // The desktop changes while the selector is open.
+  QTest::mousePress(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(30,30)));QTest::mouseMove(surface,surface->mapFromGlobal(QPoint(70,60)));
+  repaintDesktop(0x0000ff); // It changes again during the drag, before capture.
+  QTest::mouseRelease(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(70,60)));QTRY_VERIFY(completed);QVERIFY2(!captured.error,qPrintable(captured.error.message));QCOMPARE(captured.payload.image.size(),QSize(40,30));
+  for(int y=0;y<captured.payload.image.height();++y){for(int x=0;x<captured.payload.image.width();++x)QCOMPARE(captured.payload.image.pixelColor(x,y),QColor(Qt::blue));}
+  QCOMPARE(desktop.inputFocus(),desktop.window);
  }
  void heldGlobalChordHandsKeyboardToSelector() {
   X11DesktopFixture desktop;bool invoked=false,cancelled=false;X11SourceAdapter source;source.bindShortcuts({{"region","Ctrl+Shift+1"}});
@@ -119,6 +191,8 @@ private slots:
   auto a=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,9,"CLIPBOARD"),nullptr);QVERIFY(a);xcb_set_selection_owner(c,w,a->atom,XCB_CURRENT_TIME);free(a);xcb_flush(c);
   X11Clipboard importer;bool done=false;PayloadResult result;int heartbeats=0;QTimer heartbeat;connect(&heartbeat,&QTimer::timeout,this,[&]{++heartbeats;});heartbeat.start(10);
   importer.acquire({},[&](PayloadResult r){result=r;done=true;});QTRY_VERIFY_WITH_TIMEOUT(done,6500);QVERIFY(heartbeats>50);QCOMPARE(result.error.code,QString("clipboard_timeout"));xcb_disconnect(c);
+  CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);CaptureFrame frame{"fixture",QRectF(0,0,10,8),QRect(0,0,10,8),1,0,{}};auto* request=new CinnamonRegionCapture({frame},{});bool settled=false;Error error;
+  connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame>,Error value){error=value;settled=true;});const int before=heartbeats;request->start();QTRY_COMPARE(fixture.requests,1);QTRY_VERIFY_WITH_TIMEOUT(settled,12000);QCOMPARE(error.code,QString("capture_timeout"));QVERIFY(heartbeats-before>50);QVERIFY(!QFileInfo::exists(fixture.path));fixture.close();
  }
  void conflictsAreReported() {
   X11Shortcuts first,second;QVERIFY(first.available());QVERIFY(second.available());
@@ -135,7 +209,17 @@ private slots:
   uint32_t x=110;xcb_configure_window(c,first,XCB_CONFIG_WINDOW_X,&x);xcb_flush(c);sync=xcb_get_input_focus_reply(c,xcb_get_input_focus(c),nullptr);free(sync);QVERIFY(!capture.unchanged(target,error));QCOMPARE(error.code,QString("capture_target"));xcb_destroy_window(c,first);xcb_destroy_window(c,second);xcb_delete_property(c,root,active);xcb_disconnect(c);
  }
  void desktopIsDetached() {
-  X11Capture capture;QVERIFY(capture.available());Error error;auto target=capture.freeze("desktop",error);QVERIFY2(!error,qPrintable(error.message));auto frames=capture.frames(target,error);QVERIFY2(!error,qPrintable(error.message));QVERIFY(!frames.isEmpty());QVERIFY(!frames.first().pixels.isNull());
+  X11Capture capture;QVERIFY(capture.available());QVERIFY(!capture.cinnamonCompositor());
+  auto* c=xcb_connect(nullptr,nullptr);const auto root=xcb_setup_roots_iterator(xcb_get_setup(c)).data->root;
+  const auto window=xcb_generate_id(c);xcb_create_window(c,XCB_COPY_FROM_PARENT,window,root,0,0,1,1,0,XCB_WINDOW_CLASS_INPUT_ONLY,XCB_COPY_FROM_PARENT,0,nullptr);
+  auto atom=[&](const char* name){auto* value=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,strlen(name),name),nullptr);const auto result=value?value->atom:xcb_atom_t(0);free(value);return result;};
+  const auto compositor=atom("_NET_WM_CM_S0"),supporting=atom("_NET_SUPPORTING_WM_CHECK"),version=atom("_MUFFIN_VERSION");
+  auto sync=[&]{xcb_flush(c);auto* value=xcb_get_input_focus_reply(c,xcb_get_input_focus(c),nullptr);free(value);};
+  xcb_set_selection_owner(c,window,compositor,XCB_CURRENT_TIME);sync();QVERIFY(!capture.cinnamonCompositor());
+  xcb_change_property(c,XCB_PROP_MODE_REPLACE,root,supporting,XCB_ATOM_WINDOW,32,1,&window);xcb_change_property(c,XCB_PROP_MODE_REPLACE,window,supporting,XCB_ATOM_WINDOW,32,1,&window);
+  xcb_change_property(c,XCB_PROP_MODE_REPLACE,window,version,atom("UTF8_STRING"),8,5,"6.6.1");sync();QVERIFY(capture.cinnamonCompositor()); // The owner has no WM_CLASS, like real Muffin.
+  xcb_delete_property(c,window,version);sync();QVERIFY(!capture.cinnamonCompositor());xcb_delete_property(c,root,supporting);xcb_destroy_window(c,window);xcb_disconnect(c);
+  Error error;auto target=capture.freeze("desktop",error);QVERIFY2(!error,qPrintable(error.message));auto frames=capture.frames(target,error);QVERIFY2(!error,qPrintable(error.message));QVERIFY(!frames.isEmpty());QVERIFY(!frames.first().pixels.isNull());
  }
 };
 QTEST_MAIN(X11Test)

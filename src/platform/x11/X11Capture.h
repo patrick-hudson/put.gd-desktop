@@ -16,6 +16,7 @@ public:
  explicit X11Capture(QObject* parent=nullptr);
  ~X11Capture() override;
  bool available() const;
+ bool cinnamonCompositor();
  X11Target freeze(const QString&,Error&);
  QList<CaptureFrame> frames(const X11Target&,Error&);
  bool unchanged(const X11Target&,Error&);

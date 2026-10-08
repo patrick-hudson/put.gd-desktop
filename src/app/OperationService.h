@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QQueue>
 #include <QThread>
+#include <QTimer>
 #include <QLockFile>
 #include <atomic>
 #include <mutex>
@@ -74,6 +75,8 @@ private:
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
  void enqueue(Job);
  void pump();
+ bool heapReclamationIdle() const;
+ void scheduleHeapReclamation();
  Operation run(Job);
  void finish(Operation,JsonReply={});
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
@@ -89,6 +92,10 @@ private:
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
  QHash<QString,std::weak_ptr<std::mutex>> locks_;
  std::mutex locksMutex_;
+ QTimer heapReclamationTimer_;
+ bool heapReclamationPending_=false;
+ quint64 heapReclamationCount_=0;
+ qint64 lastHeapReclamationUsec_=0;
  int running_=0;
  quint64 invocation_=0;
  QString selectingId_;

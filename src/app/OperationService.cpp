@@ -1,4 +1,8 @@
 #include "OperationService.h"
+#include <QElapsedTimer>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 #include "core/UploadNaming.h"
 #include <QDateTime>
 #include <QCryptographicHash>
@@ -17,7 +21,20 @@ bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="c
 QJsonObject UnavailableSource::capabilities() const {return {{"region",false},{"window",false},{"desktop",false},{"clipboardImport",QJsonArray{}},{"clipboardResult",QJsonArray{}},{"shortcuts",false},{"reason","native_adapter_unavailable"}};}
 void UnavailableSource::acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) {cb({{},unsupported()});}
 void UnavailableSource::copy(const CopyPayload&,std::function<void(Error)> cb) {cb(unsupported());}
-OperationService::OperationService(QString root,SettingsService& settings,ProviderRegistry& providers,SourceAdapter& source,QObject* parent):QObject(parent),root_(std::move(root)),settings_(settings),providers_(providers),source_(source) {
+OperationService::OperationService(QString root,SettingsService& settings,ProviderRegistry& providers,SourceAdapter& source,QObject* parent):QObject(parent),root_(std::move(root)),settings_(settings),providers_(providers),source_(source),heapReclamationTimer_(this) {
+ heapReclamationTimer_.setSingleShot(true);
+ connect(&heapReclamationTimer_,&QTimer::timeout,this,[this] {
+  if(!heapReclamationPending_||!heapReclamationIdle())return;
+#ifdef __GLIBC__
+  // Return only allocator-owned free pages. Live Qt widgets and clipboard MIME
+  // remain owned by their existing objects; no cache or native theme is purged.
+  QElapsedTimer elapsed;elapsed.start();
+  malloc_trim(0);
+  lastHeapReclamationUsec_=elapsed.nsecsElapsed()/1000;
+  ++heapReclamationCount_;
+#endif
+  heapReclamationPending_=false;
+ });
  const auto path=databasePath(),artifactsRoot=root_+"/artifacts";
  background([this,path,artifactsRoot](Error& e) {
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
@@ -29,10 +46,17 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  },[this](Error e,QJsonObject) {startupError_=e;ready_=!e;emit initialized();});
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;for(auto flag:active_) flag->store(true);source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();for(auto flag:active_) flag->store(true);source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+bool OperationService::heapReclamationIdle() const {
+ return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&selectingId_.isEmpty()&&payloadBytes_->load()==0;
+}
+void OperationService::scheduleHeapReclamation() {
+ if(heapReclamationPending_&&heapReclamationIdle())heapReclamationTimer_.start(2000);
+}
 void OperationService::background(std::function<QJsonObject(Error&)> work,JsonReply reply) {
+ heapReclamationTimer_.stop();
  QPointer<OperationService> self(this);auto* thread=QThread::create([self,work=std::move(work),reply=std::move(reply)] {Error error;auto result=work(error);if(self) QMetaObject::invokeMethod(self,[self,reply,error,result] {if(self&&!self->stopping_) reply(error,result);},Qt::QueuedConnection);});
- threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {threads_.removeOne(thread);thread->deleteLater();});thread->start();
+ threads_.append(thread);connect(thread,&QThread::finished,this,[this,thread] {threads_.removeOne(thread);thread->deleteLater();scheduleHeapReclamation();});thread->start();
 }
 std::shared_ptr<std::mutex> OperationService::objectLock(const Destination& d,const QJsonObject& object,const QString& name) {
  // Adapters supply their real destination/object identity, independent of profile revisions.
@@ -59,6 +83,9 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(route.destination=="upload") {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(action!="clipboard")selectingId_=op.id;
+#ifdef __GLIBC__
+ heapReclamationPending_=true;
+#endif
  auto acquisition=source_.prepareAcquisition(action);
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition](Error e,QJsonObject result) mutable {
   if(e) {active_.remove(op.id);if(selectingId_==op.id)selectingId_.clear();reply(e,{});return;}
@@ -83,6 +110,9 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  });
 }
 void OperationService::enqueue(Job job) {
+#ifdef __GLIBC__
+ if(job.acquire)heapReclamationPending_=true;
+#endif
  if(job.cancelled->load()){job.payload={};job.op.cancelled=true;job.op.state="cancelled";finish(job.op);return;}
  if(job.payload.kind=="image"){
   const auto bytes=job.payload.image.sizeInBytes();
@@ -239,6 +269,9 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
  };
  // File batches always copy URIs. Detached text/image acquisitions copy their MIME.
  if(urls.isEmpty()&&op.items.size()==1&&!op.items[0].artifact.originalFile&&(localKind=="images"||localKind=="text")) {
+#ifdef __GLIBC__
+  heapReclamationPending_=true;
+#endif
   auto artifact=op.items[0].artifact;if(!QFile::exists(artifact.path))artifact.path=op.items[0].local.path;
   const auto ticket=invocation_;const auto revision=source_.clipboardRevision();auto prepared=std::make_shared<CopyPayload>();
   background([artifact,localKind,prepared](Error& e) {
@@ -264,6 +297,14 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
 }
 void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","A newer sharing invocation superseded this copy request",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This record has no confirmed direct URL",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});});}
 QJsonObject OperationService::capabilities() const {return {{"source",source_.capabilities()},{"providers",providers_.capabilities()}};}
-QJsonObject OperationService::diagnostics() const {return {{"schemaVersion",1},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"journalReady",ready_},{"capabilities",capabilities()}};}
+QJsonObject OperationService::diagnostics() const {
+#ifdef __GLIBC__
+ constexpr bool reclaimSupported=true;
+#else
+ constexpr bool reclaimSupported=false;
+#endif
+ return {{"schemaVersion",1},{"backend","Qt"},{"qtVersion",QT_VERSION_STR},{"activeOperations",active_.size()},{"journalReady",ready_},{"capabilities",capabilities()},
+  {"memory",QJsonObject{{"allocatorReclamationSupported",reclaimSupported},{"allocatorReclamationPending",heapReclamationPending_},{"allocatorReclamationCount",qint64(heapReclamationCount_)},{"lastAllocatorReclamationUsec",lastHeapReclamationUsec_}}}};
+}
 void OperationService::cleanup(JsonReply reply) {const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+"/artifacts");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+"/artifacts");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus=="unknown"||item.uploadStatus=="uploading")successful=false;const bool finished=op.state=="completed"||op.state=="partial"||op.state=="failed"||op.state=="cancelled"||op.state=="interrupted";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status=="failed")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{"removedOperations",removed}};},reply);}
 }

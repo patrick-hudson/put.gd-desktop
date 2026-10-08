@@ -28,11 +28,29 @@ static bool saveJson(const QString& path, const QJsonObject& value) {
 
 class Fixture final : public QWidget {
 public:
-    explicit Fixture(QString output) : output_(std::move(output)) {
+    explicit Fixture(QString output, QString liveColorFile = {})
+        : output_(std::move(output)), liveColorFile_(std::move(liveColorFile)) {
         setWindowTitle("put.gd independent synthetic paint / paste fixture");
         setFocusPolicy(Qt::StrongFocus);
         resize(640, 420);
         move(120, 120);
+        if (!liveColorFile_.isEmpty()) {
+            auto* timer = new QTimer(this);
+            connect(timer, &QTimer::timeout, this, [this] {
+                QFile file(liveColorFile_);
+                if (!file.open(QIODevice::ReadOnly)) return;
+                const auto control = QJsonDocument::fromJson(file.readAll()).object();
+                const auto rgb = control["rgb"].toArray();
+                if (rgb.size() != 3 || control == liveControl_) return;
+                const QColor color(rgb[0].toInt(), rgb[1].toInt(), rgb[2].toInt());
+                if (!color.isValid()) return;
+                liveControl_ = control;
+                liveColor_ = color;
+                livePaintPending_ = true;
+                update();
+            });
+            timer->start(50);
+        }
     }
     void ready() {
         QJsonArray displays;
@@ -68,10 +86,18 @@ protected:
         painter.fillRect(QRect(320, 0, 320, 160), QColor(20, 180, 70));
         painter.fillRect(QRect(0, 160, 320, 160), QColor(35, 70, 220));
         painter.fillRect(QRect(320, 160, 320, 160), QColor(235, 190, 20));
+        if (liveColor_.isValid()) painter.fillRect(QRect(0, 0, 640, 320), liveColor_);
         painter.fillRect(QRect(0, 320, width(), height() - 320), Qt::white);
         painter.setPen(Qt::black);
         painter.drawText(QRect(10, 330, width() - 20, 80), Qt::TextWordWrap,
                          "Synthetic fixture. Ctrl+V records actual clipboard MIME/image/text/files. " + status_);
+        painter.end();
+        if (livePaintPending_) {
+            livePaintPending_ = false;
+            saveJson(output_ + "/live-painted.json", {{"schemaVersion", 1},
+                {"revision", liveControl_["revision"]},
+                {"rgb", QJsonArray{liveColor_.red(), liveColor_.green(), liveColor_.blue()}}});
+        }
     }
     void mousePressEvent(QMouseEvent*) override { setFocus(); }
     void keyPressEvent(QKeyEvent* event) override {
@@ -117,7 +143,10 @@ protected:
         QWidget::keyPressEvent(event);
     }
 private:
-    QString output_, status_;
+    QString output_, status_, liveColorFile_;
+    QJsonObject liveControl_;
+    QColor liveColor_;
+    bool livePaintPending_ = false;
 };
 
 int main(int argc, char** argv) {
@@ -125,6 +154,7 @@ int main(int argc, char** argv) {
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addOption({"output", "Private synthetic results directory", "directory"});
+    parser.addOption({"live-color-file", "Synthetic live-region RGB/revision JSON control file", "path"});
     parser.addOption({"convert", "Convert image to PPM (first positional argument is output)", "input"});
     parser.addPositionalArgument("ppm-output", "Output for --convert");
     parser.process(app);
@@ -136,7 +166,7 @@ int main(int argc, char** argv) {
     }
     const auto output = parser.value("output");
     if (output.isEmpty() || !QDir().mkpath(output)) return 2;
-    Fixture fixture(output);
+    Fixture fixture(output, parser.value("live-color-file"));
     fixture.show();
     QTimer::singleShot(1000, &fixture, [&fixture] { fixture.ready(); });
     return app.exec();

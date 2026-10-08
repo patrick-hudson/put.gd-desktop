@@ -31,29 +31,36 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
   capture_.request("CaptureActiveWindow",{},limits_,[guard,snapshot,generation](QImage image,QVariantMap,Error error){snapshot->done=true;if(!guard||guard->generation_!=generation)snapshot->error={"cancelled","Window acquisition cancelled",{}};else{snapshot->image=std::move(image);snapshot->error=std::move(error);}if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}});
   return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window acquisition cancelled",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
  }
- const auto frozen=layout();return [guard,action,frozen](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}guard->captureScreens(action,frozen,limits,std::move(cb));};
+ const auto frozen=layout();return [guard,action,frozen](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}guard->capture(action,frozen,limits,std::move(cb));};
 }
 void KdeSourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
-void KdeSourceAdapter::captureScreens(QString action,QList<CaptureFrame> frozen,ResourceLimits limits,std::function<void(PayloadResult)> cb){
+void KdeSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,ResourceLimits limits,std::function<void(PayloadResult)> cb){
  if(action!="region"&&action!="desktop"){cb({{},{"source_unsupported","Unknown capture action",{}}});return;}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
  if(action=="region"){cb({{},{"region_unavailable","Native region selection requires current distro per-window LayerShellQt",{}}});return;}
 #endif
  if(overlay_){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
  if(frozen.isEmpty()||!unchanged(frozen)){cb({{},{"display_changed","Display layout changed after invocation",{}}});return;}
+ if(action=="region"){
+  auto* selector=new KdeRegionOverlay(frozen,this);overlay_=selector;auto reply=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));const auto generation=generation_;
+  connect(selector,&KdeRegionOverlay::selected,this,[this,selector,frozen,limits,reply,generation](QRectF selection){
+   overlay_=nullptr;
+   connect(selector,&QObject::destroyed,this,[this,frozen,selection,limits,reply,generation]{if(generation!=generation_){(*reply)({{},{"cancelled","Desktop capture cancelled",{}}});return;}captureScreens(frozen,selection,limits,std::move(*reply));});
+   selector->deleteLater();
+  });
+  connect(selector,&KdeRegionOverlay::cancelled,this,[this,selector,reply](Error error){overlay_=nullptr;selector->deleteLater();(*reply)({{},error});});selector->start();return;
+ }
+ QRectF bounds;for(const auto& frame:frozen)bounds=bounds.united(frame.logicalRect);captureScreens(std::move(frozen),bounds,limits,std::move(cb));
+}
+void KdeSourceAdapter::captureScreens(QList<CaptureFrame> frozen,QRectF selection,ResourceLimits limits,std::function<void(PayloadResult)> cb){
  // Qt screen DPR may be rounded on fractional Wayland outputs. Enforce image
  // budgets against ScreenShot2 native metadata, never guessed Qt pixel counts.
  struct Batch {QList<CaptureFrame> frames;QList<CaptureFrame> frozenLayout;qint64 bytes=0,pixels=0;int index=0;std::function<void(PayloadResult)> reply;std::function<void()> next;};
  auto batch=std::make_shared<Batch>();batch->frames=frozen;batch->frozenLayout=frozen;batch->reply=std::move(cb);QPointer<KdeSourceAdapter> guard(this);const auto generation=generation_;std::weak_ptr<Batch> weak=batch;
- batch->next=[guard,batchWeak=weak,action,limits,generation]{auto batch=batchWeak.lock();if(!batch)return;
+ batch->next=[guard,batchWeak=weak,selection,limits,generation]{auto batch=batchWeak.lock();if(!batch)return;
   auto fail=[batch](Error error){auto cb=std::move(batch->reply);batch->next={};if(cb)cb({{},error});};
   if(!guard||generation!=guard->generation_){fail({"cancelled","Desktop capture cancelled",{}});return;}if(!unchanged(batch->frozenLayout)){fail({"display_changed","Display layout changed during acquisition",{}});return;}
-  if(batch->index==batch->frames.size()){QRectF bounds;for(const auto& frame:batch->frames)bounds=bounds.united(frame.logicalRect);auto frames=batch->frames;const auto frozenLayout=batch->frozenLayout;auto reply=std::move(batch->reply);batch->next={};
-   if(action=="desktop"){guard->compose(std::move(frames),bounds,limits,std::move(reply));return;}
-   auto* selector=new KdeRegionOverlay(frames,guard);guard->overlay_=selector;auto cb=std::make_shared<std::function<void(PayloadResult)>>(std::move(reply));
-   QObject::connect(selector,&KdeRegionOverlay::selected,guard,[guard,selector,frames,frozenLayout,limits,cb](QRectF selection){guard->overlay_=nullptr;selector->deleteLater();if(!unchanged(frozenLayout)){(*cb)({{},{"display_changed","Display layout changed during selection",{}}});return;}guard->compose(frames,selection,limits,std::move(*cb));});
-   QObject::connect(selector,&KdeRegionOverlay::cancelled,guard,[guard,selector,cb](Error error){guard->overlay_=nullptr;selector->deleteLater();(*cb)({{},error});});selector->start();return;
-  }
+  if(batch->index==batch->frames.size()){auto frames=std::move(batch->frames);auto reply=std::move(batch->reply);batch->next={};guard->compose(std::move(frames),selection,limits,std::move(reply));return;}
   const auto index=batch->index;guard->capture_.request("CaptureScreen",{batch->frames[index].identity},limits,[guard,batch,index,limits,generation](QImage image,QVariantMap metadata,Error error){
    const auto reject=[batch](Error failure){auto cb=std::move(batch->reply);batch->next={};if(cb)cb({{},failure});};
    if(!guard||generation!=guard->generation_){reject({"cancelled","Desktop capture cancelled",{}});return;}

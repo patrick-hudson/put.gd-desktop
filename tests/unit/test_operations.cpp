@@ -53,6 +53,12 @@ private slots:
   source.payload.kind="image";source.payload.image=image();QString first;
   operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);
   QCOMPARE(freed.load(),1); // The provider is still blocked: disk artifact, not pixels, owns the upload.
+#ifdef __GLIBC__
+  const auto reclamations=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
+  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationSupported"].toBool());
+  QTest::qWait(2200);
+  QCOMPARE(reclamations(),0); // Released pixels must not trigger cleanup during the blocked upload.
+#endif
   HistoryStore journal(operations.databasePath());const auto artifact=journal.operation(first).items.first().artifact;QVERIFY(!ArtifactStore(d.filePath("data/artifacts")).verify(artifact));
   source.payload.kind="image";source.payload.image=image();QString second;
   operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});QTRY_COMPARE(source.reads,2);QTest::qWait(20);QCOMPARE(freed.load(),1);
@@ -63,6 +69,34 @@ private slots:
   provider->failUpload=false;bool retry=false;operations.retry(first,[&](Error e,QJsonObject){QVERIFY(!e);retry=true;});QTRY_VERIFY(retry);QTRY_COMPARE(provider->completions.size(),1);
   QCOMPARE(provider->requests.last().artifact.path,artifact.path);QCOMPARE(provider->requests.last().artifact.sha256,artifact.sha256);QCOMPARE(source.reads,2);QCOMPARE(freed.load(),2);
   complete=provider->completions.takeFirst();complete();QTRY_COMPARE(journal.operation(first).state,QString("completed"));
+#ifdef __GLIBC__
+  QTRY_COMPARE_WITH_TIMEOUT(reclamations(),1,5000);
+  QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
+  QTest::qWait(2200);
+  QCOMPARE(reclamations(),1); // One quiet-period cleanup, with no repeating idle timer.
+#endif
+ }
+ void imageHeapCleanupWaitsForSelectionAndBackgroundWork() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;
+  source.payload.kind="image";source.payload.image=QImage(16,16,QImage::Format_ARGB32);source.payload.image.fill(Qt::cyan);
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  source.defer=true;operations.invoke("region",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.acquisitions.size(),1);
+  QTest::qWait(2200);QCOMPARE(count(),0); // A selector can be active with no operation worker thread.
+  auto barrier=std::make_shared<std::promise<void>>();auto future=barrier->get_future().share();bool released=false;
+  auto release=qScopeGuard([&]{if(!released)barrier->set_value();});
+  operations.background([future](Error&){future.wait();return QJsonObject{};},[](Error,QJsonObject){});
+  source.acquisitions.takeFirst()({{}, {"cancelled","Selection cancelled",{}}});
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QTest::qWait(2200);QCOMPARE(count(),0); // Unrelated file/history work must also drain.
+  barrier->set_value();released=true;QTRY_COMPARE_WITH_TIMEOUT(count(),1,5000);
+#endif
  }
  void capturesReceiveStableTimestampNamesBeforeLocalArchive() {
   QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
@@ -155,6 +189,9 @@ private slots:
   QTRY_COMPARE(journal.operation(id).state,QString("cancelled"));
   QVERIFY(journal.operation(id).cancelled);
   QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.copies,0);
+#ifdef __GLIBC__
+  QTRY_COMPARE_WITH_TIMEOUT(operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt(),1,5000);
+#endif
  }
  void acquisitionFailureSettlesWithoutPendingCopy() {
   QTemporaryDir directory;ProviderRegistry registry;

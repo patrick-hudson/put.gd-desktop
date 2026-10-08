@@ -21,7 +21,8 @@ def run(args):
     parameters = {'schemaVersion': 1, 'scope': 'synthetic covering windows; local-only; all selections cancelled',
         'desktop': os.environ['XDG_CURRENT_DESKTOP'], 'session': 'x11', 'kernel': os.uname().release,
         'shortcut': 'Ctrl+Shift+F12', 'warmupInvocations': 5, 'sampleCount': 30,
-        'timeoutSeconds': 240, 'binarySha256': {name: hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        'timeoutSeconds': 240, 'witnessMode': 'live-outline' if args.live_outline else 'shaded-first-frame',
+        'harnessSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'binarySha256': {name: hashlib.sha256(Path(path).read_bytes()).hexdigest()
             for name, path in [('app', app), ('cli', cli), ('driver', driver)]}}
     (output / 'parameters.json').write_text(json.dumps(parameters, indent=2) + '\n')
     # Keep the Unix socket path short even when the evidence directory is deep.
@@ -75,7 +76,10 @@ def run(args):
                 raise RuntimeError('Physical benchmark region shortcut did not bind')
             (output / 'capabilities.json').write_text(json.dumps(capabilities, indent=2) + '\n')
             with (output / 'driver.log').open('wb') as driver_log:
-                completed = subprocess.run([driver, '--resident-pid', str(resident.pid), '--output', str(output / 'results.json')],
+                command = [driver, '--resident-pid', str(resident.pid), '--output', str(output / 'results.json')]
+                if args.live_outline:
+                    command.append('--live-outline')
+                completed = subprocess.run(command,
                     env=environment, stdout=driver_log, stderr=subprocess.STDOUT, timeout=240)
             outcomes = []
             for entry in request('operation.recent')['operations']:
@@ -93,4 +97,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for argument in ('app', 'cli', 'driver', 'output'):
         parser.add_argument('--' + argument, required=True)
+    parser.add_argument('--live-outline', action='store_true', help='Measure the drawn outline of a transparent selector; distinct from the historical shaded-frame workload')
     raise SystemExit(run(parser.parse_args()))

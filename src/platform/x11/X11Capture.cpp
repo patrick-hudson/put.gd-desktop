@@ -15,6 +15,21 @@ X11Capture::X11Capture(QObject* parent):QObject(parent) {
 }
 X11Capture::~X11Capture(){if(connection_)xcb_disconnect(connection_);}
 bool X11Capture::available()const{return connection_&&!xcb_connection_has_error(connection_)&&root_!=XCB_WINDOW_NONE;}
+bool X11Capture::cinnamonCompositor(){
+ if(!available())return false;
+ auto owner=reply(xcb_get_selection_owner_reply(connection_,xcb_get_selection_owner(connection_,atom("_NET_WM_CM_S0")),nullptr));
+ if(!owner||owner->owner==XCB_WINDOW_NONE)return false;
+ // Muffin's compositor selection window has no WM_CLASS. Its EWMH leader
+ // carries the native identity and points back to itself.
+ const auto supporting=atom("_NET_SUPPORTING_WM_CHECK");
+ auto leader=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,root_,supporting,XCB_ATOM_WINDOW,0,1),nullptr));
+ if(!leader||leader->format!=32||xcb_get_property_value_length(leader.get())!=4)return false;
+ xcb_window_t window=XCB_WINDOW_NONE;memcpy(&window,xcb_get_property_value(leader.get()),4);if(!window)return false;
+ auto check=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,window,supporting,XCB_ATOM_WINDOW,0,1),nullptr));
+ if(!check||check->format!=32||xcb_get_property_value_length(check.get())!=4||memcmp(xcb_get_property_value(check.get()),&window,4)!=0)return false;
+ auto version=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,window,atom("_MUFFIN_VERSION"),atom("UTF8_STRING"),0,64),nullptr));
+ return version&&version->format==8&&xcb_get_property_value_length(version.get())>0;
+}
 xcb_atom_t X11Capture::atom(const char* name){return x11::internAtom(connection_,name);}
 QList<CaptureFrame> X11Capture::layout(Error& error) {
  QList<CaptureFrame> result;
@@ -78,7 +93,8 @@ QList<CaptureFrame> X11Capture::frames(const X11Target& target,Error& error) {
  QList<CaptureFrame> frames=target.layout;
  for(auto& frame:frames){QScreen* screen=nullptr;for(auto* s:QGuiApplication::screens())if(s->name()==frame.identity){screen=s;break;}if(!screen){error={"display_changed","Monitor disappeared before capture",{}};return {};}
   // Qt's X11 root-window capture returns visible pixels including panels and
-  // occlusion, excludes the cursor, and is completed before selection overlays.
+  // occlusion and excludes the cursor. Cinnamon region callers use the native
+  // compositor scene after selection; generic X11 callers remove their surfaces.
   frame.pixels=screen->grabWindow(0).toImage();frame.pixels.setDevicePixelRatio(1);
   if(frame.pixels.isNull()||frame.pixels.size()!=frame.nativeRect.size()){error={"capture_geometry","Native frame dimensions disagree with monitor geometry",{}};return {};}
  }
