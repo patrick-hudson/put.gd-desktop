@@ -726,3 +726,22 @@ Windows/macOS CI proves compilation of shared components only. Physical Cinnamon
 - Credentials and source content are absent from ordinary configuration, source history, default exported diagnostics, and VM images.
 - Release packages contain dependency notices, checksums, integration hooks, and a documented update/rebuild path.
 - Abandoned prototypes, temporary workarounds, dead adapters, and unused dependencies are removed from the deliverable.
+
+## Implementation checkpoint: 2026-10-08
+
+This checkpoint records progress without changing the acceptance requirements.
+Detailed evidence and limitations remain in [verification.md](../verification.md).
+
+| Work | Implemented and observed | Remaining acceptance |
+| --- | --- | --- |
+| U5 / R35 | Collapsed simple setup, standard S3 defaults, explicit local-only choice, retained advanced draft, exact MiB/GiB controls and readable history/activity sizes; host and native Qt tests pass | Complete installed visual/focus/error/confirmation inspection at supported scales; full AE15 remains open |
+| U10 memory | Deferred AWS initialization and persistent views created on demand; unchanged five-minute physical Cinnamon background run falls from 87.0 to 55.95 MiB peak, with original idle budgets passing; repeated native window activation/reuse passes | Approximately 40 MiB target remains unmet. Savings precede first view/S3 use; measure post-use and populated-history workloads separately |
+| U10 capture latency | Reproducible supervisor retains hardware, binaries, parameters, operation IDs, logs and results; five warmups and 30 measured physical invocations complete | Measured p95 painted overlay is 235.821 ms and fails the 150 ms budget; locate and correct the cost before claiming acceptance |
+| U6 display observation | Normal desktop selector inspected with a drawn rectangle; KDE VNC incremental corruption reproduced alongside a clean direct guest framebuffer | Exact viewer cause unconfirmed; investigation parked at the user's request, with no viewer source changes |
+
+The integrated application passes all 25 dev tests; four affected SDK/GUI targets
+pass memory/undefined-behavior checks with leak detection and instrumented-Qt thread
+checks. These do not replace real desktop, live publication/deletion, package
+lifecycle, or full U9 walkthrough gates. Structured memory comparisons, including
+the rejected candidate, are retained in
+[the machine-readable record](../evidence/2026-10-08-resident-memory.json).
