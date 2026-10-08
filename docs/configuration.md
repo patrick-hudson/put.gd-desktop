@@ -93,3 +93,27 @@ updates always run on the service's owner thread. Indexed history has no automat
 expiry with null `historyRetentionDays`; a positive value expires old confirmed records
 at startup and hourly, retaining active deletion identities. Cache cleanup leaves
 history and user-owned local files intact.
+
+S3 settings are validated by the registered adapter. `bucket` is a bucket
+name from 3 to 63 UTF-8 bytes; `region` must be nonempty. `endpoint` is an absolute HTTPS
+URL without user information, query or fragment (literal-loopback HTTP is allowed
+for local endpoints). `objectPrefix` is at most 1022 UTF-8 bytes; the final prefix/key
+is limited to 1024 bytes. A separator is added only when a nonempty prefix lacks one.
+`storageClass` accepts STANDARD, REDUCED_REDUNDANCY, STANDARD_IA, ONEZONE_IA,
+INTELLIGENT_TIERING, GLACIER, DEEP_ARCHIVE or GLACIER_IR. Cold storage may not support
+immediate public GET. `aclMode` is public-read or omit; no error changes that choice.
+`publicUrlBase` is null or an absolute HTTPS URL with an optional already-encoded
+path and no credentials, query or fragment (literal-loopback HTTP is also accepted).
+Null derives an object URL from endpoint/bucket/addressing. `addressing` is path,
+virtual or auto; virtual rejects dotted buckets and literal IP endpoints, and auto
+uses virtual only for an AWS host with an undotted bucket. Path mode is required for
+the development dotted bucket. Validation performs no network or secret-store IO.
+
+`connectTimeoutMs` bounds connection setup. `requestTimeoutMs` maps to the SDK whole
+Curl-request timeout (`httpRequestTimeoutMs`). `lowSpeedBytesPerSecond` maps to the
+SDK low-speed limit, and `lowSpeedTimeSeconds` maps to its low-speed duration
+(`requestTimeoutMs` in SDK terminology). These settings are positive integral values
+up to 2147483647. The adapter bounds concurrent SDK resources and caches clients by
+effective settings plus explicit credential generation. A changed accepted profile
+creates another effective client; pending operations and deletion retain originals.
+See [S3 behavior](s3.md) and [credential setup](credentials.md).

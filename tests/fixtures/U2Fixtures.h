@@ -21,7 +21,7 @@ public:
 };
 class OpaqueProvider final:public StorageProvider {
 public:
- mutable QMutex mutex;QHash<QString,StorageReceipt> objects;std::atomic_int uploads{0},deletes{0},checks{0};bool loseReply=false,failUpload=false,allowDelete=true,slowDelete=false;QObject* dispatcher=nullptr;
+ mutable QMutex mutex;QHash<QString,StorageReceipt> objects;std::atomic_int uploads{0},deletes{0},checks{0};bool loseReply=false,failUpload=false,allowDelete=true,slowDelete=false,wrongStatDestination=false;QObject* dispatcher=nullptr;
  bool deferUploads=false;QList<std::function<void()>> completions;QList<UploadRequest> requests;
  QHash<QString,QString> deletionResults;std::function<void(const DeleteRequest&)> checkpointObserver;
  static QString fileId(const QString& candidate) {return "opaque:α/%?#:"+QString::fromLatin1(QCryptographicHash::hash(candidate.toUtf8(),QCryptographicHash::Sha256).toHex());}
@@ -39,7 +39,7 @@ public:
   };
   if(deferUploads) {QMetaObject::invokeMethod(dispatcher,[this,complete,request] {requests.append(request);completions.append(complete);},Qt::QueuedConnection);}else complete();
  }
- void stat(const StorageReceipt& receipt,std::function<void(StatResult)> cb) override {QMutexLocker lock(&mutex);auto id=receipt.objectReference["fileId"].toString();auto r=objects.value(id);QString status=!objects.contains(id)?"missing":r.publicationId==receipt.publicationId?"own":"foreign";lock.unlock();cb({status,r,{}});}
+ void stat(const StorageReceipt& receipt,std::function<void(StatResult)> cb) override {QMutexLocker lock(&mutex);auto id=receipt.objectReference["fileId"].toString();auto r=objects.value(id);if(wrongStatDestination)r.destination.settings["workspace"]="different-namespace";QString status=!objects.contains(id)?"missing":r.publicationId==receipt.publicationId?"own":"foreign";lock.unlock();cb({status,r,{}});}
  void reconcile(const UploadRequest& request,std::function<void(StatResult)> cb) override {QMutexLocker lock(&mutex);auto id=request.objectReference["fileId"].toString();auto r=objects.value(id);QString status=!objects.contains(id)?"missing":r.publicationId==request.publicationId?"own":"foreign";lock.unlock();cb({status,r,{}});}
  void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> cb) override {
   const QJsonObject progress{{"schemaVersion",1},{"phase","recorded-intent"},{"opaqueMutationId",request.receipt.publicationId}};

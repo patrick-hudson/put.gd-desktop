@@ -505,7 +505,8 @@
       "properties": {
         "bucket": {
           "type": "string",
-          "maxLength": 4096
+          "maxLength": 63,
+          "minLength": 3
         },
         "region": {
           "type": "string",
@@ -513,15 +514,24 @@
         },
         "endpoint": {
           "type": "string",
-          "pattern": "^https://"
+          "pattern": "^(https://|http://(127\\.[0-9.]+|\\[::1\\]))"
         },
         "objectPrefix": {
           "type": "string",
-          "maxLength": 4096
+          "maxLength": 1022,
+          "description": "UTF-8 byte length is limited to 1022; adapter enforces the final 1024-byte object key limit."
         },
         "storageClass": {
-          "type": "string",
-          "maxLength": 4096
+          "enum": [
+            "STANDARD",
+            "REDUCED_REDUNDANCY",
+            "STANDARD_IA",
+            "ONEZONE_IA",
+            "INTELLIGENT_TIERING",
+            "GLACIER",
+            "DEEP_ARCHIVE",
+            "GLACIER_IR"
+          ]
         },
         "aclMode": {
           "enum": [
@@ -533,14 +543,16 @@
           "type": [
             "string",
             "null"
-          ]
+          ],
+          "description": "Absolute HTTPS URL without credentials/query/fragment, or literal-loopback HTTP. An encoded base path is preserved. Null derives from effective S3 addressing."
         },
         "addressing": {
           "enum": [
             "path",
             "virtual",
             "auto"
-          ]
+          ],
+          "description": "auto uses virtual only for AWS hosts and undotted bucket names; path supports dotted buckets; virtual rejects dotted names and literal IP endpoints."
         },
         "connectTimeoutMs": {
           "type": "integer",

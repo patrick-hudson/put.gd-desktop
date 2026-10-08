@@ -8,7 +8,7 @@ sudo apt-get update
 sudo apt-get install build-essential git cmake ninja-build pkg-config \
   qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev \
   qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev \
-  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
+  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev \
   libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev \
   zlib1g-dev libwayland-dev wayland-protocols
 ```
@@ -55,8 +55,12 @@ SQLite transaction rollback, keychain fallback settings, SDK lifetime, and condi
 PUT/DELETE header serialization passed. Release also built with `BUILD_TESTING=OFF`
 and contains no QtTest target. ASan/UBSan contract tests passed outside the restricted
 process sandbox; inside that sandbox LeakSanitizer could not inspect its own threads.
-The TSan preset configures successfully; no TSan execution is claimed yet.
-Tests make no network requests or secret-store access. CI jobs are authored
+Thread-checking setup and dependency instrumentation are documented in
+[thread-sanitizer.md](thread-sanitizer.md). Current observed results are recorded
+in [verification.md](verification.md).
+The S3 integration tests use an isolated local HTTP fixture with synthetic keys;
+keychain tests use an isolated D-Bus protocol peer or an unavailable service.
+They do not contact AWS or read the user's secret store. CI jobs are authored
 for Ubuntu 24.04/26.04, Windows, and macOS; they have not run yet.
 
 U1 changes build configuration and introduces the skeleton. No prior implementation or

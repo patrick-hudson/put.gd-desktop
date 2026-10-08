@@ -1,4 +1,5 @@
 #include "storage/s3/SdkRuntime.h"
+#include "storage/s3/S3Provider.h"
 #include "app/LocalServer.h"
 #include <QApplication>
 #include <QLabel>
@@ -9,7 +10,9 @@ int main(int argc,char* argv[]) {
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion("0.1.0");
  putgd::SdkRuntime sdk;
+ putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
+ providers.add("s3",std::make_shared<putgd::S3Provider>(credentials));
  putgd::SettingsService settings(QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath("config.json"),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);});
  putgd::UnavailableSource source;
  putgd::OperationService operations(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation),settings,providers,source);

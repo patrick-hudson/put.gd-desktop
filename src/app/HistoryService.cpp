@@ -57,11 +57,12 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
    else if(!provider->capabilities(receipt.destination).remove||!provider->capabilities(receipt.destination).stat||(!provider->capabilities(receipt.destination).conditionalDelete&&!provider->capabilities(receipt.destination).versionAddressing)) {e={"unsupported_capability","Provider cannot safely delete this recorded target",{}};outcome="failed";}
    else {
     auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
-    auto stat=awaitProvider<StatResult>([&](auto cb) {provider->stat(receipt,cb);});
+    const bool driverReconciles=provider->reconcilesDeleteProgress() && progress.contains("phase");
+    auto stat=driverReconciles ? StatResult{"own",receipt,{}} : awaitProvider<StatResult>([&](auto cb) {provider->stat(receipt,cb);});
     if(stat.status=="missing")outcome="already_missing";
     else if(stat.status=="foreign")outcome="changed";
     else if(stat.status!="own"||stat.error) {outcome="unknown";e=stat.error?stat.error:Error{"delete_unknown","Recorded object identity could not be reconciled",{}};}
-    else if(stat.receipt.publicationId!=receipt.publicationId||stat.receipt.objectReference!=receipt.objectReference||stat.receipt.concurrencyToken!=receipt.concurrencyToken) {outcome="changed";e={"delete_target_changed","The recorded target has changed",{}};}
+    else if(stat.receipt.publicationId!=receipt.publicationId||stat.receipt.objectReference!=receipt.objectReference||stat.receipt.concurrencyToken!=receipt.concurrencyToken||stat.receipt.destination.toJson()!=receipt.destination.toJson()) {outcome="changed";e={"delete_target_changed","The recorded target has changed",{}};}
     else {
      item["status"]="deleting";items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;
      // Callback may run on the provider's worker. It creates a connection on that
@@ -70,7 +71,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
       if(!checkpoint["schemaVersion"].isDouble()||checkpoint["schemaVersion"].toInt()<1) {ack({"delete_checkpoint_invalid","Driver progress requires a version",{}});return;}
       auto target=items[index].toObject();target["progress"]=checkpoint;items[index]=target;doc["items"]=items;HistoryStore durable(path);ack(durable.saveDeletion(doc));
      };
-     DeleteRequest request{doc["id"].toString(),receipt,progress};
+     DeleteRequest request{doc["id"].toString(),receipt,progress,cancelled};
      auto result=awaitProvider<DeleteResult>([&](auto cb) {provider->remove(request,checkpoint,cb);});outcome=result.status=="missing"?"already_missing":result.status;progress=result.progress.isEmpty()?items[index].toObject()["progress"].toObject():result.progress;e=result.error;
      const QStringList allowed{"removed","already_missing","changed","failed","unknown","hidden_version_retained","version_retained","unsupported_safe_removal"};if(!allowed.contains(outcome)) {outcome="unknown";e={"delete_unknown","Provider returned an unrecognized deletion result",{}};}
     }

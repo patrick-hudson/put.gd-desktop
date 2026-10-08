@@ -8,6 +8,7 @@ class SdkRuntime final {
 public:
     SdkRuntime();
     ~SdkRuntime();
+    static bool safeDeleteTransport();
     SdkRuntime(const SdkRuntime&) = delete;
     SdkRuntime& operator=(const SdkRuntime&) = delete;
 private:

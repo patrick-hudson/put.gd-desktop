@@ -3,6 +3,7 @@
 #include "ArtifactStore.h"
 #include <functional>
 #include <memory>
+#include <atomic>
 #include <QHash>
 namespace putgd {
 struct ProviderCapabilities {
@@ -23,12 +24,14 @@ struct UploadRequest {
  QString candidate,publicationId,condition; // absent or match
  QJsonObject objectReference;
  QString concurrencyToken;
+ std::shared_ptr<std::atomic_bool> cancellation;
 };
 struct UploadResult { QString status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { QString status; StorageReceipt receipt; Error error; }; // own, foreign, missing, unknown
 struct DeleteRequest {
  QString id; StorageReceipt receipt;
  QJsonObject progress;
+ std::shared_ptr<std::atomic_bool> cancellation;
 };
 struct DeleteResult { QString status; QJsonObject progress; Error error; }; // removed, missing, changed, failed, unknown, hidden_version_retained
 // A driver must await a successful durable checkpoint callback BEFORE the associated
@@ -37,6 +40,7 @@ using DurableCheckpoint=std::function<void(const QJsonObject&,std::function<void
 class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
+ virtual bool reconcilesDeleteProgress() const { return false; }
  virtual ProviderCapabilities capabilities(const Destination&) const=0;
  virtual QString serializationKey(const Destination&,const QJsonObject& objectReference,const QString& candidate) const=0;
  virtual Error validateSettings(const QJsonObject&) const=0;

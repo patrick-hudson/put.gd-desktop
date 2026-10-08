@@ -137,7 +137,7 @@ Operation OperationService::run(Job job) {
   }
   for(int attempts=0;attempts<32;++attempts) {
    item.uploadStatus="uploading";if(!save())return op;
-   auto uploaded=awaitProvider<UploadResult>([&](auto cb) {provider->upload(item.uploadRequest(op.destination),cb);});
+   auto uploaded=awaitProvider<UploadResult>([&](auto cb) {auto request=item.uploadRequest(op.destination);request.cancellation=job.cancelled;provider->upload(request,cb);});
    item.error=uploaded.error;
    if(uploaded.status=="uploaded") {
     auto e=uploaded.receipt.validate();if(!e&&(uploaded.receipt.publicationId!=item.publicationId||uploaded.receipt.destination.toJson()!=op.destination.toJson()))e={"receipt_invalid","Receipt does not match the accepted publication identity",{}};

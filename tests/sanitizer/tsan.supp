@@ -1,0 +1,7 @@
+# D-Bus 1.14.10: a newly allocated, unpublished connection is locked under the
+# global bus lock during construction. Qt uses dbus_bus_get_private; this new
+# mutex cannot be acquired by another thread at that construction edge. TSan
+# combines that edge with later disconnect and reports a hypothetical cycle.
+# Reproduced with QDBusConnection::sessionBus alone and instrumented libdbus.
+# See docs/thread-sanitizer.md. Do not suppress Qt/app races or the lock detector.
+deadlock:_dbus_connection_new_for_transport
