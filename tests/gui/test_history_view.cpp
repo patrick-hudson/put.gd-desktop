@@ -6,6 +6,8 @@
 #include <QApplication>
 #include <QMessageBox>
 #include <QTimer>
+#include <QScopeGuard>
+#include <utility>
 #include <QLabel>
 #include <QToolButton>
 #include <QImage>
@@ -15,6 +17,19 @@ class HistoryGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void restoringHistoryKeepsActiveDeletionCancellation() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  std::atomic_bool entered{false},released{false};provider->checkpointObserver=[&](const DeleteRequest&){entered.store(true);while(!released.load())std::this_thread::sleep_for(std::chrono::milliseconds(1));};
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);HistoryWindow window(history,operations);window.show();auto* table=window.findChild<QTableView*>("historyTable");QTRY_COMPARE(table->model()->rowCount(),1);table->selectRow(0);
+  auto drain=qScopeGuard([&]{released.store(true);});
+  QTimer accept;accept.setInterval(10);connect(&accept,&QTimer::timeout,this,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* box=qobject_cast<QMessageBox*>(widget);box&&box->windowTitle()=="Confirm exact remote deletion")box->button(QMessageBox::Yes)->click();});accept.start();
+  window.findChild<QPushButton*>("deleteHistoryRemote")->click();QTRY_VERIFY(entered.load());accept.stop();
+  window.hide();window.show();QTRY_VERIFY(!window.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QPushButton* cancel=nullptr;for(auto* button:window.findChildren<QPushButton*>())if(button->text()=="Cancel deletion")cancel=button;QVERIFY(cancel);
+  cancel->click();QLabel* status=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);QTRY_VERIFY(status->text().contains("Cancellation requested"));
+  released.store(true);operations.shutdown(); // Drain the delayed worker while its service/fixture still exist.
+ }
  void imageInspectorAndExpandedControlsFitCompactWindow() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
   const auto imagePath=d.filePath("synthetic-preview.png");QImage image(320,180,QImage::Format_RGB32);image.fill(QColor("#a9f1cb"));QVERIFY(image.save(imagePath));
@@ -24,6 +39,10 @@ private slots:
   QVERIFY2(window.width()<=1000&&window.height()<=700,qPrintable(QString("Expanded history grew to %1×%2").arg(window.width()).arg(window.height())));
   for(const auto& name:QStringList{"copyHistoryLink","deleteHistoryRemote"}){auto* button=window.findChild<QPushButton*>(name);QVERIFY(button->isVisible());QVERIFY(window.rect().contains(button->mapTo(&window,button->rect().bottomRight())));}
   QVERIFY(window.rect().contains(manage->mapTo(&window,manage->rect().bottomRight())));QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+  window.hide();QVERIFY2(preview->pixmap().isNull(),"Hidden history must release its decoded thumbnail");
+  window.show();QTRY_VERIFY(!preview->pixmap().isNull());
+  table->clearSelection();QVERIFY(preview->pixmap().isNull());
+
  }
 
  void openingHistoryDuringInitializationRefreshesWhenReady() {

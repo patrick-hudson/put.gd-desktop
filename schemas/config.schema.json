@@ -351,7 +351,8 @@
         "mode": {
           "enum": [
             "generated",
-            "original"
+            "original",
+            "template"
           ]
         },
         "collisionPolicy": {
@@ -360,6 +361,62 @@
             "skip",
             "overwrite"
           ]
+        },
+        "fileTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "{name}.{ext}"
+        },
+        "captureTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+        },
+        "imageTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+        },
+        "textTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
         }
       }
     },
@@ -422,6 +479,13 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 1099511627776
+        },
+        "pendingImageBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776,
+          "default": 67108864,
+          "description": "Total decoded image bytes admitted for queued/encoding jobs; released after persistence or cancellation. Does not bound total RSS."
         }
       }
     },

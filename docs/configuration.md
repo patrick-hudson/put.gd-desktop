@@ -29,7 +29,11 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `archive.keepUploads` | `false`; enables a local copy before remote publication |
 | `archive.root` | User Documents folder plus `put.gd`; must be absolute |
 | `archive.folders` | `images`, `videos`, `text`, `other`; each absolute or `null` |
-| `naming.mode` | `generated` by default; `original` preserves regular-file basenames |
+| `naming.mode` | `original` by default preserves imported basenames; `generated` uses UUIDs; `template` also renames imported files |
+| `naming.fileTemplate` | Optional imported-file pattern, default `{name}.{ext}` |
+| `naming.captureTemplate` | Optional screenshot pattern, default `Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
+| `naming.imageTemplate` / `naming.textTemplate` | Optional clipboard patterns, default timestamped `Image-…` / `Text-…` names |
+| `limits.pendingImageBytes` | Optional aggregate retained decoded-image budget, default 67,108,864 bytes (64 MiB); released after persistence/cancellation |
 | `naming.collisionPolicy` | `rename` by default; `skip` or explicit `overwrite` |
 | `limits.maxFiles` | 100; maximum clipboard batch file count |
 | `limits.pendingOperations` | 8 |
@@ -123,3 +127,21 @@ up to 2147483647. The adapter bounds concurrent SDK resources and caches clients
 effective settings plus explicit credential generation. A changed accepted profile
 creates another effective client; pending operations and deletion retain originals.
 See [S3 behavior](s3.md) and [credential setup](credentials.md).
+
+
+Filename templates accept `{name}` (original stem), `{ext}` (extension without a
+dot), `{yyyy}`, `{MM}`, `{dd}`, `{HH}`, `{mm}`, `{ss}` (local action time),
+and `{uuid}` (stable item identity). Literal text is allowed; paths, control
+characters and unknown/unclosed tokens are rejected. For example,
+`Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` produces
+`Screen-Capture-2026-10-08-04-27-21.png`. Names are resolved using the accepted action timestamp before archive/publication
+and persisted with immutable artifacts. Retries do not regenerate timestamps; only
+confirmed collisions can add a suffix. Local saving never overwrites existing files.
+Legacy configurations without optional fields remain valid and retain their mode.
+
+The decoded-image budget applies to images held by accepted jobs waiting for or
+undergoing disk encoding, not total RSS. A new acquired image that cannot fit fails
+with `image_memory_limit`; the app does not silently substitute a later clipboard.
+Encoding workspace, native frozen monitor frames and the current clipboard result
+are separate transient/ownership costs. Retry artifacts and previews live on disk;
+previewCacheBytes bounds disk bytes rather than a preloaded image heap.

@@ -1,0 +1,1319 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "scope": "Settings, filename templates and bounded image ownership; synthetic local contracts and named single-head Cinnamon workflows. No new RSS result or whole-product certification.",
+  "baseRevision": "ece28bb095217896c6cfce1c56a18fb0dbd14c2f",
+  "sourceContractSha256": "69cba797a2066192ba1a317458cec52e207df9cefa7030662eff7b8a9c30ff48",
+  "sourceContractHashes": {
+    "config/development.example.json": "e1b5735a42bfd99999b3e8baae3f8f906eba992d446bf40b18bbdfaafa53eba8",
+    "schemas/config.schema.json": "960db92a37eb206aad0aa75ff89154a5074fc9de68ae7c168bae6a5ad3bfe58a",
+    "src/app/OperationService.cpp": "7614a58c3ba07bd87e474b415636c2740f5054f91fdd254d75acd25d69fb0fda",
+    "src/app/OperationService.h": "39ed60b3691e44f9ede6a2822d5e4f9436f2eb5ab5f25d0534d153129bc444e3",
+    "src/core/ArtifactStore.cpp": "5732f52ae56741ff6d35356e1e6361561655d10957f9f6568e31543037d62ed5",
+    "src/core/ArtifactStore.h": "ccb497daee158918a799b3bd60a246140a59b567ec28b544ff445df9ff0171be",
+    "src/core/LocalArchive.cpp": "bb165a7ecaf62a6f026785f0e8322aa429d9685e94447b4f8ab0255bbc3eb36d",
+    "src/core/Settings.cpp": "a9d21fa34c4fdb5e897108c7b3c5affbe87af6595f6d95aea9f59dab1cf43c51",
+    "src/core/Settings.h": "87cbfc60cd866eb3bec0b64eb1fd362d2b97e043fca2ee32ab6659b66f5b77cd",
+    "src/core/UploadNaming.cpp": "73423deba4ccce8fa7705a7e331229f5870fa19a03211bf549a4c8d8b82d438f",
+    "src/core/UploadNaming.h": "a127a8e22e1d858a0e30482cc50014b87394f4f466467803d41998254a2d9d77",
+    "src/ui/HistoryWindow.cpp": "bd4621c2d2afb029631e90cfc7f74ada2c73f7305f3e10ccde555560d27815b6",
+    "src/ui/HistoryWindow.h": "bb917bc4ba3e8ef5b0855668733e22d727619516fd5ccc6a35fc689be4214dfb",
+    "src/ui/SettingsWindow.cpp": "e3ec25afedc8dd03d55ce60272a4d3bff191a7e77c9eea8021ff57b8df02f61a",
+    "src/ui/SettingsWindow.h": "36310c14855524ffdb980d1fbb3cb156764910fbde3daa82443bd8d408810580",
+    "src/ui/ShortcutEditor.cpp": "9205820e927d00579c1ad597c1cb548f818c9489763576ad26ca118c8d781721",
+    "src/ui/VisualStyle.cpp": "b1d5a0662916b3899245e72ab65f5b8c0c1d8c2b00df1335fa0493f9dc3f56e8",
+    "src/ui/VisualStyle.h": "abcdf4c74f4a53619c86a4dea4a573a5efe3381fe76d5f817fdf8b0608ec8891",
+    "tests/gui/test_history_view.cpp": "e811c549671e2304e6f0a70c5a094520981ab6a67060a2f524f7615702312001",
+    "tests/gui/test_settings.cpp": "f241e02b4ff8ffa420eb4275e5ef62c44310d06b2c934f592869d41ed84dbfe4",
+    "tests/integration/test_collision_policy.cpp": "d02eb4f5ca61163bee533e351aed796a21d6207d8165c9db9dd6cc3443f750b0",
+    "tests/integration/test_config_schema.py": "133e3d0b79b957b454be8154562a107f2f64824f5724b54e979715114d2cfa39",
+    "tests/unit/test_archive.cpp": "034ceee076169f05ad3eec358abef2795665c41939d99fd297784bedccd28f7e",
+    "tests/unit/test_operations.cpp": "9ad9428f706222b6a186320408742c78080bb1f0f8bec5c3076751ef2d5ef617",
+    "tests/unit/test_settings.cpp": "1b4da1fe8543abd9578e32e507c28824ecee9e33013080223f2e983d2a3790c3",
+    "tests/unit/test_upload_naming.cpp": "d6f1897f5b52017cccee81e9e5119f46125c463559e3a9480fd273f85334cbb2"
+  },
+  "host": {
+    "distribution": "Linux Mint22.3",
+    "compiler": "GCC13.3.0",
+    "qt": "distro dynamically-linked Qt6.4.2",
+    "build": "Debug CMake dev/Ninja; official pinned AWS SDK",
+    "pythonEnvironmentLock": {
+      "path": "tools/mcp/uv.lock",
+      "sha256": "7de55636e04c776a3e3abd493ec5c8733ad51c93eda80661b6da6b687ac7a44e"
+    }
+  },
+  "checks": [
+    {
+      "name": "dev",
+      "passed": 25,
+      "failed": 0,
+      "seconds": 49.71,
+      "command": "ctest --preset dev --output-junit work/refinement-reviewed-dev.xml",
+      "workingDirectory": "repository root",
+      "junitOriginal": {
+        "path": "build/dev/work/refinement-reviewed-dev.xml",
+        "sha256": "c8fb3d000c1a2dec68de7edbd6f3a4d2621a601381dc718c6fb9157bcb5179fc"
+      },
+      "junitCopy": {
+        "path": "work/refinement-reviewed-dev.xml",
+        "sha256": "c8fb3d000c1a2dec68de7edbd6f3a4d2621a601381dc718c6fb9157bcb5179fc"
+      },
+      "log": {
+        "path": "work/refinement-reviewed-dev.log",
+        "sha256": "7fadc51bf5f43ed0d7451fe7861616b27b6fdbce34bddff9bb90d959f1eb3ace"
+      }
+    },
+    {
+      "name": "asan",
+      "passed": 8,
+      "failed": 0,
+      "seconds": 37.47,
+      "command": "ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 ctest --preset asan -R <affectedExpression> --output-junit work/refinement-reviewed-asan.xml",
+      "workingDirectory": "repository root",
+      "junitOriginal": {
+        "path": "build/asan/work/refinement-reviewed-asan.xml",
+        "sha256": "b611bf397f91dea4fbf2d9d71d34766a3350cf79ea60d1e0e60661a4d5ba2db8"
+      },
+      "junitCopy": {
+        "path": "work/refinement-reviewed-asan.xml",
+        "sha256": "b611bf397f91dea4fbf2d9d71d34766a3350cf79ea60d1e0e60661a4d5ba2db8"
+      },
+      "log": {
+        "path": "work/refinement-reviewed-asan.log",
+        "sha256": "043e26814b8e3c9d25e0f3f329ffdfd740924891ca0547d5ee3820cfb0c20f49"
+      }
+    },
+    {
+      "name": "tsan",
+      "passed": 8,
+      "failed": 0,
+      "seconds": 82.72,
+      "command": "setarch x86_64 -R env <instrumentedQtEnvironment> ctest --test-dir build/tsan-instrumented-qt --output-on-failure -R <affectedExpression> --output-junit work/refinement-reviewed-tsan.xml",
+      "workingDirectory": "repository root",
+      "junitOriginal": {
+        "path": "build/tsan-instrumented-qt/work/refinement-reviewed-tsan.xml",
+        "sha256": "6f8dd7d2921b110d44e81eb3d4c8d848d7d86dc027791c1606ed91e858e9561e"
+      },
+      "junitCopy": {
+        "path": "work/refinement-reviewed-tsan.xml",
+        "sha256": "6f8dd7d2921b110d44e81eb3d4c8d848d7d86dc027791c1606ed91e858e9561e"
+      },
+      "log": {
+        "path": "work/refinement-reviewed-tsan.log",
+        "sha256": "11c269f3dcaecf8acf6c1d62c116c8c43332e67865da4a8750af542322e1338a"
+      }
+    },
+    {
+      "name": "production-configuration-schema",
+      "passed": 1,
+      "failed": 0,
+      "seconds": 0.256,
+      "command": "PUTGD_APP=\"$PWD/build/dev/putgd\" PUTGD_CLI=\"$PWD/build/dev/putgd-cli\" tools/mcp/.venv/bin/python -m unittest discover -s tests/integration -p test_config_schema.py -v",
+      "lockedEnvironment": "tools/mcp/uv.lock",
+      "log": {
+        "path": "work/refinement-reviewed-schema.log",
+        "sha256": "eba8898014a708b797cd8579b746cae9b55039cfb1d3ebd499ebbb11c3b2e30b"
+      }
+    },
+    {
+      "name": "whitespace",
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "sanitizerParameters": {
+    "affectedExpression": "payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings|gui_history_view|collision_policy_integration",
+    "asanOptions": "detect_leaks=1:halt_on_error=1",
+    "ubsanOptions": "halt_on_error=1",
+    "tsanOptions": "halt_on_error=1:suppressions=$PWD/tests/sanitizer/tsan.supp",
+    "tsanQtPlatform": "offscreen",
+    "tsanFontDirectory": "/usr/share/fonts/truetype/dejavu",
+    "tsanDependencies": "work/sanitizer-diagnosis/deps-tsan",
+    "tsanAslr": "per-process setarch x86_64 -R",
+    "suppression": {
+      "path": "tests/sanitizer/tsan.supp",
+      "sha256": "bd364f5df8a645e52bac2f8ba0f43faf09111062bf7e79fc6b70d97b39c2ab65"
+    },
+    "newSuppressions": false,
+    "limits": "SDK/OpenSSL/libcurl internals remain uninstrumented; no compositor certification."
+  },
+  "proofFirst": {
+    "genuineFailures": [
+      {
+        "path": "work/refinement-payload-red.log",
+        "sha256": "e87ecd2e47a9526dd0aae36a4b47e5d03bb4e864123836cbcedcd2811c6694f0"
+      },
+      {
+        "path": "work/refinement-preview-red.log",
+        "sha256": "c0403fb56359abfe3010dafaa5eec21eef485fc1be97880eef9eb2fdd7577a07"
+      },
+      {
+        "path": "work/refinement-tiny-name-red.log",
+        "sha256": "88171047d9a8d15c0b6203e7cc95f2861e17da3e6ba08f471c230c40a7e894c0"
+      },
+      {
+        "path": "work/refinement-first-run-red.log",
+        "sha256": "9626359de3af71cd1f043749ed4ad93865b5e76aa0b7664f18326fdd35c166d8"
+      },
+      {
+        "path": "work/refinement-image-budget-red.log",
+        "sha256": "ea454d12624932be8b760ede7bf10176b97312dba978e32d47216f4521474c9a"
+      },
+      {
+        "path": "work/refinement-image-admission-red.log",
+        "sha256": "eef1851f2453901b42d918272b90cf75b366965040cfaf9122527ee06a86e3ab"
+      },
+      {
+        "path": "work/refinement-schema-red.log",
+        "sha256": "417c797df6578390d20a9db15c2f42b8d0e528862925fc28a7d9cfbb97017246"
+      },
+      {
+        "path": "work/refinement-queued-time-red.log",
+        "sha256": "cd296953e15e750f3fb474a8135a341b497333c9241da5bda4565c17b346a1b7"
+      },
+      {
+        "path": "work/refinement-history-restore-red.log",
+        "sha256": "505dbdb3f4573d8f4cbb00233b035043122d20904d5b32e7470ca6f160caee61"
+      },
+      {
+        "path": "build/dev/work/refinement-core-red.xml",
+        "sha256": "9ec9d7b8814c9afd8d6289e2b23827ef7b222ab6a34826a72bcd81d7d6323142"
+      }
+    ],
+    "targetedGreens": [
+      {
+        "path": "work/refinement-schema-green.log",
+        "sha256": "4811d13737917bab529a7bbeeef61ea5726f40711b508e307a4173382bb93f14"
+      },
+      {
+        "path": "work/refinement-queued-time-green.log",
+        "sha256": "96a18cdf3024b58ebfb586f9e7a79cecff778d0ec9176d052868de7c97f995b1"
+      },
+      {
+        "path": "work/refinement-history-restore-green.log",
+        "sha256": "e4efd2130ff43560b0174c8f35c73d68b7216fdb01dbf5b40d6a1e1b5345bd2a"
+      }
+    ],
+    "fixtureFailuresPreserved": "Initial history fixture compile error/done(Yes) attempt and first TSan operation_busy retry ordering are not product-race evidence. Final fixture clicks Yes, uses an atomic checkpoint barrier, waits for operation drain and preserves the genuine red/green. Sandbox socket denial required unchanged isolated fixtures outside process sandbox."
+  },
+  "ownershipParameters": {
+    "imagePixels": [
+      8,
+      8
+    ],
+    "format": "ARGB32",
+    "externalBufferBytes": 256,
+    "cleanupCallbackExpectedBeforeProviderCompletes": true,
+    "queuedCancellationExpectedImmediateRelease": true,
+    "retryExpectedSameArtifactPathAndSha256": true,
+    "queueAdmissionTestBudgetBytes": 256,
+    "defaultPendingImageBudgetBytes": 67108864,
+    "maximumPendingImageSettingBytes": 1099511627776,
+    "historyDecoderConcurrency": 1,
+    "historyPreviewMaxFileBytes": 8388608,
+    "historyPreviewMaxPixels": 16000000,
+    "historyPreviewBox": [
+      220,
+      150
+    ],
+    "historyDatasetRows": 10000,
+    "queuedTimestampHoldMilliseconds": 1100,
+    "measurementLimit": "Object lifetime/admission checks; allocator page return and post-use RSS are unmeasured."
+  },
+  "native": {
+    "run": "work/lab-runs/fresh-cinnamon-u9-20261008",
+    "vmId": "5984bcb6-b56b-4b1d-9f92-274defa6127e",
+    "profile": "cinnamon-x11",
+    "acceleration": "kvm",
+    "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+    "visibleVnc": "127.0.0.1:5935",
+    "displayWall": "http://127.0.0.1:8765/",
+    "display": [
+      1280,
+      800
+    ],
+    "windowLogicalPixels": [
+      1000,
+      700
+    ],
+    "scale": 1,
+    "package": {
+      "sha256": "00dadff57ef892692efedea344684e5d4c4c4aab021b0e23e3a77adb777817f1",
+      "filename": "putgd_0.1.0_amd64.deb",
+      "installedBinarySha256": {
+        "/usr/bin/putgd": "a9e9ca0b0da48c5710eb547b779855fb1eb4cab2388a5d9e8ff3b4dd8ff96153",
+        "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+        "/usr/bin/putgd-cli": "6c073fe8a06d9b48004d6d24b2ea368403b68f0698d6a631cfcdcc45818b06be",
+        "/usr/bin/putgd-desktop-fixture": "26c8c224e0084911fb364a591e35fb21203f5ee159b4ea3ef8fe180e0268359a"
+      }
+    },
+    "packageCommand": "cpack --config build/dev/CPackConfig.cmake -G DEB -B work/refinement-reviewed-packages",
+    "installCommand": "python3 tools/lab/lab.py install --run work/lab-runs/fresh-cinnamon-u9-20261008 --package work/refinement-reviewed-packages/putgd_0.1.0_amd64.deb",
+    "guiConfig": "private fresh synthetic profile, no stored credentials; bucket synthetic-bucket; region us-east-2",
+    "controlledGuiJournal": {
+      "path": "work/refinement-ui-events.jsonl",
+      "sha256": "31dfc333f7b3fe7ef72bdd0f2877b03100b2489d48514051d5d525f0e950f55e"
+    },
+    "controlledInputs": [
+      {
+        "name": "refinement-bucket-help",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          147,
+          252
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-bucket-help-head0.ppm",
+          "sha256": "52e52b6b299f662e3f34dde911dc15334fea315c5d6fcd0acc886022a13ef3ac"
+        },
+        "png": "work/refinement-bucket-help.png"
+      },
+      {
+        "name": "refinement-bucket-help-stable",
+        "display": [
+          1280,
+          800
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-bucket-help-stable-head0.ppm",
+          "sha256": "14f89984319ca83a0547323d7c625f394c4c2bb61fa24bdaf68d7f82346b536a"
+        },
+        "png": "work/refinement-bucket-help-stable.png"
+      },
+      {
+        "name": "refinement-help-closed",
+        "display": [
+          1280,
+          800
+        ],
+        "keys": [
+          "esc"
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-help-closed-head0.ppm",
+          "sha256": "75ba207d794ab9f5c852dc755da9e8cddc2eec1762c457854f70e0c677cab73a"
+        },
+        "png": "work/refinement-help-closed.png"
+      },
+      {
+        "name": "refinement-region-list",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          991,
+          289
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-region-list-head0.ppm",
+          "sha256": "e3c203c777fb25c1987dea04968b7cd6155aa662c1d455d22b176513f5c31a10"
+        },
+        "png": "work/refinement-region-list.png"
+      },
+      {
+        "name": "refinement-region-chosen",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          278,
+          328
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-region-chosen-head0.ppm",
+          "sha256": "9c976be917dd33b4c25f43e4efbc43396a836469fbecda43dedcc4cd65aa5ba5"
+        },
+        "png": "work/refinement-region-chosen.png"
+      },
+      {
+        "name": "synthetic-bucket-input",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          408,
+          253
+        ],
+        "text": "synthetic-bucket"
+      },
+      {
+        "name": "refinement-save-confirmation",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          980,
+          700
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-save-confirmation-head0.ppm",
+          "sha256": "eff2e85f793be2efcf1229fc97c0e3933c4e4bfb45a6b937fe03f3e5021cc3cb"
+        },
+        "png": "work/refinement-save-confirmation.png"
+      },
+      {
+        "name": "refinement-advanced",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          147,
+          154
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-advanced-head0.ppm",
+          "sha256": "56a21d4375c2415a96a59ac11d30b6e04f8e496d12b4f2c901049faf21426bd7"
+        },
+        "png": "work/refinement-advanced.png"
+      },
+      {
+        "name": "refinement-capture-section",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          140,
+          215
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-capture-section-head0.ppm",
+          "sha256": "18775e3bfb5817dbaeaf4cb19144e7acc949fe2c81a03844524b29a176fbbbde"
+        },
+        "png": "work/refinement-capture-section.png"
+      },
+      {
+        "name": "refinement-file-names",
+        "display": [
+          1280,
+          800
+        ],
+        "pointer": [
+          1010,
+          580
+        ],
+        "wheelDown": 6,
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-file-names-head0.ppm",
+          "sha256": "184e28a370601e6bec2782fef414786a3ea36702581223cb66240397c4032bce"
+        }
+      },
+      {
+        "name": "refinement-reviewed-simple",
+        "display": [
+          1280,
+          800
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-simple-head0.ppm",
+          "sha256": "43eda20f3cc19011c241cb34d93e07ebaae79e72daf96eec99d1f6a9370531bb"
+        },
+        "png": "work/refinement-reviewed-simple.png"
+      },
+      {
+        "name": "cancel-draft-input",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          405,
+          251
+        ],
+        "keys": [
+          "ctrl",
+          "a"
+        ],
+        "text": "discarded"
+      },
+      {
+        "name": "refinement-cancelled",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          102,
+          700
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-cancelled-head0.ppm",
+          "sha256": "e780af09ce7d27fff68ceafd1f15c948bde92ecdd7497831536a3865aba8ecb5"
+        },
+        "png": "work/refinement-cancelled.png"
+      },
+      {
+        "name": "refinement-cancel-restored",
+        "display": [
+          1280,
+          800
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-cancel-restored-head0.ppm",
+          "sha256": "82b181c43433d45f7e8aae626381cba2620db5d473370d6fb375c710941ac840"
+        },
+        "png": "work/refinement-cancel-restored.png"
+      },
+      {
+        "name": "refinement-current-state",
+        "display": [
+          1280,
+          800
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-current-state-head0.ppm",
+          "sha256": "d47c9d00b282b3f4b92b22c0d05d85a1973dd8450e6681b22fbf7fa4a4040b38"
+        },
+        "png": "work/refinement-current-state.png"
+      },
+      {
+        "name": "refinement-reload-draft-input",
+        "click": [
+          405,
+          251
+        ],
+        "keys": [
+          "ctrl+a",
+          "reload-draft"
+        ],
+        "syntheticInput": true,
+        "display": [
+          1280,
+          800
+        ]
+      },
+      {
+        "name": "refinement-reload-confirmation",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          820,
+          700
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reload-confirmation-head0.ppm",
+          "sha256": "b909cc24c338bea83a7df476b85d46e37f81f5d25b3948e9f433f19d36395fa8"
+        },
+        "png": "work/refinement-reload-confirmation.png"
+      },
+      {
+        "name": "refinement-reviewed-save",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          980,
+          700
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-save-head0.ppm",
+          "sha256": "6f224992d93461c85dfd22e581a017f296a3f090e64885919152025931355f00"
+        },
+        "png": "work/refinement-reviewed-save.png"
+      },
+      {
+        "name": "refinement-reviewed-advanced",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          147,
+          154
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-advanced-head0.ppm",
+          "sha256": "f83e0ab3dd25739f401e89aa3959e279dfd3a9bd6ddb9fe554eb6ca945935e13"
+        },
+        "png": "work/refinement-reviewed-advanced.png"
+      },
+      {
+        "name": "refinement-reviewed-capture",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          140,
+          215
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-capture-head0.ppm",
+          "sha256": "78e11382014b6ec2b92a1d4848120075bfce364036900dd669ab888d60085691"
+        },
+        "png": "work/refinement-reviewed-capture.png"
+      },
+      {
+        "name": "refinement-naming-scroll-input",
+        "pointer": [
+          780,
+          500
+        ],
+        "wheelDownSteps": 9,
+        "display": [
+          1280,
+          800
+        ]
+      },
+      {
+        "name": "refinement-reviewed-file-names",
+        "display": [
+          1280,
+          800
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-file-names-head0.ppm",
+          "sha256": "d557d5553ab38a6b743f42e07a36e2c0fa2ca879f4491a277ad9e3fd7bbf5892"
+        },
+        "png": "work/refinement-reviewed-file-names.png"
+      },
+      {
+        "name": "refinement-naming-scrollbar",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          1025,
+          599
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-naming-scrollbar-head0.ppm",
+          "sha256": "9a4220eda95d35a7ff265b5731991c22c92182c629bb7ad6e6e739b47d062898"
+        },
+        "png": "work/refinement-naming-scrollbar.png"
+      },
+      {
+        "name": "refinement-reviewed-templates",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          1025,
+          610
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-templates-head0.ppm",
+          "sha256": "aee89eb4ac34dc66093e3d09349531c41e731d5e46bdf77bae858219168eb253"
+        },
+        "png": "work/refinement-reviewed-templates.png"
+      },
+      {
+        "name": "refinement-reviewed-templates-bottom",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          1025,
+          610
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-templates-bottom-head0.ppm",
+          "sha256": "aee89eb4ac34dc66093e3d09349531c41e731d5e46bdf77bae858219168eb253"
+        },
+        "png": "work/refinement-reviewed-templates-bottom.png"
+      },
+      {
+        "name": "refinement-capture-pattern-help",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          373,
+          522
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-capture-pattern-help-head0.ppm",
+          "sha256": "6b4b61b71c0abf1a567dbb5fb2dc654b64ba8240a8c528fdf8c8a1f8cb828fbe"
+        },
+        "png": "work/refinement-capture-pattern-help.png"
+      },
+      {
+        "name": "refinement-pattern-help-dismiss",
+        "display": [
+          1280,
+          800
+        ],
+        "keys": [
+          "esc"
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-pattern-help-dismiss-head0.ppm",
+          "sha256": "72928dab73b5a1a44f2e7d34fb87b5a8c8fe5227d8e501fc0edadaf10429ca87"
+        },
+        "png": "work/refinement-pattern-help-dismiss.png"
+      },
+      {
+        "name": "refinement-before-capture-close",
+        "display": [
+          1280,
+          800
+        ],
+        "click": [
+          102,
+          700
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-before-capture-close-head0.ppm",
+          "sha256": "c65666d9c6b9ff7246b1f86b01c3bcb6b2ca8e9e984c52ada2da8698801be35f"
+        },
+        "png": "work/refinement-before-capture-close.png"
+      },
+      {
+        "name": "refinement-reviewed-fresh",
+        "display": [
+          1280,
+          800
+        ],
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-fresh-head0.ppm",
+          "sha256": "980a69df255a0a7cf653da066c4fa65b77b419910d0d6b5ea8f69b3e00989925"
+        },
+        "png": "work/refinement-reviewed-fresh.png"
+      }
+    ],
+    "witnesses": [
+      {
+        "name": "refinement-reviewed-fresh",
+        "png": {
+          "path": "work/refinement-reviewed-fresh.png",
+          "sha256": "d8d6e357bf31403d4ccb945ac99fc912c9722ed6ed346cf8a82d951ad2688650"
+        },
+        "framebuffer": {
+          "path": "work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-fresh-head0.ppm",
+          "sha256": "980a69df255a0a7cf653da066c4fa65b77b419910d0d6b5ea8f69b3e00989925"
+        }
+      },
+      {
+        "name": "refinement-reviewed-save",
+        "png": {
+          "path": "work/refinement-reviewed-save.png",
+          "sha256": "34f12a914421a7b4cedeec9c4235d58710d3c5c107365c7306f857c795f79e61"
+        },
+        "framebuffer": {
+          "path": "work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-save-head0.ppm",
+          "sha256": "6f224992d93461c85dfd22e581a017f296a3f090e64885919152025931355f00"
+        },
+        "published": {
+          "path": "docs/evidence/2026-10-08-settings-simple.png",
+          "sha256": "34f12a914421a7b4cedeec9c4235d58710d3c5c107365c7306f857c795f79e61"
+        }
+      },
+      {
+        "name": "refinement-cancel-restored",
+        "png": {
+          "path": "work/refinement-cancel-restored.png",
+          "sha256": "80abebe55086723078ec4c54aeeb60f7d5f902b261b250dacb8320c3f241b310"
+        },
+        "framebuffer": {
+          "path": "work/lab-runs/fresh-cinnamon-u9-20261008/refinement-cancel-restored-head0.ppm",
+          "sha256": "82b181c43433d45f7e8aae626381cba2620db5d473370d6fb375c710941ac840"
+        }
+      },
+      {
+        "name": "refinement-reload-confirmation",
+        "png": {
+          "path": "work/refinement-reload-confirmation.png",
+          "sha256": "488c90a0bdeb68b23a679230518486fc7b47449e4796051739dcee7583572634"
+        },
+        "framebuffer": {
+          "path": "work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reload-confirmation-head0.ppm",
+          "sha256": "b909cc24c338bea83a7df476b85d46e37f81f5d25b3948e9f433f19d36395fa8"
+        }
+      },
+      {
+        "name": "refinement-reviewed-templates",
+        "png": {
+          "path": "work/refinement-reviewed-templates.png",
+          "sha256": "fe76134ba4b059fb78256c36f74ddba93254b2ab8f51e150e22d9bb8b2b621cf"
+        },
+        "framebuffer": {
+          "path": "work/lab-runs/fresh-cinnamon-u9-20261008/refinement-reviewed-templates-head0.ppm",
+          "sha256": "aee89eb4ac34dc66093e3d09349531c41e731d5e46bdf77bae858219168eb253"
+        },
+        "published": {
+          "path": "docs/evidence/2026-10-08-settings-filenames.png",
+          "sha256": "fe76134ba4b059fb78256c36f74ddba93254b2ab8f51e150e22d9bb8b2b621cf"
+        }
+      },
+      {
+        "name": "refinement-capture-pattern-help",
+        "png": {
+          "path": "work/refinement-capture-pattern-help.png",
+          "sha256": "bfeae83dfe038c68beee7e1a31193153f9bf93e60bd25531deaff8f89b461bbd"
+        },
+        "framebuffer": {
+          "path": "work/lab-runs/fresh-cinnamon-u9-20261008/refinement-capture-pattern-help-head0.ppm",
+          "sha256": "6b4b61b71c0abf1a567dbb5fb2dc654b64ba8240a8c528fdf8c8a1f8cb828fbe"
+        },
+        "published": {
+          "path": "docs/evidence/2026-10-08-settings-help.png",
+          "sha256": "bfeae83dfe038c68beee7e1a31193153f9bf93e60bd25531deaff8f89b461bbd"
+        }
+      }
+    ],
+    "scenarios": [
+      {
+        "result": {
+          "schemaVersion": 1,
+          "testId": "5a7b738d0f5b4f4db756e1990b96b798",
+          "profile": "cinnamon-x11",
+          "scenario": "region-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "89420c88-56c3-43d4-a9a0-13dccc1cf9ee",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "TARGETS",
+              "MULTIPLE",
+              "TIMESTAMP",
+              "SAVE_TARGETS",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 60,
+              "saved": true,
+              "width": 80
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/final-head0.ppm",
+            "sha256": "a70eb0068b4723e2c8cbe6946ff5279115258e8a84e31385ad4cbcbac91c5f11"
+          },
+          "elapsedSeconds": 6.864249837002717,
+          "evidenceDirectory": "tests/5a7b738d0f5b4f4db756e1990b96b798"
+        },
+        "parameters": {
+          "schemaVersion": 1,
+          "profile": "cinnamon-x11",
+          "scenario": "region",
+          "clipboardClient": "qt",
+          "destination": "local",
+          "runnerSha256": "ad06cea0227790573d9d47866a1251ede73f483d33b6d16f10f11911aa523984",
+          "hotkeys": {
+            "region": {
+              "shortcut": "Ctrl+Shift+1",
+              "keys": [
+                "ctrl",
+                "shift",
+                "1"
+              ]
+            },
+            "window": {
+              "shortcut": "Ctrl+Shift+2",
+              "keys": [
+                "ctrl",
+                "shift",
+                "2"
+              ]
+            },
+            "desktop": {
+              "shortcut": "Ctrl+Shift+3",
+              "keys": [
+                "ctrl",
+                "shift",
+                "3"
+              ]
+            },
+            "clipboard": {
+              "shortcut": "Ctrl+Shift+4",
+              "keys": [
+                "ctrl",
+                "shift",
+                "4"
+              ]
+            }
+          },
+          "displayLayout": [
+            {
+              "height": 800,
+              "name": "Virtual-1",
+              "nativeHeight": 800,
+              "nativeWidth": 1280,
+              "rotation": 2,
+              "scale": 1,
+              "width": 1280,
+              "x": 0,
+              "y": 0
+            }
+          ],
+          "qtVersion": "6.4.2",
+          "acceleration": "kvm",
+          "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+          "timingSeconds": {
+            "keyHold": 0.05,
+            "focusPoll": 0.1,
+            "focusAttemptLimit": 2,
+            "clipboardSourceSettle": 0.3,
+            "selectorSettle": 0.5,
+            "operationPoll": 0.2
+          },
+          "selection": {
+            "fixtureOffset": {
+              "x": 30,
+              "y": 30
+            },
+            "width": 80,
+            "height": 60,
+            "start": {
+              "x": 150,
+              "y": 182
+            },
+            "end": {
+              "x": 230,
+              "y": 242
+            },
+            "inputViewport": {
+              "width": 1280,
+              "height": 800
+            }
+          },
+          "timeoutSeconds": 90,
+          "replayCommand": [
+            "/usr/bin/python3",
+            "tools/lab/lab.py",
+            "run",
+            "--run",
+            "<disposable-run>",
+            "--scenario",
+            "region",
+            "--clipboard-client",
+            "qt",
+            "--timeout",
+            "90",
+            "--keep"
+          ],
+          "package": {
+            "sha256": "00dadff57ef892692efedea344684e5d4c4c4aab021b0e23e3a77adb777817f1",
+            "filename": "putgd_0.1.0_amd64.deb",
+            "installedBinarySha256": {
+              "/usr/bin/putgd": "a9e9ca0b0da48c5710eb547b779855fb1eb4cab2388a5d9e8ff3b4dd8ff96153",
+              "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+              "/usr/bin/putgd-cli": "6c073fe8a06d9b48004d6d24b2ea368403b68f0698d6a631cfcdcc45818b06be",
+              "/usr/bin/putgd-desktop-fixture": "26c8c224e0084911fb364a591e35fb21203f5ee159b4ea3ef8fe180e0268359a"
+            }
+          },
+          "independentFixtureGeometry": {
+            "height": 320,
+            "width": 640,
+            "x": 120,
+            "y": 152
+          },
+          "expectedArtifact": {
+            "width": 80,
+            "height": 60,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "rgb": [
+                  220,
+                  30,
+                  40
+                ]
+              },
+              {
+                "x": 60,
+                "y": 40,
+                "rgb": [
+                  220,
+                  30,
+                  40
+                ]
+              }
+            ]
+          }
+        },
+        "log": {
+          "path": "work/refinement-native-region.log",
+          "sha256": "f2a276b009301f7beeefb9a9e0e615e7e4512c70944da6e3d354aabf620cc1a1"
+        },
+        "files": {
+          "results.json": {
+            "path": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/5a7b738d0f5b4f4db756e1990b96b798/results.json",
+            "sha256": "481e66feeee7343027c82498f9be111bd8676664d65c9be7b2759248aac9269f"
+          },
+          "manifest.json": {
+            "path": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/5a7b738d0f5b4f4db756e1990b96b798/manifest.json",
+            "sha256": "40666420b137cef856e28b4235d2cd7d41e75ea328931aee75afbef9712a75c8"
+          },
+          "parameters.json": {
+            "path": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/5a7b738d0f5b4f4db756e1990b96b798/parameters.json",
+            "sha256": "7c273bbd54cfc80dcda0b04e709e01303a95e56708276b1072282301d11f72e8"
+          }
+        }
+      },
+      {
+        "result": {
+          "schemaVersion": 1,
+          "testId": "3d82e7f48d174360afc67c05c8bdb63c",
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-image-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.14",
+            "displayBackend": "X11Display"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "38e2a0f1-4ef3-4a40-bc12-d006e074c3c1",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "image/png"
+            ],
+            "image": {
+              "width": 96,
+              "height": 64,
+              "saved": true
+            }
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/fresh-cinnamon-u9-20261008/final-head0.ppm",
+            "sha256": "ee58b77c9e4674764510b3f5c9b2af7741db31549b4b612de4667d260cd3d815"
+          },
+          "elapsedSeconds": 11.26766322000185,
+          "evidenceDirectory": "tests/3d82e7f48d174360afc67c05c8bdb63c"
+        },
+        "parameters": {
+          "schemaVersion": 1,
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-image",
+          "clipboardClient": "gtk",
+          "destination": "local",
+          "runnerSha256": "ad06cea0227790573d9d47866a1251ede73f483d33b6d16f10f11911aa523984",
+          "hotkeys": {
+            "region": {
+              "shortcut": "Ctrl+Shift+1",
+              "keys": [
+                "ctrl",
+                "shift",
+                "1"
+              ]
+            },
+            "window": {
+              "shortcut": "Ctrl+Shift+2",
+              "keys": [
+                "ctrl",
+                "shift",
+                "2"
+              ]
+            },
+            "desktop": {
+              "shortcut": "Ctrl+Shift+3",
+              "keys": [
+                "ctrl",
+                "shift",
+                "3"
+              ]
+            },
+            "clipboard": {
+              "shortcut": "Ctrl+Shift+4",
+              "keys": [
+                "ctrl",
+                "shift",
+                "4"
+              ]
+            }
+          },
+          "displayLayout": [
+            {
+              "height": 800,
+              "name": "Virtual-1",
+              "nativeHeight": 800,
+              "nativeWidth": 1280,
+              "rotation": 2,
+              "scale": 1,
+              "width": 1280,
+              "x": 0,
+              "y": 0
+            }
+          ],
+          "qtVersion": "6.4.2",
+          "acceleration": "kvm",
+          "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+          "timingSeconds": {
+            "keyHold": 0.05,
+            "focusPoll": 0.1,
+            "focusAttemptLimit": 2,
+            "clipboardSourceSettle": 0.3,
+            "selectorSettle": 0.5,
+            "operationPoll": 0.2
+          },
+          "selection": {
+            "fixtureOffset": {
+              "x": 30,
+              "y": 30
+            },
+            "width": 80,
+            "height": 60,
+            "start": {
+              "x": 150,
+              "y": 182
+            },
+            "end": {
+              "x": 230,
+              "y": 242
+            },
+            "inputViewport": {
+              "width": 1280,
+              "height": 800
+            }
+          },
+          "timeoutSeconds": 90,
+          "replayCommand": [
+            "/usr/bin/python3",
+            "tools/lab/lab.py",
+            "run",
+            "--run",
+            "<disposable-run>",
+            "--scenario",
+            "clipboard-image",
+            "--clipboard-client",
+            "gtk",
+            "--timeout",
+            "90",
+            "--keep"
+          ],
+          "package": {
+            "sha256": "00dadff57ef892692efedea344684e5d4c4c4aab021b0e23e3a77adb777817f1",
+            "filename": "putgd_0.1.0_amd64.deb",
+            "installedBinarySha256": {
+              "/usr/bin/putgd": "a9e9ca0b0da48c5710eb547b779855fb1eb4cab2388a5d9e8ff3b4dd8ff96153",
+              "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+              "/usr/bin/putgd-cli": "6c073fe8a06d9b48004d6d24b2ea368403b68f0698d6a631cfcdcc45818b06be",
+              "/usr/bin/putgd-desktop-fixture": "26c8c224e0084911fb364a591e35fb21203f5ee159b4ea3ef8fe180e0268359a"
+            }
+          },
+          "independentFixtureGeometry": {
+            "height": 320,
+            "width": 640,
+            "x": 120,
+            "y": 152
+          },
+          "expectedArtifact": {
+            "width": 96,
+            "height": 64,
+            "samples": [
+              {
+                "x": 20,
+                "y": 20,
+                "rgb": [
+                  220,
+                  30,
+                  40
+                ]
+              }
+            ]
+          }
+        },
+        "log": {
+          "path": "work/refinement-native-gtk-image.log",
+          "sha256": "8acbb1160e0fc328c5b0df32b66d4be43f92907e84d3130d8912d79cd59e0dc3"
+        },
+        "files": {
+          "results.json": {
+            "path": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/3d82e7f48d174360afc67c05c8bdb63c/results.json",
+            "sha256": "70c4a66aadfbe051661491fca1943395fb4bb7078952a7fbde6952ae21044958"
+          },
+          "manifest.json": {
+            "path": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/3d82e7f48d174360afc67c05c8bdb63c/manifest.json",
+            "sha256": "7625d57c82399ee0a6f2a1d3fdcc1408269aeb12e3d94c9d990f69abf7c31413"
+          },
+          "parameters.json": {
+            "path": "work/lab-runs/fresh-cinnamon-u9-20261008/tests/3d82e7f48d174360afc67c05c8bdb63c/parameters.json",
+            "sha256": "f8e6253198586b318babac3c2b468b1248c13f1102382699c3cacfbae0d1a617"
+          }
+        }
+      }
+    ],
+    "names": [
+      {
+        "scenario": "region",
+        "operationId": "89420c88-56c3-43d4-a9a0-13dccc1cf9ee",
+        "created": "2026-10-08T11:26:15.227Z",
+        "state": "completed",
+        "items": [
+          {
+            "name": "Screen-Capture-2026-10-08-06-26-15.png",
+            "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d",
+            "localBasename": "Screen-Capture-2026-10-08-06-26-15.png",
+            "uploadStatus": "local_only",
+            "localStatus": "saved"
+          }
+        ]
+      },
+      {
+        "scenario": "gtk-image",
+        "operationId": "38e2a0f1-4ef3-4a40-bc12-d006e074c3c1",
+        "created": "2026-10-08T11:26:39.221Z",
+        "state": "completed",
+        "items": [
+          {
+            "name": "Image-2026-10-08-06-26-39.png",
+            "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+            "localBasename": "Image-2026-10-08-06-26-39.png",
+            "uploadStatus": "local_only",
+            "localStatus": "saved"
+          }
+        ]
+      }
+    ],
+    "cleanup": {
+      "canonicalConfigurationUnchanged": true,
+      "originalResidentRestored": true,
+      "record": {
+        "path": "work/refinement-lab-restore.json",
+        "sha256": "f695e1a47b728268bf133f2345acae9f7717406bbb3c23aa111adce9da3837b8"
+      }
+    },
+    "limits": "One installed Cinnamon scale and two local workflows; no cloud request/performance eligibility/full profile matrix."
+  },
+  "review": {
+    "originalArtifact": "/tmp/compound-engineering-1000/ce-code-review/20261008-060220-4c45850f",
+    "originalRunId": "20261008-060220-4c45850f",
+    "record": "docs/evidence/2026-10-08-settings-review.json",
+    "scopeLimit": "Original frozen review and later fix-delta receipt are distinct; original peer did not review subsequent fixes.",
+    "status": "complete",
+    "fixDeltaArtifact": "/tmp/putgd-refinement-fix-review-20261008-060220-4c45850f",
+    "originalReceiptSha256": "859a6a0e8bd449e8ad3a425761fd170ba68d695306f6ad3cff02e706ecaf7763",
+    "fixDeltaReceiptSha256": "da19e69db86679a5ec5a6ce606977e057fc8795eb5f86d3e81dd93a49c87dff8",
+    "appliedFindings": [
+      1,
+      2,
+      3
+    ],
+    "unresolvedActionableFindings": []
+  },
+  "remainingGates": [
+    "Approximately40MiB target and physical post-use/populated-history RSS",
+    "Physical region p95 painted latency235.821ms exceeds150ms budget",
+    "Full AE15 scales/states and user visual acceptance",
+    "Successful live S3/public-link/history deletion",
+    "Full desktop/display/lifecycle and U9 acceptance"
+  ]
+}

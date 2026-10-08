@@ -25,6 +25,7 @@ struct ResourceLimits {
     qint64 maxFileBytes = 2147483648LL;
     qint64 maxBatchBytes = 2147483648LL;
     qint64 pendingArtifactBytes = 2147483648LL;
+    qint64 pendingImageBytes = 67108864LL;
     qint64 clipboardTextBytes = 16777216LL;
     qint64 imagePixels = 100000000LL;
     qint64 imageBytes = 536870912LL;
@@ -38,6 +39,10 @@ struct Settings {
     ResourceLimits limits;
     QString namingMode;
     QString collisionPolicy;
+    QString fileTemplate = "{name}.{ext}";
+    QString captureTemplate = "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
+    QString imageTemplate = "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
+    QString textTemplate = "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
     int failedArtifactDays = 7;
     int recentActivityLimit = 100;
     qint64 previewCacheBytes = 268435456LL;

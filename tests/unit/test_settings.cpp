@@ -24,6 +24,46 @@ class SettingsContract final : public QObject {
         return file.readAll();
     }
 private slots:
+    void pendingImageBudgetIsOptionalAndValidated() {
+        auto document=putgd::Settings::defaults();
+        auto limits=document["limits"].toObject();
+        limits["pendingImageBytes"]=67108864.0;
+        document["limits"]=limits;
+        QVERIFY(!putgd::Settings::validate(document));
+        QCOMPARE(putgd::Settings::fromValidated(document).limits.pendingImageBytes,qint64(67108864));
+        for (const auto value : QJsonArray{0, -1, "67108864", 1.5, 1099511627777.0}) {
+            limits["pendingImageBytes"]=value;document["limits"]=limits;
+            QCOMPARE(putgd::Settings::validate(document).code,QString("config_invalid"));
+        }
+        limits.remove("pendingImageBytes");document["limits"]=limits;
+        QVERIFY(!putgd::Settings::validate(document));
+        QCOMPARE(putgd::Settings::fromValidated(document).limits.pendingImageBytes,qint64(67108864));
+        QCOMPARE(putgd::Settings::fromValidated(document).document["limits"].toObject(),limits);
+    }
+    void filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged() {
+        auto document = putgd::Settings::defaults();
+        QCOMPARE(document["naming"].toObject()["mode"].toString(), QString("original"));
+        const QJsonObject legacyNaming{{"mode", "generated"}, {"collisionPolicy", "skip"}};
+        document["naming"] = legacyNaming;
+        QVERIFY(!putgd::Settings::validate(document));
+        QCOMPARE(putgd::Settings::fromValidated(document).document["naming"].toObject(), legacyNaming);
+        QCOMPARE(putgd::Settings::fromValidated(document).captureTemplate,QString("Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"));
+        QCOMPARE(putgd::Settings::fromValidated(document).fileTemplate,QString("{name}.{ext}"));
+        auto naming = legacyNaming;
+        naming["mode"] = "template";
+        naming["fileTemplate"] = "{name}-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}-{uuid}.{ext}";
+        naming["captureTemplate"] = "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
+        naming["imageTemplate"] = "Image-{uuid}.{ext}";
+        naming["textTemplate"] = "Text-{uuid}.{ext}";
+        document["naming"] = naming;
+        QVERIFY(!putgd::Settings::validate(document));
+        QCOMPARE(putgd::Settings::fromValidated(document).document["naming"].toObject(), naming);
+        for (const auto& value : QStringList{"{unknown}.png", "{yyyy.png", "../{name}.{ext}", "{name}/x", "{name}\\x", "", ".", ".."}) {
+            naming["captureTemplate"] = value;
+            document["naming"] = naming;
+            QCOMPARE(putgd::Settings::validate(document).code, QString("config_invalid"));
+        }
+    }
     void asynchronousWritesAndTemplateRemainExplicit() {
         QTemporaryDir dir;putgd::SettingsService service(dir.filePath("config.json"));
         const auto templ=putgd::Settings::developmentTemplate();QVERIFY(!templ["profiles"].toArray().isEmpty());QVERIFY(service.document()["profiles"].toArray().isEmpty());

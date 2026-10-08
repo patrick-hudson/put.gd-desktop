@@ -71,7 +71,7 @@ signals:
  void initialized();
  void changed(const QString& id);
 private:
- struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;};
+ struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
  void enqueue(Job);
  void pump();
  Operation run(Job);
@@ -85,6 +85,7 @@ private:
  SourceAdapter& source_;
  QList<QThread*> threads_;
  QQueue<Job> queue_;
+ std::shared_ptr<std::atomic<qint64>> payloadBytes_=std::make_shared<std::atomic<qint64>>(0);
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
  QHash<QString,std::weak_ptr<std::mutex>> locks_;
  std::mutex locksMutex_;

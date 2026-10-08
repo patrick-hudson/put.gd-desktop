@@ -1,10 +1,23 @@
 # put.gd visual design
 
-The native Qt interface uses a graphite canvas, green surfaces and a mint accent. Mint marks the primary action and keyboard focus; red marks destructive actions and errors. Text uses the desktop's installed sans-serif font. There are no downloadable fonts, web views or raster decoration assets.
+The native Qt interface uses a neutral charcoal canvas and surfaces with a restrained blue accent. Blue marks the primary action and keyboard focus; red marks destructive actions and errors. Text uses the desktop's installed sans-serif font. There are no downloadable fonts, web views or raster decoration assets.
 
 Window headings name the task: Settings, Activity and History. Help describes an action or consequence in one short sentence. Routine status uses a neutral surface; errors retain their code and diagnostic text. Titles, section headings and controls use a consistent hierarchy, with 20-pixel window margins, 12-pixel gaps between sections and compact form rows.
 
-Settings opens with a short destination setup view. Add S3 destination supplies standard regional S3 defaults; the bucket, region, optional public URL and masked credential fields remain visible. Save settings, then explicitly store credentials or test the saved destination. The Use local-only mode button selects local output for all actions in the draft; the footer Save applies it. Advanced settings expands the same widgets and draft into four keyboard-selectable sections: Capture, Destinations, Shortcuts and Preferences. Capture groups its four actions in two columns; each card keeps output, destination and the action button together. Local folder fields and their Browse buttons share a row. Destination, credential and resource controls remain available in independently scrolling sections. Save and Reload stay outside the scroll area. The configuration path and accepted/observed revisions remain selectable in a collapsed panel. Setup, validation and external-change conflicts stay visible above the form, and dirty drafts remain preserved. Shortcut editors retain the actual desktop binding and status beside the editable draft, with exact diagnostics available through disclosure.
+Settings opens on editable S3 basics with an unsaved standard destination draft.
+There is no Add prerequisite and no implicit development bucket. Bucket, searchable
+editable region, optional public URL and masked credential inputs are visible.
+Save settings, then explicitly Store credentials. Save locally selects local output
+for all four actions in the draft; Save settings applies it. Advanced settings
+expands the same validated draft into Capture, Destinations, Shortcuts and
+Preferences. File-name modes and templates belong under Advanced. Every setting
+has a detailed info tooltip and a keyboard-accessible help dialog created only on
+request and deleted when closed. Labels name the setting; explanatory copy stays
+in help. Footer actions are Cancel, Reload from file and Save settings. Cancel
+discards the draft and clears unsaved credential inputs; Reload from file rereads
+external configuration. An accepted save shows a distinct blue success banner,
+while validation failures and revision conflicts remain visible.
+
 
 Activity retains the operation/item hierarchy, operation IDs, URLs and independent outcomes. Its Details column fills the remaining table width. History retains the offline ledger, all filters, original receipts and destructive confirmations. Search and paging stay outside the table; the File details inspector scrolls independently and can show readable outcomes or exact receipt JSON. State badges and vector type icons use the same treatment in both windows. Long cells elide visually and retain their contents in tooltips or receipt details.
 
@@ -29,3 +42,15 @@ The simple and Advanced views share the existing destination controls and valida
 File-size inputs declare MiB (1,048,576 bytes). Exact terminating decimal values preserve every accepted byte on reload and save; fractional input is converted with integer arithmetic. Sub-byte, invalid and overflowing inputs reach the existing settings validator without replacing accepted settings. Activity and History use concise MiB/GiB summaries (GiB is 1,073,741,824 bytes), rounded for reading; exact receipt JSON retains the original byte counts. Transfer-rate controls retain their separately declared bytes/s unit.
 
 Proof-first native KDE Qt 6.10.2 tests failed for missing Advanced disclosure and MiB size inputs before implementation. Added behavior tests cover simple setup and full configuration saving, keyboard expansion and draft/custom-endpoint preservation, fractional and odd-byte roundtrips, invalid size input, collapsed-view external conflicts, and readable Activity/History sizes. The root workflow reported all 25 host tests passing (40.47 s) and all three native KDE GUI suites passing (5.09 s) before the graphical follow-up. The installed 1280×800 simple-setup screenshot showed repeated destination headings and an empty profile selector pushing credentials below the viewport. The follow-up uses a compact destination toolbar, hides the selector for zero/one profile, and keeps it visible for multiple profiles or Advanced. Simple setup shows access/secret inputs and explicit Store credentials; storage mode, optional session token and secret-store reference are disclosed under Advanced. The same widgets and draft remain in use. New post-follow-up checks and installed screenshots remain root-owned. These changes still require installed graphical inspection and screenshots for AE15; no compositor acceptance is inferred from widget tests.
+
+
+The selected history thumbnail is loaded lazily through one decoder at a time.
+Rapid selections supersede pending work; stale results cannot paint another row.
+Hiding History clears the pixmap and invalidates pending replies. Showing it again
+reloads the selected preview. History pages retain metadata, never a decoded photo
+per row. Operation payloads are released after disk persistence, before slow
+uploads/local copies; retry ownership stays with the immutable artifact.
+
+Region suggestions come from the [official AWS S3 endpoint list](https://docs.aws.amazon.com/general/latest/gr/s3.html) checked on 2026-10-08. Custom
+regions/endpoints remain editable. The visual pass follows distinct surface and
+primary roles described by [Material's color system](https://m3.material.io/styles/color/the-color-system), using the existing native Qt controls.

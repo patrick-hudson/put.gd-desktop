@@ -1,4 +1,5 @@
 #include "LocalArchive.h"
+#include "UploadNaming.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -17,13 +18,18 @@ LocalCopy LocalArchive::save(const Artifact& a,const ArchiveSettings& s) {
  while(!in.atEnd()) {const auto chunk=in.read(1024*1024); if((chunk.isEmpty()&&in.error()!=QFile::NoError)||temp.write(chunk)!=chunk.size()) return fail();}
  if(!temp.flush()) return fail();
  temp.close();
- const auto fi=QFileInfo(a.name); auto ext=fi.suffix();
- auto base=ext.isEmpty()?fi.fileName():fi.fileName().left(fi.fileName().size()-ext.size()-1);
- const auto unique=QUuid::createUuid().toString(QUuid::WithoutBraces);
- while(ext.toUtf8().size()>210)ext.chop(1);
- while((base+"-"+unique+(ext.isEmpty()?QString{}:"."+ext)).toUtf8().size()>255&&!base.isEmpty())base.chop(1);
- r.path=QDir(dir).filePath(base+"-"+unique+(ext.isEmpty()?QString{}:"."+ext));
- if(!temp.rename(r.path)) return fail();
+ const auto name=UploadNaming::candidate(a,"original");
+ r.path=QDir(dir).filePath(name);
+ // QFile::rename refuses an existing destination. Try the requested basename
+ // first and use a fresh suffix only after a local collision is confirmed.
+ const auto temporaryPath=temp.fileName();
+ bool saved=QFile::rename(temporaryPath,r.path);
+ for(int attempt=0;!saved&&attempt<32;++attempt) {
+  if(!QFileInfo::exists(r.path))return fail();
+  r.path=QDir(dir).filePath(UploadNaming::renamedCandidate(name));
+  saved=QFile::rename(temporaryPath,r.path);
+ }
+ if(!saved)return fail();
  temp.setAutoRemove(false); r.status="saved"; return r;
 }
 }

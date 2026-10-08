@@ -58,8 +58,12 @@
     }
   },
   "naming": {
-    "mode": "generated",
-    "collisionPolicy": "rename"
+    "mode": "original",
+    "collisionPolicy": "rename",
+    "fileTemplate": "{name}.{ext}",
+    "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+    "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+    "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
   },
   "limits": {
     "maxFiles": 100,
@@ -70,7 +74,8 @@
     "pendingArtifactBytes": 2147483648,
     "clipboardTextBytes": 16777216,
     "imagePixels": 100000000,
-    "imageBytes": 536870912
+    "imageBytes": 536870912,
+    "pendingImageBytes": 67108864
   },
   "retention": {
     "failedArtifactDays": 7,

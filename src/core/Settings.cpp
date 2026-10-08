@@ -1,4 +1,5 @@
 #include "Settings.h"
+#include "UploadNaming.h"
 #include <QDir>
 #include <QJsonArray>
 #include <QKeySequence>
@@ -41,6 +42,7 @@ bool folder(const QJsonValue& value, bool nullable) {
 QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard"}; }
 
 QJsonObject Settings::defaults() {
+    const Settings initial;
     QJsonObject actions;
     int shortcut = 1;
     for (const auto& action : actionNames()) {
@@ -54,9 +56,14 @@ QJsonObject Settings::defaults() {
         {"archive", QJsonObject{{"keepUploads", false}, {"root", QDir(documents).filePath("put.gd")},
             {"folders", QJsonObject{{"images", QJsonValue::Null}, {"videos", QJsonValue::Null},
                 {"text", QJsonValue::Null}, {"other", QJsonValue::Null}}}}},
-        {"naming", QJsonObject{{"mode", "generated"}, {"collisionPolicy", "rename"}}},
+        {"naming", QJsonObject{{"mode", "original"}, {"collisionPolicy", "rename"},
+            {"fileTemplate", initial.fileTemplate},
+            {"captureTemplate", initial.captureTemplate},
+            {"imageTemplate", initial.imageTemplate},
+            {"textTemplate", initial.textTemplate}}},
         {"limits", QJsonObject{{"maxFiles", 100}, {"pendingOperations", 8}, {"concurrentUploads", 1},
             {"maxFileBytes", 2147483648.0}, {"maxBatchBytes", 2147483648.0}, {"pendingArtifactBytes", 2147483648.0},
+            {"pendingImageBytes", initial.limits.pendingImageBytes},
             {"clipboardTextBytes", 16777216.0}, {"imagePixels", 100000000.0}, {"imageBytes", 536870912.0}}},
         {"retention", QJsonObject{{"failedArtifactDays", 7}, {"recentActivityLimit", 100},
             {"previewCacheBytes", 268435456.0}, {"historyRetentionDays", QJsonValue::Null}}},
@@ -120,13 +127,28 @@ Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validat
         if (!folder(archive["folders"].toObject()[category], true))
             return invalid("/archive/folders/" + category, "Folder overrides must be null or absolute paths.");
     const auto naming = doc["naming"].toObject();
-    if (!doc["naming"].isObject() || !keys(naming, {"mode", "collisionPolicy"}) ||
-        !choice(naming["mode"], {"generated", "original"}) || !choice(naming["collisionPolicy"], {"rename", "skip", "overwrite"}))
+    const QStringList templateKeys{"fileTemplate", "captureTemplate", "imageTemplate", "textTemplate"};
+    auto namingKeys = templateKeys;
+    namingKeys.append({"mode", "collisionPolicy"});
+    if (!doc["naming"].isObject() || !naming.contains("mode") || !naming.contains("collisionPolicy") ||
+        !choice(naming["mode"], {"generated", "original", "template"}) || !choice(naming["collisionPolicy"], {"rename", "skip", "overwrite"}))
         return invalid("/naming", "Upload naming or collision policy is invalid.");
+    for (auto field = naming.begin(); field != naming.end(); ++field)
+        if (!namingKeys.contains(field.key())) return invalid("/naming", "Upload naming contains an unsupported field.");
+    for (const auto& field : templateKeys) {
+        if (!naming.contains(field)) continue;
+        if (!text(naming[field], 1, 4096)) return invalid("/naming/" + field, "Filename templates must be nonempty strings.");
+        if (auto error = UploadNaming::validateTemplate(naming[field].toString()))
+            return invalid("/naming/" + field, error.message);
+    }
     const auto limits = doc["limits"].toObject();
+    auto requiredLimits = limits;
+    requiredLimits.remove("pendingImageBytes");
     const QStringList limitKeys{"maxFiles", "pendingOperations", "concurrentUploads", "maxFileBytes", "maxBatchBytes",
         "pendingArtifactBytes", "clipboardTextBytes", "imagePixels", "imageBytes"};
-    if (!doc["limits"].isObject() || !keys(limits, limitKeys)) return invalid("/limits", "Resource limit fields are incomplete.");
+    if (!doc["limits"].isObject() || !keys(requiredLimits, limitKeys)) return invalid("/limits", "Resource limit fields are incomplete.");
+    if (limits.contains("pendingImageBytes") && !integer(limits["pendingImageBytes"], 1, 1099511627776LL))
+        return invalid("/limits/pendingImageBytes", "The pending image budget must be a positive bounded integer.");
     for (const auto& key : limitKeys) {
         qint64 maximum = 1099511627776LL; // 1 TiB, well within exact JSON integer representation
         if (key == "maxFiles") maximum = 10000;
@@ -169,11 +191,17 @@ Settings Settings::fromValidated(const QJsonObject& doc) {
     settings.limits.maxFileBytes = limits["maxFileBytes"].toInteger();
     settings.limits.maxBatchBytes = limits["maxBatchBytes"].toInteger();
     settings.limits.pendingArtifactBytes = limits["pendingArtifactBytes"].toInteger();
+    settings.limits.pendingImageBytes = limits["pendingImageBytes"].toInteger(settings.limits.pendingImageBytes);
     settings.limits.clipboardTextBytes = limits["clipboardTextBytes"].toInteger();
     settings.limits.imagePixels = limits["imagePixels"].toInteger();
     settings.limits.imageBytes = limits["imageBytes"].toInteger();
     settings.namingMode = doc["naming"].toObject()["mode"].toString();
     settings.collisionPolicy = doc["naming"].toObject()["collisionPolicy"].toString();
+    const auto naming = doc["naming"].toObject();
+    settings.fileTemplate = naming["fileTemplate"].toString(settings.fileTemplate);
+    settings.captureTemplate = naming["captureTemplate"].toString(settings.captureTemplate);
+    settings.imageTemplate = naming["imageTemplate"].toString(settings.imageTemplate);
+    settings.textTemplate = naming["textTemplate"].toString(settings.textTemplate);
     const auto retention = doc["retention"].toObject();
     settings.failedArtifactDays = retention["failedArtifactDays"].toInt();
     settings.recentActivityLimit = retention["recentActivityLimit"].toInt();

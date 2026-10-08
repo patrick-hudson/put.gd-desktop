@@ -102,3 +102,47 @@ failed capture. A completed run can still fail its 150 ms budget: retain that re
 Run physical capture and memory measurements serially. Hosted virtual CI cannot
 establish the physical budget; a suitable self-hosted desktop can run these commands
 and retain only their controlled report directory. Never include credentials or VM keys.
+
+## Settings, naming and payload ownership regressions
+
+The standard CTest suite includes settings info-help coverage, fresh S3 drafts,
+Cancel/reload/save feedback, old configuration compatibility, filename templates,
+Unicode byte bounds, local collision preservation and actual signed S3 collision
+fixtures. `queuedCaptureNameUsesOriginalActionTime` holds an earlier upload for
+1,100 ms, then verifies the queued capture uses its original action timestamp.
+Names and object candidates remain unchanged across explicit retry.
+
+`decodedImagesReleaseBeforeBlockedUploadAndQueuedCancel` gives a synthetic 8×8
+ARGB image an external-buffer cleanup callback. The callback must run before a
+deferred provider completes, and queued cancellation must release the second
+image while that first upload is blocked. The retry uses the same disk path and
+SHA256 without reading the source again. `queuedImagesRespectByteBudgetAndCancellationReleasesCapacity`
+sets a 256-byte limit and verifies admission, rejection without publication, and
+capacity returned by cancellation. These are ownership/queue checks, not RSS
+benchmarks. History checks release the displayed thumbnail on hide and restore
+it lazily on show; metadata paging retains the 10,000-entry dataset.
+`restoringHistoryKeepsActiveDeletionCancellation` holds the provider at a deletion
+checkpoint, closes and reopens History, then confirms Cancel still reaches the
+accepted deletion operation. The barrier is released and workers drained before
+the temporary fixture is destroyed; no real remote object is involved.
+
+The optional schema integration uses the existing locked MCP environment. It
+starts a private offscreen production resident with an unsupported desktop
+identity, reads actual defaults through the production CLI, and checks the
+published JSON schema, custom patterns, old documents without optional fields,
+and invalid tokens/budgets. It reads no desktop or cloud content:
+
+```sh
+PUTGD_APP="$PWD/build/dev/putgd" PUTGD_CLI="$PWD/build/dev/putgd-cli" \
+  uv run --project tools/mcp --locked python -m unittest discover \
+  -s tests/integration -p test_config_schema.py -v
+```
+
+Repeat the affected sanitizer contracts with
+`payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings|gui_history_view|collision_policy_integration`
+as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](build.md)
+and the instrumented Qt environment in [thread-sanitizer.md](thread-sanitizer.md).
+Keep separate JUnit/logs per attempt; a prior failure remains evidence even when
+the final source passes. Native UI witnesses and the exact controlled inputs are
+recorded in [the settings-refinement evidence](evidence/2026-10-08-settings-refinement.json); offscreen results establish no
+compositor certification.

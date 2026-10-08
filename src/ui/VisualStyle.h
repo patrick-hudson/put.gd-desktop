@@ -3,14 +3,19 @@
 #include <QIcon>
 #include <QList>
 #include <QString>
-class QLabel;class QApplication;class QWidget;class QFrame;class QFormLayout;class QAbstractItemView;
+class QComboBox;class QLabel;class QApplication;class QWidget;class QFrame;class QFormLayout;class QAbstractItemView;class QToolButton;
 namespace putgd::VisualStyle {
 void apply(QApplication&);
-QIcon icon(const QString& name,const QColor& color=QColor("#a9f1cb"));
+QComboBox* choiceBox(QWidget* parent);
+QIcon icon(const QString& name,const QColor& color=QColor("#9bbcff"));
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent);
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent);
 void styleForm(QFormLayout*);
 void decorateView(QAbstractItemView*,const QList<int>& statusColumns);
 void role(QWidget*,const char*);
 void feedback(QLabel*,const QString&,bool error=false);
+void success(QLabel*,const QString&);
+QToolButton* helpButton(const QString& title,const QString& description,QWidget* control,QWidget* parent);
+QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent);
+QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent);
 }

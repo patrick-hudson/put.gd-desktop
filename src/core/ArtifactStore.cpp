@@ -1,4 +1,5 @@
 #include "ArtifactStore.h"
+#include "UploadNaming.h"
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QDir>
@@ -16,8 +17,8 @@
 #include <utility>
 namespace putgd {
 namespace { QString category(const QString& mime) { if(mime.startsWith("image/")) return "images"; if(mime.startsWith("video/")) return "videos"; if(mime.startsWith("text/")) return "text"; return "other"; } }
-QJsonObject Artifact::toJson() const {return {{"id",id},{"path",path},{"name",name},{"mime",mime},{"category",category},{"bytes",double(bytes)},{"sha256",sha256},{"originalFile",originalFile},{"previewPath",previewPath}};}
-Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),qint64(o["bytes"].toDouble()),o["originalFile"].toBool(),o["previewPath"].toString()};}
+QJsonObject Artifact::toJson() const {return {{"id",id},{"path",path},{"name",name},{"mime",mime},{"category",category},{"bytes",double(bytes)},{"sha256",sha256},{"originalFile",originalFile},{"previewPath",previewPath},{"namingPrepared",namingPrepared}};}
+Artifact Artifact::fromJson(const QJsonObject& o) {return {o["id"].toString(),o["path"].toString(),o["name"].toString(),o["mime"].toString(),o["category"].toString(),o["sha256"].toString(),qint64(o["bytes"].toDouble()),o["originalFile"].toBool(),o["previewPath"].toString(),o["namingPrepared"].toBool()};}
 ArtifactStore::ArtifactStore(QString root):root_(std::move(root)) {QDir().mkpath(root_); QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);}
 qint64 ArtifactStore::bytes() const {qint64 n=0; QDirIterator it(root_,QDir::Files,QDirIterator::Subdirectories); while(it.hasNext()) {const QFileInfo file(it.next());if(!QUuid(file.fileName()).isNull())n+=file.size();} return n;}
 Error ArtifactStore::remove(const QString& id) {
@@ -63,7 +64,8 @@ void ArtifactStore::discardIncomplete() {
 }
 
 Error ArtifactStore::verify(const Artifact& a) const {QFile f(a.path); if(!f.open(QIODevice::ReadOnly)) return {"artifact_missing","Retained artifact unavailable",{}}; QCryptographicHash hash(QCryptographicHash::Sha256); if(!hash.addData(&f)||f.size()!=a.bytes||QString::fromLatin1(hash.result().toHex())!=a.sha256) return {"artifact_changed","Retained artifact identity changed",{}}; return {};}
-Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,const ResourceLimits& limits) {
+Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,const ResourceLimits& limits,
+                                   const QString& action,const Settings& settings,const QDateTime& actionTime) {
  Acquisition result; const QString staging=root_+"/."+op+"-"+QUuid::createUuid().toString(QUuid::WithoutBraces), target=root_+"/"+op;
  if(!QDir().mkpath(staging)) {result.error={"artifact_io","Cannot create private artifact storage",{}}; return result;}
  QFile::setPermissions(staging,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
@@ -71,6 +73,7 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
  int count=p.kind=="files"?p.files.size():1;
  if(count<1 || count>limits.maxFiles) {fail("input_excessive","Invalid batch size",0); return result;}
  qint64 total=0,existing=bytes();
+ const auto acquiredAt=actionTime.isValid()?actionTime.toLocalTime():QDateTime::currentDateTime();
  for(int i=0;i<count;++i) {
   Artifact a; a.id=QUuid::createUuid().toString(QUuid::WithoutBraces); a.path=staging+"/"+a.id;
   QFile input; QByteArray encoded;
@@ -83,6 +86,9 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
    if(p.image.isNull()||qint64(p.image.width())*p.image.height()>limits.imagePixels||p.image.sizeInBytes()>limits.imageBytes) {fail("input_excessive","Invalid image size",i); return result;}
    QBuffer buffer(&encoded); buffer.open(QIODevice::WriteOnly); if(!p.image.save(&buffer,"PNG")) {fail("encoding_failed","Cannot encode image",i); return result;} a.mime="image/png"; a.name="image.png";
   } else {fail("source_unsupported","Unsupported source",i); return result;}
+  const auto named=UploadNaming::acquiredName(a,settings,action,acquiredAt);
+  if(named.error) {fail(named.error.code,named.error.message,i);return result;}
+  a.name=named.name;a.namingPrepared=true;
   const qint64 expected=input.isOpen()?input.size():encoded.size();
   if(expected>limits.maxFileBytes||expected>limits.maxBatchBytes-total||expected>limits.pendingArtifactBytes-existing-total) {fail("input_excessive","Artifact budget exceeded",i); return result;}
   QSaveFile output(a.path); output.setDirectWriteFallback(false); if(!output.open(QIODevice::WriteOnly)) {fail("artifact_io","Cannot store artifact",i); return result;}

@@ -87,11 +87,13 @@ private slots:
     }
     void partialBatchRetriesOnlyFailedAndRetainsArchives() {
         S3Fixture f;
-        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"key", "prefix é/b.txt"}, {"status", 403}}}}});
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"key", "prefix é/Upload-b.txt"}, {"status", 403}}}}});
         ProviderRegistry registry;
         registry.add("s3", std::make_shared<S3Provider>(f.credentials));
         SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
-        QVERIFY(settings.save(configuration(f, "rename", true), {}));
+        auto document=configuration(f, "rename", true);
+        auto naming=document["naming"].toObject();naming["mode"]="template";naming["fileTemplate"]="Upload-{name}.{ext}";document["naming"]=naming;
+        QVERIFY(settings.save(document, {}));
         Source source;
         source.payload.kind = "files";
         source.payload.files = {putgd::test::fixture(f.directory.path(), "a.txt", "a synthetic"), putgd::test::fixture(f.directory.path(), "b.txt", "b synthetic")};
@@ -104,15 +106,21 @@ private slots:
         QCOMPARE(operation.state, QString("partial"));
         QCOMPARE(operation.items[0].uploadStatus, QString("uploaded"));
         QCOMPARE(operation.items[1].uploadStatus, QString("failed"));
+        QCOMPARE(operation.items[0].candidate,QString("Upload-a.txt"));
+        QCOMPARE(operation.items[1].candidate,QString("Upload-b.txt"));
+        QCOMPARE(operation.items[1].artifact.name,QString("Upload-b.txt"));
         QCOMPARE(f.events("PUT").size(), 2);
         const auto savedReceipt = operation.items[0].receipt.toJson();
         for (const auto& item : operation.items) {
             QCOMPARE(item.local.status, QString("saved"));
             QVERIFY(QFile::exists(item.local.path));
+            QCOMPARE(QFileInfo(item.local.path).fileName(),item.artifact.name);
         }
         QTRY_COMPARE(source.copies, 1);
         QCOMPARE(source.copied.text, operation.items[0].receipt.directUrl);
         QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(), 0);
+        naming["mode"]="generated";naming["fileTemplate"]="Changed-{uuid}.{ext}";document["naming"]=naming;
+        QVERIFY(settings.save(document,settings.revision()));
         bool retryAccepted = false;
         operations.retry(id, [&](auto error, auto) { QVERIFY(!error); retryAccepted = true; });
         QTRY_VERIFY(retryAccepted);
@@ -122,7 +130,10 @@ private slots:
         QCOMPARE(operation.items[0].receipt.toJson(), savedReceipt);
         QCOMPARE(operation.items[1].uploadStatus, QString("uploaded"));
         QCOMPARE(f.events("PUT").size(), 3);
-        QCOMPARE(f.events("PUT")[2].toObject()["key"].toString(), QString("prefix é/b.txt"));
+        QCOMPARE(f.events("PUT")[2].toObject()["key"].toString(), QString("prefix é/Upload-b.txt"));
+        QCOMPARE(operation.items[1].artifact.name,QString("Upload-b.txt"));
+        QCOMPARE(operation.settings.namingMode,QString("template"));
+        QCOMPARE(operation.settings.fileTemplate,QString("Upload-{name}.{ext}"));
         for (const auto& item : operation.items) QVERIFY(QFile::exists(item.local.path));
     }
     void realHistoryDeletionPersistsSdkPhasesAndPreservesLocalCopy() {

@@ -1,9 +1,81 @@
 #include "fixtures/U2Fixtures.h"
+#include <QScopeGuard>
+#include <utility>
 #include <QSignalSpy>
+#include <QRegularExpression>
 using namespace putgd;using namespace putgd::test;
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void queuedCaptureNameUsesOriginalActionTime() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());auto drain=qScopeGuard([&]{for(auto complete:provider->completions)complete();provider->completions.clear();});
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->completions.size(),1);
+  source.payload.kind="image";source.payload.bytes.clear();source.payload.image=QImage(2,2,QImage::Format_ARGB32);source.payload.image.fill(Qt::blue);QString queued;
+  operations.invoke("region",[&](Error e,QJsonObject r){QVERIFY(!e);queued=r["operationId"].toString();});QTRY_COMPARE(source.reads,2);HistoryStore journal(operations.databasePath());
+  const auto accepted=QDateTime::fromString(journal.operation(queued).created,Qt::ISODateWithMs).toLocalTime();QVERIFY(accepted.isValid());
+  QTest::qWait(1100); // Force queue persistence to cross the one-second naming boundary.
+  auto complete=provider->completions.takeFirst();complete();QTRY_COMPARE(provider->completions.size(),1);
+  QCOMPARE(journal.operation(queued).items.first().artifact.name,QString("Screen-Capture-")+accepted.toString("yyyy-MM-dd-HH-mm-ss")+".png");
+ }
+ void queuedImagesRespectByteBudgetAndCancellationReleasesCapacity() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto limits=doc["limits"].toObject();limits["pendingImageBytes"]=256;doc["limits"]=limits;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());auto drain=qScopeGuard([&]{for(auto complete:provider->completions)complete();provider->completions.clear();});
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->completions.size(),1);
+  source.payload.kind="image";source.payload.bytes.clear();source.payload.image=QImage(8,8,QImage::Format_ARGB32);source.payload.image.fill(Qt::blue);QString queued;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);queued=r["operationId"].toString();});QTRY_COMPARE(source.reads,2);QTest::qWait(20);
+  source.payload.image=QImage(8,8,QImage::Format_ARGB32);source.payload.image.fill(Qt::red);QString rejected;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);rejected=r["operationId"].toString();});QTRY_COMPARE(source.reads,3);HistoryStore journal(operations.databasePath());
+  QTRY_COMPARE_WITH_TIMEOUT(journal.operation(rejected).error.code,QString("image_memory_limit"),1000);QCOMPARE(provider->uploads.load(),1);QVERIFY(journal.operation(rejected).items.isEmpty());
+  operations.cancel(queued,[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(journal.operation(queued).state,QString("cancelled"));QString admitted;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);admitted=r["operationId"].toString();});QTRY_COMPARE(source.reads,4);QTest::qWait(20);QCOMPARE(journal.operation(admitted).error.code,QString{});
+  operations.cancel(admitted,[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(journal.operation(admitted).state,QString("cancelled"));QCOMPARE(provider->uploads.load(),1);
+ }
+ void decodedImagesReleaseBeforeBlockedUploadAndQueuedCancel() {
+  class MovingSource final:public SourceAdapter {
+  public:
+   ClipboardPayload payload;int reads=0;
+   quint64 clipboardRevision()const override{return 0;}
+   QJsonObject capabilities()const override{return {};}
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> reply)override{++reads;reply({std::exchange(payload,{}),{}});}
+   void cancelAcquisition()override{}
+   void copy(const CopyPayload&,std::function<void(Error)> reply)override{reply({});}
+  } source;
+  struct Buffer {uchar* data;std::atomic_int* freed;};
+  std::atomic_int freed{0};
+  auto image=[&] {auto* buffer=new Buffer{new uchar[256],&freed};std::fill_n(buffer->data,256,uchar(42));return QImage(buffer->data,8,8,32,QImage::Format_ARGB32,[](void* context){auto* b=static_cast<Buffer*>(context);delete[] b->data;++*b->freed;delete b;},buffer);};
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  auto drain=qScopeGuard([&]{for(auto complete:provider->completions)complete();provider->completions.clear();});
+  source.payload.kind="image";source.payload.image=image();QString first;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);
+  QCOMPARE(freed.load(),1); // The provider is still blocked: disk artifact, not pixels, owns the upload.
+  HistoryStore journal(operations.databasePath());const auto artifact=journal.operation(first).items.first().artifact;QVERIFY(!ArtifactStore(d.filePath("data/artifacts")).verify(artifact));
+  source.payload.kind="image";source.payload.image=image();QString second;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});QTRY_COMPARE(source.reads,2);QTest::qWait(20);QCOMPARE(freed.load(),1);
+  bool cancelled=false;operations.cancel(second,[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});QTRY_VERIFY(cancelled);QTRY_COMPARE(freed.load(),2);
+  QTRY_COMPARE(journal.operation(second).state,QString("cancelled"));QCOMPARE(provider->uploads.load(),1);
+  provider->failUpload=true;auto complete=provider->completions.takeFirst();complete();QTRY_COMPARE(journal.operation(first).state,QString("partial"));
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  provider->failUpload=false;bool retry=false;operations.retry(first,[&](Error e,QJsonObject){QVERIFY(!e);retry=true;});QTRY_VERIFY(retry);QTRY_COMPARE(provider->completions.size(),1);
+  QCOMPARE(provider->requests.last().artifact.path,artifact.path);QCOMPARE(provider->requests.last().artifact.sha256,artifact.sha256);QCOMPARE(source.reads,2);QCOMPARE(freed.load(),2);
+  complete=provider->completions.takeFirst();complete();QTRY_COMPARE(journal.operation(first).state,QString("completed"));
+ }
+ void capturesReceiveStableTimestampNamesBeforeLocalArchive() {
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
+  auto document=configuration(directory.path(),true);auto naming=document["naming"].toObject();naming["mode"]="original";document["naming"]=naming;QVERIFY(settings.save(document,{}));
+  Source source;source.payload.kind="image";source.payload.image=QImage(3,2,QImage::Format_ARGB32);source.payload.image.fill(Qt::cyan);
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());QString id;
+  operations.invoke("region",[&](Error error,QJsonObject response){QVERIFY(!error);id=response["operationId"].toString();});QTRY_COMPARE(source.copies,1);
+  HistoryStore journal(operations.databasePath());auto operation=journal.operation(id);QCOMPARE(operation.items.size(),1);
+  const auto artifact=operation.items[0].artifact;
+  QVERIFY(QRegularExpression("^Screen-Capture-\\d{4}-\\d{2}-\\d{2}-\\d{2}-\\d{2}-\\d{2}\\.png$").match(artifact.name).hasMatch());
+  QCOMPARE(QFileInfo(operation.items[0].local.path).fileName(),artifact.name);
+  ArtifactStore spool(directory.filePath("data/artifacts"));auto recovered=spool.recover(id);QVERIFY(!recovered.error);QCOMPARE(recovered.artifacts[0].name,artifact.name);
+ }
  void newerInvocationInvalidatesDeferredNativeClipboardCommit() {
   class DeferredSource final:public SourceAdapter {
   public:
@@ -170,7 +242,7 @@ private slots:
   QTRY_VERIFY_WITH_TIMEOUT(([&]{HistoryStore store(ops.databasePath());return store.operation(batch).state=="failed";})(),5000);HistoryStore store(ops.databasePath());QCOMPARE(store.operation(batch).error.code,QString("source_unavailable"));QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.copies,1);
  }
  void reverseCompletionAndOwnershipSuppressOldCopy() {
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());QString older,newer;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);older=r["operationId"].toString();});ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);newer=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),2);HistoryStore journal(ops.databasePath());const auto marker=journal.operation(newer).items[0].publicationId;int newerIndex=provider->requests[0].publicationId==marker?0:1;auto complete=provider->completions.takeAt(newerIndex);provider->requests.removeAt(newerIndex);complete();QTRY_COMPARE(source.copies,1);complete=provider->completions.takeFirst();complete();QTRY_VERIFY_WITH_TIMEOUT(([&]{HistoryStore store(ops.databasePath());return store.operation(older).copyStatus=="suppressed";})(),5000);QCOMPARE(source.copies,1);HistoryStore store(ops.databasePath());QCOMPARE(store.operation(older).items[0].uploadStatus,QString("uploaded"));QCOMPARE(store.operation(newer).items[0].uploadStatus,QString("uploaded"));
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;auto naming=doc["naming"].toObject();naming["mode"]="generated";doc["naming"]=naming;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());QString older,newer;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);older=r["operationId"].toString();});ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);newer=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),2);HistoryStore journal(ops.databasePath());const auto marker=journal.operation(newer).items[0].publicationId;int newerIndex=provider->requests[0].publicationId==marker?0:1;auto complete=provider->completions.takeAt(newerIndex);provider->requests.removeAt(newerIndex);complete();QTRY_COMPARE(source.copies,1);complete=provider->completions.takeFirst();complete();QTRY_VERIFY_WITH_TIMEOUT(([&]{HistoryStore store(ops.databasePath());return store.operation(older).copyStatus=="suppressed";})(),5000);QCOMPARE(source.copies,1);HistoryStore store(ops.databasePath());QCOMPARE(store.operation(older).items[0].uploadStatus,QString("uploaded"));QCOMPARE(store.operation(newer).items[0].uploadStatus,QString("uploaded"));
   QString third;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);third=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);++source.revision;provider->completions.takeFirst()();QTRY_VERIFY(([&]{HistoryStore s(ops.databasePath());return s.operation(third).copyStatus=="suppressed";})());QCOMPARE(source.copies,1);
  }
  void unknownRestartReconcilesWithoutNewUploadAndSnapshotsSettings() {
