@@ -67,6 +67,20 @@ output path under `/tmp` because its local socket must fit the Unix path limit.
 Only a full 300-second run establishes the idle budget. Results include binary hash,
 hardware/session identity, warmup, time-series RSS/CPU and attributed mapped pages.
 
+```sh
+python3 tests/performance/bench_idle.py \
+  --app build/release/putgd --cli build/release/putgd-cli \
+  --output /tmp/putgd-idle-unique --seconds 300
+```
+
+Retained comparisons are exported in
+[the structured memory record](evidence/2026-10-08-resident-memory.json), including
+failed candidates, workload parameters, binary/harness hashes and measured page
+attribution. Replay with a fresh output directory on the same physical session;
+do not substitute a shorter run or a hosted CI measurement. Raw local logs remain
+in the private per-run directory and optimization journal. These empty-history
+records do not certify populated-history or upload memory usage.
+
 Enable the non-installed capture driver with `cmake --preset release
 -DPUTGD_PHYSICAL_BENCHMARKS=ON`, then build normally. On the physical Cinnamon X11
 session, run:

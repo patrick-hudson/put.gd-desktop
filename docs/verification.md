@@ -305,6 +305,34 @@ passing the original idle budgets. All 25 existing release tests passed (47.83s)
 as did 12 deferred runtime generations, 3072 concurrent initialization calls, eager
 and unused-deferred lifecycles, and the production safe DELETE factory. No network
 requests occurred. This candidate is retained on the isolated optimization branch
-at 23102be; application integration and further optimization are pending. The 40 MiB
+at 23102be. The 40 MiB
 target is unmet. The earlier lazy-view candidate remains rejected because its
 five-minute CPU gate failed; short diagnostics do not replace that result.
+
+The next candidate constructs each persistent view on first request. Independent
+review identified a GNOME shutdown callback that outlived its captured window
+owner; a context declared after the view owners now disconnects it before teardown.
+On the retained SDK baseline, the unchanged 300-second measurement passed at
+58,671,104 bytes (55.95 MiB), with 0.00333% of one core. This is 23.05 MiB below
+the SDK candidate and 31.06 MiB (35.69%) below the original 87.0 MiB baseline.
+All 25 release tests passed (46.75s). Actual physical Cinnamon activation mapped
+all three requested views and reused the same windows on repeated requests, with
+no capture, clipboard-content access or network request. The optimized snapshot
+is 016edb8; canonical integration is 9c1b128 plus d6c7519. Its fingerprint predates
+the latest simple form changes, whose separate GUI evidence is above.
+
+The bounded batch ended after three experiments: two retained and one degenerate.
+The remaining one-hour budget could not fit another full measurement. The 40 MiB
+target remains open, and neither empty-history results nor native mapping checks
+establish upload/populated-history memory or complete visual acceptance. The
+[structured comparison](evidence/2026-10-08-resident-memory.json) retains parameters,
+hashes, time series, page attribution summaries and the failed candidate.
+These savings describe a background resident before views or S3 are first used.
+Views remain cached to preserve drafts and selections; AWS stays initialized after
+first S3 work. These measurements do not establish a reduction after those actions.
+The integrated current dev build passed all 25 targets (48.02s), including the new
+unused/rejected SDK-owner and barrier-started concurrent first-use regressions.
+The four affected SDK/GUI targets also passed ASan/UBSan with leak detection
+(14.33s) and the documented instrumented-Qt TSan environment (42.72s). The release
+AWS SDK/OpenSSL/libcurl remain uninstrumented; this does not certify their internal
+race freedom. No new suppression was introduced.

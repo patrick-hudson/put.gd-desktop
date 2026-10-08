@@ -1,0 +1,1234 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "baselineRevision": "1e3735dbb3bc2cec444adbf61b475784ef3ee48d",
+  "workload": "physical Cinnamon X11; isolated empty-history local-only configuration; no capture or provider requests",
+  "harness": "tests/performance/bench_idle.py",
+  "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+  "parameters": {
+    "seconds": 300,
+    "warmupSeconds": 5,
+    "samplingSeconds": 30,
+    "qtPlatform": "xcb",
+    "privateXdgRoots": true,
+    "profiles": [],
+    "actionDestination": "local",
+    "shortcuts": "disabled",
+    "notifications": false,
+    "launchAtLogin": false,
+    "maxRssBytes": 104857600,
+    "maxIdleCpuPercentOneCore": 0.5,
+    "targetPeakRssBytes": 41943040,
+    "comparisonRelativeThreshold": 0.05,
+    "noiseThresholdBytes": 1048576
+  },
+  "runs": [
+    {
+      "name": "baseline",
+      "rawEvidenceSha256": "616a832809039f9d4befda61852b4efe206360e7329979ba1bbb1949ff240796",
+      "result": {
+        "schemaVersion": 1,
+        "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+        "appSha256": "7773879ea322b5f921309044a8e8c73943bc29443538aefd2e94239e28018eba",
+        "kernel": "6.14.0-37-generic",
+        "machine": "x86_64",
+        "desktop": "X-Cinnamon",
+        "session": "x11",
+        "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+        "warmupSeconds": 5,
+        "samples": [
+          {
+            "elapsedSeconds": 0.04439003800507635,
+            "cpuTicks": 0,
+            "rssBytes": 84537344
+          },
+          {
+            "elapsedSeconds": 30.059598026011372,
+            "cpuTicks": 0,
+            "rssBytes": 84537344
+          },
+          {
+            "elapsedSeconds": 60.07270623301156,
+            "cpuTicks": 2,
+            "rssBytes": 84561920
+          },
+          {
+            "elapsedSeconds": 90.09133579101763,
+            "cpuTicks": 2,
+            "rssBytes": 84553728
+          },
+          {
+            "elapsedSeconds": 120.10665997100295,
+            "cpuTicks": 3,
+            "rssBytes": 84553728
+          },
+          {
+            "elapsedSeconds": 150.12625890699564,
+            "cpuTicks": 3,
+            "rssBytes": 84553728
+          },
+          {
+            "elapsedSeconds": 180.1437747000018,
+            "cpuTicks": 3,
+            "rssBytes": 84553728
+          },
+          {
+            "elapsedSeconds": 210.16055566299474,
+            "cpuTicks": 7,
+            "rssBytes": 87662592
+          },
+          {
+            "elapsedSeconds": 240.1782966669998,
+            "cpuTicks": 73,
+            "rssBytes": 91238400
+          },
+          {
+            "elapsedSeconds": 270.1955717689998,
+            "cpuTicks": 74,
+            "rssBytes": 83976192
+          },
+          {
+            "elapsedSeconds": 300.2134783680085,
+            "cpuTicks": 74,
+            "rssBytes": 81924096
+          }
+        ],
+        "initialRssBytes": 84537344,
+        "initialFootprint": [
+          {
+            "mapping": "[heap]",
+            "rssBytes": 14557184,
+            "pssBytes": 14557184,
+            "privateBytes": 14557184
+          },
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 5984256,
+            "pssBytes": 5984256,
+            "privateBytes": 5984256
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 5435392,
+            "pssBytes": 5435392,
+            "privateBytes": 5435392
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4321280,
+            "pssBytes": 4321280,
+            "privateBytes": 4321280
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 3985408,
+            "pssBytes": 1431552,
+            "privateBytes": 585728
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3346432,
+            "pssBytes": 353280,
+            "privateBytes": 73728
+          },
+          {
+            "mapping": "Ubuntu[wdth,wght].ttf",
+            "rssBytes": 2838528,
+            "pssBytes": 69632,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "libaws-cpp-sdk-core.so",
+            "rssBytes": 2150400,
+            "pssBytes": 2150400,
+            "privateBytes": 2150400
+          },
+          {
+            "mapping": "[anonymous]",
+            "rssBytes": 1839104,
+            "pssBytes": 1839104,
+            "privateBytes": 1839104
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1789952,
+            "pssBytes": 30720,
+            "privateBytes": 24576
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1679360,
+            "pssBytes": 549888,
+            "privateBytes": 36864
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1679360,
+            "pssBytes": 92160,
+            "privateBytes": 57344
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1642496,
+            "pssBytes": 1642496,
+            "privateBytes": 1642496
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1236992,
+            "pssBytes": 273408,
+            "privateBytes": 36864
+          },
+          {
+            "mapping": "libicui18n.so.74.2",
+            "rssBytes": 1150976,
+            "pssBytes": 960512,
+            "privateBytes": 937984
+          }
+        ],
+        "elapsedSeconds": 300.2134783680085,
+        "idleCpuPercentOneCore": 0.24649126482352374,
+        "finalRssBytes": 81924096,
+        "peakSampledRssBytes": 91238400,
+        "finalFootprint": [
+          {
+            "mapping": "[heap]",
+            "rssBytes": 9453568,
+            "pssBytes": 9453568,
+            "privateBytes": 9453568
+          },
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 6094848,
+            "pssBytes": 6094848,
+            "privateBytes": 6094848
+          },
+          {
+            "mapping": "memfd:xorg",
+            "rssBytes": 5697536,
+            "pssBytes": 2848768,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 5386240,
+            "pssBytes": 5386240,
+            "privateBytes": 5386240
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4304896,
+            "pssBytes": 4304896,
+            "privateBytes": 4304896
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 3620864,
+            "pssBytes": 1067008,
+            "privateBytes": 221184
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3280896,
+            "pssBytes": 287744,
+            "privateBytes": 8192
+          },
+          {
+            "mapping": "Ubuntu[wdth,wght].ttf",
+            "rssBytes": 2838528,
+            "pssBytes": 71680,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "libaws-cpp-sdk-core.so",
+            "rssBytes": 2097152,
+            "pssBytes": 2097152,
+            "privateBytes": 2097152
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1785856,
+            "pssBytes": 26624,
+            "privateBytes": 20480
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1650688,
+            "pssBytes": 62464,
+            "privateBytes": 28672
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1646592,
+            "pssBytes": 517120,
+            "privateBytes": 4096
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1642496,
+            "pssBytes": 1642496,
+            "privateBytes": 1642496
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1232896,
+            "pssBytes": 269312,
+            "privateBytes": 32768
+          },
+          {
+            "mapping": "libicui18n.so.74.2",
+            "rssBytes": 1077248,
+            "pssBytes": 886784,
+            "privateBytes": 864256
+          }
+        ],
+        "budgetPassed": true,
+        "initialFootprintOmitted": {
+          "mappingCount": 187,
+          "rssBytes": 30900224,
+          "pssBytes": 13792256,
+          "privateBytes": 11907072
+        },
+        "finalFootprintOmitted": {
+          "mappingCount": 188,
+          "rssBytes": 30113792,
+          "pssBytes": 13003776,
+          "privateBytes": 11108352
+        }
+      }
+    },
+    {
+      "name": "lazyViewsRejected",
+      "rawEvidenceSha256": "acf86b73ea7d5f23ce2fece64bd60b504d2f19d15254d618840ff2a692a79e60",
+      "result": {
+        "schemaVersion": 1,
+        "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+        "appSha256": "e7c32b604b437613cc086ddf6183243401e89b382952ff67b14111e35d5beeb6",
+        "kernel": "6.14.0-37-generic",
+        "machine": "x86_64",
+        "desktop": "X-Cinnamon",
+        "session": "x11",
+        "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+        "warmupSeconds": 5,
+        "samples": [
+          {
+            "elapsedSeconds": 0.028057008021278307,
+            "cpuTicks": 0,
+            "rssBytes": 65863680
+          },
+          {
+            "elapsedSeconds": 30.041408427001443,
+            "cpuTicks": 0,
+            "rssBytes": 65863680
+          },
+          {
+            "elapsedSeconds": 60.05500136699993,
+            "cpuTicks": 0,
+            "rssBytes": 65921024
+          },
+          {
+            "elapsedSeconds": 90.06833102100063,
+            "cpuTicks": 49,
+            "rssBytes": 86052864
+          },
+          {
+            "elapsedSeconds": 120.08190293700318,
+            "cpuTicks": 64,
+            "rssBytes": 86065152
+          },
+          {
+            "elapsedSeconds": 150.09577657200862,
+            "cpuTicks": 66,
+            "rssBytes": 86192128
+          },
+          {
+            "elapsedSeconds": 180.10859683901072,
+            "cpuTicks": 69,
+            "rssBytes": 86200320
+          },
+          {
+            "elapsedSeconds": 210.12165047801682,
+            "cpuTicks": 69,
+            "rssBytes": 86200320
+          },
+          {
+            "elapsedSeconds": 240.13664633300505,
+            "cpuTicks": 153,
+            "rssBytes": 86401024
+          },
+          {
+            "elapsedSeconds": 270.1494445599965,
+            "cpuTicks": 170,
+            "rssBytes": 86433792
+          },
+          {
+            "elapsedSeconds": 300.16277695499593,
+            "cpuTicks": 170,
+            "rssBytes": 86433792
+          }
+        ],
+        "initialRssBytes": 65863680,
+        "initialFootprint": [
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 5390336,
+            "pssBytes": 5390336,
+            "privateBytes": 5390336
+          },
+          {
+            "mapping": "[heap]",
+            "rssBytes": 4890624,
+            "pssBytes": 4890624,
+            "privateBytes": 4890624
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4071424,
+            "pssBytes": 4071424,
+            "privateBytes": 4071424
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 3985408,
+            "pssBytes": 1431552,
+            "privateBytes": 585728
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 3526656,
+            "pssBytes": 3526656,
+            "privateBytes": 3526656
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3346432,
+            "pssBytes": 353280,
+            "privateBytes": 73728
+          },
+          {
+            "mapping": "libaws-cpp-sdk-core.so",
+            "rssBytes": 2150400,
+            "pssBytes": 2150400,
+            "privateBytes": 2150400
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1789952,
+            "pssBytes": 30720,
+            "privateBytes": 24576
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1679360,
+            "pssBytes": 549888,
+            "privateBytes": 36864
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1679360,
+            "pssBytes": 93184,
+            "privateBytes": 57344
+          },
+          {
+            "mapping": "[anonymous]",
+            "rssBytes": 1617920,
+            "pssBytes": 1617920,
+            "privateBytes": 1617920
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1433600,
+            "pssBytes": 1433600,
+            "privateBytes": 1433600
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1269760,
+            "pssBytes": 280576,
+            "privateBytes": 36864
+          },
+          {
+            "mapping": "libicui18n.so.74.2",
+            "rssBytes": 1150976,
+            "pssBytes": 960512,
+            "privateBytes": 937984
+          },
+          {
+            "mapping": "libQt6Network.so.6.4.2",
+            "rssBytes": 1130496,
+            "pssBytes": 1130496,
+            "privateBytes": 1130496
+          }
+        ],
+        "elapsedSeconds": 300.16277695499593,
+        "idleCpuPercentOneCore": 0.5663593658233262,
+        "finalRssBytes": 86433792,
+        "peakSampledRssBytes": 86433792,
+        "finalFootprint": [
+          {
+            "mapping": "[heap]",
+            "rssBytes": 13914112,
+            "pssBytes": 13914112,
+            "privateBytes": 13914112
+          },
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 6156288,
+            "pssBytes": 6156288,
+            "privateBytes": 6156288
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 5070848,
+            "pssBytes": 5070848,
+            "privateBytes": 5070848
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4321280,
+            "pssBytes": 4321280,
+            "privateBytes": 4321280
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 3985408,
+            "pssBytes": 1163264,
+            "privateBytes": 585728
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3346432,
+            "pssBytes": 353280,
+            "privateBytes": 73728
+          },
+          {
+            "mapping": "Ubuntu[wdth,wght].ttf",
+            "rssBytes": 2813952,
+            "pssBytes": 70656,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "memfd:xorg",
+            "rssBytes": 2801664,
+            "pssBytes": 1400832,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "libaws-cpp-sdk-core.so",
+            "rssBytes": 2150400,
+            "pssBytes": 2150400,
+            "privateBytes": 2150400
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1789952,
+            "pssBytes": 30720,
+            "privateBytes": 24576
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1679360,
+            "pssBytes": 549888,
+            "privateBytes": 36864
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1679360,
+            "pssBytes": 91136,
+            "privateBytes": 57344
+          },
+          {
+            "mapping": "[anonymous]",
+            "rssBytes": 1630208,
+            "pssBytes": 1630208,
+            "privateBytes": 1630208
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1564672,
+            "pssBytes": 1564672,
+            "privateBytes": 1564672
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1269760,
+            "pssBytes": 280576,
+            "privateBytes": 36864
+          }
+        ],
+        "budgetPassed": false,
+        "initialFootprintOmitted": {
+          "mappingCount": 175,
+          "rssBytes": 26750976,
+          "pssBytes": 12383232,
+          "privateBytes": 10678272
+        },
+        "finalFootprintOmitted": {
+          "mappingCount": 188,
+          "rssBytes": 32260096,
+          "pssBytes": 14825472,
+          "privateBytes": 12881920
+        }
+      }
+    },
+    {
+      "name": "deferredSdk",
+      "rawEvidenceSha256": "a92ea5a16f1172cbace359638318f88e3049da175a971b01a3a0465a42ed8889",
+      "result": {
+        "schemaVersion": 1,
+        "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+        "appSha256": "d63b07c908e0b1754f5558cbada2750515997ef777c6d6112395fd896a273e42",
+        "kernel": "6.14.0-37-generic",
+        "machine": "x86_64",
+        "desktop": "X-Cinnamon",
+        "session": "x11",
+        "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+        "warmupSeconds": 5,
+        "samples": [
+          {
+            "elapsedSeconds": 0.024455089995171875,
+            "cpuTicks": 0,
+            "rssBytes": 76390400
+          },
+          {
+            "elapsedSeconds": 30.043424497998785,
+            "cpuTicks": 2,
+            "rssBytes": 76390400
+          },
+          {
+            "elapsedSeconds": 60.06436868800665,
+            "cpuTicks": 3,
+            "rssBytes": 76390400
+          },
+          {
+            "elapsedSeconds": 90.08221905500977,
+            "cpuTicks": 4,
+            "rssBytes": 76390400
+          },
+          {
+            "elapsedSeconds": 120.10305367599358,
+            "cpuTicks": 6,
+            "rssBytes": 79429632
+          },
+          {
+            "elapsedSeconds": 150.1204810120107,
+            "cpuTicks": 33,
+            "rssBytes": 82825216
+          },
+          {
+            "elapsedSeconds": 180.14211663999595,
+            "cpuTicks": 40,
+            "rssBytes": 82829312
+          },
+          {
+            "elapsedSeconds": 210.1598970380146,
+            "cpuTicks": 41,
+            "rssBytes": 82829312
+          },
+          {
+            "elapsedSeconds": 240.18204493599478,
+            "cpuTicks": 41,
+            "rssBytes": 82849792
+          },
+          {
+            "elapsedSeconds": 270.2038693310169,
+            "cpuTicks": 41,
+            "rssBytes": 82849792
+          },
+          {
+            "elapsedSeconds": 300.2217227270012,
+            "cpuTicks": 41,
+            "rssBytes": 82849792
+          }
+        ],
+        "initialRssBytes": 76390400,
+        "initialFootprint": [
+          {
+            "mapping": "[heap]",
+            "rssBytes": 12861440,
+            "pssBytes": 12861440,
+            "privateBytes": 12861440
+          },
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 5996544,
+            "pssBytes": 5996544,
+            "privateBytes": 5996544
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 5427200,
+            "pssBytes": 5427200,
+            "privateBytes": 5427200
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4358144,
+            "pssBytes": 4358144,
+            "privateBytes": 4358144
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3342336,
+            "pssBytes": 667648,
+            "privateBytes": 233472
+          },
+          {
+            "mapping": "Ubuntu[wdth,wght].ttf",
+            "rssBytes": 2629632,
+            "pssBytes": 173056,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1789952,
+            "pssBytes": 29696,
+            "privateBytes": 24576
+          },
+          {
+            "mapping": "[anonymous]",
+            "rssBytes": 1753088,
+            "pssBytes": 1753088,
+            "privateBytes": 1753088
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1708032,
+            "pssBytes": 1708032,
+            "privateBytes": 1708032
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1671168,
+            "pssBytes": 1297408,
+            "privateBytes": 1064960
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1548288,
+            "pssBytes": 121856,
+            "privateBytes": 106496
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 1449984,
+            "pssBytes": 697344,
+            "privateBytes": 389120
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1220608,
+            "pssBytes": 516096,
+            "privateBytes": 339968
+          },
+          {
+            "mapping": "libicui18n.so.74.2",
+            "rssBytes": 1183744,
+            "pssBytes": 1157120,
+            "privateBytes": 1155072
+          },
+          {
+            "mapping": "libaws-cpp-sdk-core.so",
+            "rssBytes": 1155072,
+            "pssBytes": 1155072,
+            "privateBytes": 1155072
+          }
+        ],
+        "elapsedSeconds": 300.2217227270012,
+        "idleCpuPercentOneCore": 0.13656573424329552,
+        "finalRssBytes": 82849792,
+        "peakSampledRssBytes": 82849792,
+        "finalFootprint": [
+          {
+            "mapping": "[heap]",
+            "rssBytes": 13385728,
+            "pssBytes": 13385728,
+            "privateBytes": 13385728
+          },
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 6123520,
+            "pssBytes": 6123520,
+            "privateBytes": 6123520
+          },
+          {
+            "mapping": "memfd:xorg",
+            "rssBytes": 5603328,
+            "pssBytes": 2801664,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 5427200,
+            "pssBytes": 5427200,
+            "privateBytes": 5427200
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4358144,
+            "pssBytes": 4358144,
+            "privateBytes": 4358144
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3342336,
+            "pssBytes": 644096,
+            "privateBytes": 233472
+          },
+          {
+            "mapping": "Ubuntu[wdth,wght].ttf",
+            "rssBytes": 2650112,
+            "pssBytes": 192512,
+            "privateBytes": 0
+          },
+          {
+            "mapping": "[anonymous]",
+            "rssBytes": 1789952,
+            "pssBytes": 1789952,
+            "privateBytes": 1789952
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1789952,
+            "pssBytes": 29696,
+            "privateBytes": 24576
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1708032,
+            "pssBytes": 1708032,
+            "privateBytes": 1708032
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1671168,
+            "pssBytes": 1301504,
+            "privateBytes": 1064960
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1548288,
+            "pssBytes": 121856,
+            "privateBytes": 106496
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 1449984,
+            "pssBytes": 697344,
+            "privateBytes": 389120
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1220608,
+            "pssBytes": 516096,
+            "privateBytes": 339968
+          },
+          {
+            "mapping": "libicui18n.so.74.2",
+            "rssBytes": 1183744,
+            "pssBytes": 1157120,
+            "privateBytes": 1155072
+          }
+        ],
+        "budgetPassed": true,
+        "initialFootprintOmitted": {
+          "mappingCount": 186,
+          "rssBytes": 28295168,
+          "pssBytes": 14370816,
+          "privateBytes": 13312000
+        },
+        "finalFootprintOmitted": {
+          "mappingCount": 187,
+          "rssBytes": 29597696,
+          "pssBytes": 15601664,
+          "privateBytes": 14499840
+        }
+      }
+    },
+    {
+      "name": "combinedLazyViews",
+      "rawEvidenceSha256": "f5a94edc9aaae46cec4b753d4fc30028b55014985ac35384c9b55d28fa83488c",
+      "result": {
+        "schemaVersion": 1,
+        "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+        "appSha256": "ecdf827540c45eae52bb288dbfd7e382510b8dc791e26d777473b6185ef88583",
+        "kernel": "6.14.0-37-generic",
+        "machine": "x86_64",
+        "desktop": "X-Cinnamon",
+        "session": "x11",
+        "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+        "warmupSeconds": 5,
+        "samples": [
+          {
+            "elapsedSeconds": 0.02752324999892153,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 30.039027877995977,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 60.04912387600052,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 90.0614982979896,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 120.0757500900072,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 150.094037664996,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 180.1127446879982,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 210.13301061998936,
+            "cpuTicks": 0,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 240.15608604598674,
+            "cpuTicks": 1,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 270.18206125398865,
+            "cpuTicks": 1,
+            "rssBytes": 58671104
+          },
+          {
+            "elapsedSeconds": 300.20174144700286,
+            "cpuTicks": 1,
+            "rssBytes": 58671104
+          }
+        ],
+        "initialRssBytes": 58671104,
+        "initialFootprint": [
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 5357568,
+            "pssBytes": 5357568,
+            "privateBytes": 5357568
+          },
+          {
+            "mapping": "[heap]",
+            "rssBytes": 4214784,
+            "pssBytes": 4214784,
+            "privateBytes": 4214784
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4104192,
+            "pssBytes": 4104192,
+            "privateBytes": 4104192
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 3522560,
+            "pssBytes": 3522560,
+            "privateBytes": 3522560
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3342336,
+            "pssBytes": 644096,
+            "privateBytes": 233472
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1789952,
+            "pssBytes": 29696,
+            "privateBytes": 24576
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1671168,
+            "pssBytes": 1301504,
+            "privateBytes": 1064960
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1548288,
+            "pssBytes": 121856,
+            "privateBytes": 106496
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 1449984,
+            "pssBytes": 529408,
+            "privateBytes": 389120
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1445888,
+            "pssBytes": 1445888,
+            "privateBytes": 1445888
+          },
+          {
+            "mapping": "[anonymous]",
+            "rssBytes": 1421312,
+            "pssBytes": 1421312,
+            "privateBytes": 1421312
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1253376,
+            "pssBytes": 548864,
+            "privateBytes": 372736
+          },
+          {
+            "mapping": "libicui18n.so.74.2",
+            "rssBytes": 1183744,
+            "pssBytes": 1157120,
+            "privateBytes": 1155072
+          },
+          {
+            "mapping": "libaws-cpp-sdk-core.so",
+            "rssBytes": 1155072,
+            "pssBytes": 1155072,
+            "privateBytes": 1155072
+          },
+          {
+            "mapping": "libQt6Network.so.6.4.2",
+            "rssBytes": 978944,
+            "pssBytes": 978944,
+            "privateBytes": 978944
+          }
+        ],
+        "elapsedSeconds": 300.20174144700286,
+        "idleCpuPercentOneCore": 0.0033310932680799873,
+        "finalRssBytes": 58671104,
+        "peakSampledRssBytes": 58671104,
+        "finalFootprint": [
+          {
+            "mapping": "libQt6Gui.so.6.4.2",
+            "rssBytes": 5357568,
+            "pssBytes": 5357568,
+            "privateBytes": 5357568
+          },
+          {
+            "mapping": "[heap]",
+            "rssBytes": 4214784,
+            "pssBytes": 4214784,
+            "privateBytes": 4214784
+          },
+          {
+            "mapping": "libQt6Core.so.6.4.2",
+            "rssBytes": 4104192,
+            "pssBytes": 4104192,
+            "privateBytes": 4104192
+          },
+          {
+            "mapping": "libQt6Widgets.so.6.4.2",
+            "rssBytes": 3522560,
+            "pssBytes": 3522560,
+            "privateBytes": 3522560
+          },
+          {
+            "mapping": "libgtk-3.so.0.2409.32",
+            "rssBytes": 3342336,
+            "pssBytes": 644096,
+            "privateBytes": 233472
+          },
+          {
+            "mapping": "libc.so.6",
+            "rssBytes": 1789952,
+            "pssBytes": 30720,
+            "privateBytes": 24576
+          },
+          {
+            "mapping": "libgio-2.0.so.0.8000.0",
+            "rssBytes": 1671168,
+            "pssBytes": 1301504,
+            "privateBytes": 1064960
+          },
+          {
+            "mapping": "libstdc++.so.6.0.33",
+            "rssBytes": 1548288,
+            "pssBytes": 121856,
+            "privateBytes": 106496
+          },
+          {
+            "mapping": "libcrypto.so.3",
+            "rssBytes": 1449984,
+            "pssBytes": 697344,
+            "privateBytes": 389120
+          },
+          {
+            "mapping": "putgd",
+            "rssBytes": 1445888,
+            "pssBytes": 1445888,
+            "privateBytes": 1445888
+          },
+          {
+            "mapping": "[anonymous]",
+            "rssBytes": 1421312,
+            "pssBytes": 1421312,
+            "privateBytes": 1421312
+          },
+          {
+            "mapping": "libsqlite3.so.0.8.6",
+            "rssBytes": 1253376,
+            "pssBytes": 548864,
+            "privateBytes": 372736
+          },
+          {
+            "mapping": "libicui18n.so.74.2",
+            "rssBytes": 1183744,
+            "pssBytes": 1157120,
+            "privateBytes": 1155072
+          },
+          {
+            "mapping": "libaws-cpp-sdk-core.so",
+            "rssBytes": 1155072,
+            "pssBytes": 1155072,
+            "privateBytes": 1155072
+          },
+          {
+            "mapping": "libQt6Network.so.6.4.2",
+            "rssBytes": 978944,
+            "pssBytes": 978944,
+            "privateBytes": 978944
+          }
+        ],
+        "budgetPassed": true,
+        "initialFootprintOmitted": {
+          "mappingCount": 174,
+          "rssBytes": 24231936,
+          "pssBytes": 11476992,
+          "privateBytes": 10215424
+        },
+        "finalFootprintOmitted": {
+          "mappingCount": 174,
+          "rssBytes": 24231936,
+          "pssBytes": 12528640,
+          "privateBytes": 11583488
+        }
+      }
+    }
+  ],
+  "integratedValidation": {
+    "canonicalSdkRevision": "9c1b128",
+    "canonicalViewsRevision": "d6c7519",
+    "devCTest": {
+      "passed": 25,
+      "total": 25,
+      "seconds": 48.02
+    },
+    "asanUbsan": {
+      "passed": 4,
+      "total": 4,
+      "seconds": 14.33,
+      "leakDetection": true
+    },
+    "instrumentedQtTsan": {
+      "passed": 4,
+      "total": 4,
+      "seconds": 42.72,
+      "newSuppressions": 0,
+      "awsOpenSslCurlInstrumented": false
+    }
+  },
+  "sdkLifecycleCheck": {
+    "deferredUnusedLifecycle": true,
+    "deferredGenerations": 12,
+    "concurrentEnsureCalls": 3072,
+    "eagerLifecycle": true,
+    "deleteSafeFactory": true,
+    "networkRequests": 0
+  },
+  "limitations": [
+    "Single stable run per candidate; no populated history or network workload.",
+    "Tracked page attribution includes15 largest mappings and omitted totals; complete mapping records remain in hash-identified raw local results.",
+    "Rejected lazy-view CPU sample retained; short diagnostic was not substituted.",
+    "Hosted GitHub Actions runners cannot establish physical Cinnamon budgets.",
+    "40 MiB target and complete release acceptance are not established by these measurements.",
+    "Savings defer view/SDK initialization: cached views and initialized SDK persist after first use; post-use memory reduction is unverified."
+  ],
+  "nativeActivation": {
+    "schemaVersion": 1,
+    "scope": "physical Cinnamon X11 native mapping and repeated activation, no pixels or payloads",
+    "appSha256": "ecdf827540c45eae52bb288dbfd7e382510b8dc791e26d777473b6185ef88583",
+    "initialMappedOwnedWindows": [],
+    "activations": [
+      {
+        "view": "settings",
+        "reply": {
+          "shown": "settings"
+        },
+        "mappedOwnedWindows": [
+          "0x5e00006"
+        ]
+      },
+      {
+        "view": "history",
+        "reply": {
+          "shown": "history"
+        },
+        "mappedOwnedWindows": [
+          "0x5e00006",
+          "0x5e00011"
+        ]
+      },
+      {
+        "view": "activity",
+        "reply": {
+          "shown": "activity"
+        },
+        "mappedOwnedWindows": [
+          "0x5e00006",
+          "0x5e00011",
+          "0x5e00017"
+        ]
+      },
+      {
+        "view": "settings",
+        "reply": {
+          "shown": "settings"
+        },
+        "mappedOwnedWindows": [
+          "0x5e00006",
+          "0x5e00011",
+          "0x5e00017"
+        ]
+      },
+      {
+        "view": "history",
+        "reply": {
+          "shown": "history"
+        },
+        "mappedOwnedWindows": [
+          "0x5e00006",
+          "0x5e00011",
+          "0x5e00017"
+        ]
+      },
+      {
+        "view": "activity",
+        "reply": {
+          "shown": "activity"
+        },
+        "mappedOwnedWindows": [
+          "0x5e00006",
+          "0x5e00011",
+          "0x5e00017"
+        ]
+      }
+    ],
+    "persistentViewsReused": true,
+    "passed": true
+  }
+}
