@@ -1,6 +1,8 @@
 #pragma once
 #include "HistoryService.h"
 #include "LocalIpc.h"
+#include "SetupService.h"
+#include <QPointer>
 #include <QSet>
 namespace putgd {
 class LocalServer final:public QObject {
@@ -9,6 +11,9 @@ public:
  LocalServer(SettingsService&,OperationService&,HistoryService&,QObject* parent=nullptr);
  Result listen(const QString& runtimeDirectory=QString{});
  QString socketPath() const {return server_.fullServerName();}
+ QString residentEpoch() const {return residentEpoch_;}
+ void setSetupService(SetupService* service) {setup_=service;}
+ void setUiDiagnostics(std::function<QJsonObject()> callback) {uiDiagnostics_=std::move(callback);}
  static QString defaultRuntimeDirectory();
  static QString defaultSocketPath();
  static QJsonObject response(const QString& requestId,const Error&,const QJsonObject&);
@@ -17,6 +22,9 @@ public:
 private:
  void accept();
  std::function<void(const QString&)> uiActivation_;
+ std::function<QJsonObject()> uiDiagnostics_;
+ QPointer<SetupService> setup_;
+ const QString residentEpoch_;
  SettingsService& settings_;
  OperationService& operations_;
  HistoryService& history_;

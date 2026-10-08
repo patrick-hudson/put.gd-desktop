@@ -1,4 +1,6 @@
 #include "LocalServer.h"
+#include "core/BuildInfo.h"
+#include <QUuid>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -19,7 +21,7 @@ Error invalid() {return {"invalid_request","Invalid request fields or parameter 
 bool fields(const QJsonObject& object,const QStringList& required,const QStringList& optional={}) {for(auto it=object.begin();it!=object.end();++it)if(!required.contains(it.key())&&!optional.contains(it.key()))return false;for(const auto& key:required)if(!object.contains(key))return false;return true;}
 bool string(const QJsonObject& object,const QString& key,int max=256) {return object[key].isString()&&!object[key].toString().isEmpty()&&object[key].toString().size()<=max;}
 }
-LocalServer::LocalServer(SettingsService& settings,OperationService& operations,HistoryService& history,QObject* parent):QObject(parent),settings_(settings),operations_(operations),history_(history) {connect(&server_,&LocalIpcServer::newConnection,this,&LocalServer::accept);}
+LocalServer::LocalServer(SettingsService& settings,OperationService& operations,HistoryService& history,QObject* parent):QObject(parent),residentEpoch_(QUuid::createUuid().toString(QUuid::WithoutBraces)),settings_(settings),operations_(operations),history_(history) {connect(&server_,&LocalIpcServer::newConnection,this,&LocalServer::accept);}
 QString LocalServer::defaultRuntimeDirectory() {const auto runtime=QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);return runtime.isEmpty()?QString{}:QDir(runtime).filePath("putgd");}
 QString LocalServer::defaultSocketPath() {return QDir(defaultRuntimeDirectory()).filePath("session.sock");}
 Result LocalServer::listen(const QString& supplied) {
@@ -52,10 +54,11 @@ void LocalServer::accept() {
   connect(socket,&LocalIpcConnection::disconnected,this,[this,socket] {clients_.remove(socket);socket->deleteLater();});
   connect(socket,&LocalIpcConnection::readyRead,this,[this,socket,deadline] {
    if(socket->property("handled").toBool())return;
-   auto bytes=socket->property("bytes").toByteArray();bytes+=socket->readAll();socket->setProperty("bytes",bytes);
+   auto bytes=socket->property("bytes").toByteArray();bytes+=socket->readAll();
    auto send=[socket](QString id,Error e,QJsonObject result) {socket->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');};
-   if(bytes.size()>maximumRequest) {socket->setProperty("handled",true);send({}, {"request_too_large","Request exceeds 1 MiB",{}},{});return;}
-   if(!bytes.contains('\n'))return;
+   if(bytes.size()>maximumRequest) {socket->setProperty("bytes",QByteArray{});socket->setProperty("handled",true);socket->stopReading();deadline->stop();send({}, {"request_too_large","Request exceeds 1 MiB",{}},{});return;}
+   if(!bytes.contains('\n')) {socket->setProperty("bytes",bytes);return;}
+   socket->setProperty("bytes",QByteArray{});
    socket->setProperty("handled",true);socket->stopReading();deadline->stop();
    if(bytes.indexOf('\n')!=bytes.size()-1) {send({},invalid(),{});return;}
    QJsonParseError parseError;auto doc=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!doc.isObject()) {send({}, {"invalid_json","Request must be a JSON object",{}},{});return;}
@@ -91,6 +94,21 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128) {reply(invalid(),{});return;}ids.append(id.toString());}
   if(method=="delete.prepare")history_.prepareDelete(ids,reply);else history_.deleteConfirmed(ids,p["acknowledgement"].toString(),reply);return;
  }
+ if(method=="setup.storeCredentials"||method=="setup.unlockCredentials"||method=="setup.testDestination") {
+  const bool store=method=="setup.storeCredentials";
+  if(!fields(p,store?QStringList{"profileId","expectedRevision","credentials"}:QStringList{"profileId","expectedRevision"})||!string(p,"profileId")||!p["expectedRevision"].isString()||(store&&!p["credentials"].isObject())) {reply(invalid(),{});return;}
+  if(!setup_) {reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
+  setup_->start(method.mid(6),p["profileId"].toString(),p["expectedRevision"].toString(),p["credentials"].toObject(),std::move(reply));return;
+ }
+ if(method=="setup.inspect") {
+  if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}
+  if(!setup_) {reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
+  setup_->inspect(p["id"].toString(),std::move(reply));return;
+ }
+ if(method=="settings.save") {
+  if(!fields(p,{"document","expectedRevision"})||!p["document"].isObject()||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
+  QPointer<LocalServer> guarded(this);settings_.saveAsync(p["document"].toObject(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,{{"document",guarded->settings_.document()},{"metadata",guarded->settings_.metadata()}});});return;
+ }
  if(method=="settings.patch") {if(!fields(p,{"patch","expectedRevision"})||!p["patch"].isObject()||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}QPointer<LocalServer> guarded(this);settings_.patchAsync(p["patch"].toObject(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});return;}
  if(method=="settings.importDevelopment") {
   if(!fields(p,{"expectedRevision"})||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
@@ -98,7 +116,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="settings.validate") {if(!fields(p,{"document"})||!p["document"].isObject()) {reply(invalid(),{});return;}auto error=Settings::validate(p["document"].toObject(),[this](const auto& id,const auto& s) {return operations_.providers().validate(id,s);});reply(error,{{"valid",!error}});return;}
  if(!p.isEmpty()) {reply(invalid(),{});return;}
- if(method=="settings.get")reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()}});
+ if(method=="ui.snapshot")reply({},{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}});
+ else if(method=="settings.get")reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()}});
  else if(method=="settings.developmentTemplate")reply({},{{"document",Settings::developmentTemplate()},{"explicitImportRequired",true}});
  else if(method=="settings.reload") {QPointer<LocalServer> guarded(this);settings_.reloadAsync([guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});}
  else if(method=="capabilities")reply({},operations_.capabilities());

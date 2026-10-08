@@ -1,0 +1,10 @@
+********* Start testing of UiControlTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiControlTest::initTestCase()
+FAIL!  : UiControlTest::fragmentedFramesAndPartialWrites() Compared values are not the same
+   Actual   (received): 0
+   Expected (1)       : 1
+   Loc: [/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/integration/test_ui_control.cpp(24)]
+PASS   : UiControlTest::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 1ms
+********* Finished testing of UiControlTest *********

@@ -1,0 +1,14 @@
+********* Start testing of SessionClientContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SessionClientContract::initTestCase()
+FAIL!  : SessionClientContract::invalidReply(wrong-id) 'error.details["outcomeUnknown"].toBool()' returned FALSE. ()
+   Loc: [/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/integration/test_session_client.cpp(181)]
+Received signal 11 (SIGSEGV), code 2, for address 0x00007122284fd158
+         clientDestructionWithOwnedReceiver function time: 0ms, total time: 3ms
+
+=== Stack trace ===
+Could not attach to process.  If your uid matches the uid of the target
+process, check the setting of /proc/sys/kernel/yama/ptrace_scope, or try
+again as the root user.  For more details, see /etc/sysctl.d/10-ptrace.conf
+ptrace: Inappropriate ioctl for device.
+=== End of stack trace ===

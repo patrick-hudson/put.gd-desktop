@@ -1,0 +1,8 @@
+********* Start testing of SessionClientContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SessionClientContract::initTestCase()
+FAIL!  : SessionClientContract::fragmentedReplyKeepsEventLoopResponsive() '!error' returned FALSE. (client_unavailable)
+   Loc: [/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/integration/test_session_client.cpp(55)]
+PASS   : SessionClientContract::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 2ms
+********* Finished testing of SessionClientContract *********
