@@ -43,7 +43,13 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
   for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:batch.artifacts) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
   return QJsonObject{};
- },[this](Error e,QJsonObject) {startupError_=e;ready_=!e;emit initialized();});
+ },[this](Error e,QJsonObject) {
+  startupError_=e;ready_=!e;
+#ifdef __GLIBC__
+  if(ready_) {heapReclamationPending_=true;scheduleHeapReclamation();}
+#endif
+  emit initialized();
+ });
 }
 OperationService::~OperationService() {shutdown();}
 void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();for(auto flag:active_) flag->store(true);source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}

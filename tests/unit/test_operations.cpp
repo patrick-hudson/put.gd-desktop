@@ -7,6 +7,65 @@ using namespace putgd;using namespace putgd::test;
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void startupHeapCleanupRunsOnceAfterSuccessfulInitialization() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);QSignalSpy initialized(&operations,&OperationService::initialized);
+  QTRY_COMPARE(initialized.count(),1);QVERIFY(operations.ready());
+  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
+  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());QCOMPARE(count(),0);
+  QTRY_COMPARE_WITH_TIMEOUT(count(),1,5000);
+  QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
+  QTest::qWait(2200);QCOMPARE(count(),1);QCOMPARE(initialized.count(),1);
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+#endif
+ }
+ void failedInitializationDoesNotRequestHeapCleanup() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  const auto blocked=fixture(directory.path(),"not-a-directory","synthetic obstruction");QVERIFY(!blocked.isEmpty());
+  OperationService operations(blocked,settings,registry,source);QSignalSpy initialized(&operations,&OperationService::initialized);
+  QTRY_COMPARE(initialized.count(),1);QVERIFY(!operations.ready());
+  QString code;operations.invoke("clipboard",[&](Error error,QJsonObject){code=error.code;});QCOMPARE(code,QString("history_io"));
+  QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
+  QTest::qWait(2200);QCOMPARE(operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt(),0);
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+#endif
+ }
+ void shutdownCancelsPendingStartupHeapCleanup() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
+  operations.shutdown();QTest::qWait(2200);
+  QCOMPARE(operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt(),0);
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+#endif
+ }
+ void startupHeapCleanupWaitsForBackgroundWorker() {
+#ifndef __GLIBC__
+  QSKIP("Allocator reclamation uses glibc on supported Linux builds");
+#else
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));Source source;
+  OperationService operations(directory.filePath("data"),settings,registry,source);
+  auto barrier=std::make_shared<std::promise<void>>();auto future=barrier->get_future().share();bool released=false,replied=false;
+  auto release=qScopeGuard([&]{if(!released)barrier->set_value();});
+  operations.background([future](Error&){future.wait();return QJsonObject{};},[&](Error error,QJsonObject){QVERIFY(!error);replied=true;});
+  QTRY_VERIFY(operations.ready());
+  const auto count=[&]{return operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt();};
+  QVERIFY(operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
+  QTest::qWait(2200);QCOMPARE(count(),0);QVERIFY(!replied);
+  barrier->set_value();released=true;QTRY_VERIFY(replied);QTRY_COMPARE_WITH_TIMEOUT(count(),1,5000);
+  QVERIFY(!operations.diagnostics()["memory"].toObject()["allocatorReclamationPending"].toBool());
+  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+#endif
+ }
  void queuedCaptureNameUsesOriginalActionTime() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
