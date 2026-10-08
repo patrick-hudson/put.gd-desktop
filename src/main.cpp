@@ -13,7 +13,7 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QJsonDocument>
-#include <QLocalSocket>
+#include "app/LocalIpc.h"
 #include <QUuid>
 #include <atomic>
 #include <mutex>
@@ -29,14 +29,13 @@
 #endif
 namespace {
 bool activateResident(const QString& view,bool background) {
- QLocalSocket socket;const auto path=putgd::LocalServer::defaultSocketPath();socket.connectToServer(path);
- if(!socket.waitForConnected(200))return false;
- if(background)return true;
+ const auto path=putgd::LocalServer::defaultSocketPath();
+ if(background)return putgd::activateLocalSession(path,{}).connected;
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  const QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method","ui.show"},{"params",QJsonObject{{"view",view}}}};
- socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');
- if(!socket.waitForBytesWritten(3000))return true;
- if(!socket.waitForReadyRead(3000))qWarning("Resident activation response unavailable");
+ const auto activation=putgd::activateLocalSession(path,QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');
+ if(!activation.connected)return false;
+ if(!activation.responded)qWarning("Resident activation response unavailable");
  return true;
 }
 putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {

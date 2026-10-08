@@ -1,6 +1,6 @@
 #pragma once
 #include "HistoryService.h"
-#include <QLocalServer>
+#include "LocalIpc.h"
 #include <QSet>
 namespace putgd {
 class LocalServer final:public QObject {
@@ -20,7 +20,7 @@ private:
  SettingsService& settings_;
  OperationService& operations_;
  HistoryService& history_;
- QLocalServer server_;
- QSet<QLocalSocket*> clients_;
+ LocalIpcServer server_;
+ QSet<LocalIpcConnection*> clients_;
 };
 }

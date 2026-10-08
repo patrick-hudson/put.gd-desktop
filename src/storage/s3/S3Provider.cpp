@@ -1,7 +1,7 @@
 #include "S3Provider.h"
 #include "S3Module.h"
 #include "PublicUrl.h"
-#include <QHostAddress>
+#include "IpAddress.h"
 #include <condition_variable>
 #include <mutex>
 namespace putgd {
@@ -113,14 +113,14 @@ Error S3Provider::validateSettings(const QJsonObject& settings) const {
         settings["region"].toString().isEmpty() || settings["objectPrefix"].toString().toUtf8().size() > 1022 ||
         settings["objectPrefix"].toString().contains(QChar(0))) return bad();
     const auto endpoint = QUrl(settings["endpoint"].toString());
-    QHostAddress address(endpoint.host());
+    const auto address=classifyIpAddress(endpoint.host());
     if (!endpoint.isValid() || endpoint.host().isEmpty() || !endpoint.userInfo().isEmpty() || endpoint.hasQuery() || endpoint.hasFragment() ||
-        (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && address.isLoopback()))) return bad();
+        (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && address.loopback))) return bad();
     if (settings["publicUrlBase"].isString()) {
         const auto base = QUrl(settings["publicUrlBase"].toString());
-        QHostAddress host(base.host());
+        const auto host=classifyIpAddress(base.host());
         if (!base.isValid() || base.host().isEmpty() || !base.userInfo().isEmpty() || base.hasQuery() || base.hasFragment() ||
-            (base.scheme() != "https" && !(base.scheme() == "http" && host.isLoopback()))) return bad();
+            (base.scheme() != "https" && !(base.scheme() == "http" && host.loopback))) return bad();
     } else if (!settings["publicUrlBase"].isNull()) return bad();
     if (!QStringList{"public-read", "omit"}.contains(settings["aclMode"].toString()) ||
         !QStringList{"path", "virtual", "auto"}.contains(settings["addressing"].toString()) ||
@@ -129,7 +129,7 @@ Error S3Provider::validateSettings(const QJsonObject& settings) const {
         const auto value = settings[field].toDouble();
         if (!settings[field].isDouble() || value < 1 || value > 2147483647 || value != qint64(value)) return bad();
     }
-    if (s3VirtualAddressing(settings) && (bucket.contains('.') || !address.isNull())) return bad();
+    if (s3VirtualAddressing(settings) && (bucket.contains('.') || address.numeric)) return bad();
     return {};
 }
 Error S3Provider::readiness(const Destination& destination) const {

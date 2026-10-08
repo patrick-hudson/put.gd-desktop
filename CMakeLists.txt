@@ -57,16 +57,16 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_core PUBLIC src)
-target_link_libraries(putgd_core PUBLIC putgd_build_options Qt6::Core Qt6::Gui Qt6::Network Qt6::Sql)
+target_link_libraries(putgd_core PUBLIC putgd_build_options Qt6::Core Qt6::Gui Qt6::Sql)
 
 add_library(putgd_credentials STATIC src/secrets/CredentialStore.cpp)
 target_link_libraries(putgd_credentials PUBLIC putgd_core PRIVATE qt6keychain)
 # The resident facade and credential cache carry no SDK link requirement.
-add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp src/storage/s3/PublicUrl.cpp)
+add_library(putgd_s3 STATIC src/storage/s3/IpAddress.cpp src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp src/storage/s3/PublicUrl.cpp)
 target_link_libraries(putgd_s3 PUBLIC putgd_core putgd_credentials PRIVATE Threads::Threads)
 add_library(putgd_s3_module MODULE src/storage/s3/S3Module.cpp src/storage/s3/S3Driver.cpp
   src/storage/s3/S3SdkContext.cpp src/storage/s3/PublicUrl.cpp)
-target_link_libraries(putgd_s3_module PRIVATE putgd_core putgd_s3_runtime ${AWSSDK_LINK_LIBRARIES} Threads::Threads)
+target_link_libraries(putgd_s3_module PRIVATE putgd_core putgd_s3_runtime ${AWSSDK_LINK_LIBRARIES} Threads::Threads Qt6::Network)
 set_target_properties(putgd_s3_module PROPERTIES OUTPUT_NAME putgd-s3
   CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -75,7 +75,7 @@ endif()
 # Private C++/Qt ABI requires this exact source, toolchain and transport contract.
 set(s3_contract "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};${Qt6_VERSION};${AWSSDK_VERSION};${CMAKE_BUILD_TYPE};${PUTGD_SANITIZER};${PUTGD_SDK_CURL_TRANSPORT};${CMAKE_SYSTEM_PROCESSOR};${CMAKE_CXX_FLAGS};${CMAKE_CXX_FLAGS_DEBUG};${CMAKE_CXX_FLAGS_RELEASE}")
 foreach(s3_contract_file src/storage/s3/S3Driver.h src/storage/s3/S3Driver.cpp
-    src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp
+    src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp src/storage/s3/IpAddress.cpp src/storage/s3/IpAddress.h
     src/storage/s3/S3SdkContext.h src/storage/s3/S3SdkContext.cpp src/storage/s3/SdkRuntime.h
     src/storage/s3/SdkRuntime.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
     src/core/StorageProvider.h src/core/StorageReceipt.h src/core/ArtifactStore.h
@@ -104,7 +104,7 @@ target_compile_definitions(putgd_s3 PRIVATE
 add_dependencies(putgd_s3 putgd_s3_module)
 install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 
-add_library(putgd_app STATIC src/app/OperationService.cpp src/app/HistoryService.cpp src/app/LocalServer.cpp src/app/LoginStartup.cpp)
+add_library(putgd_app STATIC src/app/OperationService.cpp src/app/HistoryService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(PkgConfig REQUIRED)
@@ -149,7 +149,7 @@ add_library(putgd_ui STATIC src/ui/VisualStyle.cpp src/ui/SettingsWindow.cpp src
   src/ui/RecentOperations.cpp src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp src/ui/TrayController.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_app putgd_s3 Qt6::Widgets)
 add_executable(putgd-cli src/cli/main.cpp)
-target_link_libraries(putgd-cli PRIVATE putgd_app)
+target_link_libraries(putgd-cli PRIVATE putgd_app Qt6::Network)
 install(TARGETS putgd-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 add_executable(putgd src/main.cpp)
 target_link_libraries(putgd PRIVATE putgd_build_options putgd_s3 putgd_app putgd_ui Qt6::Widgets)
@@ -300,4 +300,27 @@ if(BUILD_TESTING)
  add_executable(test_login_startup tests/unit/test_login_startup.cpp)
  target_link_libraries(test_login_startup PRIVATE putgd_app Qt6::Test)
  add_test(NAME login_startup_contract COMMAND test_login_startup)
+endif()
+
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_executable(test_local_ipc tests/integration/test_local_ipc.cpp)
+  target_include_directories(test_local_ipc PRIVATE tests)
+  target_link_libraries(test_local_ipc PRIVATE putgd_app Qt6::Test Qt6::Network)
+  add_test(NAME local_ipc_contract COMMAND test_local_ipc)
+  set_tests_properties(local_ipc_contract PROPERTIES TIMEOUT 60)
+endif()
+if(BUILD_TESTING)
+  add_executable(test_ip_address tests/unit/test_ip_address.cpp)
+  target_link_libraries(test_ip_address PRIVATE putgd_s3 Qt6::Test Qt6::Network)
+  add_test(NAME ip_address_contract COMMAND test_ip_address)
+endif()
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(putgd_app PRIVATE Qt6::Network)
+  target_link_libraries(putgd_s3 PRIVATE Qt6::Network)
+endif()
+if(BUILD_TESTING)
+  foreach(network_fixture test_cli test_s3 test_s3_delete test_collision_policy test_s3_module)
+    target_link_libraries(${network_fixture} PRIVATE Qt6::Network)
+  endforeach()
 endif()

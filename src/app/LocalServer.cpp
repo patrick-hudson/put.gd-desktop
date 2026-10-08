@@ -1,5 +1,4 @@
 #include "LocalServer.h"
-#include <QLocalSocket>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonDocument>
@@ -20,7 +19,7 @@ Error invalid() {return {"invalid_request","Invalid request fields or parameter 
 bool fields(const QJsonObject& object,const QStringList& required,const QStringList& optional={}) {for(auto it=object.begin();it!=object.end();++it)if(!required.contains(it.key())&&!optional.contains(it.key()))return false;for(const auto& key:required)if(!object.contains(key))return false;return true;}
 bool string(const QJsonObject& object,const QString& key,int max=256) {return object[key].isString()&&!object[key].toString().isEmpty()&&object[key].toString().size()<=max;}
 }
-LocalServer::LocalServer(SettingsService& settings,OperationService& operations,HistoryService& history,QObject* parent):QObject(parent),settings_(settings),operations_(operations),history_(history) {server_.setSocketOptions(QLocalServer::UserAccessOption);connect(&server_,&QLocalServer::newConnection,this,&LocalServer::accept);}
+LocalServer::LocalServer(SettingsService& settings,OperationService& operations,HistoryService& history,QObject* parent):QObject(parent),settings_(settings),operations_(operations),history_(history) {connect(&server_,&LocalIpcServer::newConnection,this,&LocalServer::accept);}
 QString LocalServer::defaultRuntimeDirectory() {const auto runtime=QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);return runtime.isEmpty()?QString{}:QDir(runtime).filePath("putgd");}
 QString LocalServer::defaultSocketPath() {return QDir(defaultRuntimeDirectory()).filePath("session.sock");}
 Result LocalServer::listen(const QString& supplied) {
@@ -34,11 +33,12 @@ Result LocalServer::listen(const QString& supplied) {
  if(!QFile::setPermissions(runtime,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner))return {{"session_unavailable","Cannot restrict runtime permissions",{}},false};
  const auto path=QDir(runtime).filePath("session.sock");
  // Probe an existing endpoint. Never unlink a live resident session.
- if(QFileInfo::exists(path)) {QLocalSocket probe;probe.connectToServer(path);if(probe.waitForConnected(200))return {{"session_running","A resident process already owns this session",{}},false};
+ if(QFileInfo::exists(path)) {const auto probe=probeLocalSession(path,200);if(probe==LocalSessionState::Connected)return {{"session_running","A resident process already owns this session",{}},false};
 #ifdef Q_OS_UNIX
   struct stat socketStatus{};const auto encoded=QFile::encodeName(path);if(::lstat(encoded.constData(),&socketStatus)!=0||socketStatus.st_uid!=::getuid()||!S_ISSOCK(socketStatus.st_mode))return {{"session_unavailable","Existing endpoint is not an owned session socket",{}},false};
 #endif
-  if(!QLocalServer::removeServer(path))return {{"session_unavailable","Cannot remove stale session socket",{}},false};
+  if(probe!=LocalSessionState::Absent)return {{"session_unavailable","Cannot establish whether the existing session is stale",{}},false};
+  if(!LocalIpcServer::removeServer(path))return {{"session_unavailable","Cannot remove stale session socket",{}},false};
  }
  if(!server_.listen(path))return {{"session_unavailable","Cannot listen on user session socket",{}},false};
  return {{},true};
@@ -49,18 +49,18 @@ void LocalServer::accept() {
   if(clients_.size()>=64) {socket->disconnectFromServer();socket->deleteLater();continue;}
   clients_.insert(socket);socket->setReadBufferSize(maximumRequest+1);socket->setProperty("bytes",QByteArray{});socket->setProperty("handled",false);
   auto* deadline=new QTimer(socket);deadline->setSingleShot(true);deadline->start(10000);connect(deadline,&QTimer::timeout,socket,[socket] {socket->disconnectFromServer();});
-  connect(socket,&QLocalSocket::disconnected,this,[this,socket] {clients_.remove(socket);socket->deleteLater();});
-  connect(socket,&QLocalSocket::readyRead,this,[this,socket,deadline] {
+  connect(socket,&LocalIpcConnection::disconnected,this,[this,socket] {clients_.remove(socket);socket->deleteLater();});
+  connect(socket,&LocalIpcConnection::readyRead,this,[this,socket,deadline] {
    if(socket->property("handled").toBool())return;
    auto bytes=socket->property("bytes").toByteArray();bytes+=socket->readAll();socket->setProperty("bytes",bytes);
-   auto send=[socket](QString id,Error e,QJsonObject result) {socket->write(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');socket->disconnectFromServer();};
+   auto send=[socket](QString id,Error e,QJsonObject result) {socket->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');};
    if(bytes.size()>maximumRequest) {socket->setProperty("handled",true);send({}, {"request_too_large","Request exceeds 1 MiB",{}},{});return;}
    if(!bytes.contains('\n'))return;
-   socket->setProperty("handled",true);deadline->stop();
+   socket->setProperty("handled",true);socket->stopReading();deadline->stop();
    if(bytes.indexOf('\n')!=bytes.size()-1) {send({},invalid(),{});return;}
    QJsonParseError parseError;auto doc=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!doc.isObject()) {send({}, {"invalid_json","Request must be a JSON object",{}},{});return;}
-   auto request=doc.object();const auto id=request["requestId"].toString();QPointer<QLocalSocket> guarded(socket);
-   dispatch(request,[guarded,id](Error e,QJsonObject result) {if(guarded) {guarded->write(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');guarded->disconnectFromServer();}});
+   auto request=doc.object();const auto id=request["requestId"].toString();QPointer<LocalIpcConnection> guarded(socket);
+   dispatch(request,[guarded,id](Error e,QJsonObject result) {if(guarded) {guarded->sendAndClose(QJsonDocument(response(id,e,result)).toJson(QJsonDocument::Compact)+'\n');}});
   });
  }
 }
