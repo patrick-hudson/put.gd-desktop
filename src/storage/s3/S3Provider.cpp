@@ -175,6 +175,9 @@ struct S3Provider::State {
         if (!credential) return {};
         const auto key = QJsonDocument(destination.settings).toJson(QJsonDocument::Compact) + QByteArray::number(credential->generation);
         if (clients.contains(key)) return clients[key];
+        // Validation and credential lookup above are Qt-only. Initialize before
+        // client configuration touches SDK endpoint, crypto and HTTP globals.
+        SdkRuntime::ensureInitialized();
         Aws::S3::S3ClientConfiguration config(false, "legacy", true);
         config.region = aws(destination.settings["region"].toString());
         config.endpointOverride = aws(destination.settings["endpoint"].toString());

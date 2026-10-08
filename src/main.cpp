@@ -69,7 +69,7 @@ int main(int argc,char* argv[]) {
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
  if(activateResident(view,backgroundOnly))return 0;
- putgd::SdkRuntime sdk;
+ putgd::SdkRuntime sdk(putgd::SdkRuntime::Initialization::Deferred);
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);

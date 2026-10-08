@@ -1,5 +1,7 @@
 #include "SdkRuntime.h"
 #include <aws/core/Aws.h>
+#include <mutex>
+#include <stdexcept>
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
 #include <aws/core/http/HttpClientFactory.h>
 #include <aws/core/http/URI.h>
@@ -65,14 +67,47 @@ public:
 };
 #endif
 }
-struct SdkRuntime::State { Aws::SDKOptions options; };
-SdkRuntime::SdkRuntime() : state_(std::make_unique<State>()) {
-#if defined(PUTGD_SDK_CURL_TRANSPORT)
-    state_->options.httpOptions.httpClientFactory_create_fn = [] {
-        return Aws::MakeShared<NonReplayingHttpFactory>("putgd-http");
+struct SdkRuntime::State {
+    Aws::SDKOptions options;
+    bool initialized = false;
+    struct Registry {
+        std::mutex mutex;
+        State* current = nullptr;
     };
+    static Registry& registry() {
+        static Registry value;
+        return value;
+    }
+    State() {
+#if defined(PUTGD_SDK_CURL_TRANSPORT)
+        options.httpOptions.httpClientFactory_create_fn = [] {
+            return Aws::MakeShared<NonReplayingHttpFactory>("putgd-http");
+        };
 #endif
-    Aws::InitAPI(state_->options);
+    }
+    // The registry mutex serializes this with creation and complete shutdown.
+    void ensureInitialized() {
+        if (!initialized) {
+            Aws::InitAPI(options);
+            initialized = true;
+        }
+    }
+    ~State() {
+        if (initialized) Aws::ShutdownAPI(options);
+    }
+};
+SdkRuntime::SdkRuntime(Initialization initialization) : state_(std::make_unique<State>()) {
+    auto& registry = State::registry();
+    std::lock_guard lock(registry.mutex);
+    if (registry.current) throw std::logic_error("Only one owning SdkRuntime may exist at a time");
+    if (initialization == Initialization::Immediate) state_->ensureInitialized();
+    registry.current = state_.get();
+}
+void SdkRuntime::ensureInitialized() {
+    auto& registry = State::registry();
+    std::lock_guard lock(registry.mutex);
+    if (!registry.current) throw std::logic_error("S3 work requires an owning SdkRuntime");
+    registry.current->ensureInitialized();
 }
 bool SdkRuntime::safeDeleteTransport() {
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
@@ -81,5 +116,12 @@ bool SdkRuntime::safeDeleteTransport() {
     return false;
 #endif
 }
-SdkRuntime::~SdkRuntime() { Aws::ShutdownAPI(state_->options); }
+SdkRuntime::~SdkRuntime() {
+    auto& registry = State::registry();
+    std::lock_guard lock(registry.mutex);
+    // Keep the generation registered until SDK cleanup is complete. A later
+    // owner cannot initialize against a previous generation still shutting down.
+    state_.reset();
+    registry.current = nullptr;
+}
 }
