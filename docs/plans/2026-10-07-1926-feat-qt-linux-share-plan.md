@@ -543,7 +543,7 @@ Requirements: R13–R15, R23–R25. Dependencies: U1, U2, U4.
 
 Files: tools/lab/lab.py, tools/lab/profiles/*.yaml, tools/lab/image-lock.json, tests/fixtures/desktop_fixture.cpp, tests/desktop/common.yaml, tests/desktop/test_lab.py, packaging/linux/CMakeLists.txt, packaging/linux/app.desktop.in, docs/testing.md, docs/vm-lab.md.
 
-Approach: Implement KTD14 with QEMU/QMP, disposable qcow2 overlays, an ephemeral guest SSH channel, and localhost-only interactive display access. Add a minimal CPack .deb target that installs the built app, required runtime components, and launcher entry into each guest. U7/U8 extend this target with their integration assets; U10 completes release packaging and lifecycle validation. Profile readiness checks confirm acceleration, native session type, portal/helper versions, display layout, and input routing. Pin base images/checksums and retain sanitized evidence. Provide bounded lab operations for launch/reset/input/screenshot/collect; these are development tools, separate from production MCP.
+Approach: Implement KTD14 with QEMU/QMP, disposable qcow2 overlays, an ephemeral guest SSH channel, and localhost-only interactive display access. Add a minimal CPack .deb target that installs the built app, required runtime components, and launcher entry into each guest. U7/U8 extend this target with their integration assets; U10 completes release packaging and lifecycle validation. Profile readiness checks confirm acceleration, native session type, portal/helper versions, display layout, and input routing. Pin base images/checksums and retain sanitized evidence. Use the user-provided Ubuntu26.04.1 and Fedora44 ISOs to provision reusable base disks once; each test boots a separate disposable qcow2 overlay. Fedora is an additional smoke-test environment, while the R13 release profiles remain unchanged. Never commit local installer media or credentials.txt. Provide bounded lab operations for launch/reset/input/screenshot/collect; these are development tools, separate from production MCP.
 
 Execution note: Prove one complete Cinnamon fixture run before expanding the lab to GNOME and KDE.
 
@@ -706,9 +706,9 @@ Windows/macOS CI proves compilation of shared components only. Physical Cinnamon
 
 ## Definition of Done
 
-- All R1–R34 requirements are implemented or, for future native platform support under R26, satisfied by the portable boundary and compile checks.
+- All R1–R35 requirements are implemented or, for future native platform support under R26, satisfied by the portable boundary and compile checks.
 - Each U-ID’s scenarios pass at its stated layer, and every R13 profile has complete real-session evidence for the required workflow.
-- AE1–AE14 pass, including public link bytes, duplicate-name policy, persistent history, remote deletion outcomes, provider-neutral contracts, and independent paste behavior.
+- AE1–AE15 pass, including public link bytes, duplicate-name policy, persistent history, remote deletion outcomes, provider-neutral contracts, and independent paste behavior.
 - No graphical profile is called supported because mocks, offscreen widgets, or portal discovery passed.
 - The Success Criteria have recorded physical-machine measurements and no unexplained regression.
 - A clean environment can build, test, install, debug, and package through committed documentation; CLI/MCP effects and errors agree with the GUI.
