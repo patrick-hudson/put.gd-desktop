@@ -18,6 +18,7 @@
 #include <QUuid>
 #include <atomic>
 #include <mutex>
+#include <memory>
 #ifdef PUTGD_NATIVE_X11
 #include "platform/x11/X11SourceAdapter.h"
 #endif
@@ -128,18 +129,35 @@ int main(int argc,char* argv[]) {
   });
  };
  QJsonObject loginStatus;
- putgd::SettingsWindow window(settings,credentials,tester,[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];return diagnostics;});
+ // Retain each view after its first activation so drafts and selections survive hiding.
+ std::unique_ptr<putgd::SettingsWindow> window;
+ std::unique_ptr<putgd::RecentOperations> activity;
+ std::unique_ptr<putgd::HistoryWindow> historyWindow;
+ // This context disconnects source callbacks before the view owners are destroyed.
+ QObject viewLifetime;
+ const auto refreshSettingsDiagnostics=[&]{if(window)window->refreshDiagnostics();};
 #ifdef PUTGD_NATIVE_X11
- if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&window,&putgd::SettingsWindow::refreshDiagnostics);
+ if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&viewLifetime,refreshSettingsDiagnostics);
 #endif
 #ifdef PUTGD_NATIVE_GNOME
- if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&window,&putgd::SettingsWindow::refreshDiagnostics);
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&viewLifetime,refreshSettingsDiagnostics);
 #endif
 #ifdef PUTGD_NATIVE_KDE
- if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&window,&putgd::SettingsWindow::refreshDiagnostics);
+ if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&viewLifetime,refreshSettingsDiagnostics);
 #endif
- putgd::RecentOperations activity(operations);putgd::HistoryWindow historyWindow(history,operations);
- putgd::TrayController tray(operations,window,historyWindow,activity);
+ const auto settingsView=[&]() -> putgd::SettingsWindow& {
+  if(!window)window=std::make_unique<putgd::SettingsWindow>(settings,credentials,tester,[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];return diagnostics;});
+  return *window;
+ };
+ const auto historyView=[&]() -> putgd::HistoryWindow& {
+  if(!historyWindow)historyWindow=std::make_unique<putgd::HistoryWindow>(history,operations);
+  return *historyWindow;
+ };
+ const auto activityView=[&]() -> putgd::RecentOperations& {
+  if(!activity)activity=std::make_unique<putgd::RecentOperations>(operations);
+  return *activity;
+ };
+ putgd::TrayController tray(operations,settingsView,historyView,activityView);
  QObject::connect(&tray,&putgd::TrayController::quitRequested,&app,&QCoreApplication::quit);
  server.setUiActivation([&](const QString& requested){if(requested=="history")tray.showHistory();else if(requested=="activity")tray.showActivity();else tray.showSettings();});
  const auto loginMutex=std::make_shared<std::mutex>();
@@ -150,7 +168,7 @@ int main(int argc,char* argv[]) {
   const auto launcher=QFileInfo(QCoreApplication::applicationFilePath()).dir().filePath("putgd-launcher");
   const auto executable=QFileInfo::exists(launcher)?launcher:QCoreApplication::applicationFilePath();
   const auto enabled=settings.snapshot().launchAtLogin;
-  operations.background([configRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();window.refreshDiagnostics();});
+  operations.background([configRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
  app.setQuitOnLastWindowClosed(!tray.available());
