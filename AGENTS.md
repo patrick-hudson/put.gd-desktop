@@ -26,3 +26,11 @@ Keep review material bounded to the code/specification needed, excluding secrets
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
 owned paths, preserving unrelated pre-existing changes. Do not add recording/editor/OCR
 features: future video support currently means finalized video files in the shared pipeline.
+
+Agent source, workflow and acceptance maps are in `docs/agents.md`. The optional Python
+3.12+ official-SDK stdio helper is under `tools/mcp/`; follow `docs/mcp.md` for locked
+setup and its separate integration suite. It forwards only to the production CLI.
+Inspect actual capabilities/configuration before acting; retain operation IDs and prepare
+exact history IDs/effects before acknowledging deletion. Full U9 acceptance still requires
+real Cinnamon, U6 lab instructions and a fresh-agent walkthrough; headless parity alone
+cannot establish those gates. Package/lab commands remain pending until their units land.

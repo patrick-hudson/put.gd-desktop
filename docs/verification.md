@@ -9,6 +9,7 @@ contract is [issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1
 | U2 shared services | Test-first service failures and returned/stored regressions; all 11 current executables pass Debug (16.47s) and ASan/UBSan with leak checking (37.67s); no-test Release builds; actual resident socket/CLI, asynchronous settings, manifest recovery, bounded acquisition/retry, opaque receipts/deletion, previews and 10,000-record history tested | Literal full-filesystem archive failure awaits the lab; GUI binding and production adapters belong to later units. All shared-service thread checks pass with instrumented dependencies; native adapters require separate acceptance |
 | U3 S3 / secrets | Real pinned SDK and signed offline HTTP fixture; QtKeychain jobs through isolated D-Bus peer; full Debug 17/17 (37.00s), ASan/UBSan with leak detection 17/17 (67.81s), no-test Release build; adapter/secret-store TSan 5/5 (41.01s) | Live synthetic S3/public custom-domain smoke awaits explicit setup GUI; real desktop unlock/paste remain later gates |
 | U4 native foundation | Native XCB/EWMH/RandR capture, unfocused keys, external-focus-preserving selector, bounded asynchronous clipboard transfers and composition; full Debug 19/19 (40.69s). Final changed operations/geometry/native targets pass ASan/UBSan with leak detection 3/3 (11.25s) and TSan with instrumented Qt/X11 3/3 (12.47s). Four reviewed simplifications preserved those checks | Real Cinnamon physical/guest workflow, independent application paste, setup-driven live S3, mixed-display acceptance and release budgets await U5/U6/U10 |
+| U9 headless MCP slice | Locked official Python SDK stdio discovery and strict public argument schemas; 12 tools forwarding argument-vector production CLI calls; actual SDK stdio plus production CLI against a synthetic Unix peer: 3 tests pass | Actual resident/native effects, U6 graphical instructions, and a fresh-agent walkthrough remain required for full U9 acceptance |
 | U5–U10 remaining delivery | Native foundation is ready for settings and lab work; the optional MCP implementation is tracked separately | UI/history, real desktop lab, GNOME/KDE adapters, complete MCP acceptance, packaging and release evidence |
 
 Configuration tests cover fresh setup without an implicit cloud profile, private atomic
@@ -107,3 +108,11 @@ Qt thread instrumentation includes the official XCB plugin. Its normal required
 extension packages and reproduction commands are in thread-sanitizer.md. No new race
 filter was introduced. Production continues to use distribution Qt. No physical host
 capture, live AWS request or guest desktop acceptance has occurred in this slice.
+
+
+U9 headless tests exercise the real official MCP SDK/client transport and built CLI
+with a synthetic session peer. They verify discovery, strict types/extra-key rejection,
+request correlation, configuration conflict and deletion mappings, unavailable/malformed
+session responses and process timeouts. They do not replace native/resident upload or
+remote-deletion evidence. The helper uses a lockfile, stdio only and no shell execution,
+model call, secret-store unlock or app autostart; see [mcp.md](mcp.md).
