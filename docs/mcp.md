@@ -119,7 +119,9 @@ spaces in paths, metadata-only inspection, and expected-revision conflict forwar
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
 
-Full U9 remains gated on real U4 Cinnamon capture/paste evidence, U6's documented lab
-runner and a fresh-agent walkthrough of build/run/debug instructions. Lab/package commands
-are pending until those interfaces land. [agents.md](agents.md) maps source and evidence;
+U6's lab runner and package interfaces are implemented. Use [vm-lab.md](vm-lab.md)
+and [build.md](build.md) for the current commands. Full U9 remains gated on
+current-version real Cinnamon capture/paste evidence and the complete fresh-agent
+build/run/debug walkthrough. Earlier named walkthrough subsets do not establish
+all of those gates. [agents.md](agents.md) maps source and evidence;
 [verification.md](verification.md) records actual tests and outstanding acceptance.

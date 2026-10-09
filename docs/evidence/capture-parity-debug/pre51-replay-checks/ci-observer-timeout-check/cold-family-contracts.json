@@ -1,0 +1,13 @@
+{
+  "command": [
+    "python3",
+    "tests/performance/test_observe_cold_family.py"
+  ],
+  "exitCode": 124,
+  "timeoutSeconds": 45,
+  "failureType": "TimeoutError",
+  "cleanupErrorType": null,
+  "observedOwnedGenerations": 2,
+  "knownOwnedCleanupComplete": true,
+  "scope": "Synthetic Linux process/observer contracts only; no application or physical memory acceptance"
+}

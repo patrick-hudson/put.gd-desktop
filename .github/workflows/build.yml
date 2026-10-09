@@ -53,6 +53,55 @@ jobs:
           print(result.stdout, end='')
           raise SystemExit(result.returncode)
           PY
+      - name: Verify cold-family observer contracts
+        if: always()
+        run: |
+          python3 - <<'PYCODE'
+          import json, os, pathlib, subprocess, sys, time
+          sys.path.insert(0, 'tests/performance')
+          from observe_cold_family import OwnedSubtree, require_pidfd_support
+          root = pathlib.Path('build/dev')
+          root.mkdir(parents=True, exist_ok=True)
+          command = ['python3', 'tests/performance/test_observe_cold_family.py']
+          environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
+                             PUTGD_OBSERVER_TEST_RECEIPTS=str((root / 'cold-family-unit').resolve()))
+          process = owned = None
+          code, failure, cleanup = 1, None, None
+          try:
+              require_pidfd_support()
+              with (root / 'cold-family-contracts.log').open('x') as log:
+                  process = subprocess.Popen(command, env=environment, stdout=log,
+                                             stderr=subprocess.STDOUT, start_new_session=True)
+                  owned = OwnedSubtree(process)
+                  deadline = time.monotonic() + 45
+                  while process.poll() is None:
+                      owned.discover()
+                      if time.monotonic() >= deadline:
+                          raise TimeoutError('observer_contract_deadline')
+                      time.sleep(.1)
+                  code = process.wait()
+          except Exception as error:
+              failure = type(error).__name__
+              code = 124 if isinstance(error, TimeoutError) else 1
+          finally:
+              try:
+                  if owned and (process.poll() is None or owned.live(record=False)):
+                      owned.stop()
+              except Exception as error:
+                  cleanup = type(error).__name__
+                  code = 1
+              (root / 'cold-family-contracts.json').write_text(json.dumps({
+                  'command': command, 'exitCode': code, 'timeoutSeconds': 45,
+                  'failureType': failure, 'cleanupErrorType': cleanup,
+                  'observedOwnedGenerations': len(owned.known) if owned else 0,
+                  'knownOwnedCleanupComplete': owned is not None and not owned.live(record=False),
+                  'scope': 'Synthetic Linux process/observer contracts only; no application or physical memory acceptance'
+              }, indent=2) + '\n')
+          log = root / 'cold-family-contracts.log'
+          if log.is_file():
+              print(log.read_text(), end='')
+          raise SystemExit(code)
+          PYCODE
       - name: Preserve structured test reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -64,6 +113,9 @@ jobs:
             build/dev/Testing/Temporary/LastTestsFailed.log
             build/dev/lab-contracts.log
             build/dev/lab-contracts.json
+            build/dev/cold-family-contracts.log
+            build/dev/cold-family-contracts.json
+            build/dev/cold-family-unit/**/*.json
             build/dev/build-identity/build-info.json
           if-no-files-found: warn
           retention-days: 30

@@ -37,9 +37,11 @@ versus free heap, or a leak. PSS does not replace an RSS acceptance threshold.
 
 1. Freeze the candidate source commit and an archive from tracked files. Record
    both hashes. Exclude local credentials, disks and unrelated working changes.
-2. Build each distro package against its native Qt and the pinned official AWS
-   SDK. Run core, widget and integration contracts. Independent builds/tests run
-   in parallel; each owns a separate build directory and VM.
+2. Build and test Cinnamon first against its native Qt and the pinned official
+   AWS SDK. Run its core, widget, integration, native functional and memory gates.
+   Fix any failed Cinnamon gate before building/testing GNOME or KDE. After it
+   passes, their independent builds/tests may run in parallel, each with its own
+   build directory and disposable VM.
 3. Install into disposable overlays using normal package management. Preserve
    immutable golden disks. Record package, app, CLI, S3 module and desktop helper
    hashes, Qt/dependency versions, runner hash and the actual running PID/start
@@ -49,8 +51,9 @@ versus free heap, or a leak. PSS does not replace an RSS acceptance threshold.
    saved synthetic bytes and independent native paste. Exercise settings,
    history and activity reopen; add GTK clipboard interoperability when present.
    Preserve each attempt, including failures, not only the final passing retry.
-5. Run independent desktop profiles in parallel, with sequential actions inside
-   each VM. Restore locked sessions through the visible console. Before memory
+5. After the Cinnamon functional and memory gates pass, run the independent
+   GNOME/KDE profiles in parallel, with sequential actions inside each VM.
+   Restore locked sessions through the visible console. Before memory
    sampling, let builds and active GUI work finish. Save all blocking profiles;
    do not treat missing Wayland evidence as a Cinnamon memory pass.
 6. Measure distinct cold, post-view and post-action workloads. Keep physical

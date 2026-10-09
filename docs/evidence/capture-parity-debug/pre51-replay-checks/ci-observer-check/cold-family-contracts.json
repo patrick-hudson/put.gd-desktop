@@ -1,0 +1,9 @@
+{
+  "command": [
+    "python3",
+    "tests/performance/test_observe_cold_family.py"
+  ],
+  "exitCode": 1,
+  "timeoutSeconds": 45,
+  "scope": "Synthetic Linux process/observer contracts only; no application or physical memory acceptance"
+}

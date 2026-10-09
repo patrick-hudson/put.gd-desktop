@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "Physical Cinnamon capture diagnosis; retained failed locators, synthetic regressions and dirty candidate timing evidence",
   "createdUtc": "2026-10-09T15:59:44.466446+00:00",
-  "status": "Retained capture diagnosis and synthetic receipts; latest dirty source-release development48/48 and physical30-sample95.944823ms timing pass. Clean current functional/memory/desktop acceptance pending.",
+  "status": "Source50 full development suite passed 48/48; focused ASan/UBSan 6/7 and affected Activity 1/1 test-only correction remain retained. Pre-source51 synthetic evaluator denial, corrected local nine-test authored CI step and forced-timeout cleanup passed; failed attempts are preserved. Source51 identity, hosted CI and clean-current physical acceptance remain pending.",
   "baseCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
   "versionIdentity": "Base source49 plus recorded dirty locator binary versions. These are not clean release acceptance results.",
   "frozenWorkload": {
@@ -4076,6 +4076,150 @@
     "early-selection/build-receipts/quiescent-release-build/result.json": {
       "bytes": 73,
       "sha256": "5df2b0693caf13cf67f9e498b9ecb200a573f8e484362a20a42a0e09dd176fbb"
+    },
+    "clean50-test-checkpoint/release-identity.json": {
+      "bytes": 1190,
+      "sha256": "b8cce94d02c6a4c440d018288c43e4a7414ee475ec5aa7ebf263aeaeebb8477e"
+    },
+    "clean50-test-checkpoint/activity-race-trace/command.json": {
+      "bytes": 301,
+      "sha256": "089136059d0a7bfcc06ad40a713bd284911e30ba622c18069b58d49ef2f4602a"
+    },
+    "clean50-test-checkpoint/activity-race-trace/summary.json": {
+      "bytes": 566,
+      "sha256": "0ca3542bcc9c456ee730bc041b5c99266c2e1392c3e62323ec79a72cab139ac6"
+    },
+    "clean50-test-checkpoint/activity-race-trace/result.json": {
+      "bytes": 73,
+      "sha256": "3a14bdba395b8d89cb36ada2f683e6c0ba46700e4d62fc66051a48519fb87250"
+    },
+    "clean50-test-checkpoint/activity-race-fixed/junit-summary.json": {
+      "bytes": 846,
+      "sha256": "3290249530aa69f979f5dedec52d099379934bddd42313bc072463001e100cf4"
+    },
+    "clean50-test-checkpoint/activity-race-fixed/command.json": {
+      "bytes": 333,
+      "sha256": "9b7562d24a20d9781901ac5e782dae1897d2bdd72c83a02fdf4f26989247cc24"
+    },
+    "clean50-test-checkpoint/activity-race-fixed/result.json": {
+      "bytes": 73,
+      "sha256": "34dcc05bf43741792d0b7369d720372b771cca97d22b30aa8e0a03951bfe348a"
+    },
+    "clean50-test-checkpoint/asan-focused/junit-summary.json": {
+      "bytes": 2350,
+      "sha256": "88a1b7c7e2144c0940c14d833d7cc4b7d4ed047dc80e22325362620f96affc3d"
+    },
+    "clean50-test-checkpoint/asan-focused/command.json": {
+      "bytes": 463,
+      "sha256": "066fbcb5a91af4cd8bebc7d050530a82bfd9014f803b738d776aafa531fc9d05"
+    },
+    "clean50-test-checkpoint/asan-focused/result.json": {
+      "bytes": 73,
+      "sha256": "3b26ddf9cb6564457d7c12a25a16eff08f8cfd9eed411967c4f8bf829ca2e83e"
+    },
+    "clean50-test-checkpoint/full-dev/junit-summary.json": {
+      "bytes": 9464,
+      "sha256": "770fd8261e340c7b7d30e3f73ba0218764180eed0793de65b0e0376ea6398e4a"
+    },
+    "clean50-test-checkpoint/full-dev/command.json": {
+      "bytes": 282,
+      "sha256": "2ae1538e420e4ed710a16d3b5327e082a2d40dcbb5ee47eff004c01f52eef373"
+    },
+    "clean50-test-checkpoint/full-dev/result.json": {
+      "bytes": 73,
+      "sha256": "ae0e077fe51c7eb21333cc13e79765781177f472ea089b448423b770844fceed"
+    },
+    "clean50-test-checkpoint/build-receipts/activity-race-fixed-build/command.json": {
+      "bytes": 250,
+      "sha256": "e29422b012e312f6e47e6ab0c27ea644ec23a0733dedb690195cb8ad03e65096"
+    },
+    "clean50-test-checkpoint/build-receipts/activity-race-fixed-build/result.json": {
+      "bytes": 73,
+      "sha256": "28a60e58feed997331a87f5fbe759c1c8d32df26c263bf5fe3e465db70fb07be"
+    },
+    "clean50-test-checkpoint/build-receipts/asan-config/command.json": {
+      "bytes": 473,
+      "sha256": "c603e6dba9fad7ce30f35f385ba57d83c5c138e7ef98f203d32b13c2d46f7c1d"
+    },
+    "clean50-test-checkpoint/build-receipts/asan-config/result.json": {
+      "bytes": 73,
+      "sha256": "8f1de85098996e11e66a800f95f0eda6c1441b2fabf2e55669ec4d8bf2031eb5"
+    },
+    "clean50-test-checkpoint/build-receipts/release-build/command.json": {
+      "bytes": 205,
+      "sha256": "a2a148bad141910cf6cb7eba4eecc541f19894ffb89570945d9ffb50d6c8dc6a"
+    },
+    "clean50-test-checkpoint/build-receipts/release-build/result.json": {
+      "bytes": 73,
+      "sha256": "d699c4db290ac416b5aa486cf05341d07f6a99f3dc6baf5a61ef9b3d927c63c8"
+    },
+    "clean50-test-checkpoint/build-receipts/asan-build-correct-targets/command.json": {
+      "bytes": 411,
+      "sha256": "321784450d904534607d43902c09c17d6bca2909bcefb9dd69d4ec4269b0fe74"
+    },
+    "clean50-test-checkpoint/build-receipts/asan-build-correct-targets/result.json": {
+      "bytes": 73,
+      "sha256": "661c3599fd5b17d291bbb1faa74341c79780792be1cb8b0dd477d591bebd0cb5"
+    },
+    "clean50-test-checkpoint/build-receipts/dev-build/command.json": {
+      "bytes": 201,
+      "sha256": "3450b7becb6bd6a61c34cb11b7f169015e167455048fe4727d42a82c3ebf1678"
+    },
+    "clean50-test-checkpoint/build-receipts/dev-build/result.json": {
+      "bytes": 73,
+      "sha256": "31efc7cf8b987be2149ae5bd1edd4362c9e58e2d6d6e5f2dc1098a84d4e7aade"
+    },
+    "clean50-test-checkpoint/build-receipts/asan-build/command.json": {
+      "bytes": 407,
+      "sha256": "5e653759199c833425ec77237933a803b16cee7be8270ba1042e525684109fa5"
+    },
+    "clean50-test-checkpoint/build-receipts/asan-build/result.json": {
+      "bytes": 73,
+      "sha256": "eef4a5d19b6c64ab3ebff0e1c5690176b1397dd6e850e608d72526a5fec6f418"
+    },
+    "clean50-test-checkpoint/build-receipts/activity-race-trace-build/command.json": {
+      "bytes": 250,
+      "sha256": "8540f29c75ce47cebbec28743ed1c355b7001e3f547bae5730f0c833106be33c"
+    },
+    "clean50-test-checkpoint/build-receipts/activity-race-trace-build/result.json": {
+      "bytes": 73,
+      "sha256": "d668643a1bc62a32890aac6ad608a55b576d3647bbc69df301ed48272ff0ddf6"
+    },
+    "pre51-replay-checks/ci-observer-check/cold-family-contracts.json": {
+      "bytes": 239,
+      "sha256": "fe8910d931338760a68423da0cb951571733c8d363ce851727a8276912cbe05c"
+    },
+    "pre51-replay-checks/ci-observer-check2/cold-family-contracts.json": {
+      "bytes": 360,
+      "sha256": "00ae44446f983d0921cbb8033074663eca21285320e6cfc79660e8709ac17f37"
+    },
+    "pre51-replay-checks/ci-observer-timeout-check/cold-family-contracts.json": {
+      "bytes": 372,
+      "sha256": "6d856f6844d936e09ca533d27f8311d314b01e57f34f61d83a4527620656bb7b"
+    },
+    "pre51-replay-checks/ci-observer-timeout-check/results.json": {
+      "bytes": 681,
+      "sha256": "2f244277dd4168007fb607b15a4aabb2950088c3eefa8d9ea8932b02c62ab962"
+    },
+    "pre51-replay-checks/ci-observer-timeout-check2/cold-family-contracts.json": {
+      "bytes": 432,
+      "sha256": "6a3efd49c8f64dd0a6b15b4b5a44ebfcad5e33a807a1f10372a45c9c4693274e"
+    },
+    "pre51-replay-checks/ci-observer-timeout-check2/results.json": {
+      "bytes": 816,
+      "sha256": "ea13eb2b39f69bb6ad33ac084b8fa98ed01a3870bd08fea5db264e204b9dd73c"
+    },
+    "pre51-replay-checks/corrected-long-root/results.json": {
+      "bytes": 255,
+      "sha256": "7c90cc6330fe42dacabc0e46dbb7deb111a32fc64e62465db09c88dc9bd3b69f"
+    },
+    "pre51-replay-checks/doc-evaluator-check/results.json": {
+      "bytes": 273,
+      "sha256": "c54af75709c3d77e8f28b3118adc8b1f2d828b1ca4f0ea0bfb8e3ae67c63026e"
+    },
+    "pre51-replay-checks/summary.json": {
+      "bytes": 2978,
+      "sha256": "ef9107aecdb57f9eb70bce1b5f25204be7fde92dfde1529fff1aad1bea635172"
     }
   },
   "exportValidationAttempt": {
@@ -4164,7 +4308,7 @@
     },
     "functionalMemoryDesktopAcceptance": false
   },
-  "updatedUtc": "2026-10-09T19:39:27.127374+00:00",
+  "updatedUtc": "2026-10-09T20:17:12.427857+00:00",
   "cursorCacheInvestigation": {
     "status": "Ongoing protocol integration; no performance, compositor, memory or feature-parity acceptance",
     "inputScreenDiagnostic": {
@@ -5424,5 +5568,142 @@
       "currentDirtyTimingBudgetPassed": true,
       "cleanCurrentAcceptance": false
     }
+  },
+  "clean50TestCheckpoint": {
+    "status": "Source50 full development 48/48 retained. Focused ASan/UBSan 6/7 failed the Activity assertion. The trace passed with active-before-click 0 and did not reproduce it. Affected Activity then passed 1/1 after a test-only wait. Record source51 before clean-current acceptance.",
+    "source50Identity": "clean50-test-checkpoint/release-identity.json",
+    "source50Commit": "653a3f85e0dba92aa35a4358f7a82737f6150a7c",
+    "source50Tree": "8dce45af4c08d878ba4a587bcfb56f6761a4dcb3",
+    "source50Version": "0.1.1-dev.50+g653a3f85e0db",
+    "testReceipts": [
+      {
+        "name": "full-dev",
+        "scope": "Clean source50 full development run:48/48 suites, before subsequent Activity test-only synchronization correction. Not desktop/memory acceptance.",
+        "tests": 48,
+        "failures": 0,
+        "errors": 0,
+        "exitCode": 0,
+        "summary": "clean50-test-checkpoint/full-dev/junit-summary.json",
+        "sourceXmlSha256": "c1c9b7cf57a5577c39efd70a553ba165b79d798a22e8f47c20896425a28eb165",
+        "acceptance": false
+      },
+      {
+        "name": "asan-focused",
+        "scope": "Source50 focused ASan/UBSan run:6/7 suites; Activity expected source.copies2 but observed1. No sanitizer memory report reported by caller; failed assertion retained.",
+        "tests": 7,
+        "failures": 1,
+        "errors": 0,
+        "exitCode": 8,
+        "summary": "clean50-test-checkpoint/asan-focused/junit-summary.json",
+        "sourceXmlSha256": "020d9a55d2d89afa23944b908bf9ad8517e8f05964c46fb245528727404992ad",
+        "acceptance": false
+      },
+      {
+        "name": "activity-race-fixed",
+        "scope": "Affected Activity ASan/UBSan suite passed1/1 after test-only wait for activeOperations0 before resolving current row and clicking Copy result.",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "exitCode": 0,
+        "summary": "clean50-test-checkpoint/activity-race-fixed/junit-summary.json",
+        "sourceXmlSha256": "cae012a1d822833fc4246a5591791cd283bc8317cb9352ac41e4b152fa7bc141",
+        "acceptance": false
+      }
+    ],
+    "buildReceipts": [
+      {
+        "name": "dev-build",
+        "exitCode": 0,
+        "result": "clean50-test-checkpoint/build-receipts/dev-build/result.json",
+        "scope": "Standard CMake preset command/result receipt",
+        "acceptance": false
+      },
+      {
+        "name": "release-build",
+        "exitCode": 0,
+        "result": "clean50-test-checkpoint/build-receipts/release-build/result.json",
+        "scope": "Standard CMake preset command/result receipt",
+        "acceptance": false
+      },
+      {
+        "name": "asan-config",
+        "exitCode": 0,
+        "result": "clean50-test-checkpoint/build-receipts/asan-config/result.json",
+        "scope": "Standard CMake preset command/result receipt",
+        "acceptance": false
+      },
+      {
+        "name": "asan-build",
+        "exitCode": 1,
+        "result": "clean50-test-checkpoint/build-receipts/asan-build/result.json",
+        "scope": "Failed wrong target spelling retained; corrected standard CMake target build follows.",
+        "acceptance": false
+      },
+      {
+        "name": "asan-build-correct-targets",
+        "exitCode": 0,
+        "result": "clean50-test-checkpoint/build-receipts/asan-build-correct-targets/result.json",
+        "scope": "Standard CMake preset command/result receipt",
+        "acceptance": false
+      },
+      {
+        "name": "activity-race-trace-build",
+        "exitCode": 0,
+        "result": "clean50-test-checkpoint/build-receipts/activity-race-trace-build/result.json",
+        "scope": "Standard CMake preset command/result receipt",
+        "acceptance": false
+      },
+      {
+        "name": "activity-race-fixed-build",
+        "exitCode": 0,
+        "result": "clean50-test-checkpoint/build-receipts/activity-race-fixed-build/result.json",
+        "scope": "Standard CMake preset command/result receipt",
+        "acceptance": false
+      }
+    ],
+    "nonReproducingTrace": "clean50-test-checkpoint/activity-race-trace/summary.json",
+    "activityTestCorrection": {
+      "originalFailure": "source.copies was1; test expected2. Failed ASan/UBSan suite had no sanitizer memory report according to caller.",
+      "completionBoundary": "A source copy callback alone can precede durable journal completion; source.copies1 is insufficient to prove the operation is terminal.",
+      "diagnosticLimit": "The supplemental trace observed active-before-click0 and passed. It is not a reproducer and does not prove the original attempt encountered a busy operation.",
+      "fix": "Only the test adds a wait for activeOperations0 before resolving the current row and requesting Copy result. No production changes.",
+      "correctedTestPath": "tests/gui/test_operations_view.cpp",
+      "correctedTestSourceSha256": "0560e8318517a5d043d6b68c9c53d109b0589f92ccc76f85b60462f70b98a71b",
+      "runtimeProductionChanged": false
+    },
+    "nextCheckpoint": {
+      "intendedCommitCount": 51,
+      "state": "Test/documentation edits pending versioned reproducibility checkpoint; no source51 commit/identity supplied in this archive.",
+      "cleanCurrentAcceptance": false
+    },
+    "acceptance": false,
+    "privacy": "Explicit command/result JSON, clean release identity and parsed synthetic JUnit summaries only. No raw trace/logs, config, databases, payloads or credentials.",
+    "archiveValidation": {
+      "mode": "Read-only JSON/XML parser and hash checks; no software execution",
+      "priorArtifactEntriesPreserved": 477,
+      "hashesChecked": 504,
+      "acceptance": false
+    }
+  },
+  "pre51ReplayChecks": {
+    "archive": "pre51-replay-checks",
+    "summary": "pre51-replay-checks/summary.json",
+    "sourceHashes": {
+      "tests/performance/observe_cold_family.py": "51eadcfbe3b0e755275df2d1f3b4bac4302ce9be159791c2b76567b29023362e",
+      "tests/performance/test_observe_cold_family.py": "1ab768df4e3ec210f5a543234a8c7f710a9591382278f2806d3fe0766f2f12f4"
+    },
+    "source51Identity": null,
+    "expectedOptimizedPythonDenialPassed": true,
+    "initialNormalCiExitCode": 1,
+    "correctedLocalNormalCiTests": 9,
+    "correctedLocalNormalCiExitCode": 0,
+    "initialTimeoutDiagnosticPassed": false,
+    "initialTimeoutCleanupComplete": true,
+    "correctedTimeoutDiagnosticPassed": true,
+    "correctedTimeoutCleanupComplete": true,
+    "staticReviewP2Fixes": "clean, parent-reported final static review",
+    "hostedCiAcceptance": false,
+    "physicalAcceptance": false,
+    "acceptance": false
   }
 }

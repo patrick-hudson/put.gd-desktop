@@ -18,6 +18,7 @@ clipboard/source payloads, credentials, or cloud requests.
 cmake --preset release
 cmake --build --preset release
 ctest --preset release
+python3 tools/diagnostics/check_socket_paths.py --ui-output /tmp/putgd-idle-replay-unique
 python3 tests/performance/observe_idle.py \
   --app build/release/putgd --cli build/release/putgd-cli \
   --output /tmp/putgd-idle-replay-unique --seconds 300
@@ -51,6 +52,7 @@ compare using the same observer when evaluating candidates.
 Use a successful full idle run as the fixture after that run has stopped:
 
 ```sh
+python3 tools/diagnostics/check_socket_paths.py --ui-output /tmp/putgd-views-replay-unique
 python3 tests/performance/bench_views.py \
   --app build/release/putgd --cli build/release/putgd-cli \
   --fixture /tmp/putgd-idle-replay-unique \
@@ -313,12 +315,12 @@ RSS/latency and regression checks.
 
 ## Current-build desktop matrix
 
-Before evaluating a memory candidate, complete the current-source functional wave
-on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Run distro builds, core/widget
-contracts and independent guest scenarios in parallel; serialize actions within
-each guest. Wait for compilation and active GUI testing to drain before collecting
-quiet samples. Physical Cinnamon retains its serial, unchanged workload. VM data
-must be labelled VM data and cannot certify the physical budget.
+Start with one current-source Cinnamon build and its functional and memory gates.
+Fix a failed Cinnamon gate before building or testing GNOME/KDE. After Cinnamon
+passes, independent GNOME/Wayland and KDE/Wayland builds and scenarios may run
+in parallel, with sequential actions inside each guest. Drain compilation and
+active GUI work before quiet measurements. Physical Cinnamon measurements stay
+serial. VM data cannot certify the physical budget.
 
 Pin a source revision/archive and save each distro package hash, installed app,
 CLI, S3 module/helper hashes and the actual running app PID/start/executable hash.
@@ -347,3 +349,148 @@ therefore persists on current code, with 148.77 MiB shared resident pages and
 comparison. The 40 MiB target remains open. Exact samples, workload differences,
 failure/retry receipts and stopped obsolete VM identities are retained with the
 report and [replay instructions](testing-vm-memory-audit.md).
+
+
+## Current listener: cold and closed family gates
+
+These are the current <=40 MiB acceptance workloads. The earlier resident-only
+100 MiB examples and historical startup-latency rejection thresholds remain
+separate. First finish the current clean build's visible Cinnamon functional
+acceptance, including real capture/clipboard/cancellation, tray, native fonts and
+folder dialogs, and capture-helper exit. Save a private `functional.json` with
+`passed: true`, the full `sourceCommit`, and a `receipts` array containing exact
+reviewed paths and SHA256 values. Set `passed` only after inspecting those actual
+native results. An offscreen pass or an unreviewed screenshot is insufficient.
+
+Before reserving the desktop, run the observer's independent stdlib contracts:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 tests/performance/test_observe_cold_family.py
+```
+
+They exercise synthetic process ownership, execution/reparenting, cleanup,
+coverage and version/socket rejection without launching the application or
+querying a display. The command prints its private structured receipt directory;
+set `PUTGD_OBSERVER_TEST_RECEIPTS` to a fresh directory to choose that location.
+The Linux GitHub Actions job runs these same contracts and retains their JSON
+and command/result logs for 30 days. Hosted CI does not establish physical
+memory or compositor acceptance.
+
+Reserve the actual physical Cinnamon X11 session. Drain compilers and graphical
+tests. Run each command sequentially; do not run the two repeats in parallel.
+Use new short directories. Configuration, journals and runtime logs stay private;
+export only the documented sanitized results and metadata, never payloads or keys.
+Keep the same observer for reference/candidate comparisons.
+
+In the clean candidate checkout, after building the normal Release preset:
+
+```bash
+set -e
+revision="$(git rev-parse HEAD)"
+test -z "$(git status --porcelain)"
+archive=/tmp/pg-memory-source-unique.tar
+acceptance=/absolute/path/to/current-cinnamon/functional.json
+test ! -e "$archive"
+git archive --format=tar --output="$archive" "$revision"
+sha256sum "$archive" tests/performance/bench_idle.py \
+  tests/performance/observe_idle.py tests/performance/bench_ui_process.py \
+  tests/performance/observe_cold_family.py
+
+for repeat in 1 2; do
+  cold="/tmp/pg-mem-cold-$repeat-unique"
+  family="/tmp/pg-mem-family-$repeat-unique"
+  views="/tmp/pg-mem-views-$repeat-unique"
+  python3 tests/performance/observe_cold_family.py \
+    --app build/release/putgd --cli build/release/putgd-cli \
+    --helper build/release/putgd-ui --source-revision "$revision" \
+    --output "$cold" --receipt "$family" --seconds 300
+  python3 tools/diagnostics/check_socket_paths.py --ui-output "$views"
+  python3 tests/performance/bench_ui_process.py --mode split \
+    --app build/release/putgd --cli build/release/putgd-cli \
+    --helper build/release/putgd-ui --source-revision "$revision" \
+    --source-archive "$archive" --acceptance-receipt "$acceptance" \
+    --fixture "$cold" --output "$views" \
+    --views settings history activity --cycles 3 --warmup-seconds 5 \
+    --visible-seconds 2 --quiet-seconds 30 --interval 5
+  # Stop here and diagnose on any nonzero exit; preserve every attempt.
+done
+```
+
+Use `set -e` in a saved replay script so a failed command prevents the next
+workload. The output suffix `unique` is a placeholder: choose a fresh suffix for
+every complete attempt, not an existing directory. Record the exact commands.
+`observe_cold_family.py` preflights its resolved runtime socket before launching
+any app and delegates the unchanged five-second warmup/300-second primary
+workload. It requires matched clean binary versions, unchanged hashes, zero
+operations, uninterrupted primary evidence and sufficiently continuous family
+observation. The target uses the larger of primary sampled RSS and whole-family
+sampled RSS, at most 40 * 1024**2 bytes, plus primary idle CPU below 0.5% of one
+core. Its separate `legacyBudgetPassed` field does not establish the target.
+
+The view harness validates the same source identity, isolated cold fixture,
+CLI socket owner and all observed descendants. It requires normal last-window
+closure and an absent UI helper before closed samples; external process killing
+never counts as successful closure. It also retains escaped observed descendants
+until exit. All three cycles must finish. Evaluate the last settled sample of
+**each** closed cycle, not only the final summary, at <=40 MiB whole-family RSS.
+Any observed extra/escaped process in those settled samples invalidates the gate.
+RSS, PSS and private bytes remain distinct; open views naturally have a larger
+family than closed idle.
+
+The following evaluator checks both repeats and the native receipt. Run it from
+the same checkout after replacing the example receipt path and fresh suffixes:
+
+```bash
+python3 - "$revision" "$acceptance" <<'PYCODE'
+import hashlib, json, sys
+from pathlib import Path
+revision, receipt = sys.argv[1:]
+def require(condition, label):
+    if not condition:
+        raise SystemExit(f'Acceptance failed: {label}')
+def read(path):
+    return json.loads(Path(path).read_text())
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+a = read(receipt)
+require(a['passed'] and a['sourceCommit'] == revision and a['receipts'],
+        'current native Cinnamon receipt')
+for r in a['receipts']:
+    path = Path(r['path'])
+    if not path.is_absolute():
+        path = Path(receipt).parent / path
+    require(sha(path) == r['sha256'], 'native receipt hash')
+for repeat in (1, 2):
+    cold = Path(f'/tmp/pg-mem-cold-{repeat}-unique')
+    f = read(f'/tmp/pg-mem-family-{repeat}-unique/results.json')
+    v = read(f'/tmp/pg-mem-views-{repeat}-unique/results.json')
+    require(f['passed'] and f['cold40MiBTargetEstablished'], 'cold family target')
+    require(f['sourceRevision'] == revision, 'cold source revision')
+    require(f['primaryEvidence']['resultsSha256'] == sha(cold / 'results.json'),
+            'cold primary receipt hash')
+    require(v['passed'] and v['sourceRevision'] == revision, 'view source and pass')
+    require(all(f['binaries'][name]['sha256'] == v['binaries'][name]['sha256']
+                for name in ('app', 'cli', 'helper')), 'matching cold/view binaries')
+    require(v['completeViewCycles'] == 3 and v['operationCount'] == 0,
+            'complete view cycles without operations')
+    require(v['allViews'] == ['settings', 'history', 'activity'], 'all requested views')
+    require(any(r['sha256'] == sha(receipt) for r in v['acceptanceReceipts']),
+            'view native acceptance receipt')
+    for cycle in (1, 2, 3):
+        rows = [r for r in v['samples']
+                if r['label'].startswith(f'cycle-{cycle}-closed-')]
+        require(rows and rows[-1]['totals']['rssBytes'] <= 40 * 1024**2,
+                f'repeat {repeat} cycle {cycle} settled RSS')
+        require(rows[-1]['processCount'] == 1, 'one settled resident')
+        require(rows[-1]['uiProcessCount'] == rows[-1]['escapedProcessCount'] == 0,
+                'no settled helper or escaped process')
+print('Both cold and all settled closed-family gates passed.')
+PYCODE
+```
+
+This remains sampled evidence: processes born and exited between polls may be
+missed, sequential `/proc` snapshots are not atomic, and external desktop
+services are outside the app descendant family. It does not prove a permanent
+plateau, post-upload behavior, native tray rendering or mixed-DPI capture. Keep
+those acceptance gates and their receipts separately. Only after these Cinnamon
+functional/memory gates pass may current-source GNOME/KDE testing expand.

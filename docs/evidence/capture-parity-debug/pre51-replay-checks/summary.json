@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "scope": "Synthetic documentation evaluator and locally replayed authored CI observer checks; no application, display, VM, physical memory run or hosted CI execution.",
+  "sourceHashes": {
+    "tests/performance/observe_cold_family.py": "51eadcfbe3b0e755275df2d1f3b4bac4302ce9be159791c2b76567b29023362e",
+    "tests/performance/test_observe_cold_family.py": "1ab768df4e3ec210f5a543234a8c7f710a9591382278f2806d3fe0766f2f12f4"
+  },
+  "source51Identity": null,
+  "source51Checkpoint": "pending commit; hashes identify current source bytes only",
+  "documentationEvaluator": {
+    "optimizedPython": "-OO",
+    "expectedRejectionExitCode": 1,
+    "failedNativeReceiptRejected": true,
+    "bashSyntaxBlocks": 2,
+    "pythonSyntaxPassed": true
+  },
+  "normalCiChronology": [
+    {
+      "receipt": "ci-observer-check/cold-family-contracts.json",
+      "exitCode": 1,
+      "suiteTests": 9,
+      "outcome": "Initial nine-test suite failed at its socket-path prerequisite; retained failed attempt."
+    },
+    {
+      "receipt": "ci-observer-check2/cold-family-contracts.json",
+      "exitCode": 0,
+      "suiteTests": 9,
+      "observedOwnedGenerations": 9,
+      "knownOwnedCleanupComplete": true,
+      "outcome": "Corrected exact authored CI step passed locally; hosted CI execution remains pending."
+    }
+  ],
+  "forcedTimeoutChronology": [
+    {
+      "receipt": "ci-observer-timeout-check/results.json",
+      "exitCode": 124,
+      "diagnosticPassed": false,
+      "observedOwnedGenerations": 2,
+      "knownOwnedCleanupComplete": true,
+      "reason": "The diagnostic incorrectly expected at least three known generations; timeout and cleanup already succeeded. This was not a cleanup failure."
+    },
+    {
+      "receipt": "ci-observer-timeout-check2/results.json",
+      "exitCode": 124,
+      "diagnosticPassed": true,
+      "observedOwnedGenerations": 3,
+      "knownOwnedCleanupComplete": true,
+      "selectedTest": "ColdFamilyTests.test_real_fork_exec_reparent_cleanup",
+      "outcome": "Forced selected real fork/exec/reparent test timed out and cleaned its three known owned generations."
+    }
+  ],
+  "longReceiptRoot": {
+    "receipt": "corrected-long-root/results.json",
+    "exitCode": 0,
+    "receiptRootUtf8Bytes": 147,
+    "interpretation": "This is an artifact directory length, not a resolved Unix socket length. The runtime socket uses a separate short directory; Linux 107-byte socket limit and ownership checks remain in force."
+  },
+  "staticReview": {
+    "provenance": "Parent agent reported final local static review of P2 fixes clean; this export does not establish a separate review execution.",
+    "status": "clean after fixes"
+  },
+  "excluded": [
+    "failed-native synthetic fixture",
+    "nested unit runtime/process receipt trees",
+    "raw logs",
+    "configuration",
+    "environment",
+    "payloads",
+    "credentials"
+  ],
+  "acceptance": false,
+  "hostedCiAcceptance": false,
+  "physicalAcceptance": false
+}

@@ -39,9 +39,11 @@ Agent source, workflow and acceptance maps are in `docs/agents.md`. The optional
 3.12+ official-SDK stdio helper is under `tools/mcp/`; follow `docs/mcp.md` for locked
 setup and its separate integration suite. It forwards only to the production CLI.
 Inspect actual capabilities/configuration before acting; retain operation IDs and prepare
-exact history IDs/effects before acknowledging deletion. Full U9 acceptance still requires
-real Cinnamon, U6 lab instructions and a fresh-agent walkthrough; headless parity alone
-cannot establish those gates. Package/lab commands remain pending until their units land.
+exact history IDs/effects before acknowledging deletion. U6 lab and package interfaces
+are implemented; use `docs/vm-lab.md` and `docs/build.md` for their actual commands.
+Full U9 acceptance still requires current-version real Cinnamon evidence and the
+complete fresh-agent walkthrough gates recorded in `docs/verification.md`;
+headless parity or an earlier partial walkthrough alone cannot establish those gates.
 
 Keep graphical lab interactions visible through each VM’s localhost VNC listener.
 The user watches the live display wall at http://127.0.0.1:8765/; do not disable or
@@ -68,3 +70,15 @@ or review material; never use `credentials.txt` as a desktop login source.
 Verify the unlocked desktop visibly before acceptance, and ask the user only
 if the protected login input is actually unavailable or rejected.
 
+Windows VM bases under `work/windows/bases/` are sealed: never boot, modify,
+move, overwrite, or delete them while test overlays reference them. Run every
+Windows test in an independent copy under `work/windows/runs/`, created with
+`tools/lab/windows.py clone`; preserve the base disk, UEFI variables, TPM state,
+identity and manifest together. Provision a new base directory for updates.
+See `docs/windows-vm-lab.md` for lifecycle commands and verification evidence.
+
+Apply the same immutable-base rule to provisioned Linux golden disks under
+`work/lab-images/`: never boot or modify them directly, and never move, overwrite
+or delete a disk referenced by overlays. Linux tests use fresh disks under
+`work/lab-runs/` through `tools/lab/lab.py`; provision a new golden disk for updates.
+See `docs/vm-lab.md`.

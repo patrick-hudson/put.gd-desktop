@@ -11,6 +11,49 @@ Host protocol tests and offscreen fixture checks do not prove desktop acceptance
 
 Linux source-build guests also require the standard cursor development package: `libxcursor-dev` on Ubuntu/Mint or `libXcursor-devel` on Fedora. Install it in disposable development guests using their normal package manager. The desktop profile files describe runtime sessions; they do not contain development package lists. Provision a new golden disk for persistent package updates, preserving sealed bases and active overlays.
 
+## Base protection and inventory
+
+Provisioned Linux golden disks under `work/lab-images/` are immutable inputs.
+Never boot or modify them directly, or move, overwrite or delete a disk referenced
+by overlays. Tests use independent disks under `work/lab-runs/` created through
+`tools/lab/lab.py`; provision a new golden path for updates. Preserve each run's
+recorded backing path and base identity.
+
+Before provisioning or resuming, inventory existing run/base metadata and the
+actual host-visible QEMU processes and reserved VNC/SSH ports. A sandbox's missing
+PID does not prove that the host VM stopped. Verify the exact process identity
+and owned overlay before stopping a VM; preserve its diagnostics. `reset` retains
+the overlay. `launch` requires a new run directory and creates a new overlay;
+it does not resume an existing run. An existing-overlay resume must separately
+validate its recorded backing chain, host process/port absence and new QEMU identity,
+then update the live run metadata without overwriting the prior receipt.
+
+The current Linux runner records the golden SHA256 but does not enforce
+Windows-style sealing or verify a sealed manifest before launch. Existing golden
+files may still be writable. These workflow restrictions remain mandatory.
+
+## Protected login inputs
+
+Agents restore existing locked sessions. First inspect the run's profile and
+bootstrap metadata, then locate the protected local input for that installation.
+The three existing lab installations use these local files:
+
+| Native profile | Existing protected input |
+| --- | --- |
+| Cinnamon/X11 | `work/lab-bootstrap/install/password` |
+| Ubuntu GNOME/Wayland | `work/lab-bootstrap/ubuntu-install/password` |
+| Kubuntu KDE/Wayland | `work/lab-bootstrap/kubuntu-install/password` |
+
+These paths identify local inputs; they contain no login value in this document.
+Verify with `lstat` that the selected file is regular, not a symlink, owned by the
+current user and mode `0600`. Read its value only in memory after verifying the
+visible console's focused, masked password field. Send keystrokes through that
+VM's QMP/VNC console, keeping its VNC listener and display wall active. Never print,
+hash, screenshot or put the value in arguments, configuration, logs or review
+material. Never use `credentials.txt` for desktop login. Visually verify the
+unlocked native desktop before accepting a graphical result. Ask the user only
+if the protected input is unavailable or the console rejects it.
+
 ## First Cinnamon golden disk
 
 The OS is installed once. Subsequent tests boot independent copy-on-write overlays,
@@ -26,39 +69,57 @@ is performed by the user. The authenticated ISO is
 `work/lab-bootstrap/linuxmint-22.3-cinnamon-64bit.iso`; its signed SHA256 is in
 `tools/lab/image-lock.json`. Recheck with `sha256sum` before booting.
 
-For the first installation (root owns executing this in the current work session):
+The original Cinnamon base is already provisioned. The following is a template
+for a **new, not-yet-provisioned** disk after inventory, not a command to boot or
+replace that existing base. Choose a new disk and private control directory,
+verify that neither path exists, and check the resolved socket length before
+creating either. Confirm the chosen SSH/VNC ports are free on the actual host.
+Run the host shell examples from the repository root; `set -eu` makes failed
+preconditions stop the recipe.
 
 ```sh
-mkdir -p work/lab-images work/lab-bootstrap/install
-chmod 700 work/lab-bootstrap/install
-qemu-img create -f qcow2 work/lab-images/cinnamon-x11.qcow2 32G
+set -eu
+provision_id=$(python3 -c 'import uuid; print(uuid.uuid4().hex[:12])')
+provision_disk="$PWD/work/lab-images/cinnamon-$provision_id.qcow2"
+provision_control="$PWD/work/lab-bootstrap/p-$provision_id"
+test ! -e "$provision_disk"
+test ! -e "$provision_control"
+python3 tools/diagnostics/check_socket_paths.py --socket "$provision_control/qmp.sock"
+mkdir -p work/lab-images
+mkdir -m 700 "$provision_control"
+qemu-img create -f qcow2 "$provision_disk" 32G
 qemu-system-x86_64 -enable-kvm -machine q35 -cpu host -smp 2 -m 6144 \
   -device virtio-vga -device usb-ehci -device usb-tablet \
-  -drive file=work/lab-images/cinnamon-x11.qcow2,format=qcow2,if=virtio \
+  -drive "file=$provision_disk,format=qcow2,if=virtio" \
   -cdrom work/lab-bootstrap/linuxmint-22.3-cinnamon-64bit.iso -boot order=d \
-  -qmp unix:work/lab-bootstrap/install/qmp.sock,server=on,wait=off \
+  -qmp "unix:$provision_control/qmp.sock,server=on,wait=off" \
   -netdev user,id=net0,hostfwd=tcp:127.0.0.1:22220-:22 \
   -device virtio-net-pci,netdev=net0 -vnc 127.0.0.1:20 -display none \
-  -daemonize -pidfile work/lab-bootstrap/install/qemu.pid
+  -daemonize -pidfile "$provision_control/qemu.pid"
 ```
 
 Connect a VNC viewer to `127.0.0.1:5920`. Install Mint normally onto the disposable
 32 GiB disk, create user `lab`, and enable automatic login to Cinnamon. Use a
 throwaway guest password entered in the installer, never in a command or repository.
-Before booting the installed disk, generate the lab key on the host and prepare a
-small FAT provisioning disk using normal `dosfstools`/`mtools` utilities:
+While this new disk is still being provisioned, prepare its SSH identity and a
+small FAT seed using normal `dosfstools`/`mtools` utilities. Reuse an existing
+verified bootstrap identity when appropriate; never overwrite one used by existing
+runs. The commands below create fresh inputs only in the new control directory:
 
 ```sh
-ssh-keygen -q -t ed25519 -N '' -f work/lab-bootstrap/identity
-truncate -s 16M work/lab-bootstrap/seed.img
-mkfs.vfat -n PUTGDLAB work/lab-bootstrap/seed.img
-mcopy -i work/lab-bootstrap/seed.img tools/lab/bootstrap-guest.sh ::bootstrap.sh
-mcopy -i work/lab-bootstrap/seed.img work/lab-bootstrap/identity.pub ::identity.pub
+set -eu
+ssh-keygen -q -t ed25519 -N '' -f "$provision_control/identity"
+truncate -s 16M "$provision_control/seed.img"
+mkfs.vfat -n PUTGDLAB "$provision_control/seed.img"
+mcopy -i "$provision_control/seed.img" tools/lab/bootstrap-guest.sh ::bootstrap.sh
+mcopy -i "$provision_control/seed.img" "$provision_control/identity.pub" ::identity.pub
 ```
 
-Reboot with the ISO detached (`-boot order=c`, remove `-cdrom`) and add
-`-drive file=work/lab-bootstrap/seed.img,format=raw,if=virtio` to the one-time QEMU
-command. This disk contains the public key and script only. In the guest terminal:
+Shut down this new provisioning guest before restarting it. With the ISO
+detached (`-boot order=c`, remove `-cdrom`), add
+`-drive "file=$provision_control/seed.img,format=raw,if=virtio"` to the one-time
+QEMU command for this same unprovisioned disk. The seed contains the public key and
+script only. In the guest terminal:
 
 ```sh
 sudo mount /dev/disk/by-label/PUTGDLAB /mnt
@@ -81,8 +142,26 @@ golden-image provisioning; bootstrap does not silently trust new hosts.
 
 ## Package and run
 
-Configure the app with `cmake --preset dev -DPUTGD_LAB_FIXTURE=ON`, build with
-`cmake --build --preset dev`, then `cpack --config build/dev/CPackConfig.cmake -G DEB -B build/packages`.
+Configure the app with `cmake --preset dev -DPUTGD_LAB_FIXTURE=ON` and build with
+`cmake --build --preset dev`. Package into a new output directory so earlier
+versions cannot be mistaken for the current build:
+
+```sh
+set -eu
+package_output=$(mktemp -d "$PWD/build/packages-lab-XXXXXXXX")
+cpack --config build/dev/CPackConfig.cmake -G DEB -B "$package_output"
+set -- "$package_output"/*.deb
+test "$#" -eq 1
+test -f "$1"
+lab_deb=$1
+sha256sum "$lab_deb"
+```
+
+Record this produced package path/hash and its build manifest; use `"$lab_deb"`
+for installation. Preserve CPack's result and do not select a package after a
+failed command. Build identity and installed/running binary hashes must match the
+candidate under test, regardless of the filename or version label.
+
 The fixture is a separate development executable, never an implementation adapter.
 The package contains the application, CLI, desktop entry, opt-in autostart template,
 private official AWS runtime, dependency lock and licenses. Qt, its platform plugins,
@@ -94,23 +173,30 @@ checksums and final notice auditing.
 
 The guest bootstrap grants the narrowly scoped `/usr/bin/apt-get` rule used by `install`; it never changes host privileges. Package dependency resolution uses distro repositories.
 
-After the clean golden image shutdown:
+After inventory and clean golden image shutdown, choose a new run path and
+verify that it does not exist. The example consumes the existing verified base;
+it never boots that base directly. Verify the profile's reserved SSH/VNC ports
+are free on the actual host before launching:
 
 ```sh
+set -eu
+lab_run_id=$(python3 -c 'import uuid; print(uuid.uuid4().hex[:12])')
+lab_run="$PWD/work/lab-runs/cinnamon-$lab_run_id"
+test ! -e "$lab_run"
+python3 tools/diagnostics/check_socket_paths.py --socket "$lab_run/qmp.sock"
 python3 tools/lab/lab.py profiles
 python3 tools/lab/lab.py launch --profile cinnamon-x11 \
-  --golden work/lab-images/cinnamon-x11.qcow2 --run work/lab-runs/cinnamon-001 \
+  --golden work/lab-images/cinnamon-x11.qcow2 --run "$lab_run" \
   --bootstrap-key work/lab-bootstrap/identity \
   --known-hosts work/lab-bootstrap/known_hosts
-python3 tools/lab/lab.py install --run work/lab-runs/cinnamon-001 \
-  --deb build/packages/putgd_0.1.0_amd64.deb
-python3 tools/lab/lab.py run --run work/lab-runs/cinnamon-001 --scenario region
+python3 tools/lab/lab.py install --run "$lab_run" --deb "$lab_deb"
+python3 tools/lab/lab.py run --run "$lab_run" --scenario region --keep
 ```
 
 `run` stops the VM on pass, mismatch, timeout or crash and preserves the private run
 directory. Use `--keep` for interactive investigation. `reset` stops an owned VM and
 retains its writable disk and diagnostics; a fresh run directory creates an independent
-overlay. Repeat the recipe as `cinnamon-002` to prove two independent runs. Do not reuse
+overlay. Repeat with another new run path to prove two independent runs. Do not reuse
 a running golden disk. The guest app uses isolated `~/putgd-lab/config` and `data`
 settings/history directories. Evidence does not need a source checkout in the guest.
 
@@ -188,8 +274,10 @@ Use the ISO identities and authenticated checksum sources in `image-lock.json`.
 Ubuntu's normal installer supports a NoCloud autoinstall seed; a manually completed
 normal installer is also valid. Fedora Workstation's Live ISO requires its normal
 graphical Anaconda install; do not assume a Kickstart seed is supported. Kubuntu
-uses its normal graphical installer. Install each once into its own 32 GiB qcow2
-base and create the `lab` user. Enable automatic login in that disposable guest
+uses its normal graphical installer. Inventory existing bases/runs first, then
+install each new baseline into a fresh, absent 32 GiB qcow2 path and create the
+`lab` user. Existing provisioned paths are never installer targets. Enable
+automatic login in that disposable guest
 so a fresh boot reaches the native desktop.
 
 `bootstrap-guest.sh` supports apt-based guests and Fedora's dnf. Run it inside

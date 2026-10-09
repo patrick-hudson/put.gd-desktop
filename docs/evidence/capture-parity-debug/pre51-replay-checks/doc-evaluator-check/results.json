@@ -1,0 +1,8 @@
+{
+  "bashSyntaxBlocks": 2,
+  "pythonSyntaxPassed": true,
+  "optimizedPythonFailedReceiptRejected": true,
+  "exitCode": 1,
+  "stderr": "Acceptance failed: current native Cinnamon receipt\n",
+  "scope": "synthetic failed native receipt; no application/display/VM launched"
+}

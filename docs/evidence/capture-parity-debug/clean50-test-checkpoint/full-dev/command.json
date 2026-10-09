@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/clean50/full-dev.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:41:43.691208+00:00"
+}

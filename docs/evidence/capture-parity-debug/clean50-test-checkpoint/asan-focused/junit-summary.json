@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "020d9a55d2d89afa23944b908bf9ad8517e8f05964c46fb245528727404992ad",
+  "sourceBytes": 8872,
+  "scope": "Source50 focused ASan/UBSan run:6/7 suites; Activity expected source.copies2 but observed1. No sanitizer memory report reported by caller; failed assertion retained.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "7",
+    "failures": "1",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "90",
+    "timestamp": "2026-10-09T14:46:17"
+  },
+  "testcases": [
+    {
+      "name": "capture_control_integration",
+      "classname": "capture_control_integration",
+      "time": "0.061416",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_process_integration",
+      "classname": "capture_process_integration",
+      "time": "9.79267",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "x11_isolated",
+      "classname": "x11_isolated",
+      "time": "17.0024",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "operations_contract",
+      "classname": "operations_contract",
+      "time": "39.2609",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_operations_view",
+      "classname": "gui_operations_view",
+      "time": "16.8828",
+      "status": "fail",
+      "failures": [
+        {
+          "message": "Failed",
+          "text": ""
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "native_region_overlay",
+      "classname": "native_region_overlay",
+      "time": "0.67337",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "6.9922",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, raw logs, configuration, history databases, payloads and credentials",
+  "observedAssertionLines": [
+    "FAIL!  : OperationsGui::narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines() Compared values are not the same",
+    "   Actual   (source.copies): 1",
+    "   Expected (2)            : 2"
+  ],
+  "callerObservedNoSanitizerMemoryReport": true
+}

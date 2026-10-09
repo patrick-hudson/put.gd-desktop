@@ -10,6 +10,21 @@ swtpm-tools`. All media, disks, firmware variables, TPM state and run witnesses
 live under the ignored `work/windows/` directory. No cloud credentials, private
 payloads, license keys or personal accounts belong in a base image.
 
+## Sealed base protection
+
+Windows bases under `work/windows/bases/` are sealed. Never boot, modify, move,
+overwrite or delete a sealed base while overlays reference it. Every test uses
+an independent copy under `work/windows/runs/`, created with
+`tools/lab/windows.py clone`. Preserve the base disk, UEFI variables, TPM state,
+identity and manifest together. Updates require provisioning and sealing a new
+base directory; prior overlays remain linked to their original base.
+
+Before provisioning, inventory existing base/run metadata, actual host-visible
+QEMU/TPM processes and reserved VNC ports. Sandbox process absence is insufficient.
+The provisioning examples below apply only to fresh, absent directories, before
+sealing. The historical `windows11` and `windows10` bases are already sealed;
+use `clone` for work with either of them.
+
 ## Official installation media
 
 Retrieved on 2026-10-08, English US x64, Enterprise evaluation editions:
@@ -50,12 +65,25 @@ and host block devices are not shared. VNC binds only to localhost; the existing
 [display wall](http://127.0.0.1:8765/) discovers both guests automatically. `-display
 none` suppresses an extra host SDL window; the VNC graphical display stays active.
 
+After that inventory, choose new names and check both control sockets before
+creating the directories. Confirm displays 30/31 are free on the actual host.
+Run these host shell examples from the repository root; `set -eu` stops on a
+failed precondition. The example never starts either historical sealed base:
+
 ```sh
-python3 tools/lab/windows.py prepare --os windows11 --vm work/windows/bases/windows11
-python3 tools/lab/windows.py start --vm work/windows/bases/windows11 --display 30 \
+set -eu
+provision_id=$(python3 -c 'import uuid; print(uuid.uuid4().hex[:12])')
+w11_base="$PWD/work/windows/bases/w11-$provision_id"
+w10_base="$PWD/work/windows/bases/w10-$provision_id"
+test ! -e "$w11_base"
+test ! -e "$w10_base"
+python3 tools/diagnostics/check_socket_paths.py --socket \
+  "$w11_base/qmp.sock" "$w11_base/tpm.sock" "$w10_base/qmp.sock" "$w10_base/tpm.sock"
+python3 tools/lab/windows.py prepare --os windows11 --vm "$w11_base"
+python3 tools/lab/windows.py start --vm "$w11_base" --display 30 \
   --iso work/windows/media/windows11-enterprise-eval-x64.iso
-python3 tools/lab/windows.py prepare --os windows10 --vm work/windows/bases/windows10
-python3 tools/lab/windows.py start --vm work/windows/bases/windows10 --display 31 \
+python3 tools/lab/windows.py prepare --os windows10 --vm "$w10_base"
+python3 tools/lab/windows.py start --vm "$w10_base" --display 31 \
   --iso work/windows/media/windows10-enterprise-eval-21h2-x64.iso
 ```
 
@@ -78,18 +106,21 @@ the desktop boots from disk, and then shut down cleanly. Capture versions, activ
 expiry and `Get-Tpm | Select-Object TpmPresent,TpmReady,RestartPending` / `Confirm-SecureBootUEFI` results before sealing.
 
 ```sh
-python3 tools/lab/windows.py status --vm work/windows/bases/windows11
-python3 tools/lab/windows.py key --vm work/windows/bases/windows11 ctrl alt delete
-python3 tools/lab/windows.py screenshot --vm work/windows/bases/windows11
-python3 tools/lab/windows.py shutdown --vm work/windows/bases/windows11
-python3 tools/lab/windows.py start --vm work/windows/bases/windows11 --display 30 --network
+set -eu
+python3 tools/lab/windows.py status --vm "$w11_base"
+python3 tools/lab/windows.py key --vm "$w11_base" ctrl alt delete
+python3 tools/lab/windows.py screenshot --vm "$w11_base"
+python3 tools/lab/windows.py shutdown --vm "$w11_base"
+python3 tools/lab/windows.py start --vm "$w11_base" --display 30 --network
 # Finish activation/updates in the visible guest; record actual expiry.
-python3 tools/lab/windows.py shutdown --vm work/windows/bases/windows11
-python3 tools/lab/windows.py seal --vm work/windows/bases/windows11 \
+python3 tools/lab/windows.py shutdown --vm "$w11_base"
+python3 tools/lab/windows.py seal --vm "$w11_base" \
   --notes 'Replace with actual build, activation expiry, secure boot/TPM checks and provisioning summary'
 ```
 
-Repeat for Windows 10. `shutdown` waits for a real guest shutdown before stopping
+Repeat for the new `"$w10_base"`. These starts are allowed only before sealing
+the new provisioning directories; every later start uses a clone. `shutdown`
+waits for a real guest shutdown before stopping
 QEMU and TPM. If Windows ignores ACPI, use the visible Start menu to shut down and
 retry. `shutdown --force` stops only the owned VM and invalidates clean-shutdown
 status: it is for recovering a stuck disposable guest, not producing a base.
@@ -107,16 +138,25 @@ verifies hashes (allow time to read the full base disk) and creates a fresh disk
 of UEFI and TPM state. Clones preserve VM UUID to avoid gratuitous hardware identity
 changes. Give every concurrent guest its own VNC display number.
 
+After host process/port inventory, choose a fresh, absent run path. The existing
+`w11-001` and `w11-002` paths are historical evidence, not reusable targets.
+
 ```sh
+set -eu
+run_id=$(python3 -c 'import uuid; print(uuid.uuid4().hex[:12])')
+windows_run="$PWD/work/windows/runs/w11-$run_id"
+test ! -e "$windows_run"
+python3 tools/diagnostics/check_socket_paths.py --socket \
+  "$windows_run/qmp.sock" "$windows_run/tpm.sock"
 python3 tools/lab/windows.py clone --base work/windows/bases/windows11 \
-  --vm work/windows/runs/w11-001
-python3 tools/lab/windows.py start --vm work/windows/runs/w11-001 --display 30
+  --vm "$windows_run"
+python3 tools/lab/windows.py start --vm "$windows_run" --display 30
 # Install the Windows build and synthetic fixtures in this overlay; test visibly.
-python3 tools/lab/windows.py screenshot --vm work/windows/runs/w11-001
-python3 tools/lab/windows.py shutdown --vm work/windows/runs/w11-001
+python3 tools/lab/windows.py screenshot --vm "$windows_run"
+python3 tools/lab/windows.py shutdown --vm "$windows_run"
 ```
 
-Repeat with `w11-002` to reset; retain the old overlay and witness for diagnosis.
+Repeat with another fresh run path; retain the old overlay and witness for diagnosis.
 Stock Windows power settings can blank an idle console. Wake it with the helper
 `key --vm ... spc` and restore the visible `lab` desktop before acceptance; a
 blank/locked screen is not graphical evidence. For a long test session, run
@@ -170,11 +210,13 @@ and TPM state. Windows 11 is also sealed after verified clean shutdown.
 The synthetic marker created in `w11-001` was absent from `w11-002`, and the base
 hashes matched again before the second clone.
 
-The clean `w11-002` and `w10-002` copies are left running offline on VNC ports
+At the end of the 2026-10-08 provisioning run, the clean `w11-002` and `w10-002`
+copies were left running offline on VNC ports
 5930 and 5931. Their display/sleep AC timeouts are disabled for long test sessions;
-the sealed baselines retain stock Windows power settings. Both remain visible
-alongside the existing Linux guests in the wall. Prefer shutting one Windows guest
-down when running memory-heavy builds. About 129 GiB of host storage remained
+the sealed baselines retain stock Windows power settings. They were visible
+alongside the existing Linux guests in the wall; inspect current host/run metadata
+before assuming that historical processes are still running. Prefer shutting
+one Windows guest down when running memory-heavy builds. About 129 GiB of host storage remained
 after provisioning.
 
 Twelve host isolation/lifecycle tests pass. Disk isolation uses real qemu-img/qemu-io;

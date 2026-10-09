@@ -95,7 +95,8 @@ may be kept alive between invocations to improve this result. A latency regressi
 must be measured and fixed before keeping a memory win.
 
 Only after the native gate passes, run two serial physical cold five-minute and two
-closed-view measurements with the frozen tests/performance scripts. Preflight
+closed-view measurements with the frozen tests/performance scripts. Follow the
+[complete current listener recipe and evaluator](testing-memory.md#current-listener-cold-and-closed-family-gates). Preflight
 every complete Unix socket pathname with tools/diagnostics/check_socket_paths.py.
 Use fresh short private /tmp roots. Save commands, timestamps, parameters, failed
 attempts and structured raw samples before reporting them. RSS, PSS and private

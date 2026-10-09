@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "env",
+    "QT_QPA_PLATFORM=offscreen",
+    "./build/asan/test_gui_operations_view",
+    "narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:50:19.934540+00:00"
+}

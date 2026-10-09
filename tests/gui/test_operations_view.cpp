@@ -38,7 +38,11 @@ private slots:
   const QString name="a-long-synthetic-file-name-that-must-remain-complete-in-the-tooltip.txt";
   source.payload.files={fixture(d.path(),name,QByteArray(1572864,'x'))};QVERIFY(!source.payload.files.first().isEmpty());
   OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture session(settings,operations,history);RecentOperations view(session.session);view.resize(1024,700);view.show();
-  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);auto* rows=view.findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(rows->topLevelItemCount(),1);QTRY_COMPARE(rows->topLevelItem(0)->childCount(),1);
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);
+  // Clipboard delivery precedes its final journal commit. Wait for durable
+  // completion before testing an explicit copy, then resolve the current row.
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  auto* rows=view.findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(rows->topLevelItemCount(),1);QTRY_COMPARE(rows->topLevelItem(0)->childCount(),1);
   QTRY_VERIFY(rows->topLevelItem(0)->child(0)->text(3).startsWith("Saved\n"));auto* child=rows->topLevelItem(0)->child(0);QVERIFY(child->text(4).startsWith("1.5 MiB\nRemote: Not requested"));QCOMPARE(child->toolTip(0),name);QVERIFY(child->toolTip(3).contains(source.copied.files.first()));QVERIFY(child->toolTip(4).contains("not_requested"));
   // Test the actual cell renderer at narrow widths and a larger native-family font.
   // Both lines must have visible ink; a tall empty row does not satisfy the contract.

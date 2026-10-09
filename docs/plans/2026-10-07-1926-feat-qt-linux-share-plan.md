@@ -1226,3 +1226,38 @@ preceding incomplete attempt and checkpoint-failure regressions. These are dirty
 build results; the next clean version still requires native Cinnamon capture,
 tray/view behavior and repeated cold/closed whole-family memory confirmation
 before GNOME/KDE expansion or a feature-parity claim.
+
+
+### Reproducible memory checkpoints (2026-10-09)
+
+The clean source50 build passed 48 development suites. Six of seven affected
+ASan/UBSan suites passed; the Activity layout test attempted explicit result copy
+before waiting for durable completion. Its copy-count assertion failed, without
+a sanitizer memory report. Preserve this failed run and the subsequently passing
+completion-wait correction. The isolated locating trace passed with no active
+operation; it is not a reproducer of the failure. Production capture code is unchanged
+by this test correction.
+
+Make the cold whole-family observer portable and committed. Require exact clean
+binary/source identity, actual socket preflight, adequate sample coverage, all
+observed resident descendants, owned-process cleanup and private structured
+results. Keep the three existing primary/view harnesses frozen. Publish the two
+cold/two closed-view command sequence and evaluator in the memory guide. Resolve
+stale parallel-first lab recipes to require Cinnamon functionality and memory
+first; preserve immutable bases and visible protected console unlocking.
+
+These documentation and harness checks do not replace real current-version
+Cinnamon acceptance or close the full U9 fresh-agent build/run/debug walkthrough.
+That walkthrough still needs a bounded synthetic revision/validation failure,
+accepted-state preservation and recovery exercise with expected CLI/MCP envelopes,
+operation IDs and exact receipts. Its implementation and real native evidence
+remain separate from this preparatory fresh-agent documentation audit.
+
+The supplemental observer now has nine stdlib process/coverage/rejection contracts
+and a Linux CI step with identity-bound process-tree timeout cleanup and structured
+reports. The exact CI step passed locally after separating short runtime socket
+roots from descriptive receipt paths. Preserve the original socket-length failure
+and the forced-timeout cleanup checks. These checks launch synthetic processes
+only; they establish neither hosted CI execution nor physical memory acceptance.
+The documented acceptance evaluator uses explicit conditions that remain active
+under optimized Python; its synthetic failed-receipt rejection was verified.
