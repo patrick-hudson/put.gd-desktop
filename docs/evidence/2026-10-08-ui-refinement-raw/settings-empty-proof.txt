@@ -1,0 +1,9 @@
+********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::emptySavedDestinationsShowOnlyTheAddAction() This plugin does not support propagateSizeHints()
+FAIL!  : SettingsGui::emptySavedDestinationsShowOnlyTheAddAction() '!window.findChild<QLineEdit*>("s3Bucket")->isVisible()' returned FALSE. (An empty saved destination list must not show an inactive editor)
+   Loc: [/home/patrick/work/put.gd/tests/gui/test_settings.cpp(33)]
+PASS   : SettingsGui::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 148ms
+********* Finished testing of SettingsGui *********

@@ -1,0 +1,17 @@
+{
+  "skill": "ce-simplify-code",
+  "scope": "Eight owned GUI/test paths only",
+  "reuse": {
+    "applied": 0,
+    "findings": 0
+  },
+  "quality": {
+    "applied": 1,
+    "finding": "Name full operationId and displayedId once; use full ID for data/routing/tooltip and iterate existing values array."
+  },
+  "efficiency": {
+    "applied": 0,
+    "findings": 0
+  },
+  "behaviorPreserved": "No output/protocol/ordering or safety change; affected GUI verification follows."
+}

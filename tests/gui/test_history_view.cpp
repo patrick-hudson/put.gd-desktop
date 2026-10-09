@@ -2,6 +2,8 @@
 #include "ui/HistoryWindow.h"
 #include "fixtures/UiSessionFixture.h"
 #include <QTableView>
+#include <QHeaderView>
+#include <QScrollArea>
 #include <QLineEdit>
 #include "ui/ViewState.h"
 #include <QPushButton>
@@ -24,6 +26,20 @@ class HistoryGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1024,700);window.show();
+  auto* table=window.findChild<QTableView*>("historyTable");auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");QVERIFY(table);QVERIFY(inspector);QVERIFY(!inspector->isVisible());auto* empty=window.findChild<QLabel*>("historyEmpty");QVERIFY(empty);QTRY_VERIFY(empty->isVisible());
+  {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-compact-history";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();op.destination.profileId="original-synthetic-destination";
+   for(int i=0;i<2;++i){OperationItem item;item.artifact.id=QString("compact-history-item-%1").arg(i);item.artifact.name=QString("long-synthetic-filename-with-receipt-%1.txt").arg(i);item.artifact.mime="text/plain";item.artifact.category="text";item.uploadStatus="local_only";op.items.append(item);}QVERIFY(!ledger.saveOperation(op));}
+  window.refresh();QTRY_COMPARE(table->model()->rowCount(),2);QTRY_VERIFY(table->isVisible());QVERIFY(!window.findChild<QLabel*>("historyEmpty")->isVisible());QCOMPARE(table->model()->columnCount(),7);QCOMPARE(table->model()->headerData(2,Qt::Horizontal).toString(),QString("Content type"));QCOMPARE(table->model()->headerData(3,Qt::Horizontal).toString(),QString("Original destination"));
+  auto* model=qobject_cast<HistoryModel*>(table->model());QVERIFY(model);const auto selectedId=model->record(1)["id"].toString();table->selectRow(1);auto* details=window.findChild<QPlainTextEdit*>("historyDetails");auto* summary=window.findChild<QPlainTextEdit*>("historySummary");QTRY_COMPARE(QJsonDocument::fromJson(details->toPlainText().toUtf8()).object()["id"].toString(),selectedId);QVERIFY(summary->toPlainText().contains("text/plain"));QVERIFY(summary->toPlainText().contains("original-synthetic-destination"));QVERIFY(inspector->isVisible());
+  for(const auto size:QList<QSize>{QSize(1024,700),QSize(1280,700),QSize(1024,700)}){
+   window.resize(size);QTest::qWait(20);QVERIFY(window.width()<=size.width());QVERIFY(window.height()<=size.height());
+   for(int column:{0,1,4,5,6}){QVERIFY(!table->isColumnHidden(column));const auto right=table->horizontalHeader()->sectionViewportPosition(column)+table->horizontalHeader()->sectionSize(column);QVERIFY2(right<=table->viewport()->width(),"Name, date and independent outcomes must fit without horizontal scrolling");}
+   QCOMPARE(table->selectionModel()->selectedRows().size(),1);QCOMPARE(model->record(table->selectionModel()->selectedRows().first().row())["id"].toString(),selectedId);QVERIFY(window.rect().contains(QRect(inspector->mapTo(&window,QPoint{}),inspector->size())));
+  }
+  table->clearSelection();QVERIFY(!inspector->isVisible());QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+ }
  void recreatedHistoryRestoresRawFiltersSelectionAndClearsVanishedIds(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="state-operation";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="state-history-id";item.artifact.name="state.txt";item.uploadStatus="local_only";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}

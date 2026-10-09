@@ -1,0 +1,85 @@
+{
+  "reviewer": "adversarial-claude",
+  "cross_model_route": "claude",
+  "cross_model_target": "claude",
+  "cross_model_harness": "claude",
+  "serving_family": "claude",
+  "independence_verified": true,
+  "model_requested": "claude-opus-5-5",
+  "model_actual": "claude-opus-5-5",
+  "effort_requested": "high",
+  "effort_actual": "unverified",
+  "receipt_supported": true,
+  "findings": [
+    {
+      "title": "Truncated 8-char operation IDs can collide in the Activity list",
+      "severity": "P3",
+      "file": "src/ui/RecentOperations.cpp",
+      "line": 30,
+      "why_it_matters": "The ID column is the only per-row identifier that lets a user tell operations of the same action apart, or match a row to logs, history and support reports. Now that only the first 8 characters are shown, any ID scheme with a shared or time-based prefix makes many rows look the same. Examples are UUIDv7, where the first 8 hex digits are the top 32 bits of a millisecond timestamp and stay the same for about 65 seconds, or prefixes like 'op-2026-'. The full ID is then only reachable by hovering over each row's tooltip. Keyboard and screen-reader users get the truncated item text, because the full ID is stored only in Qt::UserRole and the tooltip. Routing itself stays correct because actions read UserRole.",
+      "autofix_class": "advisory",
+      "owner": "human",
+      "requires_verification": true,
+      "suggested_fix": "Keep the full ID available to assistive technology by setting row->setData(1,Qt::AccessibleTextRole,operationId). Prefer a suffix-preserving elision such as operationId.left(4)+\"…\"+operationId.right(4), or rely on the column's Qt::ElideMiddle text elision instead of a fixed left(8) prefix, so time-ordered IDs stay distinguishable. This assumes the real operation IDs come from a time-ordered or prefixed generator, which this scoped snapshot cannot show.",
+      "confidence": 50,
+      "evidence": [
+        "src/ui/RecentOperations.cpp:30 `const auto displayedId=operationId.size()>8?operationId.left(8)+QString::fromUtf8(\"…\"):operationId;`",
+        "Scenario: three clipboard operations run within one minute and get time-ordered IDs that share the same first 8 characters → all three parent rows show the same text in column 1 → the user can only tell them apart by hovering each tooltip (`row->setToolTip(1,operationId)`).",
+        "Tests only check `text(1).size()<id.size()` and the tooltip. No test covers two operations with a common prefix."
+      ],
+      "pre_existing": false,
+      "first_evidence": "src/ui/RecentOperations.cpp:30 `const auto displayedId=operationId.size()>8?operationId.left(8)+QString::fromUtf8(\"…\"):operationId;`"
+    },
+    {
+      "title": "Local-copy state stays raw when there is no local path",
+      "severity": "P3",
+      "file": "src/ui/RecentOperations.cpp",
+      "line": 30,
+      "why_it_matters": "The change is meant to make Activity states readable, but readableState() is applied to the local status only when a path exists. Items that were never saved locally or failed before getting a path still show raw tokens such as 'not_requested' or 'failed', or an empty cell. Rows that do have a path show 'Saved /path'. So the same column mixes formatted and raw enum values, and the Remote part of column 4 is now always formatted. The new test only checks the saved-with-path case, case-insensitively, so the gap stays hidden.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Always format the status and append the path only when it is present: `readableState(local[\"status\"].toString())+(local[\"path\"].toString().isEmpty()?QString{}:\" \"+local[\"path\"].toString())`. Keep the raw value in the tooltip as the code already does.",
+      "confidence": 50,
+      "evidence": [
+        "src/ui/RecentOperations.cpp:30 `(local[\"path\"].toString().isEmpty()?local[\"status\"].toString():readableState(local[\"status\"].toString())+\" \"+local[\"path\"].toString())`",
+        "Scenario: an uploaded-only item with local.status='not_requested' and no path → column 3 shows 'not_requested'. In the same tree, a sibling item with a saved local copy shows 'Saved /tmp/x'. Column 4 of both rows shows 'Remote: Not requested'.",
+        "tests/gui/test_operations_view.cpp only asserts `text(3).contains(\"saved\",Qt::CaseInsensitive)`. It never checks a pathless local state."
+      ],
+      "pre_existing": false,
+      "first_evidence": "src/ui/RecentOperations.cpp:30 `(local[\"path\"].toString().isEmpty()?local[\"status\"].toString():readableState(local[\"status\"].toString())+\" \"+local[\"path\"].toString())`"
+    },
+    {
+      "title": "Details column fixed at 190px hides failure messages",
+      "severity": "P3",
+      "file": "src/ui/RecentOperations.cpp",
+      "line": 23,
+      "why_it_matters": "Column 4 used to stretch and now has a fixed width of 190px. Child rows put the size, the upload error message, an optional 'Local save: …' error and 'Remote: …' into that one cell. At a 1000–1024px window, any real error text is elided right after the size, and the stretch space goes to the name column instead. A user diagnosing a failed upload or local save now sees '1.5 MiB Connection ti…' and must hover to read the cause. The child link column also shrank from 230px to 140px, so stored URLs show only 'https://exa…'.",
+      "autofix_class": "advisory",
+      "owner": "human",
+      "requires_verification": true,
+      "suggested_fix": "Give column 4 the stretch, or both columns 0 and 4 via QHeaderView::Stretch, and keep column 0 Interactive with a sensible width. Another option is to move error text into its own line or child item so the diagnostic is visible without hovering.",
+      "confidence": 50,
+      "evidence": [
+        "src/ui/RecentOperations.cpp:23 `tree_->header()->setSectionResizeMode(0,QHeaderView::Stretch);tree_->setColumnWidth(1,140);tree_->setColumnWidth(2,110);tree_->setColumnWidth(3,170);tree_->setColumnWidth(4,190);`",
+        "Removed line: `tree_->header()->setSectionResizeMode(4,QHeaderView::Stretch);`",
+        "Child column-4 text: `ByteSize::summary(...)+\" \"+item[\"error\"]...[\"message\"]+(... \" Local save: \"+...)+\" Remote: \"+readableState(...)`. Three pieces of free text in 190px."
+      ],
+      "pre_existing": false,
+      "first_evidence": "src/ui/RecentOperations.cpp:23 `tree_->header()->setSectionResizeMode(0,QHeaderView::Stretch);tree_->setColumnWidth(1,140);tree_->setColumnWidth(2,110);tree_->setColumnWidth(3,170);tree_->setColumnWidth(4,190);`"
+    }
+  ],
+  "residual_risks": [
+    "SettingsWindow alignDestinationForms() only runs inside advancedView. If other code toggles row visibility in destinationDetails or credentialForm without Advanced changing (provider switch, credential-mode change), a wider label can appear without a recompute. The two forms' field columns would then drift out of alignment. This scoped snapshot cannot confirm such toggles exist.",
+    "SettingsWindow profileVisibility calls VisualStyle::role(add,\"secondary\"/\"primary\") again after the button is polished. If role() only sets a dynamic property without unpolish/polish, the Add button keeps its first style after the destination count changes.",
+    "Settings editors are hidden only through QAbstractItemModel rowsInserted/rowsRemoved on profile_->model(). If any draft load or reset blocks the model's signals or uses modelReset, the editors stay hidden or stay visible out of step with the real profile count.",
+    "After removing the last draft destination, the hidden credentialsEditor may still hold masked access/secret inputs. Clicking Add shows them again for a new destination ID, so 'Store credentials' could bind secrets typed for a different destination. Whether remove clears these inputs is outside the scoped files.",
+    "HistoryWindow now shows the inspector as soon as one row is selected, but no longer sets placeholder or preview text. If history.detail returns an error, the inspector stays visible as a blank card and the error appears only in the status line.",
+    "HistoryWindow computes widths for columns 4–6 once in the constructor from table_->fontMetrics(), before style polish, and never recomputes them on FontChange. A stylesheet or native header font that differs from the table font, or a later system font change, can elide the outcome headers."
+  ],
+  "testing_gaps": [
+    "emptySavedDestinationsShowOnlyTheAddAction checks `!s3Bucket->isVisible()` right after window.show() without waiting for the settings draft to load. If the draft fills asynchronously, the hidden-editor check passes simply because profile_ is still empty, and Add may be clicked before a late load replaces the draft. Wait until the draft is loaded (for example, a QTRY on a loaded/clean indicator) before asserting.",
+    "No test covers two Activity operations whose IDs share the first 8 characters. The test should assert that each row's actions and tooltip still resolve to the correct full ID and that the rows can be told apart.",
+    "compactHistoryKeepsOutcomesVisible... only exercises 1024px (stacked) and 1280px (side-by-side). It never tests just above the 1120px threshold, where the table is narrowest beside the 250–300px inspector, or multi-row selection, where the inspector should hide and come back with usable splitter sizes."
+  ]
+}

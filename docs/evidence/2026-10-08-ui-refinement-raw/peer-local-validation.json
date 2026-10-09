@@ -1,0 +1,22 @@
+{
+  "candidate": "Local-copy state stays raw when there is no local path",
+  "disposition": "rejected",
+  "targeted_context": "src/ui/VisualStyle.cpp:34-49 StateDelegate::paint; no diff review or mutation of this context file",
+  "evidence": [
+    "RecentOperations constructor decorates status columns {2,3}.",
+    "StateDelegate recognizes raw lowercase states before humanizing display by replacing underscores and capitalizing the first letter.",
+    "Raw failed is colored red; always passing Failed would lose the state-color recognition.",
+    "Cells containing a local path are intentionally rendered as ordinary text, so formatting Saved /path in the projection is appropriate."
+  ],
+  "conclusion": "The peer inferred rendered text from raw model values in a snapshot without the unchanged delegate. Pathless states already render readably; suggested change would regress badge styling. No finding or renderer-mirroring test is warranted.",
+  "other_peer_candidates": [
+    {
+      "title": "Truncated 8-char operation IDs can collide in the Activity list",
+      "disposition": "accepted presentation tradeoff; complete IDs remain in UserRole and tooltips; no routing defect shown"
+    },
+    {
+      "title": "Details column fixed at 190px hides failure messages",
+      "disposition": "accepted compact layout tradeoff with exact tooltips; native populated/error inspection remains part of existing R35 acceptance"
+    }
+  ]
+}

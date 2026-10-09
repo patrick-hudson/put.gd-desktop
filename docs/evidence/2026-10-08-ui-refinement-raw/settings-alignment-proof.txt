@@ -1,0 +1,11 @@
+********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::simpleDestinationAndCredentialFieldsShareAlignment() This plugin does not support propagateSizeHints()
+FAIL!  : SettingsGui::simpleDestinationAndCredentialFieldsShareAlignment() Compared values are not the same
+   Actual   (bucket->mapTo(&window,QPoint{}).x()): 182
+   Expected (access->mapTo(&window,QPoint{}).x()): 150
+   Loc: [/home/patrick/work/put.gd/tests/gui/test_settings.cpp(32)]
+PASS   : SettingsGui::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 104ms
+********* Finished testing of SettingsGui *********

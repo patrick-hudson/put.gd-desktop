@@ -1,0 +1,10 @@
+{
+  "src/ui/SettingsWindow.cpp": "6a25bfe89430bed77e0f7808df323ed9647a9c1e402f88e34248cfd79ecbc938",
+  "src/ui/HistoryWindow.cpp": "12f152c252456ec7b0591e802286e195c8a14ef8d6ac099d1f317522d1e60d37",
+  "src/ui/HistoryWindow.h": "eb19c03bb6359b81ce023b6c7b98c5add10d6018b9e953e67dfab1ab3938229a",
+  "src/ui/RecentOperations.cpp": "f821b09fd38daac6f11ba457ae1bc81afcaef1e56b71876ec17804afac72891a",
+  "src/ui/RecentOperations.h": "bf1435232210c929b61a0ffad9b96442ce2a4d7072b85bfeaa9594d776d12354",
+  "tests/gui/test_settings.cpp": "21090e10817c82747d56261561ae743956733f5706cf697e8c5d3c82be7a5fc7",
+  "tests/gui/test_history_view.cpp": "cc57b8ce0665d5cd06a85797dc281d38a630a112743d1a6b1733d06be1f542cc",
+  "tests/gui/test_operations_view.cpp": "230e179c5a55a751175952aceb05e118f003534e03374efc61c75a6ceee431cb"
+}

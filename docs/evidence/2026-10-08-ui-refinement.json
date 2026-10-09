@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+  "scope": [
+    "src/ui/SettingsWindow.cpp",
+    "src/ui/HistoryWindow.cpp",
+    "src/ui/HistoryWindow.h",
+    "src/ui/RecentOperations.cpp",
+    "src/ui/RecentOperations.h",
+    "tests/gui/test_settings.cpp",
+    "tests/gui/test_history_view.cpp",
+    "tests/gui/test_operations_view.cpp"
+  ],
+  "sourceSha256": {
+    "src/ui/SettingsWindow.cpp": "6a25bfe89430bed77e0f7808df323ed9647a9c1e402f88e34248cfd79ecbc938",
+    "src/ui/HistoryWindow.cpp": "12f152c252456ec7b0591e802286e195c8a14ef8d6ac099d1f317522d1e60d37",
+    "src/ui/HistoryWindow.h": "eb19c03bb6359b81ce023b6c7b98c5add10d6018b9e953e67dfab1ab3938229a",
+    "src/ui/RecentOperations.cpp": "f821b09fd38daac6f11ba457ae1bc81afcaef1e56b71876ec17804afac72891a",
+    "src/ui/RecentOperations.h": "bf1435232210c929b61a0ffad9b96442ce2a4d7072b85bfeaa9594d776d12354",
+    "tests/gui/test_settings.cpp": "21090e10817c82747d56261561ae743956733f5706cf697e8c5d3c82be7a5fc7",
+    "tests/gui/test_history_view.cpp": "cc57b8ce0665d5cd06a85797dc281d38a630a112743d1a6b1733d06be1f542cc",
+    "tests/gui/test_operations_view.cpp": "230e179c5a55a751175952aceb05e118f003534e03374efc61c75a6ceee431cb"
+  },
+  "change": "Clear empty saved-destination flow and aligned simple/advanced forms; compact History and Activity preserving receipts/full-ID routing.",
+  "checks": {
+    "dev": "41/41, 216.83s before behavior-preserving simplification",
+    "affectedGuiAfterSimplification": "3/3, 17.08s",
+    "settingsFailingProofs": [
+      "Empty saved profile list exposed inactive Bucket",
+      "Simple form fields misaligned32px"
+    ]
+  },
+  "review": {
+    "status": "complete",
+    "runId": "20261008-214854-484e0110",
+    "actionableFindings": 0,
+    "peerModelActual": "claude-opus-5-5",
+    "peerEffortActual": "unverified"
+  },
+  "nativeAcceptance": "Pending frozen committed current-source Cinnamon/GNOME/KDE replay; source41 witnesses remain baseline only.",
+  "memorySpeedClaims": "No new claim. Original split baseline closed45.04MiB versus retained65.09; 333ms Settings reopen. Approved startup experiment is separate; 40MiB cold goal remains unmet.",
+  "sanitizers": "Additional affected ASan/UBSan build running; no concurrency logic changed.",
+  "excluded": "User WIP, credentials.txt, auth material, source payloads; all changes remain local.",
+  "artifacts": {
+    "gui-simplified.xml": "d81fe484000b392ec6b516d339fa2b95ef2cdbeee36afe28328fbdd25c24aa1b",
+    "settings-empty-proof.txt": "eb5cc09aac320c8154868063dc75c3a8892d8af16fd1971f582de01439b4bca1",
+    "review.json": "bcf071089f64db655f5b4610abac5d440bb7d821115ed8ad3be1f90bca5f9fd9",
+    "metadata.json": "729c711881c65f144b732a38688c88f2e94145be823ffa5d425942a2a7f3bec5",
+    "gui-layout.log": "f0d135967408d4ae83ca1c39d0d7f68c0d9f681cea18e8fe96aa2a51c0b7bb2e",
+    "settings-alignment-proof.txt": "68d96ba33e0020e61b2dd4b99056d23a0da405b16a8ffc3f23348d8dce711da9",
+    "gui-simplified.log": "e78efb793525cfaeb01b62260b378bff321f9211a8182b9ae27a04f94c7f53a9",
+    "dev-final.log": "2bf022ecc561c147f1b8853655d9af78d23059ff8618cac44e2e7f20cded84db",
+    "adversarial-claude.json": "075269f78b56d7b52c48b760bd946e50e5047c2f57984d121aaab15a7381c60e",
+    "settings-empty-proof.xml": "7bcb189114059b9eb53e4f6c43d2cd59f398ff0ed342cd541e5056bf3b27fda0",
+    "gui-layout.xml": "14e408263fd0cce62edeee9f44c3ee7bfde9ce936b0b9e9f71d274e2ed683877",
+    "stages.jsonl": "8b6064fde505e3a83438c29953d1235cbee6d31b8d74ee394989f6a8fe791856",
+    "dev-final.xml": "9997860aa161f1cd20ac9ae4745f2ccf624573dd5c215d584f51212ca22ab461",
+    "gui-alignment.log": "3c133f97939282801d1815720e920bc7ab51e2e1e5b8680142fee654ab8d132a",
+    "settings-alignment-proof.xml": "12bfb2a5c2a9b300c75435e2acc19ace16cb13ec9280085b9088e64974a3306c",
+    "peer-local-validation.json": "1c3bee2a826e0ce29d3afea5d78443d7e395e660d0e6827d099912fce5f11dde",
+    "reviewed-source-sha256.json": "01131ed63394cc0fa9f73d52ff947280745b8264c8d653eed2e9379c76b7f477",
+    "gui-alignment.xml": "330a6feefb28131bc085936818dc08d49408d014a7f53792cc0d362ebac928e5",
+    "simplification.json": "b1ecb234bee8fd6bb9bfdeb8af274a58ff53d76593ac180a26458fb3f8393a02"
+  }
+}

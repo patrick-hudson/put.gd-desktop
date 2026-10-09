@@ -1065,3 +1065,28 @@ the current dependencies, IPC gaps and required measurements. This is a separate
 implementation after the current tested changes; no process split or saving is
 claimed yet. Replacing Qt with a custom visual framework was considered; first
 measure the split while retaining the existing toolkit and native integration.
+
+### Breakout view refinement follow-up (2026-10-08)
+
+Retain U11's on-demand UI with a persistent resident tray. The measured source-41
+closed-family RSS saving is about20MiB; the40MiB cold target remains unmet.
+The user approved a separate bounded Settings-startup investigation from the
+333ms mapped-reopen baseline, targeting about200ms without retained helpers,
+new dependencies, changed native fonts/dialogs or memory regression. Locate costs
+before implementation and preserve exact source/overlay/binary identities.
+
+The next U5 visual pass clarifies a saved empty destination list: show Add S3
+destination as the primary action and hide inactive destination/credential forms.
+Preserve first-launch unsaved S3 setup. Align destination and credential inputs in
+both simple and advanced views. History prioritizes names/date/independent outcomes,
+retains MIME/destination in the selected inspector, and stacks that inspector on
+narrow windows. Activity favors filenames, keeps full IDs in routing/tooltips and
+uses compact commands. No image cache or persistent UI helper is added.
+
+Dev41/41 and affected GUI3/3 pass, including meaningful empty-form/alignment
+failures before their fixes. The completed local/Anthropic review has no retained
+actionable findings. These are headless/scoped checks: frozen current-source
+Cinnamon/GNOME/KDE views, normal close/reopen, independent Copy result paste and
+small-window inspection remain required before visual acceptance. ASan/UBSan and
+native replay outcomes will be recorded separately; prior witnesses are not
+relabelled. See [the refinement checkpoint](../evidence/2026-10-08-ui-refinement.json).

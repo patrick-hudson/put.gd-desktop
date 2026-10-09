@@ -26,6 +26,29 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void simpleDestinationAndCredentialFieldsShareAlignment(){
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);window.show();QTest::qWait(20);
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");auto* access=window.findChild<QLineEdit*>("credentialAccessKey");auto* advanced=window.findChild<QToolButton*>("advancedSettings");
+  QVERIFY(bucket->isVisible());QVERIFY(access->isVisible());QCOMPARE(bucket->mapTo(&window,QPoint{}).x(),access->mapTo(&window,QPoint{}).x());
+  advanced->setChecked(true);QTest::qWait(20);QCOMPARE(bucket->mapTo(&window,QPoint{}).x(),access->mapTo(&window,QPoint{}).x());
+  advanced->setChecked(false);QTest::qWait(20);QCOMPARE(bucket->mapTo(&window,QPoint{}).x(),access->mapTo(&window,QPoint{}).x());
+ }
+ void emptySavedDestinationsShowOnlyTheAddAction(){
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));
+  QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  QTRY_VERIFY(fixture.session.ready());SettingsWindow window(fixture.session);window.show();
+  QVERIFY2(!window.findChild<QLineEdit*>("s3Bucket")->isVisible(),"An empty saved destination list must not show an inactive editor");
+  QVERIFY(!window.findChild<QLineEdit*>("credentialAccessKey")->isVisible());
+  auto* destination=window.findChild<QWidget*>("destinationEditor");auto* credentials=window.findChild<QWidget*>("credentialsEditor");
+  QVERIFY(destination);QVERIFY(credentials);QVERIFY(!destination->isVisible());QVERIFY(!credentials->isVisible());
+  auto* add=window.findChild<QPushButton*>("addS3Destination");QVERIFY(add->isVisible());
+  const auto revision=service.revision();add->click();
+  QVERIFY(destination->isVisible());QVERIFY(credentials->isVisible());QCOMPARE(service.revision(),revision);
+  window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-draft-bucket");
+  window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
+  window.findChild<QPushButton*>("removeDestination")->click();
+  QVERIFY(!destination->isVisible());QVERIFY(!credentials->isVisible());QVERIFY(add->isVisible());QCOMPARE(service.revision(),revision);
+ }
  void resettingDraftWaitsForTheResidentBeforeCheckpointing(){
   for(const auto& button:QStringList{"cancelSettings","reloadSettings"}){
    QTemporaryDir d;SettingsService service(d.filePath("config.json"));QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);QTRY_VERIFY(fixture.session.ready());SettingsWindow window(fixture.session);window.show();
