@@ -1,16 +1,40 @@
 // Native Shell APIs are fixtures here: this suite proves extension control and
 // frozen-target behavior, never graphical acceptance or compositor permission.
-import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import vm from 'node:vm';
+// Run with GNOME's own interpreter: gjs -m this-file extension-source-path.
+// No Node.js, package manager or extra JavaScript engine is required.
+import FileIO from 'gi://Gio';
 
-const source = readFileSync(new URL('../../integrations/gnome/extension.js', import.meta.url), 'utf8')
+function equal(actual, expected) {
+    if (actual !== expected)
+        throw new Error(`Expected ${String(expected)}, received ${String(actual)}`);
+}
+function deepEqual(actual, expected) {
+    equal(JSON.stringify(actual), JSON.stringify(expected));
+}
+async function rejects(promise, predicate) {
+    try {
+        await promise;
+    } catch (error) {
+        if (predicate(error))
+            return;
+        throw error;
+    }
+    throw new Error('Expected the operation to reject');
+}
+const assert = {equal, deepEqual, rejects};
+if (ARGV.length !== 1)
+    throw new Error('Supply the production GNOME extension source path');
+const [loaded, contents] = FileIO.File.new_for_path(ARGV[0]).load_contents(null);
+if (!loaded)
+    throw new Error('Could not read extension source');
+
+const source = new TextDecoder('utf-8', {fatal: true}).decode(contents)
     .replace(/^import .*;$/gm, '')
     .replace('export default class PutgdExtension', 'globalThis.PutgdExtension = class PutgdExtension');
 const resident = ':1.50';
 const residentPid = 1000;
 const helperPid = 2000;
-const context = vm.createContext({
+const context = {
     Gio: {_promisify() {}, Cancellable: class {cancel() {}}, DBusCallFlags: {NONE: 0},
         DBus: {session: {call_sync(_service, _path, _iface, method) {
             return {deep_unpack: () => [method === 'GetNameOwner' ? resident : residentPid]};
@@ -20,8 +44,11 @@ const context = vm.createContext({
     Shell: {Screenshot: class {}}, GObject: {registerClass: cls => cls}, St: {Widget: class {}},
     Extension: class {}, Main: {sessionMode: {isLocked: false}},
     global: {display: {focus_window: null}},
-});
-vm.runInContext(source, context);
+};
+// Direct eval captures only these deliberately mocked Shell dependencies.
+const {Gio, GLib, Shell, GObject, St, Extension, Main, global} = context;
+eval(source);
+context.PutgdExtension = globalThis.PutgdExtension;
 function fixture() {
     const extension = new context.PutgdExtension();
     Object.assign(extension, {_enabled: true, _requests: new Map(), _copyEpoch: 0, _revision: 1,
@@ -48,24 +75,24 @@ const own = fixture();
 context.global.display.focus_window = focused(residentPid);
 await assert.rejects(own.extension._prepare(id(), 'window', resident), e => e.bridgeCode === 'capture_target');
 assert.equal(own.layouts(), 0);
-console.log('PASS resident PID rejection before layout');
+print('PASS resident PID rejection before layout');
 
 const helper = fixture();
 assert.deepEqual(await register(helper.extension, helperPid), {});
 context.global.display.focus_window = focused(helperPid);
 await assert.rejects(helper.extension._prepare(id(), 'window', resident), e => e.bridgeCode === 'capture_target');
 assert.equal(helper.layouts(), 0);
-console.log('PASS registered helper PID rejection before layout');
+print('PASS registered helper PID rejection before layout');
 
 assert.equal((await register(helper.extension, 3000, ':1.99')).error.code, 'bridge_unauthorized');
 await assert.rejects(helper.extension._prepare(id(), 'window', resident), e => e.bridgeCode === 'capture_target');
-console.log('PASS foreign caller cannot replace helper identity');
+print('PASS foreign caller cannot replace helper identity');
 
 assert.deepEqual(await register(helper.extension, 0), {});
 const afterExit = id();
 await helper.extension._prepare(afterExit, 'window', resident);
 assert.equal(helper.extension._requests.get(afterExit).window.get_pid(), helperPid);
-console.log('PASS helper exit clears exclusion');
+print('PASS helper exit clears exclusion');
 
 const external = focused(3000);
 context.global.display.focus_window = external;
@@ -79,4 +106,4 @@ context.global.display.focus_window = focused(helperPid);
 releaseLayout([]);
 await prepared;
 assert.equal(helper.extension._requests.get(frozenId).window, external);
-console.log('PASS helper registration/focus changes do not replace frozen target');
+print('PASS helper registration/focus changes do not replace frozen target');

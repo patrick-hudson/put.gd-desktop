@@ -1,0 +1,43 @@
+{
+  "utc": "2026-10-09T03:08:32.800305+00:00",
+  "check": "affected ASan/UBSan GUI tests",
+  "command": [
+    "ctest",
+    "--preset",
+    "asan",
+    "-R",
+    "^gui_(settings|history_view|operations_view)$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/ui-refinement/gui-asan.xml"
+  ],
+  "passed": true,
+  "testCount": 3,
+  "seconds": 39.62,
+  "scope": "Settings/History/Activity widget behavior; no native compositor proof",
+  "sourceCommitAfterLocalCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.42+gb7c9238795b7.dirty",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.42+gb7c9238795b7.dirty",
+    "gitCommit": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+    "gitTree": "18bf2acde19524e6a0cc155372bd7be5e505f874",
+    "commitCount": 42,
+    "dirty": true,
+    "sourceProvenance": "git"
+  },
+  "artifacts": {
+    "gui-asan.log": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/gui-asan.log",
+      "sha256": "151b58d030a31a1328c254fda61b02c5dcdd193faa354a44cfdcd45c87dd35d7"
+    },
+    "gui-asan.xml": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/gui-asan.xml",
+      "sha256": "219ecbe51e5dbbfb4c98eef58ec0a4acd57f7a14b2a7fc543d2e8c4cfc77f40d"
+    },
+    "asan-build.log": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/asan-build.log",
+      "sha256": "c16b24c9aef2ec8c090d26967f0561b99b0392027ecf86074f129517a69e2e08"
+    }
+  }
+}

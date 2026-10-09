@@ -72,6 +72,13 @@ Do not teach shared code to decode URLs or provider object keys.
 
 ## Desktop and release gates
 
+Use the shared C++/Qt contracts without introducing Node.js into guest test
+requirements. The GNOME extension ownership fixture uses the GNOME desktop's
+existing GJS runtime; run it there and retain its separate receipt when other
+hosts lack GJS. Its Shell dependencies are mocked, so native graphical cases
+remain required. See [startup replay](testing-view-startup.md) for the fixed
+on-demand workload, exact identities and quiet measurement policy.
+
 The lab interface is `python3 tools/lab/lab.py`; use [testing](testing.md) and [VM lab](vm-lab.md) for exact package/provisioning/snapshot commands. A real desktop scenario remains unverified until its saved artifact, independent paste and QMP witness pass. U10's full release lifecycle is still pending.
 For memory work, first run the current candidate through the cross-desktop
 functional matrix on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Build and test

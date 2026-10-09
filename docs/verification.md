@@ -595,3 +595,17 @@ differs by 0.63 MiB, with 0.19 MiB immediate full-style growth. Preserve custom
 styling: this five-second temporary-tray diagnostic does not establish product
 savings or a route to 40 MiB. Exact source/binary hashes, stage timing, warnings
 and replay instructions are retained separately under the physical evidence.
+
+
+### GNOME test runtime correction — 2026-10-08
+
+The earlier source-41/source-43 suites used a Node-based isolated extension
+ownership fixture on the host. It was absent in the guests and did not establish
+GNOME Shell acceptance. The user rejected that guest dependency. The fixture now
+uses GNOME's existing GJS interpreter, without Node or JavaScript packages, and
+runs where that native runtime is already installed. The shared C++/Qt tests
+remain portable; real GNOME capture/clipboard tests remain separate from these
+mocked ownership assertions. Do not install Node to fill a guest coverage gap.
+All five ownership assertions pass under the guest’s existing GJS 1.88.0.
+Host CMake configuration passes without Node lookup. [The receipt](evidence/2026-10-08-gjs-ownership.json)
+keeps this result separate from the frozen source-43 native build.

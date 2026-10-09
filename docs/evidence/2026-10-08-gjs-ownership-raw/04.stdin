@@ -1,0 +1,1 @@
+gjs -m /home/lab/putgd-gjs-ownership-contract-source43-attempt1/test_gnome_ownership.mjs /home/lab/putgd-gjs-ownership-contract-source43-attempt1/extension.js

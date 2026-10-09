@@ -1061,17 +1061,17 @@ clipboard ownership and ongoing uploads. The CLI already calls the resident;
 keep one operation engine behind both interfaces. The tray and capture overlays
 also depend on Qt Widgets, so moving the large windows alone does not unload it.
 The [feasibility analysis and experiment gates](../resident-ui-process.md) record
-the current dependencies, IPC gaps and required measurements. This is a separate
-implementation after the current tested changes; no process split or saving is
-claimed yet. Replacing Qt with a custom visual framework was considered; first
-measure the split while retaining the existing toolkit and native integration.
+the current dependencies, IPC gaps and required measurements. The split is implemented and retained after source-41 native and memory checks.
+Its measured closed-family RSS saving is about 20 MiB; cold idle still exceeds
+40 MiB. Replacing Qt with a custom visual framework was considered; the current
+decision keeps Qt and native integration while measuring remaining costs.
 
 ### Breakout view refinement follow-up (2026-10-08)
 
 Retain U11's on-demand UI with a persistent resident tray. The measured source-41
-closed-family RSS saving is about20MiB; the40MiB cold target remains unmet.
+closed-family RSS saving is about 20 MiB; the 40 MiB cold target remains unmet.
 The user approved a separate bounded Settings-startup investigation from the
-333ms mapped-reopen baseline, targeting about200ms without retained helpers,
+333 ms mapped-reopen baseline, targeting about 200 ms without retained helpers,
 new dependencies, changed native fonts/dialogs or memory regression. Locate costs
 before implementation and preserve exact source/overlay/binary identities.
 
@@ -1083,10 +1083,24 @@ retains MIME/destination in the selected inspector, and stacks that inspector on
 narrow windows. Activity favors filenames, keeps full IDs in routing/tooltips and
 uses compact commands. No image cache or persistent UI helper is added.
 
-Dev41/41 and affected GUI3/3 pass, including meaningful empty-form/alignment
+Dev 41/41 and affected GUI 3/3 pass, including meaningful empty-form/alignment
 failures before their fixes. The completed local/Anthropic review has no retained
 actionable findings. These are headless/scoped checks: frozen current-source
 Cinnamon/GNOME/KDE views, normal close/reopen, independent Copy result paste and
 small-window inspection remain required before visual acceptance. ASan/UBSan and
 native replay outcomes will be recorded separately; prior witnesses are not
 relabelled. See [the refinement checkpoint](../evidence/2026-10-08-ui-refinement.json).
+
+Source `f56dc72` (version `0.1.1-dev.43+gf56dc72de4fe`) freezes the view
+refinement. The affected ASan/UBSan GUI suite passes 3/3. All three previous lab
+residents were stopped after identity/idle checks, and their complete profiles
+were preserved before building replacements. Current native acceptance is in
+progress; build execution is not graphical acceptance.
+
+The original-source startup diagnostic attributes reopened Settings construction
+and showing to about 116–129 ms, native QApplication initialization to 56–59 ms,
+and bootstrap/snapshot/activation to under 7 ms. The independent mapped observer
+adds roughly 108–140 ms after CLI acknowledgement. These instrumented observations
+locate costs and establish no product saving. Measure hidden-page construction
+and polish before selecting a lazy-page change. Preserve the unchanged primary
+harness and reject changes that merely report readiness earlier.

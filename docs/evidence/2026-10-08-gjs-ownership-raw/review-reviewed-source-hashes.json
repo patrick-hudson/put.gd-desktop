@@ -1,0 +1,5 @@
+{
+  "CMakeLists.txt": "816680544efe9826df5990185c671cba856ad9723cd122e63133339f7ad9e64d",
+  "tests/desktop/test_gnome_ownership.mjs": "a98d0b74afbdb9eb0a561d9f68ecd31c23372b92084de29d59bc30a8cf298be3",
+  "integrations/gnome/extension.js": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+}

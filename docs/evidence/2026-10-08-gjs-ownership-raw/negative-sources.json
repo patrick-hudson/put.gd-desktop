@@ -1,0 +1,4 @@
+{
+  "rejection.mjs": "await Promise.resolve(); throw new Error('synthetic assertion failure');\n",
+  "pending.mjs": "await new Promise(() => {});\n"
+}

@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "scope": "Replace optional Node mocked extension ownership fixture with GNOME existing GJS; not Shell graphical acceptance",
+  "runtime": "GNOME guest existing /usr/bin/gjs1.88.0",
+  "installedPackages": [],
+  "checks": {
+    "gjsAssertions": {
+      "passed": true,
+      "count": 5,
+      "names": [
+        "resident PID rejected before layout",
+        "registered helper PID rejected before layout",
+        "foreign sender cannot replace helper identity",
+        "helper exit clears exclusion",
+        "frozen target survives focus/helper registration changes"
+      ]
+    },
+    "hostCmakeConfigure": {
+      "passed": true,
+      "nodeLookupRemoved": true,
+      "hostGjsAbsent": true,
+      "testSkippedOnNonGnomeHost": true
+    },
+    "negativeControls": {
+      "asyncFailureExit": 1,
+      "unresolvedAwaitTimedOutSeconds": 5,
+      "ctestTimeoutSeconds": 30,
+      "scope": "Engine failure/pending behavior; synthetic modules, no product or display edits"
+    }
+  },
+  "files": {
+    "CMakeLists.txt": {
+      "sha256": "816680544efe9826df5990185c671cba856ad9723cd122e63133339f7ad9e64d"
+    },
+    "tests/desktop/test_gnome_ownership.mjs": {
+      "sha256": "a98d0b74afbdb9eb0a561d9f68ecd31c23372b92084de29d59bc30a8cf298be3"
+    },
+    "integrations/gnome/extension.js": {
+      "sha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+    }
+  },
+  "artifacts": {
+    "04.command.json": "040356ca4da19e8e024b2ca434860f54783e3353aab63f6682aa2c15cf037fa2",
+    "04.result.json": "44a8784739563ba37f340248c8c182ebe981242daaf4b559e89149924b7536e4",
+    "04.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "04.stdin": "bb7c04515bea9a2c6f91e0ef292511edcc2d3d485559d6d6bace60cc2f511ab2",
+    "04.stdout": "806d39450506baa416657dec6d7270796224ad71184aae0cbaab68eb4021f3b3",
+    "complete.json": "2bffe824ccbe3d594726eab31e21b5977b6ef99a04bc873d876be7b9c7e557fc",
+    "negative-01.command.json": "69fdfc0dc97f4ca1d08959786ce3a0e1f66ddd8c883f3bee4a582e403187fed7",
+    "negative-01.result.json": "400c79aff502eb87d7c4b3b19d3cebe0f92a9669627d0955f97304dc247228d5",
+    "negative-01.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "negative-01.stdin": "747e8fe0ee9c254fbdefc2d21efcd40c1f38161eb75420c5a534dabfe20e0a62",
+    "negative-01.stdout": "0b27296f6333068db4ecb0c87019e33f7017b1ab07a7ce5ac00e1cd4e2d0f930",
+    "negative-complete.json": "25ac5678cd9f853ac320fe0f73ee8484c1d7058cb7ba706925a442a34b362d07",
+    "negative-negative-control-results.json": "0e9c024f137a5f36ef0dea8d60a8ffbc73d878ed0bc0ab46eda01c9466174dbb",
+    "negative-sources.json": "107b3f42cd0b3494bd925e461715bbedde85978b800be311e37995b738221d88",
+    "no-node-configure.log": "1ff27b3e6b3412dd62fa0e70fc974893fad89957d17dbfd71fea8a06c7da5740",
+    "review-adversarial-claude.json": "4120cd1ec5ea7c121bb2334558d735f211cc8aa376fe3674cd66add349baa096",
+    "review-candidate-dispositions.json": "d454034646c2da89c6ff6e074e4fa5dba340d0c16c131027073bd9818af38e93",
+    "review-metadata.json": "3e1467cd68fcb6ee626a14d42c02ad0cf62fd1f24201e2cf82e2799c304dd4bd",
+    "review-review.json": "7bd887aa4eaf5363951ab1212ecb263ca76ecb4038b7a7cd303bde3271bf0318",
+    "review-reviewed-source-hashes.json": "6bc4384fc4a9ac14b2eb7779ca4aa8e3f7364d73805aaf8144990af223c7b146",
+    "review-stages.jsonl": "5fdaef0f39a94f55b5b0f774cdd6059ba8b49d10393123e9e7a741a480849abe",
+    "source.json": "568d68920072812f7d48bf85f951226504c924f46b9ed7126effe0e69b690e24"
+  },
+  "nativeEvidence": "Independent source43 native build/matrix in progress; unchanged source43 artifacts not relabelled",
+  "review": {
+    "status": "complete",
+    "actionableFindings": 0,
+    "receipt": "2026-10-08-gjs-ownership-raw/review-review.json",
+    "modelActual": "claude-opus-5-5",
+    "effortActual": "unverified"
+  }
+}
