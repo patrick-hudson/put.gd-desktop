@@ -15,6 +15,12 @@ See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers 
 Offscreen tests prove widget/core behavior only. Real desktop support requires graphical
 acceptance evidence for each declared compositor. Never report a mock as desktop proof.
 
+Test a new candidate on one Cinnamon build first, including its functional and
+memory checks. If either fails its required gate,
+stop expansion and fix or reject it before building/testing GNOME or KDE.
+After Cinnamon passes, independent cross-desktop checks may run in parallel;
+all declared desktops still require current-version evidence before acceptance.
+
 Use synthetic payloads and an isolated test destination. Never commit `credentials.txt`, including with force-add. It is user-provided local
 test input only; never include its contents in logs, diagnostics, or review packets.
 Never put credentials in source,
@@ -42,3 +48,23 @@ The user watches the live display wall at http://127.0.0.1:8765/; do not disable
 redirect guest display output during graphical tests. Distinguish SSH build/log work
 from graphical acceptance, and restore an idle/locked test session through its
 visible console before using it as acceptance evidence.
+
+Before launching any isolated Linux test, calculate the UTF-8 byte length of
+every resolved Unix socket path, including the harness-added runtime directory
+and `putgd/session.sock` suffix. The Linux limit is 107 bytes excluding the
+terminating NUL. Use a short, new, private output directory and reject an
+overlong path before starting the app. Do not change a frozen performance
+harness or weaken socket ownership checks to accommodate a long artifact name.
+Preserve failed attempts and record the corrected command before retrying.
+Use `python3 tools/diagnostics/check_socket_paths.py --ui-output RUN_1 RUN_2`
+for the UI harness, or `--socket` for complete paths in other tests.
+
+Agents own lab-session unlocking. Inspect the existing run/bootstrap metadata
+for its protected local login input before asking the user for credentials.
+Verify that input is an owned, private regular file, then read it only in memory
+and type into the visibly focused masked login field through the VM console.
+Never include its value in commands, tool output, logs, screenshots, configuration
+or review material; never use `credentials.txt` as a desktop login source.
+Verify the unlocked desktop visibly before acceptance, and ask the user only
+if the protected login input is actually unavailable or rejected.
+

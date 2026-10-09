@@ -79,10 +79,30 @@ hosts lack GJS. Its Shell dependencies are mocked, so native graphical cases
 remain required. See [startup replay](testing-view-startup.md) for the fixed
 on-demand workload, exact identities and quiet measurement policy.
 
+Before launching an isolated test, count the complete resolved Unix socket path
+in UTF-8 bytes, including any harness-added directories and filenames. Linux's
+limit is 107 bytes excluding NUL. Keep private run roots short; descriptive
+evidence directory names belong in the later export. Preserve a failed attempt
+before repeating it with a corrected path and the unchanged measurement protocol.
+Run `python3 tools/diagnostics/check_socket_paths.py --ui-output RUN_1 RUN_2`
+with the complete per-run output paths; it exits 2 if any socket would be too long.
+For other harnesses, use `--socket` with their complete socket paths. The check
+does not create directories or replace the app's ownership/permission checks.
+
+Restore locked lab sessions yourself through their visible masked console fields
+using the existing protected bootstrap login input. Verify its owner, private
+permissions and regular-file identity; keep the value only in memory and out of
+command lines, screenshots and all logs. Inspect the unlocked desktop before
+collecting graphical acceptance. Ask the user for help only after checking that
+the existing protected input is missing or rejected. Cloud `credentials.txt` is
+never a source for desktop logins.
+
 The lab interface is `python3 tools/lab/lab.py`; use [testing](testing.md) and [VM lab](vm-lab.md) for exact package/provisioning/snapshot commands. A real desktop scenario remains unverified until its saved artifact, independent paste and QMP witness pass. U10's full release lifecycle is still pending.
 For memory work, first run the current candidate through the cross-desktop
 functional matrix on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Build and test
-independent profiles in parallel, then wait for build/GUI activity to finish before
+one Cinnamon candidate first, including functional and memory checks; fix or
+reject a failed gate before building/testing its GNOME or KDE counterparts. After Cinnamon passes, those independent profiles
+may run in parallel. Wait for build/GUI activity to finish before
 quiet memory samples. Use one frozen source revision/archive across distro-native
 builds, and retain package, app, CLI, S3 module and helper hashes. The lab rejects
 missing install receipts and running app bytes that differ from the installed
