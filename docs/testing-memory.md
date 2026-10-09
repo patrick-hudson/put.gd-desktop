@@ -427,6 +427,20 @@ observation. The target uses the larger of primary sampled RSS and whole-family
 sampled RSS, at most 40 * 1024**2 bytes, plus primary idle CPU below 0.5% of one
 core. Its separate `legacyBudgetPassed` field does not establish the target.
 
+At normal completion, the frozen sampler can encounter the resident's missing
+`/proc` entry after the primary result is written. The supplemental observer
+recognizes only its exact root-exit error, requires the entire original process
+entry to be gone and checks the parseable primary result's app hash, successful
+budget and at least300seconds before waiting for the inner observer naturally.
+A live or reused root, missing child file, invalid primary result, early exit or
+unrelated sampling error remains a failure. Final inner-observer exit, complete
+sidecar, zero operations, coverage and unchanged hashes are still mandatory.
+Never promote a valid legacy result when its supplemental observer or sidecar
+failed. Preserve that attempt and retry under fresh paths after verified cleanup.
+The stdlib contracts exercise real root disappearance and these rejection cases;
+see [the terminal-race evidence](evidence/2026-10-09-cold-family-exit-race.json).
+
+
 The view harness validates the same source identity, isolated cold fixture,
 CLI socket owner and all observed descendants. It requires normal last-window
 closure and an absent UI helper before closed samples; external process killing

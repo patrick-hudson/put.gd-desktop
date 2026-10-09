@@ -75,6 +75,106 @@ class ColdFamilyTests(unittest.TestCase):
     def retain(self, value):
         observer.write_json(self.root / (self._testMethodName + '.json'), value)
 
+    def test_normal_root_disappearance_after_final_primary(self):
+        base = self.root / 'normal-root-exit'
+        base.mkdir(mode=0o700)
+        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        try:
+            family = observer.ProcessFamily(process.pid, Path(sys.executable).resolve())
+            process.terminate()
+            process.wait(timeout=5)
+            with self.assertRaises(FileNotFoundError):
+                observer.sample_cold_family(family, base)
+            observer.write_json(base / 'results.json', {
+                'budgetPassed': True, 'elapsedSeconds': 300.1,
+                'appSha256': family.expected_hashes[str(family.app)]})
+            self.assertIsNone(observer.sample_cold_family(family, base))
+            self.retain({'realRootExitObserved': True, 'normalAfterFinal': True,
+                         'prematureExitRejected': True, 'applicationExecuted': False})
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=5)
+
+    def test_terminal_exit_does_not_hide_other_sample_failures(self):
+        base = self.root / 'terminal-validation'
+        base.mkdir(mode=0o700)
+        root = {'pid': 999999999, 'startTicks': 2, 'uid': os.getuid(),
+                'executable': str(Path(sys.executable).resolve()), 'device': 3, 'inode': 4}
+        family = SimpleNamespace(root=root, app=Path(root['executable']),
+                                 expected_hashes={root['executable']: 'a' * 64})
+        valid = {'budgetPassed': True, 'elapsedSeconds': 300.1, 'appSha256': 'a' * 64}
+        observer.write_json(base / 'results.json', valid)
+        raw = FileNotFoundError(2, 'synthetic disappearance', f"/proc/{root['pid']}/stat")
+        def fail(): raise raw
+        family.sample = fail
+        with patch.object(observer, 'identity', return_value=root):
+            with self.assertRaises(FileNotFoundError):
+                observer.sample_cold_family(family, base)
+        with patch.object(observer, 'identity', return_value={**root, 'startTicks': 3}):
+            with self.assertRaises(observer.EvidenceError):
+                observer.sample_cold_family(family, base)
+        with patch.object(observer, 'identity', side_effect=FileNotFoundError()):
+            for primary in [{**valid, 'budgetPassed': False},
+                            {**valid, 'elapsedSeconds': 299},
+                            {**valid, 'appSha256': 'b' * 64}]:
+                observer.write_json(base / 'results.json', primary)
+                with self.assertRaises(observer.EvidenceError):
+                    observer.sample_cold_family(family, base)
+        self.retain({'missingDescendantWithLiveRootRejected': True,
+                     'reusedRootRejected': True, 'invalidFinalPrimaryRejected': True})
+
+    def test_terminal_normalizer_rejects_unrelated_missing_files_and_live_proc(self):
+        base = self.root / 'terminal-boundaries'
+        base.mkdir(mode=0o700)
+        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        try:
+            real = observer.identity(process.pid)
+            family = SimpleNamespace(root=real, app=Path(real['executable']),
+                                     expected_hashes={real['executable']: 'a' * 64})
+            valid = {'budgetPassed': True, 'elapsedSeconds': 300.1, 'appSha256': 'a' * 64}
+            observer.write_json(base / 'results.json', valid)
+            def missing_exe():
+                raise FileNotFoundError(2, 'synthetic executable missing', f'/proc/{process.pid}/exe')
+            family.sample = missing_exe
+            with patch.object(observer, 'identity', side_effect=FileNotFoundError()):
+                with self.assertRaises(observer.EvidenceError) as failure:
+                    observer.sample_cold_family(family, base)
+                self.assertEqual(str(failure.exception), 'resident_exit_not_confirmed')
+            process.terminate()
+            process.wait(timeout=5)
+            family.root = {**real, 'pid': 999999999}
+            def missing_child():
+                raise FileNotFoundError(2, 'synthetic child missing', '/proc/999999998/stat')
+            family.sample = missing_child
+            with patch.object(observer, 'identity') as probe:
+                with self.assertRaises(FileNotFoundError):
+                    observer.sample_cold_family(family, base)
+                probe.assert_not_called()
+            def terminal(): raise observer.EvidenceError('resident_exited')
+            family.sample = terminal
+            self.assertIsNone(observer.sample_cold_family(family, base))
+            with patch.object(Path, 'exists', side_effect=[False, True]):
+                with self.assertRaises(observer.EvidenceError) as failure:
+                    observer.sample_cold_family(family, base)
+                self.assertEqual(str(failure.exception), 'resident_identity_changed')
+            (base / 'results.json').write_text('{incomplete')
+            with self.assertRaises(observer.EvidenceError) as failure:
+                observer.sample_cold_family(family, base)
+            self.assertEqual(str(failure.exception), 'invalid_final_primary_at_resident_exit')
+            def other_failure(): raise observer.EvidenceError('incomplete_smaps_rollup')
+            family.sample = other_failure
+            with self.assertRaises(observer.EvidenceError) as failure:
+                observer.sample_cold_family(family, base)
+            self.assertEqual(str(failure.exception), 'incomplete_smaps_rollup')
+            self.retain({'liveProcMissingExeRejected': True, 'missingChildRejected': True,
+                         'typedNormalExitAccepted': True, 'postValidationReuseRejected': True,
+                         'malformedPrimaryRejected': True, 'otherSamplingFailureRejected': True})
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=5)
+
     def test_coverage_rejects_sparse_or_gapped_samples(self):
         regular = [{'elapsedSeconds': value} for value in range(299)]
         sparse = [{'elapsedSeconds': 0}, {'elapsedSeconds': 300}]

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "09097adb457534fb148b81bc4f871480016ad60b",
+  "version": "0.1.1-dev.51+g09097adb4575",
+  "applicationSourceChanged": false,
+  "originalAttemptAccepted": false,
+  "cause": "Frozen ProcessFamily._discover initial root identity read can raise raw FileNotFoundError after normal benchmark termination. Supplemental observer handled only typed resident_exited, then interrupted inner finalization during cleanup.",
+  "causeLocations": [
+    "tests/performance/bench_ui_process.py:154",
+    "tests/performance/observe_cold_family.py:339"
+  ],
+  "primaryLegacyBudgetPassed": true,
+  "primaryDurationSeconds": 300.14719235902885,
+  "primaryPeakRssBytes": 26095616,
+  "primaryCpuPercentOneCore": 0.00666339732942645,
+  "supplementalSamples": 283,
+  "supplementalSampleSpanSeconds": 298.99642366496846,
+  "windowObserverCompleted": false,
+  "failedOutputs": [
+    {
+      "file": "evidence/cold-family-exit-race/failed-family.json",
+      "originalSha256": "fd2c8de91e3c1b73264cf83c2b0be564f61748c098449d3427b37bd757e733a3",
+      "exportSha256": "fd2f46571af78b9433f6c9834abac405b9c50b3daeec8c4a723d5a3cda1319f3",
+      "accepted": false
+    },
+    {
+      "file": "evidence/cold-family-exit-race/primary-legacy.json",
+      "originalSha256": "6e902dda46d0ac510ad6b04af50a5ab8ea8911ca35ceb2141153ddf6cc6de549",
+      "exportSha256": "2a051dc1141ca89e9d82d0d364c8dce5e1615f814856a5071c3239d9716ccf4f",
+      "accepted": false
+    },
+    {
+      "file": "evidence/cold-family-exit-race/interrupted-window-observer.json",
+      "originalSha256": "f817fc2e29d5cfbd48d5d514fba8fc9964b057a3b0ce5fa49ce349cba6b478e3",
+      "exportSha256": "e2c5235348feaf8e4472488eba5d4e8feacb3b5dc62fc6137524b2c3edcb64a8",
+      "accepted": false
+    }
+  ],
+  "fix": "Normalize exact rootproc disappearance only after matching successful >=300second final primary; reject live/reused roots, missing children and invalid/premature primary results. Wait naturally for inner completion and retain all finalexit/sidecar/hash/coverage gates.",
+  "correctedObserverSha256": "0edee329afb807c16b39c5c0d3f8e2387e90ba761f2a09f56eeca1e4bf33a626",
+  "contractTestSha256": "d98d68aba49ec6e2956df43f6384c7722849a19c3d758c62f3cebe2ce1ab898a",
+  "frozenHarnesses": {
+    "bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+  },
+  "regressionTests": {
+    "redCount": 2,
+    "redFailures": 2,
+    "redLogSha256": "757d1d6aa60a3dde5490bbc440fc2f0bf46c99ea0c1ea83de8465bf38b430fac",
+    "fullGreenCount": 12,
+    "fullGreenFailures": 0,
+    "greenLogSha256": "3ee98af84971417b1fd4316455243e3d321796e99d3d3e27556999c0ba0bbd2d"
+  },
+  "review": {
+    "reviewer": "review_capture_policy",
+    "scope": "supplemental observer plus contracts",
+    "actionableFindings": 0,
+    "runtimeExecutedByReviewer": false
+  },
+  "remaining": "Fresh clean version, native identity gate and complete physical timing/cold/closed repeat sequence; no GNOME/KDE acceptance inferred."
+}

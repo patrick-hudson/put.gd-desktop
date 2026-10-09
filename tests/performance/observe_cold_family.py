@@ -216,6 +216,49 @@ def single_cold_process(samples, family, owned):
                         for row in family.exited))
 
 
+def sample_cold_family(family, output):
+    """Recognize final root exit without hiding missing children or proc data.
+
+    The frozen sampler's initial root lookup can raise raw FileNotFoundError.
+    This supplemental boundary alone normalizes that terminal race. Complete
+    sidecar, observer exit, coverage and unchanged-hash checks still follow.
+    """
+    try:
+        return family.sample()
+    except (FileNotFoundError, EvidenceError) as error:
+        root = Path('/proc') / str(family.root['pid'])
+        if isinstance(error, EvidenceError):
+            if str(error) != 'resident_exited':
+                raise
+        elif error.filename not in {str(root), str(root / 'stat'), str(root / 'exe')}:
+            raise
+        final = output / 'results.json'
+        if not final.is_file():
+            raise
+        try:
+            current = identity(family.root['pid'])
+        except FileNotFoundError:
+            # An unreadable executable alone can be a live/zombie process.
+            # Require the entire original proc entry to have disappeared.
+            if root.exists():
+                raise EvidenceError('resident_exit_not_confirmed') from error
+        else:
+            if not same_identity(current, family.root):
+                raise EvidenceError('resident_identity_changed') from error
+            raise
+        try:
+            primary = read_json(final)
+            valid = (primary['budgetPassed'] is True and primary['elapsedSeconds'] >= 300
+                     and primary['appSha256'] == family.expected_hashes[str(family.app)])
+        except (OSError, ValueError, KeyError, TypeError):
+            raise EvidenceError('invalid_final_primary_at_resident_exit') from error
+        if not valid:
+            raise EvidenceError('invalid_final_primary_at_resident_exit') from error
+        if root.exists():
+            raise EvidenceError('resident_identity_changed') from error
+        return None
+
+
 def read_json(path):
     with path.open() as source:
         return json.load(source)
@@ -336,14 +379,8 @@ def run(args):
                         owned.mark_resident(family.root)
                 now = time.monotonic()
                 if family and now - last_sample >= POLL_SECONDS:
-                    try:
-                        row = family.sample()
-                    except EvidenceError as error:
-                        # The frozen harness writes final results before ending
-                        # its measured resident. Only that specific normal exit
-                        # is permitted, and primary/sidecar success is checked below.
-                        if str(error) != 'resident_exited' or not (output / 'results.json').is_file():
-                            raise
+                    row = sample_cold_family(family, output)
+                    if row is None:
                         data['residentExitAfterPrimaryResults'] = True
                         break
                     data['samples'].append({'elapsedSeconds': now - started, **row})
