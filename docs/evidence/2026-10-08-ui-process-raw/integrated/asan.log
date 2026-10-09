@@ -1,0 +1,31 @@
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/asan
+      Start  2: kde_ownership_integration
+ 1/13 Test  #2: kde_ownership_integration ........   Passed    2.11 sec
+      Start  3: ui_split_services_integration
+ 2/13 Test  #3: ui_split_services_integration ....   Passed    1.14 sec
+      Start  4: ui_process_integration
+ 3/13 Test  #4: ui_process_integration ...........   Passed    2.31 sec
+      Start  5: ui_endpoints_integration
+ 4/13 Test  #5: ui_endpoints_integration .........   Passed    1.20 sec
+      Start  6: ui_control_integration
+ 5/13 Test  #6: ui_control_integration ...........   Passed    1.27 sec
+      Start  7: session_client_integration
+ 6/13 Test  #7: session_client_integration .......   Passed   19.07 sec
+      Start  9: gui_application
+ 7/13 Test  #9: gui_application ..................   Passed    8.88 sec
+      Start 10: gui_tray
+ 8/13 Test #10: gui_tray .........................   Passed    0.77 sec
+      Start 11: gui_version
+ 9/13 Test #11: gui_version ......................   Passed    0.17 sec
+      Start 13: x11_isolated
+10/13 Test #13: x11_isolated .....................   Passed   17.52 sec
+      Start 35: gui_settings
+11/13 Test #35: gui_settings .....................   Passed   20.62 sec
+      Start 36: gui_operations_view
+12/13 Test #36: gui_operations_view ..............   Passed    1.75 sec
+      Start 37: gui_history_view
+13/13 Test #37: gui_history_view .................   Passed   23.58 sec
+
+100% tests passed, 0 tests failed out of 13
+
+Total Test time (real) = 100.40 sec

@@ -247,6 +247,29 @@ private slots:
   first.bind({{"region","Ctrl+Shift+1"}});second.bind({{"region","Ctrl+Shift+1"}});
   QVERIFY(first.status()["region"].toObject()["bound"].toBool());QVERIFY(!second.status()["region"].toObject()["bound"].toBool());QCOMPARE(second.status()["region"].toObject()["error"].toString(),QString("shortcut_conflict"));
  }
+ void residentWindowIsRejected() {
+  QWidget window;window.resize(40,30);window.show();
+  auto* c=xcb_connect(nullptr,nullptr);const auto root=xcb_setup_roots_iterator(xcb_get_setup(c)).data->root;
+  auto* atom=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,18,"_NET_ACTIVE_WINDOW"),nullptr);QVERIFY(atom);
+  const xcb_window_t own=window.winId();xcb_change_property(c,XCB_PROP_MODE_REPLACE,root,atom->atom,XCB_ATOM_WINDOW,32,1,&own);xcb_flush(c);
+  auto* sync=xcb_get_input_focus_reply(c,xcb_get_input_focus(c),nullptr);free(sync);
+  X11Capture capture;Error error;capture.freeze("window",error);QCOMPARE(error.code,QString("capture_target"));
+  xcb_delete_property(c,root,atom->atom);free(atom);xcb_disconnect(c);
+ }
+ void uiProcessWindowRejectedAndFrozenExternalPreserved() {
+  X11DesktopFixture desktop;QVERIFY(desktop.window);
+  auto* c=desktop.connection;const auto root=xcb_setup_roots_iterator(xcb_get_setup(c)).data->root;
+  auto atom=[&](const char* name){auto* value=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,strlen(name),name),nullptr);const auto result=value?value->atom:xcb_atom_t(0);free(value);return result;};
+  const auto active=atom("_NET_ACTIVE_WINDOW"),pidAtom=atom("_NET_WM_PID");const uint32_t helperPid=424242;
+  xcb_change_property(c,XCB_PROP_MODE_REPLACE,root,active,XCB_ATOM_WINDOW,32,1,&desktop.window);
+  xcb_change_property(c,XCB_PROP_MODE_REPLACE,desktop.window,pidAtom,XCB_ATOM_CARDINAL,32,1,&helperPid);desktop.inputFocus();
+  X11Capture capture;Error error;capture.setUiProcess(helperPid);capture.freeze("window",error);QCOMPARE(error.code,QString("capture_target"));
+  capture.setUiProcess(0);error={};const auto frozen=capture.freeze("window",error);QVERIFY2(!error,qPrintable(error.message));QCOMPARE(frozen.window,desktop.window);
+  // Registration changes after invocation cannot retarget a frozen external window.
+  capture.setUiProcess(helperPid);QVERIFY(capture.unchanged(frozen,error));QVERIFY(!error);
+  capture.setUiProcess(helperPid+1);error={};capture.freeze("window",error);QVERIFY(!error);
+  capture.setUiProcess(0);xcb_delete_property(c,root,active);
+ }
  void activeWindowFrozenAndMovedTargetRejected() {
   auto* c=xcb_connect(nullptr,nullptr);auto* screen=xcb_setup_roots_iterator(xcb_get_setup(c)).data;auto root=screen->root;
   auto atom=[&](const char* name){auto* r=xcb_intern_atom_reply(c,xcb_intern_atom(c,0,strlen(name),name),nullptr);auto result=r?r->atom:xcb_atom_t(0);free(r);return result;};

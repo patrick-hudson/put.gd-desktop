@@ -1,0 +1,40 @@
+{
+  "scope": "U11 launcher response validation follow-up",
+  "files": {
+    "src/main.cpp": "862feabfb9e2ca007ea8fe5026207533bf087048852c0540c8ed5a5ff0e2979e",
+    "src/app/LocalIpc.cpp": "45a8f377ed3db9ca56fc466b8d428ffdeedca54dfac343b615754ffbd77b58e6",
+    "src/app/LocalIpc.h": "f4c06521e79967aff1765518c39e17b4233c92ce8fa83ee819ef167c719294f1",
+    "tests/integration/test_cli.cpp": "a99e060622ef1800ccc5656e6b37e915e1557b307f819a8197061c3d1375e56a",
+    "docs/cli.md": "da43e2e87838de744afa3a105ce50c43b4bd3ec3961c05b2b1d7ff77679fd689"
+  },
+  "red": "red.json",
+  "testStatus": "passed",
+  "commands": [
+    "cmake --build --preset dev --target test_cli test_local_ipc",
+    "ctest --preset dev -R '^(cli_integration|local_ipc_contract)$' --output-junit work/u11/launcher-fix/results.xml"
+  ],
+  "transport": {
+    "deadlineMilliseconds": 15000,
+    "maximumResponseBytes": 16384,
+    "linuxDependenciesChanged": false
+  },
+  "protocol": "Response version 1 has no session field. Exact session path is in request; response requestId and shown view match the request on that connected endpoint. Existing response schema is unchanged.",
+  "notTested": "Non-Linux QLocalSocket branch requires its platform acceptance; root owns sanitizer and full suite runs.",
+  "tests": {
+    "cli_integration": {
+      "status": "passed",
+      "seconds": 20.61
+    },
+    "local_ipc_contract": {
+      "status": "passed",
+      "seconds": 12.97
+    },
+    "totalSeconds": 33.58
+  },
+  "artifacts": {
+    "red.json": "d923e48cd104386c9bf0b97d18ad0d56287ea38116ee0803f2705e515832279a",
+    "build.log": "2e64808a9fda24e40750a3328452521be3eef115de9833110daedff6fde89705",
+    "results.log": "c09f0cd793bd78a3cfbf956913e9d859f72a019c64b4eb0fc23c502802c3a68a",
+    "results.xml": "a31314830a03e7af21f48592e6fc6d834570be72f306d063c62705d8a77e0bd0"
+  }
+}

@@ -35,7 +35,7 @@ ctest --preset dev
 
 Every ordinary build refreshes its software version from the release base and Git
 commit, including a dirty marker for local changes. `putgd --version` and
-`putgd-cli --version` work without a display. See [versioning](versioning.md) for
+`putgd-cli --version` and `putgd-ui --version` work without a display. See [versioning](versioning.md) for
 the installed build manifest, package identity, and required provenance when
 building exported source archives in the desktop lab.
 
@@ -45,7 +45,7 @@ define the dependency. Refresh the manifest deliberately when updating the SDK.
 Only S3/core and their CRT dependencies are built. The SDK uses its own C++ settings;
 application targets require C++20. SDK headers are isolated to the S3 adapter.
 
-The build creates `putgd`, `putgd-cli`, and the private `putgd_s3_module` target
+The build creates resident `putgd`, client `putgd-cli`, on-demand `putgd-ui`, and the private `putgd_s3_module` target
 (`libputgd-s3.so` on Linux). Keep the app and module from the same build together.
 Build-tree lookup uses its configured absolute directory. Installed applications
 resolve the module under the package's private library directory; there is no

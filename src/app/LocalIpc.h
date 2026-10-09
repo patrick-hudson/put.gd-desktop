@@ -5,7 +5,9 @@
 #include <memory>
 namespace putgd {
 enum class LocalSessionState { Connected, Absent, Unavailable };
-struct LocalActivation { bool connected=false; bool responded=false; };
+// A connected peer owns the session even when its activation reply fails.
+// response contains one complete frame only; errorCode never contains peer data.
+struct LocalActivation { bool connected=false; QByteArray response; QString errorCode; };
 LocalSessionState probeLocalSession(const QString& path,int timeoutMs);
 LocalActivation activateLocalSession(const QString& path,const QByteArray& request);
 class LocalIpcConnection final : public QObject {

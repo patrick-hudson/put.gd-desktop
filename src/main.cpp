@@ -3,9 +3,9 @@
 #include "storage/s3/S3Provider.h"
 #include "app/LocalServer.h"
 #include "app/LoginStartup.h"
-#include "ui/SettingsWindow.h"
-#include "ui/RecentOperations.h"
-#include "ui/HistoryWindow.h"
+#include "app/UiProcessController.h"
+#include "app/SetupService.h"
+#include "ui/ViewState.h"
 #include "ui/TrayController.h"
 #include <QApplication>
 #include <QCommandLineParser>
@@ -31,15 +31,39 @@
 #include "platform/kde/KdeSourceAdapter.h"
 #endif
 namespace {
-bool activateResident(const QString& view,bool background) {
+// -1 means no connection was made and normal resident startup may proceed.
+// Once connected, a failed UI request must never fall through to a second resident.
+int activateResident(const QString& view,bool background) {
  const auto path=putgd::LocalServer::defaultSocketPath();
- if(background)return putgd::activateLocalSession(path,{}).connected;
+ if(background)return putgd::activateLocalSession(path,{}).connected?0:-1;
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
  const QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method","ui.show"},{"params",QJsonObject{{"view",view}}}};
  const auto activation=putgd::activateLocalSession(path,QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');
- if(!activation.connected)return false;
- if(!activation.responded)qWarning("Resident activation response unavailable");
- return true;
+ if(!activation.connected)return -1;
+ QString code=activation.errorCode;
+ if(code.isEmpty()) {
+  QJsonParseError parse;const auto document=QJsonDocument::fromJson(activation.response,&parse);
+  const auto response=document.object();const auto error=response["error"].toObject();
+  const bool valid=parse.error==QJsonParseError::NoError&&document.isObject()&&response.size()==5&&
+   response["schemaVersion"]==1&&response["requestId"]==id&&response["ok"].isBool()&&
+   response["result"].isObject()&&response["error"].isObject()&&error.size()==3&&
+   error["code"].isString()&&error["message"].isString()&&error["details"].isObject();
+  if(!valid)code="invalid_response";
+  else if(response["ok"].toBool()) {
+   if(error["code"].toString().isEmpty()&&response["result"].toObject()==QJsonObject{{"shown",view}})return 0;
+   code="invalid_response";
+  } else if(error["code"].toString().isEmpty()||!response["result"].toObject().isEmpty())code="invalid_response";
+  else {
+   // Only known protocol codes are printable; never echo peer messages/details
+   // or an arbitrary error-code string into launcher logs.
+   const QStringList known{"ui_incompatible","ui_unavailable","ui_start_failed","ui_start_timeout","ui_show_timeout",
+    "ui_close_timeout","ui_stopping","ui_busy","ui_crashed","ui_protocol","wrong_session","unsupported_version"};
+   code=known.contains(error["code"].toString())?error["code"].toString():QStringLiteral("ui_activation_failed");
+  }
+ }
+ if(code=="ui_incompatible")qWarning("ui_incompatible: The installed UI version does not match the running app. Restart put.gd after pending uploads finish.");
+ else qWarning("%s: Could not confirm that the requested window opened. Retry opening the window; check the resident if this continues.",qPrintable(code));
+ return 1;
 }
 putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
  const auto parent=QFileInfo(path).absolutePath();
@@ -73,7 +97,7 @@ int main(int argc,char* argv[]) {
  QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show recent activity"});parser.process(app);
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
- if(activateResident(view,backgroundOnly))return 0;
+ const int activation=activateResident(view,backgroundOnly);if(activation>=0)return activation;
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
@@ -103,7 +127,7 @@ int main(int argc,char* argv[]) {
  putgd::OperationService operations(dataRoot,settings,providers,*source);
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
- const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));return listening.error.code=="session_running"?(activateResident(view,backgroundOnly)?0:1):1;}
+ const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
  const auto requested=[&operations](const QString& action){operations.invoke(action,[](putgd::Error error,QJsonObject){if(error)qWarning("Action rejected: %s",qPrintable(error.code));});};
 #ifdef PUTGD_NATIVE_X11
  if(native) {
@@ -132,37 +156,31 @@ int main(int argc,char* argv[]) {
   });
  };
  QJsonObject loginStatus;
- // Retain each view after its first activation so drafts and selections survive hiding.
- std::unique_ptr<putgd::SettingsWindow> window;
- std::unique_ptr<putgd::RecentOperations> activity;
- std::unique_ptr<putgd::HistoryWindow> historyWindow;
- // This context disconnects source callbacks before the view owners are destroyed.
- QObject viewLifetime;
- const auto refreshSettingsDiagnostics=[&]{if(window)window->refreshDiagnostics();};
+ putgd::SetupService setup(settings,credentials,tester);
+ server.setSetupService(&setup);
+ const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
+ putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);
+ QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);});
+ const auto refreshSettingsDiagnostics=[&]{ui.invalidate();};
 #ifdef PUTGD_NATIVE_X11
- if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&viewLifetime,refreshSettingsDiagnostics);
+ if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
 #ifdef PUTGD_NATIVE_GNOME
- if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&viewLifetime,refreshSettingsDiagnostics);
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
 #ifdef PUTGD_NATIVE_KDE
- if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&viewLifetime,refreshSettingsDiagnostics);
+ if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
- const auto settingsView=[&]() -> putgd::SettingsWindow& {
-  if(!window)window=std::make_unique<putgd::SettingsWindow>(settings,credentials,tester,[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];return diagnostics;});
-  return *window;
- };
- const auto historyView=[&]() -> putgd::HistoryWindow& {
-  if(!historyWindow)historyWindow=std::make_unique<putgd::HistoryWindow>(history,operations);
-  return *historyWindow;
- };
- const auto activityView=[&]() -> putgd::RecentOperations& {
-  if(!activity)activity=std::make_unique<putgd::RecentOperations>(operations);
-  return *activity;
- };
- putgd::TrayController tray(operations,settingsView,historyView,activityView);
- QObject::connect(&tray,&putgd::TrayController::quitRequested,&app,&QCoreApplication::quit);
- server.setUiActivation([&](const QString& requested){if(requested=="history")tray.showHistory();else if(requested=="activity")tray.showActivity();else tray.showSettings();});
+ const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
+ putgd::TrayController tray(operations,[&](const QString& requested){ui.activate(requested);},quitApplication);
+ server.setUiQuit(quitApplication);
+ QObject::connect(&ui,&putgd::UiProcessController::failure,&tray,&putgd::TrayController::notifyFailure);
+ server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){ui.activate(requested,std::move(reply));});
+ server.setUiDiagnostics([&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();return diagnostics;});
+ QObject::connect(&settings,&putgd::SettingsService::statusChanged,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&operations,&putgd::OperationService::initialized,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&operations,&putgd::OperationService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&setup,&putgd::SetupService::changed,&ui,&putgd::UiProcessController::invalidate);
  const auto loginMutex=std::make_shared<std::mutex>();
  const auto loginGeneration=std::make_shared<std::atomic_ullong>(0);
  const auto configureLogin=[&] {
@@ -174,7 +192,7 @@ int main(int argc,char* argv[]) {
   operations.background([configRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
- app.setQuitOnLastWindowClosed(!tray.available());
+ app.setQuitOnLastWindowClosed(false);
  if(!parser.isSet("background")||!tray.available()||settings.revision().isEmpty()) {if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();}
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,&putgd::OperationService::shutdown);
  return app.exec();

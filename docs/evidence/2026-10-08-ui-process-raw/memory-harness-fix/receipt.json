@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "timeUtc": "2026-10-09T00:29:09.329118+00:00",
+  "finding": "P2: Discover descendants of tracked reparented processes",
+  "checks": [
+    {
+      "label": "green",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/performance",
+        "-p",
+        "test_bench_ui_process.py",
+        "-v"
+      ],
+      "exitCode": 0,
+      "log": "work/u11/memory-harness-fix/green.log"
+    },
+    {
+      "label": "help",
+      "command": [
+        "python3",
+        "tests/performance/bench_ui_process.py",
+        "--help"
+      ],
+      "exitCode": 0,
+      "log": "work/u11/memory-harness-fix/help.log"
+    },
+    {
+      "label": "compile",
+      "command": [
+        "python3",
+        "-m",
+        "py_compile",
+        "tests/performance/bench_ui_process.py",
+        "tests/performance/test_bench_ui_process.py"
+      ],
+      "exitCode": 0,
+      "log": "work/u11/memory-harness-fix/compile.log"
+    }
+  ],
+  "sourceSha256": {
+    "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "tests/performance/test_bench_ui_process.py": "83d40c408407d8e8694e6983a9ee1b329995b2703a52bea8e729a307090023ba",
+    "docs/testing-ui-process.md": "064daba9fca6e6bf12cdd0affa5c69fca335a3b9bf10f424501e29f3eb88d442"
+  },
+  "limits": [
+    "Synthetic Python processes and deterministic topology models only. No product launch, native acceptance or application memory measurement.",
+    "Sequential snapshots cannot observe processes born and exited wholly between samples."
+  ]
+}

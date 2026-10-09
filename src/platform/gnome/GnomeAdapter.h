@@ -17,6 +17,7 @@ public:
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
  void bindShortcuts(const QHash<QString,QString>&);
+ void setUiProcess(qint64) override;
  void invalidateCopyEligibility() override;
 signals:
  void actionRequested(const QString&);
@@ -42,7 +43,8 @@ private:
  QDBusServiceWatcher watcher_;
  QTimer probe_;
  QString owner_;
- Error helperError_;
+ Error helperError_,uiProcessError_;
+ qint64 uiProcess_=0;
  QJsonObject helper_,bindings_;
  QHash<QString,QString> requested_;
  QHash<QString,QStringList> hotkeyPrepared_;

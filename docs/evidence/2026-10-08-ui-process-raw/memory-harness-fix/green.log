@@ -1,0 +1,22 @@
+test_existing_process_mode_writes_complete_totals_without_interaction (test_bench_ui_process.ProcessFamilyTests.test_existing_process_mode_writes_complete_totals_without_interaction) ... {"label": "existing-process-0", "elapsedSeconds": 0.10524459899170324, "totals": {"rssBytes": 38535168, "pssBytes": 26236928, "privateBytes": 25051136}, "processCount": 2, "uiProcessCount": 1, "escapedProcessCount": 0, "sampleSeconds": 0.06395165401045233}
+ok
+test_live_identity_change_is_not_counted_as_memory_saving (test_bench_ui_process.ProcessFamilyTests.test_live_identity_change_is_not_counted_as_memory_saving) ... ok
+test_normal_exit_and_reopen_keep_distinct_process_identities (test_bench_ui_process.ProcessFamilyTests.test_normal_exit_and_reopen_keep_distinct_process_identities) ... ok
+test_totals_include_resident_and_live_child (test_bench_ui_process.ProcessFamilyTests.test_totals_include_resident_and_live_child) ... ok
+test_tracked_child_outside_tree_remains_in_total (test_bench_ui_process.ProcessFamilyTests.test_tracked_child_outside_tree_remains_in_total) ... ok
+test_wrong_start_time_or_executable_fails (test_bench_ui_process.ProcessFamilyTests.test_wrong_start_time_or_executable_fails) ... ok
+test_escaped_childs_new_worker_is_counted_but_not_in_resident_tree (test_bench_ui_process.ReparentedDiscoveryTests.test_escaped_childs_new_worker_is_counted_but_not_in_resident_tree) ... ok
+test_pid_reuse_during_child_lookup_does_not_adopt_unrelated_workers (test_bench_ui_process.ReparentedDiscoveryTests.test_pid_reuse_during_child_lookup_does_not_adopt_unrelated_workers) ... ok
+test_reused_escaped_pid_is_not_a_discovery_root (test_bench_ui_process.ReparentedDiscoveryTests.test_reused_escaped_pid_is_not_a_discovery_root) ... ok
+test_closed_split_rejects_live_helper_even_if_diagnostics_claim_zero (test_bench_ui_process.WindowAndContractTests.test_closed_split_rejects_live_helper_even_if_diagnostics_claim_zero) ... ok
+test_initialization_failure_retains_a_structured_receipt (test_bench_ui_process.WindowAndContractTests.test_initialization_failure_retains_a_structured_receipt) ... UI process measurement failed; inspect its private evidence. No memory result was accepted.
+ok
+test_only_verified_pids_are_selected_and_duplicates_removed (test_bench_ui_process.WindowAndContractTests.test_only_verified_pids_are_selected_and_duplicates_removed) ... ok
+test_open_split_requires_actual_helper_and_matching_ready_ack (test_bench_ui_process.WindowAndContractTests.test_open_split_requires_actual_helper_and_matching_ready_ack) ... ok
+test_socket_peer_matches_the_explicit_resident_identity (test_bench_ui_process.WindowAndContractTests.test_socket_peer_matches_the_explicit_resident_identity) ... ok
+test_stat_parser_accepts_parentheses_and_spaces_in_comm (test_bench_ui_process.WindowAndContractTests.test_stat_parser_accepts_parentheses_and_spaces_in_comm) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 1.430s
+
+OK

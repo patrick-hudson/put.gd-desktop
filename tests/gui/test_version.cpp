@@ -1,60 +1,63 @@
 #include "core/BuildInfo.h"
-#include "fixtures/U2Fixtures.h"
-#include "ui/TrayController.h"
-#include <QAction>
+#include "ui/AboutWindow.h"
 #include <QApplication>
-#include <QMenu>
-#include <QMessageBox>
+#include <QJsonDocument>
 #include <QPointer>
+#include <QTest>
 #include <QTimer>
+#include <memory>
+
 using namespace putgd;
-using namespace putgd::test;
+
 class VersionView final : public QObject {
  Q_OBJECT
 private slots:
- void aboutIsModelessAndReleasedWithoutOpeningOtherViews() {
-  QTemporaryDir directory;QVERIFY(directory.isValid());ProviderRegistry providers;
-  SettingsService settings(directory.filePath("config.json"));Source source;
-  OperationService operations(directory.filePath("data"),settings,providers,source);
-  auto tray=std::make_unique<TrayController>(operations,[]()->SettingsWindow&{qFatal("About opened settings");},
-    []()->HistoryWindow&{qFatal("About opened history");},[]()->RecentOperations&{qFatal("About opened activity");});
-  QAction* about=nullptr;
-  for(auto* widget:QApplication::topLevelWidgets())if(auto* menu=qobject_cast<QMenu*>(widget))
-   for(auto* action:menu->actions())if(action->text()=="About put.gd")about=action;
-  QVERIFY(about);
-  const auto dialogs=[] {
-   QList<QMessageBox*> result;
-   for(auto* widget:QApplication::topLevelWidgets())
-    if(auto* dialog=qobject_cast<QMessageBox*>(widget))result.append(dialog);
-   return result;
-  };
-  QVERIFY(dialogs().isEmpty());
-  // Close a regressed modal dialog from its nested event loop so this test fails
-  // promptly instead of waiting for a person or the test timeout.
-  bool enteredModalLoop=false;
-  QTimer modalGuard;modalGuard.setSingleShot(true);
-  connect(&modalGuard,&QTimer::timeout,this,[&]{
-   if(auto* dialog=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){
-    enteredModalLoop=true;dialog->accept();
+ void aboutUsesTheConnectedResidentBuildAndIsModeless() {
+  auto manifest = QJsonDocument::fromJson(buildManifestJson()).object();
+  // Deliberately differ from this test binary to prove the displayed identity
+  // comes from the connected resident rather than a helper-local build lookup.
+  manifest["version"] = "0.1.1-dev.999+g0123456789ab";
+  manifest["commit"] = "0123456789abcdef0123456789abcdef01234567";
+  auto owner = std::make_unique<AboutWindow>(manifest);
+  QPointer<AboutWindow> dialog = owner.get();
+  bool enteredModalLoop = false;
+  QTimer modalGuard;
+  modalGuard.setSingleShot(true);
+  connect(&modalGuard, &QTimer::timeout, this, [&] {
+   if (auto* modal = qobject_cast<QMessageBox*>(QApplication::activeModalWidget())) {
+    enteredModalLoop = true;
+    modal->accept();
    }
   });
-  modalGuard.start(0);about->trigger();QApplication::processEvents();modalGuard.stop();
-  QVERIFY2(!enteredModalLoop,"About must not block capture input with a modal event loop");
-  QCOMPARE(dialogs().size(),1);
-  QPointer<QMessageBox> dialog=dialogs().first();
-  QVERIFY(dialog->isVisible());QVERIFY(!dialog->isModal());
-  QCOMPARE(dialog->windowModality(),Qt::NonModal);
-  QVERIFY(!QApplication::activeModalWidget());
-  QCOMPARE(dialog->text(),QString("put.gd %1").arg(buildVersion()));
-  QCOMPARE(QJsonDocument::fromJson(dialog->detailedText().toUtf8()).object(),
-    QJsonDocument::fromJson(buildManifestJson()).object());
-  about->trigger();QCOMPARE(dialogs().size(),1);QCOMPARE(dialogs().first(),dialog.data());
-  dialog->close();QTRY_VERIFY(dialog.isNull());QVERIFY(dialogs().isEmpty());
-  about->trigger();QCOMPARE(dialogs().size(),1);dialog=dialogs().first();
+  modalGuard.start(0);
+  dialog->show();
+  QApplication::processEvents();
+  modalGuard.stop();
+  QVERIFY2(!enteredModalLoop, "About must leave capture input and other views usable");
   QVERIFY(dialog->isVisible());
-  tray.reset();QVERIFY(dialog.isNull());QVERIFY(dialogs().isEmpty());
-  QCOMPARE(source.reads,0);QCOMPARE(source.copies,0);
+  QVERIFY(!dialog->isModal());
+  QCOMPARE(dialog->windowModality(), Qt::NonModal);
+  QVERIFY(!QApplication::activeModalWidget());
+  QCOMPARE(dialog->text(), QString("put.gd %1").arg(manifest["version"].toString()));
+  QCOMPARE(QJsonDocument::fromJson(dialog->detailedText().toUtf8()).object(), manifest);
+  QCOMPARE(dialog->informativeText(), QString("Screen capture and file sharing"));
+  QVERIFY(!dialog->testAttribute(Qt::WA_DeleteOnClose));
+  dialog->close();
+  QVERIFY(dialog);
+  QVERIFY(!dialog->isVisible());
+  owner.reset();
+  QVERIFY(dialog.isNull());
+ }
+
+ void aboutFollowsItsOwnerLifetime() {
+  auto* owner = new QWidget;
+  QPointer<AboutWindow> dialog = new AboutWindow({{"version", "0.1.1"}}, owner);
+  dialog->show();
+  QVERIFY(dialog->isVisible());
+  delete owner;
+  QVERIFY(dialog.isNull());
  }
 };
+
 QTEST_MAIN(VersionView)
 #include "test_version.moc"

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "scope": "Separate bounded read-only addendum for three untracked memory harness files; outside frozen U11 formal review scope",
+  "completedAt": "2026-10-09T00:25:41.784783+00:00",
+  "filesSha256": {
+    "tests/performance/bench_ui_process.py": "544c35a269d43d1a5e41d3897ad6f5a9b485365d857486f2a95d303703816660",
+    "tests/performance/test_bench_ui_process.py": "02bcebf8e83c5a25a5cc14b3d27d4cac36efdaa048f66cc6375bb24a96e9789b",
+    "docs/testing-ui-process.md": "024d0fdce52e8fa3c567d849f99e85be1fb593bdcbd048a07841aee2980dfa9b"
+  },
+  "findings": [
+    {
+      "title": "[P2] Discover descendants of tracked reparented processes",
+      "severity": "P2",
+      "file": "tests/performance/bench_ui_process.py",
+      "line": 158,
+      "confidence": 0.98,
+      "why_it_matters": "Existing-process observation can successfully publish understated total resident-family RSS/PSS/private memory when a previously observed reparented child spawns a live worker. Retaining the escaped child itself does not account for that worker. The physical workload rejects escaped descendants, so this affects the supported observation mode rather than its strict physical lifecycle.",
+      "evidence": [
+        "The discovery queue begins only with the resident PID at line 158 and recursively follows only its current children at line 173. Previously observed reparented processes remain in known and are measured at lines 184-212, but their children are not traversed.",
+        "A deterministic in-memory model with resident 1, tracked escaped helper 2, and new helper child 3 returned tree [1], childLookups [1], knownPids [1,2], omitting live descendant 3. No product or synthetic OS process was launched.",
+        "test_tracked_child_outside_tree_remains_in_total patches children to an empty set and checks only retention of the escaped child, so it cannot detect later descendant omission."
+      ],
+      "suggested_fix": "Continue discovery from identity-validated tracked live processes as well as the resident, while separately computing current resident-tree membership for escapedProcessCount. Guard reused PIDs before traversing tracked processes. Add a deterministic regression covering an escaped child that subsequently spawns a grandchild and verify all totals include it."
+    }
+  ],
+  "coverage": {
+    "method": "Direct source review and deterministic mocked discovery reproduction",
+    "reviewed": [
+      "Process-family discovery and accounting, identity/start-time/PID reuse guards and executable hashes",
+      "RSS/PSS/private totals, sampled peaks, cold/open/closed labels and summary semantics",
+      "Lifecycle helper acknowledgement and last-window close checks",
+      "CLI/subprocess timeouts, argument bounds, sample bounds and sequential observation limitations",
+      "Structured JSON/JSONL success and failure logs, private output permissions and provenance metadata",
+      "Matched retained/split workload documentation and unit-test coverage/false-positive boundaries"
+    ],
+    "supportingSources": [
+      "AGENTS.md",
+      "docs/ui-process-protocol.md",
+      "tests/performance/bench_views.py:fixture_config",
+      "tests/performance/observe_idle.py:owned_windows,check_physical_session,stop_owned_process_group",
+      "work/u11/memory-harness/receipt.json"
+    ],
+    "existingReceiptHashesMatch": true,
+    "unitSuiteRerun": false,
+    "liveMeasurementsRun": false,
+    "productOrBuildEdits": false
+  },
+  "residualLimitations": [
+    "Existing synthetic unit receipt reports successful tests/help/compile and matches all three reviewed hashes; this review did not independently rerun that suite.",
+    "No native desktop, VM, product, real memory, upload, populated-history or cold-idle acceptance was performed.",
+    "Sequential discovery and memory snapshots cannot account for processes wholly born and exited between snapshots; the documentation explicitly acknowledges this.",
+    "Timeout predicates invoke independently bounded commands and window enumeration; --timeout is not an aggregate hard wall-clock limit, and this remains unmeasured.",
+    "No actual forced PID recycling, live executable replacement, or descendant process escape was exercised; these guards were reviewed in source.",
+    "Acceptance receipt contents and source archive provenance are fingerprinted rather than semantically validated by the harness, as documented."
+  ],
+  "artifactPath": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/memory-harness-addendum.json"
+}

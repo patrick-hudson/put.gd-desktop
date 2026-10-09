@@ -1,0 +1,471 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-09T00:48:36.673139+00:00",
+  "unit": "U11 resident tray and disposable UI process",
+  "sourceBaseline": "d790554536b7ec687f7c1428feded6fbfbab49b6",
+  "sourceState": "owned uncommitted implementation; runtime receipts below retain their original stage identities",
+  "reviewedDiffSha256": "9b9bec2a04a57f942354e2d0601009a5415d5d989be33d16af245a4413cfd5cd",
+  "sourceHashes": {
+    "CMakeLists.txt": "10a56064dec1031648c21a6fd75a06e04fbb009b82ba8fd23d572e406cddb12d",
+    "cmake/BuildVersion.cmake": "7ced30c1cf8173ebc07cf0ed8d2ee84af8c3a01f77e0b1e22a7f1b31c3c1410f",
+    "cmake/CheckBuildIdentity.cmake.in": "6ee87a5782e91ad90006cd2b8b90597b6b0957f9fc486f748de5f6c2c3f30488",
+    "docs/agents.md": "90a8e8e626544785b03f32d7ab8d87274816f4913e24016489cd3e1193ca2768",
+    "docs/architecture.md": "a17b33dc968afc9cda01a6b1306666535dd14e1e3ae097e49d43fabc70846265",
+    "docs/build.md": "15dc05e819fef8abf5d2a8dd3e9c4b445cc1c208a58eb841ee992ca7a84b432d",
+    "docs/cli.md": "da43e2e87838de744afa3a105ce50c43b4bd3ec3961c05b2b1d7ff77679fd689",
+    "docs/resident-ui-process.md": "9f12a636160f91560fee183b7e1c2df7e2503fbd5c1b1d56b183032012142820",
+    "docs/testing-ui-process.md": "064daba9fca6e6bf12cdd0affa5c69fca335a3b9bf10f424501e29f3eb88d442",
+    "docs/ui-process-protocol.md": "e4d32e18dc78edd971a740c58f529967a023facc6ef9b1d49213478a693b6c61",
+    "docs/ui-process-state.md": "13da5a94e883469f202f0858dbd37eef6b5fcde127267b8b0d6f8e2b05318feb",
+    "docs/versioning.md": "1df7d6026f2667ca8865c52d9ef30997975c7326fb43ff3466789915abb7f8fc",
+    "integrations/gnome/extension.js": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722",
+    "packaging/linux/CMakeLists.txt": "0c327f65ae5fa3e90ca1bc1ce9a7b7ebdb026239a9ec5e53ad1895dde99552e1",
+    "packaging/linux/putgd-ui.desktop": "4753a2b4263ff0ef18cff73c0c0643646a281f8ce15301c5628bec59cfc00130",
+    "src/app/LocalIpc.cpp": "45a8f377ed3db9ca56fc466b8d428ffdeedca54dfac343b615754ffbd77b58e6",
+    "src/app/LocalIpc.h": "f4c06521e79967aff1765518c39e17b4233c92ce8fa83ee819ef167c719294f1",
+    "src/app/LocalServer.cpp": "88eb9dde1f40ecd6cb2c22bdc8b38077b06e004dfd30f72647c67d88f516610d",
+    "src/app/LocalServer.h": "e028540001b9afdaca667cca7d54beafe7c7a16fe626a9882fc7709173f23142",
+    "src/app/OperationService.h": "a409709dbddc2c0c454d88dc3e7ae7aa5ed2140682fe7afb3b2a5d0920ff2a93",
+    "src/app/UiControl.cpp": "75d836e2000fc9107e714accbf0e20c7dde74032e5c55c4755aefc2f1dd34166",
+    "src/app/UiProcessController.cpp": "173a5e0f5b30eaadf261a90e9243ae3063d696442ff52ace4091cf5878bc603e",
+    "src/app/UiProcessController.h": "6f37608c180e1ca0460b72bc71ba370331ef4c9eefd6fb85ebe5faf793ea3f83",
+    "src/main.cpp": "862feabfb9e2ca007ea8fe5026207533bf087048852c0540c8ed5a5ff0e2979e",
+    "src/platform/gnome/GnomeAdapter.cpp": "7702b48318c6898561279419fccf280138d2faa10b4091366e3c510edfd1a201",
+    "src/platform/gnome/GnomeAdapter.h": "3324f261ea80ab41a94628856837bd575c9ab9fb77a3eaadb781f1cf9277070b",
+    "src/platform/kde/KdeSourceAdapter.cpp": "48fcbce18598351f5c5fbe30f6e1d6dee205aeec3da2f1615e0f86d050b5ec4e",
+    "src/platform/kde/KdeSourceAdapter.h": "f7f4dcd9d331f6e459f92ec3979e36c74e361f731772336f0ebaea8ae9eb52ce",
+    "src/platform/x11/X11Capture.cpp": "2ac7c31a2033ebdae3165d8417f66e6850126655da5a76e83a6321f2669fccf2",
+    "src/platform/x11/X11Capture.h": "67aef7b8145c206d96da4df1963ec06b33df6519643824c87909d0688fb7acec",
+    "src/platform/x11/X11SourceAdapter.h": "5d2e04cb3eb7c8c54367ce16ebc06fdaf94e6a828c475e3e14e7fe2b439244d1",
+    "src/ui/AboutWindow.cpp": "ae1bb416a9710cd8e8b7e77e012829ac065c0a31b52d9a17499a7768517b1eda",
+    "src/ui/AboutWindow.h": "4cc4c4d71c6f270322bd050e68a39f66e3228de81007178092eed42f9ec9c21b",
+    "src/ui/HistoryModel.cpp": "35dbe64471701fa6bdce389276a530c0fb0fec34c4fc21f7814fa981677bcf62",
+    "src/ui/HistoryModel.h": "21d5a1dda9a5146bf8e3bd12d8c2f52aefb54dbc693e90ef54b29b780f3c7dd2",
+    "src/ui/HistoryWindow.cpp": "25499a9cf86de781bab7b74b03d7842879cc53af438cc4cea90e5ce321b82e21",
+    "src/ui/HistoryWindow.h": "5f7ee7b975a8b1babb0e00e6ee2b78fa48dbd76d417c6cb62b5071bed52e8481",
+    "src/ui/RecentOperations.cpp": "fe07c349bd6e2499c466104fbb351cec87235ab7940f4e1d6c38f6eeb604902f",
+    "src/ui/RecentOperations.h": "56a06e30f8a6d2304eb77fddbf59bf5173dd28e88786fb72eec15a685a60c389",
+    "src/ui/SettingsWindow.cpp": "0959de27ee09e068d890334b5484e33433f40ae895d2985b2d6a1cdb1d11e888",
+    "src/ui/SettingsWindow.h": "3071b94376e9d42865213d01dbd637a0b5eb308b53e91167bbe3663ace95f66a",
+    "src/ui/StdioDevice.cpp": "2832fda612b14ccfd0230403d9a8e86d499d01fa643197203226b40c41a9c5a6",
+    "src/ui/StdioDevice.h": "9220ea6685ee57c3ace8645ea1035e9519d0494a46b7544f311188c29eff60bd",
+    "src/ui/TrayController.cpp": "f265d3279b96fb84be4a94af50280f6671dc651a70503e0f362defb1a367f48b",
+    "src/ui/TrayController.h": "75037e867929ff38ff270eb47b80d2989f67111c88f714a8c5c266c233a3de79",
+    "src/ui/UiApplicationController.cpp": "80ff202057555563531b279653fb6a920de971b1c8c6e27e352a325581fdb83a",
+    "src/ui/UiApplicationController.h": "f8504b3c4022dff7743c8e8878dc903c968ab751f8bea07bd0e70393a427b0a4",
+    "src/ui/UiSession.cpp": "1864402da402c8654b639522bcf3193cb92cfc13599b434dd299cd2cdcb24137",
+    "src/ui/UiSession.h": "2bc073f9090ca97cba15cd389d1c6addd3b6c1360297445b84a2c7f6ffd31cb0",
+    "src/ui/ViewState.cpp": "f1c445b37caa76311dba3123597d2febec9031611748a05a261160eae557dcb1",
+    "src/ui/ViewState.h": "25102eb42b346f9e4783cf9e7dd1a65e07c84f8003d7ce9ec5274d05d96db0e4",
+    "src/ui/main.cpp": "1e7eb571b7c943125bf6f7d205dbcc82eea5864d1375f6bfb8dece2f704bb5d2",
+    "tests/cmake/version_contract.cmake": "f8a4b81bab555944953cc4a3e6ff15bf2a5ae2d69b408db5756d6102f65e9c8c",
+    "tests/desktop/test_gnome_ownership.mjs": "df9be1ecf087c03473324d334f267808679f31bcc129b63737347ef415fadab4",
+    "tests/desktop/x11/test_x11.cpp": "288ccd2277da72e9b9c35d338cca028deb83b7e70c70b418c1d4d66d11fac542",
+    "tests/fixtures/UiSessionFixture.h": "f764d595dbbea4341911f25323b0960bdade5f1d158c3e402b3c72809f15cb03",
+    "tests/fixtures/ui_helper_fixture.cpp": "508b320dd817113874c7355b61fb57b05886df2cf358703afc99c2e7ce164ebf",
+    "tests/gui/test_history_view.cpp": "07b2701e723301799f0466c06b33fd2d4d1ebef75c0c63dfd57038b69fec1941",
+    "tests/gui/test_operations_view.cpp": "5825a5b54f66bb734a6fe760d3d2a67e9dccaed3e07a88fd1965eef19d8e5263",
+    "tests/gui/test_settings.cpp": "bc55ad52bba1278edceafd78959af7003109a2daaa402f59704e4dce1de00e3d",
+    "tests/gui/test_tray.cpp": "388cab19e9e98c6e62bcb0777fd6ab03122667bd3354a56c8b6c0866eb8d8b00",
+    "tests/gui/test_ui_application.cpp": "ab8ba3959764ec24c254fc9f5d1915ae62b3b7d241ad28efc225b3ddf7bbcb89",
+    "tests/gui/test_version.cpp": "2bb752818c01556460c1f529725290bdc5731322002913b56a9ba10a03fa587a",
+    "tests/integration/test_cli.cpp": "a99e060622ef1800ccc5656e6b37e915e1557b307f819a8197061c3d1375e56a",
+    "tests/integration/test_kde_ownership.cpp": "7062d0b4e7ec1e59e50bc7e89a1e93df4dc8065c29a8b1d6f92f5204db7efa64",
+    "tests/integration/test_ui_control.cpp": "c3c81b17e2077ef78711c0ac2bef79a4880af83f61122aef8cca8002e9e2e4a0",
+    "tests/integration/test_ui_native_lifecycle.cpp": "dc675fd5e7fa640a3e9d830bc654755d59e7f7c3bee049a4ce9d132eff4b6d46",
+    "tests/integration/test_ui_process.cpp": "81a0de11ecf4975227d6d4d3844c1e0b2a8e80973d633db8cf839d91c8fd618b",
+    "tests/integration/test_ui_split_services.cpp": "a69ddf60f68978715e5e1efeb32a87574aac92d9322cb52d441e0c24b37d0960",
+    "tests/integration/test_version.cpp": "6e7fef259f9c6c538017e751bc65c9fedbd75487ed277aeaefee7a7e88e02b1e",
+    "tests/performance/bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "tests/performance/test_bench_ui_process.py": "83d40c408407d8e8694e6983a9ee1b329995b2703a52bea8e729a307090023ba"
+  },
+  "rawFiles": [
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/asan-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/asan.log",
+      "sha256": "f4b6c27c266780832eb29d30eb0aae4a9d153abaf76a677cfa448551a521277d",
+      "bytes": 1906
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/asan.sh",
+      "sha256": "043c930f72d7c5b7ac8acaef8ea0751e4463f466748f32e1f2cc82218be65909",
+      "bytes": 835
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/asan.xml",
+      "sha256": "0c2a0113b242ccee4c6260a50c1fbf35b0243f4d748cd77f0bbd3db8e4744911",
+      "bytes": 18174
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/dev-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/dev.log",
+      "sha256": "86d04a8174aa190566613b06dd04ebe0795ee7813b1bc7617bcef3e13ce0149f",
+      "bytes": 4645
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/dev.sh",
+      "sha256": "12269b135cca89f72f2923cc9dbd48d9ec99b18bb37a37317faaa622d34543e5",
+      "bytes": 340
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/dev.xml",
+      "sha256": "7bd480eabeeb4b740d99710d49f1ec075ae15d8f60a64698d1b1c368e68c195c",
+      "bytes": 39556
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/release-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/release.sh",
+      "sha256": "f9d07db51d68536089faf0d49b407a611b2761a490e63713067fd7ef5e3b334f",
+      "bytes": 568
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/tsan-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/tsan.log",
+      "sha256": "fdab2fe50e9cecba69e372fa5057bc159f1ed5682bb635cbb7415edb88ff103b",
+      "bytes": 2044
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/tsan.sh",
+      "sha256": "c7bbdcd167c07b1b66c56d48c71050f7c521fe61f3f5c6869693b6fddc6525af",
+      "bytes": 1688
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/final/tsan.xml",
+      "sha256": "5a7f3422ac1448bba96f2d0e11fa6d15aded4422bd7827699477cc7698f98a34",
+      "bytes": 17651
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/asan-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/asan.log",
+      "sha256": "362a8b4e16a44cc35559af5f159aa5aa89f26dc6df1bd0715b2bf8b1cdbef3fd",
+      "bytes": 1559
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/asan.sh",
+      "sha256": "c5da7f5cd1cce7d7066f7ed9052f7f39ffb26aa5d21af511ca5e845db159033e",
+      "bytes": 756
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/asan.xml",
+      "sha256": "f5db2bcd9c8e8be1728106abebe11613136edbaca1a2d0b9ceff08852f5fbebb",
+      "bytes": 14139
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/dev-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/dev.log",
+      "sha256": "241dfbbd22ce38d190bb9cd0f31c75d7ae7f7a6935add078e2bb341dd78812ee",
+      "bytes": 4484
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/dev.sh",
+      "sha256": "eeb715b9430f9232118a36bde3686a61e9f25cc46e8c0559062aadea0551ffe7",
+      "bytes": 345
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/dev.xml",
+      "sha256": "b6f21085d2cb2847d545756976ad28114878c4e754dc035a050d6f9440e47f14",
+      "bytes": 37793
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/exit-red.log",
+      "sha256": "f6db014afa6be7998894285611fcf57b2aafab5731a799ee85ea57e20f76a178",
+      "bytes": 654
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/release-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/release.sh",
+      "sha256": "494ea153737d82fffb57f9eb7f023f030776049c2deec7eb35b653203ce5a813",
+      "bytes": 573
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/reset-red.log",
+      "sha256": "2dbcb6a89ed833615416de45d726ced22cfe226d1560afaadbd5aef05c36b9f5",
+      "bytes": 1135
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/review-fix.log",
+      "sha256": "344a29fcaedfd4bedfe830ef887f031d49fa57be062796868d3b953b342f423e",
+      "bytes": 577
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/review-fix.xml",
+      "sha256": "29a06adbbcc0b6d6246f1b67501db984cad8b7cc9df90b21a9cce00319217727",
+      "bytes": 4660
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan-exit",
+      "sha256": "aa67a169b0bba217aa0aa88a65346920c84c42447c36ba5f7ea65f422c1fe5d8",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan-settings-bounded-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan-settings-bounded.log",
+      "sha256": "bcf8c2efaa95d6fbecc52dbff9e916a0f42ea80656c63e2567810556ead315ad",
+      "bytes": 6144
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan-settings-bounded.sh",
+      "sha256": "466810f43ffce9faa196f74dd279bdb930678d5db6ee4ee665ebb1d834ea9ae0",
+      "bytes": 654
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan-settings-bounded.xml",
+      "sha256": "1de141cfcae84c0c331a62244ca806546dd39f119db180b5791cf56bfdbd3bac",
+      "bytes": 6746
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan.log",
+      "sha256": "ede60b9d3d23bf997feab2dc7cf0e56ea6d54a8a7309f359ed366e32c6b0cb8b",
+      "bytes": 7191
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan.sh",
+      "sha256": "77260ab6e44e3684a2ff5ed0c6f897d60283e285374e1fe8ef4b0c2fc054a1be",
+      "bytes": 1609
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/integrated/tsan.xml",
+      "sha256": "1be17726da11e43c3d74f057c87cceb69f7d1f30fd229a54322b59f121d67f2f",
+      "bytes": 18465
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/launcher-fix/receipt.json",
+      "sha256": "51605cfd59532fb727e86368df1397984de6618acb0748c8edcf47113e50906e",
+      "bytes": 1838
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/launcher-fix/red.json",
+      "sha256": "d923e48cd104386c9bf0b97d18ad0d56287ea38116ee0803f2705e515832279a",
+      "bytes": 263
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/launcher-fix/results.log",
+      "sha256": "c09f0cd793bd78a3cfbf956913e9d859f72a019c64b4eb0fc23c502802c3a68a",
+      "bytes": 362
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/launcher-fix/results.xml",
+      "sha256": "a31314830a03e7af21f48592e6fc6d834570be72f306d063c62705d8a77e0bd0",
+      "bytes": 2750
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/memory-harness-fix/green.log",
+      "sha256": "43228e261125cbb352c2e555f7d3737890e523a57baf066104b39baeee075a20",
+      "bytes": 2974
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/memory-harness-fix/receipt.json",
+      "sha256": "3362aad78d862dc53d400782ac809492845c4f964a91f4aca398a0c8060317a1",
+      "bytes": 1619
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/memory-harness-fix/red.json",
+      "sha256": "50666a72409bfa8b384c6ee7a3427780444faa135d4f05221d4a9480e4bf8234",
+      "bytes": 607
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/memory-harness-fix/red.log",
+      "sha256": "5c64640b01a47d49aa090549d922ae522fff03cd22dc3be8cce548a402ed4dfe",
+      "bytes": 4304
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/memory-harness/receipt.json",
+      "sha256": "0199b9e726c41ebe3dc60211ceba26b2a125c896a3548d57280ace47c7a890b0",
+      "bytes": 1943
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/memory-harness/root-unittest.log",
+      "sha256": "59c5f1b5e5db67a3a54feeb1c68fbcba5547661027bf36836b7223f3066d3883",
+      "bytes": 2439
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/checkpoint-build.log",
+      "sha256": "b9e8e434d55b5cdcc5514172b4d3c949a76919732b492b52585611ecdfcdf64b",
+      "bytes": 4695
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/checkpoint.log",
+      "sha256": "141df84b0e74a89ba107f5cd1a3a5bff3de5573618480c0f04fdd53395593f7f",
+      "bytes": 257
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/checkpoint.xml",
+      "sha256": "8347217d0b12db8739976388312ccfaee05e617638d781abecf94a11b279998c",
+      "bytes": 1478
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/final-pipes.log",
+      "sha256": "69ea8423090de06dafa3d09a8437c987a757b25214c3d960130805e4f520642e",
+      "bytes": 607
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/final-pipes.xml",
+      "sha256": "78c05713cdb677aed3e9444efcf182116ed16f9ac852c1870e3dc6e1c8d41f42",
+      "bytes": 4216
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/gtk-debug-fixed.log",
+      "sha256": "5ebf8399d7b22cd6421c9ddd09ac4c6eec7ef952539a4b1ef7a9de25cce210dd",
+      "bytes": 3656
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/gtk-debug-probe.log",
+      "sha256": "6801997873e069c99537471cf74497fdaad5e58e6dfa084af0ae942e6ac48cab",
+      "bytes": 3820
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/receipt.json",
+      "sha256": "0c49693c8db2ee18734de6f00d42fbf1e1ddb250446aaaddae7a1d565852c4eb",
+      "bytes": 2498
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/results.log",
+      "sha256": "745a7597e5d98b66618531923678ca1c05215d54bed7c31fedb429641aa2d32d",
+      "bytes": 384
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/native-lifecycle/results.xml",
+      "sha256": "dcaa859ae23a4a3446527add1db6c59bab28a7573525d1712d24241746c48a8a",
+      "bytes": 2790
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/asan-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/asan.log",
+      "sha256": "82e889bbe6d547b1e319733777c855bf7b457ffbc8c2ab75bb11962465f23fee",
+      "bytes": 1693
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/asan.sh",
+      "sha256": "f9984dcbb1b70a9a49884c3638463b8a800aa33917b11da21752793c8fd3ab8d",
+      "bytes": 787
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/asan.xml",
+      "sha256": "323942db638010fa5ac5f7658a65beb683867831ac1fa414e37083c35ba7e372",
+      "bytes": 15634
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/dev-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/dev.log",
+      "sha256": "61dd8b22b92230c7110b43121963179a21cee6060f319729ed3fdec0063eefee",
+      "bytes": 4645
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/dev.sh",
+      "sha256": "8ecaefe4b59a64618a65d6dfbf78863cbe66ca9ad45c9b0604867b30f42365b1",
+      "bytes": 351
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/dev.xml",
+      "sha256": "aac587ebd4da92788c4c67246bc654ba248561f5fe020d6809d3283ae8fa90f5",
+      "bytes": 39290
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/mcp-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/mcp.log",
+      "sha256": "1adf1515002936d70b32206748fdfb06588088b23b0492a6b4a906bc10935bed",
+      "bytes": 2854
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/tsan-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "bytes": 2
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/tsan.log",
+      "sha256": "2d6ba919279a46cb30b4f626c02a00a8b01ba9db9c021029ec90d5f473a65523",
+      "bytes": 1831
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/tsan.sh",
+      "sha256": "686728f2081d4afb20e47711336603f415c12913eff517d894564ecbe2c0a675",
+      "bytes": 1640
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review-corrected/tsan.xml",
+      "sha256": "0975e0fc4cd2d213cfdf82b6c066b5947ae6944279edd3c867ca3602c1dca1ae",
+      "bytes": 15114
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review/adversarial-claude.json",
+      "sha256": "40e52dbbbfdf681da1b7b3878db8d5a370a78f9f73117b8fa20240e83d04ee31",
+      "bytes": 9687
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review/memory-harness-addendum.json",
+      "sha256": "861a3b26d9de106b0610455f41b513ec1172ec313e9c46376f7f07e3765315d0",
+      "bytes": 4575
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review/review.json",
+      "sha256": "f3a3b3c73f0613ac83111c82273268dfa0746dd02c643801fe7a0756a8b373cb",
+      "bytes": 41463
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/review/validator-verdicts.json",
+      "sha256": "cee8990ca3e7cb2f13949f0ab5f883d89ea19f8fc65a43725927712aba4b0121",
+      "bytes": 2850
+    }
+  ],
+  "nativeDesktopAcceptance": "pending current-source Cinnamon/GNOME/KDE graphical wave",
+  "memoryAcceptance": "pending matched total-process measurements; 40 MiB cold target remains unmet",
+  "tests": {
+    "development": "41/41 passed, 230.95 seconds",
+    "asanUbsan": "16/16 passed, 140.36 seconds",
+    "tsan": "16/16 passed; instrumented Qt and dependency setup in final/tsan.sh",
+    "releaseBuild": "passed",
+    "mcp": "3/3 passed, 1.939 seconds; separate locked SDK suite",
+    "memoryHarness": "15/15 passed; synthetic process accounting only"
+  },
+  "reviewClosure": "2026-10-08-ui-process-raw/caller-review-closure.json",
+  "limitations": [
+    "UI lifecycle test uses real product helper and isolated Xvfb with synthetic services; it is not Cinnamon/GNOME/KDE graphical acceptance.",
+    "Sanitizer coverage is the 16 affected contracts, not all third-party dependencies. Existing narrow TSan suppression is unchanged.",
+    "No current-source S3 acceptance or memory saving is claimed.",
+    "Known conditional recovery concerns remain scheduled before native acceptance."
+  ]
+}

@@ -20,14 +20,17 @@ public:
  void copy(const CopyPayload&,std::function<void(Error)>) override;
  void invalidateCopyEligibility() override;
  void bindShortcuts(const QHash<QString,QString>&);
+ void setUiProcess(qint64 pid) override {uiProcess_=pid>0?pid:0;}
  void setResourceLimits(const ResourceLimits& limits){limits_=limits;}
 signals:
  void actionRequested(const QString&);void capabilitiesChanged();
 private:
+ void verifyExternalWindow(const QString&,std::function<void(Error)>);
  void capture(QString,QList<CaptureFrame>,ResourceLimits,std::function<void(PayloadResult)>);
  void captureScreens(QList<CaptureFrame>,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
  void compose(QList<CaptureFrame>,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
  ResourceLimits limits_;
+ qint64 uiProcess_=0;
  KWinCapture capture_;DataControlClipboard clipboard_;KdeShortcuts shortcuts_;
  QPointer<KdeRegionOverlay> overlay_;QList<QThread*> workers_;quint64 generation_=0;
 };

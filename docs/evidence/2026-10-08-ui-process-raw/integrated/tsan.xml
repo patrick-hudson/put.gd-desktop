@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="13"
+	failures="1"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="182"
+	timestamp="2026-10-08T19:21:17"
+	>
+	<testcase name="kde_ownership_integration" classname="kde_ownership_integration" time="3.71918" status="run">
+		<properties/>
+		<system-out>********* Start testing of KdeOwnershipTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : KdeOwnershipTest::initTestCase()
+PASS   : KdeOwnershipTest::externalWindowCaptureRemainsNative()
+PASS   : KdeOwnershipTest::helperWindowRejectedAfterHelperExit()
+PASS   : KdeOwnershipTest::frozenUuidQueriedAfterFocusChanges()
+PASS   : KdeOwnershipTest::missingWrongAndUnavailableIdentityAreRejected()
+PASS   : KdeOwnershipTest::emptyExternalAppIdIsAccepted()
+PASS   : KdeOwnershipTest::cancellationDuringIdentityLookupCompletesOnce()
+PASS   : KdeOwnershipTest::noHelperDoesNotQueryWindowInfo()
+PASS   : KdeOwnershipTest::cleanupTestCase()
+Totals: 9 passed, 0 failed, 0 skipped, 0 blacklisted, 1940ms
+********* Finished testing of KdeOwnershipTest *********
+</system-out>
+	</testcase>
+	<testcase name="ui_split_services_integration" classname="ui_split_services_integration" time="0.997398" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiSplitServices *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : UiSplitServices::initTestCase()
+PASS   : UiSplitServices::helperCrashDoesNotCancelAnAcceptedUploadOrSetupJob()
+PASS   : UiSplitServices::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 959ms
+********* Finished testing of UiSplitServices *********
+</system-out>
+	</testcase>
+	<testcase name="ui_process_integration" classname="ui_process_integration" time="6.67281" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiProcessTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : UiProcessTest::initTestCase()
+PASS   : UiProcessTest::missingHelperFailsWithoutRestarting()
+PASS   : UiProcessTest::helperProtocolFloodIsBounded()
+PASS   : UiProcessTest::failureCallbackCanImmediatelyReopenTheUi()
+PASS   : UiProcessTest::cancelCloseResumesPendingViewsAndInvalidations()
+PASS   : UiProcessTest::startsOneHelperAndShowsAllRequestedViews()
+PASS   : UiProcessTest::closeRetainsDraftAndActivationDuringExitStartsFresh()
+PASS   : UiProcessTest::crashRequiresNewActivationAndMismatchFails()
+PASS   : UiProcessTest::rejectedCheckpointKeepsHelperAlive()
+PASS   : UiProcessTest::cleanupTestCase()
+Totals: 10 passed, 0 failed, 0 skipped, 0 blacklisted, 6650ms
+********* Finished testing of UiProcessTest *********
+</system-out>
+	</testcase>
+	<testcase name="ui_endpoints_integration" classname="ui_endpoints_integration" time="0.636564" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiEndpointsTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : UiEndpointsTest::initTestCase()
+PASS   : UiEndpointsTest::snapshotIncludesResidentIdentitySettingsAndDiagnostics()
+PASS   : UiEndpointsTest::saveReturnsAcceptedDocumentAndMetadataWithConflictProtection()
+PASS   : UiEndpointsTest::setupEndpointsWithoutServiceReportUnavailable()
+PASS   : UiEndpointsTest::sessionCredentialsBecomeResidentJobsWithoutPersistedSecrets()
+PASS   : UiEndpointsTest::setupRequiresCurrentValidSavedProfileAndStrictCredentialInput()
+PASS   : UiEndpointsTest::delayedDestinationJobCompletesOnOwnerThreadAndIgnoresRepeatedCompletion()
+PASS   : UiEndpointsTest::completionsAfterServiceDestructionAreSafe()
+PASS   : UiEndpointsTest::completedJobsAreBoundedWhileActiveJobsSurvive()
+PASS   : UiEndpointsTest::activeJobsAreBounded()
+PASS   : UiEndpointsTest::snapshotEpochIsStableAndAugmentedDiagnosticsAreUsed(...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="ui_control_integration" classname="ui_control_integration" time="6.10816" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiControlTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : UiControlTest::initTestCase()
+PASS   : UiControlTest::fragmentedFramesAndPartialWrites()
+PASS   : UiControlTest::rejectsUnboundedAndInvalidFrames()
+PASS   : UiControlTest::actualHelperPipesCarryLargeFrameWithoutBlocking()
+PASS   : UiControlTest::validSequenceAndStop()
+PASS   : UiControlTest::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 6087ms
+********* Finished testing of UiControlTest *********
+</system-out>
+	</testcase>
+	<testcase name="session_client_integration" classname="session_client_integration" time="24.5116" status="run">
+		<properties/>
+		<system-out>********* Start testing of SessionClientContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : SessionClientContract::initTestCase()
+PASS   : SessionClientContract::fragmentedReplyKeepsEventLoopResponsive()
+PASS   : SessionClientContract::errorReplyPreservesResidentDetails()
+PASS   : SessionClientContract::invalidReply(malformed-json)
+PASS   : SessionClientContract::invalidReply(array)
+PASS   : SessionClientContract::invalidReply(wrong-schema)
+PASS   : SessionClientContract::invalidReply(string-schema)
+PASS   : SessionClientContract::invalidReply(wrong-id)
+PASS   : SessionClientContract::invalidReply(numeric-id)
+PASS   : SessionClientContract::invalidReply(missing-ok)
+PASS   : SessionClientContract::invalidReply(numeric-ok)
+PASS   : SessionClientContract::invalidReply(array-result)
+PASS   : SessionClientContract::invalidReply(missing-result)
+PASS   : SessionClientContract::invalidReply(missing-error)
+PA...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_application" classname="gui_application" time="19.2578" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiApplicationTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : UiApplicationTest::initTestCase()
+QWARN  : UiApplicationTest::aboutDismissalAlsoClosesTheHelper() This plugin does not support propagateSizeHints()
+QWARN  : UiApplicationTest::aboutDismissalAlsoClosesTheHelper() This plugin does not support raise()
+PASS   : UiApplicationTest::aboutDismissalAlsoClosesTheHelper()
+QWARN  : UiApplicationTest::closeRejectionRetainsTheDraftAndAllowsRetry() This plugin does not support propagateSizeHints()
+QWARN  : UiApplicationTest::closeRejectionRetainsTheDraftAndAllowsRetry() This plugin does not support raise()
+QWARN  : UiApplicationTest::closeRejectionRetainsTheDraftAndAllowsRetry() This plugin does not support propagateSizeHints()
+PASS   : UiApplicationTest::closeRejectionRetainsTheDraftAndAllowsRetry()
+QWARN  : UiApplicationTest::closingOneOfTwoViewsAndMinimizingDoesNotExit() This...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_tray" classname="gui_tray" time="0.716591" status="run">
+		<properties/>
+		<system-out>********* Start testing of ResidentTray *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : ResidentTray::initTestCase()
+PASS   : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews()
+PASS   : ResidentTray::everyCaptureActionWorksWithNoViewsOpen()
+PASS   : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray()
+PASS   : ResidentTray::rejectedCaptureOpensActivityWithoutOwningAWindow()
+PASS   : ResidentTray::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 658ms
+********* Finished testing of ResidentTray *********
+</system-out>
+	</testcase>
+	<testcase name="gui_version" classname="gui_version" time="0.169796" status="run">
+		<properties/>
+		<system-out>********* Start testing of VersionView *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : VersionView::initTestCase()
+QWARN  : VersionView::aboutUsesTheConnectedResidentBuildAndIsModeless() This plugin does not support propagateSizeHints()
+PASS   : VersionView::aboutUsesTheConnectedResidentBuildAndIsModeless()
+QWARN  : VersionView::aboutFollowsItsOwnerLifetime() This plugin does not support propagateSizeHints()
+QWARN  : VersionView::aboutFollowsItsOwnerLifetime() This plugin does not support propagateSizeHints()
+PASS   : VersionView::aboutFollowsItsOwnerLifetime()
+PASS   : VersionView::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 128ms
+********* Finished testing of VersionView *********
+</system-out>
+	</testcase>
+	<testcase name="x11_isolated" classname="x11_isolated" time="17.1964" status="run">
+		<properties/>
+		<system-out>********* Start testing of X11Test *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : X11Test::initTestCase()
+PASS   : X11Test::nativeSelectionTextAndRevision()
+PASS   : X11Test::nativeFilesImageAndUrlPrecedence()
+PASS   : X11Test::remoteUriFallsThroughToText()
+PASS   : X11Test::bmpImageAndIncrementalSelection()
+PASS   : X11Test::incrementalText()
+PASS   : X11Test::invocationRevisionIncludesQueuedOwnerChange()
+PASS   : X11Test::nativeKeyActivationWithLocks()
+PASS   : X11Test::regionCancellationAndExactSelection()
+PASS   : X11Test::encodedImageResultIsServedToNativeClipboardConsumer()
+PASS   : X11Test::simultaneousClipboardImportsAreSerialized()
+PASS   : X11Test::cancellingRegionDoesNotCancelClipboardImport()
+PASS   : X11Test::regionRetainsExternalFocusAndNativeEscape()
+PASS   : X11Test::heldGlobalChordHandsKeyboardToSelector()
+PASS   : X11Test::clipboardQueueBoundAndFrozenOwner()
+PASS   : X11Test::asciiLette...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_settings" classname="gui_settings" time="60.0791" status="fail">
+		<failure message="Timeout"/>
+		<properties/>
+		<system-out>********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::quitWithoutTrayIsExplicitAndDoesNotSaveDraft() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::quitWithoutTrayIsExplicitAndDoesNotSaveDraft() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::quitWithoutTrayIsExplicitAndDoesNotSaveDraft()
+QWARN  : SettingsGui::quitFallbackRequiresExplicitMissingTrayDiagnostic() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::quitFallbackRequiresExplicitMissingTrayDiagnostic()
+PASS   : SettingsGui::acceptedSetupIdSurvivesAnUncertainInspectionReply()
+PASS   : SettingsGui::ownSaveRetainsEditsMadeWhileItsAsyncReplyIsPending()
+PASS   : SettingsGui::stateCodecRejectsSecretFieldsAndOversizeWithoutEchoingContents()
+PASS   : SettingsGui::recreatedDraftDetectsValidAndInvalidExternalChanges()
+PASS   : SettingsGui::profileDraftsRoundTripRemovalOrderAndMalformedNonsecretText()
+PASS   : SettingsGui::checkpointRejectsUnclassifiedProviderFieldsWithoutExportingThem()
+PASS   : SettingsGui::acceptedSetupIsInspectedAfterRecreationWithoutRepeatingMutation()
+PASS   : SettingsGui::recreatedSettingsRetainsRawDraftAndExcludesCredentialEntry()
+QWARN  : SettingsGui::explicitCloseReleasesResourcesAndKeepsConflictDraft() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::explicitCloseReleasesResourcesAndKeepsConflictDraft() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::explicitCloseReleasesResourcesAndKeepsConflictDraft()
+QWARN  : SettingsGui::resourceReleaseGuardsReopenMinimizeDialogsAndTeardown() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::resourceReleaseGuardsReopenMinimizeDialogsAndTeardown() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::resourceReleaseGuardsReopenMinimizeDialogsAndTeardown()
+QWARN  : SettingsGui::nativeStateSurvivesCloseRecreation() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::nativeStateSurvivesCloseRecreation()
+QWARN  : SettingsGui::freshMissingConfigIsNormalSetup() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::freshMissingConfigIsNormalSetup()
+QWARN  : SettingsGui::advancedFilenameTemplatesUseSharedConfiguration() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::advancedFilenameTemplatesUseSharedConfiguration() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::advancedFilenameTemplatesUseSharedConfiguration()
+QWARN  : SettingsGui::simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination()
+QWARN  : SettingsGui::advancedExpansionPreservesDraftAndCustomEndpoint() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::advancedExpansionPreservesDraftAndCustomEndpoint() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::advancedExpansionPreservesDraftAndCustomEndpoint()
+QWARN  : SettingsGui::regionSuggestionsAllowCustomRegionsWithoutChangingCustomEndpoints() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::regionSuggestionsAllowCustomRegionsWithoutChangingCustomEndpoints()
+QWARN  : SettingsGui::cancelDiscardsDraftClearsCredentialsAndCloses() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::cancelDiscardsDraftClearsCredentialsAndCloses()
+QWARN  : SettingsGui::everySettingHasDetailedKeyboardAccessibleHelp() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::everySettingHasDetailedKeyboardAccessibleHelp() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::everySettingHasDetailedKeyboardAccessibleHelp() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::everySettingHasDetailedKeyboardAccessibleHelp()
+QWARN  : SettingsGui::savingShowsSuccessAndReloadIsExplicit() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::savingShowsSuccessAndReloadIsExplicit()
+PASS   : SettingsGui::sizeInputsSaveFractionalMiBAndPreserveExactAcceptedBytes()
+QWARN  : SettingsGui::shortcutStatesAreReadableAndExactDiagnosticsRemainAvailable() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::shortcutStatesAreReadableAndExactDiagnosticsRemainAvailable() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::shortcutStatesAreReadableAndExactDiagnosticsRemainAvailable()
+QWARN  : SettingsGui::sectionsAreKeyboardReachableAndFooterStaysInsideCompactWindow() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::sectionsAreKeyboardReachableAndFooterStaysInsideCompactWindow() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::sectionsAreKeyboardReachableAndFooterStaysInsideCompactWindow()
+PASS   : SettingsGui::destinationsCanBeCreatedAndRemovedWithoutChangingOtherProfiles()
+</system-out>
+	</testcase>
+	<testcase name="gui_operations_view" classname="gui_operations_view" time="2.28159" status="run">
+		<properties/>
+		<system-out>********* Start testing of OperationsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : OperationsGui::initTestCase()
+PASS   : OperationsGui::recreatedActivityPreservesSelectionAndExpansionById()
+PASS   : OperationsGui::uploadedResultCanRetryCopyWithoutAnotherUpload()
+QWARN  : OperationsGui::localOperationShowsIndependentItemAndCopyStates() This plugin does not support propagateSizeHints()
+QWARN  : OperationsGui::localOperationShowsIndependentItemAndCopyStates() This plugin does not support propagateSizeHints()
+PASS   : OperationsGui::localOperationShowsIndependentItemAndCopyStates()
+PASS   : OperationsGui::cleanupTestCase()
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 2239ms
+********* Finished testing of OperationsGui *********
+</system-out>
+	</testcase>
+	<testcase name="gui_history_view" classname="gui_history_view" time="39.7154" status="run">
+		<properties/>
+		<system-out>********* Start testing of HistoryGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : HistoryGui::initTestCase()
+PASS   : HistoryGui::recreatedHistoryRestoresRawFiltersSelectionAndClearsVanishedIds()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation()
+QWARN  : HistoryGui::imageInspectorAndExpa...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

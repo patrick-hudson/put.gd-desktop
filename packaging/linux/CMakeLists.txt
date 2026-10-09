@@ -1,8 +1,9 @@
-# Root integrates this directory after defining putgd and putgd-cli.
+# Root integrates this directory after defining all three product executables.
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
   return()
 endif()
 include("${PROJECT_SOURCE_DIR}/cmake/InstallPackageSnapshot.cmake")
+putgd_install_snapshot(putgd-ui.desktop "${CMAKE_INSTALL_DATADIR}/applications")
 putgd_install_snapshot(putgd.svg "${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps")
 option(PUTGD_LAB_FIXTURE "Package independent synthetic desktop fixture (development only)" OFF)
 configure_file(app.desktop.in putgd.desktop @ONLY)

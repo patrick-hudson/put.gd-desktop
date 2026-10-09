@@ -19,6 +19,7 @@ const CHUNK = 65536;
 const ACTIONS = ['region', 'window', 'desktop', 'clipboard'];
 const XML = `<node><interface name="${IFACE}">
 <method name="Hello"><arg type="s" direction="out"/></method>
+<method name="SetUiProcess"><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
 <method name="InvalidateCopy"><arg type="s" direction="out"/></method>
 <method name="Revision"><arg type="s" direction="out"/></method>
 <method name="Prepare"><arg type="s" direction="in"/><arg type="s" direction="in"/><arg type="s" direction="out"/></method>
@@ -169,6 +170,8 @@ export default class PutgdExtension extends Extension {
         this._selector = null;
         this._revision = 1;
         this._copyEpoch = 0;
+        this._uiProcess = 0;
+        this._uiProcessOwner = null;
         this._selection = global.display.get_selection();
         this._ownerSignal = this._selection.connect('owner-changed', (_selection, type) => {
             if (type !== Meta.SelectionType.SELECTION_CLIPBOARD)
@@ -198,6 +201,8 @@ export default class PutgdExtension extends Extension {
                 for (const id of this._requests.keys())
                     this._drop(id, 'helper_unavailable', 'Resident application disconnected');
                 this._unbind();
+                this._uiProcess = 0;
+                this._uiProcessOwner = null;
             });
         this._dbus = Gio.DBusExportedObject.wrapJSObject(XML, this);
         this._dbus.export(Gio.DBus.session, PATH);
@@ -338,7 +343,7 @@ export default class PutgdExtension extends Extension {
 
     HelloAsync(_args, invocation) {
         this._run(invocation, () => ({version: 1, shellMajor: Number(Config.PACKAGE_VERSION.split('.')[0]),
-            extensionVersion: this.metadata.version, clipboardRevision: this._revision}));
+            extensionVersion: this.metadata.version, clipboardRevision: this._revision, uiProcessVersion: 1}));
     }
 
     InvalidateCopyAsync(_args, invocation) {
@@ -347,6 +352,14 @@ export default class PutgdExtension extends Extension {
 
     RevisionAsync(_args, invocation) {
         this._run(invocation, () => ({clipboardRevision: this._revision}));
+    }
+
+    SetUiProcessAsync([pid], invocation) {
+        this._run(invocation, sender => {
+            this._uiProcess = pid;
+            this._uiProcessOwner = sender;
+            return {};
+        });
     }
 
     async _prepare(id, action, sender) {
@@ -360,7 +373,9 @@ export default class PutgdExtension extends Extension {
         // before display metadata retrieval or native-app acceptance yields.
         if (action === 'window') {
             const window = global.display.focus_window;
-            check(window && window.get_pid() !== this._clientPid(sender),
+            const ownPid = this._clientPid(sender);
+            const uiPid = this._uiProcessOwner === sender ? this._uiProcess : 0;
+            check(window && window.get_pid() !== ownPid && (!uiPid || window.get_pid() !== uiPid),
                 'capture_target', 'Focus an external application window before capture');
             const actor = window.get_compositor_private();
             check(actor && !window.minimized, 'capture_target', 'Focused external window is unavailable');

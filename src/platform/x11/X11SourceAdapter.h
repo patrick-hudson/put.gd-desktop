@@ -20,6 +20,7 @@ public:
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
  void bindShortcuts(const QHash<QString,QString>&);
+ void setUiProcess(qint64 pid) override {capture_.setUiProcess(pid);}
 signals:
  void actionRequested(const QString&);
  void capabilitiesChanged();

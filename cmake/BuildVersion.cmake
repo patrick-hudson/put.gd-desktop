@@ -26,9 +26,10 @@ target_compile_features(putgd_build_identity PUBLIC cxx_std_20)
 target_include_directories(putgd_build_identity PUBLIC "${PROJECT_SOURCE_DIR}/src")
 set_target_properties(putgd_build_identity PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Validate before any install rules write files. Resolving the target paths is
-# deferred to generation, after the root has declared both executables.
+# deferred to generation, after the root has declared all three executables.
 set(PUTGD_PACKAGE_APP "$<TARGET_FILE:putgd>")
 set(PUTGD_PACKAGE_CLI "$<TARGET_FILE:putgd-cli>")
+set(PUTGD_PACKAGE_UI "$<TARGET_FILE:putgd-ui>")
 configure_file("${CMAKE_CURRENT_LIST_DIR}/CheckBuildIdentity.cmake.in"
   "${PUTGD_BUILD_IDENTITY_DIR}/check-build-identity.in" @ONLY)
 file(GENERATE OUTPUT "${PUTGD_BUILD_IDENTITY_DIR}/check-build-identity.cmake"

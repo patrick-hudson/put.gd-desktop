@@ -13,6 +13,15 @@ report actual capture, shortcut and clipboard capabilities separately. Unit fixt
 register an opaque non-S3 provider only in tests; these tests do not prove compositor
 or cloud support.
 
+`putgd-ui` owns the optional Settings, History, Activity and About windows. The
+resident owns its tray/menu and uses `UiProcessController` to start one matching
+helper, acknowledge visible views and retain a bounded safe draft checkpoint.
+`UiSession` forwards all commands to the same resident endpoint as the CLI; it
+owns no SQLite connection, provider or credential store. Last-window close exits
+the helper after a validated checkpoint, while resident actions and uploads remain
+active. Explicit Quit uses the existing resident shutdown path. Protocol/state
+limits and extension rules are in [UI process protocol](ui-process-protocol.md).
+
 The S3 provider facade has no eager AWS dependency. Its first network request loads
 a private module from the exact build/install path and validates its application,
 source, toolchain, Qt and transport identity before creating a driver. A mismatch

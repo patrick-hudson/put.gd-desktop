@@ -18,14 +18,16 @@ Inspect the compiled build through:
 ```sh
 ./build/dev/putgd --version
 ./build/dev/putgd-cli --version
+./build/dev/putgd-ui --version
 ./build/dev/putgd-cli diagnostics
 cat build/dev/build-identity/build-info.json
 ```
 
-Both version commands work without a graphical session or running resident.
+All three version commands work without a graphical session or running resident.
 The tray's **About put.gd** action shows the version; its details contain the
 manifest. About is modeless, so it leaves capture input available. Opening it again
-reuses the visible dialog; closing it or shutting down the tray releases it.
+reuses the visible dialog. The UI helper exits when its last primary window closes;
+the resident tray remains available. About reports the connected resident's build.
 Diagnostics add a `build` object without changing the existing protocol's
 `schemaVersion`. The installed manifest is `share/putgd/build-info.json` under the
 installation prefix, normally `/usr/share/putgd/build-info.json` on Linux.
@@ -40,8 +42,8 @@ retain binary/archive SHA-256 values for experiments as before.
 
 ## Packages and ordering
 
-CPack and `cmake --install` use the built manifest and check both executable
-versions before installing files.
+CPack and `cmake --install` use the built manifest and check all three executable
+versions (`putgd`, `putgd-cli` and `putgd-ui`) before installing files.
 Advancing Git without rebuilding leaves the old binaries and their old package
 identity intact. Project runtime assets, including the GNOME extension, and
 packaged metadata, notices and licenses are copied into the build directory during
@@ -49,8 +51,10 @@ configuration. Installation uses these snapshots, so an unbuilt checkout change
 does not substitute newer assets into an older package. A normal build refreshes
 changed inputs through CMake's configuration dependencies.
 Rebuilding only one executable can leave a mixed build; packaging
-rejects it and asks for both to be built. Configuring after Git changes and then
-installing without rebuilding also fails before writing any installed files.
+rejects it and asks for all three to be built. Rebuilding the resident and CLI
+while leaving the UI helper at an older version is also rejected. Configuring
+after Git changes and then installing without rebuilding also fails before
+writing any installed files.
 Do not copy a generated manifest between
 build directories. The manifest and generated C++ object come from one CMake target.
 An unchanged identity does not rewrite the object source or recompile it.
@@ -109,13 +113,15 @@ intended code first rather than expecting it to include local edits.
 ## Verification
 
 `version_contract` creates small temporary Git repositories and uses normal
-CMake/Ninja builds. It checks both executable versions and embedded manifests
+CMake/Ninja builds. It checks all three executable versions and embedded manifests
 immediately after a commit-only rebuild. It also covers dirty state,
 embedded/installed manifest agreement, package identity and runtime asset snapshots
 after Git advances,
-mixed executable rejection and supplied/unknown archive provenance. Every run
+mixed executable rejection (including a stale UI helper in ordinary install and
+CPack) and supplied/unknown archive provenance. Every run
 keeps its isolated fixture under the test build's `Testing/version-contract-*`
-directory and prints its path. `version_integration` checks the production
+directory and prints its path. Expected install/package rejection logs remain
+in that fixture directory. `version_integration` checks the production
 executables without a display and the resident diagnostics object. `gui_version`
 checks About's version, nonmodal behavior, reuse and close/teardown cleanup
 offscreen; native visual acceptance is separate.

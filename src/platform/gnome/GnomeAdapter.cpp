@@ -12,6 +12,7 @@
 #include <QUrl>
 #include <QUuid>
 #include <cmath>
+#include <limits>
 namespace putgd {
 namespace {
 const QString service="org.gnome.Shell",client="org.putgd.App.Gnome50",path="/org/gnome/Shell/Extensions/Putgd",interface="org.putgd.Gnome50";
@@ -66,8 +67,20 @@ void GnomeAdapter::discover(){
  call("Hello",{},[this](Error error,QJsonObject hello){
   if(!error&&(hello["version"].toInt()!=gnome::protocolVersion||hello["shellMajor"].toInt()!=50))error={"helper_incompatible","GNOME helper requires protocol 1 and GNOME Shell 50",{}};
   if(error){ready_=false;helperError_=error;invalidateShortcutBindings();emit capabilitiesChanged();return;}
-  ready_=true;helperError_={};helper_=hello;helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
+  ready_=true;helperError_={};helper_=hello;setUiProcess(uiProcess_);helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
  });
+}
+void GnomeAdapter::setUiProcess(qint64 pid){
+ uiProcess_=pid>0&&pid<=std::numeric_limits<quint32>::max()?pid:0;uiProcessError_={};
+ if(!ready_)return;
+ if(helper_["uiProcessVersion"].toInt()!=1){
+  if(uiProcess_)uiProcessError_={"helper_incompatible","Update the GNOME extension to exclude the UI process from window capture",{}};
+ }else{
+  // Ack registration before the supervisor can let its child display a window.
+  // A failed update disables window acquisition, including Shell hotkey tickets.
+  sync("SetUiProcess",{quint32(uiProcess_)},uiProcessError_);
+ }
+ emit capabilitiesChanged();
 }
 void GnomeAdapter::helperChanged(){
  if(!owner_.isEmpty()){bus_.disconnect(owner_,path,interface,"Action",this,SLOT(helperAction(QString,QString)));bus_.disconnect(owner_,path,interface,"ClipboardChanged",this,SLOT(helperClipboardChanged(qulonglong)));bus_.disconnect(owner_,path,interface,"CapabilitiesChanged",this,SLOT(helperChanged()));}
@@ -92,13 +105,15 @@ quint64 GnomeAdapter::clipboardRevision()const{
 }
 QJsonObject GnomeAdapter::capabilities()const{
  auto capture=QJsonObject{{"available",ready_},{"mode","compositor-native"},{"consent","one-time-extension-setup"}};if(!ready_)capture["error"]=helperError_.toJson();
+ auto window=capture;if(uiProcessError_){window["available"]=false;window["error"]=uiProcessError_.toJson();}
  auto clipboard=QJsonObject{{"available",ready_},{"types",QJsonArray{"files","image","text"}},{"import","bounded-mutter-selection"},{"result","st-clipboard-only"}};
  if(!ready_)clipboard["error"]=helperError_.toJson();
- return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",capture},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
+ return {{"adapter","gnome-wayland"},{"helper",QJsonObject{{"available",ready_},{"uuid","putgd@put.gd"},{"protocol",gnome::protocolVersion},{"shellMajor",helper_["shellMajor"]},{"extensionVersion",helper_["extensionVersion"]},{"error",helperError_.toJson()}}},{"capture",QJsonObject{{"region",capture},{"window",window},{"desktop",capture}}},{"clipboard",clipboard},{"shortcuts",QJsonObject{{"available",ready_},{"bindings",bindings_}}}};
 }
 SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QString& action){
  QPointer<GnomeAdapter> guard(this);const bool hotkey=!hotkeyPrepared_[action].isEmpty();const auto id=hotkey?hotkeyPrepared_[action].takeFirst():uuid();Error error;
  if(!ready_)error=helperError_.code.isEmpty()?Error{"helper_unavailable","Enable putgd@put.gd before sharing",{}}:helperError_;
+ else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
  else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
  return [guard,id,error](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,limits,std::move(reply));};

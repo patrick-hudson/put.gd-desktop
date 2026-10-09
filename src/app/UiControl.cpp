@@ -6,7 +6,7 @@
 namespace putgd {
 namespace {
 bool knownType(const QString& type){
- static const QStringList types{"bootstrap","ready","incompatible","activate","shown","activationFailed","invalidated","observed","checkpoint","checkpointAccepted","checkpointRejected","closeRequested","closeAccepted","closeRejected","shutdown","focusChanged"};
+ static const QStringList types{"bootstrap","ready","incompatible","activate","shown","activationFailed","invalidated","observed","checkpoint","checkpointAccepted","checkpointRejected","closeRequested","closeAccepted","closeRejected","closeCancel","closeCancelled","closeConfirmed","shutdown","focusChanged"};
  return types.contains(type);
 }
 }

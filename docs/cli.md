@@ -6,6 +6,17 @@ session endpoint; `--request-id ID` sets correlation. The runtime directory is o
 and the socket uses Qt's user-access restriction. A second resident never removes a
 live socket. No TCP listener exists.
 
+Launching `putgd`, `putgd --history` or `putgd --activity` again asks the resident
+to open that window. The launcher exits 0 only after the matching window acknowledgement;
+a refused, malformed, incomplete or oversized reply exits 1. The exchange has one
+15-second deadline and a 16 KiB reply limit. A connected resident remains the session
+owner even if opening its UI fails: the launcher does not start a second resident or
+replay the request. Diagnostics contain only known error codes and fixed guidance,
+never resident-provided error messages or details. `ui_incompatible` means the installed
+UI differs from the running resident; let pending uploads finish, then restart put.gd.
+A later launch retries normally. Duplicate `putgd --background` launches only probe
+the resident and return immediately without opening a window.
+
 Requests are one newline-terminated JSON object, at most 1 MiB, with exactly
 `schemaVersion: 1`, `requestId`, `session` (the socket's exact path), `method` and
 `params`. Responses contain `schemaVersion`, the same `requestId`, `ok`, `result` and
@@ -42,6 +53,12 @@ Methods and parameters:
 | `settings.validate` | complete `document` |
 | `settings.patch` | recursive `patch`, `expectedRevision`; null is a value |
 | `capabilities`, `diagnostics` | empty object |
+| `ui.quit` | empty object; explicitly exit the resident application |
+
+`ui.quit` acknowledges with `quitting: true` before scheduling shutdown. It exits
+the resident, closes its UI helper, stops shortcuts and cancels pending work through
+the normal shutdown path. Closing a Settings, History or Activity window does not
+quit the resident. On desktops without a tray, Settings exposes a **Quit put.gd** button.
 
 History date boundaries use stored ISO UTC timestamps. Search is a literal substring of
 the display filename; SQL wildcard characters are escaped. Pages are 1–200 entries.

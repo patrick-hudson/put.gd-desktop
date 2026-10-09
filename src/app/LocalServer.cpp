@@ -73,10 +73,18 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(request["session"].toString()!=socketPath()) {reply({"wrong_session","Request targets a different resident session",{}},{});return;}
  const auto method=request["method"].toString();const auto p=request["params"].toObject();
  if(!operations_.ready()&&(method.startsWith("operation.")||method.startsWith("history.")||method.startsWith("delete.")||method=="cache.clear")) {reply({"initializing","Wait for resident journal recovery",{}},{});return;}
+ if(method=="ui.quit") {
+  if(!p.isEmpty()){reply(invalid(),{});return;}
+  if(!uiQuit_){reply({"ui_unavailable","This resident has no application quit handler",{}},{});return;}
+  const auto quit=uiQuit_;QPointer<LocalServer> guarded(this);
+  reply({},{{"quitting",true}});
+  if(guarded)QTimer::singleShot(0,guarded,quit);
+  return;
+ }
  if(method=="ui.show") {
-  if(!fields(p,{"view"})||!QStringList{"settings","history","activity"}.contains(p["view"].toString())){reply(invalid(),{});return;}
+  if(!fields(p,{"view"})||!QStringList{"settings","history","activity","about"}.contains(p["view"].toString())){reply(invalid(),{});return;}
   if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
-  uiActivation_(p["view"].toString());reply({},{{"shown",p["view"]}});return;
+  const auto view=p["view"].toString();uiActivation_(view,[reply=std::move(reply),view](Error error){reply(error,{{"shown",view}});});return;
  }
  if(method=="action.invoke") {if(!fields(p,{"action"})||!string(p,"action"))reply(invalid(),{});else operations_.invoke(p["action"].toString(),reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}

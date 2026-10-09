@@ -1,6 +1,7 @@
 # Resident service and an on-demand UI
 
-Status: direction approved by the user, 2026-10-08; implementation pending.
+Status: implementation is under integration test. Native acceptance and the
+measured decision to retain the split remain pending. See [protocol and lifecycle](ui-process-protocol.md).
 The resident must retain a tray icon and menu while all UI windows are closed.
 It must still offer capture/upload actions and reopen Settings, History and
 Activity. Closing the UI must leave shortcuts, clipboard ownership and operations
@@ -36,14 +37,14 @@ widgets and drafts. It does not unload Qt Widgets or desktop styling libraries.
 
 | Component | Current dependency | Work needed for a smaller resident |
 | --- | --- | --- |
-| Settings, History, Activity, About | Direct service references and Qt Widgets | Client interfaces and a separately launched UI executable |
+| Settings, History, Activity, About | Async session client in `putgd-ui` | Validate native lifecycle and measure the split |
 | Tray and menu | `QSystemTrayIcon` and `QMenu`, both in Qt Widgets | Measure retained cost; removing Widgets requires a different tray/menu implementation or helper |
 | X11 clipboard and capture | `QGuiApplication`, `QClipboard`, `QScreen` | Keep the active graphical event loop; do not assume a Core-only service is sufficient |
 | Region overlays | Widgets on X11 fallback and KDE | Move selection to a temporary helper or retain Widgets; preserve native target identity, cancellation and live background |
 | GNOME and KDE integrations | Desktop-specific capture/shortcut/clipboard contracts | Preserve bridge identity and permissions across any helper boundary |
-| Settings credentials and destination tests | Direct `CredentialStore` and tester callbacks | Add bounded private IPC operations with no secret logging, command-line secrets or credential export |
-| Live view updates | In-process signals | Add bounded event delivery or measured polling only while views are visible |
-| Unsaved drafts and history state | Retained widget state | Explicitly preserve safe draft/selection state across UI exits; clear credential entry fields and retain revision-conflict checks |
+| Settings credentials and destination tests | Resident `SetupService`, async session endpoints | Verify native store/prompt lifecycle; never export inputs as drafts |
+| Live view updates | Coalesced private invalidations while a helper exists | Verify runtime updates and failure recovery |
+| Unsaved drafts and history state | Bounded classified RAM checkpoint in the resident | Validate close/reopen conflicts and exclude credential inputs |
 
 Moving only the settings windows will not remove Qt Widgets from the current
 resident link graph: `putgd_x11`, `putgd_kde` and `TrayController` still require it.

@@ -17,6 +17,7 @@ public:
  ~X11Capture() override;
  bool available() const;
  bool cinnamonCompositor();
+ void setUiProcess(qint64 pid){uiProcess_=pid>0?pid:0;}
  X11Target freeze(const QString&,Error&);
  QList<CaptureFrame> frames(const X11Target&,Error&);
  bool unchanged(const X11Target&,Error&);
@@ -26,5 +27,6 @@ private:
  xcb_atom_t atom(const char*);
  xcb_connection_t* connection_=nullptr;
  xcb_window_t root_=XCB_WINDOW_NONE;
+ qint64 uiProcess_=0;
 };
 }

@@ -1,0 +1,32 @@
+[1/11] cd /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/.codex/worktrees/ui-process-split/put.gd -DOUTPUT_DIR=/home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/patrick/.codex/worktrees/ui-process-split/put.gd/cmake/GenerateBuildInfo.cmake
+[2/9] Automatic MOC and UIC for target putgd_ui_application
+[3/9] Building CXX object CMakeFiles/putgd_ui_application.dir/putgd_ui_application_autogen/mocs_compilation.cpp.o
+[4/9] Building CXX object CMakeFiles/putgd_ui_application.dir/src/ui/UiApplicationController.cpp.o
+[5/9] Linking CXX static library libputgd_ui_application.a
+[6/9] Automatic MOC and UIC for target test_gui_application
+AutoMoc: /home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp:0:1: note: No relevant classes found. No output generated.
+[7/8] Building CXX object CMakeFiles/test_gui_application.dir/tests/gui/test_ui_application.cpp.o
+FAILED: CMakeFiles/test_gui_application.dir/tests/gui/test_ui_application.cpp.o 
+/usr/bin/c++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NETWORK_LIB -DQT_SQL_LIB -DQT_TESTCASE_BUILDDIR=\"/home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev\" -DQT_TESTCASE_SOURCEDIR=\"/home/patrick/.codex/worktrees/ui-process-split/put.gd\" -DQT_TESTLIB_LIB -DQT_WIDGETS_LIB -I/home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev/test_gui_application_autogen/include -I/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests -I/home/patrick/.codex/worktrees/ui-process-split/put.gd/src -isystem /usr/include/x86_64-linux-gnu/qt6/QtCore -isystem /usr/include/x86_64-linux-gnu/qt6 -isystem /usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -isystem /usr/include/x86_64-linux-gnu/qt6/QtGui -isystem /usr/include/x86_64-linux-gnu/qt6/QtSql -isystem /usr/include/x86_64-linux-gnu/qt6/QtNetwork -isystem /usr/include/x86_64-linux-gnu/qt6/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt6/QtTest -g -std=gnu++20 -Wall -Wextra -Wpedantic -fPIC -MD -MT CMakeFiles/test_gui_application.dir/tests/gui/test_ui_application.cpp.o -MF CMakeFiles/test_gui_application.dir/tests/gui/test_ui_application.cpp.o.d -o CMakeFiles/test_gui_application.dir/tests/gui/test_ui_application.cpp.o -c /home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp
+In file included from /usr/include/x86_64-linux-gnu/qt6/QtTest/QTest:1,
+                 from /home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/fixtures/U2Fixtures.h:7,
+                 from /home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/fixtures/UiSessionFixture.h:2,
+                 from /home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp:4:
+/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp:106:1: error: expected ‘}’ at end of input
+  106 | QTEST_MAIN(UiApplicationTest)
+      | ^~~~~~~~~~
+/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp:21:40: note: to match this ‘{’
+   21 | class UiApplicationTest:public QObject {
+      |                                        ^
+/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp: In member function ‘void UiApplicationTest::finalCloseWaitsForAnOutstandingLargeCheckpoint()’:
+/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp:26:195: error: expected ‘}’ before ‘;’ token
+   26 |   QJsonObject state{{"schemaVersion",1},{"activity",QJsonObject{{"selectedId",QString(6*1024*1024,'x')},{"selectedItemId",""},{"collapsedIds",QJsonArray{}},{"geometry",QJsonArray{0,0,500,400}}}};
+      |                                                                                                                                                                                                   ^
+/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp:26:20: note: to match this ‘{’
+   26 |   QJsonObject state{{"schemaVersion",1},{"activity",QJsonObject{{"selectedId",QString(6*1024*1024,'x')},{"selectedItemId",""},{"collapsedIds",QJsonArray{}},{"geometry",QJsonArray{0,0,500,400}}}};
+      |                    ^
+/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp: At global scope:
+/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/gui/test_ui_application.cpp:106:1: error: expected unqualified-id at end of input
+  106 | QTEST_MAIN(UiApplicationTest)
+      | ^~~~~~~~~~
+ninja: build stopped: subcommand failed.

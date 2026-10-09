@@ -18,6 +18,16 @@
 #include <QLocalSocket>
 #endif
 namespace putgd {
+namespace {
+constexpr int activationDeadlineMs=15000;
+constexpr qsizetype maximumActivationResponse=16*1024;
+bool activationFrameComplete(LocalActivation& result) {
+ if(result.response.size()>maximumActivationResponse)result.errorCode="response_too_large";
+ else if(result.response.contains('\n')&&result.response.indexOf('\n')!=result.response.size()-1)result.errorCode="invalid_response";
+ if(!result.errorCode.isEmpty()){result.response.clear();return true;}
+ return result.response.endsWith('\n');
+}
+}
 #ifdef Q_OS_LINUX
 namespace {
 bool waitSocket(int fd,short events,QDeadlineTimer& deadline) {
@@ -59,14 +69,14 @@ LocalSessionState probeLocalSession(const QString& path,int timeoutMs) {
  return state;
 }
 LocalActivation activateLocalSession(const QString& path,const QByteArray& request) {
+ QDeadlineTimer deadline(activationDeadlineMs);
  LocalSessionState state;
  const int fd=connectSocket(path,200,state);
  if(fd<0)return {};
- LocalActivation result{true,false};
+ LocalActivation result;result.connected=true;
  if(!request.isEmpty()) {
   qsizetype sent=0;
-  QDeadlineTimer deadline(3000);
-  while(sent<request.size()) {
+  while(sent<request.size()&&!deadline.hasExpired()) {
    const auto count=::send(fd,request.constData()+sent,size_t(request.size()-sent),MSG_NOSIGNAL);
    if(count>0){sent+=count;continue;}
    if(count<0&&errno==EINTR)continue;
@@ -74,8 +84,18 @@ LocalActivation activateLocalSession(const QString& path,const QByteArray& reque
    break;
   }
   if(sent==request.size()) {
-   QDeadlineTimer replyDeadline(3000);
-   if(waitSocket(fd,POLLIN,replyDeadline)){char byte;result.responded=::recv(fd,&byte,1,MSG_PEEK)>0;}
+   char chunk[4096];
+   while(!deadline.hasExpired()) {
+    const auto count=::recv(fd,chunk,size_t(std::min<qsizetype>(sizeof(chunk),maximumActivationResponse+1-result.response.size())),0);
+    if(count>0){result.response.append(chunk,count);if(activationFrameComplete(result))break;continue;}
+    if(count<0&&errno==EINTR)continue;
+    if(count<0&&(errno==EAGAIN||errno==EWOULDBLOCK)&&waitSocket(fd,POLLIN,deadline))continue;
+    break;
+   }
+  }
+  if(result.errorCode.isEmpty()&&!result.response.endsWith('\n')) {
+   result.errorCode=deadline.hasExpired()?"activation_timeout":"transport_failed";
+   result.response.clear();
   }
  }
  ::close(fd);
@@ -220,8 +240,25 @@ LocalSessionState probeLocalSession(const QString& path,int timeoutMs) {
  return socket.error()==QLocalSocket::ServerNotFoundError||socket.error()==QLocalSocket::ConnectionRefusedError?LocalSessionState::Absent:LocalSessionState::Unavailable;
 }
 LocalActivation activateLocalSession(const QString& path,const QByteArray& request) {
- QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(200))return {};
- LocalActivation result{true,false};if(!request.isEmpty()){socket.write(request);if(socket.waitForBytesWritten(3000))result.responded=socket.waitForReadyRead(3000);}return result;
+ QDeadlineTimer deadline(activationDeadlineMs);
+ QLocalSocket socket;socket.setReadBufferSize(maximumActivationResponse+1);socket.connectToServer(path);
+ if(!socket.waitForConnected(200))return {};
+ LocalActivation result;result.connected=true;
+ if(request.isEmpty())return result;
+ bool written=socket.write(request)==request.size();
+ while(written&&socket.bytesToWrite()>0&&!deadline.hasExpired())written=socket.waitForBytesWritten(int(deadline.remainingTime()));
+ if(written&&socket.bytesToWrite()==0) {
+  while(!deadline.hasExpired()) {
+   result.response+=socket.read(maximumActivationResponse+1-result.response.size());
+   if(activationFrameComplete(result))break;
+   if(socket.state()==QLocalSocket::UnconnectedState||!socket.waitForReadyRead(int(deadline.remainingTime())))break;
+  }
+ }
+ if(result.errorCode.isEmpty()&&!result.response.endsWith('\n')) {
+  result.errorCode=deadline.hasExpired()?"activation_timeout":"transport_failed";
+  result.response.clear();
+ }
+ return result;
 }
 struct LocalIpcConnection::State {QLocalSocket* socket;explicit State(QLocalSocket* value):socket(value){}};
 LocalIpcConnection::LocalIpcConnection(qintptr handle,QObject* parent):QObject(parent),state_(std::make_unique<State>(reinterpret_cast<QLocalSocket*>(handle))) {

@@ -1,0 +1,28 @@
+{
+  "verdicts": [
+    {
+      "#": 1,
+      "status": "confirmed",
+      "protected_subject": "public-contract",
+      "reason": "Replacing putgd-ui with a different build while the resident remains running reaches the newly introduced helper path in src/main.cpp:137 and strict rejection in src/ui/main.cpp:33-34, but src/app/UiProcessController.cpp:8-9,106 recommends retrying the same incompatible executable, src/ui/TrayController.cpp:77-78 displays that message, and src/main.cpp:39-42,76 returns success without inspecting the failure response; the split newly exposes this upgrade failure, and installed-upgrade incidence was not measured."
+    },
+    {
+      "#": 2,
+      "status": "confirmed",
+      "protected_subject": "public-contract",
+      "reason": "For a helper that becomes ready but stalls before acknowledging activation beyond fifteen seconds, src/app/UiProcessController.cpp:15-21,74,90 permits ten seconds of startup followed by twenty seconds for acknowledgement while the newly asynchronous src/app/LocalServer.cpp:84-87 withholds its response, so src/cli/main.cpp:22 and src/client/SessionClient.cpp:87-92,162-169 expire first; client disconnection only removes the reply socket under LocalServer.cpp:53,65-66 and does not cancel activation, allowing a later shown frame at UiProcessController.cpp:111-122, with stall incidence unmeasured."
+    },
+    {
+      "#": 3,
+      "status": "confirmed",
+      "protected_subject": "concurrency",
+      "reason": "If final close wins the race against Reload or Cancel with unchanged authoritative revisions, src/ui/SettingsWindow.cpp:167,225 has already cleared dirty while src/ui/UiSession.cpp:11-15,24-25 still awaits asynchronous refresh, the new saveViewState guard at SettingsWindow.cpp:248 omits both transitions and exports old controls as clean at :251, UiApplicationController.cpp:162-167,124-129 accepts that checkpoint and exits without draining them, and SettingsWindow.cpp:259-270 restores the old values without refreshing matching revisions; this ordering is reachable through those callers, but its runtime incidence was not measured."
+    },
+    {
+      "#": 4,
+      "status": "confirmed",
+      "protected_subject": null,
+      "reason": "When a native plugin emits stdout diagnostics, newly added src/ui/main.cpp:16 constructs QApplication before transport setup and src/ui/StdioDevice.cpp:12-16,49-52 shares STDOUT_FILENO with that output, while src/app/UiProcessController.cpp:48-52 routes stdout into UiControl.cpp:57-61 and terminates the helper on failure at UiProcessController.cpp:167-171; the supplied production-helper reproduction reports ui_protocol with xcb, gtk3 and G_MESSAGES_DEBUG=all and corroborates this path, with relevant startup/stdio files reported unchanged but no claim that the whole later binary matches the frozen tree."
+    }
+  ]
+}

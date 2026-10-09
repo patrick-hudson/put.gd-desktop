@@ -20,6 +20,9 @@ class SourceAdapter {
 public:
  using PreparedAcquisition=std::function<void(const ResourceLimits&,std::function<void(PayloadResult)>)>;
  virtual ~SourceAdapter()=default;
+ // The resident supervisor sets the one live UI helper before it can show a
+ // window, and clears it on exit. Native adapters exclude it at invocation.
+ virtual void setUiProcess(qint64) {}
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
  // Freeze native target identity/layout on the session thread before persistence

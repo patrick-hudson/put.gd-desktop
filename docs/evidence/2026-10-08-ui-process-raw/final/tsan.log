@@ -1,0 +1,38 @@
+Internal ctest changing into directory: /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/tsan-instrumented-qt
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/tsan-instrumented-qt
+      Start  2: kde_ownership_integration
+ 1/16 Test  #2: kde_ownership_integration .........   Passed    2.84 sec
+      Start  3: ui_split_services_integration
+ 2/16 Test  #3: ui_split_services_integration .....   Passed    1.73 sec
+      Start  4: ui_process_integration
+ 3/16 Test  #4: ui_process_integration ............   Passed   19.71 sec
+      Start  5: ui_endpoints_integration
+ 4/16 Test  #5: ui_endpoints_integration ..........   Passed    0.55 sec
+      Start  6: ui_control_integration
+ 5/16 Test  #6: ui_control_integration ............   Passed    6.87 sec
+      Start  7: session_client_integration
+ 6/16 Test  #7: session_client_integration ........   Passed   23.01 sec
+      Start  9: gui_application
+ 7/16 Test  #9: gui_application ...................   Passed   20.79 sec
+      Start 10: gui_tray
+ 8/16 Test #10: gui_tray ..........................   Passed    0.77 sec
+      Start 11: gui_version
+ 9/16 Test #11: gui_version .......................   Passed    0.40 sec
+      Start 13: ui_native_lifecycle_integration
+10/16 Test #13: ui_native_lifecycle_integration ...   Passed   17.13 sec
+      Start 14: x11_isolated
+11/16 Test #14: x11_isolated ......................   Passed   17.52 sec
+      Start 30: cli_integration
+12/16 Test #30: cli_integration ...................   Passed   21.74 sec
+      Start 36: gui_settings
+13/16 Test #36: gui_settings ......................   Passed   82.14 sec
+      Start 37: gui_operations_view
+14/16 Test #37: gui_operations_view ...............   Passed    1.85 sec
+      Start 38: gui_history_view
+15/16 Test #38: gui_history_view ..................   Passed   39.14 sec
+      Start 40: local_ipc_contract
+16/16 Test #40: local_ipc_contract ................   Passed   13.61 sec
+
+100% tests passed, 0 tests failed out of 16
+
+Total Test time (real) = 269.81 sec

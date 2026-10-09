@@ -1,16 +1,33 @@
 #pragma once
+#include "app/OperationService.h"
 #include <QObject>
-#include <QPointer>
 #include <functional>
 #include <memory>
-#include "app/OperationService.h"
-class QSystemTrayIcon;class QMenu;class QMessageBox;
+
+class QMenu;
+class QSystemTrayIcon;
+
 namespace putgd {
-class SettingsWindow;class HistoryWindow;class RecentOperations;
-class TrayController final:public QObject {
+class TrayController final : public QObject {
  Q_OBJECT
-public:TrayController(OperationService&,std::function<SettingsWindow&()>,std::function<HistoryWindow&()>,std::function<RecentOperations&()>,QObject* parent=nullptr);~TrayController() override;bool available()const;void activate();void showSettings();void showHistory();void showActivity();
-signals:void quitRequested();
-private:void showAbout();OperationService& operations_;std::function<SettingsWindow&()> createSettings_;std::function<HistoryWindow&()> createHistory_;std::function<RecentOperations&()> createActivity_;SettingsWindow* settings_=nullptr;HistoryWindow* history_=nullptr;RecentOperations* activity_=nullptr;QSystemTrayIcon* tray_;std::unique_ptr<QMenu> menu_;QPointer<QMessageBox> about_;
+public:
+ TrayController(OperationService&, std::function<void(const QString&)> openView,
+                std::function<void()> quit, QObject* parent = nullptr);
+ ~TrayController() override;
+ bool available() const;
+ void activate();
+ void showSettings();
+ void showHistory();
+ void showActivity();
+ void notifyFailure(const Error&);
+
+private:
+ void showAbout();
+ void showView(const QString&);
+ OperationService& operations_;
+ std::function<void(const QString&)> openView_;
+ std::function<void()> quit_;
+ QSystemTrayIcon* tray_;
+ std::unique_ptr<QMenu> menu_;
 };
 }

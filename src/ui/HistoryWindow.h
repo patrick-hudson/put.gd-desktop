@@ -6,7 +6,10 @@
 class QTableView;class QLabel;class QPushButton;class QPlainTextEdit;class QTimer;
 namespace putgd {
 class HistoryWindow final:public RetainedWindow {
-public:HistoryWindow(HistoryService&,OperationService&,QWidget* parent=nullptr);void refresh();
+ Q_OBJECT
+public:HistoryWindow(UiSession&,QWidget* parent=nullptr);void refresh();
+ QJsonObject saveViewState()const;bool restoreViewState(const QJsonObject&);void releasePreview();
+signals:void viewStateChanged();
 protected:
  void hideEvent(QHideEvent*) override;
  void showEvent(QShowEvent*) override;
@@ -15,6 +18,6 @@ private:
  QString pendingPreviewPath_;
  void startPreview();
  void selectionChanged();void prepareDelete();void pollDeletion();QStringList selectedIds()const;
- HistoryService& history_;OperationService& operations_;HistoryModel* model_;QTableView* table_;QLabel *status_,*count_,*preview_,*empty_;QPlainTextEdit *details_,*summary_;QPushButton *copy_,*open_;QString deletionId_;QTimer* deletionTimer_=nullptr;quint64 selectionRequest_=0;bool deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
+ UiSession& session_;QStringList restoreSelection_;bool restoringSelection_=false,deleteAccepting_=false;HistoryModel* model_;QTableView* table_;QLabel *status_,*count_,*preview_,*empty_;QPlainTextEdit *details_,*summary_;QPushButton *copy_,*open_;QString deletionId_;QTimer* deletionTimer_=nullptr;quint64 selectionRequest_=0;bool deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
 };
 }

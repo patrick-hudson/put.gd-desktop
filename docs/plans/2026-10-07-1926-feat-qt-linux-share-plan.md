@@ -681,6 +681,14 @@ contracts, sanitizer checks for asynchronous ownership changes, and current-sour
 Cinnamon/GNOME/KDE graphical acceptance. The 40 MiB target remains a measurement
 goal, not an assumed outcome of the split. See [the analysis](../resident-ui-process.md).
 
+Implementation checkpoint (2026-10-08): the resident tray and on-demand helper
+are implemented. Dev 41/41 and the 16 affected ASan/UBSan and instrumented-Qt TSan
+contracts pass, as do the Release build and separate MCP suite. The completed
+review's four confirmed defects have caller fixes and regression evidence.
+See [the implementation receipt](../evidence/2026-10-08-ui-process.json).
+U11 remains in progress: GNOME ownership/setup-result recovery fixes, current
+Cinnamon/GNOME/KDE AE17 and total-process memory/reopen measurements are pending.
+
 ### U10. Packages, performance, and release acceptance
 
 Goal: Installable releases meet the desktop contract and have reproducible support evidence.

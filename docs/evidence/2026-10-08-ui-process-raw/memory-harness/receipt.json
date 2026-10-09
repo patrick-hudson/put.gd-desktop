@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T00:20:43.293005+00:00",
+  "scope": "Synthetic Python process-family sampler and CLI contract checks only; no product process, GUI, VM or application memory benchmark was run",
+  "commands": [
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests/performance",
+        "-p",
+        "test_bench_ui_process.py",
+        "-v"
+      ],
+      "exitCode": 0,
+      "output": "unit-tests.log",
+      "outputSha256": "2ee1c077b8d20f8ed0aa1a1520395f44f0bcde75e6fed96dc000f8ff4aede960"
+    },
+    {
+      "command": [
+        "python3",
+        "tests/performance/bench_ui_process.py",
+        "--help"
+      ],
+      "exitCode": 0,
+      "output": "help.txt",
+      "outputSha256": "91cf8f9a85ca7d8b0f79a276f2d73ed58f26bf42e0c4c261050b9972bd64fc7c"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "py_compile",
+        "tests/performance/bench_ui_process.py",
+        "tests/performance/test_bench_ui_process.py"
+      ],
+      "exitCode": 0,
+      "output": "compile.log",
+      "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source": {
+    "tests/performance/bench_ui_process.py": "544c35a269d43d1a5e41d3897ad6f5a9b485365d857486f2a95d303703816660",
+    "tests/performance/test_bench_ui_process.py": "02bcebf8e83c5a25a5cc14b3d27d4cac36efdaa048f66cc6375bb24a96e9789b",
+    "docs/testing-ui-process.md": "024d0fdce52e8fa3c567d849f99e85be1fb593bdcbd048a07841aee2980dfa9b"
+  },
+  "passed": true,
+  "pending": [
+    "Review of the new harness",
+    "Native full-product acceptance for exact candidate source",
+    "Two serial physical matched baseline/candidate runs",
+    "Candidate four-view acceptance",
+    "Total-family quiet observations after GNOME and KDE native actions",
+    "Populated-history and uploads continuing through helper exit"
+  ]
+}

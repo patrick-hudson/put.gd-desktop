@@ -4,6 +4,9 @@
 #include <QTimer>
 #include <QJsonDocument>
 #include <QtTest>
+#include <cstdio>
+#include <cstring>
+#include <memory>
 using namespace putgd;
 class Duplex final:public QIODevice {
 public:
@@ -39,13 +42,15 @@ private slots:
 #ifndef Q_OS_UNIX
   QSKIP("Native helper pipes are implemented for the Linux target");
 #else
+  for(bool detached:{false,true}){
   QProcess peer;peer.setProcessChannelMode(QProcess::SeparateChannels);UiControl channel(peer);bool ready=false;Error error;
   connect(&channel,&UiControl::failed,this,[&](Error e){error=e;});
   connect(&channel,&UiControl::frame,this,[&](QString type,QString,QJsonObject data){if(type=="ready"){QCOMPARE(data["receivedBytes"].toInt(),2*1024*1024);ready=true;}});
-  peer.start(QCoreApplication::applicationFilePath(),{"--pipe-peer"});QTRY_COMPARE(peer.state(),QProcess::Running);
+  peer.start(QCoreApplication::applicationFilePath(),{detached?"--private-pipe-peer":"--pipe-peer"});QTRY_COMPARE(peer.state(),QProcess::Running);
   int ticks=0;QTimer heartbeat;heartbeat.setInterval(1);connect(&heartbeat,&QTimer::timeout,this,[&]{++ticks;});heartbeat.start();
   QVERIFY(!channel.send("bootstrap",{{"text",QString(2*1024*1024,'x')}}).isEmpty());QTRY_VERIFY_WITH_TIMEOUT(ready,5000);QVERIFY(!error);QVERIFY(ticks>0);
-  channel.send("shutdown");QTRY_COMPARE(peer.state(),QProcess::NotRunning);QCOMPARE(peer.exitStatus(),QProcess::NormalExit);QCOMPARE(peer.exitCode(),0);QVERIFY(peer.readAllStandardError().isEmpty());
+  channel.send("shutdown");QTRY_COMPARE(peer.state(),QProcess::NotRunning);QCOMPARE(peer.exitStatus(),QProcess::NormalExit);QCOMPARE(peer.exitCode(),0);const auto diagnostic=peer.readAllStandardError();if(detached)QVERIFY(diagnostic.contains("synthetic plugin stdout"));else QVERIFY(diagnostic.isEmpty());
+  }
 #endif
  }
  void validSequenceAndStop(){
@@ -56,9 +61,15 @@ private slots:
  }
 };
 int main(int argc,char** argv){
+ std::unique_ptr<UiControlPipes> handles;
+ if(argc==2&&std::strcmp(argv[1],"--private-pipe-peer")==0){
+  handles=std::make_unique<UiControlPipes>();if(!handles->valid())return 2;
+  // Exercise a plugin's ordinary stdout write before Qt constructs the event loop.
+  std::fputs("synthetic plugin stdout\n",stdout);std::fflush(stdout);
+ }
  QCoreApplication app(argc,argv);
- if(app.arguments().contains("--pipe-peer")){
-  StdioDevice pipes;if(!pipes.isOpen())return 2;UiControl channel(pipes);
+ if(handles||app.arguments().contains("--pipe-peer")){
+  StdioDevice pipes(handles?handles->input():0,handles?handles->output():1);if(!pipes.isOpen())return 2;UiControl channel(pipes);
   QObject::connect(&channel,&UiControl::failed,&app,[&]{app.exit(3);});
   QObject::connect(&pipes,&QIODevice::readChannelFinished,&app,[&]{app.quit();});
   QObject::connect(&channel,&UiControl::frame,&app,[&](QString type,QString,QJsonObject payload){if(type=="bootstrap")channel.send("ready",{{"receivedBytes",payload["text"].toString().size()}});else if(type=="shutdown")app.quit();});

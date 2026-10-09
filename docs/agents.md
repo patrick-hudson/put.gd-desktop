@@ -16,6 +16,7 @@ Implement its dependencies in order and record blocked acceptance separately fro
 | S3 / explicit credential resolution | `src/storage/s3/`, `src/secrets/` | isolated S3/keychain fixtures; [credentials](credentials.md), [S3](s3.md) |
 | Settings/activity/history widgets and login startup | `src/ui/`, `src/app/LoginStartup.*` | `tests/gui/`, `test_login_startup.cpp`, [user guide](user-guide.md) |
 | Disposable desktop VM lab / development package | `tools/lab/`, `packaging/linux/` | `tests/desktop/test_lab.py`, [VM lab](vm-lab.md) |
+| UI process lifecycle and total memory | `src/app/UiProcessController.*`, `src/ui/UiApplicationController.*`, `UiSession.*`, `ViewState.*` | [protocol](ui-process-protocol.md), [state allowlists](ui-process-state.md), `test_ui_process`, `test_ui_split_services`, `test_gui_application` |
 | Session JSON transport | `src/app/LocalServer.*`, `src/cli/main.cpp` | `test_cli.cpp`, [CLI](cli.md) |
 | Optional stdio MCP | `tools/mcp/` | `tests/integration/test_mcp.py`, [MCP](mcp.md) |
 | Resident/post-use memory and capture latency | `tests/performance/`, `src/app/OperationService.*` | [physical replay](testing-memory.md); synthetic lab results are separate from physical budgets |

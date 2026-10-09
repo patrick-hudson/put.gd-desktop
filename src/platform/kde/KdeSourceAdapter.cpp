@@ -2,6 +2,11 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QJsonArray>
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusPendingCallWatcher>
+#include <QDBusPendingReply>
+#include <QUuid>
 #include <cmath>
 namespace putgd {
 namespace {
@@ -28,10 +33,40 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
   // ScreenShot2 freezes active focus at method invocation. Starting this bounded
   // request now prevents persistence or GUI focus changes from retargeting it.
   auto snapshot=std::make_shared<WindowSnapshot>();const auto generation=generation_;
-  capture_.request("CaptureActiveWindow",{},limits_,[guard,snapshot,generation](QImage image,QVariantMap,Error error){snapshot->done=true;if(!guard||guard->generation_!=generation)snapshot->error={"cancelled","Window acquisition cancelled",{}};else{snapshot->image=std::move(image);snapshot->error=std::move(error);}if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}});
+  // Keep the invocation's helper state even if that process exits or restarts
+  // while ScreenShot2 transfers the frozen window's pixels.
+  const bool checkUi=uiProcess_!=0;
+  auto complete=[guard,snapshot,generation](QImage image,Error error){
+   snapshot->done=true;
+   if(!guard||guard->generation_!=generation)snapshot->error={"cancelled","Window acquisition cancelled",{}};
+   else{snapshot->error=std::move(error);if(!snapshot->error)snapshot->image=std::move(image);}
+   if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}
+  };
+  capture_.request("CaptureActiveWindow",{},limits_,[guard,checkUi,complete](QImage image,QVariantMap metadata,Error error){
+   if(error||!checkUi||!guard){complete(std::move(image),std::move(error));return;}
+   // Inspect the returned UUID, never current focus. No image leaves this
+   // adapter for persistence/publication until the native identity is checked.
+   guard->verifyExternalWindow(metadata.value("windowId").toString(),[complete,image=std::move(image)](Error error)mutable{complete(std::move(image),std::move(error));});
+  });
   return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window acquisition cancelled",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
  }
  const auto frozen=layout();return [guard,action,frozen](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard){cb({{},{"source_unavailable","Desktop adapter closed",{}}});return;}guard->capture(action,frozen,limits,std::move(cb));};
+}
+void KdeSourceAdapter::verifyExternalWindow(const QString& windowId,std::function<void(Error)> reply){
+ const QUuid frozenId(windowId);
+ if(frozenId.isNull()){reply({"target_unavailable","KWin did not identify the captured window",{}});return;}
+ auto message=QDBusMessage::createMethodCall("org.kde.KWin","/KWin","org.kde.KWin","getWindowInfo");message.setArguments({windowId});message.setAutoStartService(false);
+ auto* call=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(message,1000),this);
+ connect(call,&QDBusPendingCallWatcher::finished,this,[call,frozenId,reply=std::move(reply)]()mutable{
+  const QDBusPendingReply<QVariantMap> result=*call;call->deleteLater();
+  const auto info=result.isError()?QVariantMap{}:result.value();
+  const auto text=[](const QVariant& value){return value.metaType().id()==QMetaType::QString||value.metaType().id()==QMetaType::QByteArray;};
+  if(result.isError()||!text(info.value("uuid"))||QUuid(info.value("uuid").toString())!=frozenId||!text(info.value("resourceClass"))||!text(info.value("desktopFile"))){reply({"target_unavailable","KWin could not verify the captured window identity",{}});return;}
+  // Plasma 6.3/6.6 exposes the native xdg app ID here, not a verified PID.
+  // The supervised helper sets this dedicated ID before creating any surface.
+  if(info.value("resourceClass").toString()=="putgd-ui"||info.value("desktopFile").toString()=="putgd-ui"){reply({"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}});return;}
+  reply({});
+ });
 }
 void KdeSourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
 void KdeSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,ResourceLimits limits,std::function<void(PayloadResult)> cb){
