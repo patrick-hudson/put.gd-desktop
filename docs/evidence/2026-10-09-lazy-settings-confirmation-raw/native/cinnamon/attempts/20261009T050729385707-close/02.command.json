@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/identity",
+    "-p",
+    "22238",
+    "lab@127.0.0.1",
+    "sh",
+    "-s"
+  ],
+  "cwd": null,
+  "stdinFile": "02.stdin",
+  "startedUtc": "2026-10-09T05:07:29.702299+00:00"
+}

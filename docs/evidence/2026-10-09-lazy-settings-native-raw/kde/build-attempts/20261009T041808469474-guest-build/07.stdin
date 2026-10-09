@@ -1,0 +1,8 @@
+set -eu
+cd /home/lab/putgd-ui-refinement-lazy-exp001-native/source
+cmake --preset dev -DCMAKE_PREFIX_PATH=/home/lab/putgd-memory-build/sdk -DPUTGD_AWS_RUNTIME_DIR=/home/lab/putgd-memory-build/sdk/lib -DPUTGD_AWS_SOURCE_DIR=/home/lab/putgd-memory-build/dependencies/aws-sdk-cpp -DPUTGD_LAB_FIXTURE=ON -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build --preset dev
+ctest --preset dev --output-junit /home/lab/putgd-ui-refinement-lazy-exp001-native/dev.xml
+cmake --preset release -DCMAKE_PREFIX_PATH=/home/lab/putgd-memory-build/sdk -DPUTGD_AWS_RUNTIME_DIR=/home/lab/putgd-memory-build/sdk/lib -DPUTGD_AWS_SOURCE_DIR=/home/lab/putgd-memory-build/dependencies/aws-sdk-cpp -DPUTGD_LAB_FIXTURE=ON -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build --preset release
+cpack --config build/release/CPackConfig.cmake -G DEB -B /home/lab/putgd-ui-refinement-lazy-exp001-native/packages

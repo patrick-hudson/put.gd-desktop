@@ -1,0 +1,23 @@
+Test project /home/patrick/work/put.gd/build/dev
+    Start 10: gui_tray
+1/1 Test #10: gui_tray .........................***Failed    0.95 sec
+********* Start testing of ResidentTray *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : ResidentTray::initTestCase()
+FAIL!  : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews() 'tray->isVisible()' returned FALSE. ()
+   Loc: [/home/patrick/work/put.gd/tests/gui/test_tray.cpp(53)]
+PASS   : ResidentTray::everyCaptureActionWorksWithNoViewsOpen()
+PASS   : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray()
+PASS   : ResidentTray::rejectedCaptureOpensActivityWithoutOwningAWindow()
+PASS   : ResidentTray::cleanupTestCase()
+Totals: 5 passed, 1 failed, 0 skipped, 0 blacklisted, 934ms
+********* Finished testing of ResidentTray *********
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.96 sec
+
+The following tests FAILED:
+	 10 - gui_tray (Failed)
+Errors while running CTest

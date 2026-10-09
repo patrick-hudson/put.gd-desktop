@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="(empty)"
+	tests="5"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname=""
+	time="4"
+	timestamp="2026-10-08T23:57:18"
+	>
+	<testcase name="version_contract" classname="version_contract" time="3.46634" status="run">
+		<properties/>
+		<system-out>-- Version contract artifacts: /home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/dev/Testing/version-contract-Debug/9647b46151b5
+-- Version contract passed: three executable identities, stale helper rejection, commits, dirty state, package snapshots and source archives
+</system-out>
+	</testcase>
+	<testcase name="ui_split_services_integration" classname="ui_split_services_integration" time="0.537312" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiSplitServices *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : UiSplitServices::initTestCase()
+PASS   : UiSplitServices::helperCrashDoesNotCancelAnAcceptedUploadOrSetupJob()
+PASS   : UiSplitServices::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 513ms
+********* Finished testing of UiSplitServices *********
+</system-out>
+	</testcase>
+	<testcase name="version_integration" classname="version_integration" time="0.0717985" status="run">
+		<properties/>
+		<system-out>********* Start testing of VersionContract *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : VersionContract::initTestCase()
+PASS   : VersionContract::binariesAndDiagnosticsMatchManifest()
+PASS   : VersionContract::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 61ms
+********* Finished testing of VersionContract *********
+</system-out>
+	</testcase>
+	<testcase name="gui_tray" classname="gui_tray" time="0.399721" status="run">
+		<properties/>
+		<system-out>********* Start testing of ResidentTray *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : ResidentTray::initTestCase()
+QWARN  : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews()
+QWARN  : ResidentTray::everyCaptureActionWorksWithNoViewsOpen() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::everyCaptureActionWorksWithNoViewsOpen()
+QWARN  : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray()
+QWARN  : ResidentTray...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_version" classname="gui_version" time="0.0425033" status="run">
+		<properties/>
+		<system-out>********* Start testing of VersionView *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : VersionView::initTestCase()
+QWARN  : VersionView::aboutUsesTheConnectedResidentBuildAndIsModeless() This plugin does not support propagateSizeHints()
+PASS   : VersionView::aboutUsesTheConnectedResidentBuildAndIsModeless()
+QWARN  : VersionView::aboutFollowsItsOwnerLifetime() This plugin does not support propagateSizeHints()
+PASS   : VersionView::aboutFollowsItsOwnerLifetime()
+PASS   : VersionView::cleanupTestCase()
+Totals: 4 passed, 0 failed, 0 skipped, 0 blacklisted, 26ms
+********* Finished testing of VersionView *********
+</system-out>
+	</testcase>
+</testsuite>

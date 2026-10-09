@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T05:25:34.087129+00:00",
+  "source": {
+    "commit": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "tree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+    "commitCount": 46,
+    "dirty": false,
+    "archiveSha256": "0853b2b526e1b4e6a1d25b501a7b2c91ba86dbf86bb57272fee67a00e8bb690b"
+  },
+  "classification": "Clean versioned candidate: native correctness and physical performance are separate evidence classes",
+  "nativeCorrectness": {
+    "guests": {
+      "cinnamon": {
+        "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+        "version": "0.1.1-dev.46+g6f6372e79d8b",
+        "matrixPassed": 12,
+        "matrixTotal": 12,
+        "correctnessReceipt": "native/cinnamon/visual-review.json",
+        "postNativeMemory": {
+          "scope": "30-second quiescent post-native synthetic-use observation; not cold physical or matched saving",
+          "samples": 7,
+          "rssMiB": 53.625,
+          "pssMiB": 33.5537109375,
+          "privateMiB": 32.1875,
+          "uiProcessCounts": [
+            0
+          ]
+        },
+        "blockedGates": []
+      },
+      "gnome": {
+        "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+        "version": "0.1.1-dev.46+g6f6372e79d8b",
+        "matrixPassed": 12,
+        "matrixTotal": 12,
+        "correctnessReceipt": "native/gnome/visual-review.json",
+        "postNativeMemory": {
+          "scope": "30-second quiescent post-native synthetic-use observation; not cold physical or matched saving",
+          "samples": 7,
+          "rssMiB": 60.51171875,
+          "pssMiB": 33.87109375,
+          "privateMiB": 30.3359375,
+          "uiProcessCounts": [
+            0
+          ]
+        },
+        "blockedGates": []
+      },
+      "kde": {
+        "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+        "version": "0.1.1-dev.46+g6f6372e79d8b",
+        "matrixPassed": 12,
+        "matrixTotal": 12,
+        "correctnessReceipt": "native/kde/visual-review.json",
+        "postNativeMemory": {
+          "scope": "30-second quiescent post-native synthetic-use observation; not cold physical or matched saving",
+          "samples": 7,
+          "rssMiB": 140.43359375,
+          "pssMiB": 40.6943359375,
+          "privateMiB": 28.40625,
+          "uiProcessCounts": [
+            0
+          ]
+        },
+        "blockedGates": []
+      }
+    },
+    "identitySuites": {
+      "host": {
+        "passed": 5,
+        "tests": [
+          "gui_tray",
+          "gui_version",
+          "ui_split_services_integration",
+          "version_contract",
+          "version_integration"
+        ],
+        "receipt": "work/ui-refinement/native-replay/frozen-exp001-source46/host/dev.xml"
+      },
+      "gnome": {
+        "passed": 5,
+        "tests": [
+          "gui_tray",
+          "gui_version",
+          "ui_split_services_integration",
+          "version_contract",
+          "version_integration"
+        ],
+        "receipt": "work/ui-refinement/native-replay/frozen-exp001-source46/gnome/dev.xml"
+      },
+      "kde": {
+        "passed": 5,
+        "tests": [
+          "gui_tray",
+          "gui_version",
+          "ui_split_services_integration",
+          "version_contract",
+          "version_integration"
+        ],
+        "receipt": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/dev.xml"
+      }
+    },
+    "allFinalFrameCount": 36,
+    "visibleVncWall": "http://127.0.0.1:8765/",
+    "notEstablished": [
+      "Full compositor/profile certification",
+      "U9 fresh-agent acceptance",
+      "Cloud S3 acceptance",
+      "Cold physical 40 MiB target",
+      "Performance saving from guest observations"
+    ],
+    "priorDirty45Receipt": "2026-10-09-lazy-settings-native.json"
+  },
+  "physicalPerformance": {
+    "runs": [
+      "reference-1",
+      "candidate-1",
+      "reference-2",
+      "candidate-2"
+    ],
+    "referenceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "candidateCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "frozenHarnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "referenceMetrics": {
+      "settingsReopenMilliseconds": 332.5024600198958,
+      "closedRssBytes": 47814656.0,
+      "closedPssBytes": 27087360.0,
+      "peakOpenPssBytes": 58215424,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "reopenSamples": [
+        339.5424230257049,
+        325.4624970140867,
+        344.9719980126247,
+        284.36045098351315
+      ],
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+          "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+          "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        }
+      ],
+      "limits": [
+        "Mapped readiness includes observer overhead; no p95 or paint certification.",
+        "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+      ]
+    },
+    "candidateMetrics": {
+      "settingsReopenMilliseconds": 295.43196596205235,
+      "closedRssBytes": 47794176.0,
+      "closedPssBytes": 27090432.0,
+      "peakOpenPssBytes": 53140480,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "reopenSamples": [
+        266.50156400864944,
+        286.1989389639348,
+        322.0225799595937,
+        304.6649929601699
+      ],
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/results.json",
+          "sha256": "a97106e45e6d783f916816be878178ecf7614ee6146e396f7ff1c0d4854054e5",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+              "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+              "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+              "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            }
+          },
+          "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2/results.json",
+          "sha256": "862dbbb5dbe09c709e3e68f3116486832c0a1468069d4dc881f79dfb41478258",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+              "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+              "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+              "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            }
+          },
+          "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+        }
+      ],
+      "limits": [
+        "Mapped readiness includes observer overhead; no p95 or paint certification.",
+        "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+      ]
+    },
+    "decisions": {
+      "original-source41": {
+        "decision": "inconclusive",
+        "eligible": false,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [],
+        "violated_objectives": [],
+        "comparisons": {
+          "settingsReopenMilliseconds": {
+            "verdict": "inconclusive",
+            "delta": 37.24471101304516,
+            "relative": 0.11195468029708952,
+            "violated": false
+          }
+        },
+        "primary_delta": 37.24471101304516,
+        "rank_score": 0.11195468029708952,
+        "reason": "delta inside the comparison threshold"
+      },
+      "matched-source45": {
+        "decision": "inconclusive",
+        "eligible": false,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [],
+        "violated_objectives": [],
+        "comparisons": {
+          "settingsReopenMilliseconds": {
+            "verdict": "inconclusive",
+            "delta": 37.07049405784346,
+            "relative": 0.11148938283231134,
+            "violated": false
+          }
+        },
+        "primary_delta": 37.07049405784346,
+        "rank_score": 0.11148938283231134,
+        "reason": "delta inside the comparison threshold"
+      }
+    },
+    "interpretation": "Original source41 comparison includes independent changes43-45; matched source45 comparison isolates lazy-page contribution. Raw tool decisions are preserved and are not by themselves an integration or keep decision.",
+    "keepDecision": "inconclusive",
+    "limitations": [
+      "Small bounded repeated workload; no p95 claim",
+      "No cloud machines or payload acquisition during timing",
+      "Guest post-use memory is not a cold physical measurement"
+    ]
+  },
+  "failedSetup": {
+    "failedOutput": "/home/patrick/work/put.gd/work/view-startup-latency/confirmation-46-20261009",
+    "socketPath": "/home/patrick/work/put.gd/work/view-startup-latency/confirmation-46-20261009/reference-1/runtime/putgd/session.sock",
+    "utf8Bytes": 115,
+    "limitExcludingNul": 107,
+    "failureCode": "resident_exited_before_readiness",
+    "sampleCount": 0,
+    "classification": "Harness setup failed before measurement; not an application feature failure or performance result",
+    "correctedOutput": "/home/patrick/work/put.gd/work/view-startup-latency/c46",
+    "correctedCommands": [
+      [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+        "--mode",
+        "split",
+        "--app",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+        "--cli",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+        "--helper",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+        "--source-revision",
+        "9d142919e5e6365227a4424212380e92f85285fe",
+        "--source-archive",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source.tar",
+        "--fixture",
+        "/tmp/putgd-startup-reclaim-exp001",
+        "--output",
+        "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1",
+        "--views",
+        "settings",
+        "history",
+        "activity",
+        "--cycles",
+        "3",
+        "--warmup-seconds",
+        "5",
+        "--visible-seconds",
+        "2",
+        "--quiet-seconds",
+        "30",
+        "--interval",
+        "5"
+      ],
+      [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+        "--mode",
+        "split",
+        "--app",
+        "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+        "--cli",
+        "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+        "--helper",
+        "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+        "--source-revision",
+        "6f6372e79d8bd81346924aacec7eac842db98725",
+        "--source-archive",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/source.tar",
+        "--fixture",
+        "/tmp/putgd-startup-reclaim-exp001",
+        "--output",
+        "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1",
+        "--views",
+        "settings",
+        "history",
+        "activity",
+        "--cycles",
+        "3",
+        "--warmup-seconds",
+        "5",
+        "--visible-seconds",
+        "2",
+        "--quiet-seconds",
+        "30",
+        "--interval",
+        "5",
+        "--acceptance-receipt",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/visual-review.json",
+        "--acceptance-receipt",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/visual-review.json",
+        "--acceptance-receipt",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/visual-review.json"
+      ],
+      [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+        "--mode",
+        "split",
+        "--app",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+        "--cli",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+        "--helper",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+        "--source-revision",
+        "9d142919e5e6365227a4424212380e92f85285fe",
+        "--source-archive",
+        "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source.tar",
+        "--fixture",
+        "/tmp/putgd-startup-reclaim-exp001",
+        "--output",
+        "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2",
+        "--views",
+        "settings",
+        "history",
+        "activity",
+        "--cycles",
+        "3",
+        "--warmup-seconds",
+        "5",
+        "--visible-seconds",
+        "2",
+        "--quiet-seconds",
+        "30",
+        "--interval",
+        "5"
+      ],
+      [
+        "/usr/bin/python3",
+        "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+        "--mode",
+        "split",
+        "--app",
+        "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+        "--cli",
+        "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+        "--helper",
+        "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+        "--source-revision",
+        "6f6372e79d8bd81346924aacec7eac842db98725",
+        "--source-archive",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/source.tar",
+        "--fixture",
+        "/tmp/putgd-startup-reclaim-exp001",
+        "--output",
+        "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2",
+        "--views",
+        "settings",
+        "history",
+        "activity",
+        "--cycles",
+        "3",
+        "--warmup-seconds",
+        "5",
+        "--visible-seconds",
+        "2",
+        "--quiet-seconds",
+        "30",
+        "--interval",
+        "5",
+        "--acceptance-receipt",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/visual-review.json",
+        "--acceptance-receipt",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/visual-review.json",
+        "--acceptance-receipt",
+        "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/visual-review.json"
+      ]
+    ],
+    "correctedSocketBytes": {
+      "reference-1": 94,
+      "candidate-1": 94,
+      "reference-2": 94,
+      "candidate-2": 94
+    },
+    "harnessUnchangedSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "socketOwnershipChecksUnchanged": true
+  },
+  "rawDirectory": "2026-10-09-lazy-settings-confirmation-raw",
+  "manifestSha256": "0e9651d343b6209847807573de5ed3be35fc9fb035534cf68b02d00b12a748f8",
+  "fileCount": 1685,
+  "rawBytes": 32794130
+}

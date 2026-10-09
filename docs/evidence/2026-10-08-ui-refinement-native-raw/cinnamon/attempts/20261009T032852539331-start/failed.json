@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T03:28:53.007061+00:00",
+  "phase": "start",
+  "errorType": "FileNotFoundError",
+  "error": "[Errno 2] No such file or directory: '/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/cinnamon/installed.json'"
+}

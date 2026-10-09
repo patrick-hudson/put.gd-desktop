@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "scp",
+    "-q",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+    "-P",
+    "22234",
+    "lab@127.0.0.1:/home/lab/putgd-ui-refinement-frozen-exp001-source46/dev.xml",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/dev.xml"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:58:02.900381+00:00"
+}

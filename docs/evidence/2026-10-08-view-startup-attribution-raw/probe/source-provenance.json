@@ -1,0 +1,100 @@
+{
+  "classification": "diagnostic instrumentation only; not original bytes/product variant/native certification",
+  "base": {
+    "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "tree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "commitCount": 41,
+    "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1"
+  },
+  "baseSourceJsonSha256": "e119f86238bfa76b3782890683504826d019fd05c1db066efae92ad47b6f7caa",
+  "baseVerifiedFiles": 1348,
+  "instrumentationPatchSha256": "2a1a13bf41e39d50a090443ef722a191020b060102c9040593213ab3aac04102",
+  "changedSources": {
+    "src/ui/main.cpp": {
+      "originalSha256": "1e7eb571b7c943125bf6f7d205dbcc82eea5864d1375f6bfb8dece2f704bb5d2",
+      "overlaySha256": "7b99cc61869d41c17f2f8109bbedd3bf3e2c81a96cb19dc6d61c8099f60697ab"
+    },
+    "src/ui/UiSession.cpp": {
+      "originalSha256": "1864402da402c8654b639522bcf3193cb92cfc13599b434dd299cd2cdcb24137",
+      "overlaySha256": "6fdf5a590a12dce47c8bfd44090848ee8bb5bf13a72587df4b9b6178d017641c"
+    },
+    "src/ui/SettingsWindow.cpp": {
+      "originalSha256": "465fc54fa6e13cd829d1a6074a1168b0e27b060b4d3efda23a89f87b26574f3c",
+      "overlaySha256": "2992741eaf9e2cfe16409a0cd1c0b01d719c815054aaec1b57c2803bf64c210d"
+    },
+    "src/ui/UiApplicationController.cpp": {
+      "originalSha256": "80ff202057555563531b279653fb6a920de971b1c8c6e27e352a325581fdb83a",
+      "overlaySha256": "65cc6e94a2b97d547a72f60f4f115073a3d2226367cf11ac80c6cb2bbbd8d102"
+    },
+    "src/app/UiProcessController.cpp": {
+      "originalSha256": "173a5e0f5b30eaadf261a90e9243ae3063d696442ff52ace4091cf5878bc603e",
+      "overlaySha256": "02b72c0dfae986818f7dfa8f00f65111dda48bc8316760ac4d8f9176d359fdcc"
+    },
+    "src/ui/StartupTrace.h": {
+      "originalSha256": null,
+      "overlaySha256": "902af5f0ae61ac2bc76298d6f2feb42bd8d5dec04e45fe9fe310e479e04f1a79"
+    }
+  },
+  "frozenHarnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "binaries": {
+    "putgd": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/probe/source/build/release/putgd",
+      "sha256": "dd434d35fa02897c27b4fa3a0cbfabbf5fd67728f3eab052573ef513eacffbdb",
+      "bytes": 2593656
+    },
+    "putgd-cli": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/probe/source/build/release/putgd-cli",
+      "sha256": "fe68622526ff25a3867e3d32078b0cc332e4ae53f3f5c8e28770275def7c37b2",
+      "bytes": 1126864
+    },
+    "putgd-ui": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/probe/source/build/release/putgd-ui",
+      "sha256": "32e8731f1f6a94607d9bddef7546ad89c2b0cbd03532533c647cf46233c463fe",
+      "bytes": 1046960
+    },
+    "libputgd-s3.so": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/probe/source/build/release/libputgd-s3.so",
+      "sha256": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762",
+      "bytes": 272552
+    },
+    "putgd-desktop-fixture": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/probe/source/build/release/packaging/linux/putgd-desktop-fixture",
+      "sha256": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc",
+      "bytes": 81808
+    }
+  },
+  "buildStatus": "success; runtime and graphical tests not run",
+  "receiptRecovery": "Compile succeeded; initial receipt assumed fixture in root build directory. Corrected fixture path packaging/linux/putgd-desktop-fixture; no rebuild or runtime invocation.",
+  "compiledManifestLabelIsOnlyBaseIdentity": true,
+  "buildArtifacts": {
+    "build-identity/build-info.json": "8483452420b77067e49c54053405908b9ca8924b71b9d9bc4e6577f68e69f007",
+    "compile_commands.json": "9a5a0a9c347a9a279a95c8d7c1f3fc829824a657e25ed49adee60ad79bfb2cf5",
+    "CMakeCache.txt": "7cbc81d38bd563802fa935be69b024bc6c7da0f53616b2975e11b5c1040b77db",
+    "build.ninja": "72477cbc171017bec60fd7571d12b9f3b16a55b2b887996a9166d80131ccfedc"
+  },
+  "preparationTools": {
+    "prepare.py": "add9260cb8487f6d6cb5266b9795f65851593f5b97f163f5ceac6d893a7af133",
+    "build.py": "c1ded64fa1417c0be60ade0a194636d40b257664bd07350b55fbd0cab9502563",
+    "finalize.py": "3b7c1e8bf9d7b50f0056b886ce546fbb88e0d774ac1efacd7ce831ee283d13c2",
+    "parse_trace.py": "9f7751f8d879293a9fc159b641aa6b06c7937f971eaef45729a1445405f9cf3e",
+    "replay.py": "a9cff12c93e4d3cb746d0805d50d230c3a1f4a4cd5d826594ebc942555c24da2",
+    "README.md": "303cded5657fd0315bc856793ec24d92f98189b6c7c83486f7bcbc3f8616a64d"
+  },
+  "postBuildAllSourceHashesVerified": true,
+  "compiledBaseLabel": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.41+g97ca3a521714",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "commitCount": 41,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "preparationValidation": [
+    "Python syntax checks passed",
+    "Synthetic parser grammar/correlation/attribution/independent observer checks passed",
+    "Runtime/display/VM tests not performed"
+  ]
+}

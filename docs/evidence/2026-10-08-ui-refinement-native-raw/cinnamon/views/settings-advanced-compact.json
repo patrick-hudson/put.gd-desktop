@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:50:33.814268+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/cinnamon/views/settings-advanced-compact.png",
+  "sha256": "bc008803a217ec437260f7ce727012b596d2a9e5506f1306e1bb62780a70b4e2",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-source43-attempt1-settings-advanced-compact-head0.ppm",
+    "sha256": "e50455f10dde498e026c13e9f434a9dd8e122b3be7d7e68cd04c0024512fe2cf"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5938,
+  "visualReview": "pending"
+}

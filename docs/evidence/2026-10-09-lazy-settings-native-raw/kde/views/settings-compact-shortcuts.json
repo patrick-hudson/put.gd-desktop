@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T04:50:37.888039+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-compact-shortcuts.png",
+  "sha256": "01dfde25c554fa98325b289ecf277643fbca4c78bbc4613b19ad5bb17e596e58",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-lazy-exp001-native-settings-compact-shortcuts-head0.ppm",
+    "sha256": "ba21a4c71498b1cb164025ac90e5068b50f477d6e01496fa24311cacf0ad596e"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5934,
+  "visualReview": "pending"
+}

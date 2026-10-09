@@ -1,0 +1,59 @@
+{
+  "utc": "2026-10-09T04:58:40.830735+00:00",
+  "beforeInstalledManifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+    "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "commitCount": 45,
+    "dirty": true,
+    "sourceProvenance": "git"
+  },
+  "installed": {
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.46+g6f6372e79d8b",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.46+g6f6372e79d8b",
+      "gitCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+      "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+      "commitCount": 46,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "binarySha256": {
+      "/usr/bin/putgd": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea",
+      "/usr/bin/putgd-cli": "2d62399e4fe8856bf6c89a6727909252d5d318ed24f4c2dfd97336194c8be468",
+      "/usr/bin/putgd-ui": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+    },
+    "versions": {
+      "/usr/bin/putgd": "putgd 0.1.1-dev.46+g6f6372e79d8b",
+      "/usr/bin/putgd-cli": "putgd-cli 0.1.1-dev.46+g6f6372e79d8b",
+      "/usr/bin/putgd-ui": "putgd-ui 0.1.1-dev.46+g6f6372e79d8b"
+    },
+    "extensionSha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+  },
+  "extensionReload": "not required",
+  "package": {
+    "utc": "2026-10-09T04:58:03.682650+00:00",
+    "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.46+g6f6372e79d8b",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.46+g6f6372e79d8b",
+      "gitCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+      "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+      "commitCount": 46,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "guestDirectory": "/home/lab/putgd-ui-refinement-frozen-exp001-source46",
+    "sourceCache": "/home/lab/putgd-ui-refinement-lazy-exp001-native/source",
+    "package": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/putgd_0.1.1~dev.46+g6f6372e79d8b_amd64.deb",
+    "packageSha256": "81b966bc105d1479c205a179c7fec6ddc5c95bcb03eae1ce0149c3961f08b51d",
+    "nativeAcceptance": "pending"
+  }
+}

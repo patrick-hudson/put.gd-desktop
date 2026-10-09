@@ -1,0 +1,167 @@
+startup-stage-v1 2644816 289972677576828 resident-launch-pre
+startup-stage-v1 2644816 289972678248779 resident-process-started
+startup-stage-v1 2644904 289972696285854 main-entry
+startup-stage-v1 2644904 289972696318643 qapplication-pre
+startup-stage-v1 2644904 289972765124179 qapplication-post
+startup-stage-v1 2644904 289972765439827 visual-style-post
+startup-stage-v1 2644904 289972767403928 bootstrap-accepted
+startup-stage-v1 2644904 289972767411793 snapshot-request
+startup-stage-v1 2644904 289972770499761 snapshot-reply
+startup-stage-v1 2644904 289972770524727 snapshot-accepted
+startup-stage-v1 2644904 289972770537689 ready-pre
+startup-stage-v1 2644904 289972770575797 ready-post
+startup-stage-v1 2644904 289972770712162 settings-activate-enter
+startup-stage-v1 2644904 289972770776986 settings-constructor-enter
+startup-polish-v1 2644904 289972770782945 ctor-enter shell 0 0
+startup-polish-v1 2644904 289972770782945 ctor-enter capture 0 0
+startup-polish-v1 2644904 289972770782945 ctor-enter destinations 0 0
+startup-polish-v1 2644904 289972770782945 ctor-enter shortcuts 0 0
+startup-polish-v1 2644904 289972770782945 ctor-enter preferences 0 0
+startup-stage-v1 2644904 289972772380475 settings-page-capture-pre
+startup-stage-v1 2644904 289972795606876 settings-page-capture-post
+startup-stage-v1 2644904 289972795612374 settings-page-destinations-pre
+startup-stage-v1 2644904 289972808173593 settings-page-destinations-post
+startup-stage-v1 2644904 289972808187054 settings-page-shortcuts-pre
+startup-stage-v1 2644904 289972811814793 settings-page-shortcuts-post
+startup-stage-v1 2644904 289972811821240 settings-page-preferences-pre
+startup-stage-v1 2644904 289972815021184 settings-page-preferences-post
+startup-stage-v1 2644904 289972815025318 settings-wiring-pre
+startup-stage-v1 2644904 289972815828838 settings-wiring-post
+startup-stage-v1 2644904 289972815832906 settings-refresh-pre
+startup-stage-v1 2644904 289972817231335 settings-refresh-post
+startup-polish-v1 2644904 289972817252976 ctor-exit shell 1285118 31
+startup-polish-v1 2644904 289972817252976 ctor-exit capture 650193 28
+startup-polish-v1 2644904 289972817252976 ctor-exit destinations 681287 21
+startup-polish-v1 2644904 289972817252976 ctor-exit shortcuts 30007 1
+startup-polish-v1 2644904 289972817252976 ctor-exit preferences 0 0
+startup-stage-v1 2644904 289972817258939 settings-constructor-exit
+startup-polish-v1 2644904 289972817310107 show-pre shell 1285118 31
+startup-polish-v1 2644904 289972817310107 show-pre capture 650193 28
+startup-polish-v1 2644904 289972817310107 show-pre destinations 681287 21
+startup-polish-v1 2644904 289972817310107 show-pre shortcuts 30007 1
+startup-polish-v1 2644904 289972817310107 show-pre preferences 0 0
+startup-stage-v1 2644904 289972817314379 settings-show-pre
+startup-polish-v1 2644904 289972886317778 show-post shell 2109513 50
+startup-polish-v1 2644904 289972886317778 show-post capture 7029664 166
+startup-polish-v1 2644904 289972886317778 show-post destinations 5436083 130
+startup-polish-v1 2644904 289972886317778 show-post shortcuts 1747139 42
+startup-polish-v1 2644904 289972886317778 show-post preferences 3003259 70
+startup-stage-v1 2644904 289972886344878 settings-show-post
+startup-polish-v1 2644904 289972886405466 shown-sent shell 2109513 50
+startup-polish-v1 2644904 289972886405466 shown-sent capture 7029664 166
+startup-polish-v1 2644904 289972886405466 shown-sent destinations 5436083 130
+startup-polish-v1 2644904 289972886405466 shown-sent shortcuts 1747139 42
+startup-polish-v1 2644904 289972886405466 shown-sent preferences 3003259 70
+startup-stage-v1 2644904 289972886417307 settings-shown-sent
+startup-stage-v1 2644904 289972886447004 snapshot-request
+startup-stage-v1 2644904 289972900627814 snapshot-reply
+startup-stage-v1 2644816 290010443645173 resident-launch-pre
+startup-stage-v1 2644816 290010451464258 resident-process-started
+startup-stage-v1 2645815 290010463918877 main-entry
+startup-stage-v1 2645815 290010463941011 qapplication-pre
+startup-stage-v1 2645815 290010527146733 qapplication-post
+startup-stage-v1 2645815 290010527507593 visual-style-post
+startup-stage-v1 2645815 290010530180571 bootstrap-accepted
+startup-stage-v1 2645815 290010530194671 snapshot-request
+startup-stage-v1 2645815 290010533278718 snapshot-reply
+startup-stage-v1 2645815 290010533318727 snapshot-accepted
+startup-stage-v1 2645815 290010533341291 ready-pre
+startup-stage-v1 2645815 290010533384777 ready-post
+startup-stage-v1 2645815 290010533688640 settings-activate-enter
+startup-stage-v1 2645815 290010533757876 settings-constructor-enter
+startup-polish-v1 2645815 290010533766712 ctor-enter shell 0 0
+startup-polish-v1 2645815 290010533766712 ctor-enter capture 0 0
+startup-polish-v1 2645815 290010533766712 ctor-enter destinations 0 0
+startup-polish-v1 2645815 290010533766712 ctor-enter shortcuts 0 0
+startup-polish-v1 2645815 290010533766712 ctor-enter preferences 0 0
+startup-stage-v1 2645815 290010535509813 settings-page-capture-pre
+startup-stage-v1 2645815 290010561365430 settings-page-capture-post
+startup-stage-v1 2645815 290010561374216 settings-page-destinations-pre
+startup-stage-v1 2645815 290010573993774 settings-page-destinations-post
+startup-stage-v1 2645815 290010574009332 settings-page-shortcuts-pre
+startup-stage-v1 2645815 290010577462346 settings-page-shortcuts-post
+startup-stage-v1 2645815 290010577470285 settings-page-preferences-pre
+startup-stage-v1 2645815 290010580797792 settings-page-preferences-post
+startup-stage-v1 2645815 290010580812599 settings-wiring-pre
+startup-stage-v1 2645815 290010582087179 settings-wiring-post
+startup-stage-v1 2645815 290010582093300 settings-refresh-pre
+startup-stage-v1 2645815 290010583896014 settings-refresh-post
+startup-polish-v1 2645815 290010583904437 ctor-exit shell 1440559 31
+startup-polish-v1 2645815 290010583904437 ctor-exit capture 667113 28
+startup-polish-v1 2645815 290010583904437 ctor-exit destinations 727667 21
+startup-polish-v1 2645815 290010583904437 ctor-exit shortcuts 31179 1
+startup-polish-v1 2645815 290010583904437 ctor-exit preferences 0 0
+startup-stage-v1 2645815 290010583910154 settings-constructor-exit
+startup-polish-v1 2645815 290010584631984 show-pre shell 1440559 31
+startup-polish-v1 2645815 290010584631984 show-pre capture 667113 28
+startup-polish-v1 2645815 290010584631984 show-pre destinations 727667 21
+startup-polish-v1 2645815 290010584631984 show-pre shortcuts 31179 1
+startup-polish-v1 2645815 290010584631984 show-pre preferences 0 0
+startup-stage-v1 2645815 290010584640987 settings-show-pre
+startup-polish-v1 2645815 290010648183637 show-post shell 2442518 50
+startup-polish-v1 2645815 290010648183637 show-post capture 7586779 166
+startup-polish-v1 2645815 290010648183637 show-post destinations 5679207 130
+startup-polish-v1 2645815 290010648183637 show-post shortcuts 1617205 42
+startup-polish-v1 2645815 290010648183637 show-post preferences 2970860 70
+startup-stage-v1 2645815 290010648203381 settings-show-post
+startup-polish-v1 2645815 290010648245114 shown-sent shell 2442518 50
+startup-polish-v1 2645815 290010648245114 shown-sent capture 7586779 166
+startup-polish-v1 2645815 290010648245114 shown-sent destinations 5679207 130
+startup-polish-v1 2645815 290010648245114 shown-sent shortcuts 1617205 42
+startup-polish-v1 2645815 290010648245114 shown-sent preferences 2970860 70
+startup-stage-v1 2645815 290010648248444 settings-shown-sent
+startup-stage-v1 2644816 290048124020955 resident-launch-pre
+startup-stage-v1 2644816 290048124350405 resident-process-started
+startup-stage-v1 2646710 290048136326337 main-entry
+startup-stage-v1 2646710 290048136345744 qapplication-pre
+startup-stage-v1 2646710 290048194269717 qapplication-post
+startup-stage-v1 2646710 290048194591350 visual-style-post
+startup-stage-v1 2646710 290048197020028 bootstrap-accepted
+startup-stage-v1 2646710 290048197086515 snapshot-request
+startup-stage-v1 2646710 290048200137335 snapshot-reply
+startup-stage-v1 2646710 290048200150279 snapshot-accepted
+startup-stage-v1 2646710 290048200174322 ready-pre
+startup-stage-v1 2646710 290048200198758 ready-post
+startup-stage-v1 2646710 290048200352499 settings-activate-enter
+startup-stage-v1 2646710 290048200389429 settings-constructor-enter
+startup-polish-v1 2646710 290048200394247 ctor-enter shell 0 0
+startup-polish-v1 2646710 290048200394247 ctor-enter capture 0 0
+startup-polish-v1 2646710 290048200394247 ctor-enter destinations 0 0
+startup-polish-v1 2646710 290048200394247 ctor-enter shortcuts 0 0
+startup-polish-v1 2646710 290048200394247 ctor-enter preferences 0 0
+startup-stage-v1 2646710 290048202185903 settings-page-capture-pre
+startup-stage-v1 2646710 290048226028371 settings-page-capture-post
+startup-stage-v1 2646710 290048226035498 settings-page-destinations-pre
+startup-stage-v1 2646710 290048237422093 settings-page-destinations-post
+startup-stage-v1 2646710 290048237428424 settings-page-shortcuts-pre
+startup-stage-v1 2646710 290048240453308 settings-page-shortcuts-post
+startup-stage-v1 2646710 290048240456869 settings-page-preferences-pre
+startup-stage-v1 2646710 290048243620053 settings-page-preferences-post
+startup-stage-v1 2646710 290048243623734 settings-wiring-pre
+startup-stage-v1 2646710 290048244362417 settings-wiring-post
+startup-stage-v1 2646710 290048244365949 settings-refresh-pre
+startup-stage-v1 2646710 290048245446740 settings-refresh-post
+startup-polish-v1 2646710 290048245452186 ctor-exit shell 1277119 31
+startup-polish-v1 2646710 290048245452186 ctor-exit capture 663675 28
+startup-polish-v1 2646710 290048245452186 ctor-exit destinations 568671 21
+startup-polish-v1 2646710 290048245452186 ctor-exit shortcuts 32941 1
+startup-polish-v1 2646710 290048245452186 ctor-exit preferences 0 0
+startup-stage-v1 2646710 290048245456978 settings-constructor-exit
+startup-polish-v1 2646710 290048246048838 show-pre shell 1277119 31
+startup-polish-v1 2646710 290048246048838 show-pre capture 663675 28
+startup-polish-v1 2646710 290048246048838 show-pre destinations 568671 21
+startup-polish-v1 2646710 290048246048838 show-pre shortcuts 32941 1
+startup-polish-v1 2646710 290048246048838 show-pre preferences 0 0
+startup-stage-v1 2646710 290048246055862 settings-show-pre
+startup-polish-v1 2646710 290048302391573 show-post shell 2037851 50
+startup-polish-v1 2646710 290048302391573 show-post capture 7374657 166
+startup-polish-v1 2646710 290048302391573 show-post destinations 5752785 130
+startup-polish-v1 2646710 290048302391573 show-post shortcuts 1643015 42
+startup-polish-v1 2646710 290048302391573 show-post preferences 2974838 70
+startup-stage-v1 2646710 290048302400084 settings-show-post
+startup-polish-v1 2646710 290048302420015 shown-sent shell 2037851 50
+startup-polish-v1 2646710 290048302420015 shown-sent capture 7374657 166
+startup-polish-v1 2646710 290048302420015 shown-sent destinations 5752785 130
+startup-polish-v1 2646710 290048302420015 shown-sent shortcuts 1643015 42
+startup-polish-v1 2646710 290048302420015 shown-sent preferences 2974838 70
+startup-stage-v1 2646710 290048302423794 settings-shown-sent

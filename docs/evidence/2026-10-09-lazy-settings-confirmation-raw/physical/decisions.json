@@ -1,0 +1,40 @@
+{
+  "original-source41": {
+    "decision": "inconclusive",
+    "eligible": false,
+    "next_measurement": "none",
+    "target_reached": false,
+    "improved_objectives": [],
+    "violated_objectives": [],
+    "comparisons": {
+      "settingsReopenMilliseconds": {
+        "verdict": "inconclusive",
+        "delta": 37.24471101304516,
+        "relative": 0.11195468029708952,
+        "violated": false
+      }
+    },
+    "primary_delta": 37.24471101304516,
+    "rank_score": 0.11195468029708952,
+    "reason": "delta inside the comparison threshold"
+  },
+  "matched-source45": {
+    "decision": "inconclusive",
+    "eligible": false,
+    "next_measurement": "none",
+    "target_reached": false,
+    "improved_objectives": [],
+    "violated_objectives": [],
+    "comparisons": {
+      "settingsReopenMilliseconds": {
+        "verdict": "inconclusive",
+        "delta": 37.07049405784346,
+        "relative": 0.11148938283231134,
+        "violated": false
+      }
+    },
+    "primary_delta": 37.07049405784346,
+    "rank_score": 0.11148938283231134,
+    "reason": "delta inside the comparison threshold"
+  }
+}

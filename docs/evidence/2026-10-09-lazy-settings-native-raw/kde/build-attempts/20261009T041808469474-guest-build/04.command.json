@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "scp",
+    "-q",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+    "-P",
+    "22234",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/source.bundle",
+    "lab@127.0.0.1:/home/lab/putgd-ui-refinement-lazy-exp001-native/source.bundle"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:18:12.918819+00:00"
+}

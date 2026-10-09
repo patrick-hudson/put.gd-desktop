@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-09T04:36:26.252929+00:00",
+  "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+    "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "commitCount": 45,
+    "dirty": true,
+    "sourceProvenance": "git"
+  },
+  "guestDirectory": "/home/lab/putgd-ui-refinement-lazy-exp001-native",
+  "package": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/putgd_0.1.1~dev.45+g9d142919e5e6.dirty_amd64.deb",
+  "packageSha256": "51f10e434eda1dc6da742896af362fdd37764109914f5abdd295fa35bfd9dae1",
+  "nativeAcceptance": "pending"
+}

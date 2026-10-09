@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "git",
+    "archive",
+    "--format=tar",
+    "-o",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/source.tar",
+    "6f6372e79d8bd81346924aacec7eac842db98725"
+  ],
+  "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:55:32.831972+00:00"
+}

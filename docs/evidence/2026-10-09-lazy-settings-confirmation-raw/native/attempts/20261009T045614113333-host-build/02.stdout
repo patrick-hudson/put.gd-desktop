@@ -1,0 +1,49 @@
+[1/49] cd /home/patrick/work/put.gd/work/view-startup-latency/exp001/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001 -DOUTPUT_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/dev/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/patrick/work/put.gd/work/view-startup-latency/exp001/cmake/GenerateBuildInfo.cmake
+[2/49] Automatic MOC and UIC for target putgd-desktop-fixture
+[3/49] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[4/49] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/putgd-desktop-fixture_autogen/mocs_compilation.cpp.o
+[5/49] Linking CXX static library libputgd_build_identity.a
+[6/49] Linking CXX shared module libputgd-s3.so
+[7/49] Linking CXX executable putgd-cli
+[8/49] Linking CXX executable test_kde_ownership
+[9/49] Linking CXX executable test_ui_endpoints
+[10/49] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/__/__/tests/fixtures/desktop_fixture.cpp.o
+[11/49] Linking CXX executable test_gui_tray
+[12/49] Linking CXX executable test_geometry
+[13/49] Linking CXX shared module libtest_s3_incompatible.so
+[14/49] Linking CXX shared module libtest_s3_wrong_build.so
+[15/49] Linking CXX shared module libtest_s3_wrong_transport.so
+[16/49] Linking CXX executable test_x11
+[17/49] Linking CXX executable test_payload
+[18/49] Linking CXX executable test_archive
+[19/49] Linking CXX executable test_upload_naming
+[20/49] Linking CXX executable test_history
+[21/49] Linking CXX executable test_storage_contract
+[22/49] Linking CXX executable test_operations
+[23/49] Linking CXX executable test_gnome_bridge
+[24/49] Linking CXX executable test_config_reload
+[25/49] Linking CXX executable test_kwin_transfer
+[26/49] Linking CXX executable test_settings
+[27/49] Linking CXX executable test_login_startup
+[28/49] Linking CXX executable test_local_ipc
+[29/49] Linking CXX executable test_keychain_backend
+[30/49] Linking CXX executable test_keychain
+[31/49] Linking CXX executable test_s3_delete
+[32/49] Linking CXX executable test_collision_policy
+[33/49] Linking CXX executable test_public_url
+[34/49] Linking CXX executable test_s3
+[35/49] Linking CXX executable test_gui_operations_view
+[36/49] Linking CXX executable test_gui_settings
+[37/49] Linking CXX executable test_ip_address
+[38/49] Linking CXX executable test_gui_history_view
+[39/49] Linking CXX executable test_s3_module
+[40/49] Linking CXX executable test_ui_process
+[41/49] Linking CXX executable putgd
+[42/49] Linking CXX executable test_gui_application
+[43/49] Linking CXX executable test_gui_version
+[44/49] Linking CXX executable test_cli
+[45/49] Linking CXX executable packaging/linux/putgd-desktop-fixture
+[46/49] Linking CXX executable putgd-ui
+[47/49] Linking CXX executable test_version
+[48/49] Linking CXX executable test_ui_split_services
+[49/49] Linking CXX executable test_ui_native_lifecycle

@@ -1,0 +1,4 @@
+From /home/lab/putgd-ui-refinement-frozen-exp001-source46/source.bundle
+ * branch            HEAD       -> FETCH_HEAD
+Previous HEAD position was 9d14291 fix(tray): register the icon when desktop integration becomes available (U11)
+HEAD is now at 6f6372e optimize(view-startup-latency): defer advanced Settings pages for measurement

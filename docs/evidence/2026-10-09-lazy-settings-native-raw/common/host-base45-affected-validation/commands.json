@@ -1,0 +1,31 @@
+[
+  {
+    "name": "configure",
+    "argv": [
+      "cmake",
+      "--preset",
+      "dev"
+    ]
+  },
+  {
+    "name": "build",
+    "argv": [
+      "cmake",
+      "--build",
+      "--preset",
+      "dev"
+    ]
+  },
+  {
+    "name": "tests",
+    "argv": [
+      "ctest",
+      "--preset",
+      "dev",
+      "-R",
+      "^(gui_tray|gui_settings|gui_application|settings_contract|ui_process_integration|ui_split_services_integration)$",
+      "--output-junit",
+      "/home/patrick/work/put.gd/work/view-startup-latency/exp001/work/base45-root-validation/tests.xml"
+    ]
+  }
+]

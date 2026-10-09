@@ -1,0 +1,15 @@
+Test project /home/patrick/work/put.gd/work/view-startup-latency/exp001/build/dev
+    Start  1: version_contract
+1/5 Test  #1: version_contract .................   Passed    3.51 sec
+    Start  3: ui_split_services_integration
+2/5 Test  #3: ui_split_services_integration ....   Passed    1.22 sec
+    Start  8: version_integration
+3/5 Test  #8: version_integration ..............   Passed    0.13 sec
+    Start 10: gui_tray
+4/5 Test #10: gui_tray .........................   Passed    1.01 sec
+    Start 11: gui_version
+5/5 Test #11: gui_version ......................   Passed    0.06 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =   5.94 sec

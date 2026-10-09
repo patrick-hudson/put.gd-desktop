@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:53:22.172276+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/cinnamon/views/history-selected-compact.png",
+  "sha256": "834af1507dfaa91b6211920e7e4eeb4b358096a5c05a0062530afabcdb1dae22",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-source43-attempt1-history-selected-compact-head0.ppm",
+    "sha256": "3ba0aee7b31abf342211f70a912a4609ec414177ff1bebe8a773fcbbd3d2d4dc"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5938,
+  "visualReview": "pending"
+}

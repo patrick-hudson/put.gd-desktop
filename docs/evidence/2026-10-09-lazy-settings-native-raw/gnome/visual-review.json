@@ -1,0 +1,1538 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T04:50:43.577399+00:00",
+  "compositor": "GNOME/Wayland",
+  "evidenceClass": "graphical-kvm",
+  "visibleVncPort": 5936,
+  "displayWall": "http://127.0.0.1:8765/",
+  "scope": "Bounded current dirty candidate native matrix, Settings refinement and normal helper lifecycle. No performance or full desktop certification claim.",
+  "candidateCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "candidateTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+  "candidatePatchSha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+  "candidateFiles": {
+    "src/ui/SettingsWindow.cpp": "18e44b7b50ea52c043d0e0db69d388f6eedf6177dc25f27c0604aae7fc6e033c",
+    "src/ui/SettingsWindow.h": "267536902660030d9ed7e208851951e541b0b514a65b66b2efe35c70d15caba6",
+    "tests/gui/test_settings.cpp": "7fdca5f7fcd1cadec07a06c49cc552b753f1ab94d8258738f9740cc2c61399fd",
+    "tests/gui/test_ui_application.cpp": "5811ad64908371e66340e899d05de02748d90b1d2e0414f2cac2c2fcf0329f98"
+  },
+  "dirty": true,
+  "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+  "archiveSha256": "599944d11b564f79f81dd436a62bb83f29580b83c783dafecde60ccb852c1c73",
+  "bundleSha256": "60a47dc4950ec89deac830cf73186175536c326f1e090aa7412dc068a04c6218",
+  "packageSha256": "51f10e434eda1dc6da742896af362fdd37764109914f5abdd295fa35bfd9dae1",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6",
+    "/usr/bin/putgd-cli": "cef069d325ac5a726fd9907ea52360a308ed2627d596c02a142f083f2435c3ae",
+    "/usr/bin/putgd-ui": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+  },
+  "extensionSha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722",
+  "resident": {
+    "pid": 79451,
+    "startTicks": 1118766,
+    "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+  },
+  "helperIdentities": [
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044220224367-show",
+      "view": "settings",
+      "helper": {
+        "pid": 97015,
+        "startTicks": 1147579,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044251804972-show",
+      "view": "settings",
+      "helper": {
+        "pid": 97848,
+        "startTicks": 1150746,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044333309380-show",
+      "view": "settings",
+      "helper": {
+        "pid": 98880,
+        "startTicks": 1154928,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044342590659-show",
+      "view": "settings",
+      "helper": {
+        "pid": 99809,
+        "startTicks": 1155855,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044642895396-show",
+      "view": "settings",
+      "helper": {
+        "pid": 104411,
+        "startTicks": 1173860,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044657354585-show",
+      "view": "settings",
+      "helper": {
+        "pid": 104997,
+        "startTicks": 1175318,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044727066868-show",
+      "view": "history",
+      "helper": {
+        "pid": 106187,
+        "startTicks": 1178308,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044733800654-show",
+      "view": "history",
+      "helper": {
+        "pid": 106776,
+        "startTicks": 1178950,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044740225771-show",
+      "view": "activity",
+      "helper": {
+        "pid": 107364,
+        "startTicks": 1179608,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044747158622-show",
+      "view": "activity",
+      "helper": {
+        "pid": 107953,
+        "startTicks": 1180289,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044814160985-show",
+      "view": "settings",
+      "helper": {
+        "pid": 108760,
+        "startTicks": 1183013,
+        "parentPid": 79451,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      }
+    }
+  ],
+  "nativeMatrix": {
+    "status": "passed",
+    "count": 12,
+    "cases": [
+      {
+        "client": "qt",
+        "scenario": "region",
+        "operationId": "96e9e111-c240-4ff2-85fd-1c82bcbfd293",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-1",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-1/final-head0.ppm",
+          "sha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "window",
+        "operationId": "db636a2a-afa3-41cb-859b-5c88139da9ad",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-2",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-2/final-head0.ppm",
+          "sha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "desktop",
+        "operationId": "38239c2e-581d-4e60-8741-0c55640f75a8",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-3",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-3/final-head0.ppm",
+          "sha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-text",
+        "operationId": "137ec224-ef3e-4a52-b6bc-194f13c1af91",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-4",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-4/final-head0.ppm",
+          "sha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-image",
+        "operationId": "6a7a50f3-0d3e-4857-95a8-30ca15728a52",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-5",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-5/final-head0.ppm",
+          "sha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-files",
+        "operationId": "049ea21d-2fba-4ea6-902b-a6eaaba57b80",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-6",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-6/final-head0.ppm",
+          "sha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-escape",
+        "operationId": "eb997486-50e7-47f5-b1a1-5094a935aa14",
+        "operationState": "cancelled",
+        "copyStatus": "no_result",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-7",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-7/final-head0.ppm",
+          "sha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-right-click",
+        "operationId": "b0f85b9b-266e-495a-83bd-1a10ac665199",
+        "operationState": "cancelled",
+        "copyStatus": "no_result",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-8",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-8/final-head0.ppm",
+          "sha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-zero-area",
+        "operationId": "591bf67f-bd0e-4fc5-a76d-bc27500590c5",
+        "operationState": "cancelled",
+        "copyStatus": "no_result",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-9",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-9/final-head0.ppm",
+          "sha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-text",
+        "operationId": "a82be1bf-8c30-4d93-a893-efa7bc6d7563",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-10",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-10/final-head0.ppm",
+          "sha256": "f5506e8430064194098ef1e481979fbe13db9783b7d927f38e9c28ccdba90023"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-image",
+        "operationId": "9d77d8c2-28a9-4d38-a27c-a49147c5a18c",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-11",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-11/final-head0.ppm",
+          "sha256": "f5506e8430064194098ef1e481979fbe13db9783b7d927f38e9c28ccdba90023"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-files",
+        "operationId": "07e73c08-edac-43df-bb0f-fc2421ca39d6",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "proceduralOk": true,
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-12",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-12/final-head0.ppm",
+          "sha256": "fb7a9b9873b4f57d83d61801f370bf90be674c116289411c760ece28bbb266e3"
+        }
+      }
+    ],
+    "contactSheet": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/matrix-contact-sheet-reviewed.png",
+    "contactSheetSha256": "c8e26801e3c2861e012c0e5c4d91a287991d14cc1b043c1d0dae0b755c68c92d",
+    "visualReview": "All twelve actual native final screenshots reviewed; Qt and GTK synthetic fixture visible, no locked output. Result/paste and cancellation assertions retained per case."
+  },
+  "geometry": [
+    {
+      "view": "Settings saved empty",
+      "compact": {
+        "clientSize": [
+          1000,
+          700
+        ],
+        "boundsInclusive": [
+          173,
+          86,
+          1172,
+          785
+        ],
+        "witness": "settings-empty-compact"
+      },
+      "wide": {
+        "clientSize": [
+          1200,
+          700
+        ],
+        "boundsInclusive": [
+          73,
+          86,
+          1272,
+          785
+        ],
+        "witness": "settings-empty-wide-1200"
+      }
+    },
+    {
+      "view": "Settings configured simple and Advanced",
+      "compact": {
+        "clientSize": [
+          1000,
+          700
+        ],
+        "boundsInclusive": [
+          68,
+          71,
+          1067,
+          770
+        ],
+        "witness": "settings-configured-advanced-compact"
+      },
+      "wide": {
+        "clientSize": [
+          1200,
+          700
+        ],
+        "boundsInclusive": [
+          68,
+          71,
+          1267,
+          770
+        ],
+        "witness": "settings-destination-wide-retained"
+      }
+    }
+  ],
+  "geometryMethod": "Reviewed visible client/frame borders after QMP frame/corner drags at native1280x800 display. Restored compositor-maximized reopen through observed titlebar restore control. Requested coordinates alone are not size proof.",
+  "cases": {
+    "setupCancel": {
+      "status": "passed",
+      "normalHelperExit": true,
+      "profileIds": [],
+      "observation": {
+        "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T043947088675-observe",
+        "observed": {
+          "utc": "2026-10-09T04:39:48.284331+00:00",
+          "resident": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "ui": {
+            "checkpointBytes": 3027,
+            "lastExit": {
+              "code": 0,
+              "generation": 1,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "acceptedRevision": "",
+          "observedRevision": "",
+          "profileIds": [],
+          "actionOutputs": {
+            "clipboard": "upload",
+            "desktop": "upload",
+            "region": "upload",
+            "window": "upload"
+          },
+          "activeOperations": 0
+        }
+      }
+    },
+    "settingsSavedEmpty": {
+      "status": "passed",
+      "observations": "Prominent Add S3 destination and Save locally. Inactive destination/credential cards hidden. Actual Add reveals draft cards; Cancel closes normally and accepted empty revision remains identical at both native sizes."
+    },
+    "settingsConfigured": {
+      "status": "passed",
+      "observations": "Simple S3 bucket/region/URL and credential forms fit both native sizes. First Advanced expansion displays Capture, Destinations, Shortcuts, Preferences with footer visible. Native Tab and ShiftTab enter Capture Save locally, Shortcuts help then input, Preferences checkbox and return to navigation. Bucket synthetic-ui-onlyd and retention3 survive collapse/expand and resize; Cancel restores accepted bucket synthetic-ui-only and indefinite retention.",
+      "acceptedConfigurationAfterCancel": {
+        "utc": "2026-10-09T04:48:48.495296+00:00",
+        "resident": {
+          "pid": 79451,
+          "startTicks": 1118766,
+          "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+        },
+        "ui": {
+          "checkpointBytes": 3853,
+          "lastExit": {
+            "code": 0,
+            "generation": 12,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "trayAvailable": true,
+        "activeOperations": 0,
+        "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+        "profiles": [
+          {
+            "id": "synthetic-ui-only",
+            "bucket": "synthetic-ui-only"
+          }
+        ],
+        "historyRetentionDays": null,
+        "actionOutputs": {
+          "clipboard": "local",
+          "desktop": "local",
+          "region": "local",
+          "window": "local"
+        }
+      },
+      "draftWitnesses": [
+        "settings-configured-advanced-compact",
+        "settings-preferences-wide-retained",
+        "settings-destination-wide-retained",
+        "settings-configured-wide-collapsed"
+      ],
+      "footerKeyboardObserved": [
+        {
+          "label": "settings-footer-shift-save",
+          "actualFocus": "Reload help"
+        },
+        {
+          "label": "settings-footer-shift-help",
+          "actualFocus": "Reload from file"
+        },
+        {
+          "label": "settings-footer-shift-reload",
+          "actualFocus": "Save settings"
+        },
+        {
+          "label": "settings-footer-shift-cancel",
+          "actualFocus": "Cancel"
+        }
+      ]
+    },
+    "historyLifecycle": {
+      "status": "passed",
+      "observations": "Current candidate History opened with eleven real local-only matrix entries, normally closed, reopened, normally closed. No deletion/clear invoked."
+    },
+    "activityLifecycle": {
+      "status": "passed",
+      "observations": "Current candidate Activity opened with twelve actual matrix operations including three cancelled region entries, normally closed/reopened/closed. No retry/cancel operation invoked."
+    },
+    "helperLifecycle": {
+      "status": "passed",
+      "normalCloseEvents": [
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044337224787-close",
+          "helperBefore": {
+            "pid": 98880,
+            "startTicks": 1154928,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 1890,
+            "lastExit": {
+              "code": 0,
+              "generation": 4,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:43:40.004207+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-empty-normal-close.png",
+            "sha256": "2531329764f0d17eb4d7a92fe6551913d5c30bee96b964ae8a5f6f0e68653e1d",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-empty-normal-close-head0.ppm",
+              "sha256": "6e983ed8d4ff936af15318e31045b326756c249f003b2d895938ab5977c75acf"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044646473642-close",
+          "helperBefore": {
+            "pid": 104411,
+            "startTicks": 1173860,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3340,
+            "lastExit": {
+              "code": 0,
+              "generation": 6,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:46:49.217472+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-configured-normal-close.png",
+            "sha256": "a5beadfacf6dace3dd1b819181c7e063ed74f08680e1575a70f3eed2835e080d",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-configured-normal-close-head0.ppm",
+              "sha256": "477551187a44d4e29161c5c50ded72c7af0d7772ab98d3dbc216bccc44c2e936"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044723881619-close",
+          "helperBefore": {
+            "pid": 104997,
+            "startTicks": 1175318,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3340,
+            "lastExit": {
+              "code": 0,
+              "generation": 7,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:47:26.909559+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-footer-normal-close.png",
+            "sha256": "0ec0af8f7736d996a8ba203cbc63d8ff2d935894826f3a28e0875bde5a6e2cf5",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-footer-normal-close-head0.ppm",
+              "sha256": "9fb14b4448f70bb67968804935f019b4c5fb66f8d9f9f404f1ac970800840f8e"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044731008902-close",
+          "helperBefore": {
+            "pid": 106187,
+            "startTicks": 1178308,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3760,
+            "lastExit": {
+              "code": 0,
+              "generation": 8,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:47:33.683589+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/history-normal-close.png",
+            "sha256": "0ec0af8f7736d996a8ba203cbc63d8ff2d935894826f3a28e0875bde5a6e2cf5",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-history-normal-close-head0.ppm",
+              "sha256": "9fb14b4448f70bb67968804935f019b4c5fb66f8d9f9f404f1ac970800840f8e"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044737295205-close",
+          "helperBefore": {
+            "pid": 106776,
+            "startTicks": 1178950,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3760,
+            "lastExit": {
+              "code": 0,
+              "generation": 9,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:47:40.131217+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/history-reopen-normal-close.png",
+            "sha256": "0ec0af8f7736d996a8ba203cbc63d8ff2d935894826f3a28e0875bde5a6e2cf5",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-history-reopen-normal-close-head0.ppm",
+              "sha256": "9fb14b4448f70bb67968804935f019b4c5fb66f8d9f9f404f1ac970800840f8e"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044744053117-close",
+          "helperBefore": {
+            "pid": 107364,
+            "startTicks": 1179608,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3853,
+            "lastExit": {
+              "code": 0,
+              "generation": 10,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:47:47.031249+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/activity-normal-close.png",
+            "sha256": "0ec0af8f7736d996a8ba203cbc63d8ff2d935894826f3a28e0875bde5a6e2cf5",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-activity-normal-close-head0.ppm",
+              "sha256": "9fb14b4448f70bb67968804935f019b4c5fb66f8d9f9f404f1ac970800840f8e"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044750755201-close",
+          "helperBefore": {
+            "pid": 107953,
+            "startTicks": 1180289,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3853,
+            "lastExit": {
+              "code": 0,
+              "generation": 11,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:47:53.475817+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/activity-final-normal-close.png",
+            "sha256": "0ec0af8f7736d996a8ba203cbc63d8ff2d935894826f3a28e0875bde5a6e2cf5",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-activity-final-normal-close-head0.ppm",
+              "sha256": "9fb14b4448f70bb67968804935f019b4c5fb66f8d9f9f404f1ac970800840f8e"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044830677225-close",
+          "helperBefore": {
+            "pid": 108760,
+            "startTicks": 1183013,
+            "parentPid": 79451,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3853,
+            "lastExit": {
+              "code": 0,
+              "generation": 12,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          },
+          "witness": {
+            "utc": "2026-10-09T04:48:33.205548+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-final-normal-close.png",
+            "sha256": "206b3a5028e3fd6e8d2a19e17ce3b018becc3028d6a5d398e10a5f092833d66a",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-final-normal-close-head0.ppm",
+              "sha256": "853e141898910962a6c8035a834ebfc49ae1e917dba398f00f8892e93f0a00c4"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        }
+      ],
+      "finalHelperPid": 0,
+      "finalActiveOperations": 0,
+      "residentUnchanged": true
+    },
+    "renderedTray": {
+      "status": "passed",
+      "startupTrayAvailable": false,
+      "startupReceipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T043732702766-start/05.stdout",
+      "startupReceiptSha256": "1d6c27f3322b50b7c836bc3a248b89c44cb0701482a9fa38afefef76602881b6",
+      "unlock": "Root typed protected local password through visible masked VNC; actual unlocked image inspected by reviewer. No bypass or credential read.",
+      "observations": "Rendered blue put.gd arrow at topbar near1158,16 in actual unlocked and final desktop screenshots. Native watcher item :1.1044@/StatusNotifierItem has bus PID79451 matching current resident and put.gd tooltip.",
+      "watcherRegistrationReceipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/watcher-registration.json",
+      "watcherRegistrationSha256": "1b37f1c79eccc4432a0df025c1f2ee87f3fd39d6dc524e17675dcca86db3067f",
+      "finalWitness": "settings-final-normal-close"
+    }
+  },
+  "priorUnchangedCoverage": {
+    "sourceCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+    "version": "0.1.1-dev.43+gf56dc72de4fe",
+    "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/visual-review.json",
+    "scope": "Existing source43 History inspector and Activity parent/child Copy result proof retained separately; not rerun or relabelled as current candidate acceptance. History/Activity product bytes unchanged in four-path overlay.",
+    "priorOperationId": "e9c3eeb4-74fd-4af7-b6b7-ac37ac2874e8",
+    "priorItemId": "bbbe23ab-69f5-45e9-8c6f-82a36a95c577",
+    "priorIndependentPasteCopies": [
+      {
+        "utc": "2026-10-09T03:52:20.624928+00:00",
+        "selectionKind": "parent",
+        "parentOperationId": "e9c3eeb4-74fd-4af7-b6b7-ac37ac2874e8",
+        "itemId": "bbbe23ab-69f5-45e9-8c6f-82a36a95c577",
+        "copyStatus": "copied",
+        "independentPasteMatchesExpectedText": true,
+        "witness": {
+          "utc": "2026-10-09T03:52:20.776092+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/result-parent-paste-verified.png",
+          "sha256": "81b0421a6410f9f3026bd387fe089248111a966161c07c4791049afb64a57da6",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-result-parent-paste-verified-head0.ppm",
+            "sha256": "580523cd8d9e2e9fdb9b19519ef3bcaab4250b26e74e409515c502787da898ea"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5936,
+          "visualReview": "pending"
+        },
+        "limitation": "Selected parent/item identity requires visible row/full-ID tooltip review; clipboard contains result text, not an operation ID"
+      },
+      {
+        "utc": "2026-10-09T03:52:48.253423+00:00",
+        "selectionKind": "child",
+        "parentOperationId": "e9c3eeb4-74fd-4af7-b6b7-ac37ac2874e8",
+        "itemId": "bbbe23ab-69f5-45e9-8c6f-82a36a95c577",
+        "copyStatus": "copied",
+        "independentPasteMatchesExpectedText": true,
+        "witness": {
+          "utc": "2026-10-09T03:52:48.376195+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/result-child-paste-verified.png",
+          "sha256": "d710818f07c5db608c1cbf727560f05ae9d68fd325ec926684f30235f3c42ace",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-result-child-paste-verified-head0.ppm",
+            "sha256": "bff517a99f5c867893f2b0225de51890866bbc126bc708c1aad81237e4736c07"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5936,
+          "visualReview": "pending"
+        },
+        "limitation": "Selected parent/item identity requires visible row/full-ID tooltip review; clipboard contains result text, not an operation ID"
+      }
+    ]
+  },
+  "observations": [
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T043947088675-observe",
+      "observed": {
+        "utc": "2026-10-09T04:39:48.284331+00:00",
+        "resident": {
+          "pid": 79451,
+          "startTicks": 1118766,
+          "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+        },
+        "ui": {
+          "checkpointBytes": 3027,
+          "lastExit": {
+            "code": 0,
+            "generation": 1,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "acceptedRevision": "",
+        "observedRevision": "",
+        "profileIds": [],
+        "actionOutputs": {
+          "clipboard": "upload",
+          "desktop": "upload",
+          "region": "upload",
+          "window": "upload"
+        },
+        "activeOperations": 0
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044249999083-observe",
+      "observed": {
+        "utc": "2026-10-09T04:42:51.343444+00:00",
+        "resident": {
+          "pid": 79451,
+          "startTicks": 1118766,
+          "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+        },
+        "ui": {
+          "checkpointBytes": 1888,
+          "lastExit": {
+            "code": 0,
+            "generation": 2,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+        "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+        "profileIds": [],
+        "actionOutputs": {
+          "clipboard": "local",
+          "desktop": "local",
+          "region": "local",
+          "window": "local"
+        },
+        "activeOperations": 0
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044331456813-observe",
+      "observed": {
+        "utc": "2026-10-09T04:43:32.873825+00:00",
+        "resident": {
+          "pid": 79451,
+          "startTicks": 1118766,
+          "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+        },
+        "ui": {
+          "checkpointBytes": 1892,
+          "lastExit": {
+            "code": 0,
+            "generation": 3,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+        "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+        "profileIds": [],
+        "actionOutputs": {
+          "clipboard": "local",
+          "desktop": "local",
+          "region": "local",
+          "window": "local"
+        },
+        "activeOperations": 0
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044641025739-observe",
+      "observed": {
+        "utc": "2026-10-09T04:46:42.439782+00:00",
+        "resident": {
+          "pid": 79451,
+          "startTicks": 1118766,
+          "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+        },
+        "ui": {
+          "checkpointBytes": 3342,
+          "lastExit": {
+            "code": 0,
+            "generation": 5,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+        "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+        "profileIds": [
+          "synthetic-ui-only"
+        ],
+        "actionOutputs": {
+          "clipboard": "local",
+          "desktop": "local",
+          "region": "local",
+          "window": "local"
+        },
+        "activeOperations": 0
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044753564517-observe",
+      "observed": {
+        "utc": "2026-10-09T04:47:54.957059+00:00",
+        "resident": {
+          "pid": 79451,
+          "startTicks": 1118766,
+          "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+        },
+        "ui": {
+          "checkpointBytes": 3853,
+          "lastExit": {
+            "code": 0,
+            "generation": 11,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+        "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+        "profileIds": [
+          "synthetic-ui-only"
+        ],
+        "actionOutputs": {
+          "clipboard": "local",
+          "desktop": "local",
+          "region": "local",
+          "window": "local"
+        },
+        "activeOperations": 0
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/attempts/20261009T044833286868-observe",
+      "observed": {
+        "utc": "2026-10-09T04:48:34.591375+00:00",
+        "resident": {
+          "pid": 79451,
+          "startTicks": 1118766,
+          "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+        },
+        "ui": {
+          "checkpointBytes": 3853,
+          "lastExit": {
+            "code": 0,
+            "generation": 12,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+        "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+        "profileIds": [
+          "synthetic-ui-only"
+        ],
+        "actionOutputs": {
+          "clipboard": "local",
+          "desktop": "local",
+          "region": "local",
+          "window": "local"
+        },
+        "activeOperations": 0
+      }
+    }
+  ],
+  "reviewedWitnesses": [
+    {
+      "label": "console-after-unlock",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/console-after-unlock.png",
+      "sha256": "04f0d60ef61d8ff41c71cb1b319f770a1ebdeb9f1bfb743efcb94f0536939cdc",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-console-after-unlock-head0.ppm",
+        "sha256": "0ca2a1c5391626a9ddd7b4154e025751f0ac43a581e304231f87e17b400d601a"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-empty-compact",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-empty-compact.png",
+      "sha256": "289e81bdcaac2ad0a59242281ac742f444a15f64a7035e486dff4cbde6d9af57",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-empty-compact-head0.ppm",
+        "sha256": "a53780c310e764f2da9fbe1f886698cd512f3738a801e8e93e105c223f97a2af"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-empty-compact-add-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-empty-compact-add-draft.png",
+      "sha256": "460f19af04f0df5308355ec8004cdb4c1ff0e3d9e44c04a1f25eb4314a00dd52",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-empty-compact-add-draft-head0.ppm",
+        "sha256": "2d7db0b493732bda11d622e35971bdb62a15cf68a467b41f061640f135fe836b"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-empty-wide-1200",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-empty-wide-1200.png",
+      "sha256": "7418afaadc83d60779c15e719a064553c873b521ce1eb85b82dd1b48b24f27e1",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-empty-wide-1200-head0.ppm",
+        "sha256": "e715ba37ec2fbcf1b6d4196f1b13d1517b2a96df0b9c45d83c075a3047cce9c8"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-empty-wide-add-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-empty-wide-add-draft.png",
+      "sha256": "6faed0e882593dc1ede8773b5bf7ec4c152552eb82edfb27aaf955fc1a0ef482",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-empty-wide-add-draft-head0.ppm",
+        "sha256": "ad2208fc2a1f7236e9abc0be055a33f03f33b32f63524a176f6422b6906c58b3"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-configured-simple-compact-sized",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-configured-simple-compact-sized.png",
+      "sha256": "2c1db76405d09407a860ce234edab91258d87c9f63c931c23ea9004913ef166a",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-configured-simple-compact-sized-head0.ppm",
+        "sha256": "d9f81db43feb11dc7f8d282e037cf14d17f0bc274a3d0e206e626f6273b37958"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-configured-advanced-compact",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-configured-advanced-compact.png",
+      "sha256": "4646cb73f07a08b97e93986f055bd1d6248cc255f45373e647cfb6761d6f85ce",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-configured-advanced-compact-head0.ppm",
+        "sha256": "ceff05a6e77f9b154c133abdfc2af56e5e358fb451ed29722748f613b19a62ce"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-capture-tab-first",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-capture-tab-first.png",
+      "sha256": "06f60090f6fbc95d025c839a791c096765e243ed64d0f7675d2ac5e90780712b",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-capture-tab-first-head0.ppm",
+        "sha256": "70524ac52af0fe46f865dc6d0ab7c68db4ef0efa96d8a245141f9ebe72219b09"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-capture-shifttab-back",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-capture-shifttab-back.png",
+      "sha256": "06a23c433acc634e85f36be8ee3e365642624057f6ddff8a343b06afe5e1debb",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-capture-shifttab-back-head0.ppm",
+        "sha256": "2e7b494df408ac1833910e5ff5975e76064923f823e4b4c9e655510c29e4a198"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-tab-first",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-shortcuts-tab-first.png",
+      "sha256": "1c15e846897e59440f6ae0bcd2ebe055039aa1a1e18b83fbbd065a74cec5576a",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-shortcuts-tab-first-head0.ppm",
+        "sha256": "bcb67b0eb1a740299d040e40f6e8a60933dd9baadf10df37b02d0534d6d91856"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-shifttab-back",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-shortcuts-shifttab-back.png",
+      "sha256": "7b41c92bf5b5d318a30751c759329cc0060f9abf5b81e8dc40989a0c72215d4d",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-shortcuts-shifttab-back-head0.ppm",
+        "sha256": "5e8e66ef6e1123d55411611ad9fd77b7e5490d860b3a3232ac426b5b2c0695b5"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-preferences-tab-first",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-preferences-tab-first.png",
+      "sha256": "1041ef57b7b51b56c769ff15b59b5a740584efed4a9a55cebced2d65fff09370",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-preferences-tab-first-head0.ppm",
+        "sha256": "245bb69ac0ef5662c754d64070d36ac02cbd9614044859f185a69e7e2ddc76a1"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-preferences-shifttab-back",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-preferences-shifttab-back.png",
+      "sha256": "e4d9a920dbfc1b4866d799e9fa351885250ceebc4fcdb72da79e04b4592011ed",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-preferences-shifttab-back-head0.ppm",
+        "sha256": "f5e6c84d0e2e9f6604c436068467f9c99ba5e86da440f97c84bc540f20aa3f53"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-preferences-bottom",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-preferences-bottom.png",
+      "sha256": "96ff24cf447fbed08dbe62ce5c7e765e9cfa80f2499ab2bcce1ae2c1bccf0239",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-preferences-bottom-head0.ppm",
+        "sha256": "3e1ac002ab6e8978bfa66e6a522b8e81042d4fbb9cc884f1ff16a851efbb1b34"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-preferences-wide-retained",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-preferences-wide-retained.png",
+      "sha256": "cb31f676d2f26938534f2a10a325d84bda57e7ee7bc22827fad45e614ba9fbbe",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-preferences-wide-retained-head0.ppm",
+        "sha256": "638930f4505e3ab7edf4f2cc4a98a3dc979c89251524ccfdebbd9ad94d940ded"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-destination-wide-retained",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-destination-wide-retained.png",
+      "sha256": "82fceb00029de0f6a276b7c69762e42706a7ed59ef5ccefebcf98897ebe64bc6",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-destination-wide-retained-head0.ppm",
+        "sha256": "91be92a45957d0ee1787ba97c9957151e2dd40216f79d8ae6adad409a444ad8e"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-capture-wide-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-capture-wide-tab.png",
+      "sha256": "09e203876f2a45bca6d7abece76675f026dd2fcfdd6173ccd0ca18e0360b8050",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-capture-wide-tab-head0.ppm",
+        "sha256": "0c36c9b1d84cfff76977b71a29cddd6551319df34433ff74207ec05a33cf0f17"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-capture-wide-shifttab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-capture-wide-shifttab.png",
+      "sha256": "94512a49ef232557489e4c84ad0d480bcd415f817a9c03f13e53098abdccad37",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-capture-wide-shifttab-head0.ppm",
+        "sha256": "9b1a1bf9761c5b4e4c7d4f2688099b878f623c10033456346fac9cc019bbbc1b"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-wide-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-shortcuts-wide-tab.png",
+      "sha256": "a23394537864e8d77ca86255c269f17e42eab5a000bec4a5975b6813586e5a30",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-shortcuts-wide-tab-head0.ppm",
+        "sha256": "a5f7ee09df101157ea1ebaf1057cc9342738e5526cb404d1043721c7264f431b"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-wide-input-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-shortcuts-wide-input-tab.png",
+      "sha256": "6e1c89175cf687e68063b79f59f45e62f285801dcdd5701220ae70e14002c114",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-shortcuts-wide-input-tab-head0.ppm",
+        "sha256": "9916e192f3a657d7115050084c73d081036cac35d871849a38c882a714744135"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-wide-back-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-shortcuts-wide-back-tab.png",
+      "sha256": "a23394537864e8d77ca86255c269f17e42eab5a000bec4a5975b6813586e5a30",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-shortcuts-wide-back-tab-head0.ppm",
+        "sha256": "a5f7ee09df101157ea1ebaf1057cc9342738e5526cb404d1043721c7264f431b"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-wide-nav-back",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-shortcuts-wide-nav-back.png",
+      "sha256": "6abc97c1ffff07186f6f4df7cf870f3b05c6f9652a51c56ca7118068a5cce204",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-shortcuts-wide-nav-back-head0.ppm",
+        "sha256": "77918478410502cb4774d92b1b44b3f357d7bbed1eb7eaf04b756204c68d0f7b"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-configured-wide-collapsed",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-configured-wide-collapsed.png",
+      "sha256": "1ef1859034e574ced8a6e3b34dae4068d2398525f9b0031a72abb2d6e47fd534",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-configured-wide-collapsed-head0.ppm",
+        "sha256": "a3a016d4036f2e6b4281d9ae56258aa17a066112d4e54ce8254e0fda932c24ed"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-configured-reopen-after-cancel",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-configured-reopen-after-cancel.png",
+      "sha256": "076b5e924e64bdabc70dd0e6f0a4bd74884bf3d065b784266e3adc09644867ab",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-configured-reopen-after-cancel-head0.ppm",
+        "sha256": "27ca772f28963bc57dde3fc8f59a584efe48783f221273335bd98b6db527e8ff"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-footer-shift-save",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-footer-shift-save.png",
+      "sha256": "84ff36a664f444fa1bb950f30f1fd82561d65c612f9cd6068537a799dd874141",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-footer-shift-save-head0.ppm",
+        "sha256": "23b7fbaa8b0a66e87207371e91a2e8441a5de68a39ceba35eabf72dfe32335a6"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-footer-shift-help",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-footer-shift-help.png",
+      "sha256": "74bcd0a988267689ed370273ce3a01e145edeb2c989087036cb333edf63c0a37",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-footer-shift-help-head0.ppm",
+        "sha256": "cdfbc8cbf6e181997f660acedf64227b85397a471e7a0d5e1acdd8bf36708d4a"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-footer-shift-reload",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-footer-shift-reload.png",
+      "sha256": "9ee9635bac81f3d09b4d052915211ace07eb84dea7c38a94fa83fccf65bf743c",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-footer-shift-reload-head0.ppm",
+        "sha256": "f1e2cd7dc2ff43dec482d5cb944d0387d43cfc0934969f15337ad54af7f80182"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-footer-shift-cancel",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-footer-shift-cancel.png",
+      "sha256": "61011b016470f86fc6a381160eb95015860b4bf4bac5521b9bf433808c84654b",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-footer-shift-cancel-head0.ppm",
+        "sha256": "3c5961d2fc898cd090e382b03e933deee27d036d78ea72da265414c8303d6d30"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-footer-forward-save",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-footer-forward-save.png",
+      "sha256": "84ff36a664f444fa1bb950f30f1fd82561d65c612f9cd6068537a799dd874141",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-footer-forward-save-head0.ppm",
+        "sha256": "23b7fbaa8b0a66e87207371e91a2e8441a5de68a39ceba35eabf72dfe32335a6"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "history-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/history-open.png",
+      "sha256": "7955d401b28dd6486e314c74253007632bf2729f433e24a16fddcab48777ad89",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-history-open-head0.ppm",
+        "sha256": "acecb3a5dd2c097903c315ee63d265640854cc8cbd37783fb486014427a54eb5"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "activity-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/activity-open.png",
+      "sha256": "bb708887e59c0463afb6b441d958f2779319bd6c7596ca448f518224ccbf0b9f",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-activity-open-head0.ppm",
+        "sha256": "0ed1f7e865436016902f8c4cefe49f2f016bf7e0be9e22317f1265602f90c15f"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "activity-final-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/activity-final-normal-close.png",
+      "sha256": "0ec0af8f7736d996a8ba203cbc63d8ff2d935894826f3a28e0875bde5a6e2cf5",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-activity-final-normal-close-head0.ppm",
+        "sha256": "9fb14b4448f70bb67968804935f019b4c5fb66f8d9f9f404f1ac970800840f8e"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-final-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-final-normal-close.png",
+      "sha256": "206b3a5028e3fd6e8d2a19e17ce3b018becc3028d6a5d398e10a5f092833d66a",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-final-normal-close-head0.ppm",
+        "sha256": "853e141898910962a6c8035a834ebfc49ae1e917dba398f00f8892e93f0a00c4"
+      },
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    }
+  ],
+  "preservedAttempts": "Initial sandbox localhost socket failures preserved; escalated authorized channel succeeded. Blank/coordinate-miss UI steps and maximized-size intermediates retained but excluded from acceptance witness list.",
+  "blockedGates": [],
+  "notEstablished": [
+    "Performance timing or memory budgets",
+    "Full U6/U9 desktop acceptance",
+    "New candidate History/Activity result-copy repetition (explicit bounded skip)"
+  ]
+}

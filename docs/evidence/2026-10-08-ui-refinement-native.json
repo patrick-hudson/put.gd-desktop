@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "recordedUtc": "2026-10-09T04:19:14.861314+00:00",
+  "sourceCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+  "version": "0.1.1-dev.43+gf56dc72de4fe",
+  "nativeFourActionMatrix": {
+    "cinnamon": {
+      "passed": 12,
+      "total": 12
+    },
+    "gnome": {
+      "passed": 12,
+      "total": 12
+    },
+    "kde": {
+      "passed": 12,
+      "total": 12
+    }
+  },
+  "boundedVisualOutcomes": {
+    "cinnamon": {
+      "overall": "Bounded source43 native capture/clipboard and UI refinement checks pass. No quiet memory or startup-performance claim.",
+      "blockedGates": []
+    },
+    "gnome": {
+      "overall": "bounded native matrix and UI refinement pass; rendered-tray acceptance remains open",
+      "blockedGates": [
+        "Rendered GNOME tray icon after locked startup"
+      ]
+    },
+    "kde": {
+      "overall": "Bounded native verification complete; KDE Settings resize acceptance remains open. Not full compositor certification.",
+      "blockedGates": [
+        {
+          "gate": "KDE Settings resize continuity",
+          "status": "open/failure preserved",
+          "witnesses": [
+            "settings-empty-compact-established",
+            "settings-empty-compact-settled",
+            "settings-empty-compact-final"
+          ],
+          "recoveryWitness": "settings-empty-compact-advanced-collapsed"
+        },
+        {
+          "gate": "Strict1024x700 Settings client",
+          "status": "unverified",
+          "actual": "Configured compact1024x709; other attempted compact dimensions691/709; witness label settings-empty-compact-1024x700 is intended target only and is not size proof."
+        }
+      ]
+    }
+  },
+  "memoryAttributionOnly": {
+    "cinnamon": {
+      "receipt": "post-suite-resident-memory.json",
+      "rssKiB": 56476,
+      "pssKiB": 35803,
+      "privateKiB": 34420,
+      "operationCounts": {
+        "completed": 13,
+        "cancelled": 3
+      },
+      "scope": "Single post-suite resident attribution snapshot; no quiet/cold/performance-budget claim."
+    },
+    "gnome": {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/post-suite-resident-memory-final.json",
+      "rssKiB": 62980,
+      "pssKiB": 35757,
+      "privateKiB": 32232,
+      "operationCounts": {
+        "completed": 13,
+        "cancelled": 3
+      },
+      "scope": "Single final post-suite attribution snapshot after additional compact History detail inspection; shared/private numeric values retained. Not quiet performance, cold startup, or40MiB budget proof."
+    },
+    "kde": {
+      "utc": "2026-10-09T04:15:03.513430+00:00",
+      "sourceCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+      "version": "0.1.1-dev.43+gf56dc72de4fe",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "memory": {
+        "identity": {
+          "pid": 153788,
+          "startTicks": 2554644,
+          "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+        },
+        "units": "KiB",
+        "smapsRollup": {
+          "Rss": 141872,
+          "Pss": 39671,
+          "Shared_Clean": 114616,
+          "Shared_Dirty": 0,
+          "Private_Clean": 8976,
+          "Private_Dirty": 18280,
+          "Private_Hugetlb": 0,
+          "Swap": 0,
+          "SwapPss": 0
+        },
+        "privateKiB": 27256,
+        "sharedKiB": 114616
+      },
+      "activeOperations": 0,
+      "helperPid": 0,
+      "trayAvailable": true,
+      "fullMatrixCases": 12,
+      "fullMatrixPassed": 12,
+      "continuationCases": 9,
+      "scope": "Post-build post-native-suite attribution snapshot only; not quiet/cold 40 MiB acceptance; no timing measurement",
+      "selectedHistoryId": "5c226b7b-0e69-4a9d-b0ff-c08bbde5a578",
+      "selectedHistoryName": "Screen-Capture-2026-10-08-23-05-16.png",
+      "selectedHistoryOperationId": "5cd9ad84-d73d-4304-a676-132c7f6880c6",
+      "copiedOperationId": "67df7fcf-9d5a-44ca-8aa5-e989b9eaf6b1",
+      "remoteMeasurementAttempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041412298617-final-readonly-attribution",
+      "diagnosticShapeRecovery": "Initial metadata assembly requested trayAvailable from diagnostics rather than ui.snapshot diagnostics; corrected using already captured read-only receipt; no repeated memory measurement"
+    }
+  },
+  "knownFailures": "Original deep QMP socket path failures and KDE clipboard_changed retained; subsequent fresh full12-case repeat passed. KDE Add S3 disappearance on native resize and GNOME locked-start tray remain explicit open source43 gates.",
+  "scope": "Frozen source43, synthetic local data, existing three overlays with visible VNC. No current candidate, quiet performance, 40MiB budget, S3 or whole-plan release acceptance claim.",
+  "replayExport": "Runner snapshot includes later exact four-file candidate/Git-bundle support; original per-attempt runner hashes are retained in scratch requests. Replay instructions identify source43 versus future candidate distinctly.",
+  "files": [
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/visual-review.json",
+      "sha256": "22ae7818c3c0b4055983becf41be6025e3dabe6e38a1b7f51b6cfb0ef18b4f15"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/installed.json",
+      "sha256": "dd1b3d4d038aacebdc112b15d452559c181f784ef468ad57164389cdc64b7068"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/matrix.json",
+      "sha256": "e15960fbb6dd52a04a8d991421e926d2f1055fcccf119d0e80dc9b1540429ff3"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/post-suite-resident-memory.json",
+      "sha256": "7a37826a68be6bd281adabc8f86bfb363717f90122d789f90c9e48d2e5273671"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/settings-empty-wide.png",
+      "sha256": "2127c4eaf47b7a43fde64b78e7a593afa9d6dede22d4d3ec06fabd996e295cbb"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/settings-empty-wide.json",
+      "sha256": "6d02ee7c2437b5d2abc108be6c0ab165cb8df36f8a97f5b26f40f66782e121c1"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/settings-empty-compact.png",
+      "sha256": "d195c4a842ac8b29ef0b6a50af4fd3647112f25c1cd70f088189df3362ed52a7"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/settings-empty-compact.json",
+      "sha256": "dd962f774250614af76290c9df284ed8a36caaf172cfec419669680a9ee9dca5"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/settings-advanced-compact.png",
+      "sha256": "bc008803a217ec437260f7ce727012b596d2a9e5506f1306e1bb62780a70b4e2"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/settings-advanced-compact.json",
+      "sha256": "cc5fb75a893202e0531d9edfb8145cb9bdc3d6ec3150722f5ddd95f093ce0ded"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/history-selected-wide.png",
+      "sha256": "3b3bab821fee77d1dd4a97334627ab274dc626d2c00c35422d096edd2d5ce5d7"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/history-selected-wide.json",
+      "sha256": "273ddad20385dcaf5f475513856b33e8a7c97e6a0a9e2211e4cde7e3a64662ee"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/history-selected-compact.png",
+      "sha256": "834af1507dfaa91b6211920e7e4eeb4b358096a5c05a0062530afabcdb1dae22"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/history-selected-compact.json",
+      "sha256": "bb6ba08c5cdd2fd290497ee014b84f047518e10fec5d6c308113ca95b257eba9"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/activity-child-wide.png",
+      "sha256": "b07444ff9f179f55b6ff2ccabfa73e67b911209074da503e95706da5d42856c2"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/activity-child-wide.json",
+      "sha256": "3005c594b9e6494cf67d921171d8d36b73c6d5a398634b9bb24fe406f4665bb9"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/activity-parent-compact.png",
+      "sha256": "89c2c29eeb55a516a07685d0891dca4dae1984b5b182bf52674fb8cd906020b7"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/activity-parent-compact.json",
+      "sha256": "e78fa304658f027198102c3c9d60adbe94b40b5b4243be4f1c478494df4d2b82"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/activity-final-normal-close.png",
+      "sha256": "2e3cb183c913943de652b974c63844454d51517ca71e347056e452d4a2b8eeee"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/views/activity-final-normal-close.json",
+      "sha256": "606b3d956e283648a52df011ba8e1e9fa8623a1e05fc3f5548cf5abb89eee19e"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/attempts/20261009T032824046127-install/failed.json",
+      "sha256": "c4dfb8946c8e2bb8b73c60cb75d019f829af9a79c4bc307c714443ce005eb566"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/attempts/20261009T032852539331-start/failed.json",
+      "sha256": "4124257c5f99619e9f8aeae70ba2021d39a14c0aaf522c0747364aa3228167cb"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/attempts/20261009T033338543472-install/failed.json",
+      "sha256": "5ad596cb115f520070a19361acabd31a089f708184cd85547a414caa83794603"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/cinnamon/attempts/20261009T034106290333-matrix/failed.json",
+      "sha256": "6b520fd6a5e900bbdd311a39e6aebce28b652f372a8249745fdb05db7d424eef"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/visual-review.json",
+      "sha256": "eb29603e8a5be71c317de729e60398dae71fef97d8e4c173e49375638388e393"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/installed.json",
+      "sha256": "7774f58e14be8f06170fa59377f93cbea94f52e5001314c7112adbd223221fd4"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/matrix.json",
+      "sha256": "140bc4b8c61026a1e7a2b9f1115d1a4483fd484983b8220ac7c71e3ea445beff"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/post-suite-resident-memory.json",
+      "sha256": "3b3a7b4db5fba8a891a5b64c4d055792bfd9db20d5453cf0778caf7a14a0ae1c"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/post-suite-resident-memory-final.json",
+      "sha256": "00fcbcef244c16e12d358b12bf38e86beeb586603534c8ab4b13a556e3fe673b"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/history-wide-name-tooltip.png",
+      "sha256": "09759e73b1f78778e67bf5f5a6c1e2f60804cd53b71b56e93260f0f45c094aa4"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/history-wide-name-tooltip.json",
+      "sha256": "796b3e6558105ceca6b203f60b15c365b33681cbcce95e2a2a2c668cf78e38db"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/history-compact-selected-again.png",
+      "sha256": "1ea1486e86178393e449590e4ebe28c9e3269b0e1f5d7c2310e495b9b8ff0367"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/history-compact-selected-again.json",
+      "sha256": "e4677d03d8d88437d3faac93a7281ad4deeaed66474fd635f6218eef94fa8947"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/activity-wide-child-selected.png",
+      "sha256": "11b8d7287d5cd5e408e81112788cbcd4913b4f083b0eccc16220affad5cfd509"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/activity-wide-child-selected.json",
+      "sha256": "6b788558d526fc1901cbe42f40aaa15ce1d2061993cb35fb99ddb9229e8c6649"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/activity-compact-parent-id-tooltip.png",
+      "sha256": "6a9211a44e210f80c3d427606e9078ff30f4a5dff23e1ec420b4983daa957e60"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/activity-compact-parent-id-tooltip.json",
+      "sha256": "0bd343c29ce7748ddc35ec4efc93329d8675d5461fc2dbddea9f5d108ea3354f"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/activity-final-normal-close.png",
+      "sha256": "82d1a4b35f941d6423fa6bdfff1ce2d831c0785600fc76357e6074e94a7c2991"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/views/activity-final-normal-close.json",
+      "sha256": "bf9a17b18c0e2b6716e57f4d8c6cff0782aecab51150cae5852946991e673729"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/attempts/20261009T034105765860-matrix/failed.json",
+      "sha256": "2b95fba68a77e21b8787e6d9e069390fac976e3002b6f48c0c2aeffe0049a28e"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/gnome/attempts/20261009T035641842644-tray-resident-sni-readonly/failed.json",
+      "sha256": "a28f706b97f3781e9bcb74e1178912567b25741d3e939512d9819537f2c70e1d"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/visual-review.json",
+      "sha256": "f7e1d0b97db24bbd7100f2ff73944cfc4c7f4371c5a60ffae8ec561f3ab0b42f"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/installed.json",
+      "sha256": "5c8718f030351def398a6b795be7e8553e31ef37393599766aabf76064897418"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/matrix.json",
+      "sha256": "49b96277ebd196b9799e391ad4a0c92c1c1b1de2d7fefe34d137c556e90d3ae6"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/post-suite-resident-attribution.json",
+      "sha256": "8c6c32456137e316e3ff5d34c2952d034ae81166c6e5ae1fca4b153d4c821623"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/views/settings-empty-compact-settled.png",
+      "sha256": "d420985f964ae1af4fa980ed1151d29e3d0a3436e22b461ca07b4c12b978dfbe"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/views/settings-empty-compact-settled.json",
+      "sha256": "b46db98ce525d553238bce8b444c9280c26b3a7cc0bf8fb925344ee7f571c68d"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/views/settings-empty-compact-advanced-collapsed.png",
+      "sha256": "8a0095e7d019ccff37ab9d843c46abc8607136ec49df9ae85b8a3abbd68dff51"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/views/settings-empty-compact-advanced-collapsed.json",
+      "sha256": "23ce525bac770fde5445f3fee38fda5de6ae97b93dd261dfb35ea06b7d11392c"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/attempts/20261009T034124643881-matrix/failed.json",
+      "sha256": "9c3c3d9a3fbdd7afa50590225d3953159b4899f1ce53e4f3bed70b5a988182ca"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/attempts/20261009T034251281550-matrix/failed.json",
+      "sha256": "ea86ac00a56f9079798b466d7fd59786ce6083c0cbb6751ac5abe7fb078c2363"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/kde/attempts/20261009T041412298617-final-readonly-attribution/failed.json",
+      "sha256": "6a447782ae4756a9f09b197d6bd0f8cac04b16eb69f92ceed4639e5ea6cbf3c6"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/replay.py",
+      "sha256": "36aafa4c772a64821fa8d9cfa69793cdd4e1209b5b9907bc446f3212737412bf"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/prepare-candidate.py",
+      "sha256": "ea84ba3f7c0af7fbdff86ccdeb9178caa4208cf40f3c1759e5fddabf129ad50d"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-refinement-native-raw/README.md",
+      "sha256": "538f214c685d9f332d782d10c7c9e2fa6b8e52b350432f4bd93eea4b39da5f39"
+    }
+  ]
+}

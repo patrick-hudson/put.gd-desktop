@@ -1,0 +1,13 @@
+[1/15] cd /home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001 -DOUTPUT_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/patrick/work/put.gd/work/view-startup-latency/exp001/cmake/GenerateBuildInfo.cmake
+[2/15] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[3/15] Linking CXX static library libputgd_build_identity.a
+[4/15] Linking CXX shared module libputgd-s3.so
+[5/15] Automatic MOC and UIC for target putgd_tray
+[6/14] Automatic MOC and UIC for target putgd_ui
+[7/13] Linking CXX executable putgd-cli
+[8/13] Building CXX object CMakeFiles/putgd_tray.dir/src/ui/TrayController.cpp.o
+[9/13] Linking CXX static library libputgd_tray.a
+[10/13] Linking CXX executable putgd
+[11/13] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+[12/13] Linking CXX static library libputgd_ui.a
+[13/13] Linking CXX executable putgd-ui

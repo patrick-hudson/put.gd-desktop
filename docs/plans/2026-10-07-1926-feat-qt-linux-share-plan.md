@@ -1104,3 +1104,59 @@ adds roughly 108–140 ms after CLI acknowledgement. These instrumented observat
 locate costs and establish no product saving. Measure hidden-page construction
 and polish before selecting a lazy-page change. Preserve the unchanged primary
 harness and reject changes that merely report readiness earlier.
+
+
+Startup attribution follow-up: the complete diagnostic replay material is exported
+in [view-startup attribution](../evidence/2026-10-08-view-startup-attribution.json)
+and [the replay guide](../testing-view-startup.md). Hidden advanced page construction
+and show-phase Polish account for about 41–44 ms on two reopens. One isolated lazy
+page experiment is underway; no latency improvement or 200 ms achievement is
+claimed. Its draft/validation, native desktop and memory gates remain required.
+Node-based GNOME ownership tests have been replaced by the desktop's existing GJS;
+no Node installation is part of guest testing. Lab logins remain protected local
+bootstrap input and are entered through visible masked console fields, never test
+arguments or structured logs.
+
+The clean lazy-page checkpoint `6f6372e` (version
+`0.1.1-dev.46+g6f6372e79d8b`) passed twelve native cases per desktop, lazy-page
+Tab/Shift-Tab traversal, visible trays and normal Settings/History/Activity helper
+exit. Two alternating physical runs per build measured 332.50 ms for clean45 and
+295.43 ms for the trial: 37.07 ms faster, below the approved >40 ms keep threshold.
+Both original-source and matched-source decisions are inconclusive. Preserve the
+experiment and its [confirmation evidence](../evidence/2026-10-09-lazy-settings-confirmation.json);
+do not integrate it or claim the ~200 ms target. The product retains source45's
+reviewed tray correction and source43's independent UI improvements.
+
+Further memory work must locate resident initialization and KDE graphics-library
+loading before changing them. A Qt Core/Gui resident with a native tray protocol
+is a hypothesis, not a measured saving; retain Qt Widgets for the on-demand views,
+native fonts/dialogs, all capture/clipboard behavior and whole-family accounting.
+The 40 MiB cold target remains open. Preserve distinct cold, post-use guest and
+open-view measurements, fixed parameters, exact commands, failed attempts and
+RSS/PSS/private observations. Agents must preflight complete Unix socket paths
+and restore locked sessions with protected local lab input through the visible
+masked console rather than handing routine lab unlocking back to the user.
+
+Future candidate testing starts with one Cinnamon build and its required
+functional and memory checks. If either gate fails there, fix or reject it before
+building or testing GNOME/KDE. Once
+Cinnamon passes, remaining independent desktop checks can run in parallel;
+cross-desktop acceptance still requires their current-version evidence.
+
+The fresh source45 five-minute physical cold reference is 45.414 MiB RSS,
+25.506 MiB PSS and 23.066 MiB private, with 0.0033% of one CPU core and no
+activation or operations. It passes the original idle budget, but exceeds the
+40 MiB target. See [cold-reference evidence](../evidence/2026-10-09-cold-reference45.json).
+Cinnamon-only initialization locators measured about 11.34 MiB settled RSS for
+QCoreApplication plus a session-bus connection, 37.32 MiB for QGuiApplication
+and 40.04 MiB for QApplication. These small programs implement no tray, capture
+or operation service; their difference identifies a promising boundary and is
+not a product saving. See [initialization evidence](../evidence/2026-10-09-native-initialization.json).
+
+The next memory investigation targets the basic listener and tray, deferring
+graphical initialization until work needs it. Existing native Unix resident IPC
+remains the first choice; CLI communications costs need separate attribution.
+Several compatible improvements may form one candidate: acceptance is based on
+the combined whole-family result and preserved features, not a requirement that
+one isolated change reach 40 MiB. Save individual and integrated comparisons
+separately, and never add deltas measured against different baselines.

@@ -1,0 +1,8 @@
+set -eu
+cd /home/lab/putgd-ui-refinement-lazy-exp001-native/source
+cmake --preset dev -DCMAKE_PREFIX_PATH=/home/lab/putgd-memory-build/sdk -DPUTGD_AWS_RUNTIME_DIR=/home/lab/putgd-memory-build/sdk/lib -DPUTGD_AWS_SOURCE_DIR=/home/lab/putgd-memory-build/dependencies/aws-sdk-cpp -DPUTGD_LAB_FIXTURE=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_SOURCE_COMMIT= -DPUTGD_SOURCE_TREE= -DPUTGD_SOURCE_COMMIT_COUNT= -DBUILD_TESTING=ON
+cmake --build --preset dev
+ctest --preset dev -R '^(version_contract|version_integration|gui_version|gui_tray|ui_split_services_integration)$' --output-junit /home/lab/putgd-ui-refinement-frozen-exp001-source46/dev.xml
+cmake --preset release -DCMAKE_PREFIX_PATH=/home/lab/putgd-memory-build/sdk -DPUTGD_AWS_RUNTIME_DIR=/home/lab/putgd-memory-build/sdk/lib -DPUTGD_AWS_SOURCE_DIR=/home/lab/putgd-memory-build/dependencies/aws-sdk-cpp -DPUTGD_LAB_FIXTURE=ON -DCMAKE_INSTALL_PREFIX=/usr -DPUTGD_SOURCE_COMMIT= -DPUTGD_SOURCE_TREE= -DPUTGD_SOURCE_COMMIT_COUNT= -DBUILD_TESTING=OFF
+cmake --build --preset release
+cpack --config build/release/CPackConfig.cmake -G DEB -B /home/lab/putgd-ui-refinement-frozen-exp001-source46/packages

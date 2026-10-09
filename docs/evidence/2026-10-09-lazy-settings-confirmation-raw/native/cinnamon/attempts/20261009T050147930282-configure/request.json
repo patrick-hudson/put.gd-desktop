@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-09T05:01:47.930402+00:00",
+  "argv": [
+    "work/ui-refinement/native-replay/replay.py",
+    "--output",
+    "work/ui-refinement/native-replay/frozen-exp001-source46",
+    "configure",
+    "--guest",
+    "cinnamon",
+    "empty"
+  ],
+  "runnerSha256": "36aafa4c772a64821fa8d9cfa69793cdd4e1209b5b9907bc446f3212737412bf",
+  "labSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89"
+}

@@ -1,0 +1,181 @@
+{
+  "resident": {
+    "pid": 40274,
+    "startTicks": 754588,
+    "sha256": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d"
+  },
+  "smapsRollupRaw": "56267d5eb000-7fff2f866000 ---p 00000000 00:00 0                          [rollup]\nRss:               62928 kB\nPss:               35695 kB\nPss_Dirty:         12125 kB\nPss_Anon:          11876 kB\nPss_File:          23570 kB\nPss_Shmem:           249 kB\nShared_Clean:      30744 kB\nShared_Dirty:          4 kB\nPrivate_Clean:     20056 kB\nPrivate_Dirty:     12124 kB\nReferenced:        62928 kB\nAnonymous:         11876 kB\nKSM:                   0 kB\nLazyFree:              0 kB\nAnonHugePages:         0 kB\nShmemPmdMapped:        0 kB\nFilePmdMapped:         0 kB\nShared_Hugetlb:        0 kB\nPrivate_Hugetlb:       0 kB\nSwap:                  0 kB\nSwapPss:               0 kB\nLocked:                0 kB\n",
+  "smapsFields": {
+    "Rss": {
+      "value": 62928,
+      "unit": "kB"
+    },
+    "Pss": {
+      "value": 35695,
+      "unit": "kB"
+    },
+    "Pss_Dirty": {
+      "value": 12125,
+      "unit": "kB"
+    },
+    "Pss_Anon": {
+      "value": 11876,
+      "unit": "kB"
+    },
+    "Pss_File": {
+      "value": 23570,
+      "unit": "kB"
+    },
+    "Pss_Shmem": {
+      "value": 249,
+      "unit": "kB"
+    },
+    "Shared_Clean": {
+      "value": 30744,
+      "unit": "kB"
+    },
+    "Shared_Dirty": {
+      "value": 4,
+      "unit": "kB"
+    },
+    "Private_Clean": {
+      "value": 20056,
+      "unit": "kB"
+    },
+    "Private_Dirty": {
+      "value": 12124,
+      "unit": "kB"
+    },
+    "Referenced": {
+      "value": 62928,
+      "unit": "kB"
+    },
+    "Anonymous": {
+      "value": 11876,
+      "unit": "kB"
+    },
+    "KSM": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "LazyFree": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "AnonHugePages": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "ShmemPmdMapped": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "FilePmdMapped": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Shared_Hugetlb": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Private_Hugetlb": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Swap": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "SwapPss": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Locked": {
+      "value": 0,
+      "unit": "kB"
+    }
+  },
+  "privateKiB": 32180,
+  "compiledVersion": "putgd 0.1.1-dev.43+gf56dc72de4fe",
+  "allOperationIdStates": [
+    {
+      "id": "16f570fb-2349-4833-be8a-4f7605f665ab",
+      "state": "completed"
+    },
+    {
+      "id": "7c44bf4f-d266-48e4-9609-97a602a19ca1",
+      "state": "completed"
+    },
+    {
+      "id": "15d2405e-9f91-42d4-b69a-98ecd2dbff9f",
+      "state": "completed"
+    },
+    {
+      "id": "48c66963-9298-47ec-8a93-7270ac1ffde6",
+      "state": "completed"
+    },
+    {
+      "id": "2716ed09-b678-46d2-9cc3-41a5c4cb84fb",
+      "state": "completed"
+    },
+    {
+      "id": "de4dc272-ab09-4ca3-8576-f067b6ae828e",
+      "state": "completed"
+    },
+    {
+      "id": "51e112a8-0b81-4eba-9b68-f3306a92fdb1",
+      "state": "cancelled"
+    },
+    {
+      "id": "4f3853c6-e1fc-4be1-b7fc-25e8587bdcd0",
+      "state": "cancelled"
+    },
+    {
+      "id": "9b828961-cd5a-4ca7-a5f2-8ab247cab3aa",
+      "state": "cancelled"
+    },
+    {
+      "id": "e2f65acd-f6f5-4ec3-b312-a1732aa976e1",
+      "state": "completed"
+    },
+    {
+      "id": "ad0db9e5-938c-4f12-bdf6-6f0b6b4020ad",
+      "state": "completed"
+    },
+    {
+      "id": "fa806dd1-1e27-40b8-91e5-37d2485c458c",
+      "state": "completed"
+    },
+    {
+      "id": "72359c05-e072-43b1-af1a-3393adac3c6c",
+      "state": "completed"
+    },
+    {
+      "id": "b5415a7c-aafc-4be3-8e36-da3fdfb3dcee",
+      "state": "completed"
+    },
+    {
+      "id": "16be18a2-a085-47ac-8d10-2ff59445fabe",
+      "state": "completed"
+    },
+    {
+      "id": "e9c3eeb4-74fd-4af7-b6b7-ac37ac2874e8",
+      "state": "completed"
+    }
+  ],
+  "utc": "2026-10-09T03:54:26.751359+00:00",
+  "activeOperations": 0,
+  "helperPid": 0,
+  "helperLastExit": {
+    "code": 0,
+    "generation": 8,
+    "status": "normal"
+  },
+  "nativeCaseCount": 12,
+  "nativeSuccessfulCaseCount": 12,
+  "operationCounts": {
+    "completed": 13,
+    "cancelled": 3
+  },
+  "scope": "Single post-suite attribution snapshot; includes shared mapped pages. Not quiet performance, cold-start timing, or40MiB budget proof."
+}

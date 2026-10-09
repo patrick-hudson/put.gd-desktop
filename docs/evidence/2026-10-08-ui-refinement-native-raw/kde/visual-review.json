@@ -1,0 +1,833 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T04:16:54.205955+00:00",
+  "guest": "kde-wayland",
+  "vncPort": 5934,
+  "displayWall": "http://127.0.0.1:8765/",
+  "source": {
+    "commit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+    "tree": "1d52541f244a281c9789f06e3c5793e67b9d928d",
+    "commitCount": 43,
+    "archiveSha256": "9044b524edcdff27d3839334fccb56b6edc0caa9f77b43257620474a3f621505"
+  },
+  "version": "0.1.1-dev.43+gf56dc72de4fe",
+  "packageSha256": "75da5533854b6efc58ebdb99e14cf98998379f48d6690695f09ac085f28cf061",
+  "installedManifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.43+gf56dc72de4fe",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.43+gf56dc72de4fe",
+    "gitCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+    "gitTree": "1d52541f244a281c9789f06e3c5793e67b9d928d",
+    "commitCount": 43,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608",
+    "/usr/bin/putgd-cli": "74360bf0ce055cc838d9dddddc0d6a03742ef763bfa73f177a4328a7aed0d81b",
+    "/usr/bin/putgd-ui": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+  },
+  "resident": {
+    "pid": 153788,
+    "startTicks": 2554644,
+    "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+  },
+  "helperIdentities": [
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T035036561683-show/shown.json",
+      "identity": {
+        "pid": 187679,
+        "startTicks": 2636473,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T035424845683-show/shown.json",
+      "identity": {
+        "pid": 188938,
+        "startTicks": 2659280,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T035758013822-show/shown.json",
+      "identity": {
+        "pid": 190931,
+        "startTicks": 2680586,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040155042119-show/shown.json",
+      "identity": {
+        "pid": 194196,
+        "startTicks": 2704298,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040405555114-show/shown.json",
+      "identity": {
+        "pid": 196286,
+        "startTicks": 2717373,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040519676818-show/shown.json",
+      "identity": {
+        "pid": 197514,
+        "startTicks": 2724767,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040839568445-show/shown.json",
+      "identity": {
+        "pid": 200049,
+        "startTicks": 2744735,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040917219969-show/shown.json",
+      "identity": {
+        "pid": 201264,
+        "startTicks": 2748509,
+        "parentPid": 153788,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    }
+  ],
+  "geometry": [
+    {
+      "label": "settings-empty-wide-established",
+      "clientRect": [
+        39,
+        28,
+        1200,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "settings-configured-compact-open",
+      "clientRect": [
+        128,
+        32,
+        1024,
+        709
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "settings-configured-wide-simple",
+      "clientRect": [
+        44,
+        28,
+        1200,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "history-selected-compact-again",
+      "clientRect": [
+        53,
+        28,
+        1024,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "history-selected-wide",
+      "clientRect": [
+        53,
+        28,
+        1200,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "activity-parent-full-id",
+      "clientRect": [
+        53,
+        28,
+        1024,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "activity-child-compact",
+      "clientRect": [
+        53,
+        28,
+        1024,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "activity-parent-wide-full-id",
+      "clientRect": [
+        53,
+        28,
+        1200,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    },
+    {
+      "label": "activity-child-wide-selected",
+      "clientRect": [
+        53,
+        28,
+        1200,
+        700
+      ],
+      "method": "Inspected visible client border bounds; scale=1 from native Qt fixture ready.json. Requested coordinates are not size evidence."
+    }
+  ],
+  "visualWitnesses": [
+    {
+      "label": "settings-empty-wide-established",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-wide-established.png",
+      "sha256": "02de1f98ddb02d28a39a9ac10e5ea28cf5739d8507c6cf2509b67b1a898fbfff",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-wide-add",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-wide-add.png",
+      "sha256": "67bd8fe8e88087d84e599a54da363037c29d55bbe3acd2b6e13736dfe964b3d4",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-wide-reopened",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-wide-reopened.png",
+      "sha256": "3c9d10ecb8da7e4c749ddb34fbc23d8b06070b8e191785d23fb036d67d1ef7ca",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-compact-verified-add",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-compact-verified-add.png",
+      "sha256": "543507faf3b4f0fb86f87740ef52734f2bea7a57e38f4f67b117d82161fd1b5f",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-compact-established",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-compact-established.png",
+      "sha256": "fd2e954c8b2f42553419722fd46d4ec71e1a8dbcbab3122cf55cb9b1171beae9",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-compact-settled",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-compact-settled.png",
+      "sha256": "d420985f964ae1af4fa980ed1151d29e3d0a3436e22b461ca07b4c12b978dfbe",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-compact-advanced-collapsed",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-compact-advanced-collapsed.png",
+      "sha256": "8a0095e7d019ccff37ab9d843c46abc8607136ec49df9ae85b8a3abbd68dff51",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-compact-final",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-compact-final.png",
+      "sha256": "5be34c9414648d024418d5f518eb80cbba84dbc1c3cc31ca9d5b7bef634e96d2",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-empty-compact-1024x700",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-compact-1024x700.png",
+      "sha256": "7afebd12a7b983d96eb546dfbe32cc97f7cafaa8da231c7bf3d96100820cadea",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-configured-compact-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-configured-compact-open.png",
+      "sha256": "64bc30a15f659037cb29d390fff72ea8c32b2e6aab7001fdcf75caa886e46f92",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-configured-compact-advanced",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-configured-compact-advanced.png",
+      "sha256": "435eed4f2f5ef633f3e5f3ffd649727d68f3b1477c33167abd5491f7752928fd",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-configured-compact-region-help",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-configured-compact-region-help.png",
+      "sha256": "02c3dc73e681de49a164c1161a1f36f94e294d8677fe47fd97973edf38aba4aa",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-configured-compact-collapsed-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-configured-compact-collapsed-draft.png",
+      "sha256": "5c9ce86e2089d033cbc38cc8edfe27f724b5049235e9f1488b2be623d3d1a744",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-configured-wide-simple",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-configured-wide-simple.png",
+      "sha256": "88ec8c8540391bba3b9e9170e7a4fe389bbc9565097dd3e204a2d02fdf158b3c",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-configured-wide-advanced",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-configured-wide-advanced.png",
+      "sha256": "b468e0e5bbc6b3e8385c21a01b77ded5ae840e842aaf89a9302967c8e6cf3341",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "settings-configured-reopened-saved",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-configured-reopened-saved.png",
+      "sha256": "cfb95982b6df824512844c2c8ece317c6260fb4296fc8ad376fe2da0a0e95828",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "history-open-unselected",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/history-open-unselected.png",
+      "sha256": "f1391ed898fc499fe5d3b5ad9223ec03453f89b75c6e9a750d14c03bd503327b",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "history-first-row-selected",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/history-first-row-selected.png",
+      "sha256": "d15787a633d6e12ba2886bb0ebd1e8629f89d1a2b5961e650cd0c39dd0b43c7e",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "history-selected-compact",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/history-selected-compact.png",
+      "sha256": "959208ab5576d3c8b42926bddb4995ea2badfdedf13dfd66c4cab20c7ebb8cea",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "history-compact-inspector-details",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/history-compact-inspector-details.png",
+      "sha256": "7ad56cfea5218bb03c2dd82af4e0c8f6fabdc10456e269e09ca84595b634e85b",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "history-selected-wide",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/history-selected-wide.png",
+      "sha256": "d3286bd55930df2cecf003ab4c79d4c51202e2de33749b93c85a242d57dbb42a",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "history-selected-compact-again",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/history-selected-compact-again.png",
+      "sha256": "7eac8ab0ba00bb17e1feb8c329f6b5c2195813df016c2b25619e7d5867e34168",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "history-reopened-selection",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/history-reopened-selection.png",
+      "sha256": "1ecbd67a3c9265fd5bf06dca098dcdb0a48241759293870ebb2a2c9a89d7617a",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "activity-parent-full-id",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/activity-parent-full-id.png",
+      "sha256": "d602ea4c20bb14d6e3cf0e39f321f500d1724f1d7927f0efed7669d5172a4ef3",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "activity-child-compact",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/activity-child-compact.png",
+      "sha256": "0b22c49a17168e2411db086d696752a9230af80a0993f10dd36295fcf6278f56",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "activity-parent-wide-full-id",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/activity-parent-wide-full-id.png",
+      "sha256": "80bb93d58cf27231e4c857c4e0bf1ca5daea96b29a0185ca27ec25d232fc8c6e",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "activity-child-wide-selected",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/activity-child-wide-selected.png",
+      "sha256": "9cbef687087dafb4b4e41a636aa7232034c3c859552112d5ecade9d4fbe7f144",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "result-parent-paste-verified",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/result-parent-paste-verified.png",
+      "sha256": "1b6459ee0c1292e3053d0a710dc1edacc7667cd071aa34472e8af2366b0a1c68",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "result-child-paste-verified",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/result-child-paste-verified.png",
+      "sha256": "ed53f8709a2b75ae53f8e46c4911a1d12e76da9a61b733a8bedb33bf35e68bc9",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    },
+    {
+      "label": "final-tray-tooltip",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/final-tray-tooltip.png",
+      "sha256": "2c46c2b8a6682b5ad405f12af862bd61374f31b62784956e6a3775d693de4d34",
+      "review": "Actual pixels inspected; outcome described in case reviews"
+    }
+  ],
+  "overallOutcome": "Bounded native verification complete; KDE Settings resize acceptance remains open. Not full compositor certification.",
+  "cases": {
+    "nativeMatrix": {
+      "fullRepeatCases": 12,
+      "fullRepeatPassed": 12,
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/matrix.json",
+      "contactSheetsInspected": 3,
+      "continuationCases": 9,
+      "continuationPassed": 9,
+      "earlierFailure": "Original Qt clipboard-text failed clipboard_changed; full repeat passed. Root cause unconfirmed; failure preserved."
+    },
+    "emptySettings": {
+      "wide": "Prominent Add S3, inactive destination cards hidden, Save locally and footer reachable; Add opens draft; Cancel/reopen retains empty accepted configuration.",
+      "compact": "Add/cancel exercised at width1024 with observed height709/partly occluded bottom; strict1024x700 Settings gate unverified.",
+      "resizeConcern": "After some native menu resizes, Add S3 was absent in actual settled pixels; Advanced expansion/collapse restored it. This is a real open acceptance issue, not dismissed as VNC.",
+      "absenceOfExplanatoryProse": "Observation only; explicit root contract correction says prominent Add/hidden inactive cards are required."
+    },
+    "configuredSettings": {
+      "compact": "Actual1024x709: simple and Advanced controls/nav/footer readable; region help tooltip visible.",
+      "wide": "Actual1200x700: simple and Advanced controls/nav/footer readable.",
+      "draft": "Appended x to synthetic bucket retained across expansion/collapse at both widths; visible Cancel discarded it; reopen showed saved synthetic-ui-only. No credential input/provider request."
+    },
+    "history": {
+      "selectedHistoryId": "5c226b7b-0e69-4a9d-b0ff-c08bbde5a578",
+      "selectedOperationId": "5cd9ad84-d73d-4304-a676-132c7f6880c6",
+      "selectedName": "Screen-Capture-2026-10-08-23-05-16.png",
+      "layouts": "Same selected synthetic row: compact stacked -> wide side-by-side -> compact stacked; normal close/reopen retained selection.",
+      "readability": "All five visible columns fit with status chips. Wide Name cells elide Screen\u2026; full filename is readable in wrapping inspector and retained CLI record. Attempted wide name-tooltip witness did not show a tooltip; no full-name-tooltip pass claim. Compact inspector scrolling reveals readable summary."
+    },
+    "activity": {
+      "operationId": "67df7fcf-9d5a-44ca-8aa5-e989b9eaf6b1",
+      "itemId": "d5a42caa-e7c2-490d-a7ed-de5ae7ee3116",
+      "fullOperationTooltip": "Observed exact parent ID at compact and wide widths. Item ID retained for routing; no invented full-item-ID GUI control.",
+      "selection": "Known parent and child selected at compact1024x700 and wide1200x700.",
+      "actualCopyResult": "Clicked actual Copy result for parent and child; independent Qt paste exactly putgd synthetic clipboard text; production inspect copyStatus=copied.",
+      "pasteReceipts": [
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041110768880-fixture/activity-result-copy.json",
+          "utc": "2026-10-09T04:11:12.797424+00:00",
+          "selectionKind": "parent",
+          "parentOperationId": "67df7fcf-9d5a-44ca-8aa5-e989b9eaf6b1",
+          "itemId": "d5a42caa-e7c2-490d-a7ed-de5ae7ee3116",
+          "copyStatus": "copied",
+          "independentPasteMatchesExpectedText": true,
+          "witness": {
+            "utc": "2026-10-09T04:11:12.884780+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/result-parent-paste-verified.png",
+            "sha256": "1b6459ee0c1292e3053d0a710dc1edacc7667cd071aa34472e8af2366b0a1c68",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-source43-attempt1-result-parent-paste-verified-head0.ppm",
+              "sha256": "97894cd0ab5208bfc69f1e97665b4844b102565e749db0aa6b8aec80255e6604"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5934,
+            "visualReview": "pending"
+          },
+          "limitation": "Selected parent/item identity requires visible row/full-ID tooltip review; clipboard contains result text, not an operation ID"
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041136701553-fixture/activity-result-copy.json",
+          "utc": "2026-10-09T04:11:38.673878+00:00",
+          "selectionKind": "child",
+          "parentOperationId": "67df7fcf-9d5a-44ca-8aa5-e989b9eaf6b1",
+          "itemId": "d5a42caa-e7c2-490d-a7ed-de5ae7ee3116",
+          "copyStatus": "copied",
+          "independentPasteMatchesExpectedText": true,
+          "witness": {
+            "utc": "2026-10-09T04:11:38.773171+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/result-child-paste-verified.png",
+            "sha256": "ed53f8709a2b75ae53f8e46c4911a1d12e76da9a61b733a8bedb33bf35e68bc9",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-source43-attempt1-result-child-paste-verified-head0.ppm",
+              "sha256": "58eca604d933a7633dbff4275f9262bb84668b3f6d6de1c5d29f681eaecef472"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5934,
+            "visualReview": "pending"
+          },
+          "limitation": "Selected parent/item identity requires visible row/full-ID tooltip review; clipboard contains result text, not an operation ID"
+        }
+      ]
+    },
+    "closeTray": {
+      "normalCloseReceipts": [
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040507416564-close/closed.json",
+          "normalExitCode": 0,
+          "normalExitStatus": "normal",
+          "residentUnchanged": {
+            "pid": 153788,
+            "startTicks": 2554644,
+            "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+          }
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040834643650-close/closed.json",
+          "normalExitCode": 0,
+          "normalExitStatus": "normal",
+          "residentUnchanged": {
+            "pid": 153788,
+            "startTicks": 2554644,
+            "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+          }
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040845846155-close/closed.json",
+          "normalExitCode": 0,
+          "normalExitStatus": "normal",
+          "residentUnchanged": {
+            "pid": 153788,
+            "startTicks": 2554644,
+            "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+          }
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041309347330-close/closed.json",
+          "normalExitCode": 0,
+          "normalExitStatus": "normal",
+          "residentUnchanged": {
+            "pid": 153788,
+            "startTicks": 2554644,
+            "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+          }
+        }
+      ],
+      "finalHelperPid": 0,
+      "activeOperations": 0,
+      "residentUnchanged": true,
+      "renderedTray": "Native final-tray-tooltip shows put.gd \u2014 Share and local capture over actual rendered tray icon."
+    }
+  },
+  "acceptedConfigurationObservations": [
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T034110005820-observe/observed.json",
+      "utc": "2026-10-09T03:41:11.306193+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "",
+      "observedRevision": "",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "upload",
+        "desktop": "upload",
+        "region": "upload",
+        "window": "upload"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T035414581215-observe/observed.json",
+      "utc": "2026-10-09T03:54:16.010245+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T035741512794-observe/observed.json",
+      "utc": "2026-10-09T03:57:42.841756+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 188938,
+        "state": "ready"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T035754462844-observe/observed.json",
+      "utc": "2026-10-09T03:57:55.787491+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040132678956-observe/observed.json",
+      "utc": "2026-10-09T04:01:34.399430+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 190931,
+        "state": "ready"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040146074473-observe/observed.json",
+      "utc": "2026-10-09T04:01:47.530411+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 4,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T040401228108-observe/observed.json",
+      "utc": "2026-10-09T04:04:02.768270+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 3338,
+        "lastExit": {
+          "code": 0,
+          "generation": 5,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041319105070-observe/observed.json",
+      "utc": "2026-10-09T04:13:20.662268+00:00",
+      "resident": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "ui": {
+        "checkpointBytes": 3961,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    }
+  ],
+  "blockedGates": [
+    {
+      "gate": "KDE Settings resize continuity",
+      "status": "open/failure preserved",
+      "witnesses": [
+        "settings-empty-compact-established",
+        "settings-empty-compact-settled",
+        "settings-empty-compact-final"
+      ],
+      "recoveryWitness": "settings-empty-compact-advanced-collapsed"
+    },
+    {
+      "gate": "Strict1024x700 Settings client",
+      "status": "unverified",
+      "actual": "Configured compact1024x709; other attempted compact dimensions691/709; witness label settings-empty-compact-1024x700 is intended target only and is not size proof."
+    }
+  ],
+  "limitations": [
+    "Node.js absent in guest configure; GNOME ownership fixture not configured. All40 configured dev tests passed; host full40 reported separately by root.",
+    "Original failed Qt clipboard producer source marker was superseded by subsequent frozen lab runs; ready.json/parameters/native backend and failed operation retained, original marker unavailable.",
+    "Initial deep matrix proxy failed AF_UNIX path length before capture; preserved and deliberate short-proxy recovery used.",
+    "Cold/quiet/performance gates not established. Memory snapshot is post-build/post-suite attribution only.",
+    "Final UI/tab change announced by root belongs to next source cohort; this receipt describes frozen count43 only."
+  ],
+  "postSuiteMemoryAttribution": {
+    "utc": "2026-10-09T04:15:03.513430+00:00",
+    "sourceCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+    "version": "0.1.1-dev.43+gf56dc72de4fe",
+    "resident": {
+      "pid": 153788,
+      "startTicks": 2554644,
+      "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+    },
+    "memory": {
+      "identity": {
+        "pid": 153788,
+        "startTicks": 2554644,
+        "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+      },
+      "units": "KiB",
+      "smapsRollup": {
+        "Rss": 141872,
+        "Pss": 39671,
+        "Shared_Clean": 114616,
+        "Shared_Dirty": 0,
+        "Private_Clean": 8976,
+        "Private_Dirty": 18280,
+        "Private_Hugetlb": 0,
+        "Swap": 0,
+        "SwapPss": 0
+      },
+      "privateKiB": 27256,
+      "sharedKiB": 114616
+    },
+    "activeOperations": 0,
+    "helperPid": 0,
+    "trayAvailable": true,
+    "fullMatrixCases": 12,
+    "fullMatrixPassed": 12,
+    "continuationCases": 9,
+    "scope": "Post-build post-native-suite attribution snapshot only; not quiet/cold 40 MiB acceptance; no timing measurement",
+    "selectedHistoryId": "5c226b7b-0e69-4a9d-b0ff-c08bbde5a578",
+    "selectedHistoryName": "Screen-Capture-2026-10-08-23-05-16.png",
+    "selectedHistoryOperationId": "5cd9ad84-d73d-4304-a676-132c7f6880c6",
+    "copiedOperationId": "67df7fcf-9d5a-44ca-8aa5-e989b9eaf6b1",
+    "remoteMeasurementAttempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041412298617-final-readonly-attribution",
+    "diagnosticShapeRecovery": "Initial metadata assembly requested trayAvailable from diagnostics rather than ui.snapshot diagnostics; corrected using already captured read-only receipt; no repeated memory measurement"
+  },
+  "preservedFailures": [
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T034124643881-matrix/failed.json",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T034251281550-matrix/failed.json",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041412298617-final-readonly-attribution/failed.json"
+  ],
+  "noMoreGuestActions": true
+}

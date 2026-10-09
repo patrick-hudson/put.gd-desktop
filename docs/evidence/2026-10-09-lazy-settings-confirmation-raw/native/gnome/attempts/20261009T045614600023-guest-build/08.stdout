@@ -1,0 +1,114 @@
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/lab/putgd-memory-build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- LayerShellQt unavailable: KDE native region selection will report unavailable
+-- Configuring done (1.1s)
+-- Generating done (0.4s)
+-- Build files have been written to: /home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/dev
+[1/57] cd /home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/lab/putgd-ui-refinement-lazy-exp001-native/source -DOUTPUT_DIR=/home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/dev/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/lab/putgd-ui-refinement-lazy-exp001-native/source/cmake/GenerateBuildInfo.cmake
+[2/57] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[3/57] Linking CXX static library libputgd_build_identity.a
+[4/57] Linking CXX shared module libputgd-s3.so
+[5/57] Automatic MOC and UIC for target putgd_ui
+[6/57] Linking CXX executable putgd-cli
+[7/57] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/mocs_compilation.cpp.o
+[8/57] Linking CXX executable putgd
+[9/57] Linking CXX shared module libtest_s3_incompatible.so
+[10/57] Linking CXX shared module libtest_s3_wrong_build.so
+[11/57] Linking CXX shared module libtest_s3_wrong_transport.so
+[12/57] Linking CXX executable test_kde_ownership
+[13/57] Linking CXX executable test_ui_process
+[14/57] Linking CXX executable test_ui_endpoints
+[15/57] Linking CXX executable test_gui_version
+[16/57] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+[17/57] Linking CXX static library libputgd_ui.a
+[18/57] Linking CXX executable test_gui_tray
+[19/57] Automatic MOC and UIC for target test_gui_settings
+[20/56] Building CXX object CMakeFiles/putgd_ui_application.dir/src/ui/UiApplicationController.cpp.o
+[21/56] Linking CXX static library libputgd_ui_application.a
+[22/56] Linking CXX executable putgd-ui
+[23/56] Automatic MOC and UIC for target test_gui_application
+[24/55] Building CXX object CMakeFiles/test_gui_settings.dir/tests/gui/test_settings.cpp.o
+[25/55] Linking CXX executable test_ui_split_services
+[26/55] Linking CXX executable test_version
+[27/55] Linking CXX executable test_geometry
+[28/55] Building CXX object CMakeFiles/test_gui_application.dir/tests/gui/test_ui_application.cpp.o
+[29/55] Linking CXX executable test_ui_native_lifecycle
+[30/55] Linking CXX executable test_gui_application
+[31/55] Linking CXX executable test_keychain_backend
+[32/55] Linking CXX executable test_x11
+[33/55] Linking CXX executable test_keychain
+[34/55] Linking CXX executable test_s3_delete
+[35/55] Linking CXX executable test_collision_policy
+[36/55] Linking CXX executable test_s3_module
+[37/55] Linking CXX executable test_s3
+[38/55] Linking CXX executable test_public_url
+[39/55] Linking CXX executable test_payload
+[40/55] Linking CXX executable test_archive
+[41/55] Linking CXX executable test_upload_naming
+[42/55] Linking CXX executable test_history
+[43/55] Linking CXX executable test_operations
+[44/55] Linking CXX executable test_storage_contract
+[45/55] Linking CXX executable test_cli
+[46/55] Linking CXX executable test_config_reload
+[47/55] Linking CXX executable test_gnome_bridge
+[48/55] Linking CXX executable test_kwin_transfer
+[49/55] Linking CXX executable test_settings
+[50/55] Linking CXX executable test_gui_settings
+[51/55] Linking CXX executable test_gui_operations_view
+[52/55] Linking CXX executable test_login_startup
+[53/55] Linking CXX executable test_gui_history_view
+[54/55] Linking CXX executable test_local_ipc
+[55/55] Linking CXX executable test_ip_address
+Test project /home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/dev
+    Start  1: version_contract
+1/5 Test  #1: version_contract .................   Passed    3.47 sec
+    Start  3: ui_split_services_integration
+2/5 Test  #3: ui_split_services_integration ....   Passed    0.54 sec
+    Start  8: version_integration
+3/5 Test  #8: version_integration ..............   Passed    0.07 sec
+    Start 10: gui_tray
+4/5 Test #10: gui_tray .........................   Passed    0.40 sec
+    Start 11: gui_version
+5/5 Test #11: gui_version ......................   Passed    0.04 sec
+
+100% tests passed, 0 tests failed out of 5
+
+Total Test time (real) =   4.52 sec
+-- Found AWS SDK for C++, Version: 1.11.907, Install Root:/home/lab/putgd-memory-build/sdk, Platform Prefix:, Platform Dependent Libraries: pthread;curl
+-- Components specified for AWSSDK: s3, application will be depending on libs: aws-cpp-sdk-s3;aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-core
+-- LibCrypto Include Dir: /usr/include
+-- LibCrypto Shared Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.so
+-- LibCrypto Static Lib:  /usr/lib/x86_64-linux-gnu/libcrypto.a
+-- Found aws-cpp-sdk-core
+-- Try finding aws-cpp-sdk-s3
+-- Found aws-cpp-sdk-s3
+-- LayerShellQt unavailable: KDE native region selection will report unavailable
+-- Configuring done (0.6s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/release
+[1/13] cd /home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/release && /usr/bin/cmake -DSOURCE_DIR=/home/lab/putgd-ui-refinement-lazy-exp001-native/source -DOUTPUT_DIR=/home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/release/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/lab/putgd-ui-refinement-lazy-exp001-native/source/cmake/GenerateBuildInfo.cmake
+[2/13] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[3/13] Linking CXX static library libputgd_build_identity.a
+[4/13] Linking CXX shared module libputgd-s3.so
+[5/13] Automatic MOC and UIC for target putgd_ui
+[6/13] Linking CXX executable putgd-cli
+[7/13] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/mocs_compilation.cpp.o
+[8/13] Linking CXX executable putgd
+[9/13] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+[10/13] Linking CXX static library libputgd_ui.a
+[11/13] Building CXX object CMakeFiles/putgd_ui_application.dir/src/ui/UiApplicationController.cpp.o
+[12/13] Linking CXX static library libputgd_ui_application.a
+[13/13] Linking CXX executable putgd-ui
+CPack: Create package using DEB
+CPack: Install projects
+CPack: - Install project: putgd []
+CPack: Create package
+CPack: - package: /home/lab/putgd-ui-refinement-frozen-exp001-source46/packages/putgd_0.1.1~dev.46+g6f6372e79d8b_amd64.deb generated.

@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T04:27:23.156592+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-wide-advanced-first.png",
+  "sha256": "fb1a15537deec48106a698203a366c9e31489ee8008d9b912a26125b995915e6",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-wide-advanced-first-head0.ppm",
+    "sha256": "d14ada15e35421f639a4d148a473f6c780c4d3cca62db9c71da3400e773b426d"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5938,
+  "visualReview": "pending"
+}

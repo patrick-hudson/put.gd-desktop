@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T03:43:34.983746+00:00",
+  "phase": "matrix",
+  "errorType": "CalledProcessError",
+  "error": "Command '['/usr/bin/python3', '/home/patrick/work/put.gd/tools/lab/lab.py', 'run', '--run', '/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T034251281550-4', '--scenario', 'clipboard-text', '--clipboard-client', 'qt', '--timeout', '90', '--keep']' returned non-zero exit status 1."
+}

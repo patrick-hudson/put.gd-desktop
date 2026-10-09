@@ -1,0 +1,33 @@
+{
+  "pointer": {
+    "start": [
+      150,
+      182
+    ],
+    "end": [
+      230,
+      242
+    ],
+    "viewport": [
+      1280,
+      800
+    ],
+    "pressPauseSeconds": 0.2,
+    "movePauseSeconds": 0.2
+  },
+  "witness": {
+    "utc": "2026-10-09T04:32:01.260049+00:00",
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/diagnostic-selector-drag.png",
+    "sha256": "ce36f75af558eb162c4fd7caa4d2987dcf1aec864dd7d2e0196109b33cf7543d",
+    "nativeQmp": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-diagnostic-selector-drag-head0.ppm",
+      "sha256": "b58fc71518da9859b2fe1e357ec4f974287db2aeec8fa0da973e7e6eb49cc0b9"
+    },
+    "desktopPixels": [
+      1280,
+      800
+    ],
+    "vncPort": 5938,
+    "visualReview": "pending"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T03:28:26.674034+00:00",
+  "phase": "install",
+  "errorType": "CalledProcessError",
+  "error": "Command '['ssh', '-o', 'BatchMode=yes', '-o', 'IdentitiesOnly=yes', '-o', 'StrictHostKeyChecking=yes', '-o', 'ConnectTimeout=5', '-o', 'UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/known_hosts', '-i', '/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/identity', '-p', '22238', 'lab@127.0.0.1', 'sh', '-s']' returned non-zero exit status 1."
+}

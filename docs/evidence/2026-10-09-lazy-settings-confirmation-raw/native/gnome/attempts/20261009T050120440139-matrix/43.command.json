@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/identity",
+    "-p",
+    "22236",
+    "lab@127.0.0.1",
+    "sh",
+    "-s"
+  ],
+  "cwd": null,
+  "stdinFile": "43.stdin",
+  "startedUtc": "2026-10-09T05:03:06.589058+00:00"
+}

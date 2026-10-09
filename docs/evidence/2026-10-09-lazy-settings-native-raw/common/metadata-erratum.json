@@ -1,0 +1,6 @@
+{
+  "field": "source.json candidate.comparison prose",
+  "original": "Base44 committed tree plus exact four-path overlay, not relabelled as clean44.",
+  "correction": "Base45 committed tree plus exact four-path overlay; not a clean committed build.",
+  "identity": "Full commit/tree/count45 and bundle/patch/source hashes already correct. Original frozen metadata preserved; this is a prose-only erratum."
+}

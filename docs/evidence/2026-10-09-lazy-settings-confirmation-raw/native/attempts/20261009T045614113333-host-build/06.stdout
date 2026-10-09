@@ -1,0 +1,5 @@
+CPack: Create package using DEB
+CPack: Install projects
+CPack: - Install project: putgd []
+CPack: Create package
+CPack: - package: /home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/host/packages/putgd_0.1.1~dev.46+g6f6372e79d8b_amd64.deb generated.

@@ -1,0 +1,9 @@
+{
+  "argv": [
+    "node",
+    "/home/patrick/.codex/plugins/cache/compound-engineering-plugin/compound-engineering/3.30.4/skills/ce-optimize/scripts/decide.mjs",
+    "/home/patrick/work/put.gd/work/view-startup-latency/c46/matched-source45-decision-input.json"
+  ],
+  "exitCode": 0,
+  "runtimeScope": "Installed host-only Compound Engineering workflow; no product/guest dependency"
+}

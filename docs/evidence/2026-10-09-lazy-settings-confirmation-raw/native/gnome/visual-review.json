@@ -1,0 +1,2036 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T05:07:03.865115+00:00",
+  "compositor": "GNOME/Wayland",
+  "evidenceClass": "graphical-kvm",
+  "visibleVncPort": 5936,
+  "displayWall": "http://127.0.0.1:8765/",
+  "scope": "Clean frozen46 current-source native matrix and bounded Settings/lifecycle acceptance; no timing or memory claim. Prior45dirty detailed draft/geometry proof is separate supporting evidence.",
+  "candidateCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "candidateTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+  "version": "0.1.1-dev.46+g6f6372e79d8b",
+  "dirty": false,
+  "archiveSha256": "0853b2b526e1b4e6a1d25b501a7b2c91ba86dbf86bb57272fee67a00e8bb690b",
+  "packageSha256": "8d3d47c4c42d7f158c42917f27b2b436f397bb218da3eafa61489a277c27a94d",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb",
+    "/usr/bin/putgd-cli": "2d62399e4fe8856bf6c89a6727909252d5d318ed24f4c2dfd97336194c8be468",
+    "/usr/bin/putgd-ui": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+  },
+  "resident": {
+    "pid": 112855,
+    "startTicks": 1249984,
+    "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+  },
+  "nativeMatrix": {
+    "status": "passed",
+    "count": 12,
+    "cases": [
+      {
+        "client": "qt",
+        "scenario": "region",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "64e4d8baa1e94ceab1f3adcf68899431",
+          "profile": "gnome-wayland",
+          "scenario": "region-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "c318e7cd-618f-448d-a25f-71a107eda14e",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 60,
+              "saved": true,
+              "width": 80
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-1/final-head0.ppm",
+            "sha256": "e7e5286a8cfff60afbf4384c08dde381c77144535df2699fcc25edc0a5f6e41e"
+          },
+          "elapsedSeconds": 9.320769827987533,
+          "evidenceDirectory": "tests/64e4d8baa1e94ceab1f3adcf68899431"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-1",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-1/final-head0.ppm",
+          "sha256": "e7e5286a8cfff60afbf4384c08dde381c77144535df2699fcc25edc0a5f6e41e"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "window",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "01a9c12638c446d98bea20b2c0a1f3e3",
+          "profile": "gnome-wayland",
+          "scenario": "window-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "6e524d0c-ff3b-4736-b330-8dfebf2d08e9",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 662,
+            "height": 480,
+            "sha256": "3d82c6d42e05dd0eef4e2109a1bfa2362d341f5927ab5f0062a2c339cf018755"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 480,
+              "saved": true,
+              "width": 662
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 662,
+            "height": 480,
+            "sha256": "3d82c6d42e05dd0eef4e2109a1bfa2362d341f5927ab5f0062a2c339cf018755"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-2/final-head0.ppm",
+            "sha256": "11cf6e42de4a170cfab182e51befd506c78fbaf1a568dbda28131d87282b3529"
+          },
+          "elapsedSeconds": 8.744563546031713,
+          "evidenceDirectory": "tests/01a9c12638c446d98bea20b2c0a1f3e3"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-2",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-2/final-head0.ppm",
+          "sha256": "11cf6e42de4a170cfab182e51befd506c78fbaf1a568dbda28131d87282b3529"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "desktop",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "00a7262cbeca4404a92b619dcf54fb0f",
+          "profile": "gnome-wayland",
+          "scenario": "desktop-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "ae740243-2982-48ba-8479-e197ceae3e75",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 1280,
+            "height": 800,
+            "sha256": "6d6d4b5711c6fbf313691d50f075e6af7e6076fb2292592355a5f5b793122b66"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 800,
+              "saved": true,
+              "width": 1280
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 1280,
+            "height": 800,
+            "sha256": "6d6d4b5711c6fbf313691d50f075e6af7e6076fb2292592355a5f5b793122b66"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-3/final-head0.ppm",
+            "sha256": "e7e5286a8cfff60afbf4384c08dde381c77144535df2699fcc25edc0a5f6e41e"
+          },
+          "elapsedSeconds": 9.842436189006548,
+          "evidenceDirectory": "tests/00a7262cbeca4404a92b619dcf54fb0f"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-3",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-3/final-head0.ppm",
+          "sha256": "e7e5286a8cfff60afbf4384c08dde381c77144535df2699fcc25edc0a5f6e41e"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-text",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "bfb12b55a95c45a49afc3a400f1684cd",
+          "profile": "gnome-wayland",
+          "scenario": "clipboard-text-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "8ea5ac41-7400-4b66-bc24-c332fa5687bd",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "formats": [
+              "text/plain"
+            ],
+            "schemaVersion": 1,
+            "text": "putgd synthetic clipboard text"
+          },
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-4/final-head0.ppm",
+            "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+          },
+          "elapsedSeconds": 7.871160679962486,
+          "evidenceDirectory": "tests/bfb12b55a95c45a49afc3a400f1684cd"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-4",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-4/final-head0.ppm",
+          "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-image",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "600d56762b9a4e43bca74c242f186067",
+          "profile": "gnome-wayland",
+          "scenario": "clipboard-image-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "f17296c6-9a83-4e03-a4d7-05f0188418d1",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 64,
+              "saved": true,
+              "width": 96
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-5/final-head0.ppm",
+            "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+          },
+          "elapsedSeconds": 8.917673803982325,
+          "evidenceDirectory": "tests/600d56762b9a4e43bca74c242f186067"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-5",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-5/final-head0.ppm",
+          "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-files",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "78994f41c1154594902d48dc9f0df6ae",
+          "profile": "gnome-wayland",
+          "scenario": "clipboard-files-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "0f02cc9e-09e8-409f-b149-07d7575682ca",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            },
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "formats": [
+              "text/uri-list"
+            ],
+            "schemaVersion": 1,
+            "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\n",
+            "urls": [
+              "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+              "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+            ]
+          },
+          "paste": {
+            "ok": true
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-6/final-head0.ppm",
+            "sha256": "5cdcf7a75669d536d23ffea57f899e21394ebda7adcc8d8424937704f52f99c2"
+          },
+          "elapsedSeconds": 9.589081432961393,
+          "evidenceDirectory": "tests/78994f41c1154594902d48dc9f0df6ae"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-6",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-6/final-head0.ppm",
+          "sha256": "5cdcf7a75669d536d23ffea57f899e21394ebda7adcc8d8424937704f52f99c2"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-escape",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "2f0ab38806f9448bace28a297eb252b5",
+          "profile": "gnome-wayland",
+          "scenario": "region-cancel-escape-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "78934f8f-f860-4972-bb65-a17a8c0eae83",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain",
+                "text/plain;charset=utf-8"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-7/final-head0.ppm",
+            "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+          },
+          "elapsedSeconds": 8.489176105998922,
+          "evidenceDirectory": "tests/2f0ab38806f9448bace28a297eb252b5"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-7",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-7/final-head0.ppm",
+          "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-right-click",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "1765826cbb744b9c82cc62537faed922",
+          "profile": "gnome-wayland",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "70513118-25db-488c-9cff-a42618897776",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain",
+                "text/plain;charset=utf-8"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-8/final-head0.ppm",
+            "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+          },
+          "elapsedSeconds": 8.428556307975668,
+          "evidenceDirectory": "tests/1765826cbb744b9c82cc62537faed922"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-8",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-8/final-head0.ppm",
+          "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-zero-area",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "9f402cbd921b44c590e76eab90828c38",
+          "profile": "gnome-wayland",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 225,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 342,
+            "y": 176,
+            "width": 662,
+            "height": 480
+          },
+          "parameters": "parameters.json",
+          "operationId": "58a4cc1a-4aa9-4b23-a117-471602ec10e1",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain",
+                "text/plain;charset=utf-8"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-9/final-head0.ppm",
+            "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+          },
+          "elapsedSeconds": 8.405087518971413,
+          "evidenceDirectory": "tests/9f402cbd921b44c590e76eab90828c38"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-9",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-9/final-head0.ppm",
+          "sha256": "0e7f6310b669b59a33637ea409fb6c0341acaa769c7500cc8dcec6920f54a5b1"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-text",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "7c45aa4790e24769b87e3c4d9e613b35",
+          "profile": "gnome-wayland",
+          "scenario": "clipboard-text-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.22",
+            "displayBackend": "GdkWaylandDisplay"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 243,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "c12fd0ee-540c-4348-acff-0179b2a7e188",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/plain;charset=utf-8"
+            ],
+            "text": "putgd synthetic clipboard text"
+          },
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "schemaVersion": 1,
+              "client": "GTK",
+              "formats": [
+                "text/plain;charset=utf-8"
+              ],
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-10/final-head0.ppm",
+            "sha256": "bdfa90db59b7203b8d8e82c8422f256e7258c88afbcac96827e28b202db17d2b"
+          },
+          "elapsedSeconds": 10.202840099984314,
+          "evidenceDirectory": "tests/7c45aa4790e24769b87e3c4d9e613b35"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-10",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-10/final-head0.ppm",
+          "sha256": "bdfa90db59b7203b8d8e82c8422f256e7258c88afbcac96827e28b202db17d2b"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-image",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "2154c743da04487da46f958a8ccc600d",
+          "profile": "gnome-wayland",
+          "scenario": "clipboard-image-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.22",
+            "displayBackend": "GdkWaylandDisplay"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 243,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "3a337873-9bab-4f4c-a25d-93b90b241836",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "image/png"
+            ],
+            "image": {
+              "width": 96,
+              "height": 64,
+              "saved": true
+            }
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-11/final-head0.ppm",
+            "sha256": "bdfa90db59b7203b8d8e82c8422f256e7258c88afbcac96827e28b202db17d2b"
+          },
+          "elapsedSeconds": 11.27721093595028,
+          "evidenceDirectory": "tests/2154c743da04487da46f958a8ccc600d"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-11",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-11/final-head0.ppm",
+          "sha256": "bdfa90db59b7203b8d8e82c8422f256e7258c88afbcac96827e28b202db17d2b"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-files",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "da2376b302024384a953f935c04223db",
+          "profile": "gnome-wayland",
+          "scenario": "clipboard-files-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 112855,
+            "startTicks": 1249984,
+            "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.22",
+            "displayBackend": "GdkWaylandDisplay"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 353,
+            "y": 243,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "87ad05fc-9f23-4778-9984-79a5383d9709",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            },
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/uri-list"
+            ],
+            "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1-f45ce4c2-1bfe-43a0-b7a4-4b2d8595c63c.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2-20811996-f437-4c35-9a94-ed9d32aae4a3.txt\r\n",
+            "urls": [
+              "file:///home/lab/putgd-lab/archive/text/synthetic-1-f45ce4c2-1bfe-43a0-b7a4-4b2d8595c63c.txt",
+              "file:///home/lab/putgd-lab/archive/text/synthetic-2-20811996-f437-4c35-9a94-ed9d32aae4a3.txt"
+            ]
+          },
+          "paste": {
+            "ok": true
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-12/final-head0.ppm",
+            "sha256": "bdfa90db59b7203b8d8e82c8422f256e7258c88afbcac96827e28b202db17d2b"
+          },
+          "elapsedSeconds": 9.681331600004341,
+          "evidenceDirectory": "tests/da2376b302024384a953f935c04223db"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-12",
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T050120440139-12/final-head0.ppm",
+          "sha256": "bdfa90db59b7203b8d8e82c8422f256e7258c88afbcac96827e28b202db17d2b"
+        }
+      }
+    ],
+    "visualReview": "All twelve actual final native screenshots inspected in labelled contact sheet; independent fixture artifacts and paste checks recorded in each raw result."
+  },
+  "helperIdentities": [
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050355928572-show",
+      "utc": "2026-10-09T05:03:59.244061+00:00",
+      "view": "settings",
+      "reply": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 130207,
+        "startTicks": 1277162,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T05:03:59.375983+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-empty.png",
+        "sha256": "09f9faec520e49813d7fcba0ac13d321d188935e39e72763534be6b6428cb792",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-empty-head0.ppm",
+          "sha256": "3daaa2b0a45ec007747664679dc3bfa7727b99fdfb4e88fc00b825ba96f883bd"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050521069598-show",
+      "utc": "2026-10-09T05:05:24.249138+00:00",
+      "view": "settings",
+      "reply": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 131786,
+        "startTicks": 1285663,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T05:05:24.376259+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-reopen.png",
+        "sha256": "9575eb6e800cb7f2d372a1bea81c4a2a56e950cb125ae4d1f3b0151ca2f56663",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-reopen-head0.ppm",
+          "sha256": "0455d720d2dc6a789ee83fb6c608ffe13c548c4efbe0581c351c868714a016b1"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050551056713-show",
+      "utc": "2026-10-09T05:05:54.030645+00:00",
+      "view": "history",
+      "reply": {
+        "shown": "history"
+      },
+      "helper": {
+        "pid": 132410,
+        "startTicks": 1288655,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T05:05:54.158504+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-open.png",
+        "sha256": "bd391cf56b30bc61d47e1778658d1c3bdcbfdf4a874d3f17a091848c29c91b71",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-open-head0.ppm",
+          "sha256": "bc6da9861a1d2ef895f6aaa733c926afaf1350947f7843b61629951ecb338f68"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050600414626-show",
+      "utc": "2026-10-09T05:06:03.297758+00:00",
+      "view": "history",
+      "reply": {
+        "shown": "history"
+      },
+      "helper": {
+        "pid": 133001,
+        "startTicks": 1289588,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T05:06:03.430909+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-reopen.png",
+        "sha256": "877c68f463c1e9004c751a60929da93e92d2680039606029afcd406a1cf08e54",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-reopen-head0.ppm",
+          "sha256": "78fe07cd9b9923ce8f5783acf3ffccd8bb0d180e52f7f7442a66719457a0c619"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050609412438-show",
+      "utc": "2026-10-09T05:06:12.455077+00:00",
+      "view": "activity",
+      "reply": {
+        "shown": "activity"
+      },
+      "helper": {
+        "pid": 133588,
+        "startTicks": 1290495,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T05:06:12.578444+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-open.png",
+        "sha256": "01c6458f6a90bd197e5cf9ccf1ded32f341047dfb54d0104bad7dc95ebea150a",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-open-head0.ppm",
+          "sha256": "62b200c2dc954cc21a297331651efd8e0616bf7b44e921582fc48e1c92fc62bf"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050618947969-show",
+      "utc": "2026-10-09T05:06:21.922352+00:00",
+      "view": "activity",
+      "reply": {
+        "shown": "activity"
+      },
+      "helper": {
+        "pid": 134174,
+        "startTicks": 1291444,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T05:06:22.055783+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-reopen.png",
+        "sha256": "01c6458f6a90bd197e5cf9ccf1ded32f341047dfb54d0104bad7dc95ebea150a",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-reopen-head0.ppm",
+          "sha256": "62b200c2dc954cc21a297331651efd8e0616bf7b44e921582fc48e1c92fc62bf"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    }
+  ],
+  "normalCloseEvents": [
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050515324420-close",
+      "utc": "2026-10-09T05:05:17.786752+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 130207,
+        "startTicks": 1277162,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "helperAfter": {
+        "checkpointBytes": 1887,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "witness": {
+        "utc": "2026-10-09T05:05:18.207418+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-normal-close.png",
+        "sha256": "56296b7da2e15d0460a915368d8b9b2b5cff2a6c66c42b03f851940b7e4692a8",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-normal-close-head0.ppm",
+          "sha256": "457bcda8e41ec86e1fbd26ad4dc4051fd2b26fa8b5ed86a2b3950c528a0e72a5"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050528148810-close",
+      "utc": "2026-10-09T05:05:30.581023+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 131786,
+        "startTicks": 1285663,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "helperAfter": {
+        "checkpointBytes": 1887,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "witness": {
+        "utc": "2026-10-09T05:05:31.051429+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-reopen-normal-close.png",
+        "sha256": "56296b7da2e15d0460a915368d8b9b2b5cff2a6c66c42b03f851940b7e4692a8",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-reopen-normal-close-head0.ppm",
+          "sha256": "457bcda8e41ec86e1fbd26ad4dc4051fd2b26fa8b5ed86a2b3950c528a0e72a5"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050556004842-close",
+      "utc": "2026-10-09T05:05:58.076584+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 132410,
+        "startTicks": 1288655,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "helperAfter": {
+        "checkpointBytes": 2307,
+        "lastExit": {
+          "code": 0,
+          "generation": 4,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "witness": {
+        "utc": "2026-10-09T05:05:58.404542+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-normal-close.png",
+        "sha256": "56296b7da2e15d0460a915368d8b9b2b5cff2a6c66c42b03f851940b7e4692a8",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-normal-close-head0.ppm",
+          "sha256": "457bcda8e41ec86e1fbd26ad4dc4051fd2b26fa8b5ed86a2b3950c528a0e72a5"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050605142809-close",
+      "utc": "2026-10-09T05:06:07.535384+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 133001,
+        "startTicks": 1289588,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "helperAfter": {
+        "checkpointBytes": 2307,
+        "lastExit": {
+          "code": 0,
+          "generation": 5,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "witness": {
+        "utc": "2026-10-09T05:06:07.874531+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-reopen-normal-close.png",
+        "sha256": "f16e660340f5bac3c1ff309157ad7724d96192912b103da6eecc0367bfdffae2",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-reopen-normal-close-head0.ppm",
+          "sha256": "29556183c6dd9c9c0c036fed304a709904c46013cd596c3074e0b874b6a9b1c4"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050614430695-close",
+      "utc": "2026-10-09T05:06:16.558787+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 133588,
+        "startTicks": 1290495,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "helperAfter": {
+        "checkpointBytes": 2400,
+        "lastExit": {
+          "code": 0,
+          "generation": 6,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "witness": {
+        "utc": "2026-10-09T05:06:16.896812+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-normal-close.png",
+        "sha256": "f16e660340f5bac3c1ff309157ad7724d96192912b103da6eecc0367bfdffae2",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-normal-close-head0.ppm",
+          "sha256": "29556183c6dd9c9c0c036fed304a709904c46013cd596c3074e0b874b6a9b1c4"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050624971752-close",
+      "utc": "2026-10-09T05:06:27.118260+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 134174,
+        "startTicks": 1291444,
+        "parentPid": 112855,
+        "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+      },
+      "helperAfter": {
+        "checkpointBytes": 2400,
+        "lastExit": {
+          "code": 0,
+          "generation": 7,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "witness": {
+        "utc": "2026-10-09T05:06:27.462886+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-reopen-normal-close.png",
+        "sha256": "f16e660340f5bac3c1ff309157ad7724d96192912b103da6eecc0367bfdffae2",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-reopen-normal-close-head0.ppm",
+          "sha256": "29556183c6dd9c9c0c036fed304a709904c46013cd596c3074e0b874b6a9b1c4"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5936,
+        "visualReview": "pending"
+      }
+    }
+  ],
+  "stateObservations": [
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050112811931-observe",
+      "utc": "2026-10-09T05:01:14.119420+00:00",
+      "resident": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "ui": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "",
+      "observedRevision": "",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "upload",
+        "desktop": "upload",
+        "region": "upload",
+        "window": "upload"
+      },
+      "activeOperations": 0
+    },
+    {
+      "attempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/attempts/20261009T050629713698-observe",
+      "utc": "2026-10-09T05:06:30.848859+00:00",
+      "resident": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "ui": {
+        "checkpointBytes": 2400,
+        "lastExit": {
+          "code": 0,
+          "generation": 7,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    }
+  ],
+  "trayRegistration": {
+    "utc": "2026-10-09T05:01:43.757522+00:00",
+    "resident": {
+      "pid": 112855,
+      "startTicks": 1249984,
+      "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+    },
+    "trayAvailable": true,
+    "watcherOwner": "(':1.24',)\n",
+    "registeredItemsRaw": "(<[':1.36@/org/ayatana/NotificationItem/software_update_available', ':1.36@/org/ayatana/NotificationItem/livepatch', ':1.36@/org/ayatana/NotificationItem/unattended_upgrade', ':1.1488@/StatusNotifierItem']>,)\n",
+    "items": [
+      {
+        "registeredItem": ":1.1488@/StatusNotifierItem",
+        "properties": "(<('', @a(iiay) [], 'put.gd \u2014 Share and local capture', '')>,)\n",
+        "busProcessId": "(uint32 112855,)\n",
+        "matchesResident": true,
+        "putgdIdentified": true
+      }
+    ],
+    "registeredCurrentResident": true,
+    "scope": "Read-only StatusNotifier ownership metadata for current clean46 resident; no auth or payload reads"
+  },
+  "cases": {
+    "setupCancel": "Passed: visible Cancel; helper exits normally.",
+    "settingsSavedEmpty": "Passed: prominent Add S3 destination and Save locally; inactive destination/credential cards hidden.",
+    "settingsAdvancedKeyboard": "Passed: all three lazy Advanced pages and actual Tab/ShiftTab traversals reviewed; details in current witness labels.",
+    "normalLifecycle": "Passed: Settings, History and Activity show, normal close and reopen; helper zero after every close, same resident throughout.",
+    "tray": "Passed: actual rendered blue put.gd icon topbar1158/y16 and PID-linked StatusNotifier registration."
+  },
+  "supportingPriorByteIdenticalUiReceipt": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/visual-review.json",
+    "sha256": "9179aaa3748deaa2948edd06762b7d8484a7d0d69d9470b9477c7ef5d436ac7f",
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+    "scope": "Prior geometry, draft/cancel and complete page navigation proof; not relabelled46 evidence."
+  },
+  "reviewedWitnesses": [
+    {
+      "label": "activity-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-normal-close.png",
+      "sha256": "f16e660340f5bac3c1ff309157ad7724d96192912b103da6eecc0367bfdffae2",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-normal-close-head0.ppm",
+        "sha256": "29556183c6dd9c9c0c036fed304a709904c46013cd596c3074e0b874b6a9b1c4"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "activity-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-open.png",
+      "sha256": "01c6458f6a90bd197e5cf9ccf1ded32f341047dfb54d0104bad7dc95ebea150a",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-open-head0.ppm",
+        "sha256": "62b200c2dc954cc21a297331651efd8e0616bf7b44e921582fc48e1c92fc62bf"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "activity-reopen-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-reopen-normal-close.png",
+      "sha256": "f16e660340f5bac3c1ff309157ad7724d96192912b103da6eecc0367bfdffae2",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-reopen-normal-close-head0.ppm",
+        "sha256": "29556183c6dd9c9c0c036fed304a709904c46013cd596c3074e0b874b6a9b1c4"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "activity-reopen",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/activity-reopen.png",
+      "sha256": "01c6458f6a90bd197e5cf9ccf1ded32f341047dfb54d0104bad7dc95ebea150a",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-activity-reopen-head0.ppm",
+        "sha256": "62b200c2dc954cc21a297331651efd8e0616bf7b44e921582fc48e1c92fc62bf"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "console-after-unlock",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/console-after-unlock.png",
+      "sha256": "9b8458a1b1db9003b52c79fd2e0a9dd81a734f9e93603b04df599a909a8377c6",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-console-after-unlock-head0.ppm",
+        "sha256": "695ac45aa8939814f50226c6e0f2a95cc801e6bbfb82f2e56266af5c282fef51"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "fixture-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/fixture-normal-close.png",
+      "sha256": "5f1d08b006b38efceaf2ed912150d504b3a07ad9a4e959dd01b295ccdd368e41",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-fixture-normal-close-head0.ppm",
+        "sha256": "a79367d05e03a6089ebd213c8a6656d62d8dc23cfde6f1c053d435374213c092"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "history-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-normal-close.png",
+      "sha256": "56296b7da2e15d0460a915368d8b9b2b5cff2a6c66c42b03f851940b7e4692a8",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-normal-close-head0.ppm",
+        "sha256": "457bcda8e41ec86e1fbd26ad4dc4051fd2b26fa8b5ed86a2b3950c528a0e72a5"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "history-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-open.png",
+      "sha256": "bd391cf56b30bc61d47e1778658d1c3bdcbfdf4a874d3f17a091848c29c91b71",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-open-head0.ppm",
+        "sha256": "bc6da9861a1d2ef895f6aaa733c926afaf1350947f7843b61629951ecb338f68"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "history-reopen-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-reopen-normal-close.png",
+      "sha256": "f16e660340f5bac3c1ff309157ad7724d96192912b103da6eecc0367bfdffae2",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-reopen-normal-close-head0.ppm",
+        "sha256": "29556183c6dd9c9c0c036fed304a709904c46013cd596c3074e0b874b6a9b1c4"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "history-reopen",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/history-reopen.png",
+      "sha256": "877c68f463c1e9004c751a60929da93e92d2680039606029afcd406a1cf08e54",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-history-reopen-head0.ppm",
+        "sha256": "78fe07cd9b9923ce8f5783acf3ffccd8bb0d180e52f7f7442a66719457a0c619"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-advanced-expanded",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-advanced-expanded.png",
+      "sha256": "f7d529d078d3bc9b6f4e49c386bf4ed5b95e56f344501d2afa0e219e8417b5c7",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-advanced-expanded-head0.ppm",
+        "sha256": "0eef368f4e541084ec47fa10d4063f6b0c4ef9f1a557314e197b705d2f2d02e4"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-capture-backtab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-capture-backtab.png",
+      "sha256": "740c7a2cac1aa03aaa400fe270d3deeca505d5e12de9654b8509e5f61acca5c3",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-capture-backtab-head0.ppm",
+        "sha256": "007dbe8ece83027c496ed18e09a2316175f962aeb20878f0c1ef1fe983944e96"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-capture-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-capture-tab.png",
+      "sha256": "f93cb986fba03e285d3962dda81c11e136c04ec9209c314288bc77303b17b325",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-capture-tab-head0.ppm",
+        "sha256": "4b94a834377e1b24d473779ea746363df62d4214ed4ba05b8bef05781ca068bb"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-capture",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-capture.png",
+      "sha256": "740c7a2cac1aa03aaa400fe270d3deeca505d5e12de9654b8509e5f61acca5c3",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-capture-head0.ppm",
+        "sha256": "007dbe8ece83027c496ed18e09a2316175f962aeb20878f0c1ef1fe983944e96"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-empty",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-empty.png",
+      "sha256": "09f9faec520e49813d7fcba0ac13d321d188935e39e72763534be6b6428cb792",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-empty-head0.ppm",
+        "sha256": "3daaa2b0a45ec007747664679dc3bfa7727b99fdfb4e88fc00b825ba96f883bd"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-normal-close.png",
+      "sha256": "56296b7da2e15d0460a915368d8b9b2b5cff2a6c66c42b03f851940b7e4692a8",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-normal-close-head0.ppm",
+        "sha256": "457bcda8e41ec86e1fbd26ad4dc4051fd2b26fa8b5ed86a2b3950c528a0e72a5"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-preferences-backtab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-preferences-backtab.png",
+      "sha256": "fb5dbb80ad11dcdaa1abb0199e4fa798bdbdf256ef4681970cc3d7b3a80842ac",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-preferences-backtab-head0.ppm",
+        "sha256": "6f8d2942e48048cc5108aa398ac6d9d0a0bc594e187fa499f31d7549072297f2"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-preferences-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-preferences-tab.png",
+      "sha256": "48202ee5467f6589cf382fbf2d49759f8212743740c6562a2528e89865b5b645",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-preferences-tab-head0.ppm",
+        "sha256": "60c1f2dca5e14e8fe3136ff4e64a1e90a9bd5f1cf7c7d79b25c6d71335ca5e50"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-preferences",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-preferences.png",
+      "sha256": "fb5dbb80ad11dcdaa1abb0199e4fa798bdbdf256ef4681970cc3d7b3a80842ac",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-preferences-head0.ppm",
+        "sha256": "6f8d2942e48048cc5108aa398ac6d9d0a0bc594e187fa499f31d7549072297f2"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-reopen-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-reopen-normal-close.png",
+      "sha256": "56296b7da2e15d0460a915368d8b9b2b5cff2a6c66c42b03f851940b7e4692a8",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-reopen-normal-close-head0.ppm",
+        "sha256": "457bcda8e41ec86e1fbd26ad4dc4051fd2b26fa8b5ed86a2b3950c528a0e72a5"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-reopen",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-reopen.png",
+      "sha256": "9575eb6e800cb7f2d372a1bea81c4a2a56e950cb125ae4d1f3b0151ca2f56663",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-reopen-head0.ppm",
+        "sha256": "0455d720d2dc6a789ee83fb6c608ffe13c548c4efbe0581c351c868714a016b1"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-backtab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-shortcuts-backtab.png",
+      "sha256": "c6294c7b095bf72cd1325963107add72c71dff0763d501615d6616b83cf8e311",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-shortcuts-backtab-head0.ppm",
+        "sha256": "85f8c542b0d8cad119873f7660e32ee3636761cd31f21da0fca90f65aa9f9739"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-shortcuts-tab.png",
+      "sha256": "6545f0f085708bfd250db996d4b83fb0525639b7fb3614dbc66223d7ce98adfe",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-shortcuts-tab-head0.ppm",
+        "sha256": "6795d66e85d6aadc656026dd067fc0477eecee80952a959b4b42cfff30551fbd"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "settings-shortcuts",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/settings-shortcuts.png",
+      "sha256": "c6294c7b095bf72cd1325963107add72c71dff0763d501615d6616b83cf8e311",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-settings-shortcuts-head0.ppm",
+        "sha256": "85f8c542b0d8cad119873f7660e32ee3636761cd31f21da0fca90f65aa9f9739"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    },
+    {
+      "label": "setup-cancel",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/views/setup-cancel.png",
+      "sha256": "adb6e8e8ce15eeb6688df2127c58565b4e65a07aa474ebf285a16980d4f35373",
+      "nativeQmp": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-frozen-exp001-source46-setup-cancel-head0.ppm",
+        "sha256": "85ea3f81c51b4b1e3d5bae6b76d319909218d8de9e066377f23886f98e4a556c"
+      },
+      "reviewed": "Actual native image inspected directly or in labelled contact sheet"
+    }
+  ],
+  "blockedGates": [],
+  "notEstablished": [
+    "Performance timing or memory budgets",
+    "Full U6/U9 acceptance",
+    "New46 History/Activity copied-result repetition or geometry stress (bounded skip; prior supporting proof separate)."
+  ]
+}

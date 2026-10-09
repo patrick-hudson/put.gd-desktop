@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:52:53.999788+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-wide-child-selected.png",
+  "sha256": "11b8d7287d5cd5e408e81112788cbcd4913b4f083b0eccc16220affad5cfd509",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-activity-wide-child-selected-head0.ppm",
+    "sha256": "eac1ee2af70d7e2f749f99bf2ad3eb9fac3f6f790f8f29280e50bc8240165180"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5936,
+  "visualReview": "pending"
+}

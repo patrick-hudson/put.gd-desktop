@@ -1,0 +1,912 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T04:01:14.331746+00:00",
+  "compositor": "GNOME/Wayland",
+  "candidateCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+  "candidateTree": "1d52541f244a281c9789f06e3c5793e67b9d928d",
+  "version": "0.1.1-dev.43+gf56dc72de4fe",
+  "archiveSha256": "9044b524edcdff27d3839334fccb56b6edc0caa9f77b43257620474a3f621505",
+  "packageSha256": "a8acc709908e6f9370e0587c91cb02146f3a352ddf5cff71a95207d38a423c16",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d",
+    "/usr/bin/putgd-cli": "74360bf0ce055cc838d9dddddc0d6a03742ef763bfa73f177a4328a7aed0d81b",
+    "/usr/bin/putgd-ui": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+  },
+  "extensionSha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722",
+  "resident": {
+    "pid": 40274,
+    "startTicks": 754588,
+    "sha256": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d"
+  },
+  "helperIdentities": [
+    {
+      "attempt": "attempts/20261009T034708818783-show",
+      "view": "settings",
+      "helper": {
+        "pid": 61180,
+        "startTicks": 816444,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035135234327-show",
+      "view": "activity",
+      "helper": {
+        "pid": 66676,
+        "startTicks": 843088,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035035803652-show",
+      "view": "history",
+      "helper": {
+        "pid": 65311,
+        "startTicks": 837135,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T034515430162-show",
+      "view": "settings",
+      "helper": {
+        "pid": 58037,
+        "startTicks": 805108,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T034659336169-show",
+      "view": "settings",
+      "helper": {
+        "pid": 60249,
+        "startTicks": 815536,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035502857986-show",
+      "view": "history",
+      "helper": {
+        "pid": 70194,
+        "startTicks": 863835,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T034612602356-show",
+      "view": "settings",
+      "helper": {
+        "pid": 58995,
+        "startTicks": 810818,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T034909167456-show",
+      "view": "history",
+      "helper": {
+        "pid": 63919,
+        "startTicks": 828468,
+        "parentPid": 40274,
+        "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+      }
+    }
+  ],
+  "source43DevTests": {
+    "tests": 40,
+    "passed": 40,
+    "skipped": 0,
+    "junitSha256": "0877484e43b6e353e8f7c5934c2d5ae1e1b67e0fbcb27ce234bb84db9c6cc764",
+    "ownershipFixture": "Original frozen source43 Node test unregistered; separate GJS mock receipt passes five original assertions and negative controls. Not Shell graphical proof."
+  },
+  "nativeMatrix": {
+    "passedCases": 12,
+    "caseCount": 12,
+    "cases": [
+      {
+        "client": "qt",
+        "scenario": "region",
+        "operationId": "16f570fb-2349-4833-be8a-4f7605f665ab",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-1",
+        "resultSha256": "20d05bcda42fc95cee2b49d135857a2fb230b86f709c3b433fcc661632ed74cc"
+      },
+      {
+        "client": "qt",
+        "scenario": "window",
+        "operationId": "7c44bf4f-d266-48e4-9609-97a602a19ca1",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-2",
+        "resultSha256": "536b1ce783351ba8362b459fd3283b209782c76db81a681d706943e622436ddb"
+      },
+      {
+        "client": "qt",
+        "scenario": "desktop",
+        "operationId": "15d2405e-9f91-42d4-b69a-98ecd2dbff9f",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-3",
+        "resultSha256": "7579f7315d5f03e2e60212ca02f4b0efa82cca4c014568ef707070a1ffeb24d3"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-text",
+        "operationId": "48c66963-9298-47ec-8a93-7270ac1ffde6",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-4",
+        "resultSha256": "934180f4ba5e75e0f453589ab44a15f827c2c592c4ce102dc9466fa78b7f6f84"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-image",
+        "operationId": "2716ed09-b678-46d2-9cc3-41a5c4cb84fb",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-5",
+        "resultSha256": "2cf1c12ddecd062caeba87c594689249415919261139a5a31ad7844a4dff0244"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-files",
+        "operationId": "de4dc272-ab09-4ca3-8576-f067b6ae828e",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-6",
+        "resultSha256": "4d4bbe1079fde9c69d388741907f7d45de6abf42b03d62136eeef0d1be130cf8"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-escape",
+        "operationId": "51e112a8-0b81-4eba-9b68-f3306a92fdb1",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-7",
+        "resultSha256": "a9fcf6a93ce0f0ab9da47ef86785d443e5ef33f97e4924b34cc8fe086ec169fb"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-right-click",
+        "operationId": "4f3853c6-e1fc-4be1-b7fc-25e8587bdcd0",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-8",
+        "resultSha256": "c0168c22bb7107cc8c256b9f5e1670c2f362aa38bf0f9d2e4a49bab2d57aa14b"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-zero-area",
+        "operationId": "9b828961-cd5a-4ca7-a5f2-8ab247cab3aa",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-9",
+        "resultSha256": "2b89b651088f29a75bc5d988fac1704641f63c0882aaad371227b63d6bd7826d"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-text",
+        "operationId": "e2f65acd-f6f5-4ec3-b312-a1732aa976e1",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-10",
+        "resultSha256": "35e617de8832cc76e1a6427b888334f244438ee228ab8bbea804cbf0ce26bd8f"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-image",
+        "operationId": "ad0db9e5-938c-4f12-bdf6-6f0b6b4020ad",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-11",
+        "resultSha256": "6385d10638f6bf4e2a9f8bdeeb9426d0c233995d320ad55ac83dd7bcfdb931a5"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-files",
+        "operationId": "fa806dd1-1e27-40b8-91e5-37d2485c458c",
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T034241092751-12",
+        "resultSha256": "ed1c076ba0c6cc8b4ef3ee178cdbe267e517bbc51620dcc28e770308ee84587b"
+      }
+    ],
+    "contactSheet": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/matrix-contact-sheet.png",
+    "visualReview": "All twelve final native witnesses reviewed in contact sheet; fixture visible, no locked/inactive outputs, actual payload/paste assertions in case receipts."
+  },
+  "geometry": [
+    {
+      "view": "Settings empty / History / Activity",
+      "compact": {
+        "size": [
+          1000,
+          700
+        ],
+        "boundsInclusive": [
+          173,
+          86,
+          1172,
+          785
+        ]
+      },
+      "wide": {
+        "size": [
+          1200,
+          700
+        ],
+        "boundsInclusive": [
+          73,
+          86,
+          1272,
+          785
+        ]
+      },
+      "method": "Visible normal-window borders at independently recorded native display scale1; screenshot reviewed after drags. Requested coordinates alone are not evidence."
+    },
+    {
+      "view": "Settings configured",
+      "compact": {
+        "size": [
+          1000,
+          700
+        ],
+        "boundsInclusive": [
+          68,
+          72,
+          1067,
+          771
+        ]
+      },
+      "wide": {
+        "size": [
+          1200,
+          700
+        ],
+        "boundsInclusive": [
+          68,
+          72,
+          1267,
+          771
+        ]
+      },
+      "method": "Visible normal-window borders at scale1; maximized reopen restored visibly before evidence."
+    }
+  ],
+  "cases": {
+    "settingsSavedEmpty": {
+      "status": "passed",
+      "observations": "Prominent Add S3 destination and Save locally; inactive editor hidden; footer reachable at both widths; Add shows draft; visible Cancel keeps same revision/zero profiles; reopen empty. No added explanatory prose, consistent with corrected approved contract."
+    },
+    "settingsConfigured": {
+      "status": "passed",
+      "observations": "Simple and Advanced controls readable; navigation/footer reachable; synthetic bucket suffixd preserved across expand/collapse; visible Cancel keeps same accepted synthetic profile revision."
+    },
+    "history": {
+      "status": "passed",
+      "selectedHistoryId": "7cb16d1c-e434-4b76-aed1-8bc4bb687174",
+      "selectedName": "Screen-Capture-2026-10-08-22-49-07.png",
+      "observations": "Compact stacked inspector, wide side-by-side, compact return stable; long selected wide Name elides with full-name tooltip/details; summary scroll reveals local/upload/remote states and full local path; normal close/reopen retains selection."
+    },
+    "activity": {
+      "status": "passed",
+      "fullOperationId": "e9c3eeb4-74fd-4af7-b6b7-ac37ac2874e8",
+      "itemId": "bbbe23ab-69f5-45e9-8c6f-82a36a95c577",
+      "expectedResult": "putgd synthetic clipboard text",
+      "copies": [
+        {
+          "utc": "2026-10-09T03:52:20.624928+00:00",
+          "selectionKind": "parent",
+          "parentOperationId": "e9c3eeb4-74fd-4af7-b6b7-ac37ac2874e8",
+          "itemId": "bbbe23ab-69f5-45e9-8c6f-82a36a95c577",
+          "copyStatus": "copied",
+          "independentPasteMatchesExpectedText": true,
+          "witness": {
+            "utc": "2026-10-09T03:52:20.776092+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/result-parent-paste-verified.png",
+            "sha256": "81b0421a6410f9f3026bd387fe089248111a966161c07c4791049afb64a57da6",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-result-parent-paste-verified-head0.ppm",
+              "sha256": "580523cd8d9e2e9fdb9b19519ef3bcaab4250b26e74e409515c502787da898ea"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          },
+          "limitation": "Selected parent/item identity requires visible row/full-ID tooltip review; clipboard contains result text, not an operation ID"
+        },
+        {
+          "utc": "2026-10-09T03:52:48.253423+00:00",
+          "selectionKind": "child",
+          "parentOperationId": "e9c3eeb4-74fd-4af7-b6b7-ac37ac2874e8",
+          "itemId": "bbbe23ab-69f5-45e9-8c6f-82a36a95c577",
+          "copyStatus": "copied",
+          "independentPasteMatchesExpectedText": true,
+          "witness": {
+            "utc": "2026-10-09T03:52:48.376195+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/result-child-paste-verified.png",
+            "sha256": "d710818f07c5db608c1cbf727560f05ae9d68fd325ec926684f30235f3c42ace",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-result-child-paste-verified-head0.ppm",
+              "sha256": "bff517a99f5c867893f2b0225de51890866bbc126bc708c1aad81237e4736c07"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          },
+          "limitation": "Selected parent/item identity requires visible row/full-ID tooltip review; clipboard contains result text, not an operation ID"
+        }
+      ],
+      "observations": "Parent and child selections at compact/wide; parent full ID tooltip verified; child known filename/path mapped to retained production item ID. No child full-ID tooltip exists; none invented."
+    },
+    "helperLifecycle": {
+      "status": "passed",
+      "closedEvents": [
+        {
+          "attempt": "attempts/20261009T035110181171-close",
+          "utc": "2026-10-09T03:51:12.570732+00:00",
+          "gesture": [
+            "alt",
+            "f4"
+          ],
+          "helperBefore": {
+            "pid": 65311,
+            "startTicks": 837135,
+            "parentPid": 40274,
+            "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3799,
+            "lastExit": {
+              "code": 0,
+              "generation": 7,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 40274,
+            "startTicks": 754588,
+            "sha256": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d"
+          },
+          "witness": {
+            "utc": "2026-10-09T03:51:12.921135+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-final-normal-close.png",
+            "sha256": "09785a10bb0a39f912565d0f8c856f0a6e5c626ee885251543a1e4826c8b56f0",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-history-final-normal-close-head0.ppm",
+              "sha256": "d3e91b17c0d2623ab9cbab30ba73d89d2f08f9cf7368c43ae5c0ac2218647bc8"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "attempts/20261009T035343004425-close",
+          "utc": "2026-10-09T03:53:45.185177+00:00",
+          "gesture": [
+            "alt",
+            "f4"
+          ],
+          "helperBefore": {
+            "pid": 66676,
+            "startTicks": 843088,
+            "parentPid": 40274,
+            "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3968,
+            "lastExit": {
+              "code": 0,
+              "generation": 8,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 40274,
+            "startTicks": 754588,
+            "sha256": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d"
+          },
+          "witness": {
+            "utc": "2026-10-09T03:53:45.515577+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-final-normal-close.png",
+            "sha256": "82d1a4b35f941d6423fa6bdfff1ce2d831c0785600fc76357e6074e94a7c2991",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-activity-final-normal-close-head0.ppm",
+              "sha256": "62dd72d7610e99e57ec8d0adcee293507e46f4cfbdc53b1f8f965d27d761f39b"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "attempts/20261009T034703414158-close",
+          "utc": "2026-10-09T03:47:05.833232+00:00",
+          "gesture": [
+            "alt",
+            "f4"
+          ],
+          "helperBefore": {
+            "pid": 60249,
+            "startTicks": 815536,
+            "parentPid": 40274,
+            "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+          },
+          "helperAfter": {
+            "checkpointBytes": 1890,
+            "lastExit": {
+              "code": 0,
+              "generation": 4,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 40274,
+            "startTicks": 754588,
+            "sha256": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d"
+          },
+          "witness": {
+            "utc": "2026-10-09T03:47:06.217232+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-empty-normal-close.png",
+            "sha256": "51721d0d1726719b57c766080cfa53f7f53fd06b916144a67fb1846ef859326d",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-settings-empty-normal-close-head0.ppm",
+              "sha256": "c0eb7b4670512c102fb1b60f66d7175fb07e67bd1ef8e401f5f7a2dd83cab979"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "attempts/20261009T035520509132-close",
+          "utc": "2026-10-09T03:55:22.575235+00:00",
+          "gesture": [
+            "alt",
+            "f4"
+          ],
+          "helperBefore": {
+            "pid": 70194,
+            "startTicks": 863835,
+            "parentPid": 40274,
+            "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3968,
+            "lastExit": {
+              "code": 0,
+              "generation": 9,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 40274,
+            "startTicks": 754588,
+            "sha256": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d"
+          },
+          "witness": {
+            "utc": "2026-10-09T03:55:22.907219+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-final-detail-normal-close.png",
+            "sha256": "ef3331340a67e8be28edf80b76dcf325b1793ea57c576ed9e8af59530b0e24fd",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-history-final-detail-normal-close-head0.ppm",
+              "sha256": "1b779ace97beba121ec63de7c96597ba7c2aef7beeb67823fe2670c91fe6b04a"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        },
+        {
+          "attempt": "attempts/20261009T035033131468-close",
+          "utc": "2026-10-09T03:50:35.334195+00:00",
+          "gesture": [
+            "alt",
+            "f4"
+          ],
+          "helperBefore": {
+            "pid": 63919,
+            "startTicks": 828468,
+            "parentPid": 40274,
+            "sha256": "68bb0ef5909e49765b7eaa875db0a65ca663ba0ae834c97c22e55a4bb27f6016"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3803,
+            "lastExit": {
+              "code": 0,
+              "generation": 6,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 40274,
+            "startTicks": 754588,
+            "sha256": "59dab8f37ca0df88caadd5a29002f671c98890cda827087e759366dcb748987d"
+          },
+          "witness": {
+            "utc": "2026-10-09T03:50:35.707532+00:00",
+            "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-normal-close.png",
+            "sha256": "63caa05676eec28eff61b168db12e9dd420387daf4382da448d930652b37774c",
+            "nativeQmp": {
+              "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-history-normal-close-head0.ppm",
+              "sha256": "0810f62a942543981f85d1fa0fdebc9ef3997e1a0a9322b9c16795750cfef76e"
+            },
+            "desktopPixels": [
+              1280,
+              800
+            ],
+            "vncPort": 5936,
+            "visualReview": "pending"
+          }
+        }
+      ],
+      "cancelObservations": [
+        {
+          "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+          "profileIds": [],
+          "lastExit": {
+            "code": 0,
+            "generation": 2,
+            "status": "normal"
+          }
+        },
+        {
+          "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+          "profileIds": [],
+          "lastExit": {
+            "code": 0,
+            "generation": 3,
+            "status": "normal"
+          }
+        },
+        {
+          "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+          "profileIds": [
+            "synthetic-ui-only"
+          ],
+          "lastExit": {
+            "code": 0,
+            "generation": 5,
+            "status": "normal"
+          }
+        }
+      ],
+      "finalHelperPid": 0,
+      "finalActiveOperations": 0,
+      "residentUnchanged": true
+    },
+    "renderedTray": {
+      "status": "blocked",
+      "diagnosticsTrayAvailable": true,
+      "nativeWitness": "activity-final-normal-close",
+      "observations": "No put.gd top-panel tray icon in actual final desktop witness. Active AppIndicator watcher lists no put.gd item. Locked startup trayAvailable=false, current true; one-time construction show guard supports missed-start-registration hypothesis. No restart/fix here.",
+      "diagnosisReceipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/tray-diagnosis.json",
+      "installedExtensionOwner": "gnome-shell-ubuntu-extensions50.26.04.7ubuntu"
+    }
+  },
+  "reviewedWitnesses": [
+    {
+      "label": "console-after-unlock",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/console-after-unlock.png",
+      "sha256": "a406333971aa6ccaa3183c52db713d98151e022347ee2b0a5dd146443a2cbfeb",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "setup-cancel",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/setup-cancel.png",
+      "sha256": "ed60de901303229c02b5b1a1f95f03a76df5eef3641ed75e3adb3cefe653d2d1",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-empty-compact-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-empty-compact-open.png",
+      "sha256": "409214666a035437ca93d2dedff7c65c259ec65c1018e4940e94810433a9b03a",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-empty-compact-add-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-empty-compact-add-draft.png",
+      "sha256": "cdac13c06a8e4ae4c065715513df2e7b872768bc230766f9576d27cb34b17f14",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-empty-wide-border-resize",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-empty-wide-border-resize.png",
+      "sha256": "ea840dd18ae5fb491179788c7d7832682a66ac70cadc22093608ffe91a88fdf1",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-empty-wide-add-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-empty-wide-add-draft.png",
+      "sha256": "f76caf24679c3a3ca9ee78f759ef93fcd4eedbe56aa0e8da6c11ac40e33e1c98",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-configured-normal-restore",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-configured-normal-restore.png",
+      "sha256": "cedab7605332a9c82454a1764c296230a928dd60b7e66963c05ff9d10fd2e6dc",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-configured-compact-simple-border",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-configured-compact-simple-border.png",
+      "sha256": "7ba072ff8a0f50bd2c4e4e0583e5c187450c5826d581cfefdb2087e02d47304c",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-configured-compact-advanced",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-configured-compact-advanced.png",
+      "sha256": "07473f8e3d308d9bf651a52f62ae05129d2a616581cc488dcddec49ba782e170",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-configured-compact-collapsed-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-configured-compact-collapsed-draft.png",
+      "sha256": "5b4963dc15f07e4816f0f80aebe57797f6d08c2eae0ee42e950e6ae5f91af54b",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-configured-wide-simple-normal",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-configured-wide-simple-normal.png",
+      "sha256": "4930ed424e8a2680b09eaa4ab4201e124d82968e163e3b7d9d05344782290a24",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "settings-configured-wide-advanced",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/settings-configured-wide-advanced.png",
+      "sha256": "92eb48bd9037a4c0c6300c621de0594e612e33b101e4db1314e0df666e1154d9",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-compact-list-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-compact-list-open.png",
+      "sha256": "19bf984d640c4f8470707097cd3bf2edabdee34bfcd7e782685df5067e4ab173",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-compact-selected",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-compact-selected.png",
+      "sha256": "f15ee80f169965cf9645d52cb78c2a2b8a008aaf28fd5bc17674fe977afd948c",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-wide-selected",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-wide-selected.png",
+      "sha256": "af9a948a94de3c7df3ef7d9e6abb872b1def3640304dfe0645698ab6467c648a",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-wide-name-tooltip",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-wide-name-tooltip.png",
+      "sha256": "09759e73b1f78778e67bf5f5a6c1e2f60804cd53b71b56e93260f0f45c094aa4",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-wide-list-no-selection",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-wide-list-no-selection.png",
+      "sha256": "cc37768b53acb8ff948bfccc1f3e1df3359c0453ebac9a9674ab9373ccd68435",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-compact-selected-again",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-compact-selected-again.png",
+      "sha256": "1ea1486e86178393e449590e4ebe28c9e3269b0e1f5d7c2310e495b9b8ff0367",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-normal-reopen",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-normal-reopen.png",
+      "sha256": "2fa9fbfba4e174d9b178b41cdf09418be4168faa816a8c1f264fafaaa82ada54",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-compact-detail-scrolled",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-compact-detail-scrolled.png",
+      "sha256": "c75dd9ef5a6d022917faac0fa930233a0d2520355d9f666e11f6e29139e55b00",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "history-compact-summary-local-state",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-compact-summary-local-state.png",
+      "sha256": "5d140a5f51cc01f5ff91c13426e4a9c22e88770952f6d12683a01076e3ddf65a",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "activity-compact-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-compact-open.png",
+      "sha256": "f343d69acd267e3c22afeeed002ae7272e8a17d3ff2f12d96d48529cd9af5d25",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "activity-compact-parent-id-tooltip",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-compact-parent-id-tooltip.png",
+      "sha256": "6a9211a44e210f80c3d427606e9078ff30f4a5dff23e1ec420b4983daa957e60",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "result-parent-fixture-focused",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/result-parent-fixture-focused.png",
+      "sha256": "0f8f45e8bccab1cf5bebfb4c6db5728dbb6d86b5cdc2c5c2d139ca11f9cecea0",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "activity-compact-child-path-tooltip",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-compact-child-path-tooltip.png",
+      "sha256": "c48aff67abfcef20b22a498db99ff1f0385845256b8d3286a06972aa51eb8872",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "activity-wide-child-selected",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-wide-child-selected.png",
+      "sha256": "11b8d7287d5cd5e408e81112788cbcd4913b4f083b0eccc16220affad5cfd509",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "activity-wide-parent-id-tooltip",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-wide-parent-id-tooltip.png",
+      "sha256": "4980c88448069ad9dbed55d775036094b72dd83f6838eb11232e69b30688bc13",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "result-fixture-final-focus",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/result-fixture-final-focus.png",
+      "sha256": "069447df255c99922740bc0fc0b9ac1617b97448a1a9d9df32c42a9b1c7d454d",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    },
+    {
+      "label": "activity-final-normal-close",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-final-normal-close.png",
+      "sha256": "82d1a4b35f941d6423fa6bdfff1ce2d831c0785600fc76357e6074e94a7c2991",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "actual image inspected"
+    }
+  ],
+  "preservedFailures": [
+    "attempts/20261009T034105765860-matrix/failed.json",
+    "attempts/20261009T035641842644-tray-resident-sni-readonly/failed.json"
+  ],
+  "postSuiteAttribution": {
+    "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/post-suite-resident-memory-final.json",
+    "rssKiB": 62980,
+    "pssKiB": 35757,
+    "privateKiB": 32232,
+    "operationCounts": {
+      "completed": 13,
+      "cancelled": 3
+    },
+    "scope": "Single final post-suite attribution snapshot after additional compact History detail inspection; shared/private numeric values retained. Not quiet performance, cold startup, or40MiB budget proof."
+  },
+  "blockedGates": [
+    "Rendered GNOME tray icon after locked startup"
+  ],
+  "overall": "bounded native matrix and UI refinement pass; rendered-tray acceptance remains open",
+  "scope": "Frozen source43 only. Existing disposable overlay, VNC5936 visible; local synthetic payloads only, all actions local. No cloud credentials/requests, bucket/object mutation, base/VM lifecycle action, product edit, or performance measurement."
+}

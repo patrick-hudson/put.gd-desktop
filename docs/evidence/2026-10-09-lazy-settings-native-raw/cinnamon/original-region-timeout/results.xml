@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="desktop-lab" tests="1" failures="1"><testcase name="region-independent-paste" classname="cinnamon-x11" time="91.70156099402811"><failure message="Sharing operation did not complete with a copied result; inspect recorded stage outcomes" /></testcase></testsuite>

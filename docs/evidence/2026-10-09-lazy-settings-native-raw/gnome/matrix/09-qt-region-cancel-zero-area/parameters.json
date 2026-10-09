@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "profile": "gnome-wayland",
+  "scenario": "region-cancel-zero-area",
+  "clipboardClient": "qt",
+  "destination": "local",
+  "runningApp": {
+    "pid": 79451,
+    "startTicks": 1118766,
+    "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+  },
+  "runnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "hotkeys": {
+    "region": {
+      "shortcut": "Ctrl+Shift+1",
+      "keys": [
+        "ctrl",
+        "shift",
+        "1"
+      ]
+    },
+    "window": {
+      "shortcut": "Ctrl+Shift+2",
+      "keys": [
+        "ctrl",
+        "shift",
+        "2"
+      ]
+    },
+    "desktop": {
+      "shortcut": "Ctrl+Shift+3",
+      "keys": [
+        "ctrl",
+        "shift",
+        "3"
+      ]
+    },
+    "clipboard": {
+      "shortcut": "Ctrl+Shift+4",
+      "keys": [
+        "ctrl",
+        "shift",
+        "4"
+      ]
+    }
+  },
+  "displayLayout": [
+    {
+      "height": 800,
+      "name": "Virtual-1",
+      "nativeHeight": 800,
+      "nativeWidth": 1280,
+      "rotation": 2,
+      "scale": 1,
+      "width": 1280,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "qtVersion": "6.10.2",
+  "acceleration": "kvm",
+  "goldenSha256": "ffb4aecd868da250b091c1ae9759552b71cfd3ffed12995b56560ace8f8602ad",
+  "timingSeconds": {
+    "keyHold": 0.05,
+    "focusPoll": 0.1,
+    "focusAttemptLimit": 2,
+    "clipboardSourceSettle": 0.3,
+    "selectorSettle": 0.5,
+    "operationPoll": 0.2
+  },
+  "selection": {
+    "fixtureOffset": {
+      "x": 30,
+      "y": 30
+    },
+    "width": 80,
+    "height": 60,
+    "start": {
+      "x": 383,
+      "y": 255
+    },
+    "end": {
+      "x": 463,
+      "y": 315
+    },
+    "inputViewport": {
+      "width": 1280,
+      "height": 800
+    }
+  },
+  "timeoutSeconds": 90,
+  "replayCommand": [
+    "/usr/bin/python3",
+    "tools/lab/lab.py",
+    "run",
+    "--run",
+    "<disposable-run>",
+    "--scenario",
+    "region-cancel-zero-area",
+    "--clipboard-client",
+    "qt",
+    "--timeout",
+    "90",
+    "--keep"
+  ],
+  "package": {
+    "sha256": "51f10e434eda1dc6da742896af362fdd37764109914f5abdd295fa35bfd9dae1",
+    "filename": "putgd_0.1.1~dev.45+g9d142919e5e6.dirty_amd64.deb",
+    "installedBinarySha256": {
+      "/usr/bin/putgd": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6",
+      "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+      "/usr/bin/putgd-ui": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c",
+      "/usr/bin/putgd-cli": "cef069d325ac5a726fd9907ea52360a308ed2627d596c02a142f083f2435c3ae",
+      "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+    },
+    "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "updatedByReplay": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/installed.json"
+  },
+  "independentFixtureGeometry": {
+    "x": 353,
+    "y": 225,
+    "width": 640,
+    "height": 320
+  },
+  "independentWindowFrame": {
+    "x": 342,
+    "y": 176,
+    "width": 662,
+    "height": 480
+  }
+}

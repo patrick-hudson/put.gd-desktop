@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "cmake",
+    "--build",
+    "--preset",
+    "dev"
+  ],
+  "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:56:16.389537+00:00"
+}

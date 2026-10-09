@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "cpack",
+    "--config",
+    "build/release/CPackConfig.cmake",
+    "-G",
+    "DEB",
+    "-B",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/host/packages"
+  ],
+  "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:18:00.416461+00:00"
+}

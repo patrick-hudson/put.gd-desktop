@@ -1,0 +1,73 @@
+{
+  "guests": {
+    "kde": {
+      "guest": {
+        "processes": [
+          {
+            "comm": "putgd",
+            "pid": 212976,
+            "startTicks": 2922997,
+            "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+          }
+        ],
+        "manifest": {
+          "baseVersion": "0.1.1",
+          "commitCount": 45,
+          "dirty": true,
+          "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+          "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+          "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.45+g9d142919e5e6.dirty"
+        }
+      }
+    },
+    "gnome": {
+      "guest": {
+        "processes": [
+          {
+            "comm": "putgd",
+            "pid": 79451,
+            "startTicks": 1118766,
+            "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+          }
+        ],
+        "manifest": {
+          "baseVersion": "0.1.1",
+          "commitCount": 45,
+          "dirty": true,
+          "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+          "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+          "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.45+g9d142919e5e6.dirty"
+        }
+      }
+    },
+    "cinnamon": {
+      "guest": {
+        "processes": [
+          {
+            "comm": "putgd",
+            "pid": 73893,
+            "startTicks": 2808369,
+            "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+          }
+        ],
+        "manifest": {
+          "baseVersion": "0.1.1",
+          "commitCount": 45,
+          "dirty": true,
+          "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+          "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+          "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.45+g9d142919e5e6.dirty"
+        }
+      }
+    }
+  }
+}

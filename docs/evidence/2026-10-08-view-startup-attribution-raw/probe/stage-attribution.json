@@ -1,0 +1,372 @@
+{
+  "classification": "BASE41 + diagnostic overlay attribution only; no product saving or native certification",
+  "rawLogSha256": "4b00026eedd219ab68c9f37a0635c62b06e2aa879967e6b9c39970ba4fd71afe",
+  "rawResultsSha256": "e0f62f1c099f30cba85d8ef604cd99b2c5fb151ea4c66c618ff81fcd82f19d24",
+  "trace": [
+    {
+      "pid": 2614800,
+      "monotonicNs": 288142454648344,
+      "stage": "resident-launch-pre"
+    },
+    {
+      "pid": 2614800,
+      "monotonicNs": 288142455529549,
+      "stage": "resident-process-started"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142474489271,
+      "stage": "main-entry"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142474535793,
+      "stage": "qapplication-pre"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142547221124,
+      "stage": "qapplication-post"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142547561385,
+      "stage": "visual-style-post"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142549884137,
+      "stage": "bootstrap-accepted"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142549896233,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142553202943,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142553224967,
+      "stage": "snapshot-accepted"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142553235044,
+      "stage": "ready-pre"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142553264804,
+      "stage": "ready-post"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142553386234,
+      "stage": "settings-activate-enter"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142553431247,
+      "stage": "settings-constructor-enter"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142608499049,
+      "stage": "settings-constructor-exit"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142608525980,
+      "stage": "settings-show-pre"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142752911995,
+      "stage": "settings-show-post"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142752951490,
+      "stage": "settings-shown-sent"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142752969923,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2614935,
+      "monotonicNs": 288142761013334,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2614800,
+      "monotonicNs": 288180668469923,
+      "stage": "resident-launch-pre"
+    },
+    {
+      "pid": 2614800,
+      "monotonicNs": 288180668736088,
+      "stage": "resident-process-started"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180682012244,
+      "stage": "main-entry"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180682038277,
+      "stage": "qapplication-pre"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180741223328,
+      "stage": "qapplication-post"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180741549995,
+      "stage": "visual-style-post"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180743589383,
+      "stage": "bootstrap-accepted"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180743602130,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180746429774,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180746443569,
+      "stage": "snapshot-accepted"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180746449780,
+      "stage": "ready-pre"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180746471146,
+      "stage": "ready-post"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180746582593,
+      "stage": "settings-activate-enter"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180746610412,
+      "stage": "settings-constructor-enter"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180811997003,
+      "stage": "settings-constructor-exit"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180812599465,
+      "stage": "settings-show-pre"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180876339013,
+      "stage": "settings-show-post"
+    },
+    {
+      "pid": 2616664,
+      "monotonicNs": 288180876365745,
+      "stage": "settings-shown-sent"
+    },
+    {
+      "pid": 2614800,
+      "monotonicNs": 288218355217143,
+      "stage": "resident-launch-pre"
+    },
+    {
+      "pid": 2614800,
+      "monotonicNs": 288218355604802,
+      "stage": "resident-process-started"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218367522009,
+      "stage": "main-entry"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218367543270,
+      "stage": "qapplication-pre"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218423776699,
+      "stage": "qapplication-post"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218424118051,
+      "stage": "visual-style-post"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218426679135,
+      "stage": "bootstrap-accepted"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218426693025,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218429896357,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218429917480,
+      "stage": "snapshot-accepted"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218429926263,
+      "stage": "ready-pre"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218429952666,
+      "stage": "ready-post"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218430126816,
+      "stage": "settings-activate-enter"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218430164792,
+      "stage": "settings-constructor-enter"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218474839997,
+      "stage": "settings-constructor-exit"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218475215677,
+      "stage": "settings-show-pre"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218546758786,
+      "stage": "settings-show-post"
+    },
+    {
+      "pid": 2617766,
+      "monotonicNs": 288218546827663,
+      "stage": "settings-shown-sent"
+    }
+  ],
+  "rejectedTraceLineCount": 0,
+  "settingsReopens": [
+    {
+      "cycle": 1,
+      "workloadKind": "cold first open",
+      "helperPid": 2614935,
+      "stageMilliseconds": {
+        "nativeQApplication": 72.685331,
+        "styleAndBranding": 0.340261,
+        "controlSetupAndBootstrap": 2.322752,
+        "snapshotRequestReply": 3.30671,
+        "snapshotValidation": 0.022024,
+        "controllerAndReadySend": 0.039837,
+        "readyToActivation": 0.12143,
+        "settingsConstructor": 55.067802,
+        "restoreAndShowPreparation": 0.026931,
+        "showCall": 144.386015,
+        "raiseActivateAndShownSend": 0.039495,
+        "mainToShownSent": 278.462219,
+        "launchToMain": 19.840927,
+        "launchToProcessStarted": 0.881205
+      },
+      "cliShownAcknowledgementMilliseconds": 325.2194669912569,
+      "independentlyObservedMappedMilliseconds": 475.654145993758,
+      "mappedAfterCliOverheadMilliseconds": 150.43467900250107,
+      "missingStages": []
+    },
+    {
+      "cycle": 2,
+      "workloadKind": "closed-view reopen",
+      "helperPid": 2616664,
+      "stageMilliseconds": {
+        "nativeQApplication": 59.185051,
+        "styleAndBranding": 0.326667,
+        "controlSetupAndBootstrap": 2.039388,
+        "snapshotRequestReply": 2.827644,
+        "snapshotValidation": 0.013795,
+        "controllerAndReadySend": 0.027577,
+        "readyToActivation": 0.111447,
+        "settingsConstructor": 65.386591,
+        "restoreAndShowPreparation": 0.602462,
+        "showCall": 63.739548,
+        "raiseActivateAndShownSend": 0.026732,
+        "mainToShownSent": 194.353501,
+        "launchToMain": 13.542321,
+        "launchToProcessStarted": 0.266165
+      },
+      "cliShownAcknowledgementMilliseconds": 221.96271503344178,
+      "independentlyObservedMappedMilliseconds": 362.28689400013536,
+      "mappedAfterCliOverheadMilliseconds": 140.32417896669358,
+      "missingStages": []
+    },
+    {
+      "cycle": 3,
+      "workloadKind": "closed-view reopen",
+      "helperPid": 2617766,
+      "stageMilliseconds": {
+        "nativeQApplication": 56.233429,
+        "styleAndBranding": 0.341352,
+        "controlSetupAndBootstrap": 2.561084,
+        "snapshotRequestReply": 3.203332,
+        "snapshotValidation": 0.021123,
+        "controllerAndReadySend": 0.035186,
+        "readyToActivation": 0.17415,
+        "settingsConstructor": 44.675205,
+        "restoreAndShowPreparation": 0.37568,
+        "showCall": 71.543109,
+        "raiseActivateAndShownSend": 0.068877,
+        "mainToShownSent": 179.305654,
+        "launchToMain": 12.304866,
+        "launchToProcessStarted": 0.387659
+      },
+      "cliShownAcknowledgementMilliseconds": 206.41974499449134,
+      "independentlyObservedMappedMilliseconds": 314.9338740040548,
+      "mappedAfterCliOverheadMilliseconds": 108.51412900956348,
+      "missingStages": []
+    }
+  ],
+  "limitations": [
+    "stderr instrumentation adds overhead",
+    "control.send return records queued frames rather than resident receipt",
+    "QWidget show return and CLI shown acknowledgement do not prove mapped or painted pixels",
+    "mapped observer includes process/window/diagnostic inspection overhead",
+    "not p95 or populated-history/post-upload memory evidence"
+  ]
+}

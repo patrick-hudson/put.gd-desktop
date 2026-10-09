@@ -98,10 +98,10 @@ the existing protected input is missing or rejected. Cloud `credentials.txt` is
 never a source for desktop logins.
 
 The lab interface is `python3 tools/lab/lab.py`; use [testing](testing.md) and [VM lab](vm-lab.md) for exact package/provisioning/snapshot commands. A real desktop scenario remains unverified until its saved artifact, independent paste and QMP witness pass. U10's full release lifecycle is still pending.
-For memory work, first run the current candidate through the cross-desktop
-functional matrix on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Build and test
-one Cinnamon candidate first, including functional and memory checks; fix or
-reject a failed gate before building/testing its GNOME or KDE counterparts. After Cinnamon passes, those independent profiles
+For memory work, start with one current-version Cinnamon build, including its
+functional and memory checks. Fix or reject a failed gate before building/testing
+its GNOME or KDE counterparts. Acceptance still requires current-source native
+functional evidence on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. After Cinnamon passes, those independent profiles
 may run in parallel. Wait for build/GUI activity to finish before
 quiet memory samples. Use one frozen source revision/archive across distro-native
 builds, and retain package, app, CLI, S3 module and helper hashes. The lab rejects

@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-09T04:57:06.727844+00:00",
+  "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.46+g6f6372e79d8b",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.46+g6f6372e79d8b",
+    "gitCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+    "commitCount": 46,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "package": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/host/packages/putgd_0.1.1~dev.46+g6f6372e79d8b_amd64.deb",
+  "packageSha256": "6b0c983cbac649e7f42adf2a0b57b5e4a59fe75bfa7ea3cc275e7c588b8b6227",
+  "sourceCache": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+  "nativeAcceptance": "pending"
+}

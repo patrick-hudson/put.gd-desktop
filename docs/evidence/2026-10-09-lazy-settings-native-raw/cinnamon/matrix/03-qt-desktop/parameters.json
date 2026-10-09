@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "profile": "cinnamon-x11",
+  "scenario": "desktop",
+  "clipboardClient": "qt",
+  "destination": "local",
+  "runningApp": {
+    "pid": 73893,
+    "startTicks": 2808369,
+    "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+  },
+  "runnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "hotkeys": {
+    "region": {
+      "shortcut": "Ctrl+Shift+1",
+      "keys": [
+        "ctrl",
+        "shift",
+        "1"
+      ]
+    },
+    "window": {
+      "shortcut": "Ctrl+Shift+2",
+      "keys": [
+        "ctrl",
+        "shift",
+        "2"
+      ]
+    },
+    "desktop": {
+      "shortcut": "Ctrl+Shift+3",
+      "keys": [
+        "ctrl",
+        "shift",
+        "3"
+      ]
+    },
+    "clipboard": {
+      "shortcut": "Ctrl+Shift+4",
+      "keys": [
+        "ctrl",
+        "shift",
+        "4"
+      ]
+    }
+  },
+  "displayLayout": [
+    {
+      "height": 800,
+      "name": "Virtual-1",
+      "nativeHeight": 800,
+      "nativeWidth": 1280,
+      "rotation": 2,
+      "scale": 1,
+      "width": 1280,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "qtVersion": "6.4.2",
+  "acceleration": "kvm",
+  "goldenSha256": "4a21566d5b741e55f349f4f07e1c687c99d1c99b5394ff0d18ed5c9e685693da",
+  "timingSeconds": {
+    "keyHold": 0.05,
+    "focusPoll": 0.1,
+    "focusAttemptLimit": 2,
+    "clipboardSourceSettle": 0.3,
+    "selectorSettle": 0.5,
+    "operationPoll": 0.2
+  },
+  "selection": {
+    "fixtureOffset": {
+      "x": 30,
+      "y": 30
+    },
+    "width": 80,
+    "height": 60,
+    "start": {
+      "x": 150,
+      "y": 182
+    },
+    "end": {
+      "x": 230,
+      "y": 242
+    },
+    "inputViewport": {
+      "width": 1280,
+      "height": 800
+    }
+  },
+  "timeoutSeconds": 90,
+  "replayCommand": [
+    "/usr/bin/python3",
+    "tools/lab/lab.py",
+    "run",
+    "--run",
+    "<disposable-run>",
+    "--scenario",
+    "desktop",
+    "--clipboard-client",
+    "qt",
+    "--timeout",
+    "90",
+    "--keep"
+  ],
+  "package": {
+    "sha256": "9212e3448a8afd3cc56f0f95ba4efcaf7ee072916894b4bcb6e23afec097fc81",
+    "filename": "putgd_0.1.1~dev.45+g9d142919e5e6.dirty_amd64.deb",
+    "installedBinarySha256": {
+      "/usr/bin/putgd": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009",
+      "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+      "/usr/bin/putgd-ui": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545",
+      "/usr/bin/putgd-cli": "b79cc2f78ca24f6cf746a841d7997314a990d584c510bb5ca405d23be23b27d7",
+      "/usr/bin/putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+    },
+    "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "updatedByReplay": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/installed.json"
+  },
+  "independentFixtureGeometry": {
+    "height": 320,
+    "width": 640,
+    "x": 120,
+    "y": 152
+  },
+  "expectedArtifact": {
+    "width": 1280,
+    "height": 800,
+    "samples": [
+      {
+        "x": 150,
+        "y": 182,
+        "rgb": [
+          220,
+          30,
+          40
+        ]
+      }
+    ]
+  }
+}

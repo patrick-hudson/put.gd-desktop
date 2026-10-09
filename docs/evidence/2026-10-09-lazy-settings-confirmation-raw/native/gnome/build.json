@@ -1,0 +1,20 @@
+{
+  "utc": "2026-10-09T04:57:56.061881+00:00",
+  "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.46+g6f6372e79d8b",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.46+g6f6372e79d8b",
+    "gitCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+    "commitCount": 46,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "guestDirectory": "/home/lab/putgd-ui-refinement-frozen-exp001-source46",
+  "sourceCache": "/home/lab/putgd-ui-refinement-lazy-exp001-native/source",
+  "package": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/putgd_0.1.1~dev.46+g6f6372e79d8b_amd64.deb",
+  "packageSha256": "8d3d47c4c42d7f158c42917f27b2b436f397bb218da3eafa61489a277c27a94d",
+  "nativeAcceptance": "pending"
+}

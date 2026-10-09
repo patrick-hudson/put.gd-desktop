@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "version": "0.1.1-dev.45+g9d142919e5e6",
+  "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+  "parameters": {
+    "warmupSeconds": 5,
+    "seconds": 300,
+    "rssSamplingIntervalSeconds": 30,
+    "ownedWindowPollingSeconds": 1
+  },
+  "command": [
+    "python3",
+    "tests/performance/observe_idle.py",
+    "--app",
+    "work/view-startup-latency/reference45/source/build/release/putgd",
+    "--cli",
+    "work/view-startup-latency/reference45/source/build/release/putgd-cli",
+    "--output",
+    "/tmp/putgd-cold45-20261009",
+    "--seconds",
+    "300"
+  ],
+  "appSha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+  "cliSha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+  "peakRssBytes": 47620096,
+  "finalRssBytes": 47620096,
+  "finalMappingTotals": {
+    "rssBytes": 47620096,
+    "pssBytes": 26744832,
+    "privateBytes": 24186880
+  },
+  "idleCpuPercentOneCore": 0.0033316960040275906,
+  "coldIdleUninterrupted": true,
+  "operationCount": 0,
+  "legacyBudgetPassed": true,
+  "target40MiBReached": false,
+  "rawDirectory": "2026-10-09-cold-reference45-raw",
+  "files": [
+    {
+      "path": "results.json",
+      "sha256": "da16928ed45447c2ce92799c0ff8d04f67270756858b1d9a5817cbf63486f4d9",
+      "bytes": 39036
+    },
+    {
+      "path": "progress.json",
+      "sha256": "8b8c349262f14f07a7986bdf295d19ef6d717aa50b5d0f2fa00668b74ab7ac62",
+      "bytes": 20218
+    },
+    {
+      "path": "window-observations.json",
+      "sha256": "ee78c7437da7d8849687d4a48dfbdf26683a5b4e5f002c177c4df29d253ba2de",
+      "bytes": 2136
+    },
+    {
+      "path": "source-provenance.json",
+      "sha256": "cda2310aab0a28a3ae5aa8a2fd4b8942c290f8e99d1a185c4ee3fe6c891a14b8",
+      "bytes": 1019
+    },
+    {
+      "path": "bench_idle.py",
+      "sha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+      "bytes": 7209
+    },
+    {
+      "path": "observe_idle.py",
+      "sha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "bytes": 10143
+    }
+  ],
+  "limitations": [
+    "One fresh cold baseline, not a paired optimization saving",
+    "Build retains source45 identity after later documentation commits",
+    "RSS and smaps mapping totals use different snapshot mechanisms",
+    "No tray rendering or native function claim from this idle run",
+    "No credentials/config/history/resident stderr exported"
+  ]
+}

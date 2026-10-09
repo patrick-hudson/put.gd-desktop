@@ -1,0 +1,19 @@
+{
+  "verified": true,
+  "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "sourceFilesVerified": 2202,
+  "beforeOwnedHashes": {
+    "src/ui/SettingsWindow.cpp": "18e44b7b50ea52c043d0e0db69d388f6eedf6177dc25f27c0604aae7fc6e033c",
+    "src/ui/SettingsWindow.h": "267536902660030d9ed7e208851951e541b0b514a65b66b2efe35c70d15caba6",
+    "tests/gui/test_settings.cpp": "7fdca5f7fcd1cadec07a06c49cc552b753f1ab94d8258738f9740cc2c61399fd",
+    "tests/gui/test_ui_application.cpp": "5811ad64908371e66340e899d05de02748d90b1d2e0414f2cac2c2fcf0329f98"
+  },
+  "afterOwnedHashes": {
+    "src/ui/SettingsWindow.cpp": "18e44b7b50ea52c043d0e0db69d388f6eedf6177dc25f27c0604aae7fc6e033c",
+    "src/ui/SettingsWindow.h": "267536902660030d9ed7e208851951e541b0b514a65b66b2efe35c70d15caba6",
+    "tests/gui/test_settings.cpp": "7fdca5f7fcd1cadec07a06c49cc552b753f1ab94d8258738f9740cc2c61399fd",
+    "tests/gui/test_ui_application.cpp": "5811ad64908371e66340e899d05de02748d90b1d2e0414f2cac2c2fcf0329f98"
+  },
+  "clean": true,
+  "cache": "/home/lab/putgd-ui-refinement-lazy-exp001-native/source"
+}

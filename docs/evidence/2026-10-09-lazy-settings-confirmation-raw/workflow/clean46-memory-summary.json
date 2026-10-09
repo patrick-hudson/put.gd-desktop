@@ -1,0 +1,240 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-10-09T05:17:33.550338+00:00",
+  "scope": "Read-only aggregation of three saved 30-second quiescent post-native synthetic-use guest observations; not a cold physical target measurement or matched optimization saving.",
+  "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "sourceTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+  "sourceCommitCount": 46,
+  "sourceManifest": {
+    "path": "work/ui-refinement/native-replay/frozen-exp001-source46/source.json",
+    "sha256": "a5f8c866fceb43c482e09f2efff996e375f19e438f84a30590680afe6a41b7e4"
+  },
+  "benchmarkHashesVerifiedAgainstLocalFilesAndFrozenSourceManifest": {
+    "bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+  },
+  "aggregation": "Last, median and maximum over the seven recorded family totals, independently checked against each sample process sum. MiB = bytes / 1048576. PSS reflects page sharing and is not a substitute for RSS.",
+  "guests": [
+    {
+      "guest": "cinnamon",
+      "receipt": {
+        "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/post-native-memory.json",
+        "sha256": "dcc8d1443179179ccf4ba3717df1b48e2298f20061f85b8c1433fd1f1b6c0fec",
+        "utc": "2026-10-09T05:10:45.116530+00:00"
+      },
+      "startReceipt": {
+        "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/start.json",
+        "sha256": "ce5824eb705c2efba0c666e9c276264057ac7d2a648e53688b4748242aac2333"
+      },
+      "resident": {
+        "pid": 95529,
+        "startTicks": 3039122,
+        "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8"
+      },
+      "version": "0.1.1-dev.46+g6f6372e79d8b",
+      "session": "visible native cinnamon-x11",
+      "scope": "30-second quiescent post-native synthetic-use observation; not cold physical or matched saving",
+      "sampleCount": 7,
+      "statistics": {
+        "last": {
+          "bytes": {
+            "rssBytes": 56229888,
+            "pssBytes": 35183616,
+            "privateBytes": 33751040
+          },
+          "MiB": {
+            "rssBytes": 53.625,
+            "pssBytes": 33.553711,
+            "privateBytes": 32.1875
+          }
+        },
+        "median": {
+          "bytes": {
+            "rssBytes": 56229888,
+            "pssBytes": 35183616,
+            "privateBytes": 33751040
+          },
+          "MiB": {
+            "rssBytes": 53.625,
+            "pssBytes": 33.553711,
+            "privateBytes": 32.1875
+          }
+        },
+        "maximum": {
+          "bytes": {
+            "rssBytes": 56229888,
+            "pssBytes": 35183616,
+            "privateBytes": 33751040
+          },
+          "MiB": {
+            "rssBytes": 53.625,
+            "pssBytes": 33.553711,
+            "privateBytes": 32.1875
+          }
+        }
+      },
+      "processCountsAllSamples": {
+        "family": 1,
+        "ui": 0,
+        "escaped": 0
+      },
+      "finalHelper": 0,
+      "finalActiveOperations": 0,
+      "llvmMappingAttribution": []
+    },
+    {
+      "guest": "gnome",
+      "receipt": {
+        "path": "work/ui-refinement/native-replay/frozen-exp001-source46/gnome/post-native-memory.json",
+        "sha256": "84abb134ccbe88f16e9c5860ed3a32d9c677c2983d1a31405f87eb5327d0c5fc",
+        "utc": "2026-10-09T05:10:46.051973+00:00"
+      },
+      "startReceipt": {
+        "path": "work/ui-refinement/native-replay/frozen-exp001-source46/gnome/start.json",
+        "sha256": "710eee94efe2daa94ae8273d7bf239e6516bdeca4b2d4a656103057e1b111e5d"
+      },
+      "resident": {
+        "pid": 112855,
+        "startTicks": 1249984,
+        "sha256": "4dce9571f2ba78f5cc3a2f9ed54b265f306d788cf0e6fff227fce66e82b86fbb"
+      },
+      "version": "0.1.1-dev.46+g6f6372e79d8b",
+      "session": "visible native gnome-wayland",
+      "scope": "30-second quiescent post-native synthetic-use observation; not cold physical or matched saving",
+      "sampleCount": 7,
+      "statistics": {
+        "last": {
+          "bytes": {
+            "rssBytes": 63451136,
+            "pssBytes": 35516416,
+            "privateBytes": 31809536
+          },
+          "MiB": {
+            "rssBytes": 60.511719,
+            "pssBytes": 33.871094,
+            "privateBytes": 30.335938
+          }
+        },
+        "median": {
+          "bytes": {
+            "rssBytes": 63451136,
+            "pssBytes": 35516416,
+            "privateBytes": 31809536
+          },
+          "MiB": {
+            "rssBytes": 60.511719,
+            "pssBytes": 33.871094,
+            "privateBytes": 30.335938
+          }
+        },
+        "maximum": {
+          "bytes": {
+            "rssBytes": 63451136,
+            "pssBytes": 35516416,
+            "privateBytes": 31809536
+          },
+          "MiB": {
+            "rssBytes": 60.511719,
+            "pssBytes": 33.871094,
+            "privateBytes": 30.335938
+          }
+        }
+      },
+      "processCountsAllSamples": {
+        "family": 1,
+        "ui": 0,
+        "escaped": 0
+      },
+      "finalHelper": 0,
+      "finalActiveOperations": 0,
+      "llvmMappingAttribution": []
+    },
+    {
+      "guest": "kde",
+      "receipt": {
+        "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/post-native-memory.json",
+        "sha256": "80be9c9f8b6b8c41b967188c06b9c3423467d308cde1a975d132c913441dec7f",
+        "utc": "2026-10-09T05:10:46.205465+00:00"
+      },
+      "startReceipt": {
+        "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/start.json",
+        "sha256": "1df0b402954c997d0efe2932003afeb5d54f48b2998a699f2f8cbad016cc32ca"
+      },
+      "resident": {
+        "pid": 244419,
+        "startTicks": 3049239,
+        "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+      },
+      "version": "0.1.1-dev.46+g6f6372e79d8b",
+      "session": "visible native kde-wayland",
+      "scope": "30-second quiescent post-native synthetic-use observation; not cold physical or matched saving",
+      "sampleCount": 7,
+      "statistics": {
+        "last": {
+          "bytes": {
+            "rssBytes": 147255296,
+            "pssBytes": 42671104,
+            "privateBytes": 29786112
+          },
+          "MiB": {
+            "rssBytes": 140.433594,
+            "pssBytes": 40.694336,
+            "privateBytes": 28.40625
+          }
+        },
+        "median": {
+          "bytes": {
+            "rssBytes": 147255296,
+            "pssBytes": 42671104,
+            "privateBytes": 29786112
+          },
+          "MiB": {
+            "rssBytes": 140.433594,
+            "pssBytes": 40.694336,
+            "privateBytes": 28.40625
+          }
+        },
+        "maximum": {
+          "bytes": {
+            "rssBytes": 147255296,
+            "pssBytes": 42671104,
+            "privateBytes": 29786112
+          },
+          "MiB": {
+            "rssBytes": 140.433594,
+            "pssBytes": 40.694336,
+            "privateBytes": 28.40625
+          }
+        }
+      },
+      "processCountsAllSamples": {
+        "family": 1,
+        "ui": 0,
+        "escaped": 0
+      },
+      "finalHelper": 0,
+      "finalActiveOperations": 0,
+      "llvmMappingAttribution": [
+        {
+          "mapping": "libLLVM.so.21.1",
+          "bytes": {
+            "rssBytes": 50622464,
+            "pssBytes": 6275072,
+            "privateBytes": 2244608
+          },
+          "MiB": {
+            "rssBytes": 48.277344,
+            "pssBytes": 5.984375,
+            "privateBytes": 2.140625
+          }
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "The saved observations state 30-second scope but their samples omit elapsed observation timestamps; sampleSeconds is collection duration, not the elapsed observation time. This summary does not independently reconstruct cadence.",
+    "No live process, graphical, SSH or physical timing work was run for this aggregation. Executable hashes are identity receipts checked consistently across saved start and every sample, not newly re-read guest executables.",
+    "Grouped footprints are separate mapping attribution in each receipt; they are not time-series totals, removable-memory bounds or heap-leak proof.",
+    "The source archive SHA is recorded in source.json; this aggregation does not reread the 88 MB archive during physical timing."
+  ]
+}

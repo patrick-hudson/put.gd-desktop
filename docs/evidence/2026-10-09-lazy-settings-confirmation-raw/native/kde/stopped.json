@@ -1,0 +1,82 @@
+{
+  "utc": "2026-10-09T04:56:00.000620+00:00",
+  "previousResident": {
+    "pid": 212976,
+    "startTicks": 2922997,
+    "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+  },
+  "previousManifest": {
+    "baseVersion": "0.1.1",
+    "commitCount": 45,
+    "dirty": true,
+    "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty"
+  },
+  "terminalStates": {
+    "operations": [
+      {
+        "id": "3dff1ea2-1aea-46c3-81bd-e0f18ac6c12c",
+        "state": "completed"
+      },
+      {
+        "id": "e302e10b-5829-44a6-935e-8f5c99f14a90",
+        "state": "completed"
+      },
+      {
+        "id": "3361c770-ac48-458b-a0f1-bdc7d1a0ae57",
+        "state": "completed"
+      },
+      {
+        "id": "60da043a-6bac-4e66-acf7-2523b6afd28d",
+        "state": "completed"
+      },
+      {
+        "id": "3dbce65f-fc99-4aab-8236-df8200a77bbe",
+        "state": "completed"
+      },
+      {
+        "id": "65ae4886-8e35-4c88-8889-f01a7af1e04b",
+        "state": "completed"
+      },
+      {
+        "id": "0eb141be-5a68-478e-b351-e60fc8b51e8e",
+        "state": "cancelled"
+      },
+      {
+        "id": "cc2f62ed-f7c2-4cb1-a671-13f6731c1782",
+        "state": "cancelled"
+      },
+      {
+        "id": "1e098a64-5061-4c16-ae41-42550ad70b6d",
+        "state": "cancelled"
+      },
+      {
+        "id": "2a6e7837-db5d-4097-b6d5-b11ad5128278",
+        "state": "completed"
+      },
+      {
+        "id": "b2a81e5f-e25b-4ccc-8157-1f9a8c1ceae1",
+        "state": "completed"
+      },
+      {
+        "id": "ef42e4a2-8d60-4282-a5f8-2f6a8619b678",
+        "state": "completed"
+      }
+    ],
+    "deletions": []
+  },
+  "preservedGuestProfile": "/home/lab/putgd-lab-before-ui-refinement-frozen-exp001-source46",
+  "stopResult": {
+    "stopped": {
+      "pid": 212976,
+      "startTicks": 2922997,
+      "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+    },
+    "preservedAt": "/home/lab/putgd-lab-before-ui-refinement-frozen-exp001-source46",
+    "method": "PID/start/hash guarded pidfd SIGTERM"
+  }
+}

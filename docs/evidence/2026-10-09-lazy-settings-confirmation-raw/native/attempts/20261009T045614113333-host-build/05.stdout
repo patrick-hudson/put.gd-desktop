@@ -1,0 +1,7 @@
+[1/7] cd /home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001 -DOUTPUT_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/patrick/work/put.gd/work/view-startup-latency/exp001/cmake/GenerateBuildInfo.cmake
+[2/7] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[3/7] Linking CXX static library libputgd_build_identity.a
+[4/7] Linking CXX shared module libputgd-s3.so
+[5/7] Linking CXX executable putgd-cli
+[6/7] Linking CXX executable putgd
+[7/7] Linking CXX executable putgd-ui

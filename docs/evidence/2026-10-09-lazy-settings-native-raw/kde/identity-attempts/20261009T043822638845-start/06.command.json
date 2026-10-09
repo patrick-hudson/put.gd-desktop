@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+    "-p",
+    "22234",
+    "lab@127.0.0.1",
+    "sh",
+    "-s"
+  ],
+  "cwd": null,
+  "stdinFile": "06.stdin",
+  "startedUtc": "2026-10-09T04:38:24.568779+00:00"
+}

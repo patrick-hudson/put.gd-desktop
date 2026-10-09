@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="6"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="36"
+	timestamp="2026-10-08T23:23:08"
+	>
+	<testcase name="ui_split_services_integration" classname="ui_split_services_integration" time="0.540224" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiSplitServices *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiSplitServices::initTestCase()
+PASS   : UiSplitServices::helperCrashDoesNotCancelAnAcceptedUploadOrSetupJob()
+PASS   : UiSplitServices::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 523ms
+********* Finished testing of UiSplitServices *********
+</system-out>
+	</testcase>
+	<testcase name="ui_process_integration" classname="ui_process_integration" time="13.7153" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiProcessTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiProcessTest::initTestCase()
+PASS   : UiProcessTest::confirmedCloseStillReportsAnAbnormalExit()
+PASS   : UiProcessTest::stalledActivationFailsBeforeTheClientsDeadline()
+PASS   : UiProcessTest::missingHelperFailsWithoutRestarting()
+PASS   : UiProcessTest::helperProtocolFloodIsBounded()
+PASS   : UiProcessTest::failureCallbackCanImmediatelyReopenTheUi()
+PASS   : UiProcessTest::cancelCloseResumesPendingViewsAndInvalidations()
+PASS   : UiProcessTest::startsOneHelperAndShowsAllRequestedViews()
+PASS   : UiProcessTest::closeRetainsDraftAndActivationDuringExitStartsFresh()
+PASS   : UiProcessTest::crashRequiresNewActivationAndMismatchFails()
+PASS   : UiProcessTest::rejectedCheckpointKeepsHelperAlive()
+PASS   : UiProcessTest::cleanupTestCase()
+Totals: 12 passed, 0 failed, 0 skipped, 0 blacklisted, 13708ms
+********* Finished tes...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_application" classname="gui_application" time="6.47079" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiApplicationTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiApplicationTest::initTestCase()
+QWARN  : UiApplicationTest::finalCloseWaitsForAnOutstandingLargeCheckpoint() This plugin does not support propagateSizeHints()
+QWARN  : UiApplicationTest::finalCloseWaitsForAnOutstandingLargeCheckpoint() This plugin does not support raise()
+PASS   : UiApplicationTest::finalCloseWaitsForAnOutstandingLargeCheckpoint()
+QWARN  : UiApplicationTest::aboutDismissalAlsoClosesTheHelper() This plugin does not support propagateSizeHints()
+QWARN  : UiApplicationTest::aboutDismissalAlsoClosesTheHelper() This plugin does not support raise()
+PASS   : UiApplicationTest::aboutDismissalAlsoClosesTheHelper()
+QWARN  : UiApplicationTest::closeRejectionRetainsTheDraftAndAllowsRetry() This plugin does not support propagateSizeHints()
+QWARN  : UiApplicationTest::closeRejectionRetainsTheDraftAndAllowsRetr...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_tray" classname="gui_tray" time="1.07258" status="run">
+		<properties/>
+		<system-out>********* Start testing of ResidentTray *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : ResidentTray::initTestCase()
+QWARN  : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews()
+QWARN  : ResidentTray::everyCaptureActionWorksWithNoViewsOpen() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::everyCaptureActionWorksWithNoViewsOpen()
+QWARN  : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray() qt.core.qobject.connect: QObject::connect: No such signal QPlatformNativeInterface::systemTrayWindowChanged(QScreen*)
+PASS   : ResidentTray::rejectedCaptureCallbackCanDestroyItsTray()
+QWARN  : ResidentTray...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="settings_contract" classname="settings_contract" time="3.00458" status="run">
+		<properties/>
+		<system-out>********* Start testing of SettingsContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SettingsContract::initTestCase()
+PASS   : SettingsContract::pendingImageBudgetIsOptionalAndValidated()
+PASS   : SettingsContract::filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged()
+PASS   : SettingsContract::asynchronousWritesAndTemplateRemainExplicit()
+PASS   : SettingsContract::freshStartupDoesNotSelectDevelopmentDestination()
+PASS   : SettingsContract::atomicSaveAndConflict()
+PASS   : SettingsContract::invalidEditRetainsAcceptedSettingsAndBadFile()
+PASS   : SettingsContract::repeatedExternalReplacementsAreAccepted()
+PASS   : SettingsContract::strictValidation()
+PASS   : SettingsContract::patchCanClearOptionalFolderOverride()
+PASS   : SettingsContract::lockContentionDoesNotOverwrite()
+PASS   : SettingsContract::missingAndOversizedFilesPreserveAcceptedState()
+PASS   : SettingsContract::fallbackDiscovers...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_settings" classname="gui_settings" time="11.9741" status="run">
+		<properties/>
+		<system-out>********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::collapsedPagesPreserveCompleteAcceptedDocumentAndBuildOnce() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::collapsedPagesPreserveCompleteAcceptedDocumentAndBuildOnce() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::collapsedPagesPreserveCompleteAcceptedDocumentAndBuildOnce()
+PASS   : SettingsGui::simpleLocalSaveMatchesExpandedDraftAndRemovesOnlyProvisionalProfile()
+PASS   : SettingsGui::collapsedCheckpointKeepsRawNumbersAndOlderEffectiveDefaults()
+PASS   : SettingsGui::profileReferencesMatchBeforeAndAfterAdvancedConstruction()
+PASS   : SettingsGui::expansionDuringSaveDoesNotCountAsAnEditButLazyFieldChangesDo()
+QWARN  : SettingsGui::collapsedResetRefreshesBackingStateAndFailurePreservesIt() This plugin does not support pr...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

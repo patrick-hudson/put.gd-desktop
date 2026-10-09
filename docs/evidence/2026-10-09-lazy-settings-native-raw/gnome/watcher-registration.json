@@ -1,0 +1,22 @@
+{
+  "utc": "2026-10-09T04:41:38.226408+00:00",
+  "resident": {
+    "pid": 79451,
+    "startTicks": 1118766,
+    "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+  },
+  "trayAvailable": true,
+  "watcherOwner": "(':1.24',)\n",
+  "registeredItemsRaw": "(<[':1.36@/org/ayatana/NotificationItem/software_update_available', ':1.36@/org/ayatana/NotificationItem/livepatch', ':1.36@/org/ayatana/NotificationItem/unattended_upgrade', ':1.1044@/StatusNotifierItem']>,)\n",
+  "items": [
+    {
+      "registeredItem": ":1.1044@/StatusNotifierItem",
+      "properties": "(<('', @a(iiay) [], 'put.gd \u2014 Share and local capture', '')>,)\n",
+      "busProcessId": "(uint32 79451,)\n",
+      "matchesResident": true,
+      "putgdIdentified": true
+    }
+  ],
+  "registeredCurrentResident": true,
+  "scope": "Read-only current StatusNotifier registration metadata; no auth or payload reads"
+}

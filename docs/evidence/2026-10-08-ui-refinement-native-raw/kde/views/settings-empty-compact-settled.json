@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:59:08.866647+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/views/settings-empty-compact-settled.png",
+  "sha256": "d420985f964ae1af4fa980ed1151d29e3d0a3436e22b461ca07b4c12b978dfbe",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-source43-attempt1-settings-empty-compact-settled-head0.ppm",
+    "sha256": "58161fe964255bb3c7a219d067bc3e971e9f35a572a06a098f1a39d5760c49c4"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5934,
+  "visualReview": "pending"
+}
