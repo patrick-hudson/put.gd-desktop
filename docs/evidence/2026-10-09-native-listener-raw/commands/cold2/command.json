@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "/home/patrick/work/put.gd/work/resident-native-boundary/cold_family.py",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "--helper",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+    "--output",
+    "/tmp/pg-nc1-cold2",
+    "--receipt",
+    "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold2-family"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "startedUtc": "2026-10-09T08:29:27.828345+00:00"
+}

@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tools/lab/lab.py",
+    "run",
+    "--run",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-8",
+    "--scenario",
+    "region-cancel-right-click",
+    "--clipboard-client",
+    "qt",
+    "--timeout",
+    "90",
+    "--keep"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T09:11:29.182475+00:00"
+}

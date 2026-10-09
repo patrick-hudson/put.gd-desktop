@@ -129,3 +129,20 @@ No credentials, real clipboard/source content, authorization headers or source f
 belong in default diagnostics or review packets. Keep intentional synthetic captures in
 explicit acceptance artifacts. Read verification.md for what actually passed and gates
 still pending; package/release readiness waits for those gates, notices and checksums.
+
+
+## Preserved native listener experiment
+
+The isolated branch `codex/optimize-resident-native-boundary` at source49
+`676f6e6` passed the physical Cinnamon 40 MiB cold/closed RSS target, with a native
+Qt Core listener/tray and disposable screenshot helper. It is not integrated
+because selector startup regresses; do not mistake the memory-only evaluator's
+keep recommendation for a release decision. Current-source native cases and
+post-use VM footprints were recorded for all three desktops. GNOME/KDE retain
+the graphical fallback and exceed 40 MiB RSS. Follow the
+[exact-source replay and limitations](testing-native-listener.md) and
+[hashed evidence](evidence/2026-10-09-native-listener.json) before continuing.
+The experiment Git objects are local until its branch is deliberately published;
+documentation commits identify source49 without claiming their binaries were
+measured. Never discard the measured candidate or its failure records to restart
+its clock, and never lower the capture timing guard to accept the memory saving.

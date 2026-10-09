@@ -1,0 +1,18 @@
+{
+  "utc": "2026-10-09T08:11:54.234178+00:00",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.49+g676f6e6d6e0b",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.49+g676f6e6d6e0b",
+    "gitCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "gitTree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+    "commitCount": 49,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "package": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/host/packages/putgd_0.1.1~dev.49+g676f6e6d6e0b_amd64.deb",
+  "packageSha256": "4bf6ef9613e932fd561a18fad7854f257d96229c162b49bf3446afcea97e7278",
+  "nativeAcceptance": "pending"
+}

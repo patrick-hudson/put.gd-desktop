@@ -1,0 +1,1164 @@
+{
+  "utc": "2026-10-09T09:12:27.682462+00:00",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "cases": [
+    {
+      "client": "qt",
+      "scenario": "region",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "0f7b795ff84a4349ac439de5ce27d7e3",
+        "profile": "gnome-wayland",
+        "scenario": "region-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "68292087-9cdb-4e4f-99ec-cfe1f5cfc77d",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true,
+          "errors": [],
+          "width": 80,
+          "height": 60,
+          "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+        },
+        "pasteMetadata": {
+          "formats": [
+            "image/png",
+            "application/x-qt-image"
+          ],
+          "image": {
+            "height": 60,
+            "saved": true,
+            "width": 80
+          },
+          "schemaVersion": 1
+        },
+        "paste": {
+          "ok": true,
+          "errors": [],
+          "width": 80,
+          "height": 60,
+          "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-1/final-head0.ppm",
+          "sha256": "6046782a25d15d8f3c20108c86ae2c1c25c1851c7aea968d343a0cbc8f3791c5"
+        },
+        "elapsedSeconds": 9.05850309599191,
+        "evidenceDirectory": "tests/0f7b795ff84a4349ac439de5ce27d7e3"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-1"
+    },
+    {
+      "client": "qt",
+      "scenario": "window",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "5e840ee511fd4f36aff95e95b330d348",
+        "profile": "gnome-wayland",
+        "scenario": "window-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "acce0d6e-04d8-4c48-959d-c791368ead19",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true,
+          "errors": [],
+          "width": 662,
+          "height": 480,
+          "sha256": "8e32eb138d2f59bca8c53f275a81f334b3727256f7bf8d334096f521c8d68ddd"
+        },
+        "pasteMetadata": {
+          "formats": [
+            "image/png",
+            "application/x-qt-image"
+          ],
+          "image": {
+            "height": 480,
+            "saved": true,
+            "width": 662
+          },
+          "schemaVersion": 1
+        },
+        "paste": {
+          "ok": true,
+          "errors": [],
+          "width": 662,
+          "height": 480,
+          "sha256": "8e32eb138d2f59bca8c53f275a81f334b3727256f7bf8d334096f521c8d68ddd"
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-2/final-head0.ppm",
+          "sha256": "6046782a25d15d8f3c20108c86ae2c1c25c1851c7aea968d343a0cbc8f3791c5"
+        },
+        "elapsedSeconds": 8.299451428989414,
+        "evidenceDirectory": "tests/5e840ee511fd4f36aff95e95b330d348"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-2"
+    },
+    {
+      "client": "qt",
+      "scenario": "desktop",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "bd2d36db70c540c7b0627466067c0b2e",
+        "profile": "gnome-wayland",
+        "scenario": "desktop-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "c047243b-c119-41e1-ad67-c130d16ab8de",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true,
+          "errors": [],
+          "width": 1280,
+          "height": 800,
+          "sha256": "d2a3502e95f535b2fe37da7655af48d723006baff4e3d95330f17a3e0319d934"
+        },
+        "pasteMetadata": {
+          "formats": [
+            "image/png",
+            "application/x-qt-image"
+          ],
+          "image": {
+            "height": 800,
+            "saved": true,
+            "width": 1280
+          },
+          "schemaVersion": 1
+        },
+        "paste": {
+          "ok": true,
+          "errors": [],
+          "width": 1280,
+          "height": 800,
+          "sha256": "d2a3502e95f535b2fe37da7655af48d723006baff4e3d95330f17a3e0319d934"
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-3/final-head0.ppm",
+          "sha256": "6046782a25d15d8f3c20108c86ae2c1c25c1851c7aea968d343a0cbc8f3791c5"
+        },
+        "elapsedSeconds": 9.544418575009331,
+        "evidenceDirectory": "tests/bd2d36db70c540c7b0627466067c0b2e"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-3"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-text",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "78e85c90b0704e2488627de1923ab6a2",
+        "profile": "gnome-wayland",
+        "scenario": "clipboard-text-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "09366fc5-868b-46a8-9380-3baa99066555",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true
+        },
+        "pasteMetadata": {
+          "formats": [
+            "text/plain"
+          ],
+          "schemaVersion": 1,
+          "text": "putgd synthetic clipboard text"
+        },
+        "paste": {
+          "ok": true,
+          "expected": {
+            "text": "putgd synthetic clipboard text"
+          },
+          "actual": {
+            "formats": [
+              "text/plain"
+            ],
+            "schemaVersion": 1,
+            "text": "putgd synthetic clipboard text"
+          }
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-4/final-head0.ppm",
+          "sha256": "11e290936a00f5efe52fda18d27778565d12a71055a1e1f33c993bf37bd7e795"
+        },
+        "elapsedSeconds": 7.197749764018226,
+        "evidenceDirectory": "tests/78e85c90b0704e2488627de1923ab6a2"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-4"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-image",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "7887520650a649848f1e320cc3893533",
+        "profile": "gnome-wayland",
+        "scenario": "clipboard-image-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "60971bdf-8811-4a4b-bd93-f67325962f3b",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true,
+          "errors": [],
+          "width": 96,
+          "height": 64,
+          "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+        },
+        "pasteMetadata": {
+          "formats": [
+            "image/png",
+            "application/x-qt-image"
+          ],
+          "image": {
+            "height": 64,
+            "saved": true,
+            "width": 96
+          },
+          "schemaVersion": 1
+        },
+        "paste": {
+          "ok": true,
+          "errors": [],
+          "width": 96,
+          "height": 64,
+          "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-5/final-head0.ppm",
+          "sha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41"
+        },
+        "elapsedSeconds": 8.605177364021074,
+        "evidenceDirectory": "tests/7887520650a649848f1e320cc3893533"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-5"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-files",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "e42c872b5e164169bcc298379eff6f6c",
+        "profile": "gnome-wayland",
+        "scenario": "clipboard-files-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "e1d00cfb-eda7-4193-98ab-f8721f6e4d8c",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          },
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true
+        },
+        "pasteMetadata": {
+          "formats": [
+            "text/uri-list"
+          ],
+          "schemaVersion": 1,
+          "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\n",
+          "urls": [
+            "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+            "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+          ]
+        },
+        "paste": {
+          "ok": true
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-6/final-head0.ppm",
+          "sha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41"
+        },
+        "elapsedSeconds": 7.571429287956562,
+        "evidenceDirectory": "tests/e42c872b5e164169bcc298379eff6f6c"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-6"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-escape",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "84e9c0e0000d4932bd78f9783bef85a1",
+        "profile": "gnome-wayland",
+        "scenario": "region-cancel-escape-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "fbd7cc3c-13ca-44f3-8109-76c02d1b9f03",
+        "operationState": "cancelled",
+        "copyStatus": "no_result",
+        "itemOutcomes": [],
+        "paste": {
+          "ok": true,
+          "expected": {
+            "text": "putgd synthetic clipboard text"
+          },
+          "actual": {
+            "formats": [
+              "text/plain",
+              "text/plain;charset=utf-8"
+            ],
+            "schemaVersion": 1,
+            "text": "putgd synthetic clipboard text"
+          }
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-7/final-head0.ppm",
+          "sha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41"
+        },
+        "elapsedSeconds": 7.414240995014552,
+        "evidenceDirectory": "tests/84e9c0e0000d4932bd78f9783bef85a1"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-7"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-right-click",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "88890d0723bf4bd1a55b1738fdf55665",
+        "profile": "gnome-wayland",
+        "scenario": "region-cancel-right-click-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "561b47ef-63c3-4ecf-bcdb-14af8a532a52",
+        "operationState": "cancelled",
+        "copyStatus": "no_result",
+        "itemOutcomes": [],
+        "paste": {
+          "ok": true,
+          "expected": {
+            "text": "putgd synthetic clipboard text"
+          },
+          "actual": {
+            "formats": [
+              "text/plain",
+              "text/plain;charset=utf-8"
+            ],
+            "schemaVersion": 1,
+            "text": "putgd synthetic clipboard text"
+          }
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-8/final-head0.ppm",
+          "sha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41"
+        },
+        "elapsedSeconds": 7.799249804986175,
+        "evidenceDirectory": "tests/88890d0723bf4bd1a55b1738fdf55665"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-8"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-zero-area",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "590657981df545cb8828e1fd0ce72742",
+        "profile": "gnome-wayland",
+        "scenario": "region-cancel-zero-area-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "qt",
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 225,
+          "width": 640,
+          "height": 320
+        },
+        "independentWindowFrame": {
+          "x": 342,
+          "y": 176,
+          "width": 662,
+          "height": 480
+        },
+        "parameters": "parameters.json",
+        "operationId": "1558e9b4-fec9-45be-87ae-4e6fa6bda94d",
+        "operationState": "cancelled",
+        "copyStatus": "no_result",
+        "itemOutcomes": [],
+        "paste": {
+          "ok": true,
+          "expected": {
+            "text": "putgd synthetic clipboard text"
+          },
+          "actual": {
+            "formats": [
+              "text/plain",
+              "text/plain;charset=utf-8"
+            ],
+            "schemaVersion": 1,
+            "text": "putgd synthetic clipboard text"
+          }
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-9/final-head0.ppm",
+          "sha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41"
+        },
+        "elapsedSeconds": 7.204887557018083,
+        "evidenceDirectory": "tests/590657981df545cb8828e1fd0ce72742"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-9"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-text",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "3ec6a4cbdd18447ea1ec961f3f46003a",
+        "profile": "gnome-wayland",
+        "scenario": "clipboard-text-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "gtk",
+        "gtkClient": {
+          "schemaVersion": 1,
+          "client": "GTK",
+          "version": "4.22",
+          "displayBackend": "GdkWaylandDisplay"
+        },
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 243,
+          "width": 640,
+          "height": 320
+        },
+        "parameters": "parameters.json",
+        "operationId": "e655cc7b-eb6d-4037-bb49-8c8bfa18b7bf",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true
+        },
+        "pasteMetadata": {
+          "schemaVersion": 1,
+          "client": "GTK",
+          "formats": [
+            "text/plain;charset=utf-8"
+          ],
+          "text": "putgd synthetic clipboard text"
+        },
+        "paste": {
+          "ok": true,
+          "expected": {
+            "text": "putgd synthetic clipboard text"
+          },
+          "actual": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/plain;charset=utf-8"
+            ],
+            "text": "putgd synthetic clipboard text"
+          }
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-10/final-head0.ppm",
+          "sha256": "a5d99f731fbde9eb695bc3cac379ad2e95decd329280587b774efa8688789d7a"
+        },
+        "elapsedSeconds": 9.123836811981164,
+        "evidenceDirectory": "tests/3ec6a4cbdd18447ea1ec961f3f46003a"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-10"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-image",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "6aad70ad9baa4ed4923797a53d4e1597",
+        "profile": "gnome-wayland",
+        "scenario": "clipboard-image-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "gtk",
+        "gtkClient": {
+          "schemaVersion": 1,
+          "client": "GTK",
+          "version": "4.22",
+          "displayBackend": "GdkWaylandDisplay"
+        },
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 243,
+          "width": 640,
+          "height": 320
+        },
+        "parameters": "parameters.json",
+        "operationId": "a3175b86-6469-459d-9661-741d896fc961",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true,
+          "errors": [],
+          "width": 96,
+          "height": 64,
+          "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+        },
+        "pasteMetadata": {
+          "schemaVersion": 1,
+          "client": "GTK",
+          "formats": [
+            "image/png"
+          ],
+          "image": {
+            "width": 96,
+            "height": 64,
+            "saved": true
+          }
+        },
+        "paste": {
+          "ok": true,
+          "errors": [],
+          "width": 96,
+          "height": 64,
+          "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-11/final-head0.ppm",
+          "sha256": "19fe16917942b58d07af68ee43b783bcf374c6c5926caa2ada66ccb8fe184f95"
+        },
+        "elapsedSeconds": 10.666043179982807,
+        "evidenceDirectory": "tests/6aad70ad9baa4ed4923797a53d4e1597"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-11"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-files",
+      "result": {
+        "schemaVersion": 1,
+        "testId": "8909c9bde4814669a693c3e8f8774a88",
+        "profile": "gnome-wayland",
+        "scenario": "clipboard-files-independent-paste",
+        "ok": true,
+        "acceptanceScope": "single-head named action; no full profile certification",
+        "runningApp": {
+          "pid": 144260,
+          "startTicks": 2736736,
+          "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+        },
+        "evidence_class": "graphical-kvm",
+        "performance_eligible": false,
+        "clipboardClient": "gtk",
+        "gtkClient": {
+          "schemaVersion": 1,
+          "client": "GTK",
+          "version": "4.22",
+          "displayBackend": "GdkWaylandDisplay"
+        },
+        "shortcutBindings": {
+          "clipboard": {
+            "actual": "Ctrl+Shift+4",
+            "bound": true,
+            "requested": "Ctrl+Shift+4"
+          },
+          "desktop": {
+            "actual": "Ctrl+Shift+3",
+            "bound": true,
+            "requested": "Ctrl+Shift+3"
+          },
+          "region": {
+            "actual": "Ctrl+Shift+1",
+            "bound": true,
+            "requested": "Ctrl+Shift+1"
+          },
+          "window": {
+            "actual": "Ctrl+Shift+2",
+            "bound": true,
+            "requested": "Ctrl+Shift+2"
+          }
+        },
+        "independentPaintGeometry": {
+          "x": 353,
+          "y": 243,
+          "width": 640,
+          "height": 320
+        },
+        "parameters": "parameters.json",
+        "operationId": "a7523a8e-669d-47dd-b6a2-643774856b75",
+        "operationState": "completed",
+        "copyStatus": "copied",
+        "itemOutcomes": [
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          },
+          {
+            "uploadStatus": "local_only",
+            "localStatus": "saved",
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            }
+          }
+        ],
+        "artifact": {
+          "ok": true
+        },
+        "pasteMetadata": {
+          "schemaVersion": 1,
+          "client": "GTK",
+          "formats": [
+            "text/uri-list"
+          ],
+          "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1-44759c19-1e52-47da-b144-34199e15941b.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2-1c0d5f6c-d5e8-4288-9d63-f044dff6b389.txt\r\n",
+          "urls": [
+            "file:///home/lab/putgd-lab/archive/text/synthetic-1-44759c19-1e52-47da-b144-34199e15941b.txt",
+            "file:///home/lab/putgd-lab/archive/text/synthetic-2-1c0d5f6c-d5e8-4288-9d63-f044dff6b389.txt"
+          ]
+        },
+        "paste": {
+          "ok": true
+        },
+        "witness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-12/final-head0.ppm",
+          "sha256": "19fe16917942b58d07af68ee43b783bcf374c6c5926caa2ada66ccb8fe184f95"
+        },
+        "elapsedSeconds": 8.851745538006071,
+        "evidenceDirectory": "tests/8909c9bde4814669a693c3e8f8774a88"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-12"
+    }
+  ],
+  "proceduralPassed": true,
+  "visualReview": "pending",
+  "scope": "Installed current-source real native four-action Qt/GTK matrix plus visible region cancellation; local synthetic only"
+}

@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "env",
+    "PUTGD_CLI=/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/putgd-cli",
+    "uv",
+    "run",
+    "--offline",
+    "--project",
+    "tools/mcp",
+    "--locked",
+    "python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests/integration",
+    "-p",
+    "test_mcp.py",
+    "-v"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "startedUtc": "2026-10-09T08:15:21.746518+00:00"
+}

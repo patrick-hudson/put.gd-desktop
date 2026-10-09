@@ -1,0 +1,15 @@
+{
+  "scope": "guest post-native-use quiescent whole-family idle; not physical Cinnamon or cold memory certification",
+  "guest": "gnome",
+  "durationSeconds": 300,
+  "intervalSeconds": 5,
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "resident": {
+    "pid": 144260,
+    "startTicks": 2736736,
+    "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+  },
+  "moduleSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "vncPort": 5936,
+  "fortyMiBTargetClaimed": false
+}

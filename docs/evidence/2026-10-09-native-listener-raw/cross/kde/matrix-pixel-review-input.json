@@ -1,0 +1,158 @@
+[
+  {
+    "client": "qt",
+    "scenario": "region",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-1/final-head0.ppm",
+      "sha256": "6bd53a974ce586adaf0f6ff265f39511db98944e40b6068175a034ed1d968d28"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-1-final.png",
+      "sha256": "0e0a58fe398abb0329a85f98da7c16fe5a786eb1ff4d167a8a5b163acce3c79b"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "window",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-2/final-head0.ppm",
+      "sha256": "91a1b9b32ba2b3c9ce8a856d8880c6a62b51d7846ace67d5a0ad8760efef99c1"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-2-final.png",
+      "sha256": "e96499627356c0411a24d8b36c04a6f6c9933d004dea59c0e78c6efd1a903340"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "desktop",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-3/final-head0.ppm",
+      "sha256": "dc1fdf3ab710b8c652729d8013b2dbaa392239f459972c5526650daa5eb9720d"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-3-final.png",
+      "sha256": "125a429b1c553af0570f50c3022f863e10e7243d0d66ee009336b0a869a7d048"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "clipboard-text",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-4/final-head0.ppm",
+      "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-4-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "clipboard-image",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-5/final-head0.ppm",
+      "sha256": "dc1fdf3ab710b8c652729d8013b2dbaa392239f459972c5526650daa5eb9720d"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-5-final.png",
+      "sha256": "125a429b1c553af0570f50c3022f863e10e7243d0d66ee009336b0a869a7d048"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "clipboard-files",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-6/final-head0.ppm",
+      "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-6-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "region-cancel-escape",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-7/final-head0.ppm",
+      "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-7-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "region-cancel-right-click",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-8/final-head0.ppm",
+      "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-8-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "qt",
+    "scenario": "region-cancel-zero-area",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-9/final-head0.ppm",
+      "sha256": "dfc04e92e1786afb08901a9834b707f38edfc9be827534e35a3826b7198b8a35"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-9-final.png",
+      "sha256": "24c9028db51ae253fe8016cc29f93adf92d088f119305810d8687f6a586eda75"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "gtk",
+    "scenario": "clipboard-text",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-10/final-head0.ppm",
+      "sha256": "28664db98b02e58db12c3e8318538ec07dd2f4726d6a2206a619227e9730ba7a"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-10-final.png",
+      "sha256": "1bfba4f6562cf99b6fef237c2dc746e221d1d98ba5c9a89ada140ae9d5e1371b"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "gtk",
+    "scenario": "clipboard-image",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-11/final-head0.ppm",
+      "sha256": "28664db98b02e58db12c3e8318538ec07dd2f4726d6a2206a619227e9730ba7a"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-11-final.png",
+      "sha256": "1bfba4f6562cf99b6fef237c2dc746e221d1d98ba5c9a89ada140ae9d5e1371b"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  },
+  {
+    "client": "gtk",
+    "scenario": "clipboard-files",
+    "nativeWitness": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-12/final-head0.ppm",
+      "sha256": "28664db98b02e58db12c3e8318538ec07dd2f4726d6a2206a619227e9730ba7a"
+    },
+    "reviewPng": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-12-final.png",
+      "sha256": "1bfba4f6562cf99b6fef237c2dc746e221d1d98ba5c9a89ada140ae9d5e1371b"
+    },
+    "visualReview": "pending; procedural pass independently recorded"
+  }
+]

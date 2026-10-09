@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T08:06:31.305117+00:00",
+  "commit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "tree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+  "commitCount": 49,
+  "archive": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/source.tar",
+  "archiveSha256": "3128b686e497869311f2ba45ce157ae93e8aededbe1fc5524c966e842068f306",
+  "dirty": false,
+  "runtimeBranch": "codex/optimize-resident-native-boundary",
+  "integrated": false
+}

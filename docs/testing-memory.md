@@ -313,10 +313,11 @@ RSS/latency and regression checks.
 
 ## Current-build desktop matrix
 
-Before evaluating a memory candidate, complete the current-source functional wave
-on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Run distro builds, core/widget
-contracts and independent guest scenarios in parallel; serialize actions within
-each guest. Wait for compilation and active GUI testing to drain before collecting
+Start each memory candidate with one current-source Cinnamon build, its native
+functional cases and its memory checks. Fix or reject failures there before
+expanding to GNOME/Wayland or KDE/Wayland. Once Cinnamon passes, independent
+distro builds and native guest scenarios may run in parallel; serialize actions
+within each guest. Wait for compilation and active GUI testing to drain before collecting
 quiet samples. Physical Cinnamon retains its serial, unchanged workload. VM data
 must be labelled VM data and cannot certify the physical budget.
 
@@ -347,3 +348,16 @@ therefore persists on current code, with 148.77 MiB shared resident pages and
 comparison. The 40 MiB target remains open. Exact samples, workload differences,
 failure/retry receipts and stopped obsolete VM identities are retained with the
 report and [replay instructions](testing-vm-memory-audit.md).
+
+
+## Native listener candidate
+
+The experimental source49 Qt Core/native-tray resident passes the 40 MiB physical
+Cinnamon cold and closed-view target: 24.676/24.555 MiB cold peak and 25.229 MiB
+closed family median RSS. Source45 reference was 45.414 MiB cold and 45.600 MiB
+closed. The change is not integrated because selector startup regresses; capture
+timing and Wayland fallback footprints remain separate. The
+[replay guide](testing-native-listener.md) and
+[structured results](evidence/2026-10-09-native-listener.json) contain frozen
+parameters, source/binary identities, raw samples and failed attempts. Do not
+replace the 150 ms capture guard with the memory-only evaluator decision.

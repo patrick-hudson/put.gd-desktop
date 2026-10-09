@@ -1,0 +1,248 @@
+{
+  "status": "complete",
+  "verdict": "Ready with fixes",
+  "verdict_reason": "Source review of experimental b6e987c found confirmed P2 #1. Prepare clipboard spooling off the resident loop with generation/revision revalidation, then run targeted responsiveness and Cinnamon functional/memory/latency gates before accepting the experiment. No complete-product or cross-desktop acceptance is granted.",
+  "scope": {
+    "base": "c01cbe7140db1b5b9a20388acd399864798ccf13",
+    "branch": "codex/optimize-resident-native-boundary",
+    "head_sha": "b6e987ca9097ac6ebdd82101acac5aea664d1071",
+    "pr_url": null,
+    "files_changed": 36
+  },
+  "intent": "Reduce Cinnamon X11 background memory by running a Qt Core resident with native XCB listeners and StatusNotifier/dbusmenu tray, while launching a bounded ephemeral GUI process for capture. Preserve legacy graphical paths, accepted capture target identity, source privacy, cancellation, durable artifact/clipboard behavior, UI activation and existing IPC/storage contracts. This is an incremental memory candidate, not a complete-product release.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "security",
+    "project-standards",
+    "testing",
+    "maintainability",
+    "performance",
+    "api-contract",
+    "reliability",
+    "adversarial-reviewer"
+  ],
+  "findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/platform/x11/X11Clipboard.cpp:191: if(content->spool->write(bytes)!=bytes.size()||!content->spool->flush()){",
+        "src/app/OperationService.cpp:65 queues background completion with QMetaObject::invokeMethod(...,Qt::QueuedConnection); performCopy completion at 296-301 calls deliverCopy, which at 254 calls source_.copy synchronously. X11CoreSourceAdapter.cpp:22 delegates directly to clipboard_.copy.",
+        "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md:73: R20. The resident app remains responsive during capture, encoding, disk access, and slow or failing uploads.",
+        "The c01cbe7..b6e987c diff adds full QTemporaryFile write/flush; the old implementation passed MIME data to QGuiApplication clipboard without this spool write.",
+        "src/platform/x11/X11Clipboard.cpp:191 \u2014 if(content->spool->write(bytes)!=bytes.size()||!content->spool->flush()){",
+        "src/app/OperationService.cpp:252\u2013257 deliverCopy calls source_.copy synchronously; background result completions run on OperationService/session thread.",
+        "src/platform/x11/X11CoreSourceAdapter.cpp:22 delegates directly to clipboard_.copy.",
+        "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md:73 R20 requires responsiveness during disk access; diff adds the full synchronous spool write in native ownership path."
+      ],
+      "file": "src/platform/x11/X11Clipboard.cpp",
+      "first_evidence": "src/platform/x11/X11Clipboard.cpp:191: if(content->spool->write(bytes)!=bytes.size()||!content->spool->flush()){",
+      "independent_reviewers": [],
+      "line": 191,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-reviewer",
+        "performance"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Prepare and fill the private unlinked spool in a bounded worker, then commit XCB ownership on the session thread only after verifying both clipboard revision and copy-eligibility generation again. Preserve old ownership on worker error, keep a finite single-write admission bound and release worker payload promptly. Propagate invalidation through SourceAdapter so a newer action cannot be overwritten by stale asynchronous completion.",
+      "title": "Clipboard spooling blocks the resident event loop",
+      "why_it_matters": "Copying a local-only image/text result performs the entire private spool write and flush synchronously on the resident QObject thread. A large accepted image or slow/full temporary filesystem can stall hotkeys, tray events, IPC and cancellation while ownership is prepared, violating the R20 responsiveness contract. The earlier worker reads/verifies the artifact but returns before this new disk write happens.",
+      "validation_status": "confirmed",
+      "validation_reason": "At b6e987c, a saved single detached local-only image/text result reaches OperationService.cpp:297\u2013300 through the resident-thread queued completion at line 65 and synchronous adapter copy at X11CoreSourceAdapter.cpp:22, so the newly introduced full write/flush at X11Clipboard.cpp:191 can block resident event handling for a large result or slow temporary filesystem contrary to R20; incidence and stall duration were not measured live.",
+      "protected_subject": null
+    }
+  ],
+  "actionable_findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/platform/x11/X11Clipboard.cpp:191: if(content->spool->write(bytes)!=bytes.size()||!content->spool->flush()){",
+        "src/app/OperationService.cpp:65 queues background completion with QMetaObject::invokeMethod(...,Qt::QueuedConnection); performCopy completion at 296-301 calls deliverCopy, which at 254 calls source_.copy synchronously. X11CoreSourceAdapter.cpp:22 delegates directly to clipboard_.copy.",
+        "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md:73: R20. The resident app remains responsive during capture, encoding, disk access, and slow or failing uploads.",
+        "The c01cbe7..b6e987c diff adds full QTemporaryFile write/flush; the old implementation passed MIME data to QGuiApplication clipboard without this spool write.",
+        "src/platform/x11/X11Clipboard.cpp:191 \u2014 if(content->spool->write(bytes)!=bytes.size()||!content->spool->flush()){",
+        "src/app/OperationService.cpp:252\u2013257 deliverCopy calls source_.copy synchronously; background result completions run on OperationService/session thread.",
+        "src/platform/x11/X11CoreSourceAdapter.cpp:22 delegates directly to clipboard_.copy.",
+        "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md:73 R20 requires responsiveness during disk access; diff adds the full synchronous spool write in native ownership path."
+      ],
+      "file": "src/platform/x11/X11Clipboard.cpp",
+      "first_evidence": "src/platform/x11/X11Clipboard.cpp:191: if(content->spool->write(bytes)!=bytes.size()||!content->spool->flush()){",
+      "independent_reviewers": [],
+      "line": 191,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-reviewer",
+        "performance"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Prepare and fill the private unlinked spool in a bounded worker, then commit XCB ownership on the session thread only after verifying both clipboard revision and copy-eligibility generation again. Preserve old ownership on worker error, keep a finite single-write admission bound and release worker payload promptly. Propagate invalidation through SourceAdapter so a newer action cannot be overwritten by stale asynchronous completion.",
+      "title": "Clipboard spooling blocks the resident event loop",
+      "why_it_matters": "Copying a local-only image/text result performs the entire private spool write and flush synchronously on the resident QObject thread. A large accepted image or slow/full temporary filesystem can stall hotkeys, tray events, IPC and cancellation while ownership is prepared, violating the R20 responsiveness contract. The earlier worker reads/verifies the artifact but returns before this new disk write happens.",
+      "validation_status": "confirmed",
+      "validation_reason": "At b6e987c, a saved single detached local-only image/text result reaches OperationService.cpp:297\u2013300 through the resident-thread queued completion at line 65 and synchronous adapter copy at X11CoreSourceAdapter.cpp:22, so the newly introduced full write/flush at X11Clipboard.cpp:191 can block resident event handling for a large result or slow temporary filesystem contrary to R20; incidence and stall duration were not measured live.",
+      "protected_subject": null
+    }
+  ],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan_source": "explicit",
+    "plan_path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+    "requirements": [
+      {
+        "requirement": "R1",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Core helper reuses live graphical selection and defers output until dismissal; physical overlay acceptance pending."
+      },
+      {
+        "requirement": "R2",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Native invocation-time external target is frozen and validated in helper; physical active-window acceptance pending."
+      },
+      {
+        "requirement": "R3",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Native layout/scaling is frozen and revalidated; physical multi-display acceptance pending."
+      },
+      {
+        "requirement": "R4",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Native import and ownership transport retains file/image/text contracts; independent real-application paste pending."
+      },
+      {
+        "requirement": "R8",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Copy revision eligibility is preserved synchronously; proposed worker fix must retain generation/revision checks."
+      },
+      {
+        "requirement": "R12",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Native shortcut listener is retained with positive session guards; physical conflict/binding checks pending."
+      },
+      {
+        "requirement": "R13",
+        "status": "partially addressed",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Candidate intentionally routes only Cinnamon/X11 to Core; legacy GNOME/KDE paths retained. Cross-desktop acceptance intentionally deferred until Cinnamon gates pass."
+      },
+      {
+        "requirement": "R14",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Native shortcut and capture helper routing appears in diff; physical unfocused hotkey acceptance pending."
+      },
+      {
+        "requirement": "R15",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Core source and helper/tray diagnostics appear; real failure/permission reporting remains an acceptance gate."
+      },
+      {
+        "requirement": "R20",
+        "status": "partially addressed",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Partially addressed by ephemeral GUI and disk-backed ownership; confirmed synchronous spool defect #1 remains. Memory and responsiveness measurements pending."
+      },
+      {
+        "requirement": "R21",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Shared production CLI/session service is retained; no independent live CLI/MCP acceptance in this review."
+      },
+      {
+        "requirement": "R27",
+        "status": "met",
+        "basis": "source coverage only; acceptance not established",
+        "note": "Shared archive pipeline is retained and outside this native boundary change; no recording feature added."
+      }
+    ],
+    "implementation_units": [
+      {
+        "unit": "Cinnamon-only resident native Core listener experiment; no keep/integration approval or cross-desktop acceptance yet",
+        "status": "partially addressed",
+        "note": "Native boundary code is present; acceptance intentionally pending for this experimental checkpoint."
+      }
+    ],
+    "unrequested_behavior_rules": [],
+    "scope_note": "The explicit implementation unit is an experiment with acceptance intentionally pending; no complete-product release or all-desktop acceptance is claimed."
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [],
+  "testing_gaps": [
+    "Physical Cinnamon tray, transparent live region, external native paste, selector-dismissal ordering and whole-family RSS/CPU/p95 latency acceptance remain unproved by this source review; parent-reported dev46/46 and ASan4/4 do not replace those gates."
+  ],
+  "coverage": {
+    "depth": "full",
+    "notes": [
+      "Agent concurrency limited separate persona launches. Correctness and adversarial fallback were reused as bounded independent contexts with reciprocal authorship exclusions; seven other selected lenses were grouped in the dispatch context, not independently certified.",
+      "Correctness reviewer excluded authored X11Clipboard.cpp/.h, X11Shortcuts.cpp and test_x11_core_clipboard.cpp; adversarial fallback excluded authored capture/helper/controller/lease/snapshot and their tests.",
+      "Standards criteria fall back to root AGENTS.md; no CODING_STANDARDS.md/CLAUDE.md or project CE config/pack criteria were present.",
+      "Peer initial dirty snapshot did not cover final frozen deltas and produced no usable artifact. Final source coverage is checkpoint b6e987c,36 explicit owned paths, final manifest scope.json/diffSHA256 6960f525f5a415fe822d4c21bd92bee7976d645350775ad9a00dda492b224ae9.",
+      "No source edits/build/test/VM/runtime action performed by this review. Parent-reported full dev46/46 and focused ASan4/4 are context only. Real Cinnamon functional, local paste, latency150ms and idle memory\u224840MiB gates remain outside review and unproved.",
+      "Call-site search was textual, not symbol-aware; no exhaustive external-callsite claim.",
+      "adversarial lens: in-process fallback (cross-model peer not run: Claude reached maximum number of turns25 and produced no usable review output; requested claude-opus-5-5/high via acpx, actual resolved model not attested).",
+      "Semantic duplicate reconciliation merged the performance and in-process adversarial clipboard spool reports into finding #1; no cross-serving-family corroboration or confidence promotion occurred.",
+      "Suppressed by confidence: zero. First-evidence backfilled: zero. Quote-gate demotions: zero. Mode-aware demotions: zero. Settled-decision preference suppressions: zero. Malformed findings/returns: zero.",
+      "Validator selected #1 because it is actionable; shortcut skipped zero findings because there is no quote-anchored independent cross-model artifact.",
+      "Review constraints permit report artifacts only; no local apply, product mutation or acceptance execution occurred.",
+      "Persona residual-risk fields containing inspection receipts, hashes or independence disclosures were moved into coverage context rather than presented as product defects."
+    ],
+    "validators": {
+      "batch_outcome": "verdicts",
+      "confirmed": 1,
+      "rejected": 0,
+      "unresolved": 0,
+      "malformed": 0,
+      "failed": 0,
+      "shortcut_skipped": 0,
+      "protected_subject_reclassifications": 0,
+      "reason": "Fresh independent validator confirmed #1 against frozen b6e987c; incidence/stall unmeasured. Verdict arrived; no bound exceeded."
+    },
+    "suppressed_by_confidence": {},
+    "first_evidence_backfilled": 0,
+    "quote_gate_demotions": 0,
+    "mode_aware_demotions": 0,
+    "settled_conflict_suppressions": 0,
+    "failed_reviewers": [],
+    "peer": {
+      "selected": true,
+      "target": "claude",
+      "route": "claude",
+      "preference_source": "instructions",
+      "outcome": "in-process-fallback",
+      "artifact": null,
+      "coverage": "adversarial lens: in-process fallback (cross-model peer not run: Claude reached maximum number of turns25 and produced no usable review output; requested claude-opus-5-5/high via acpx, actual resolved model not attested)."
+    },
+    "compound_packs": {
+      "roots": [],
+      "errors": [],
+      "warnings": []
+    },
+    "not_assessed": [
+      "learnings-researcher",
+      "agent-native-reviewer",
+      "deployment-verification-agent"
+    ],
+    "authorship_and_capacity": "Correctness and adversarial contexts reviewed reciprocal non-authored divisions; seven other lenses were grouped in dispatch context. No seven independent persona claim.",
+    "runtime_acceptance": "No review build/test/VM/runtime actions. Parent-reported dev46/46 and ASan4/4 are context only. This report excludes later product revisions, owner fixes, installs and measurements."
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/native-boundary-20261009-0710",
+  "run_id": "native-boundary-20261009-0710"
+}

@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-09T08:12:28.249532+00:00",
+  "expectedPackageSha256": "41332ba035fbae4f55160e51b18dbe45417f84ec7ea540ba0d609a480e2b11c1",
+  "actual": {
+    "sha256": "41332ba035fbae4f55160e51b18dbe45417f84ec7ea540ba0d609a480e2b11c1",
+    "version": "putgd-capture 0.1.1-dev.49+g676f6e6d6e0b"
+  },
+  "build": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.49+g676f6e6d6e0b",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.49+g676f6e6d6e0b",
+    "gitCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "gitTree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+    "commitCount": 49,
+    "dirty": false,
+    "sourceProvenance": "git"
+  }
+}

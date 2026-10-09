@@ -1,0 +1,525 @@
+{
+  "utc": "2026-10-09T09:20:30.295774+00:00",
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 49,
+    "dirty": null,
+    "gitCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "gitTree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+    "packageVersion": "0.1.1~dev.49+g676f6e6d6e0b",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.49+g676f6e6d6e0b"
+  },
+  "result": {
+    "resident": {
+      "pid": 275236,
+      "startTicks": 4530864,
+      "sha256": "9272218106a5a9c220a494810362c106809e2bf37d6c391ba43dbf6885e93ab3"
+    },
+    "topMappingBasenames": [
+      {
+        "mappingBasename": "libLLVM.so.21.1",
+        "mappingCount": 4,
+        "rssBytes": 50622464,
+        "pssBytes": 5963776,
+        "privateBytes": 2244608,
+        "anonymousBytes": 2244608,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "(anonymous)",
+        "mappingCount": 90,
+        "rssBytes": 5234688,
+        "pssBytes": 5234688,
+        "privateBytes": 5234688,
+        "anonymousBytes": 5234688,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "[heap]",
+        "mappingCount": 1,
+        "rssBytes": 4173824,
+        "pssBytes": 4173824,
+        "privateBytes": 4173824,
+        "anonymousBytes": 4173824,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "putgd",
+        "mappingCount": 5,
+        "rssBytes": 2129920,
+        "pssBytes": 2129920,
+        "privateBytes": 2129920,
+        "anonymousBytes": 45056,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libgallium-26.0.8-1ubuntu0.3.so",
+        "mappingCount": 5,
+        "rssBytes": 10616832,
+        "pssBytes": 1761280,
+        "privateBytes": 1019904,
+        "anonymousBytes": 1019904,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libsqlite3.so.0.8.6",
+        "mappingCount": 5,
+        "rssBytes": 1409024,
+        "pssBytes": 1409024,
+        "privateBytes": 1409024,
+        "anonymousBytes": 36864,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6Widgets.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 3665920,
+        "pssBytes": 1007616,
+        "privateBytes": 618496,
+        "anonymousBytes": 290816,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libheif.so.1.21.2",
+        "mappingCount": 5,
+        "rssBytes": 937984,
+        "pssBytes": 937984,
+        "privateBytes": 937984,
+        "anonymousBytes": 53248,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6Gui.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 6258688,
+        "pssBytes": 879616,
+        "privateBytes": 167936,
+        "anonymousBytes": 167936,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libcrypto.so.3",
+        "mappingCount": 5,
+        "rssBytes": 1765376,
+        "pssBytes": 755712,
+        "privateBytes": 524288,
+        "anonymousBytes": 524288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libKF6CoreAddons.so.6.24.0",
+        "mappingCount": 5,
+        "rssBytes": 651264,
+        "pssBytes": 651264,
+        "privateBytes": 651264,
+        "anonymousBytes": 28672,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6Quick.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 3203072,
+        "pssBytes": 590848,
+        "privateBytes": 372736,
+        "anonymousBytes": 372736,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libglib-2.0.so.0.8800.0",
+        "mappingCount": 5,
+        "rssBytes": 962560,
+        "pssBytes": 485376,
+        "privateBytes": 8192,
+        "anonymousBytes": 8192,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libraw.so.23.0.0",
+        "mappingCount": 5,
+        "rssBytes": 663552,
+        "pssBytes": 372736,
+        "privateBytes": 81920,
+        "anonymousBytes": 81920,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6Core.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 4644864,
+        "pssBytes": 368640,
+        "privateBytes": 98304,
+        "anonymousBytes": 98304,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6QuickTemplates2.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 1552384,
+        "pssBytes": 336896,
+        "privateBytes": 229376,
+        "anonymousBytes": 229376,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libaom.so.3.13.1",
+        "mappingCount": 5,
+        "rssBytes": 335872,
+        "pssBytes": 335872,
+        "privateBytes": 335872,
+        "anonymousBytes": 73728,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6Qml.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 1998848,
+        "pssBytes": 317440,
+        "privateBytes": 188416,
+        "anonymousBytes": 188416,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libOpenEXR-3_1.so.30.13.1",
+        "mappingCount": 5,
+        "rssBytes": 487424,
+        "pssBytes": 251904,
+        "privateBytes": 16384,
+        "anonymousBytes": 16384,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libm.so.6",
+        "mappingCount": 5,
+        "rssBytes": 811008,
+        "pssBytes": 215040,
+        "privateBytes": 53248,
+        "anonymousBytes": 8192,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libgobject-2.0.so.0.8800.0",
+        "mappingCount": 5,
+        "rssBytes": 409600,
+        "pssBytes": 212992,
+        "privateBytes": 16384,
+        "anonymousBytes": 16384,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libssl.so.3",
+        "mappingCount": 5,
+        "rssBytes": 339968,
+        "pssBytes": 210944,
+        "privateBytes": 81920,
+        "anonymousBytes": 57344,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libgio-2.0.so.0.8800.0",
+        "mappingCount": 5,
+        "rssBytes": 372736,
+        "pssBytes": 206848,
+        "privateBytes": 40960,
+        "anonymousBytes": 40960,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libIex-3_1.so.30.13.1",
+        "mappingCount": 5,
+        "rssBytes": 389120,
+        "pssBytes": 204800,
+        "privateBytes": 20480,
+        "anonymousBytes": 20480,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libpng16.so.16.57.0",
+        "mappingCount": 5,
+        "rssBytes": 237568,
+        "pssBytes": 186368,
+        "privateBytes": 135168,
+        "anonymousBytes": 8192,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libxml2.so.16.1.2",
+        "mappingCount": 5,
+        "rssBytes": 303104,
+        "pssBytes": 169984,
+        "privateBytes": 36864,
+        "anonymousBytes": 36864,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libKF6WidgetsAddons.so.6.24.0",
+        "mappingCount": 5,
+        "rssBytes": 999424,
+        "pssBytes": 164864,
+        "privateBytes": 98304,
+        "anonymousBytes": 98304,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libc.so.6",
+        "mappingCount": 5,
+        "rssBytes": 1916928,
+        "pssBytes": 162816,
+        "privateBytes": 24576,
+        "anonymousBytes": 24576,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6WaylandClient.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 1138688,
+        "pssBytes": 153600,
+        "privateBytes": 65536,
+        "anonymousBytes": 65536,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libp11-kit.so.0.4.8",
+        "mappingCount": 5,
+        "rssBytes": 557056,
+        "pssBytes": 151552,
+        "privateBytes": 135168,
+        "anonymousBytes": 135168,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libssh2.so.1.0.1",
+        "mappingCount": 5,
+        "rssBytes": 151552,
+        "pssBytes": 151552,
+        "privateBytes": 151552,
+        "anonymousBytes": 12288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libjxl.so.0.11.1",
+        "mappingCount": 5,
+        "rssBytes": 262144,
+        "pssBytes": 149504,
+        "privateBytes": 36864,
+        "anonymousBytes": 36864,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "kimg_iff.so",
+        "mappingCount": 5,
+        "rssBytes": 266240,
+        "pssBytes": 143360,
+        "privateBytes": 20480,
+        "anonymousBytes": 16384,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libQt6Sql.so.6.10.2",
+        "mappingCount": 5,
+        "rssBytes": 307200,
+        "pssBytes": 140288,
+        "privateBytes": 57344,
+        "anonymousBytes": 12288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "kimg_avif.so",
+        "mappingCount": 5,
+        "rssBytes": 241664,
+        "pssBytes": 137216,
+        "privateBytes": 32768,
+        "anonymousBytes": 12288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libGLdispatch.so.0.0.0",
+        "mappingCount": 5,
+        "rssBytes": 532480,
+        "pssBytes": 137216,
+        "privateBytes": 118784,
+        "anonymousBytes": 118784,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libicui18n.so.78.2",
+        "mappingCount": 5,
+        "rssBytes": 1318912,
+        "pssBytes": 136192,
+        "privateBytes": 81920,
+        "anonymousBytes": 81920,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libstdc++.so.6.0.35",
+        "mappingCount": 5,
+        "rssBytes": 1695744,
+        "pssBytes": 134144,
+        "privateBytes": 73728,
+        "anonymousBytes": 73728,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "kimg_heif.so",
+        "mappingCount": 5,
+        "rssBytes": 225280,
+        "pssBytes": 133120,
+        "privateBytes": 40960,
+        "anonymousBytes": 12288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libmng.so.2.0.2",
+        "mappingCount": 5,
+        "rssBytes": 221184,
+        "pssBytes": 131072,
+        "privateBytes": 40960,
+        "anonymousBytes": 16384,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libmvec.so.1",
+        "mappingCount": 5,
+        "rssBytes": 126976,
+        "pssBytes": 126976,
+        "privateBytes": 126976,
+        "anonymousBytes": 8192,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libKF6KIOWidgets.so.6.24.0",
+        "mappingCount": 5,
+        "rssBytes": 626688,
+        "pssBytes": 125952,
+        "privateBytes": 65536,
+        "anonymousBytes": 65536,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libcurl-gnutls.so.4.8.0",
+        "mappingCount": 5,
+        "rssBytes": 217088,
+        "pssBytes": 124928,
+        "privateBytes": 32768,
+        "anonymousBytes": 32768,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libgav1.so.2.0.0",
+        "mappingCount": 5,
+        "rssBytes": 172032,
+        "pssBytes": 118784,
+        "privateBytes": 65536,
+        "anonymousBytes": 12288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libfreetype.so.6.20.5",
+        "mappingCount": 5,
+        "rssBytes": 196608,
+        "pssBytes": 116736,
+        "privateBytes": 36864,
+        "anonymousBytes": 36864,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libqt6keychain.so.0.15.0",
+        "mappingCount": 5,
+        "rssBytes": 114688,
+        "pssBytes": 114688,
+        "privateBytes": 114688,
+        "anonymousBytes": 12288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libgnutls.so.30.41.1",
+        "mappingCount": 5,
+        "rssBytes": 925696,
+        "pssBytes": 109568,
+        "privateBytes": 77824,
+        "anonymousBytes": 77824,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "kimg_psd.so",
+        "mappingCount": 5,
+        "rssBytes": 192512,
+        "pssBytes": 106496,
+        "privateBytes": 20480,
+        "anonymousBytes": 12288,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libicuuc.so.78.2",
+        "mappingCount": 5,
+        "rssBytes": 602112,
+        "pssBytes": 104448,
+        "privateBytes": 81920,
+        "anonymousBytes": 81920,
+        "swapBytes": 0
+      },
+      {
+        "mappingBasename": "libKF6StatusNotifierItem.so.6.24.0",
+        "mappingCount": 5,
+        "rssBytes": 344064,
+        "pssBytes": 103424,
+        "privateBytes": 20480,
+        "anonymousBytes": 20480,
+        "swapBytes": 0
+      }
+    ],
+    "categories": {
+      "other": {
+        "rssBytes": 45539328,
+        "pssBytes": 16094208,
+        "privateBytes": 10096640,
+        "anonymousBytes": 4239360,
+        "swapBytes": 0,
+        "mappingCount": 1161
+      },
+      "anonymous-and-heap": {
+        "rssBytes": 9408512,
+        "pssBytes": 9408512,
+        "privateBytes": 9408512,
+        "anonymousBytes": 9408512,
+        "swapBytes": 0,
+        "mappingCount": 91
+      },
+      "other-Qt": {
+        "rssBytes": 18571264,
+        "pssBytes": 3000320,
+        "privateBytes": 1286144,
+        "anonymousBytes": 811008,
+        "swapBytes": 0,
+        "mappingCount": 60
+      },
+      "Mesa-EGL-graphics": {
+        "rssBytes": 63754240,
+        "pssBytes": 8519680,
+        "privateBytes": 3502080,
+        "anonymousBytes": 3502080,
+        "swapBytes": 0,
+        "mappingCount": 59
+      },
+      "QtQuick-QML": {
+        "rssBytes": 7507968,
+        "pssBytes": 1375232,
+        "privateBytes": 876544,
+        "anonymousBytes": 876544,
+        "swapBytes": 0,
+        "mappingCount": 35
+      },
+      "fonts-text": {
+        "rssBytes": 507904,
+        "pssBytes": 148480,
+        "privateBytes": 57344,
+        "anonymousBytes": 57344,
+        "swapBytes": 0,
+        "mappingCount": 15
+      }
+    },
+    "scope": "Idle post-use current resident mappings; basenames only; categories heuristic, anonymous allocation attribution not established"
+  },
+  "collectorSha256": "4c89e187f77c6117345e1fd5f6cf437f33db3bb75fed7542e1b8a1be6da26abf"
+}

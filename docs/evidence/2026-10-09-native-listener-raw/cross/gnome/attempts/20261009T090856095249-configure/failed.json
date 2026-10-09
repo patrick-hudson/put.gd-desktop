@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T09:08:58.343330+00:00",
+  "phase": "configure",
+  "errorType": "AssertionError",
+  "message": "Preserve attempt; diagnose explicitly before retry"
+}

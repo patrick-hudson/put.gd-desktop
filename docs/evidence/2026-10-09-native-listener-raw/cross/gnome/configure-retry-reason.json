@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-09T09:09:22.696834+00:00",
+  "failedAttempt": "work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/failed.json",
+  "reason": "First-start Settings helper was still open; configuration guard rejected before writing settings. Close normally and verify exact helper normal exit, then rerun unchanged configuration phase.",
+  "correctedArgv": [
+    "python3",
+    "work/resident-native-boundary/cross-desktop-replay.py",
+    "--guest",
+    "gnome",
+    "--cinnamon-gates-sha256",
+    "5536705e64b29fae8b586f0c9db9365f1968d77261e10d94c8cac35b43bbabd1",
+    "configure"
+  ]
+}

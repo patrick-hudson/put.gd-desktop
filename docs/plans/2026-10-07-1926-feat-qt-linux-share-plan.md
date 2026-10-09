@@ -1160,3 +1160,28 @@ Several compatible improvements may form one candidate: acceptance is based on
 the combined whole-family result and preserved features, not a requirement that
 one isolated change reach 40 MiB. Save individual and integrated comparisons
 separately, and never add deltas measured against different baselines.
+
+
+The clean native-listener candidate `676f6e6` reached the physical Cinnamon
+40 MiB memory target in two independent cold/closed measurement pairs: cold
+24.676/24.555 MiB peak RSS, closed family 25.229 MiB median RSS versus 45.600 MiB
+reference. Native fonts/dialogs, tray and on-demand views are preserved. Source49
+passed host contracts and twelve visible native Cinnamon cases. This experimental
+branch is not integrated: region selector mapping/painting regressed by about
+100 ms median and both the candidate and matched original control miss the
+150 ms timing gate. Current-source GNOME/KDE each passed twelve native cases and normal view
+helper exit. Post-use VM RSS/PSS was 60.219/34.001 MiB GNOME and 138.559/36.995 MiB
+KDE, compared with 28.520/18.383 MiB Cinnamon. Their graphical fallback is unchanged;
+a Wayland 40 MiB RSS result remains unachieved. These VM observations are separate
+from the physical target and have no matched old-guest baseline. See
+[native-listener replay](../testing-native-listener.md) and
+[structured evidence](../evidence/2026-10-09-native-listener.json). Retain this
+memory result while fixing capture responsiveness; do not weaken its timing gate
+or infer a Wayland 40 MiB win from Cinnamon.
+
+
+Native view inspection also found a remaining polish task: Activity's narrow
+Details column elides size/status text. Refine that presentation with readable
+column allocation or an accessible selected-item detail view, preserving the
+MiB/GiB display and full tooltip explanations. Clean painting and native helper
+lifecycle checks establish functionality, not completed visual design.

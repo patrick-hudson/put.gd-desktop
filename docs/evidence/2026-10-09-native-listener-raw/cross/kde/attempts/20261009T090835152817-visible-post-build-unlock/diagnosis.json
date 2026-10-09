@@ -1,0 +1,6 @@
+{
+  "reason": "Existing session locked during guest build; fresh helper close timed out at locked console",
+  "maskedFieldWitness": "post-build-wake.png",
+  "earlierWitnessesPreserved": true,
+  "retry": "Visible protected login then new normal helper close"
+}

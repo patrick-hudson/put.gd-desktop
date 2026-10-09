@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "scope": "Supplemental physical cold whole-family observer; frozen primary harness unchanged",
+  "observerSha256": "91ba800129479728ffbbd38619d3d30548e5293181f44ded01189278f7c14cfe",
+  "familyHarnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "samplingSeconds": 1,
+  "samples": [],
+  "passed": false,
+  "command": [
+    "python3",
+    "/home/patrick/work/put.gd/tests/performance/observe_idle.py",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "--output",
+    "/tmp/pg-nc1-cold2",
+    "--seconds",
+    "300"
+  ]
+}

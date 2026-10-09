@@ -1,0 +1,13 @@
+{
+  "scope": "Cinnamon VM quiescent post-native-use whole-family; not physical cold or closed-view confirmation",
+  "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/attempts/20261009T091403300112-post-native-memory/memory.json",
+  "sha256": "0805fc27f26f03a779b395e4901d5cdc5dc81130b953987e4447f869f33c714c",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "result": {
+    "peakRssBytes": 29904896,
+    "finalRssBytes": 29904896,
+    "finalPssBytes": 19275776,
+    "finalPrivateBytes": 18345984,
+    "cpuPercentOneCore": 0.006666379651646045
+  }
+}
