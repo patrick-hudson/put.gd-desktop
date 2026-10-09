@@ -1,0 +1,40 @@
+{
+  "baseCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "dirty": true,
+  "extendsSourceSnapshotSha256": "383e8fe23ef8b4d1affc6e2027f17055bcbd642309804d6159d0b52bdd9b3364",
+  "files": {
+    ".github/workflows/build.yml": "d260b173846bd5ea66dbf2c85872594a27b80df933e61226bf4eb75289a1eec9",
+    "CMakeLists.txt": "138398a4daf8fb782df12d1181e6d3fa5a0ebdef4123b07843e9d53b3f257512",
+    "src/app/OperationService.cpp": "e3e49f2a6445a8621a2431409a05a1da1e34c2d5f183f7a59e7123a66738730e",
+    "src/app/OperationService.h": "85a01d8d15680dfd72f35ba5e42281f2303ab406b22e30d73ad04eacb8732f77",
+    "src/capture/main.cpp": "b4d9bbf46b6765c05474bcdd6894683b5c303f32ff9c2cdbaf77cd987aefe39c",
+    "src/platform/x11/CaptureControl.cpp": "929306a013ac10896a0460db256d1ce26e6d3dfa779352d15400e89ed38b4008",
+    "src/platform/x11/CaptureProcessController.cpp": "0717909ceed1748b9d88110bf6d34207dfe22affb08378699644ebdc1239e4cb",
+    "src/platform/x11/CaptureProcessController.h": "9066efeee84179e16233f3d38e9d0c57e972d387a248f5f3ff7aa196d601e66a",
+    "src/platform/x11/X11CoreSourceAdapter.cpp": "38c33980b0e91c6c3d8bcdeeb21f513eaa1532810e32c4ce5d0dd0569dbc72a1",
+    "src/platform/x11/X11CoreSourceAdapter.h": "51f22001bc3f830d36ce70184a462f1f20afdf5251f1db58163f87da65534b84",
+    "src/platform/x11/X11SourceAdapter.cpp": "ccf562efbe144a6f9a53203d6319cc682c47dde7a5680948f738d1c18c1755f7",
+    "src/platform/x11/X11SourceAdapter.h": "4e8c19e2360b8c962c78a3acc8350113a28ab38a544d134095a70d48560eff5e",
+    "src/ui/RecentOperations.cpp": "a852eb44bcad881ee94b2230ef80f9f1d59bc550b0276bf330e5c9abec3bb2c1",
+    "src/ui/RegionOverlay.cpp": "877f67af226223779830e6b71272550a305a2674b23e570d60b509e0e6051da1",
+    "src/ui/RegionOverlay.h": "9bc8bebb1e60edd8f20e547f57c183cfcef79a1f071171cf10f9a1fbc8cb1dcb",
+    "tests/fixtures/capture_helper_fixture.cpp": "89068c44cc2667ed790a2728ee839edce50d173f4d8b1d4816d0edd218dc4fd4",
+    "tests/gui/test_operations_view.cpp": "8fe52f7276cb14e6d13443d2b7a88141a2f58e6ba6760de1330f790b294468af",
+    "tests/integration/test_capture_control.cpp": "bc6d2e03c7e801b29da664f0a9862a5faf0ba5346bc4d926b637a1f212e5a2ac",
+    "tests/integration/test_capture_process.cpp": "8acbe6067ba5f7417fd796097da8ea9840fb7a5c931823079d07873d50631c8a",
+    "tests/unit/test_operations.cpp": "a4cc5b0d9ee0a15ab66e35e1fd4344c5244aae43a3267c880ec032af363358f3",
+    "src/platform/x11/NativeRegionOverlay.cpp": "c79212c84a159801f80ee3933289ef718d4d9440282388797e0727a28784290d",
+    "src/platform/x11/NativeRegionOverlay.h": "14812567a8fbc1d9d7816436b5599d4dc00592b73f42f795457dd9ee563cf1bc",
+    "src/platform/x11/CaptureCursorCache.cpp": "35f65f4a87bd332241d6a5471fbc1142ab2280d6a2de8a89908215b11538a8c8",
+    "src/platform/x11/CaptureCursorCache.h": "68c1862b308801d58b606ba7b2b17ce9f33f2a2b2e96a498151b1ce78abf2f45",
+    "src/ui/RegionSelector.h": "59b94cc7ee5e77420c4c14a5ec3213f4b64811ea40d2778b5c76d47f8bc8f4d3",
+    "tests/desktop/x11/test_capture_preparation.cpp": "fff1a0bd0ac5f551593a028290a5f494da676fcc211b95f2c726db3689b3ed3c",
+    "tests/desktop/x11/test_native_region_overlay.cpp": "15d6daa91297c5a75298721dce1d39c3d601e6e7b20bb2b51cff2bc7e07ae040",
+    "tests/desktop/x11/test_x11.cpp": "b7fe7522a4b11d90eceb4335fd8f5e0f90a0b4056eb282c02f32f35f62438d31"
+  },
+  "scope": "Exact early-selection source/test hash map plus subsequent assertion-only X11 test correction. No clean version/tree acceptance identity supplied.",
+  "changedAfterSnapshot": [
+    "tests/desktop/x11/test_x11.cpp"
+  ],
+  "productSourceChangedAfterSnapshot": false
+}

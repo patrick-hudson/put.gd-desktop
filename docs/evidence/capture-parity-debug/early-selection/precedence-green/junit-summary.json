@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "884e1695f0021e3dbea4f561daa6d1eeeb2684dd2613965a60e361f615d682f0",
+  "sourceBytes": 784,
+  "scope": "First-terminal cancellation retained after helper launch failure.",
+  "suite": {
+    "name": "CaptureProcessTests",
+    "timestamp": "2026-10-09T14:08:32",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.033"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cancelledMissingHelperRetainsFirstTerminalError",
+      "classname": "CaptureProcessTests",
+      "time": "0.032",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

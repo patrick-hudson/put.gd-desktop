@@ -1,0 +1,352 @@
+[
+  {
+    "id": "8d8435fd-aa2b-4b28-bb11-263e917a803e",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "55e487bc-8944-46cf-924e-134f306b7a73",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "b3f5846c-5960-47fe-8fa9-5831429de149",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "621f87b7-51b3-4ea7-9892-851a4feace64",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "70019ef1-f84c-4af6-a0b7-101ae1055e37",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "033d3ced-a9b7-4402-a462-318440e1f1cc",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "949e44e1-d6ac-4848-908d-7438aeb6a279",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "6d8e32c8-3a8d-4d13-b05e-dcdaaf80655b",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "69ea3295-b502-483b-a0a7-d0f5332f4e29",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "ab5a7686-643b-478f-b7cd-cd2bcd472852",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "f4186442-d071-4550-9543-0e3ec60b866e",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "c01e85d6-85f0-42e2-b585-68077a20a833",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "b1e230f8-d631-4288-b8c7-ee0310a36919",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "915e1604-8b15-4150-bc0d-8bd6ea6836cc",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "66afdadb-9587-4f71-b5e8-2d6599637d29",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "8912b820-9391-4b59-8476-d47e719d6a31",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "aca83ed4-9f4b-4ab6-a1a2-da1c35ccc1d9",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "65e58ce6-98c5-4457-af1d-f19273162e63",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "3afc5f76-7dfd-495c-a67b-e9ba5f01e4ab",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "757ba753-f903-435f-a4fb-6d4f59039d2c",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "5562cb8e-cc10-40aa-987d-da664855b928",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "86d3991e-ba31-448c-8f2d-082c659d5ef2",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "40e8e4fb-4843-47a7-b87f-edef69c656e3",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "c3f278a2-ca7c-402a-8eec-483da4f16b98",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "f28e79a1-6d30-4316-b253-fa5ce216ba1a",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "08ec4813-b4ba-4938-b131-48ccb5ca6902",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "525a0b38-fe93-4c1b-9e7c-952351736542",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "6b68aef7-aa57-49fe-91e6-7a47301d122e",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "aa5ad586-f591-49d5-9dbc-b8721c36fbac",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "f263d9f0-e8a5-4b9c-9b90-91feb7220d7e",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "4039eb2f-19d8-48c1-9b24-0a3da94eb81c",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "441ed16b-5e71-4b05-92bc-a2f00c9a1779",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "19705838-6e98-4ea6-90aa-523f3a872439",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "d01e899c-195e-48e2-a2e4-5dc8d41901ba",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "65cca60b-fd26-4fe6-a9ea-099d3e3497b4",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Capture acquisition cancelled"
+    },
+    "copyStatus": "no_result"
+  }
+]

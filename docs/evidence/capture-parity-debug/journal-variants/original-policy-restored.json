@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "snapshotUtc": "2026-10-09T18:37:09.809878+00:00",
+  "head": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "paths": [
+    {
+      "path": "src/core/HistoryStore.cpp",
+      "sourceSha256": "a92f1558ea55676ef3ee4ef7b7cba0654fed7b35138378ba6e7e65f86fef29ef",
+      "headSha256": "a92f1558ea55676ef3ee4ef7b7cba0654fed7b35138378ba6e7e65f86fef29ef",
+      "matchesHEAD": true
+    },
+    {
+      "path": "tests/unit/test_history.cpp",
+      "sourceSha256": "651390b0dbfdba1f127678f0150a8a139eed4c3cfab7468fe0f7b7e8e034668e",
+      "headSha256": "651390b0dbfdba1f127678f0150a8a139eed4c3cfab7468fe0f7b7e8e034668e",
+      "matchesHEAD": true
+    }
+  ],
+  "limit": "Only these two journal/test files are confirmed restored to HEAD; whole candidate remains dirty and unaccepted."
+}

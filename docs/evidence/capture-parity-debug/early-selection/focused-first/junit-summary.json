@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "b51c42062888d7318685f1074e12a5dbd2b18a3f6e808c4f947b15fe001c3cb5",
+  "sourceBytes": 4819,
+  "scope": "Four affected suites after initial early-selection and Activity renderer changes; synthetic fixtures/Xvfb/offscreen, not physical compositor proof.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "4",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "45",
+    "timestamp": "2026-10-09T14:05:10"
+  },
+  "testcases": [
+    {
+      "name": "capture_control_integration",
+      "classname": "capture_control_integration",
+      "time": "0.00608415",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_process_integration",
+      "classname": "capture_process_integration",
+      "time": "7.11272",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "operations_contract",
+      "classname": "operations_contract",
+      "time": "37.3513",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_operations_view",
+      "classname": "gui_operations_view",
+      "time": "1.51716",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

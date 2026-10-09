@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "scope": "Historical supplemental physical Cinnamon cold diagnostic preceding early-selection implementation; not final candidate acceptance",
+  "acceptance": false,
+  "sourceIdentity": "Executed binary fingerprint below. Base source49 with dirty investigation code; this is not a clean frozen release receipt or current early-selection candidate proof.",
+  "primaryResultSourceSha256": "3aae3734bcc51dea6dd315024f8a72f56e57445e007ba6f32c050fd0bad2d1cd",
+  "primaryResultSourceBytes": 22107,
+  "familyResultSourceSha256": "226ce0b20978ccdca5e762d4a5dca87dc2c246b6fc420d0f1134ae0b0e8637ce",
+  "familyResultSourceBytes": 270788,
+  "observerSha256": "91ba800129479728ffbbd38619d3d30548e5293181f44ded01189278f7c14cfe",
+  "familyHarnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "appSha256": "b2e0e6b6478583a2a7e0b5df54fe271e9c258aa3444be8f4b63d1ff6601d0098",
+  "desktop": "X-Cinnamon",
+  "session": "x11",
+  "warmupSeconds": 5,
+  "elapsedSeconds": 300.207674417994,
+  "idleCpuPercentOneCore": 0.006662054872105971,
+  "resident": {
+    "initialRssBytes": 25862144,
+    "finalRssBytes": 25833472,
+    "peakSampledRssBytes": 25862144,
+    "legacyBudgetPassed": true
+  },
+  "wholeFamily": {
+    "sampleCount": 293,
+    "samplingSeconds": 1,
+    "processCounts": [
+      1
+    ],
+    "uiProcessCounts": [
+      0
+    ],
+    "escapedProcessCounts": [
+      0
+    ],
+    "maxRssBytes": 25862144,
+    "finalTotals": {
+      "rssBytes": 25833472,
+      "pssBytes": 16955392,
+      "privateBytes": 16355328
+    },
+    "binarySha256Values": [
+      "b2e0e6b6478583a2a7e0b5df54fe271e9c258aa3444be8f4b63d1ff6601d0098"
+    ],
+    "observerPassed": true,
+    "exitCode": 0
+  },
+  "exclusions": "No raw process samples, executable paths, configuration, file footprints, resident logs, databases or payloads exported."
+}

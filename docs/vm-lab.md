@@ -9,6 +9,8 @@ continuing a test session so subsequent actions remain visible on the display wa
 A locked or blanked session must be visibly restored before graphical acceptance.
 Host protocol tests and offscreen fixture checks do not prove desktop acceptance.
 
+Linux source-build guests also require the standard cursor development package: `libxcursor-dev` on Ubuntu/Mint or `libXcursor-devel` on Fedora. Install it in disposable development guests using their normal package manager. The desktop profile files describe runtime sessions; they do not contain development package lists. Provision a new golden disk for persistent package updates, preserving sealed bases and active overlays.
+
 ## First Cinnamon golden disk
 
 The OS is installed once. Subsequent tests boot independent copy-on-write overlays,

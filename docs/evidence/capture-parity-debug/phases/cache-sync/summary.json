@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "unscored": true,
+  "tracedCalls": [
+    "fsync",
+    "fdatasync",
+    "fcntl"
+  ],
+  "lineCount": 4262,
+  "durationsMs": {
+    "fcntl": {
+      "count": 3778,
+      "median": 0.008,
+      "p95": 0.047,
+      "max": 0.202,
+      "over30Ms": 0
+    },
+    "fdatasync": {
+      "count": 414,
+      "median": 0.7655,
+      "p95": 10.552000000000001,
+      "max": 74.22,
+      "over30Ms": 20
+    }
+  }
+}

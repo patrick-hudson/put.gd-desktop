@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "-R",
+    "^capture_preparation_x11$",
+    "--output-on-failure",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/server-cursor-cache/theme-framecount.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T18:08:46.904490+00:00"
+}

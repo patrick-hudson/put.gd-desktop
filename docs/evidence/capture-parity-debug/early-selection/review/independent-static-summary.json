@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "scope": "Independent static frozen early-selection packet review before subsequent source-release extension; no runtime acceptance",
+  "peer": {
+    "cross_model_route": "claude",
+    "cross_model_target": "claude",
+    "cross_model_harness": "claude",
+    "serving_family": "claude",
+    "independence_verified": true,
+    "model_requested": "claude-opus-5-5",
+    "model_actual": "claude-opus-5-5",
+    "effort_requested": "high",
+    "effort_actual": "unverified",
+    "receipt_supported": true
+  },
+  "packetUnchanged": true,
+  "packetDiffSha256": "2b437ceddd26c44934450801bba5669069036caba884ab36e78f8b534b5b77e6",
+  "packetFingerprintSourceSha256": "dfc43102f551e020bda89ab0cfca815bb99e6876ee5c134c04a4098bff8f58d8",
+  "packetManifestSourceSha256": "283aff70dc9ac7f0a471c69e0eff7368ae90287e9d0d129a98f4a42875ee2612",
+  "reconciledReceiptSourceSha256": "55024819888880d035749858470821296edd92273854aab76fb891004deaedc1",
+  "adversarialReceiptSourceSha256": "d49149258674720831f179aee35eee293679d5b0c4b21bb7e49b19e72a20bbc1",
+  "supportedFinding": {
+    "severity": "P3",
+    "description": "A late BEGIN restarted the PREVIEW selection timer and extended the documented120-second selection bound.",
+    "locations": [
+      {
+        "file": "src/capture/main.cpp",
+        "line": 196
+      },
+      {
+        "file": "src/platform/x11/CaptureProcessController.cpp",
+        "line": 109
+      }
+    ],
+    "reconciliation": "Use delayed successful BEGIN or fsync delay as a trigger; the peer100-second SQLite writer-lock example overstates normal busy-timeout behavior. Any positive late BEGIN still extends a reset timer.",
+    "callerResolution": "Timer fix statically reviewed by caller; runtime pending."
+  },
+  "releaseExtensionReview": {
+    "peerCoverage": false,
+    "callerStaticReview": "No actionable finding reported in local review",
+    "runtimeAcceptance": false
+  },
+  "exclusions": "No packet source code, raw logs, complete startup audit, auth or payload material exported",
+  "acceptance": false
+}

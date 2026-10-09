@@ -141,7 +141,7 @@ private slots:
  }
  void cancellingRegionDoesNotCancelClipboardImport() {
   bool imported=false,cancelled=false;PayloadResult clipboard;X11SelectionFixture owner({{"UTF8_STRING","independent clipboard source"}});X11SourceAdapter source;
-  source.acquire("clipboard",{},[&](PayloadResult r){clipboard=r;imported=true;});source.acquire("region",{},[&](PayloadResult r){cancelled=r.error.code=="cancelled";});source.cancelAcquisition();QVERIFY(cancelled);QTRY_VERIFY(imported);QVERIFY2(!clipboard.error,qPrintable(clipboard.error.message));QCOMPARE(clipboard.payload.bytes,QByteArray("independent clipboard source"));
+  source.acquire("clipboard",{},[&](PayloadResult r){clipboard=r;imported=true;});source.acquire("region",{},[&](PayloadResult r){cancelled=r.error.code=="cancelled";});source.cancelAcquisition();QTRY_VERIFY(cancelled);QTRY_VERIFY(imported);QVERIFY2(!clipboard.error,qPrintable(clipboard.error.message));QCOMPARE(clipboard.payload.bytes,QByteArray("independent clipboard source"));
  }
  void regionRetainsExternalFocusAndNativeEscape() {
   X11DesktopFixture desktop;QVERIFY(desktop.window);QCOMPARE(desktop.inputFocus(),desktop.window);

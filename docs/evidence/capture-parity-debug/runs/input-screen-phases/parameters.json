@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "scope": "synthetic covering windows; local-only; all selections cancelled",
+  "desktop": "X-Cinnamon",
+  "session": "x11",
+  "kernel": "6.14.0-37-generic",
+  "shortcut": "Ctrl+Shift+F12",
+  "warmupInvocations": 5,
+  "sampleCount": 30,
+  "timeoutSeconds": 240,
+  "witnessMode": "live-outline",
+  "harnessSha256": "caf58fd076ce0c46835753739055bbda2ee3c2cfd1b0ce2822290f8b2783fb94",
+  "binarySha256": {
+    "app": "2935a98389181bc92d3fdf95f80efc8fcf9cb94ba6d0350844beae1bc2c59af4",
+    "cli": "4aeb8395833cefb6c585983c2e3926395b1d72b8dab1968eb73bc2a6b04fe2a1",
+    "driver": "67f00c7b680bd0e32d8230624610b19c182662de96db00ee429c133a9f4d0f3f",
+    "captureHelper": "074c46d74b33e41ec7bcd333cc5513f8973721b2cf194637534cb6ea33c767df"
+  },
+  "captureHelperVersion": "putgd-capture 0.1.1-dev.49+g676f6e6d6e0b.dirty"
+}

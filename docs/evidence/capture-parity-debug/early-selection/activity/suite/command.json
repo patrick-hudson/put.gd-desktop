@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "-R",
+    "^gui_operations_view$",
+    "--output-junit",
+    "/tmp/putgd-activity-details-suite.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "environment": {
+    "QT_QPA_PLATFORM": "offscreen"
+  },
+  "provenance": "Reconstructed from the actual agent tool invocation, not contemporaneous machine-generated command metadata."
+}

@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "b3c0b547e72d7d5d37d2376b13b6cf2069b422bcef02c03ad21304b5c6b79c11",
+  "sourceBytes": 5682,
+  "scope": "five affected suites before final buffered-frame guard",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "5",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "40",
+    "timestamp": "2026-10-09T11:09:10"
+  },
+  "testcases": [
+    {
+      "name": "capture_control_integration",
+      "classname": "capture_control_integration",
+      "time": "0.00839475",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_process_integration",
+      "classname": "capture_process_integration",
+      "time": "2.00237",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "operations_contract",
+      "classname": "operations_contract",
+      "time": "37.1262",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "native_region_overlay",
+      "classname": "native_region_overlay",
+      "time": "0.687412",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "0.465955",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false
+}

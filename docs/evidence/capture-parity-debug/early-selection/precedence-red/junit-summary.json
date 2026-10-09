@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "7b95c5f5c8c40aae822485a1b29eac67bc0ee8941cdf2b2a7d28cb490cd743ab",
+  "sourceBytes": 992,
+  "scope": "Expected failure: late helper start failure replaces earlier explicit cancellation.",
+  "suite": {
+    "name": "CaptureProcessTests",
+    "timestamp": "2026-10-09T14:07:18",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "1",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.002"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cancelledMissingHelperRetainsFirstTerminalError",
+      "classname": "CaptureProcessTests",
+      "time": "0.002",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (retained.code): \"capture_start_failed\"\n   Expected (terminal.code): \"cancelled\"\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

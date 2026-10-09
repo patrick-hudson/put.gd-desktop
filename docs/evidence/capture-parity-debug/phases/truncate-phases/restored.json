@@ -1,0 +1,7 @@
+{
+  "src/app/OperationService.cpp": "9cb5ed66f324d373cddbcc90e7a70c225ec2f55129ae6df27b936d9098fd188c",
+  "src/platform/x11/CaptureProcessController.cpp": "451b8d8b67bc3002a1aca2dabf61b16f1a9b8861458389d1638bd5f279b07b4f",
+  "src/capture/main.cpp": "b9e5572f691d0ce038d125406751163af60c507235d3a28cc75a9515705c67f4",
+  "src/platform/x11/NativeRegionOverlay.cpp": "c79212c84a159801f80ee3933289ef718d4d9440282388797e0727a28784290d",
+  "src/core/HistoryStore.cpp": "799bd401e737a8bfbfe1b4f1544d2680194ce9904145c22bec95701f321cf500"
+}

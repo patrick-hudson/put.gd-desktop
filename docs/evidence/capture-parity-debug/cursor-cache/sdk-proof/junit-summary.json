@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "4d7d01f06911a8b91c167710b2d4c8140b6c0ee479d37f336a49c2074f5ce6ea",
+  "sourceBytes": 1547,
+  "scope": "First actual-helper seed/Qt comparison failed because the probe lacked XFixes version negotiation.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "1",
+    "failures": "1",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "0",
+    "timestamp": "2026-10-09T12:38:54"
+  },
+  "testcases": [
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "0.694955",
+      "status": "fail",
+      "failures": [
+        {
+          "message": "Failed"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "qtTestFunctionOutcomes": [
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin)"
+    },
+    {
+      "status": "FAIL!",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin-with-cursor-seed) 'image' returned FALSE. ()"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(reject-foreign-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::cleanupTestCase()"
+    }
+  ]
+}

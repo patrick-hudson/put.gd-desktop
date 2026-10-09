@@ -1,18 +1,15 @@
 #pragma once
-#include "platform/Geometry.h"
+#include "RegionSelector.h"
 #include <QObject>
 #include <QWidget>
 namespace putgd {
-class RegionOverlay final:public QObject {
+class RegionOverlay final:public RegionSelector {
  Q_OBJECT
 public:
  explicit RegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr);
  ~RegionOverlay() override;
- void start();
- void cancel(Error error={"cancelled","Region selection cancelled",{}});
-signals:
- void selected(const QRectF&);
- void cancelled(const putgd::Error&);
+ void start() override;
+ void cancel(Error error={"cancelled","Region selection cancelled",{}}) override;
 private:
  class Surface;
  void press(QPointF);

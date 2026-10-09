@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "1629c4e2cc532d1f818424bcb41a6f9e4a10b63dec02b8579515b13844f3e454",
+  "sourceBytes": 1219,
+  "scope": "Same four synthetic early terminal rows after session-thread latching; pixel continuation is not begun.",
+  "suite": {
+    "name": "OperationsTest",
+    "timestamp": "2026-10-09T14:00:44",
+    "hostname": "patrick-Precision-5540",
+    "tests": "6",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.628"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(escape-before-acceptance)",
+      "classname": "OperationsTest",
+      "time": "0.184",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(failure-before-acceptance)",
+      "classname": "OperationsTest",
+      "time": "0.117",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(escape-during-acquiring)",
+      "classname": "OperationsTest",
+      "time": "0.163",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(failure-during-acquiring)",
+      "classname": "OperationsTest",
+      "time": "0.165",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

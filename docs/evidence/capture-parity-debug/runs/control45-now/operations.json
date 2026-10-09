@@ -1,0 +1,242 @@
+[
+  {
+    "id": "72229217-a0a3-43ef-9ea4-303ad424ece9",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "e1c2a2f8-4952-4bd9-9d10-5f35434187f5",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "4a4fe5d5-a368-4a32-acfe-314cb89632e6",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "533cbc8b-af5d-4ed8-89c9-99ba8490f7ea",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "69244e52-0307-4dcd-9979-caf54017c51d",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "79163cc6-16ab-43e3-9811-8613153c91c4",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "fcdc2bfc-e3f7-41d6-a1d7-c5b8698cc213",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "f96dfb68-9592-4a30-8f65-543a46c82e16",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "35c6219f-f784-4226-9f90-7984440bc6c9",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "790f4c1e-05d3-4f43-86c9-502dee509d24",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "4981df2b-999c-497e-ab0d-32442b003b93",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "57101349-554d-4aa9-82f5-fe67bf69e088",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "28591355-e76a-410a-80cc-249ff84c92c8",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "f7f8b7ad-1fa0-4351-8700-034c1eefe777",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "f06a0237-f657-4db2-9f02-b4f1c407e310",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "3079c94c-6634-4e5d-92c5-e795ec09cd41",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "13b72fc9-2071-43f1-a918-8e998e0b076b",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "97bba06a-8002-411c-9ca7-f9c21aa27966",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "a23a4fd1-b60e-4865-b4f5-c0d4e9bafed0",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "ce1cbd1c-61a5-4805-a7cb-73790d6d9cb2",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "fee2d515-d19a-4bd1-ad9c-35d1493a159f",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "0a4bc06f-aa92-4aa6-822f-caf18a320760",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "50196488-c062-4b4b-8f94-bdf2bd8fda70",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  },
+  {
+    "id": "b80bc6ca-aaea-45d6-b1de-abb2e79e7e10",
+    "state": "cancelled",
+    "error": {
+      "code": "cancelled",
+      "details": {},
+      "message": "Region selection cancelled"
+    },
+    "copyStatus": "no_result"
+  }
+]

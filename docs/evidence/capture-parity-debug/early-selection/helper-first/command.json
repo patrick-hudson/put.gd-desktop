@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "--no-tests=error",
+    "-R",
+    "^capture_preparation_x11$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/helper-first.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:06:37.856319+00:00"
+}

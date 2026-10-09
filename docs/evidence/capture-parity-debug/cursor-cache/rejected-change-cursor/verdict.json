@@ -1,0 +1,9 @@
+{
+  "verdict": "rejected",
+  "reason": "After producerdisconnect copiedcursorcanbegrabbedsuccessfully but XFixesGetCursorImagefailsBadAccess10 because serverCursorPtr retains sourceID. This wouldregress VNC cursor inspection. No productionintegration.",
+  "hashes": {
+    "src/platform/x11/CaptureCursorCache.h": "6a0421d74e835f202df4b2851cb7b2f2df8c2c7c422e81e4d0e05095b80112b4",
+    "src/platform/x11/CaptureCursorCache.cpp": "233ef02703372d26064c987afa7027543dabcc633f0f8be18118d7e9d75e9b9e",
+    "tests/desktop/x11/test_native_region_overlay.cpp": "82fabb7ac8119929d1275943aede5d49210296ed21064abf0e7afc689de5d2d0"
+  }
+}

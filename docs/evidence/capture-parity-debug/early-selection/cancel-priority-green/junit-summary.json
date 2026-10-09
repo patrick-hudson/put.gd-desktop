@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "6f96533553b36041981cf930f9f22a22dbd3f30215c9b865d30aaa76466ed1db",
+  "sourceBytes": 780,
+  "scope": "Explicit cancellation overrides earlier display error after acquiring commit succeeds.",
+  "suite": {
+    "name": "OperationsTest",
+    "timestamp": "2026-10-09T14:08:34",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.170"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "explicitCancelOverridesEarlyDisplayErrorWhileAcquiringIsBlocked",
+      "classname": "OperationsTest",
+      "time": "0.169",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

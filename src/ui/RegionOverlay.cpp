@@ -28,7 +28,7 @@ private:
  RegionOverlay& owner_;
  QRectF logicalRect_;
 };
-RegionOverlay::RegionOverlay(QList<CaptureFrame> frames,QObject* parent):QObject(parent),frames_(std::move(frames)){}
+RegionOverlay::RegionOverlay(QList<CaptureFrame> frames,QObject* parent):RegionSelector(parent),frames_(std::move(frames)){}
 RegionOverlay::~RegionOverlay(){finish();for(auto* s:surfaces_)delete s;}
 void RegionOverlay::start(){
  for(const auto& frame:frames_){auto* surface=new Surface(*this,frame);surfaces_.append(surface);surface->show();surface->raise();}

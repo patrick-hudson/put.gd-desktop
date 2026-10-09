@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "-R",
+    "history_contract|operations_contract|x11_native_region_overlay",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/persist-dev.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T15:45:20.494717+00:00"
+}

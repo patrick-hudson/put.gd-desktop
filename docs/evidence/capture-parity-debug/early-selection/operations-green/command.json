@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/test_operations",
+    "earlySelectionTerminalNeverBeginsPixels",
+    "-o",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/operations-green.xml,junitxml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:00:44.454898+00:00"
+}

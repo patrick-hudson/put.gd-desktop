@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/test_gui_operations_view",
+    "narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines",
+    "-o",
+    "/tmp/putgd-activity-details-red-2.txt,txt",
+    "-o",
+    "/tmp/putgd-activity-details-red-2.xml,junitxml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "environment": {
+    "QT_QPA_PLATFORM": "offscreen"
+  },
+  "provenance": "Reconstructed from the actual agent tool invocation, not contemporaneous machine-generated command metadata."
+}

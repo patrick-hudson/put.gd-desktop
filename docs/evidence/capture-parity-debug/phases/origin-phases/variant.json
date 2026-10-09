@@ -1,0 +1,7 @@
+{
+  "hypothesis": "Warm the same default QWindow screen cache inherited from the foreign embedding parent; avoid two cold themed-crosshair loads",
+  "beforeSha256": "d1c1f6eb2fcad83b171045086dd67889dc4270eed201c0df81806e3e907932b2",
+  "afterSha256": "6360787fb37adbd5e4137de8c13712155a8b3a129240d2aa20758debc2e1ef93",
+  "test": "unchanged physical 5warm+30samples p95<=150ms",
+  "sourceDirty": true
+}

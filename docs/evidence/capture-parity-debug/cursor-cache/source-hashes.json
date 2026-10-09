@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "snapshotUtc": "2026-10-09T17:29:00.736124+00:00",
+  "baseCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "dirtySource": true,
+  "hashes": {
+    "src/platform/x11/CaptureCursorCache.h": "68c1862b308801d58b606ba7b2b17ce9f33f2a2b2e96a498151b1ce78abf2f45",
+    "src/platform/x11/CaptureCursorCache.cpp": "35f65f4a87bd332241d6a5471fbc1142ab2280d6a2de8a89908215b11538a8c8",
+    "src/platform/x11/CaptureProcessController.cpp": "0e95c1b0f6bb2bde5d5f336f861478a5f55bca8f3f14984a2c8d52abbf6eadb1",
+    "src/platform/x11/NativeRegionOverlay.cpp": "c79212c84a159801f80ee3933289ef718d4d9440282388797e0727a28784290d",
+    "src/capture/main.cpp": "b9e5572f691d0ce038d125406751163af60c507235d3a28cc75a9515705c67f4",
+    "tests/desktop/x11/test_native_region_overlay.cpp": "d0451f05661fd9d8a87579f6ffd9a45884f478e088de30cc3073798f25a3d171",
+    "tests/desktop/x11/test_capture_preparation.cpp": "aa1c92f4b4ceba24c721c62433b94af9877d19b9024290b0a7c55121cbaa8ac6"
+  },
+  "limitation": "Current source fingerprint snapshot only. Not a clean version, complete source archive, or assertion that these hashes built every historical test artifact."
+}

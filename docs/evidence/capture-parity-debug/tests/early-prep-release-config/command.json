@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "cmake",
+    "--preset",
+    "release",
+    "-DCMAKE_PREFIX_PATH=/home/patrick/work/put.gd/build/sdk",
+    "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+    "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp",
+    "-DPUTGD_PHYSICAL_BENCHMARKS=ON",
+    "-DPUTGD_LAB_FIXTURE=ON",
+    "-DCMAKE_INSTALL_PREFIX=/usr"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T16:10:42.990675+00:00"
+}

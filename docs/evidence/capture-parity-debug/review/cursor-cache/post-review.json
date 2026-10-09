@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-09T17:50:06.852765+00:00",
+  "source": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "paths": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "7023f14245314fe23d68aed9f7d83b32c787670610fd0d8c2672ba2afee5699a"
+    },
+    {
+      "path": "src/platform/x11/CaptureProcessController.cpp",
+      "sha256": "451b8d8b67bc3002a1aca2dabf61b16f1a9b8861458389d1638bd5f279b07b4f"
+    },
+    {
+      "path": "src/capture/main.cpp",
+      "sha256": "b9e5572f691d0ce038d125406751163af60c507235d3a28cc75a9515705c67f4"
+    },
+    {
+      "path": "src/platform/x11/NativeRegionOverlay.cpp",
+      "sha256": "c79212c84a159801f80ee3933289ef718d4d9440282388797e0727a28784290d"
+    },
+    {
+      "path": "tests/desktop/x11/test_native_region_overlay.cpp",
+      "sha256": "15d6daa91297c5a75298721dce1d39c3d601e6e7b20bb2b51cff2bc7e07ae040"
+    },
+    {
+      "path": "tests/desktop/x11/test_capture_preparation.cpp",
+      "sha256": "5395bfca109a460577fbbd1cc9bf1660083501d47c61cc4ea80353f121795f8e"
+    },
+    {
+      "path": "tests/integration/test_capture_process.cpp",
+      "sha256": "ef9e5f48c670710e93defc2e47c0dc48a27564507c2bb95807ea4052663c46b1"
+    },
+    {
+      "path": "tests/fixtures/capture_helper_fixture.cpp",
+      "sha256": "e339e5d47ac743f06c0ab958c18ec151b20e4c11d928ced9daed3ebe9e4a110d"
+    }
+  ],
+  "static_recheck": "Full-layout cursor key; bounded disconnect retry/cleanup; actual helper seed-vs-Qt pixel comparison; 18 malformed READY seed rows plus valid reuse, layout-only invalidation, unsolicited replacement rejection, non-region rejection and seeded cancellation fixture tests. No runtime checks performed by reviewer."
+}

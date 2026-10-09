@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "454cf89907822ba50b86571a06a469c61f88b57f1cafcc5ec67d22b694f3db7e",
+  "sourceBytes": 5173,
+  "scope": "Latest four-suite run has three passes and one preparation failure: generated static theme produced an empty seed (nimage zero). Preserve failure; later fixture build is not a test pass.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "4",
+    "failures": "1",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "7",
+    "timestamp": "2026-10-09T13:07:41"
+  },
+  "testcases": [
+    {
+      "name": "capture_control_integration",
+      "classname": "capture_control_integration",
+      "time": "0.00510374",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_process_integration",
+      "classname": "capture_process_integration",
+      "time": "5.68867",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "native_region_overlay",
+      "classname": "native_region_overlay",
+      "time": "0.464978",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "1.2225",
+      "status": "fail",
+      "failures": [
+        {
+          "message": "Failed"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "qtTestFunctionOutcomes": [
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::fragmentedFrameAndSequence()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::stoppingInsideDeliveryDiscardsFollowingBufferedCommand()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::excessiveFrameStopsBeforeDelivery()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::unknownTypesCannotBecomeCommands()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::validSnapshotRejectsMalformedOrDuplicateIdentity()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-id)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-id-negative)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-id-overflow)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-extra)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-zero-width)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-wide)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-negative-height)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-fraction)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cachedCursorSurvivesSourceClient..."
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin)"
+    },
+    {
+      "status": "FAIL!",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin-with-cursor-seed) '!seed.isEmpty()' returned FALSE. (The generated static theme must provide an ARGB crosshair)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(animated-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(oversized-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(missing-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(reject-foreign-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::cleanupTestCase()"
+    }
+  ]
+}

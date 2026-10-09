@@ -20,6 +20,12 @@ class CaptureControlTests final:public QObject {
  Q_OBJECT
 private slots:
  void fragmentedFrameAndSequence(){Duplex pipe;putgd::CaptureControl control(pipe);int frames=0,failures=0;connect(&control,&putgd::CaptureControl::frame,this,[&](const QString& type,const QJsonObject& o){QCOMPARE(type,QString("ready"));QCOMPARE(o["nonce"].toString(),QString("nonce"));++frames;});connect(&control,&putgd::CaptureControl::failed,this,[&](putgd::Error){++failures;});const QByteArray frame="{\"version\":1,\"sequence\":\"1\",\"type\":\"ready\",\"payload\":{\"nonce\":\"nonce\"}}\n";pipe.feed(frame.left(12));QCOMPARE(frames,0);pipe.feed(frame.mid(12));QCOMPARE(frames,1);pipe.feed(frame);QCOMPARE(failures,1);QCOMPARE(frames,1);}
+ void stoppingInsideDeliveryDiscardsFollowingBufferedCommand(){
+  Duplex pipe;putgd::CaptureControl control(pipe);int delivered=0;
+  connect(&control,&putgd::CaptureControl::frame,this,[&]{++delivered;control.stop();});
+  const QByteArray batch="{\"version\":1,\"sequence\":\"1\",\"type\":\"begin\",\"payload\":{}}\n{\"version\":1,\"sequence\":\"2\",\"type\":\"begin\",\"payload\":{}}\n";
+  pipe.feed(batch);QCOMPARE(delivered,1);QVERIFY(!control.send("ready",{}));
+ }
  void excessiveFrameStopsBeforeDelivery(){Duplex pipe;putgd::CaptureControl control(pipe);int failed=0,frames=0;connect(&control,&putgd::CaptureControl::failed,this,[&](putgd::Error){++failed;});connect(&control,&putgd::CaptureControl::frame,this,[&]{++frames;});pipe.feed(QByteArray(putgd::CaptureControl::maximumFrameBytes,'x'));QCOMPARE(failed,1);QCOMPARE(frames,0);QVERIFY(!control.send("ready",{}));}
  void unknownTypesCannotBecomeCommands(){Duplex pipe;putgd::CaptureControl control(pipe);pipe.feed("{\"version\":1,\"sequence\":\"1\",\"type\":\"delete\",\"payload\":{}}\n");QVERIFY(!control.send("ready",{}));QVERIFY(pipe.output.isEmpty());}
  void validSnapshotRejectsMalformedOrDuplicateIdentity(){auto value=frozen();QVERIFY(!putgd::X11NativeSnapshot::validate(value));value["window"]="4294967296";QVERIFY(putgd::X11NativeSnapshot::validate(value));value=frozen();value["action"]="window";QVERIFY(putgd::X11NativeSnapshot::validate(value));value=frozen();auto layout=value["layout"].toObject();auto outputs=layout["outputs"].toArray();outputs.append(outputs.first());layout["outputs"]=outputs;value["layout"]=layout;QVERIFY(putgd::X11NativeSnapshot::validate(value));value=frozen();layout=value["layout"].toObject();layout["scale"]=QString(64,'z');value["layout"]=layout;QVERIFY(putgd::X11NativeSnapshot::validate(value));}

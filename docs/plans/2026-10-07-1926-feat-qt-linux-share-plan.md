@@ -1169,3 +1169,60 @@ The existing Qt Widgets views and native fonts/dialogs are preserved. See
 known limits and required gates. The candidate has no memory acceptance result
 until the clean current build passes native Cinnamon and repeated whole-family
 measurements. Temporary build/test failures remain in the experiment record.
+
+### Native capture parity remains a prerequisite (2026-10-09)
+
+The source49 Cinnamon listener/tray candidate measured below 40 MiB cold and
+closed, but remains isolated while capture responsiveness is repaired. The
+remaining desktop and release gates still apply; those memory observations do
+not establish feature parity for a later source revision.
+
+The follow-up preserves a live transparent selector, native themed crosshair,
+distinct durable accepted/acquiring checkpoints, graceful helper cancellation,
+and helper exit between invocations. It investigates a bounded resident-owned
+server cursor and rollback-journal overhead. Keep the frozen five-warmup,
+thirty-sample physical workload and its 150 ms p95 guard. Preserve failed and
+incomplete runs alongside passing checks, exact build identities, structured
+logs and replay parameters. The [capture parity guide](../testing-capture-parity.md)
+records the investigation; its acceptance remains pending until a clean current
+version passes functional, timing and whole-family memory checks.
+
+Use the standard Xcursor development package for the reviewed cursor API; the
+user installed it explicitly. Keep one small static server cursor, release all
+transient pixels after transfer, invalidate it when frozen display/theme metadata
+changes, and preserve Qt fallback for animated, oversized or unavailable cursors.
+Tests use generated private themes rather than depending on a guest's installed
+theme. No test may treat a mock or Xvfb run as real compositor evidence.
+
+
+### Early region selection with durable capture (approved 2026-10-09)
+
+Region selection may become visible while journal persistence runs. Bootstrap
+remains invisible; the resident sends one authenticated region-only `preview`
+after READY. Preview authorizes transparent surfaces, input and rectangle
+metadata only. The two separate accepted/acquiring commits still must succeed
+before authenticated BEGIN authorizes any pixel read, compositor screenshot,
+encoding, artifact content or upload. Desktop/window/clipboard behavior is unchanged.
+
+If drawing finishes first, release all surfaces/grabs and retain only bounded
+rectangle/target metadata until BEGIN. The resulting pixels reflect the live
+screen after persistence, potentially later than mouse release. Cancel, EOF,
+layout changes, protocol rejection and either failed checkpoint must prevent
+that join. Cancellation stays observable only after its terminal journal write;
+a checkpoint failure takes precedence over an overlapping early Escape. Keep the
+existing timing workload unchanged, and add early-selection, delayed-BEGIN,
+failed-checkpoint, buffered cancellation and cleanup checks. An existing empty
+private result-file lease is permitted before BEGIN; it contains zero image bytes.
+
+Activity file rows show local state/path and size/remote outcome on separate
+font-scaled lines. Keep full tooltips, native fonts, compact widths, parent status
+badges and operation-ID copy behavior; this adds no persistent image cache.
+
+
+The integrated early-selection investigation passed 48/48 development suites
+and the unchanged physical selector workload: 30/30 samples, p95 95.945 ms
+against 150 ms, all 35 operations cancelled without a result. Preserve the
+preceding incomplete attempt and checkpoint-failure regressions. These are dirty
+build results; the next clean version still requires native Cinnamon capture,
+tray/view behavior and repeated cold/closed whole-family memory confirmation
+before GNOME/KDE expansion or a feature-parity claim.

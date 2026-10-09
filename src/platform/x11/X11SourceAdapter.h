@@ -3,15 +3,21 @@
 #include "X11Capture.h"
 #include "X11Clipboard.h"
 #include "X11Shortcuts.h"
-#include "ui/RegionOverlay.h"
+#include "ui/RegionSelector.h"
 #include <QPointer>
 #include <QSet>
 namespace putgd {
 class CinnamonRegionCapture;
+// Selection carries geometry only; desktop pixels require a separate acquisition.
+struct RegionSelectionResult {
+ QRectF rectangle;
+ quint64 generation=0;
+ Error error;
+};
 class X11SourceAdapter final:public QObject,public SourceAdapter {
  Q_OBJECT
 public:
- explicit X11SourceAdapter(QObject* parent=nullptr);
+ explicit X11SourceAdapter(QObject* parent=nullptr,bool nativeRegionSelector=false);
  ~X11SourceAdapter() override;
  quint64 clipboardRevision()const override;
  QJsonObject capabilities()const override;
@@ -19,6 +25,9 @@ public:
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override;
  // Private capture helper uses the resident's already frozen external target.
  void acquireFrozen(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void selectRegionFrozen(const X11Target&,const ResourceLimits&,std::function<void(RegionSelectionResult)>);
+ void acquireSelectedRegionFrozen(const X11Target&,const RegionSelectionResult&,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void setResidentRegionCursor(quint32 cursor){residentRegionCursor_=cursor;}
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
  void bindShortcuts(const QHash<QString,QString>&);
@@ -33,9 +42,13 @@ private:
  X11Capture capture_;
  X11Clipboard clipboard_;
  X11Shortcuts shortcuts_;
- QPointer<RegionOverlay> overlay_;
+ QPointer<RegionSelector> overlay_;
+ bool nativeRegionSelector_=false;
+ quint32 residentRegionCursor_=0;
  QList<QThread*> workers_;
  QSet<CinnamonRegionCapture*> regionCaptures_;
  quint64 generation_=0;
+ quint64 selectedGeneration_=0;
+ X11Target selectedTarget_;
 };
 }

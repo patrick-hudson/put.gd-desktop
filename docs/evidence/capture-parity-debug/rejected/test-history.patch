@@ -1,0 +1,183 @@
+diff --git a/tests/unit/test_history.cpp b/tests/unit/test_history.cpp
+index 9532a2b..fe62c66 100644
+--- a/tests/unit/test_history.cpp
++++ b/tests/unit/test_history.cpp
+@@ -4,10 +4,166 @@
+ #include <QSqlQuery>
+ #include <QJsonDocument>
+ #include <QTest>
++#include <QFile>
++#include <QFileInfo>
++#include <QProcess>
++#include <QThread>
++#include <barrier>
++#include <cstdio>
++#include <memory>
++#ifdef Q_OS_UNIX
++#include <sys/stat.h>
++#include <unistd.h>
++#endif
+ using namespace putgd;
++namespace {
++QString addedConnection(const QStringList& before) {
++ QString result;
++ for(const auto& name:QSqlDatabase::connectionNames())if(!before.contains(name)) {
++  if(!result.isEmpty())return {};
++  result=name;
++ }
++ return result;
++}
++Operation syntheticOperation(const QString& id) {
++ Operation operation;operation.id=id;operation.state="accepted";
++ operation.created="2026-10-09T00:00:00.000Z";
++ operation.settings=Settings::fromValidated(Settings::defaults());
++ return operation;
++}
++// Run only in an owned child of this test. Cache spill creates an actual hot
++// rollback journal; killing the process tests recovery, not power-loss durability.
++int crashJournalWriter(const QString& path) {
++ const auto before=QSqlDatabase::connectionNames();HistoryStore store(path);
++ if(store.error())return 11;
++ const auto name=addedConnection(before);if(name.isEmpty())return 12;
++ auto db=QSqlDatabase::database(name,false);QSqlQuery query(db);
++ if(!query.exec("PRAGMA cache_size=8")||!db.transaction())return 13;
++ if(!query.exec("UPDATE operations SET data=json_set(data,'$.state','acquiring') WHERE id='crash-operation'")||
++    !query.exec("INSERT INTO crash_fixture(payload) VALUES(zeroblob(3145728))"))return 14;
++ query.finish();
++ QFile journal(path+"-journal");
++ if(!journal.open(QIODevice::ReadOnly)||journal.size()<=512||
++    journal.read(8)!=QByteArray::fromHex("d9d505f920a163d7"))return 15;
++ journal.close();
++ std::fputs("transaction-open\n",stdout);std::fflush(stdout);
++ std::getchar(); // Parent owns the pipe and kills us before normal rollback.
++ return 16;
++}
++}
+ class HistoryTest:public QObject {
+  Q_OBJECT
+ private slots:
++ void everyConnectionPreservesRollbackPolicyAndCommittedStates() {
++  QTemporaryDir directory;QVERIFY(directory.isValid());const auto path=directory.filePath("history.sqlite");
++  auto operation=syntheticOperation("checkpoint");
++  for(const auto& state:QStringList{"accepted","acquiring"}) {
++   const auto before=QSqlDatabase::connectionNames();
++   {
++    HistoryStore writer(path);QVERIFY(!writer.error());const auto name=addedConnection(before);QVERIFY(!name.isEmpty());
++    {
++     auto db=QSqlDatabase::database(name,false);QSqlQuery query(db);
++     QVERIFY(query.exec("PRAGMA journal_mode"));QVERIFY(query.next());QCOMPARE(query.value(0).toString(),QString("persist"));
++     QVERIFY(query.exec("PRAGMA synchronous"));QVERIFY(query.next());QCOMPARE(query.value(0).toInt(),2);
++     QVERIFY(query.exec("PRAGMA journal_size_limit"));QVERIFY(query.next());QCOMPARE(query.value(0).toLongLong(),qint64(1048576));
++     QVERIFY(query.exec("PRAGMA foreign_keys"));QVERIFY(query.next());QCOMPARE(query.value(0).toInt(),1);
++     query.finish();
++    }
++    operation.state=state;QVERIFY(!writer.saveOperation(operation));
++    // A separately opened production connection observes each distinct commit.
++    HistoryStore observer(path);QVERIFY(!observer.error());Error error;
++    QCOMPARE(observer.operation(operation.id,&error).state,state);QVERIFY(!error);
++   }
++   QCOMPARE(QSqlDatabase::connectionNames(),before);
++  }
++  HistoryStore reopened(path);QVERIFY(!reopened.error());Error error;
++  QCOMPARE(reopened.operation(operation.id,&error).state,QString("acquiring"));QVERIFY(!error);
++  const auto recovered=reopened.recover(&error);QVERIFY(!error);QCOMPARE(recovered.size(),1);
++  QCOMPARE(reopened.operation(operation.id,&error).state,QString("interrupted"));QVERIFY(!error);
++ }
++ void persistentSidecarIsPrivateReusedAndCappedAfterLargeCommit() {
++  QTemporaryDir directory;QVERIFY(directory.isValid());const auto path=directory.filePath("history.sqlite"),journalPath=path+"-journal";
++  const auto before=QSqlDatabase::connectionNames();
++  {
++   HistoryStore store(path);QVERIFY(!store.error());const auto name=addedConnection(before);QVERIFY(!name.isEmpty());
++   QVERIFY(!store.saveOperation(syntheticOperation("sidecar")));
++   QVERIFY(QFileInfo::exists(journalPath));
++#ifdef Q_OS_UNIX
++   struct stat initial{},database{},parent{};
++   QVERIFY(::lstat(QFile::encodeName(journalPath).constData(),&initial)==0);
++   QVERIFY(::lstat(QFile::encodeName(path).constData(),&database)==0);
++   QVERIFY(::lstat(QFile::encodeName(directory.path()).constData(),&parent)==0);
++   QVERIFY(S_ISREG(initial.st_mode));QCOMPARE(initial.st_uid,::geteuid());QCOMPARE(initial.st_mode&0777,mode_t(0600));
++   QVERIFY(S_ISREG(database.st_mode));QCOMPARE(database.st_uid,::geteuid());QCOMPARE(database.st_mode&0777,mode_t(0600));
++   QVERIFY(S_ISDIR(parent.st_mode));QCOMPARE(parent.st_uid,::geteuid());QCOMPARE(parent.st_mode&0777,mode_t(0700));
++#endif
++   {
++    auto db=QSqlDatabase::database(name,false);QSqlQuery query(db);
++    QVERIFY(query.exec("CREATE TABLE sidecar_fixture(payload BLOB)"));
++    QVERIFY(db.transaction());QVERIFY(query.exec("INSERT INTO sidecar_fixture VALUES(zeroblob(3145728))"));query.finish();QVERIFY(db.commit());
++    // The second transaction journals existing multi-megabyte pages, rather than only new pages.
++    QVERIFY(db.transaction());QVERIFY(query.exec("UPDATE sidecar_fixture SET payload=randomblob(3145728)"));query.finish();QVERIFY(db.commit());
++   }
++   const auto size=QFileInfo(journalPath).size();QVERIFY(size>=28);QVERIFY(size<=1048576);
++   QFile journal(journalPath);QVERIFY(journal.open(QIODevice::ReadOnly));QCOMPARE(journal.read(28),QByteArray(28,'\0'));journal.close();
++#ifdef Q_OS_UNIX
++   struct stat after{};QVERIFY(::lstat(QFile::encodeName(journalPath).constData(),&after)==0);
++   QCOMPARE(after.st_dev,initial.st_dev);QCOMPARE(after.st_ino,initial.st_ino);QCOMPARE(after.st_mode&0777,mode_t(0600));
++#endif
++  }
++  // Let SQLite own sidecar recovery/removal; the application never unlinks it.
++  QVERIFY(QFileInfo::exists(journalPath));
++  HistoryStore reopened(path);QVERIFY(!reopened.error());QVERIFY(!reopened.saveOperation(syntheticOperation("reopened")));
++  QVERIFY(QFileInfo(journalPath).size()<=1048576);
++ }
++ void independentWorkerConnectionsCommitWithoutSharingQtSqlObjects() {
++  QTemporaryDir directory;QVERIFY(directory.isValid());const auto path=directory.filePath("history.sqlite");
++  {HistoryStore initialize(path);QVERIFY(!initialize.error());}
++  std::barrier gate(3);Error errors[2];
++  auto work=[&](int index) {
++   gate.arrive_and_wait();HistoryStore store(path);errors[index]=store.error();if(errors[index])return;
++   for(int n=0;n<3;++n) {
++    auto operation=syntheticOperation(QString("worker-%1-%2").arg(index).arg(n));
++    if((errors[index]=store.saveOperation(operation)))return;
++    operation.state="acquiring";if((errors[index]=store.saveOperation(operation)))return;
++   }
++  };
++  std::unique_ptr<QThread> first(QThread::create([&]{work(0);})),second(QThread::create([&]{work(1);}));
++  first->start();second->start();gate.arrive_and_wait();
++  // Both workers finish before any assertion can destroy their captured state.
++  first->wait();second->wait();QVERIFY(!errors[0]);QVERIFY(!errors[1]);
++  HistoryStore observer(path);QVERIFY(!observer.error());Error error;
++  for(int index=0;index<2;++index)for(int n=0;n<3;++n) {
++   QCOMPARE(observer.operation(QString("worker-%1-%2").arg(index).arg(n),&error).state,QString("acquiring"));QVERIFY(!error);
++  }
++ }
++ void processCrashRollsBackHotJournalBeforeRecovery() {
++  QTemporaryDir directory;QVERIFY(directory.isValid());const auto path=directory.filePath("history.sqlite");
++  {
++   const auto before=QSqlDatabase::connectionNames();HistoryStore store(path);QVERIFY(!store.error());
++   QVERIFY(!store.saveOperation(syntheticOperation("crash-operation")));const auto name=addedConnection(before);QVERIFY(!name.isEmpty());
++   auto db=QSqlDatabase::database(name,false);QSqlQuery query(db);QVERIFY(query.exec("CREATE TABLE crash_fixture(payload BLOB)"));
++  }
++  QProcess child;child.start(QCoreApplication::applicationFilePath(),{"--crash-journal-writer",path});
++  QVERIFY(child.waitForStarted(10000));QByteArray output;
++  QElapsedTimer deadline;deadline.start();
++  while(!output.contains("transaction-open\n")&&child.state()!=QProcess::NotRunning&&deadline.elapsed()<10000) {
++   child.waitForReadyRead(100);output+=child.readAllStandardOutput();
++  }
++  const bool ready=output==QByteArray("transaction-open\n");
++  child.kill();QVERIFY(child.waitForFinished(10000));QVERIFY2(ready,"Child did not reach a verified hot-journal transaction");
++  QCOMPARE(child.exitStatus(),QProcess::CrashExit);
++  const auto before=QSqlDatabase::connectionNames();HistoryStore reopened(path);QVERIFY(!reopened.error());Error error;
++  QCOMPARE(reopened.operation("crash-operation",&error).state,QString("accepted"));QVERIFY(!error);
++  const auto name=addedConnection(before);QVERIFY(!name.isEmpty());
++  {
++   auto db=QSqlDatabase::database(name,false);QSqlQuery query(db);
++   QVERIFY(query.exec("SELECT count(*) FROM crash_fixture"));QVERIFY(query.next());QCOMPARE(query.value(0).toInt(),0);
++   QVERIFY(query.exec("PRAGMA integrity_check"));QVERIFY(query.next());QCOMPARE(query.value(0).toString(),QString("ok"));query.finish();
++  }
++  const auto recovered=reopened.recover(&error);QVERIFY(!error);QCOMPARE(recovered.size(),1);
++  QCOMPARE(reopened.operation("crash-operation",&error).state,QString("interrupted"));QVERIFY(!error);
++ }
+  void schemaThreeBackfillUsesProviderIdentityAcrossProfilesAndPages() {
+   QTemporaryDir d;const auto path=d.filePath("history.sqlite");ProviderRegistry registry;registry.add("opaque",std::make_shared<putgd::test::OpaqueProvider>());
+   Operation original;original.id="legacy";original.created="2026-10-07T00:00:00.000Z";original.settings=Settings::fromValidated(Settings::defaults());original.destination={"opaque","original-profile","original-revision",{{"workspace","original-space"}}, {}};
+@@ -37,5 +193,10 @@ private slots:
+  }
+  void migrationIsTransactional() {QTemporaryDir d;const auto path=d.filePath("history.sqlite");const auto connection=QString("legacy");{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("CREATE TABLE history(id TEXT PRIMARY KEY,data BLOB)"));QVERIFY(q.exec("INSERT INTO history VALUES('preserve','{}')"));QVERIFY(q.exec("PRAGMA user_version=1"));db.close();}QSqlDatabase::removeDatabase(connection);{HistoryStore store(path);QCOMPARE(store.error().code,QString("history_migration"));}{auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("PRAGMA user_version"));QVERIFY(q.next());QCOMPARE(q.value(0).toInt(),1);QVERIFY(q.exec("SELECT id FROM history"));QVERIFY(q.next());QCOMPARE(q.value(0).toString(),QString("preserve"));db.close();}QSqlDatabase::removeDatabase(connection);}
+ };
+-QTEST_GUILESS_MAIN(HistoryTest)
++int main(int argc,char** argv) {
++ QCoreApplication application(argc,argv);
++ if(argc==3&&QString::fromLocal8Bit(argv[1])==QStringLiteral("--crash-journal-writer"))
++  return crashJournalWriter(QString::fromLocal8Bit(argv[2]));
++ HistoryTest tests;return QTest::qExec(&tests,argc,argv);
++}
+ #include "test_history.moc"

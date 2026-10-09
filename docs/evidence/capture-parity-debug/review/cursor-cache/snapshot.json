@@ -1,0 +1,91 @@
+{
+  "source": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "source_base": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "review_packet_base": "a7e05979115b16d6be4773dceb4663fe0727f943",
+  "paths": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "ba56514207e3032ecb42c0b16cb88998714480422c47afcfb245853f54513978"
+    },
+    {
+      "path": "src/platform/x11/CaptureCursorCache.h",
+      "sha256": "68c1862b308801d58b606ba7b2b17ce9f33f2a2b2e96a498151b1ce78abf2f45"
+    },
+    {
+      "path": "src/platform/x11/CaptureCursorCache.cpp",
+      "sha256": "35f65f4a87bd332241d6a5471fbc1142ab2280d6a2de8a89908215b11538a8c8"
+    },
+    {
+      "path": "src/platform/x11/CaptureProcessController.h",
+      "sha256": "f635bb3d0b3b1bbae90e9fba665c963eec9c93474f1527fd1b4b65bdf606aec7"
+    },
+    {
+      "path": "src/platform/x11/CaptureProcessController.cpp",
+      "sha256": "4ce1f3d0c412fdfdea599782b5146defc4a40dddecf2f3135319508d2e207a3b"
+    },
+    {
+      "path": "src/capture/main.cpp",
+      "sha256": "1ca3df29c9ff4a898bf2782052e9c0e81396ea9d789ca1ea73f78bc175652d0b"
+    },
+    {
+      "path": "src/platform/x11/NativeRegionOverlay.h",
+      "sha256": "14812567a8fbc1d9d7816436b5599d4dc00592b73f42f795457dd9ee563cf1bc"
+    },
+    {
+      "path": "src/platform/x11/NativeRegionOverlay.cpp",
+      "sha256": "1d1bd57fb4c29ab2c363486a2759bac49e15481edb7000a0d0adfaa08ac63c6f"
+    },
+    {
+      "path": "src/platform/x11/X11SourceAdapter.h",
+      "sha256": "fe56ce5f23dda594d0e9f29d8ff317fcf7b03f9bc8777fdf5c033b82ce936bb7"
+    },
+    {
+      "path": "src/platform/x11/X11SourceAdapter.cpp",
+      "sha256": "1d45dbf5aaef9453762f3f135227fdfb096e5c2393c9a8725e309fec62359a58"
+    },
+    {
+      "path": "src/platform/x11/X11NativeSnapshot.h",
+      "sha256": "d6db1b542ea27a83436b045320f0a5d7466fc93bfd7004f1556dd172330db29d"
+    },
+    {
+      "path": "src/platform/x11/X11NativeSnapshot.cpp",
+      "sha256": "d68a2ad85bce7ac19abdfe976e9eec299a3e30416461ec7a6324305b5e82140c"
+    },
+    {
+      "path": "src/platform/x11/CaptureControl.h",
+      "sha256": "41cbd3309dc5feb711a4f71c8383293daecfe6e3405604110dc50dd59c48bade"
+    },
+    {
+      "path": "src/platform/x11/CaptureControl.cpp",
+      "sha256": "e1245c4e80542c8008ef5bb495ad4da8ae8cdcabf39c4a5622dc84ef9de2103c"
+    },
+    {
+      "path": "src/platform/x11/X11Capture.h",
+      "sha256": "67aef7b8145c206d96da4df1963ec06b33df6519643824c87909d0688fb7acec"
+    },
+    {
+      "path": "src/ui/RegionSelector.h",
+      "sha256": "59b94cc7ee5e77420c4c14a5ec3213f4b64811ea40d2778b5c76d47f8bc8f4d3"
+    },
+    {
+      "path": "tests/desktop/x11/test_native_region_overlay.cpp",
+      "sha256": "d0451f05661fd9d8a87579f6ffd9a45884f478e088de30cc3073798f25a3d171"
+    },
+    {
+      "path": "tests/desktop/x11/test_capture_preparation.cpp",
+      "sha256": "aa1c92f4b4ceba24c721c62433b94af9877d19b9024290b0a7c55121cbaa8ac6"
+    },
+    {
+      "path": "tests/fixtures/capture_helper_fixture.cpp",
+      "sha256": "8d04b6d8e393d644206c4120516cf7cea7f7a56102ca83b5186043a55d13d3b4"
+    },
+    {
+      "path": "tests/integration/test_capture_process.cpp",
+      "sha256": "5331b0e6c46baf0a6b281eb672919b51d1249a6f7104920c85d56bfa6ed1be17"
+    },
+    {
+      "path": "tests/integration/test_capture_control.cpp",
+      "sha256": "bc6d2e03c7e801b29da664f0a9862a5faf0ba5346bc4d926b637a1f212e5a2ac"
+    }
+  ]
+}

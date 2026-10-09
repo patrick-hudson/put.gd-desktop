@@ -4,7 +4,7 @@
 #include <QStringList>
 #include <limits>
 namespace putgd {
-namespace {bool known(const QString& type){return QStringList{"bootstrap","ready","result","accept","cancel","cancelled","error"}.contains(type);}}
+namespace {bool known(const QString& type){return QStringList{"bootstrap","ready","preview","begin","result","accept","cancel","cancelled","error"}.contains(type);}}
 CaptureControl::CaptureControl(QIODevice& device,QObject* parent):QObject(parent),device_(&device){rate_.start();connect(&device,&QIODevice::readyRead,this,&CaptureControl::read);connect(&device,&QIODevice::bytesWritten,this,[this]{write();});}
 void CaptureControl::stop(){stopped_=true;input_.clear();output_.clear();}
 void CaptureControl::fail(){if(stopped_)return;stop();emit failed({"capture_protocol","The capture helper connection failed",{}});}

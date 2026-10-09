@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "run": "current-cinnamon-a3d70dc",
+      "pid": 2205651,
+      "startTicks": "26464454",
+      "exe": "/usr/bin/qemu-system-x86_64",
+      "exeSha256": "8a35ccba41582fc6c38b9df85fc9e35fa1d42f414d2d7d8090ee9b2f5e7c0854",
+      "ownedOverlay": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/disk.qcow2",
+      "verifiedOnHost": true
+    },
+    {
+      "run": "current-gnome-a3d70dc",
+      "pid": 2215650,
+      "startTicks": "26553637",
+      "exe": "/usr/bin/qemu-system-x86_64",
+      "exeSha256": "8a35ccba41582fc6c38b9df85fc9e35fa1d42f414d2d7d8090ee9b2f5e7c0854",
+      "ownedOverlay": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/disk.qcow2",
+      "verifiedOnHost": true
+    },
+    {
+      "run": "current-kde-a3d70dc",
+      "pid": 2204498,
+      "startTicks": "26459875",
+      "exe": "/usr/bin/qemu-system-x86_64",
+      "exeSha256": "8a35ccba41582fc6c38b9df85fc9e35fa1d42f414d2d7d8090ee9b2f5e7c0854",
+      "ownedOverlay": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/disk.qcow2",
+      "verifiedOnHost": true
+    }
+  ],
+  "ioPressure": "some avg10=73.33 avg60=73.74 avg300=73.65 total=257633444708\nfull avg10=67.08 avg60=66.88 avg300=67.02 total=230491229441\n",
+  "correction": "Earlier sandbox-only process absence did not establish host absence."
+}

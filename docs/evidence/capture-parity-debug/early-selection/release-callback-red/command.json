@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "xvfb-run",
+    "-a",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/test_capture_process",
+    "sourceReleasePrecedesCallbacksThatDestroyController",
+    "-o",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/release-callback-red.xml,junitxml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:28:38.728847+00:00"
+}

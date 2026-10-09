@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "cmake",
+    "--build",
+    "--preset",
+    "dev",
+    "--target",
+    "test_capture_preparation"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T18:08:02.108743+00:00"
+}

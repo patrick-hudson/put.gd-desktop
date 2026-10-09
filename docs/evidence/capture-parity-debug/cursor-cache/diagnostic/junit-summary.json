@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "9774aab1b902c2aa28604996d2a0588048af9240eca02e8dcc672a93642312ac",
+  "sourceBytes": 3663,
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "1",
+    "failures": "1",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "0",
+    "timestamp": "2026-10-09T12:15:07"
+  },
+  "testcases": [
+    {
+      "name": "native_region_overlay",
+      "classname": "native_region_overlay",
+      "time": "0.668873",
+      "status": "fail",
+      "failures": [
+        {
+          "message": "Failed"
+        }
+      ],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "stdoutOmitted": "Cursor image/hash expected/actual values and arbitrary suite stdout deliberately excluded.",
+  "numericProbeObservations": [
+    {
+      "probe": "grab",
+      "first": 0,
+      "second": 0
+    },
+    {
+      "probe": "image",
+      "first": 0,
+      "second": true
+    },
+    {
+      "probe": "grab",
+      "first": 0,
+      "second": 0
+    },
+    {
+      "probe": "image",
+      "first": 10,
+      "second": false
+    }
+  ],
+  "qtTestFunctionOutcomes": [
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::initTestCase()"
+    },
+    {
+      "status": "FAIL!",
+      "case": "NativeRegionTest::cachedCursorSurvivesSourceClientExit()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::transparentDrawablesAndLogicalSelection()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::movingOutlineClearsPreviousPixels()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::nativeCursorMatchesQtCrosshair()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cancellationModes(escape)"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cancellationModes(right-click)"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cancellationModes(zero-area)"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cancellationModes(explicit-twice)"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::destructionDuringCompletionDoesNotRetainInput()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cancellationDuringStartup()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::destructionDuringStartup()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::unmatchedReleaseBeforeEscape()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::displayChangeDuringStartup()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::nativeCoordinateEligibility()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::existingInputGrabIsPreserved(pointer)"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::existingInputGrabIsPreserved(keyboard)"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::invalidLayoutFailsWithoutTakingGrabs()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cleanupTestCase()"
+    }
+  ]
+}

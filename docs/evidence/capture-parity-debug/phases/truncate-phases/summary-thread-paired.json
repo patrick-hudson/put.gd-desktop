@@ -1,0 +1,4080 @@
+{
+  "schemaVersion": 1,
+  "unscored": true,
+  "acceptance": false,
+  "traceSha256": "aefadb1c322e7e8ea81dfd71d4921bc47aef8ac0cb6918b512eced6949cca17d",
+  "chronology": "Stable timestamp order, then original line; first sequential pair on the exact worker PID/TID; five warmups remain separate from thirty measured invocations.",
+  "pairing": "Same PID/TID and phase begin/end; repeated nested begins flagged, unmatched events retained. Worker history spans must fit inside their exact worker interval.",
+  "groups": 35,
+  "warmupGroups": 5,
+  "measuredGroups": 30,
+  "pairCounts": {
+    "historyInitialize": 143,
+    "historyOpen": 143,
+    "historyCommit": 105,
+    "historySave": 105,
+    "acceptedWorker": 35,
+    "acquiringWorker": 35
+  },
+  "unmatchedEvents": [],
+  "nestedBegins": [],
+  "allHistoryThreads": {
+    "historyOpen": {
+      "count": 143,
+      "medianMs": 0.489441,
+      "p95Ms": 1.490297,
+      "minMs": 0.239851,
+      "maxMs": 229.723361
+    },
+    "historyInitialize": {
+      "count": 143,
+      "medianMs": 0.285492,
+      "p95Ms": 1.005041,
+      "minMs": 0.151626,
+      "maxMs": 229.479492
+    },
+    "historySave": {
+      "count": 105,
+      "medianMs": 3.695826,
+      "p95Ms": 19.041238,
+      "minMs": 2.435315,
+      "maxMs": 445.642799
+    },
+    "historyCommit": {
+      "count": 105,
+      "medianMs": 3.186426,
+      "p95Ms": 18.114662,
+      "minMs": 2.190817,
+      "maxMs": 445.372968
+    }
+  },
+  "statistics": {
+    "allInvocations": {
+      "invocationCount": 35,
+      "roles": {
+        "acceptedWorker": {
+          "worker": {
+            "count": 35,
+            "medianMs": 5.619529,
+            "p95Ms": 87.827462,
+            "minMs": 3.22404,
+            "maxMs": 365.780289
+          },
+          "historyOpen": {
+            "count": 35,
+            "medianMs": 0.952566,
+            "p95Ms": 3.617291,
+            "minMs": 0.316911,
+            "maxMs": 229.723361
+          },
+          "historyInitialize": {
+            "count": 35,
+            "medianMs": 0.63434,
+            "p95Ms": 3.454863,
+            "minMs": 0.193908,
+            "maxMs": 229.479492
+          },
+          "historySave": {
+            "count": 35,
+            "medianMs": 4.323455,
+            "p95Ms": 86.844194,
+            "minMs": 2.77213,
+            "maxMs": 135.922781
+          },
+          "historyCommit": {
+            "count": 35,
+            "medianMs": 3.799171,
+            "p95Ms": 86.428383,
+            "minMs": 2.54083,
+            "maxMs": 135.73052
+          }
+        },
+        "acquiringWorker": {
+          "worker": {
+            "count": 35,
+            "medianMs": 4.701958,
+            "p95Ms": 6.85673,
+            "minMs": 2.73924,
+            "maxMs": 7.17583
+          },
+          "historyOpen": {
+            "count": 35,
+            "medianMs": 0.665789,
+            "p95Ms": 1.466882,
+            "minMs": 0.239851,
+            "maxMs": 1.490297
+          },
+          "historyInitialize": {
+            "count": 35,
+            "medianMs": 0.439954,
+            "p95Ms": 1.005041,
+            "minMs": 0.153602,
+            "maxMs": 1.031143
+          },
+          "historySave": {
+            "count": 35,
+            "medianMs": 3.688331,
+            "p95Ms": 5.739092,
+            "minMs": 2.435315,
+            "maxMs": 6.860805
+          },
+          "historyCommit": {
+            "count": 35,
+            "medianMs": 3.12569,
+            "p95Ms": 5.203505,
+            "minMs": 2.190817,
+            "maxMs": 6.681303
+          }
+        }
+      }
+    },
+    "measuredInvocations": {
+      "invocationCount": 30,
+      "roles": {
+        "acceptedWorker": {
+          "worker": {
+            "count": 30,
+            "medianMs": 5.4837585,
+            "p95Ms": 20.955936,
+            "minMs": 3.494235,
+            "maxMs": 87.827462
+          },
+          "historyOpen": {
+            "count": 30,
+            "medianMs": 0.9713905,
+            "p95Ms": 1.620731,
+            "minMs": 0.316911,
+            "maxMs": 1.661004
+          },
+          "historyInitialize": {
+            "count": 30,
+            "medianMs": 0.650542,
+            "p95Ms": 1.098566,
+            "minMs": 0.193908,
+            "maxMs": 1.129548
+          },
+          "historySave": {
+            "count": 30,
+            "medianMs": 4.3233515,
+            "p95Ms": 19.041238,
+            "minMs": 2.979951,
+            "maxMs": 86.844194
+          },
+          "historyCommit": {
+            "count": 30,
+            "medianMs": 3.7916625,
+            "p95Ms": 18.114662,
+            "minMs": 2.698622,
+            "maxMs": 86.428383
+          }
+        },
+        "acquiringWorker": {
+          "worker": {
+            "count": 30,
+            "medianMs": 4.58552,
+            "p95Ms": 6.808592,
+            "minMs": 2.73924,
+            "maxMs": 6.85673
+          },
+          "historyOpen": {
+            "count": 30,
+            "medianMs": 0.7618935,
+            "p95Ms": 1.466882,
+            "minMs": 0.239851,
+            "maxMs": 1.490297
+          },
+          "historyInitialize": {
+            "count": 30,
+            "medianMs": 0.4823965,
+            "p95Ms": 1.005041,
+            "minMs": 0.153602,
+            "maxMs": 1.031143
+          },
+          "historySave": {
+            "count": 30,
+            "medianMs": 3.557207,
+            "p95Ms": 5.62768,
+            "minMs": 2.435315,
+            "maxMs": 5.739092
+          },
+          "historyCommit": {
+            "count": 30,
+            "medianMs": 3.0314984999999997,
+            "p95Ms": 4.917938,
+            "minMs": 2.190817,
+            "maxMs": 5.203505
+          }
+        }
+      }
+    }
+  },
+  "legacyCrossThreadPairs": [
+    {
+      "invocationIndex": 2,
+      "warmup": true,
+      "kind": "historySave",
+      "beginPid": 3309338,
+      "beginTid": 3309389,
+      "endPid": 3309338,
+      "endTid": 3309385,
+      "beginLine": 155,
+      "endLine": 152,
+      "invalidDurationMs": -46.017441,
+      "status": "invalid legacy first-point merge; not a real span"
+    },
+    {
+      "invocationIndex": 2,
+      "warmup": true,
+      "kind": "historyCommit",
+      "beginPid": 3309338,
+      "beginTid": 3309389,
+      "endPid": 3309338,
+      "endTid": 3309385,
+      "beginLine": 156,
+      "endLine": 151,
+      "invalidDurationMs": -46.214965,
+      "status": "invalid legacy first-point merge; not a real span"
+    },
+    {
+      "invocationIndex": 3,
+      "warmup": true,
+      "kind": "historySave",
+      "beginPid": 3309338,
+      "beginTid": 3309398,
+      "endPid": 3309338,
+      "endTid": 3309395,
+      "beginLine": 209,
+      "endLine": 206,
+      "invalidDurationMs": -1.154377,
+      "status": "invalid legacy first-point merge; not a real span"
+    },
+    {
+      "invocationIndex": 3,
+      "warmup": true,
+      "kind": "historyCommit",
+      "beginPid": 3309338,
+      "beginTid": 3309398,
+      "endPid": 3309338,
+      "endTid": 3309395,
+      "beginLine": 210,
+      "endLine": 205,
+      "invalidDurationMs": -1.524205,
+      "status": "invalid legacy first-point merge; not a real span"
+    }
+  ],
+  "worstAcceptedInitialize": {
+    "invocationIndex": 2,
+    "warmup": true,
+    "acceptedPid": 3309338,
+    "acceptedTid": 3309389,
+    "acceptedBeginNs": 342799542636508,
+    "initialize": {
+      "pid": 3309338,
+      "tid": 3309389,
+      "beginNs": 342799542884799,
+      "endNs": 342799772364291,
+      "durationMs": 229.479492,
+      "beginLine": 142,
+      "endLine": 153
+    },
+    "initializeBeginRelativeAcceptedMs": 0.248291,
+    "initializeEndRelativeAcceptedMs": 229.727783,
+    "priorCommits": [
+      {
+        "pid": 3309338,
+        "tid": 3309385,
+        "beginNs": 342799280966092,
+        "endNs": 342799726339060,
+        "durationMs": 445.372968,
+        "beginLine": 132,
+        "endLine": 151,
+        "kind": "historyCommit",
+        "role": "not_accepted_or_acquiring_worker",
+        "originInvocationIndex": 1,
+        "relativeAcceptedBeginMs": -261.670416,
+        "relativeAcceptedEndMs": 183.702552,
+        "overlapMs": 183.702552,
+        "initializeEndAfterPriorCommitMs": 46.025231
+      }
+    ]
+  },
+  "invocations": [
+    {
+      "invocationIndex": 0,
+      "warmup": true,
+      "invokeNs": 342798981490317,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309370,
+          "beginNs": 342798983884879,
+          "endNs": 342799051479043,
+          "durationMs": 67.594164,
+          "beginLine": 16,
+          "endLine": 35,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309370,
+              "beginNs": 342798983908091,
+              "endNs": 342798984285442,
+              "durationMs": 0.377351,
+              "beginLine": 17,
+              "endLine": 20
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309370,
+              "beginNs": 342798984046654,
+              "endNs": 342798984274431,
+              "durationMs": 0.227777,
+              "beginLine": 18,
+              "endLine": 19
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309370,
+              "beginNs": 342798984291858,
+              "endNs": 342799051412278,
+              "durationMs": 67.12042,
+              "beginLine": 21,
+              "endLine": 34
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309370,
+              "beginNs": 342798984494835,
+              "endNs": 342799051394811,
+              "durationMs": 66.899976,
+              "beginLine": 22,
+              "endLine": 33
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309373,
+          "beginNs": 342799051663909,
+          "endNs": 342799058839739,
+          "durationMs": 7.17583,
+          "beginLine": 37,
+          "endLine": 46,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309373,
+              "beginNs": 342799051675907,
+              "endNs": 342799051931615,
+              "durationMs": 0.255708,
+              "beginLine": 38,
+              "endLine": 41
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309373,
+              "beginNs": 342799051760556,
+              "endNs": 342799051923010,
+              "durationMs": 0.162454,
+              "beginLine": 39,
+              "endLine": 40
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309373,
+              "beginNs": 342799051936443,
+              "endNs": 342799058797248,
+              "durationMs": 6.860805,
+              "beginLine": 42,
+              "endLine": 45
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309373,
+              "beginNs": 342799052095112,
+              "endNs": 342799058776415,
+              "durationMs": 6.681303,
+              "beginLine": 43,
+              "endLine": 44
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 1,
+      "warmup": true,
+      "invokeNs": 342799198803583,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309379,
+          "beginNs": 342799199827081,
+          "endNs": 342799203051121,
+          "durationMs": 3.22404,
+          "beginLine": 80,
+          "endLine": 89,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309379,
+              "beginNs": 342799199838259,
+              "endNs": 342799200159105,
+              "durationMs": 0.320846,
+              "beginLine": 81,
+              "endLine": 84
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309379,
+              "beginNs": 342799199933602,
+              "endNs": 342799200150693,
+              "durationMs": 0.217091,
+              "beginLine": 82,
+              "endLine": 83
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309379,
+              "beginNs": 342799200163686,
+              "endNs": 342799202935816,
+              "durationMs": 2.77213,
+              "beginLine": 85,
+              "endLine": 88
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309379,
+              "beginNs": 342799200360554,
+              "endNs": 342799202901384,
+              "durationMs": 2.54083,
+              "beginLine": 86,
+              "endLine": 87
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309380,
+          "beginNs": 342799203475448,
+          "endNs": 342799206404066,
+          "durationMs": 2.928618,
+          "beginLine": 91,
+          "endLine": 100,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309380,
+              "beginNs": 342799203489104,
+              "endNs": 342799203853534,
+              "durationMs": 0.36443,
+              "beginLine": 92,
+              "endLine": 95
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309380,
+              "beginNs": 342799203674600,
+              "endNs": 342799203845809,
+              "durationMs": 0.171209,
+              "beginLine": 93,
+              "endLine": 94
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309380,
+              "beginNs": 342799203857864,
+              "endNs": 342799206351071,
+              "durationMs": 2.493207,
+              "beginLine": 96,
+              "endLine": 99
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309380,
+              "beginNs": 342799204026480,
+              "endNs": 342799206326750,
+              "durationMs": 2.30027,
+              "beginLine": 97,
+              "endLine": 98
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 2,
+      "warmup": true,
+      "invokeNs": 342799383083987,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309389,
+          "beginNs": 342799542636508,
+          "endNs": 342799908416797,
+          "durationMs": 365.780289,
+          "beginLine": 140,
+          "endLine": 159,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309389,
+              "beginNs": 342799542658706,
+              "endNs": 342799772382067,
+              "durationMs": 229.723361,
+              "beginLine": 141,
+              "endLine": 154
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309389,
+              "beginNs": 342799542884799,
+              "endNs": 342799772364291,
+              "durationMs": 229.479492,
+              "beginLine": 142,
+              "endLine": 153
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309389,
+              "beginNs": 342799772387427,
+              "endNs": 342799908310208,
+              "durationMs": 135.922781,
+              "beginLine": 155,
+              "endLine": 158
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309389,
+              "beginNs": 342799772554025,
+              "endNs": 342799908284545,
+              "durationMs": 135.73052,
+              "beginLine": 156,
+              "endLine": 157
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309392,
+          "beginNs": 342799908619880,
+          "endNs": 342799913648162,
+          "durationMs": 5.028282,
+          "beginLine": 161,
+          "endLine": 170,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309392,
+              "beginNs": 342799908637091,
+              "endNs": 342799909057998,
+              "durationMs": 0.420907,
+              "beginLine": 162,
+              "endLine": 165
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309392,
+              "beginNs": 342799908767658,
+              "endNs": 342799909043074,
+              "durationMs": 0.275416,
+              "beginLine": 163,
+              "endLine": 164
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309392,
+              "beginNs": 342799909065995,
+              "endNs": 342799913612110,
+              "durationMs": 4.546115,
+              "beginLine": 166,
+              "endLine": 169
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309392,
+              "beginNs": 342799909304544,
+              "endNs": 342799913589436,
+              "durationMs": 4.284892,
+              "beginLine": 167,
+              "endLine": 168
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": [
+        {
+          "pid": 3309338,
+          "tid": 3309385,
+          "beginNs": 342799280727187,
+          "endNs": 342799726369986,
+          "durationMs": 445.642799,
+          "beginLine": 131,
+          "endLine": 152,
+          "kind": "historySave",
+          "role": "not_accepted_or_acquiring_worker",
+          "originInvocationIndex": 1,
+          "relativeAcceptedBeginMs": -261.909321,
+          "relativeAcceptedEndMs": 183.733478,
+          "overlapMs": 183.733478
+        },
+        {
+          "pid": 3309338,
+          "tid": 3309385,
+          "beginNs": 342799280966092,
+          "endNs": 342799726339060,
+          "durationMs": 445.372968,
+          "beginLine": 132,
+          "endLine": 151,
+          "kind": "historyCommit",
+          "role": "not_accepted_or_acquiring_worker",
+          "originInvocationIndex": 1,
+          "relativeAcceptedBeginMs": -261.670416,
+          "relativeAcceptedEndMs": 183.702552,
+          "overlapMs": 183.702552
+        }
+      ]
+    },
+    {
+      "invocationIndex": 3,
+      "warmup": true,
+      "invokeNs": 342800070509812,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309398,
+          "beginNs": 342800072102456,
+          "endNs": 342800079694021,
+          "durationMs": 7.591565,
+          "beginLine": 202,
+          "endLine": 213,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309398,
+              "beginNs": 342800072128794,
+              "endNs": 342800075746085,
+              "durationMs": 3.617291,
+              "beginLine": 203,
+              "endLine": 208
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309398,
+              "beginNs": 342800072271990,
+              "endNs": 342800075726853,
+              "durationMs": 3.454863,
+              "beginLine": 204,
+              "endLine": 207
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309398,
+              "beginNs": 342800075753930,
+              "endNs": 342800079621736,
+              "durationMs": 3.867806,
+              "beginLine": 209,
+              "endLine": 212
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309398,
+              "beginNs": 342800076065373,
+              "endNs": 342800079603582,
+              "durationMs": 3.538209,
+              "beginLine": 210,
+              "endLine": 211
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309399,
+          "beginNs": 342800079835462,
+          "endNs": 342800084836993,
+          "durationMs": 5.001531,
+          "beginLine": 215,
+          "endLine": 225,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309399,
+              "beginNs": 342800079847942,
+              "endNs": 342800080177371,
+              "durationMs": 0.329429,
+              "beginLine": 216,
+              "endLine": 219
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309399,
+              "beginNs": 342800079958587,
+              "endNs": 342800080165472,
+              "durationMs": 0.206885,
+              "beginLine": 217,
+              "endLine": 218
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309399,
+              "beginNs": 342800080186273,
+              "endNs": 342800084782207,
+              "durationMs": 4.595934,
+              "beginLine": 220,
+              "endLine": 224
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309399,
+              "beginNs": 342800080358452,
+              "endNs": 342800084756570,
+              "durationMs": 4.398118,
+              "beginLine": 221,
+              "endLine": 223
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": [
+        {
+          "pid": 3309338,
+          "tid": 3309395,
+          "beginNs": 342799976401717,
+          "endNs": 342800074599553,
+          "durationMs": 98.197836,
+          "beginLine": 193,
+          "endLine": 206,
+          "kind": "historySave",
+          "role": "not_accepted_or_acquiring_worker",
+          "originInvocationIndex": 2,
+          "relativeAcceptedBeginMs": -95.700739,
+          "relativeAcceptedEndMs": 2.497097,
+          "overlapMs": 2.497097
+        },
+        {
+          "pid": 3309338,
+          "tid": 3309395,
+          "beginNs": 342799976641440,
+          "endNs": 342800074541168,
+          "durationMs": 97.899728,
+          "beginLine": 194,
+          "endLine": 205,
+          "kind": "historyCommit",
+          "role": "not_accepted_or_acquiring_worker",
+          "originInvocationIndex": 2,
+          "relativeAcceptedBeginMs": -95.461016,
+          "relativeAcceptedEndMs": 2.438712,
+          "overlapMs": 2.438712
+        }
+      ]
+    },
+    {
+      "invocationIndex": 4,
+      "warmup": true,
+      "invokeNs": 342800238858930,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309404,
+          "beginNs": 342800242087623,
+          "endNs": 342800249852982,
+          "durationMs": 7.765359,
+          "beginLine": 266,
+          "endLine": 275,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309404,
+              "beginNs": 342800242128466,
+              "endNs": 342800243057791,
+              "durationMs": 0.929325,
+              "beginLine": 267,
+              "endLine": 270
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309404,
+              "beginNs": 342800242436737,
+              "endNs": 342800242987840,
+              "durationMs": 0.551103,
+              "beginLine": 268,
+              "endLine": 269
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309404,
+              "beginNs": 342800243077014,
+              "endNs": 342800249680307,
+              "durationMs": 6.603293,
+              "beginLine": 271,
+              "endLine": 274
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309404,
+              "beginNs": 342800243605959,
+              "endNs": 342800249635774,
+              "durationMs": 6.029815,
+              "beginLine": 272,
+              "endLine": 273
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309405,
+          "beginNs": 342800250274891,
+          "endNs": 342800255663334,
+          "durationMs": 5.388443,
+          "beginLine": 277,
+          "endLine": 286,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309405,
+              "beginNs": 342800250303248,
+              "endNs": 342800250945424,
+              "durationMs": 0.642176,
+              "beginLine": 278,
+              "endLine": 281
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309405,
+              "beginNs": 342800250510040,
+              "endNs": 342800250922312,
+              "durationMs": 0.412272,
+              "beginLine": 279,
+              "endLine": 280
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309405,
+              "beginNs": 342800250958311,
+              "endNs": 342800255545867,
+              "durationMs": 4.587556,
+              "beginLine": 282,
+              "endLine": 285
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309405,
+              "beginNs": 342800251383345,
+              "endNs": 342800255479727,
+              "durationMs": 4.096382,
+              "beginLine": 283,
+              "endLine": 284
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 5,
+      "warmup": false,
+      "invokeNs": 342800442180227,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309410,
+          "beginNs": 342800445156808,
+          "endNs": 342800450097389,
+          "durationMs": 4.940581,
+          "beginLine": 328,
+          "endLine": 337,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309410,
+              "beginNs": 342800445201645,
+              "endNs": 342800446281034,
+              "durationMs": 1.079389,
+              "beginLine": 329,
+              "endLine": 332
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309410,
+              "beginNs": 342800445556120,
+              "endNs": 342800446255529,
+              "durationMs": 0.699409,
+              "beginLine": 330,
+              "endLine": 331
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309410,
+              "beginNs": 342800446295051,
+              "endNs": 342800449897672,
+              "durationMs": 3.602621,
+              "beginLine": 333,
+              "endLine": 336
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309410,
+              "beginNs": 342800446714494,
+              "endNs": 342800449855712,
+              "durationMs": 3.141218,
+              "beginLine": 334,
+              "endLine": 335
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309411,
+          "beginNs": 342800450539544,
+          "endNs": 342800454984908,
+          "durationMs": 4.445364,
+          "beginLine": 339,
+          "endLine": 348,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309411,
+              "beginNs": 342800450572312,
+              "endNs": 342800451318484,
+              "durationMs": 0.746172,
+              "beginLine": 340,
+              "endLine": 343
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309411,
+              "beginNs": 342800450809325,
+              "endNs": 342800451293571,
+              "durationMs": 0.484246,
+              "beginLine": 341,
+              "endLine": 342
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309411,
+              "beginNs": 342800451332968,
+              "endNs": 342800454901989,
+              "durationMs": 3.569021,
+              "beginLine": 344,
+              "endLine": 347
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309411,
+              "beginNs": 342800451769032,
+              "endNs": 342800454865021,
+              "durationMs": 3.095989,
+              "beginLine": 345,
+              "endLine": 346
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 6,
+      "warmup": false,
+      "invokeNs": 342800666348663,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309420,
+          "beginNs": 342800671286228,
+          "endNs": 342800686548833,
+          "durationMs": 15.262605,
+          "beginLine": 390,
+          "endLine": 399,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309420,
+              "beginNs": 342800671337009,
+              "endNs": 342800672930356,
+              "durationMs": 1.593347,
+              "beginLine": 391,
+              "endLine": 394
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309420,
+              "beginNs": 342800671832766,
+              "endNs": 342800672892175,
+              "durationMs": 1.059409,
+              "beginLine": 392,
+              "endLine": 393
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309420,
+              "beginNs": 342800672952939,
+              "endNs": 342800686278013,
+              "durationMs": 13.325074,
+              "beginLine": 395,
+              "endLine": 398
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309420,
+              "beginNs": 342800673774769,
+              "endNs": 342800686201937,
+              "durationMs": 12.427168,
+              "beginLine": 396,
+              "endLine": 397
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309421,
+          "beginNs": 342800687219868,
+          "endNs": 342800692539827,
+          "durationMs": 5.319959,
+          "beginLine": 401,
+          "endLine": 410,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309421,
+              "beginNs": 342800687270189,
+              "endNs": 342800688538769,
+              "durationMs": 1.26858,
+              "beginLine": 402,
+              "endLine": 405
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309421,
+              "beginNs": 342800687693096,
+              "endNs": 342800688511619,
+              "durationMs": 0.818523,
+              "beginLine": 403,
+              "endLine": 404
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309421,
+              "beginNs": 342800688554158,
+              "endNs": 342800692377417,
+              "durationMs": 3.823259,
+              "beginLine": 406,
+              "endLine": 409
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309421,
+              "beginNs": 342800689081928,
+              "endNs": 342800692293870,
+              "durationMs": 3.211942,
+              "beginLine": 407,
+              "endLine": 408
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 7,
+      "warmup": false,
+      "invokeNs": 342800873418744,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309426,
+          "beginNs": 342800874534541,
+          "endNs": 342800878772975,
+          "durationMs": 4.238434,
+          "beginLine": 452,
+          "endLine": 461,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309426,
+              "beginNs": 342800874555534,
+              "endNs": 342800875430845,
+              "durationMs": 0.875311,
+              "beginLine": 453,
+              "endLine": 456
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309426,
+              "beginNs": 342800874785407,
+              "endNs": 342800875419747,
+              "durationMs": 0.63434,
+              "beginLine": 454,
+              "endLine": 455
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309426,
+              "beginNs": 342800875436417,
+              "endNs": 342800878636360,
+              "durationMs": 3.199943,
+              "beginLine": 457,
+              "endLine": 460
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309426,
+              "beginNs": 342800875751846,
+              "endNs": 342800878603006,
+              "durationMs": 2.85116,
+              "beginLine": 458,
+              "endLine": 459
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309427,
+          "beginNs": 342800879092637,
+          "endNs": 342800882063099,
+          "durationMs": 2.970462,
+          "beginLine": 463,
+          "endLine": 472,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309427,
+              "beginNs": 342800879103893,
+              "endNs": 342800879522846,
+              "durationMs": 0.418953,
+              "beginLine": 464,
+              "endLine": 467
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309427,
+              "beginNs": 342800879239848,
+              "endNs": 342800879515396,
+              "durationMs": 0.275548,
+              "beginLine": 465,
+              "endLine": 466
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309427,
+              "beginNs": 342800879527319,
+              "endNs": 342800881972856,
+              "durationMs": 2.445537,
+              "beginLine": 468,
+              "endLine": 471
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309427,
+              "beginNs": 342800879755675,
+              "endNs": 342800881946492,
+              "durationMs": 2.190817,
+              "beginLine": 469,
+              "endLine": 470
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 8,
+      "warmup": false,
+      "invokeNs": 342801075486873,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309432,
+          "beginNs": 342801081571894,
+          "endNs": 342801089613759,
+          "durationMs": 8.041865,
+          "beginLine": 514,
+          "endLine": 523,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309432,
+              "beginNs": 342801081630091,
+              "endNs": 342801083155569,
+              "durationMs": 1.525478,
+              "beginLine": 515,
+              "endLine": 518
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309432,
+              "beginNs": 342801082140060,
+              "endNs": 342801083090325,
+              "durationMs": 0.950265,
+              "beginLine": 516,
+              "endLine": 517
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309432,
+              "beginNs": 342801083195656,
+              "endNs": 342801089206138,
+              "durationMs": 6.010482,
+              "beginLine": 519,
+              "endLine": 522
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309432,
+              "beginNs": 342801084155588,
+              "endNs": 342801089088763,
+              "durationMs": 4.933175,
+              "beginLine": 520,
+              "endLine": 521
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309433,
+          "beginNs": 342801090208137,
+          "endNs": 342801096452923,
+          "durationMs": 6.244786,
+          "beginLine": 525,
+          "endLine": 534,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309433,
+              "beginNs": 342801090270564,
+              "endNs": 342801091737446,
+              "durationMs": 1.466882,
+              "beginLine": 526,
+              "endLine": 529
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309433,
+              "beginNs": 342801090708812,
+              "endNs": 342801091694687,
+              "durationMs": 0.985875,
+              "beginLine": 527,
+              "endLine": 528
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309433,
+              "beginNs": 342801091772544,
+              "endNs": 342801096274665,
+              "durationMs": 4.502121,
+              "beginLine": 530,
+              "endLine": 533
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309433,
+              "beginNs": 342801092541459,
+              "endNs": 342801096206252,
+              "durationMs": 3.664793,
+              "beginLine": 531,
+              "endLine": 532
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 9,
+      "warmup": false,
+      "invokeNs": 342801297559287,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309440,
+          "beginNs": 342801303660302,
+          "endNs": 342801316030059,
+          "durationMs": 12.369757,
+          "beginLine": 576,
+          "endLine": 585,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309440,
+              "beginNs": 342801303710042,
+              "endNs": 342801305171454,
+              "durationMs": 1.461412,
+              "beginLine": 577,
+              "endLine": 580
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309440,
+              "beginNs": 342801304173262,
+              "endNs": 342801305129250,
+              "durationMs": 0.955988,
+              "beginLine": 578,
+              "endLine": 579
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309440,
+              "beginNs": 342801305203854,
+              "endNs": 342801315659199,
+              "durationMs": 10.455345,
+              "beginLine": 581,
+              "endLine": 584
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309440,
+              "beginNs": 342801305807880,
+              "endNs": 342801315576438,
+              "durationMs": 9.768558,
+              "beginLine": 582,
+              "endLine": 583
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309443,
+          "beginNs": 342801316567508,
+          "endNs": 342801323424238,
+          "durationMs": 6.85673,
+          "beginLine": 587,
+          "endLine": 596,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309443,
+              "beginNs": 342801316606025,
+              "endNs": 342801317643209,
+              "durationMs": 1.037184,
+              "beginLine": 588,
+              "endLine": 591
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309443,
+              "beginNs": 342801316877837,
+              "endNs": 342801317608575,
+              "durationMs": 0.730738,
+              "beginLine": 589,
+              "endLine": 590
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309443,
+              "beginNs": 342801317663079,
+              "endNs": 342801323290759,
+              "durationMs": 5.62768,
+              "beginLine": 592,
+              "endLine": 595
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309443,
+              "beginNs": 342801318297849,
+              "endNs": 342801323215787,
+              "durationMs": 4.917938,
+              "beginLine": 593,
+              "endLine": 594
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 10,
+      "warmup": false,
+      "invokeNs": 342801484482106,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309448,
+          "beginNs": 342801485647573,
+          "endNs": 342801489466764,
+          "durationMs": 3.819191,
+          "beginLine": 638,
+          "endLine": 647,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309448,
+              "beginNs": 342801485663198,
+              "endNs": 342801486033007,
+              "durationMs": 0.369809,
+              "beginLine": 639,
+              "endLine": 642
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309448,
+              "beginNs": 342801485795554,
+              "endNs": 342801486024830,
+              "durationMs": 0.229276,
+              "beginLine": 640,
+              "endLine": 641
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309448,
+              "beginNs": 342801486037804,
+              "endNs": 342801489361671,
+              "durationMs": 3.323867,
+              "beginLine": 643,
+              "endLine": 646
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309448,
+              "beginNs": 342801486193080,
+              "endNs": 342801489323389,
+              "durationMs": 3.130309,
+              "beginLine": 644,
+              "endLine": 645
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309449,
+          "beginNs": 342801489692821,
+          "endNs": 342801492691902,
+          "durationMs": 2.999081,
+          "beginLine": 649,
+          "endLine": 658,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309449,
+              "beginNs": 342801489703502,
+              "endNs": 342801490053942,
+              "durationMs": 0.35044,
+              "beginLine": 650,
+              "endLine": 653
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309449,
+              "beginNs": 342801489813181,
+              "endNs": 342801490046223,
+              "durationMs": 0.233042,
+              "beginLine": 651,
+              "endLine": 652
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309449,
+              "beginNs": 342801490058563,
+              "endNs": 342801492615411,
+              "durationMs": 2.556848,
+              "beginLine": 654,
+              "endLine": 657
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309449,
+              "beginNs": 342801490254158,
+              "endNs": 342801492585940,
+              "durationMs": 2.331782,
+              "beginLine": 655,
+              "endLine": 656
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 11,
+      "warmup": false,
+      "invokeNs": 342801673380250,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309454,
+          "beginNs": 342801679149007,
+          "endNs": 342801685248342,
+          "durationMs": 6.099335,
+          "beginLine": 700,
+          "endLine": 709,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309454,
+              "beginNs": 342801679203722,
+              "endNs": 342801680367797,
+              "durationMs": 1.164075,
+              "beginLine": 701,
+              "endLine": 704
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309454,
+              "beginNs": 342801679559856,
+              "endNs": 342801680329309,
+              "durationMs": 0.769453,
+              "beginLine": 702,
+              "endLine": 703
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309454,
+              "beginNs": 342801680390137,
+              "endNs": 342801684947871,
+              "durationMs": 4.557734,
+              "beginLine": 705,
+              "endLine": 708
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309454,
+              "beginNs": 342801681122709,
+              "endNs": 342801684881288,
+              "durationMs": 3.758579,
+              "beginLine": 706,
+              "endLine": 707
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309455,
+          "beginNs": 342801685835076,
+          "endNs": 342801691686803,
+          "durationMs": 5.851727,
+          "beginLine": 711,
+          "endLine": 720,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309455,
+              "beginNs": 342801685898850,
+              "endNs": 342801687086469,
+              "durationMs": 1.187619,
+              "beginLine": 712,
+              "endLine": 715
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309455,
+              "beginNs": 342801686308364,
+              "endNs": 342801687040220,
+              "durationMs": 0.731856,
+              "beginLine": 713,
+              "endLine": 714
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309455,
+              "beginNs": 342801687109477,
+              "endNs": 342801691551711,
+              "durationMs": 4.442234,
+              "beginLine": 716,
+              "endLine": 719
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309455,
+              "beginNs": 342801687797115,
+              "endNs": 342801691486317,
+              "durationMs": 3.689202,
+              "beginLine": 717,
+              "endLine": 718
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 12,
+      "warmup": false,
+      "invokeNs": 342801885882158,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309460,
+          "beginNs": 342801886954449,
+          "endNs": 342801890939613,
+          "durationMs": 3.985164,
+          "beginLine": 762,
+          "endLine": 771,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309460,
+              "beginNs": 342801886965928,
+              "endNs": 342801887310348,
+              "durationMs": 0.34442,
+              "beginLine": 763,
+              "endLine": 766
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309460,
+              "beginNs": 342801887067587,
+              "endNs": 342801887300142,
+              "durationMs": 0.232555,
+              "beginLine": 764,
+              "endLine": 765
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309460,
+              "beginNs": 342801887317283,
+              "endNs": 342801890833778,
+              "durationMs": 3.516495,
+              "beginLine": 767,
+              "endLine": 770
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309460,
+              "beginNs": 342801887562505,
+              "endNs": 342801890811372,
+              "durationMs": 3.248867,
+              "beginLine": 768,
+              "endLine": 769
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309461,
+          "beginNs": 342801891184869,
+          "endNs": 342801894272755,
+          "durationMs": 3.087886,
+          "beginLine": 773,
+          "endLine": 782,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309461,
+              "beginNs": 342801891194382,
+              "endNs": 342801891482629,
+              "durationMs": 0.288247,
+              "beginLine": 774,
+              "endLine": 777
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309461,
+              "beginNs": 342801891310918,
+              "endNs": 342801891475018,
+              "durationMs": 0.1641,
+              "beginLine": 775,
+              "endLine": 776
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309461,
+              "beginNs": 342801891486979,
+              "endNs": 342801894197096,
+              "durationMs": 2.710117,
+              "beginLine": 778,
+              "endLine": 781
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309461,
+              "beginNs": 342801891640303,
+              "endNs": 342801894160947,
+              "durationMs": 2.520644,
+              "beginLine": 779,
+              "endLine": 780
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 13,
+      "warmup": false,
+      "invokeNs": 342802052736047,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309466,
+          "beginNs": 342802055106039,
+          "endNs": 342802059351822,
+          "durationMs": 4.245783,
+          "beginLine": 824,
+          "endLine": 833,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309466,
+              "beginNs": 342802055140575,
+              "endNs": 342802056018465,
+              "durationMs": 0.87789,
+              "beginLine": 825,
+              "endLine": 828
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309466,
+              "beginNs": 342802055434932,
+              "endNs": 342802055974806,
+              "durationMs": 0.539874,
+              "beginLine": 826,
+              "endLine": 827
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309466,
+              "beginNs": 342802056040754,
+              "endNs": 342802059219288,
+              "durationMs": 3.178534,
+              "beginLine": 829,
+              "endLine": 832
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309466,
+              "beginNs": 342802056411741,
+              "endNs": 342802059182481,
+              "durationMs": 2.77074,
+              "beginLine": 830,
+              "endLine": 831
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309467,
+          "beginNs": 342802059651552,
+          "endNs": 342802063592329,
+          "durationMs": 3.940777,
+          "beginLine": 835,
+          "endLine": 844,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309467,
+              "beginNs": 342802059676679,
+              "endNs": 342802060243976,
+              "durationMs": 0.567297,
+              "beginLine": 836,
+              "endLine": 839
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309467,
+              "beginNs": 342802059853589,
+              "endNs": 342802060224378,
+              "durationMs": 0.370789,
+              "beginLine": 837,
+              "endLine": 838
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309467,
+              "beginNs": 342802060255075,
+              "endNs": 342802063515166,
+              "durationMs": 3.260091,
+              "beginLine": 840,
+              "endLine": 843
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309467,
+              "beginNs": 342802060619418,
+              "endNs": 342802063478578,
+              "durationMs": 2.85916,
+              "beginLine": 841,
+              "endLine": 842
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 14,
+      "warmup": false,
+      "invokeNs": 342802257451828,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309472,
+          "beginNs": 342802263447444,
+          "endNs": 342802270975981,
+          "durationMs": 7.528537,
+          "beginLine": 886,
+          "endLine": 895,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309472,
+              "beginNs": 342802263513704,
+              "endNs": 342802265174708,
+              "durationMs": 1.661004,
+              "beginLine": 887,
+              "endLine": 890
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309472,
+              "beginNs": 342802264021383,
+              "endNs": 342802265119949,
+              "durationMs": 1.098566,
+              "beginLine": 888,
+              "endLine": 889
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309472,
+              "beginNs": 342802265214874,
+              "endNs": 342802270581931,
+              "durationMs": 5.367057,
+              "beginLine": 891,
+              "endLine": 894
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309472,
+              "beginNs": 342802266283468,
+              "endNs": 342802270499345,
+              "durationMs": 4.215877,
+              "beginLine": 892,
+              "endLine": 893
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309473,
+          "beginNs": 342802271542082,
+          "endNs": 342802277689398,
+          "durationMs": 6.147316,
+          "beginLine": 897,
+          "endLine": 906,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309473,
+              "beginNs": 342802271599007,
+              "endNs": 342802272931745,
+              "durationMs": 1.332738,
+              "beginLine": 898,
+              "endLine": 901
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309473,
+              "beginNs": 342802272103469,
+              "endNs": 342802272891507,
+              "durationMs": 0.788038,
+              "beginLine": 899,
+              "endLine": 900
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309473,
+              "beginNs": 342802272955205,
+              "endNs": 342802277510702,
+              "durationMs": 4.555497,
+              "beginLine": 902,
+              "endLine": 905
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309473,
+              "beginNs": 342802273676639,
+              "endNs": 342802277443035,
+              "durationMs": 3.766396,
+              "beginLine": 903,
+              "endLine": 904
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 15,
+      "warmup": false,
+      "invokeNs": 342802471205452,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309478,
+          "beginNs": 342802478464638,
+          "endNs": 342802493953522,
+          "durationMs": 15.488884,
+          "beginLine": 948,
+          "endLine": 957,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309478,
+              "beginNs": 342802478523837,
+              "endNs": 342802479879299,
+              "durationMs": 1.355462,
+              "beginLine": 949,
+              "endLine": 952
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309478,
+              "beginNs": 342802479036499,
+              "endNs": 342802479844166,
+              "durationMs": 0.807667,
+              "beginLine": 950,
+              "endLine": 951
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309478,
+              "beginNs": 342802479901016,
+              "endNs": 342802493627962,
+              "durationMs": 13.726946,
+              "beginLine": 953,
+              "endLine": 956
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309478,
+              "beginNs": 342802480622533,
+              "endNs": 342802493556957,
+              "durationMs": 12.934424,
+              "beginLine": 954,
+              "endLine": 955
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309479,
+          "beginNs": 342802494514515,
+          "endNs": 342802500235133,
+          "durationMs": 5.720618,
+          "beginLine": 959,
+          "endLine": 968,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309479,
+              "beginNs": 342802494571380,
+              "endNs": 342802496024551,
+              "durationMs": 1.453171,
+              "beginLine": 960,
+              "endLine": 963
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309479,
+              "beginNs": 342802494917518,
+              "endNs": 342802495948661,
+              "durationMs": 1.031143,
+              "beginLine": 961,
+              "endLine": 962
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309479,
+              "beginNs": 342802496067090,
+              "endNs": 342802500137688,
+              "durationMs": 4.070598,
+              "beginLine": 964,
+              "endLine": 967
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309479,
+              "beginNs": 342802496908532,
+              "endNs": 342802500094958,
+              "durationMs": 3.186426,
+              "beginLine": 965,
+              "endLine": 966
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 16,
+      "warmup": false,
+      "invokeNs": 342802693747729,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309487,
+          "beginNs": 342802697096295,
+          "endNs": 342802701807870,
+          "durationMs": 4.711575,
+          "beginLine": 1010,
+          "endLine": 1019,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309487,
+              "beginNs": 342802697131944,
+              "endNs": 342802698051872,
+              "durationMs": 0.919928,
+              "beginLine": 1011,
+              "endLine": 1014
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309487,
+              "beginNs": 342802697414515,
+              "endNs": 342802697999008,
+              "durationMs": 0.584493,
+              "beginLine": 1012,
+              "endLine": 1013
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309487,
+              "beginNs": 342802698074339,
+              "endNs": 342802701643276,
+              "durationMs": 3.568937,
+              "beginLine": 1015,
+              "endLine": 1018
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309487,
+              "beginNs": 342802698587980,
+              "endNs": 342802701606523,
+              "durationMs": 3.018543,
+              "beginLine": 1016,
+              "endLine": 1017
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309488,
+          "beginNs": 342802702114607,
+          "endNs": 342802705977396,
+          "durationMs": 3.862789,
+          "beginLine": 1021,
+          "endLine": 1030,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309488,
+              "beginNs": 342802702134649,
+              "endNs": 342802702606263,
+              "durationMs": 0.471614,
+              "beginLine": 1022,
+              "endLine": 1025
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309488,
+              "beginNs": 342802702287550,
+              "endNs": 342802702589635,
+              "durationMs": 0.302085,
+              "beginLine": 1023,
+              "endLine": 1024
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309488,
+              "beginNs": 342802702615343,
+              "endNs": 342802705910410,
+              "durationMs": 3.295067,
+              "beginLine": 1026,
+              "endLine": 1029
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309488,
+              "beginNs": 342802702905684,
+              "endNs": 342802705872692,
+              "durationMs": 2.967008,
+              "beginLine": 1027,
+              "endLine": 1028
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 17,
+      "warmup": false,
+      "invokeNs": 342802886974870,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309493,
+          "beginNs": 342802891236263,
+          "endNs": 342802896382516,
+          "durationMs": 5.146253,
+          "beginLine": 1072,
+          "endLine": 1081,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309493,
+              "beginNs": 342802891271958,
+              "endNs": 342802892224524,
+              "durationMs": 0.952566,
+              "beginLine": 1073,
+              "endLine": 1076
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309493,
+              "beginNs": 342802891585694,
+              "endNs": 342802892194660,
+              "durationMs": 0.608966,
+              "beginLine": 1074,
+              "endLine": 1075
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309493,
+              "beginNs": 342802892241264,
+              "endNs": 342802896109414,
+              "durationMs": 3.86815,
+              "beginLine": 1077,
+              "endLine": 1080
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309493,
+              "beginNs": 342802892748104,
+              "endNs": 342802896044999,
+              "durationMs": 3.296895,
+              "beginLine": 1078,
+              "endLine": 1079
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309494,
+          "beginNs": 342802896836603,
+          "endNs": 342802901529421,
+          "durationMs": 4.692818,
+          "beginLine": 1083,
+          "endLine": 1092,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309494,
+              "beginNs": 342802896872474,
+              "endNs": 342802897680123,
+              "durationMs": 0.807649,
+              "beginLine": 1084,
+              "endLine": 1087
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309494,
+              "beginNs": 342802897152022,
+              "endNs": 342802897652435,
+              "durationMs": 0.500413,
+              "beginLine": 1085,
+              "endLine": 1086
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309494,
+              "beginNs": 342802897695379,
+              "endNs": 342802901383710,
+              "durationMs": 3.688331,
+              "beginLine": 1088,
+              "endLine": 1091
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309494,
+              "beginNs": 342802898197063,
+              "endNs": 342802901322753,
+              "durationMs": 3.12569,
+              "beginLine": 1089,
+              "endLine": 1090
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 18,
+      "warmup": false,
+      "invokeNs": 342803104544934,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309499,
+          "beginNs": 342803108140868,
+          "endNs": 342803113760397,
+          "durationMs": 5.619529,
+          "beginLine": 1134,
+          "endLine": 1143,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309499,
+              "beginNs": 342803108179546,
+              "endNs": 342803109169761,
+              "durationMs": 0.990215,
+              "beginLine": 1135,
+              "endLine": 1138
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309499,
+              "beginNs": 342803108469144,
+              "endNs": 342803109135888,
+              "durationMs": 0.666744,
+              "beginLine": 1136,
+              "endLine": 1137
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309499,
+              "beginNs": 342803109191532,
+              "endNs": 342803113514987,
+              "durationMs": 4.323455,
+              "beginLine": 1139,
+              "endLine": 1142
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309499,
+              "beginNs": 342803109752964,
+              "endNs": 342803113436439,
+              "durationMs": 3.683475,
+              "beginLine": 1140,
+              "endLine": 1141
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309500,
+          "beginNs": 342803114275807,
+          "endNs": 342803118070772,
+          "durationMs": 3.794965,
+          "beginLine": 1145,
+          "endLine": 1154,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309500,
+              "beginNs": 342803114301537,
+              "endNs": 342803114970950,
+              "durationMs": 0.669413,
+              "beginLine": 1146,
+              "endLine": 1149
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309500,
+              "beginNs": 342803114510936,
+              "endNs": 342803114950890,
+              "durationMs": 0.439954,
+              "beginLine": 1147,
+              "endLine": 1148
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309500,
+              "beginNs": 342803114982727,
+              "endNs": 342803117970735,
+              "durationMs": 2.988008,
+              "beginLine": 1150,
+              "endLine": 1153
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309500,
+              "beginNs": 342803115363261,
+              "endNs": 342803117934947,
+              "durationMs": 2.571686,
+              "beginLine": 1151,
+              "endLine": 1152
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 19,
+      "warmup": false,
+      "invokeNs": 342803322372526,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309509,
+          "beginNs": 342803324760478,
+          "endNs": 342803328975231,
+          "durationMs": 4.214753,
+          "beginLine": 1196,
+          "endLine": 1205,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309509,
+              "beginNs": 342803324783372,
+              "endNs": 342803325462324,
+              "durationMs": 0.678952,
+              "beginLine": 1197,
+              "endLine": 1200
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309509,
+              "beginNs": 342803325100653,
+              "endNs": 342803325450271,
+              "durationMs": 0.349618,
+              "beginLine": 1198,
+              "endLine": 1199
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309509,
+              "beginNs": 342803325468891,
+              "endNs": 342803328804196,
+              "durationMs": 3.335305,
+              "beginLine": 1201,
+              "endLine": 1204
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309509,
+              "beginNs": 342803326021725,
+              "endNs": 342803328746768,
+              "durationMs": 2.725043,
+              "beginLine": 1202,
+              "endLine": 1203
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309510,
+          "beginNs": 342803329246656,
+          "endNs": 342803332607669,
+          "durationMs": 3.361013,
+          "beginLine": 1207,
+          "endLine": 1216,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309510,
+              "beginNs": 342803329258399,
+              "endNs": 342803329800509,
+              "durationMs": 0.54211,
+              "beginLine": 1208,
+              "endLine": 1211
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309510,
+              "beginNs": 342803329368817,
+              "endNs": 342803329791456,
+              "durationMs": 0.422639,
+              "beginLine": 1209,
+              "endLine": 1210
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309510,
+              "beginNs": 342803329805621,
+              "endNs": 342803332550092,
+              "durationMs": 2.744471,
+              "beginLine": 1212,
+              "endLine": 1215
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309510,
+              "beginNs": 342803330037981,
+              "endNs": 342803332524860,
+              "durationMs": 2.486879,
+              "beginLine": 1213,
+              "endLine": 1214
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 20,
+      "warmup": false,
+      "invokeNs": 342803525434909,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309516,
+          "beginNs": 342803529542260,
+          "endNs": 342803534958876,
+          "durationMs": 5.416616,
+          "beginLine": 1258,
+          "endLine": 1267,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309516,
+              "beginNs": 342803529566345,
+              "endNs": 342803530447452,
+              "durationMs": 0.881107,
+              "beginLine": 1259,
+              "endLine": 1262
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309516,
+              "beginNs": 342803529853108,
+              "endNs": 342803530417278,
+              "durationMs": 0.56417,
+              "beginLine": 1260,
+              "endLine": 1261
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309516,
+              "beginNs": 342803530467989,
+              "endNs": 342803534769547,
+              "durationMs": 4.301558,
+              "beginLine": 1263,
+              "endLine": 1266
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309516,
+              "beginNs": 342803530924787,
+              "endNs": 342803534723958,
+              "durationMs": 3.799171,
+              "beginLine": 1264,
+              "endLine": 1265
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309517,
+          "beginNs": 342803535329696,
+          "endNs": 342803539229717,
+          "durationMs": 3.900021,
+          "beginLine": 1269,
+          "endLine": 1278,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309517,
+              "beginNs": 342803535357453,
+              "endNs": 342803535970821,
+              "durationMs": 0.613368,
+              "beginLine": 1270,
+              "endLine": 1273
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309517,
+              "beginNs": 342803535593363,
+              "endNs": 342803535954472,
+              "durationMs": 0.361109,
+              "beginLine": 1271,
+              "endLine": 1272
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309517,
+              "beginNs": 342803535979862,
+              "endNs": 342803539140840,
+              "durationMs": 3.160978,
+              "beginLine": 1274,
+              "endLine": 1277
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309517,
+              "beginNs": 342803536299163,
+              "endNs": 342803539068810,
+              "durationMs": 2.769647,
+              "beginLine": 1275,
+              "endLine": 1276
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 21,
+      "warmup": false,
+      "invokeNs": 342803736812107,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309522,
+          "beginNs": 342803741960348,
+          "endNs": 342803747460000,
+          "durationMs": 5.499652,
+          "beginLine": 1320,
+          "endLine": 1329,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309522,
+              "beginNs": 342803741996261,
+              "endNs": 342803743122374,
+              "durationMs": 1.126113,
+              "beginLine": 1321,
+              "endLine": 1324
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309522,
+              "beginNs": 342803742349874,
+              "endNs": 342803743086059,
+              "durationMs": 0.736185,
+              "beginLine": 1322,
+              "endLine": 1323
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309522,
+              "beginNs": 342803743140318,
+              "endNs": 342803747179157,
+              "durationMs": 4.038839,
+              "beginLine": 1325,
+              "endLine": 1328
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309522,
+              "beginNs": 342803743695593,
+              "endNs": 342803747133480,
+              "durationMs": 3.437887,
+              "beginLine": 1326,
+              "endLine": 1327
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309523,
+          "beginNs": 342803747980158,
+          "endNs": 342803752854511,
+          "durationMs": 4.874353,
+          "beginLine": 1331,
+          "endLine": 1340,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309523,
+              "beginNs": 342803748033836,
+              "endNs": 342803748994472,
+              "durationMs": 0.960636,
+              "beginLine": 1332,
+              "endLine": 1335
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309523,
+              "beginNs": 342803748344017,
+              "endNs": 342803748969050,
+              "durationMs": 0.625033,
+              "beginLine": 1333,
+              "endLine": 1334
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309523,
+              "beginNs": 342803749034094,
+              "endNs": 342803752752624,
+              "durationMs": 3.71853,
+              "beginLine": 1336,
+              "endLine": 1339
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309523,
+              "beginNs": 342803749530106,
+              "endNs": 342803752704119,
+              "durationMs": 3.174013,
+              "beginLine": 1337,
+              "endLine": 1338
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 22,
+      "warmup": false,
+      "invokeNs": 342803940128166,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309528,
+          "beginNs": 342803943344275,
+          "endNs": 342803949820752,
+          "durationMs": 6.476477,
+          "beginLine": 1382,
+          "endLine": 1391,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309528,
+              "beginNs": 342803943386856,
+              "endNs": 342803944765364,
+              "durationMs": 1.378508,
+              "beginLine": 1383,
+              "endLine": 1386
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309528,
+              "beginNs": 342803943804583,
+              "endNs": 342803944733377,
+              "durationMs": 0.928794,
+              "beginLine": 1384,
+              "endLine": 1385
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309528,
+              "beginNs": 342803944782738,
+              "endNs": 342803949587122,
+              "durationMs": 4.804384,
+              "beginLine": 1387,
+              "endLine": 1390
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309528,
+              "beginNs": 342803945366748,
+              "endNs": 342803949530141,
+              "durationMs": 4.163393,
+              "beginLine": 1388,
+              "endLine": 1389
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309529,
+          "beginNs": 342803950311149,
+          "endNs": 342803955172338,
+          "durationMs": 4.861189,
+          "beginLine": 1393,
+          "endLine": 1402,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309529,
+              "beginNs": 342803950342467,
+              "endNs": 342803951158744,
+              "durationMs": 0.816277,
+              "beginLine": 1394,
+              "endLine": 1397
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309529,
+              "beginNs": 342803950566738,
+              "endNs": 342803951127261,
+              "durationMs": 0.560523,
+              "beginLine": 1395,
+              "endLine": 1396
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309529,
+              "beginNs": 342803951193449,
+              "endNs": 342803955067695,
+              "durationMs": 3.874246,
+              "beginLine": 1398,
+              "endLine": 1401
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309529,
+              "beginNs": 342803951717140,
+              "endNs": 342803954980846,
+              "durationMs": 3.263706,
+              "beginLine": 1399,
+              "endLine": 1400
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 23,
+      "warmup": false,
+      "invokeNs": 342804145700391,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309534,
+          "beginNs": 342804147193887,
+          "endNs": 342804152066644,
+          "durationMs": 4.872757,
+          "beginLine": 1444,
+          "endLine": 1453,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309534,
+              "beginNs": 342804147205194,
+              "endNs": 342804147710997,
+              "durationMs": 0.505803,
+              "beginLine": 1445,
+              "endLine": 1448
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309534,
+              "beginNs": 342804147347042,
+              "endNs": 342804147703411,
+              "durationMs": 0.356369,
+              "beginLine": 1446,
+              "endLine": 1447
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309534,
+              "beginNs": 342804147715589,
+              "endNs": 342804151968413,
+              "durationMs": 4.252824,
+              "beginLine": 1449,
+              "endLine": 1452
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309534,
+              "beginNs": 342804147959945,
+              "endNs": 342804151951611,
+              "durationMs": 3.991666,
+              "beginLine": 1450,
+              "endLine": 1451
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309535,
+          "beginNs": 342804152287686,
+          "endNs": 342804155026926,
+          "durationMs": 2.73924,
+          "beginLine": 1455,
+          "endLine": 1464,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309535,
+              "beginNs": 342804152297279,
+              "endNs": 342804152537130,
+              "durationMs": 0.239851,
+              "beginLine": 1456,
+              "endLine": 1459
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309535,
+              "beginNs": 342804152376274,
+              "endNs": 342804152529876,
+              "durationMs": 0.153602,
+              "beginLine": 1457,
+              "endLine": 1458
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309535,
+              "beginNs": 342804152541416,
+              "endNs": 342804154976731,
+              "durationMs": 2.435315,
+              "beginLine": 1460,
+              "endLine": 1463
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309535,
+              "beginNs": 342804152696834,
+              "endNs": 342804154958120,
+              "durationMs": 2.261286,
+              "beginLine": 1461,
+              "endLine": 1462
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 24,
+      "warmup": false,
+      "invokeNs": 342804344832079,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309541,
+          "beginNs": 342804351989659,
+          "endNs": 342804365867534,
+          "durationMs": 13.877875,
+          "beginLine": 1506,
+          "endLine": 1515,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309541,
+              "beginNs": 342804352080724,
+              "endNs": 342804353515619,
+              "durationMs": 1.434895,
+              "beginLine": 1507,
+              "endLine": 1510
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309541,
+              "beginNs": 342804352516535,
+              "endNs": 342804353476357,
+              "durationMs": 0.959822,
+              "beginLine": 1508,
+              "endLine": 1509
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309541,
+              "beginNs": 342804353537420,
+              "endNs": 342804365643002,
+              "durationMs": 12.105582,
+              "beginLine": 1511,
+              "endLine": 1514
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309541,
+              "beginNs": 342804354267495,
+              "endNs": 342804365572439,
+              "durationMs": 11.304944,
+              "beginLine": 1512,
+              "endLine": 1513
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309542,
+          "beginNs": 342804366376135,
+          "endNs": 342804371078093,
+          "durationMs": 4.701958,
+          "beginLine": 1517,
+          "endLine": 1526,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309542,
+              "beginNs": 342804366409900,
+              "endNs": 342804367388625,
+              "durationMs": 0.978725,
+              "beginLine": 1518,
+              "endLine": 1521
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309542,
+              "beginNs": 342804366648611,
+              "endNs": 342804367346962,
+              "durationMs": 0.698351,
+              "beginLine": 1519,
+              "endLine": 1520
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309542,
+              "beginNs": 342804367414881,
+              "endNs": 342804370960274,
+              "durationMs": 3.545393,
+              "beginLine": 1522,
+              "endLine": 1525
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309542,
+              "beginNs": 342804368078771,
+              "endNs": 342804370923953,
+              "durationMs": 2.845182,
+              "beginLine": 1523,
+              "endLine": 1524
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 25,
+      "warmup": false,
+      "invokeNs": 342804565961407,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309547,
+          "beginNs": 342804568717003,
+          "endNs": 342804573550072,
+          "durationMs": 4.833069,
+          "beginLine": 1568,
+          "endLine": 1577,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309547,
+              "beginNs": 342804568750138,
+              "endNs": 342804569667313,
+              "durationMs": 0.917175,
+              "beginLine": 1569,
+              "endLine": 1572
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309547,
+              "beginNs": 342804568999766,
+              "endNs": 342804569629565,
+              "durationMs": 0.629799,
+              "beginLine": 1570,
+              "endLine": 1571
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309547,
+              "beginNs": 342804569694626,
+              "endNs": 342804573377066,
+              "durationMs": 3.68244,
+              "beginLine": 1573,
+              "endLine": 1576
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309547,
+              "beginNs": 342804570236505,
+              "endNs": 342804573331673,
+              "durationMs": 3.095168,
+              "beginLine": 1574,
+              "endLine": 1575
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309548,
+          "beginNs": 342804573995625,
+          "endNs": 342804578473847,
+          "durationMs": 4.478222,
+          "beginLine": 1579,
+          "endLine": 1588,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309548,
+              "beginNs": 342804574049073,
+              "endNs": 342804574833701,
+              "durationMs": 0.784628,
+              "beginLine": 1580,
+              "endLine": 1583
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309548,
+              "beginNs": 342804574327836,
+              "endNs": 342804574808383,
+              "durationMs": 0.480547,
+              "beginLine": 1581,
+              "endLine": 1582
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309548,
+              "beginNs": 342804574848687,
+              "endNs": 342804578377705,
+              "durationMs": 3.529018,
+              "beginLine": 1584,
+              "endLine": 1587
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309548,
+              "beginNs": 342804575377467,
+              "endNs": 342804578337292,
+              "durationMs": 2.959825,
+              "beginLine": 1585,
+              "endLine": 1586
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 26,
+      "warmup": false,
+      "invokeNs": 342804774525754,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309556,
+          "beginNs": 342804777960388,
+          "endNs": 342804783299105,
+          "durationMs": 5.338717,
+          "beginLine": 1630,
+          "endLine": 1639,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309556,
+              "beginNs": 342804777996507,
+              "endNs": 342804778788484,
+              "durationMs": 0.791977,
+              "beginLine": 1631,
+              "endLine": 1634
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309556,
+              "beginNs": 342804778281672,
+              "endNs": 342804778765842,
+              "durationMs": 0.48417,
+              "beginLine": 1632,
+              "endLine": 1633
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309556,
+              "beginNs": 342804778801962,
+              "endNs": 342804783053481,
+              "durationMs": 4.251519,
+              "beginLine": 1635,
+              "endLine": 1638
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309556,
+              "beginNs": 342804779264128,
+              "endNs": 342804782966622,
+              "durationMs": 3.702494,
+              "beginLine": 1636,
+              "endLine": 1637
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309557,
+          "beginNs": 342804783627353,
+          "endNs": 342804787781954,
+          "durationMs": 4.154601,
+          "beginLine": 1641,
+          "endLine": 1650,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309557,
+              "beginNs": 342804783655455,
+              "endNs": 342804784321244,
+              "durationMs": 0.665789,
+              "beginLine": 1642,
+              "endLine": 1645
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309557,
+              "beginNs": 342804783855175,
+              "endNs": 342804784299591,
+              "durationMs": 0.444416,
+              "beginLine": 1643,
+              "endLine": 1644
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309557,
+              "beginNs": 342804784334483,
+              "endNs": 342804787690893,
+              "durationMs": 3.35641,
+              "beginLine": 1646,
+              "endLine": 1649
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309557,
+              "beginNs": 342804784729383,
+              "endNs": 342804787647758,
+              "durationMs": 2.918375,
+              "beginLine": 1647,
+              "endLine": 1648
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 27,
+      "warmup": false,
+      "invokeNs": 342805008959284,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309562,
+          "beginNs": 342805012494465,
+          "endNs": 342805100321927,
+          "durationMs": 87.827462,
+          "beginLine": 1692,
+          "endLine": 1709,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309562,
+              "beginNs": 342805012532031,
+              "endNs": 342805013371985,
+              "durationMs": 0.839954,
+              "beginLine": 1693,
+              "endLine": 1696
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309562,
+              "beginNs": 342805012858006,
+              "endNs": 342805013353086,
+              "durationMs": 0.49508,
+              "beginLine": 1694,
+              "endLine": 1695
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309562,
+              "beginNs": 342805013383464,
+              "endNs": 342805100227658,
+              "durationMs": 86.844194,
+              "beginLine": 1697,
+              "endLine": 1708
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309562,
+              "beginNs": 342805013766925,
+              "endNs": 342805100195308,
+              "durationMs": 86.428383,
+              "beginLine": 1698,
+              "endLine": 1707
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309565,
+          "beginNs": 342805100562624,
+          "endNs": 342805105489089,
+          "durationMs": 4.926465,
+          "beginLine": 1711,
+          "endLine": 1720,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309565,
+              "beginNs": 342805100577200,
+              "endNs": 342805100925755,
+              "durationMs": 0.348555,
+              "beginLine": 1712,
+              "endLine": 1715
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309565,
+              "beginNs": 342805100699064,
+              "endNs": 342805100916782,
+              "durationMs": 0.217718,
+              "beginLine": 1713,
+              "endLine": 1714
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309565,
+              "beginNs": 342805100931185,
+              "endNs": 342805105424098,
+              "durationMs": 4.492913,
+              "beginLine": 1716,
+              "endLine": 1719
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309565,
+              "beginNs": 342805101158446,
+              "endNs": 342805105395048,
+              "durationMs": 4.236602,
+              "beginLine": 1717,
+              "endLine": 1718
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 28,
+      "warmup": false,
+      "invokeNs": 342805272880444,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309570,
+          "beginNs": 342805279499825,
+          "endNs": 342805300455761,
+          "durationMs": 20.955936,
+          "beginLine": 1754,
+          "endLine": 1763,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309570,
+              "beginNs": 342805279546544,
+              "endNs": 342805281167275,
+              "durationMs": 1.620731,
+              "beginLine": 1755,
+              "endLine": 1758
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309570,
+              "beginNs": 342805279959667,
+              "endNs": 342805281089215,
+              "durationMs": 1.129548,
+              "beginLine": 1756,
+              "endLine": 1757
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309570,
+              "beginNs": 342805281202683,
+              "endNs": 342805300243921,
+              "durationMs": 19.041238,
+              "beginLine": 1759,
+              "endLine": 1762
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309570,
+              "beginNs": 342805282070355,
+              "endNs": 342805300185017,
+              "durationMs": 18.114662,
+              "beginLine": 1760,
+              "endLine": 1761
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309571,
+          "beginNs": 342805301054240,
+          "endNs": 342805307862832,
+          "durationMs": 6.808592,
+          "beginLine": 1765,
+          "endLine": 1775,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309571,
+              "beginNs": 342805301092132,
+              "endNs": 342805301992730,
+              "durationMs": 0.900598,
+              "beginLine": 1766,
+              "endLine": 1769
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309571,
+              "beginNs": 342805301375412,
+              "endNs": 342805301959737,
+              "durationMs": 0.584325,
+              "beginLine": 1767,
+              "endLine": 1768
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309571,
+              "beginNs": 342805302035574,
+              "endNs": 342805307774666,
+              "durationMs": 5.739092,
+              "beginLine": 1770,
+              "endLine": 1774
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309571,
+              "beginNs": 342805302533339,
+              "endNs": 342805307736844,
+              "durationMs": 5.203505,
+              "beginLine": 1771,
+              "endLine": 1773
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 29,
+      "warmup": false,
+      "invokeNs": 342805495259830,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309578,
+          "beginNs": 342805500492674,
+          "endNs": 342805516487216,
+          "durationMs": 15.994542,
+          "beginLine": 1816,
+          "endLine": 1825,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309578,
+              "beginNs": 342805500580712,
+              "endNs": 342805501887012,
+              "durationMs": 1.3063,
+              "beginLine": 1817,
+              "endLine": 1820
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309578,
+              "beginNs": 342805501093490,
+              "endNs": 342805501847909,
+              "durationMs": 0.754419,
+              "beginLine": 1818,
+              "endLine": 1819
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309578,
+              "beginNs": 342805501909668,
+              "endNs": 342805516163129,
+              "durationMs": 14.253461,
+              "beginLine": 1821,
+              "endLine": 1824
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309578,
+              "beginNs": 342805502606536,
+              "endNs": 342805516080478,
+              "durationMs": 13.473942,
+              "beginLine": 1822,
+              "endLine": 1823
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309579,
+          "beginNs": 342805517124308,
+          "endNs": 342805523100268,
+          "durationMs": 5.97596,
+          "beginLine": 1827,
+          "endLine": 1836,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309579,
+              "beginNs": 342805517172741,
+              "endNs": 342805518663038,
+              "durationMs": 1.490297,
+              "beginLine": 1828,
+              "endLine": 1831
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309579,
+              "beginNs": 342805517616754,
+              "endNs": 342805518621795,
+              "durationMs": 1.005041,
+              "beginLine": 1829,
+              "endLine": 1830
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309579,
+              "beginNs": 342805518691932,
+              "endNs": 342805522917858,
+              "durationMs": 4.225926,
+              "beginLine": 1832,
+              "endLine": 1835
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309579,
+              "beginNs": 342805519455105,
+              "endNs": 342805522851240,
+              "durationMs": 3.396135,
+              "beginLine": 1833,
+              "endLine": 1834
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 30,
+      "warmup": false,
+      "invokeNs": 342805709458936,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309584,
+          "beginNs": 342805714713302,
+          "endNs": 342805729059088,
+          "durationMs": 14.345786,
+          "beginLine": 1878,
+          "endLine": 1887,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309584,
+              "beginNs": 342805714764862,
+              "endNs": 342805715972381,
+              "durationMs": 1.207519,
+              "beginLine": 1879,
+              "endLine": 1882
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309584,
+              "beginNs": 342805715182782,
+              "endNs": 342805715934414,
+              "durationMs": 0.751632,
+              "beginLine": 1880,
+              "endLine": 1881
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309584,
+              "beginNs": 342805715995504,
+              "endNs": 342805728742235,
+              "durationMs": 12.746731,
+              "beginLine": 1883,
+              "endLine": 1886
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309584,
+              "beginNs": 342805716830647,
+              "endNs": 342805728657220,
+              "durationMs": 11.826573,
+              "beginLine": 1884,
+              "endLine": 1885
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309585,
+          "beginNs": 342805729659202,
+          "endNs": 342805735590506,
+          "durationMs": 5.931304,
+          "beginLine": 1889,
+          "endLine": 1898,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309585,
+              "beginNs": 342805729707398,
+              "endNs": 342805730897086,
+              "durationMs": 1.189688,
+              "beginLine": 1890,
+              "endLine": 1893
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309585,
+              "beginNs": 342805730093117,
+              "endNs": 342805730843812,
+              "durationMs": 0.750695,
+              "beginLine": 1891,
+              "endLine": 1892
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309585,
+              "beginNs": 342805730933822,
+              "endNs": 342805735439392,
+              "durationMs": 4.50557,
+              "beginLine": 1894,
+              "endLine": 1897
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309585,
+              "beginNs": 342805731717162,
+              "endNs": 342805735378196,
+              "durationMs": 3.661034,
+              "beginLine": 1895,
+              "endLine": 1896
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 31,
+      "warmup": false,
+      "invokeNs": 342805920785843,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309590,
+          "beginNs": 342805922387107,
+          "endNs": 342805925881342,
+          "durationMs": 3.494235,
+          "beginLine": 1940,
+          "endLine": 1949,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309590,
+              "beginNs": 342805922400840,
+              "endNs": 342805922717751,
+              "durationMs": 0.316911,
+              "beginLine": 1941,
+              "endLine": 1944
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309590,
+              "beginNs": 342805922513935,
+              "endNs": 342805922707843,
+              "durationMs": 0.193908,
+              "beginLine": 1942,
+              "endLine": 1943
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309590,
+              "beginNs": 342805922723397,
+              "endNs": 342805925703348,
+              "durationMs": 2.979951,
+              "beginLine": 1945,
+              "endLine": 1948
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309590,
+              "beginNs": 342805922948910,
+              "endNs": 342805925647532,
+              "durationMs": 2.698622,
+              "beginLine": 1946,
+              "endLine": 1947
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309591,
+          "beginNs": 342805926191208,
+          "endNs": 342805929779013,
+          "durationMs": 3.587805,
+          "beginLine": 1951,
+          "endLine": 1960,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309591,
+              "beginNs": 342805926205978,
+              "endNs": 342805926675979,
+              "durationMs": 0.470001,
+              "beginLine": 1952,
+              "endLine": 1955
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309591,
+              "beginNs": 342805926381359,
+              "endNs": 342805926664925,
+              "durationMs": 0.283566,
+              "beginLine": 1953,
+              "endLine": 1954
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309591,
+              "beginNs": 342805926682293,
+              "endNs": 342805929637244,
+              "durationMs": 2.954951,
+              "beginLine": 1956,
+              "endLine": 1959
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309591,
+              "beginNs": 342805926935381,
+              "endNs": 342805929582110,
+              "durationMs": 2.646729,
+              "beginLine": 1957,
+              "endLine": 1958
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 32,
+      "warmup": false,
+      "invokeNs": 342806088159754,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309596,
+          "beginNs": 342806091243241,
+          "endNs": 342806096711106,
+          "durationMs": 5.467865,
+          "beginLine": 2002,
+          "endLine": 2011,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309596,
+              "beginNs": 342806091273292,
+              "endNs": 342806092156435,
+              "durationMs": 0.883143,
+              "beginLine": 2003,
+              "endLine": 2006
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309596,
+              "beginNs": 342806091557435,
+              "endNs": 342806092130709,
+              "durationMs": 0.573274,
+              "beginLine": 2004,
+              "endLine": 2005
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309596,
+              "beginNs": 342806092180061,
+              "endNs": 342806096503309,
+              "durationMs": 4.323248,
+              "beginLine": 2007,
+              "endLine": 2010
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309596,
+              "beginNs": 342806092682924,
+              "endNs": 342806096467078,
+              "durationMs": 3.784154,
+              "beginLine": 2008,
+              "endLine": 2009
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309597,
+          "beginNs": 342806097070758,
+          "endNs": 342806100750989,
+          "durationMs": 3.680231,
+          "beginLine": 2013,
+          "endLine": 2022,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309597,
+              "beginNs": 342806097090230,
+              "endNs": 342806097579671,
+              "durationMs": 0.489441,
+              "beginLine": 2014,
+              "endLine": 2017
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309597,
+              "beginNs": 342806097258254,
+              "endNs": 342806097564091,
+              "durationMs": 0.305837,
+              "beginLine": 2015,
+              "endLine": 2016
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309597,
+              "beginNs": 342806097588344,
+              "endNs": 342806100697313,
+              "durationMs": 3.108969,
+              "beginLine": 2018,
+              "endLine": 2021
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309597,
+              "beginNs": 342806097881799,
+              "endNs": 342806100673961,
+              "durationMs": 2.792162,
+              "beginLine": 2019,
+              "endLine": 2020
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 33,
+      "warmup": false,
+      "invokeNs": 342806271850417,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309603,
+          "beginNs": 342806279200386,
+          "endNs": 342806293591197,
+          "durationMs": 14.390811,
+          "beginLine": 2064,
+          "endLine": 2073,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309603,
+              "beginNs": 342806279239288,
+              "endNs": 342806280458914,
+              "durationMs": 1.219626,
+              "beginLine": 2065,
+              "endLine": 2068
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309603,
+              "beginNs": 342806279610464,
+              "endNs": 342806280407381,
+              "durationMs": 0.796917,
+              "beginLine": 2066,
+              "endLine": 2067
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309603,
+              "beginNs": 342806280490357,
+              "endNs": 342806293350452,
+              "durationMs": 12.860095,
+              "beginLine": 2069,
+              "endLine": 2072
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309603,
+              "beginNs": 342806281251472,
+              "endNs": 342806293274376,
+              "durationMs": 12.022904,
+              "beginLine": 2070,
+              "endLine": 2071
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309604,
+          "beginNs": 342806294069465,
+          "endNs": 342806298995663,
+          "durationMs": 4.926198,
+          "beginLine": 2075,
+          "endLine": 2084,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309604,
+              "beginNs": 342806294103232,
+              "endNs": 342806294880847,
+              "durationMs": 0.777615,
+              "beginLine": 2076,
+              "endLine": 2079
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309604,
+              "beginNs": 342806294351209,
+              "endNs": 342806294853412,
+              "durationMs": 0.502203,
+              "beginLine": 2077,
+              "endLine": 2078
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309604,
+              "beginNs": 342806294896034,
+              "endNs": 342806298897836,
+              "durationMs": 4.001802,
+              "beginLine": 2080,
+              "endLine": 2083
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309604,
+              "beginNs": 342806295496017,
+              "endNs": 342806298857101,
+              "durationMs": 3.361084,
+              "beginLine": 2081,
+              "endLine": 2082
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    },
+    {
+      "invocationIndex": 34,
+      "warmup": false,
+      "invokeNs": 342806472229228,
+      "invokePid": 3309338,
+      "invokeTid": 3309338,
+      "workers": {
+        "acceptedWorker": {
+          "pid": 3309338,
+          "tid": 3309609,
+          "beginNs": 342806473967998,
+          "endNs": 342806478885121,
+          "durationMs": 4.917123,
+          "beginLine": 2126,
+          "endLine": 2135,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309609,
+              "beginNs": 342806473983918,
+              "endNs": 342806474315710,
+              "durationMs": 0.331792,
+              "beginLine": 2127,
+              "endLine": 2130
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309609,
+              "beginNs": 342806474104415,
+              "endNs": 342806474306206,
+              "durationMs": 0.201791,
+              "beginLine": 2128,
+              "endLine": 2129
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309609,
+              "beginNs": 342806474321322,
+              "endNs": 342806478667398,
+              "durationMs": 4.346076,
+              "beginLine": 2131,
+              "endLine": 2134
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309609,
+              "beginNs": 342806474503153,
+              "endNs": 342806478616734,
+              "durationMs": 4.113581,
+              "beginLine": 2132,
+              "endLine": 2133
+            }
+          },
+          "additionalSequentialPairs": {}
+        },
+        "acquiringWorker": {
+          "pid": 3309338,
+          "tid": 3309610,
+          "beginNs": 342806479242395,
+          "endNs": 342806482478723,
+          "durationMs": 3.236328,
+          "beginLine": 2137,
+          "endLine": 2146,
+          "history": {
+            "historyOpen": {
+              "pid": 3309338,
+              "tid": 3309610,
+              "beginNs": 342806479255028,
+              "endNs": 342806479573158,
+              "durationMs": 0.31813,
+              "beginLine": 2138,
+              "endLine": 2141
+            },
+            "historyInitialize": {
+              "pid": 3309338,
+              "tid": 3309610,
+              "beginNs": 342806479369510,
+              "endNs": 342806479563501,
+              "durationMs": 0.193991,
+              "beginLine": 2139,
+              "endLine": 2140
+            },
+            "historySave": {
+              "pid": 3309338,
+              "tid": 3309610,
+              "beginNs": 342806479578778,
+              "endNs": 342806482412204,
+              "durationMs": 2.833426,
+              "beginLine": 2142,
+              "endLine": 2145
+            },
+            "historyCommit": {
+              "pid": 3309338,
+              "tid": 3309610,
+              "beginNs": 342806479763936,
+              "endNs": 342806482380859,
+              "durationMs": 2.616923,
+              "beginLine": 2143,
+              "endLine": 2144
+            }
+          },
+          "additionalSequentialPairs": {}
+        }
+      },
+      "priorWorkerOverlap": []
+    }
+  ],
+  "limits": [
+    "Numerical overlap is not proof of a specific blocked SQLite call, kernel lock or retry schedule.",
+    "Unassigned other worker roles are not explicit finalizer markers; source/workload context may identify cancellation finalization.",
+    "Corrected statistical p95 is nearest rank. Phase statistics are locators, never the frozen capture budget."
+  ]
+}

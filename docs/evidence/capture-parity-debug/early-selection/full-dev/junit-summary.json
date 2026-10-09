@@ -1,0 +1,412 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "955797775ae348cfa1b94052076a746d8a07ff9b40139d12475432ec2c633d1f",
+  "sourceBytes": 50323,
+  "scope": "Dirty development integrated run:47/48 suites passed; x11_isolated failed only on the existing synchronous cancellation assertion. Retained failed full attempt, not a48/48 pass.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "48",
+    "failures": "1",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "252",
+    "timestamp": "2026-10-09T14:11:17"
+  },
+  "testcases": [
+    {
+      "name": "native_session_guards",
+      "classname": "native_session_guards",
+      "time": "0.00591227",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "native_tray_integration",
+      "classname": "native_tray_integration",
+      "time": "6.39699",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_control_integration",
+      "classname": "capture_control_integration",
+      "time": "0.0182999",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_process_integration",
+      "classname": "capture_process_integration",
+      "time": "7.6195",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "x11_core_clipboard",
+      "classname": "x11_core_clipboard",
+      "time": "17.9597",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "x11_native_snapshot",
+      "classname": "x11_native_snapshot",
+      "time": "0.135956",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "version_contract",
+      "classname": "version_contract",
+      "time": "2.31753",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "kde_ownership_integration",
+      "classname": "kde_ownership_integration",
+      "time": "1.80712",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_split_services_integration",
+      "classname": "ui_split_services_integration",
+      "time": "0.59539",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_process_integration",
+      "classname": "ui_process_integration",
+      "time": "13.8415",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_endpoints_integration",
+      "classname": "ui_endpoints_integration",
+      "time": "0.360639",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_control_integration",
+      "classname": "ui_control_integration",
+      "time": "1.14056",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "session_client_integration",
+      "classname": "session_client_integration",
+      "time": "16.9491",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "version_integration",
+      "classname": "version_integration",
+      "time": "0.146338",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_application",
+      "classname": "gui_application",
+      "time": "5.97714",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_tray",
+      "classname": "gui_tray",
+      "time": "0.413161",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_version",
+      "classname": "gui_version",
+      "time": "0.0407373",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "geometry_contract",
+      "classname": "geometry_contract",
+      "time": "0.00742727",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_native_lifecycle_integration",
+      "classname": "ui_native_lifecycle_integration",
+      "time": "3.39748",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "x11_isolated",
+      "classname": "x11_isolated",
+      "time": "17.1818",
+      "status": "fail",
+      "failures": [
+        {
+          "message": "Failed",
+          "text": ""
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "keychain_backend_integration",
+      "classname": "keychain_backend_integration",
+      "time": "0.0301165",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "keychain_integration",
+      "classname": "keychain_integration",
+      "time": "0.117033",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "collision_policy_integration",
+      "classname": "collision_policy_integration",
+      "time": "6.11107",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "s3_delete_integration",
+      "classname": "s3_delete_integration",
+      "time": "6.00817",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "s3_module_integration",
+      "classname": "s3_module_integration",
+      "time": "33.0047",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "s3_integration",
+      "classname": "s3_integration",
+      "time": "3.92931",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "public_url",
+      "classname": "public_url",
+      "time": "0.00842399",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "build_contract",
+      "classname": "build_contract",
+      "time": "0.116244",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "sdk_contract",
+      "classname": "sdk_contract",
+      "time": "0.47242",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "payload_contract",
+      "classname": "payload_contract",
+      "time": "0.126472",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "archive_contract",
+      "classname": "archive_contract",
+      "time": "0.0139427",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "upload_naming_contract",
+      "classname": "upload_naming_contract",
+      "time": "0.0367167",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "history_contract",
+      "classname": "history_contract",
+      "time": "5.72699",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "operations_contract",
+      "classname": "operations_contract",
+      "time": "37.9151",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "storage_contract_integration",
+      "classname": "storage_contract_integration",
+      "time": "3.36604",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cli_integration",
+      "classname": "cli_integration",
+      "time": "20.6595",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "config_reload_integration",
+      "classname": "config_reload_integration",
+      "time": "0.648974",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gnome_bridge_contract",
+      "classname": "gnome_bridge_contract",
+      "time": "0.0248423",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "kwin_transfer_contract",
+      "classname": "kwin_transfer_contract",
+      "time": "0.184398",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "settings_contract",
+      "classname": "settings_contract",
+      "time": "3.29077",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_settings",
+      "classname": "gui_settings",
+      "time": "8.90229",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_operations_view",
+      "classname": "gui_operations_view",
+      "time": "1.60151",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_history_view",
+      "classname": "gui_history_view",
+      "time": "4.87693",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "login_startup_contract",
+      "classname": "login_startup_contract",
+      "time": "0.450379",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "local_ipc_contract",
+      "classname": "local_ipc_contract",
+      "time": "12.3471",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ip_address_contract",
+      "classname": "ip_address_contract",
+      "time": "0.032166",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "native_region_overlay",
+      "classname": "native_region_overlay",
+      "time": "0.784886",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "4.95936",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes",
+  "observedAssertionLines": [
+    "FAIL!  : X11Test::cancellingRegionDoesNotCancelClipboardImport() 'cancelled' returned FALSE. ()"
+  ]
+}

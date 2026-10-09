@@ -3,6 +3,8 @@
 #include <utility>
 #include <QSignalSpy>
 #include <QRegularExpression>
+#include <QSqlQuery>
+#include <QUuid>
 using namespace putgd;using namespace putgd::test;
 class OperationsTest:public QObject {
  Q_OBJECT
@@ -190,6 +192,278 @@ private slots:
   QCOMPARE(error.code,QString("copy_suppressed"));
   QCOMPARE(source.invalidations,2);
  }
+ void failedAcceptanceReleasesPreparedRequestWithoutAcquiring() {
+  class PreparedSource final:public SourceAdapter {
+  public:
+   QString path;std::atomic_int retained{0};int acquired=0;bool injected=false;ResourceLimits preparedLimits;
+   quint64 clipboardRevision() const override{return 0;}
+   QJsonObject capabilities() const override{return {};}
+   PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits& limits) override {
+    preparedLimits=limits;
+    auto lifetime=std::shared_ptr<int>(new int,[this](int* value){delete value;--retained;});++retained;
+    // Inject a write failure after startup recovery, before durable acceptance.
+    const auto connection=QUuid::createUuid().toString();
+    {auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);if(db.open()){QSqlQuery query(db);injected=query.exec("DROP TABLE operations");}db.close();}
+    QSqlDatabase::removeDatabase(connection);
+    return [this,lifetime](const ResourceLimits&,std::function<void(PayloadResult)> reply){++acquired;reply({{}, {"cancelled","Synthetic cancellation",{}}});};
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override{++acquired;}
+   void cancelAcquisition() override{}
+   void copy(const CopyPayload&,std::function<void(Error)> reply) override{reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());source.path=operations.databasePath();
+  int replies=0;Error error;operations.invoke("region",[&](Error value,QJsonObject){error=value;++replies;});
+  QTRY_COMPARE(replies,1);QVERIFY(source.injected);QCOMPARE(error.code,QString("history_io"));QTRY_COMPARE(source.retained.load(),0);
+  QCOMPARE(source.acquired,0);QCOMPARE(source.preparedLimits.imagePixels,settings.snapshot().limits.imagePixels);
+  operations.shutdown();QCOMPARE(replies,1);
+ }
+ void cancellationDuringAcquiringCommitNeverBeginsPreparedSource() {
+  class PreparedSource final:public SourceAdapter {
+  public:
+   std::atomic_int retained{0};int acquired=0,cancels=0;
+   quint64 clipboardRevision() const override{return 0;}
+   QJsonObject capabilities() const override{return {};}
+   PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&) override {
+    auto lifetime=std::shared_ptr<int>(new int,[this](int* value){delete value;--retained;});++retained;
+    return [this,lifetime](const ResourceLimits&,std::function<void(PayloadResult)> reply){++acquired;reply({{}, {"cancelled","Synthetic cancellation",{}}});};
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override{++acquired;}
+   void cancelAcquisition() override{++cancels;}
+   void copy(const CopyPayload&,std::function<void(Error)> reply) override{reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto connection=QUuid::createUuid().toString();
+  {
+   auto blocker=QSqlDatabase::addDatabase("QSQLITE",connection);blocker.setDatabaseName(operations.databasePath());QVERIFY(blocker.open());
+   QString id;bool requested=false;
+   operations.invoke("region",[&](Error error,QJsonObject result){
+    QVERIFY(!error);id=result["operationId"].toString();QSqlQuery lock(blocker);QVERIFY(lock.exec("BEGIN IMMEDIATE"));
+    QTimer::singleShot(30,&operations,[&]{
+     operations.cancel(id,[&](Error error,QJsonObject){QVERIFY(!error);requested=true;});
+     QSqlQuery unlock(blocker);QVERIFY(unlock.exec("ROLLBACK"));
+    });
+   });
+   QTRY_VERIFY(requested);QTRY_VERIFY(([&]{HistoryStore store(operations.databasePath());return store.operation(id).state=="cancelled";})());
+   QTRY_COMPARE(source.retained.load(),0);QCOMPARE(source.acquired,0);QCOMPARE(source.cancels,1);operations.shutdown();blocker.close();
+  }
+  QSqlDatabase::removeDatabase(connection);
+ }
+ void earlySelectionTerminalNeverBeginsPixels_data() {
+  QTest::addColumn<QString>("code");QTest::addColumn<bool>("afterAcceptance");
+  QTest::newRow("escape-before-acceptance")<<QString("cancelled")<<false;
+  QTest::newRow("failure-before-acceptance")<<QString("display_changed")<<false;
+  QTest::newRow("escape-during-acquiring")<<QString("cancelled")<<true;
+  QTest::newRow("failure-during-acquiring")<<QString("display_changed")<<true;
+ }
+ void earlySelectionTerminalNeverBeginsPixels() {
+  QFETCH(QString,code);QFETCH(bool,afterAcceptance);
+  class PreviewSource final:public SourceAdapter {
+  public:
+   std::function<void(Error)> terminal;int acquired=0,previews=0;
+   quint64 clipboardRevision()const override{return 0;}
+   QJsonObject capabilities()const override{return {};}
+   PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)> notify)override {
+    ++previews;terminal=std::move(notify);
+    return [this](const ResourceLimits&,std::function<void(PayloadResult)> reply){++acquired;reply({{}, {"cancelled","Unexpected acquisition",{}}});};
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> reply)override{++acquired;reply({{}, {"cancelled","Unexpected legacy acquisition",{}}});}
+   void cancelAcquisition()override{}
+   void copy(const CopyPayload&,std::function<void(Error)> reply)override{reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto connection=QUuid::createUuid().toString();
+  {
+   auto blocker=QSqlDatabase::addDatabase("QSQLITE",connection);blocker.setDatabaseName(operations.databasePath());QVERIFY(blocker.open());
+   if(!afterAcceptance){QSqlQuery lock(blocker);QVERIFY(lock.exec("BEGIN IMMEDIATE"));}
+   QString id;bool accepted=false;
+   operations.invoke("region",[&](Error error,QJsonObject result){
+    QVERIFY(!error);id=result["operationId"].toString();accepted=true;
+    if(afterAcceptance){QSqlQuery lock(blocker);QVERIFY(lock.exec("BEGIN IMMEDIATE"));QTimer::singleShot(30,&operations,[&]{source.terminal({code,"Synthetic early terminal",{}});QSqlQuery unlock(blocker);QVERIFY(unlock.exec("ROLLBACK"));});}
+   });
+   QCOMPARE(source.previews,1);QVERIFY(bool(source.terminal));
+   if(!afterAcceptance){source.terminal({code,"Synthetic early terminal",{}});QVERIFY(!accepted);QSqlQuery unlock(blocker);QVERIFY(unlock.exec("ROLLBACK"));}
+   QTRY_VERIFY(accepted);QTRY_VERIFY(([&]{HistoryStore store(operations.databasePath());return store.operation(id).state==(code=="cancelled"?"cancelled":"failed");})());
+   HistoryStore store(operations.databasePath());const auto op=store.operation(id);QCOMPARE(op.error.code,code);QVERIFY(op.items.isEmpty());QCOMPARE(source.acquired,0);
+   operations.shutdown();blocker.close();
+  }
+  QSqlDatabase::removeDatabase(connection);
+ }
+ void explicitCancelOverridesEarlyDisplayErrorWhileAcquiringIsBlocked() {
+  class PreviewSource final:public SourceAdapter {
+  public:
+   std::function<void(Error)> terminal;int acquired=0,cancels=0,copies=0;
+   quint64 clipboardRevision()const override{return 0;}
+   QJsonObject capabilities()const override{return {};}
+   PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)> notify)override {
+    terminal=std::move(notify);
+    return [this](const ResourceLimits&,std::function<void(PayloadResult)> reply){++acquired;reply({{}, {"capture_failed","Unexpected pixel acquisition",{}}});};
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> reply)override{++acquired;reply({{}, {"capture_failed","Unexpected legacy acquisition",{}}});}
+   void cancelAcquisition()override{++cancels;}
+   void copy(const CopyPayload&,std::function<void(Error)> reply)override{++copies;reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto connection=QUuid::createUuid().toString();
+  {
+   auto blocker=QSqlDatabase::addDatabase("QSQLITE",connection);blocker.setDatabaseName(operations.databasePath());QVERIFY(blocker.open());
+   bool lockHeld=false,injected=false,cancelReplied=false;int acceptanceReplies=0;QString id;
+   // An assertion must not leave the worker blocked while shutdown joins it.
+   const auto release=qScopeGuard([&]{if(lockHeld){QSqlQuery unlock(blocker);unlock.exec("ROLLBACK");}});
+   operations.invoke("region",[&](Error error,QJsonObject result){
+    QVERIFY(!error);++acceptanceReplies;id=result["operationId"].toString();QVERIFY(!id.isEmpty());
+    QSqlQuery lock(blocker);QVERIFY(lock.exec("BEGIN IMMEDIATE"));lockHeld=true;
+    // Let the queued acquiring continuation run against the held writer lock.
+    QTimer::singleShot(30,&operations,[&]{
+     QSqlQuery checkpoint(blocker);checkpoint.prepare("SELECT json_extract(data,'$.state') FROM operations WHERE id=?");checkpoint.addBindValue(id);
+     QVERIFY(checkpoint.exec());QVERIFY(checkpoint.next());QCOMPARE(checkpoint.value(0).toString(),QString("accepted"));checkpoint.finish();
+     QVERIFY(bool(source.terminal));source.terminal({"display_changed","Synthetic early display error",{}});injected=true;
+     operations.cancel(id,[&](Error cancelError,QJsonObject){QVERIFY(!cancelError);cancelReplied=true;});
+     QSqlQuery unlock(blocker);QVERIFY(unlock.exec("ROLLBACK"));lockHeld=false;
+    });
+   });
+   QTRY_VERIFY(injected&&cancelReplied);QCOMPARE(acceptanceReplies,1);
+   QTRY_VERIFY(([&]{HistoryStore store(operations.databasePath());return store.operation(id).state=="cancelled";})());
+   HistoryStore store(operations.databasePath());const auto operation=store.operation(id);
+   QVERIFY(operation.cancelled);QVERIFY(!operation.error);QVERIFY(operation.items.isEmpty());
+   QCOMPARE(source.acquired,0);QCOMPARE(source.cancels,1);QCOMPARE(source.copies,0);
+   QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+   operations.shutdown();blocker.close();
+  }
+  QSqlDatabase::removeDatabase(connection);
+ }
+
+ void drainedEarlySelectionAllowsNextRequestBeforeJournalCompletes() {
+  class PreviewSource final:public SourceAdapter {
+  public:
+   QList<std::function<void(Error)>> terminals;QList<std::function<void()>> releases;int acquisitions=0;
+   quint64 clipboardRevision()const override{return 0;}QJsonObject capabilities()const override{return {};}
+   PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)> terminal,std::function<void()> released)override {
+    terminals.append(std::move(terminal));releases.append(std::move(released));
+    auto release=releases.last();
+    return [this,release](const ResourceLimits&,std::function<void(PayloadResult)> reply){++acquisitions;release();reply({{}, {"cancelled","Synthetic cancellation",{}}});};
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)override{QFAIL("Unexpected legacy acquisition");}
+   void cancelAcquisition()override{}void copy(const CopyPayload&,std::function<void(Error)> reply)override{reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());const auto connection=QUuid::createUuid().toString();
+  {
+   auto blocker=QSqlDatabase::addDatabase("QSQLITE",connection);blocker.setDatabaseName(operations.databasePath());QVERIFY(blocker.open());bool locked=true;
+   const auto unlock=qScopeGuard([&]{if(locked){QSqlQuery q(blocker);q.exec("ROLLBACK");}});QSqlQuery lock(blocker);QVERIFY(lock.exec("BEGIN IMMEDIATE"));
+   QString first,second;int replies=0;
+   operations.invoke("region",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();++replies;});QCOMPARE(source.terminals.size(),1);
+   source.terminals[0]({"cancelled","Early Escape",{}});QCOMPARE(replies,0);QCOMPARE(source.acquisitions,0);
+   // Error metadata alone must not release an undrained selector/helper.
+   QString busy;operations.invoke("region",[&](Error e,QJsonObject){busy=e.code;});QCOMPARE(busy,QString("busy_selecting"));
+   source.releases[0]();operations.invoke("region",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();++replies;});
+   QCOMPARE(source.terminals.size(),2);QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),2);QCOMPARE(replies,0);QCOMPARE(source.acquisitions,0);
+   // Late/stale release belongs only to the old operation.
+   source.releases[0]();busy.clear();operations.invoke("region",[&](Error e,QJsonObject){busy=e.code;});QCOMPARE(busy,QString("busy_selecting"));
+   QSqlQuery release(blocker);QVERIFY(release.exec("ROLLBACK"));locked=false;
+   QTRY_COMPARE(replies,2);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(source.acquisitions,1);
+   HistoryStore store(operations.databasePath());QCOMPARE(store.operation(first).state,QString("cancelled"));QCOMPARE(store.operation(second).state,QString("cancelled"));
+   operations.shutdown();blocker.close();
+  }
+  QSqlDatabase::removeDatabase(connection);
+ }
+ void durableEarlyCancellationKeepsReservationUntilSourceDrains() {
+  class PreviewSource final:public SourceAdapter {
+  public:
+   std::function<void(Error)> terminal;std::function<void()> released;int acquisitions=0;
+   quint64 clipboardRevision()const override{return 0;}QJsonObject capabilities()const override{return {};}
+   PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)> notify,std::function<void()> release)override {
+    terminal=std::move(notify);released=std::move(release);
+    return [this](const ResourceLimits&,std::function<void(PayloadResult)> reply){++acquisitions;released();reply({{}, {"cancelled","Synthetic cancellation",{}}});};
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)override{QFAIL("Unexpected legacy acquisition");}
+   void cancelAcquisition()override{}void copy(const CopyPayload&,std::function<void(Error)> reply)override{reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());QString id;
+  operations.invoke("region",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QVERIFY(bool(source.terminal));source.terminal({"cancelled","Early Escape",{}});
+  QTRY_VERIFY(!id.isEmpty());QTRY_VERIFY(([&]{HistoryStore store(operations.databasePath());return store.operation(id).state=="cancelled";})());
+  QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),1);QCOMPARE(source.acquisitions,0);
+  QString busy;operations.invoke("region",[&](Error e,QJsonObject){busy=e.code;});QCOMPARE(busy,QString("busy_selecting"));
+  source.released();QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QString next;operations.invoke("region",[&](Error e,QJsonObject r){QVERIFY(!e);next=r["operationId"].toString();});
+  QTRY_VERIFY(!next.isEmpty());QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(source.acquisitions,1);operations.shutdown();
+ }
+ void previewCheckpointFailuresReleasePreparationWithoutPixels_data() {
+  QTest::addColumn<QString>("checkpoint");
+  QTest::newRow("accepted-insert")<<QString("accepted");
+  QTest::newRow("acquiring-update")<<QString("acquiring");
+ }
+ void previewCheckpointFailuresReleasePreparationWithoutPixels() {
+  QFETCH(QString,checkpoint);
+  class PreparedSource final:public SourceAdapter {
+  public:
+   std::function<void(Error)> terminal;
+   std::atomic_int retained{0},released{0};
+   int prepared=0,pixels=0,legacyAcquisitions=0,ordinaryReplies=0,copies=0;
+   quint64 clipboardRevision()const override{return 0;}
+   QJsonObject capabilities()const override{return {};}
+   PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)> notify)override {
+    ++prepared;terminal=std::move(notify);++retained;
+    auto lifetime=std::shared_ptr<int>(new int,[this](int* value){delete value;--retained;++released;});
+    return [this,lifetime](const ResourceLimits&,std::function<void(PayloadResult)> reply){
+     ++pixels;++ordinaryReplies;reply({{}, {"capture_failed","Unexpected pixel acquisition",{}}});
+    };
+   }
+   void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> reply)override {
+    ++legacyAcquisitions;++ordinaryReplies;reply({{}, {"capture_failed","Unexpected legacy acquisition",{}}});
+   }
+   void cancelAcquisition()override{}
+   void copy(const CopyPayload&,std::function<void(Error)> reply)override{++copies;reply({});}
+  } source;
+  QTemporaryDir directory;ProviderRegistry registry;SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  OperationService operations(directory.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto connection=QUuid::createUuid().toString();
+  {
+   auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(operations.databasePath());QVERIFY(db.open());
+   {
+    QSqlQuery inject(db);
+    const auto sql=checkpoint=="accepted"
+     ? QString("CREATE TRIGGER synthetic_checkpoint_failure BEFORE INSERT ON operations WHEN json_extract(NEW.data,'$.state')='accepted' BEGIN SELECT RAISE(ABORT,'synthetic accepted checkpoint failure'); END")
+     : QString("CREATE TRIGGER synthetic_checkpoint_failure BEFORE UPDATE ON operations WHEN json_extract(NEW.data,'$.state')='acquiring' BEGIN SELECT RAISE(ABORT,'synthetic acquiring checkpoint failure'); END");
+    QVERIFY(inject.exec(sql));
+   }
+   db.close();
+  }
+  QSqlDatabase::removeDatabase(connection);
+  int acceptanceReplies=0;Error acceptanceError;QJsonObject acceptanceResult;
+  operations.invoke("region",[&](Error error,QJsonObject result){++acceptanceReplies;acceptanceError=error;acceptanceResult=std::move(result);});
+  QCOMPARE(source.prepared,1);QVERIFY(bool(source.terminal));
+  QTRY_COMPARE(acceptanceReplies,1);
+  if(checkpoint=="accepted") {
+   QCOMPARE(acceptanceError.code,QString("history_io"));QVERIFY(acceptanceResult.isEmpty());
+   {
+    auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(operations.databasePath());QVERIFY(db.open());
+    {QSqlQuery rows(db);QVERIFY(rows.exec("SELECT count(*) FROM operations"));QVERIFY(rows.next());QCOMPARE(rows.value(0).toInt(),0);}
+    db.close();
+   }
+   QSqlDatabase::removeDatabase(connection);
+  } else {
+   QVERIFY(!acceptanceError);const auto id=acceptanceResult["operationId"].toString();QVERIFY(!id.isEmpty());
+   QCOMPARE(acceptanceResult["operation"].toObject()["state"].toString(),QString("accepted"));
+   QTRY_VERIFY(([&]{HistoryStore store(operations.databasePath());return store.operation(id).state=="failed";})());
+   HistoryStore store(operations.databasePath());Error readError;const auto operation=store.operation(id,&readError);
+   QVERIFY(!readError);QCOMPARE(operation.error.code,QString("history_io"));QVERIFY(!operation.cancelled);
+   QVERIFY(operation.items.isEmpty());QCOMPARE(operation.copyStatus,QString("no_result"));
+  }
+  {HistoryStore store(operations.databasePath());const auto history=store.list({});QVERIFY(!history.error);QCOMPARE(history.total,qint64(0));QVERIFY(history.records.isEmpty());}
+  QTRY_COMPARE(source.retained.load(),0);QCOMPARE(source.released.load(),1);
+  QCOMPARE(source.pixels,0);QCOMPARE(source.legacyAcquisitions,0);QCOMPARE(source.ordinaryReplies,0);QCOMPARE(source.copies,0);
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  operations.shutdown();QCOMPARE(acceptanceReplies,1);QCOMPARE(source.prepared,1);
+ }
+
  void captureTargetIsPreparedBeforeAsynchronousAcceptance() {
   class FocusSource final : public SourceAdapter {
   public:

@@ -1,0 +1,4 @@
+{
+  "src/core/HistoryStore.cpp": "799bd401e737a8bfbfe1b4f1544d2680194ce9904145c22bec95701f321cf500",
+  "tests/unit/test_history.cpp": "488d7b2af829186c814e40fdde60b3c1bf7820b67791463e2dca6774543eeefc"
+}

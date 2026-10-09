@@ -5,6 +5,8 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QPaintEvent>
+#include <QPainter>
+#include <QStyleOptionViewItem>
 using namespace putgd;using namespace putgd::test;
 class CopyFailureSource final:public SourceAdapter {
 public:quint64 revision=0;bool fail=true;int reads=0,copies=0;
@@ -30,6 +32,27 @@ private slots:
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto s){return registry.validate(id,s);});QVERIFY(settings.save(configuration(d.path()),{}));CopyFailureSource source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);RecentOperations view(fixture.session);QString id;operations.invoke("clipboard",[&](Error e,QJsonObject data){QVERIFY(!e);id=data["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());auto* rows=view.findChild<QTreeWidget*>("recentOperations");QTRY_VERIFY(rows->topLevelItemCount()>0);QTRY_COMPARE(rows->topLevelItem(0)->text(3),QString("failed"));QCOMPARE(rows->topLevelItem(0)->child(0)->text(2),QString("uploaded"));QVERIFY(rows->topLevelItem(0)->child(0)->text(1).startsWith("https://example.invalid/"));QCOMPARE(rows->topLevelItem(0)->data(0,Qt::UserRole).toString(),id);QCOMPARE(rows->topLevelItem(0)->toolTip(1),id);QVERIFY(rows->topLevelItem(0)->text(1).size()<id.size());
   // Child selection must still copy its parent operation's result using the full ID.
   rows->setCurrentItem(rows->topLevelItem(0)->child(0));source.fail=false;view.findChild<QPushButton*>("copyOperationResult")->click();QTRY_COMPARE(rows->topLevelItem(0)->text(3),QString("copied"));QCOMPARE(provider->uploads.load(),1);QCOMPARE(source.reads,1);QCOMPARE(source.copies,2);
+ }
+ void narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;source.payload.kind="files";
+  const QString name="a-long-synthetic-file-name-that-must-remain-complete-in-the-tooltip.txt";
+  source.payload.files={fixture(d.path(),name,QByteArray(1572864,'x'))};QVERIFY(!source.payload.files.first().isEmpty());
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture session(settings,operations,history);RecentOperations view(session.session);view.resize(1024,700);view.show();
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);auto* rows=view.findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(rows->topLevelItemCount(),1);QTRY_COMPARE(rows->topLevelItem(0)->childCount(),1);
+  QTRY_VERIFY(rows->topLevelItem(0)->child(0)->text(3).startsWith("Saved\n"));auto* child=rows->topLevelItem(0)->child(0);QVERIFY(child->text(4).startsWith("1.5 MiB\nRemote: Not requested"));QCOMPARE(child->toolTip(0),name);QVERIFY(child->toolTip(3).contains(source.copied.files.first()));QVERIFY(child->toolTip(4).contains("not_requested"));
+  // Test the actual cell renderer at narrow widths and a larger native-family font.
+  // Both lines must have visible ink; a tall empty row does not satisfy the contract.
+  for(int growth:{0,6}){
+   QFont font=rows->font();font.setPixelSize(rows->fontMetrics().height()+growth);for(int column:{3,4})child->setFont(column,font);rows->doItemsLayout();
+   for(int column:{3,4}){
+    const auto index=rows->model()->index(0,column,rows->model()->index(0,0));QStyleOptionViewItem option;option.initFrom(rows);option.widget=rows;option.font=font;option.fontMetrics=QFontMetrics(font);option.state=QStyle::State_Enabled|QStyle::State_Active;
+    const auto height=rows->visualRect(index).height();QVERIFY2(height>=2*QFontMetrics(font).height()+12,"Actual file rows must grow with the chosen native font without clipping either line");
+    option.rect=QRect(0,0,column==3?170:190,height);QImage image(option.rect.size(),QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);QPainter painter(&image);rows->itemDelegateForColumn(column)->paint(&painter,option,index);painter.end();
+    auto hasText=[&](int top,int bottom){for(int y=top;y<bottom;++y)for(int x=8;x<image.width()-8;++x){const auto color=image.pixelColor(x,y);if(color.alpha()>0&&color.red()>140&&color.green()>140&&color.blue()>140)return true;}return false;};
+    QVERIFY2(hasText(0,height/2),"File size/local state must remain visible in the first line");QVERIFY2(hasText(height/2,height),"Remote outcome/local path must remain visible in the second line");
+   }
+  }
+  rows->setCurrentItem(child);view.findChild<QPushButton*>("copyOperationResult")->click();QTRY_COMPARE(source.copies,2);QCOMPARE(source.reads,1);QVERIFY(source.copied.files.first().endsWith(name));
  }
  void localOperationShowsIndependentItemAndCopyStates() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;source.payload=textPayload();source.payload.bytes=QByteArray(1572864,'x');OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);RecentOperations view(fixture.session);ActivityPaintObserver paint;view.installEventFilter(&paint);view.resize(1024,700);view.show();QTRY_VERIFY(view.findChild<QLabel*>("activityEmpty")->isVisible());QString id;

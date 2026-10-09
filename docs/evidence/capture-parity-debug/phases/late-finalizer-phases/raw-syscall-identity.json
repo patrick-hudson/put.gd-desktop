@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "sha256": "402bedc7d447f01d064e04b2bd5b8b031a243772d051dcd0ad09b38d68d04ca2",
+  "bytes": 437758,
+  "exported": false,
+  "limits": "Entire raw trace fingerprint only. Numeric syscall aggregates remain in summary, but raw calls/log content are deliberately not copied. Correlation cannot be fully replayed from this export without protected local raw trace."
+}

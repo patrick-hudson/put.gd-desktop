@@ -13,6 +13,9 @@ public:
  quint64 clipboardRevision()const override;
  QJsonObject capabilities()const override;
  PreparedAcquisition prepareAcquisition(const QString&)override;
+ PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&)override;
+ PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)>)override;
+ PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&,std::function<void(Error)>,std::function<void()>)override;
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)override;
  void cancelAcquisition()override;
  void copy(const CopyPayload&,std::function<void(Error)>)override;

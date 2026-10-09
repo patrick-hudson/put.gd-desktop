@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "b4d396cc04168cd3d77e9a3a1e2dc3a3517615a495a2c7b4fe0e6cf5e4c2ebc0",
+  "sourceBytes": 974,
+  "scope": "Expected failure before drained early selection permits a new request while the journal acceptance continues.",
+  "suite": {
+    "name": "OperationsTest",
+    "timestamp": "2026-10-09T14:19:55",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "1",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.061"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "drainedEarlySelectionAllowsNextRequestBeforeJournalCompletes",
+      "classname": "OperationsTest",
+      "time": "0.060",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (source.terminals.size()): 0\n   Expected (1)                      : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, raw logs, configuration, databases, credentials and payload bytes"
+}

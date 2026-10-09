@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "--no-tests=error",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/source-release-full-dev.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:32:01.867587+00:00"
+}

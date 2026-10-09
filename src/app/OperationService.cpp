@@ -93,21 +93,50 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
- auto acquisition=source_.prepareAcquisition(action);
- const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition](Error e,QJsonObject result) mutable {
-  if(e) {active_.remove(op.id);if(selectingId_==op.id)selectingId_.clear();reply(e,{});return;}
+ // Preview reports terminal metadata only. Latch it on the session thread so
+ // it can stop either checkpoint continuation without ever delivering pixels.
+ auto earlyError=std::make_shared<Error>();QPointer<OperationService> owner(this);
+ auto earlyTerminal=[owner,id=op.id,earlyError](Error error) {
+  if(!owner||!error)return;
+  auto latch=[owner,id,earlyError,error=std::move(error)]() mutable {
+   if(owner&&!owner->stopping_&&owner->active_.contains(id)&&!*earlyError)*earlyError=std::move(error);
+  };
+  if(QThread::currentThread()==owner->thread())latch();
+  else QMetaObject::invokeMethod(owner,std::move(latch),Qt::QueuedConnection);
+ };
+ preparedOwners_.insert(op.id);
+ auto released=[owner,id=op.id,earlyError,flag] {
+  if(!owner)return;
+  auto release=[owner,id,earlyError,flag] {
+   if(!owner||owner->stopping_||!owner->active_.contains(id)||!owner->preparedOwners_.remove(id))return;
+   const bool finished=owner->finishedPrepared_.remove(id);
+   // A legacy adapter reports no independent helper during preparation. Keep
+   // its ordinary interactive reservation; early terminal/drain can release it.
+   if(owner->selectingId_==id&&(*earlyError||flag->load()||finished))owner->selectingId_.clear();
+   if(finished)owner->active_.remove(id);
+  };
+  if(QThread::currentThread()==owner->thread())release();
+  else QMetaObject::invokeMethod(owner,std::move(release),Qt::QueuedConnection);
+ };
+ auto acquisition=source_.prepareAcquisition(action,snapshot.limits,std::move(earlyTerminal),std::move(released));
+ const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
+  if(e) {releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();reply(e,{});return;}
   reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);
-  // Acceptance is durable and observable before a selector starts.
-  QTimer::singleShot(0,this,[this,op,flag,acquisition]() mutable {
+  // Acceptance stays durable and observable before acquiring pixels. Region
+  // preview may already be visible; a terminal event skips the remaining work.
+  QTimer::singleShot(0,this,[this,op,flag,acquisition,earlyError]() mutable {
    if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
-   op.state="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition](Error e,QJsonObject) mutable {
+   if(*earlyError) {op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
+   op.state="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition,earlyError](Error e,QJsonObject) mutable {
     if(e) {op.error=e;op.state="failed";finish(op);return;}
+    if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
+    if(*earlyError) {op.error=*earlyError;op.cancelled=op.error.code=="cancelled"||op.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";finish(op);return;}
     QPointer<OperationService> guarded(this);
     acquisition(op.settings.limits,[guarded,op,flag](PayloadResult r) {
      if(!guarded)return;
      QMetaObject::invokeMethod(guarded,[guarded,op,flag,r=std::move(r)]() mutable {
       if(!guarded||guarded->stopping_)return;
-      if(guarded->selectingId_==op.id)guarded->selectingId_.clear();
+      if(guarded->selectingId_==op.id&&!guarded->preparedOwners_.contains(op.id))guarded->selectingId_.clear();
       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code=="cancelled"||r.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";guarded->finish(op);return;}
       guarded->enqueue({op,std::move(r.payload),true,flag,{}});
      },Qt::QueuedConnection);
@@ -216,15 +245,21 @@ Operation OperationService::run(Job job) {
  op.state=op.cancelled?"cancelled":"completed";for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown")op.state=op.cancelled?"cancelled":"partial";
  save();return op;
 }
+void OperationService::releaseActive(const QString& id) {
+ // Durable completion and source drain can arrive in either order. Retain the
+ // bounded operation slot until both have happened; never unlock a live helper.
+ if(preparedOwners_.contains(id))finishedPrepared_.insert(id);
+ else active_.remove(id);
+}
 void OperationService::finish(Operation op,JsonReply reply) {
- if(selectingId_==op.id)selectingId_.clear();
+ if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
  if((op.cancelled||op.state=="failed"||op.state=="interrupted")&&op.copyStatus=="pending")op.copyStatus="no_result";
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
   emit changed(id);
-  if(e) {active_.remove(id);if(reply)reply(e,{});return;}
+  if(e) {releaseActive(id);if(reply)reply(e,{});return;}
   const auto op=Operation::fromJson(document);
-  if(op.cancelled||op.state=="failed"||op.state=="interrupted") {active_.remove(op.id);if(reply)reply({},op.publicJson());return;}
-  performCopy(op,false,[this,id=op.id,reply](Error error,QJsonObject result) {active_.remove(id);if(reply)reply(error,result);});
+  if(op.cancelled||op.state=="failed"||op.state=="interrupted") {releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
+  performCopy(op,false,[this,id=op.id,reply](Error error,QJsonObject result) {releaseActive(id);if(reply)reply(error,result);});
  });
 }
 

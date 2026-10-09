@@ -1,0 +1,107 @@
+{
+  "native-layout": {
+    "n": 175,
+    "medianMs": 0.436177,
+    "p95Ms": 1.07112,
+    "minMs": 0.238679,
+    "maxMs": 2.274447
+  },
+  "prepare": {
+    "n": 35,
+    "medianMs": 0.856027,
+    "p95Ms": 3.17829,
+    "minMs": 0.598035,
+    "maxMs": 3.461143
+  },
+  "accepted-worker": {
+    "n": 35,
+    "medianMs": 4.140622,
+    "p95Ms": 70.825055,
+    "minMs": 2.428325,
+    "maxMs": 73.915801
+  },
+  "acquiring-worker": {
+    "n": 35,
+    "medianMs": 2.790435,
+    "p95Ms": 6.812738,
+    "minMs": 2.256962,
+    "maxMs": 7.428315
+  },
+  "surface-create": {
+    "n": 105,
+    "medianMs": 0.048148,
+    "p95Ms": 0.110446,
+    "minMs": 0.020356,
+    "maxMs": 0.141524
+  },
+  "surface-show": {
+    "n": 105,
+    "medianMs": 18.122944,
+    "p95Ms": 45.235405,
+    "minMs": 1.510811,
+    "maxMs": 58.2527
+  },
+  "surface-raise": {
+    "n": 105,
+    "medianMs": 0.011251,
+    "p95Ms": 0.023964,
+    "minMs": 0.005437,
+    "maxMs": 0.053897
+  },
+  "overlay-start": {
+    "n": 35,
+    "medianMs": 61.885691,
+    "p95Ms": 94.227743,
+    "minMs": 23.394396,
+    "maxMs": 106.530726
+  },
+  "child-main -> app-before": {
+    "n": 35,
+    "medianMs": 0.030098,
+    "p95Ms": 0.054958,
+    "minMs": 0.023306,
+    "maxMs": 0.064365
+  },
+  "app-before -> app-after": {
+    "n": 35,
+    "medianMs": 11.618597,
+    "p95Ms": 14.977014,
+    "minMs": 8.808046,
+    "maxMs": 18.128544
+  },
+  "adapters-before -> adapters-after": {
+    "n": 35,
+    "medianMs": 0.817201,
+    "p95Ms": 1.279755,
+    "minMs": 0.461061,
+    "maxMs": 1.379806
+  },
+  "app-after -> resolve-before": {
+    "n": 35,
+    "medianMs": 3.251307,
+    "p95Ms": 4.880709,
+    "minMs": 2.30661,
+    "maxMs": 4.949872
+  },
+  "resolve-before -> resolve-after": {
+    "n": 35,
+    "medianMs": 1.133027,
+    "p95Ms": 1.600211,
+    "minMs": 0.81879,
+    "maxMs": 1.798177
+  },
+  "resolve-after -> acquire-frozen": {
+    "n": 35,
+    "medianMs": 0.034013,
+    "p95Ms": 0.064307,
+    "minMs": 0.026385,
+    "maxMs": 0.06853
+  },
+  "acquire-frozen -> surface-first-paint": {
+    "n": 35,
+    "medianMs": 113.095809,
+    "p95Ms": 154.090506,
+    "minMs": 56.970139,
+    "maxMs": 157.459914
+  }
+}

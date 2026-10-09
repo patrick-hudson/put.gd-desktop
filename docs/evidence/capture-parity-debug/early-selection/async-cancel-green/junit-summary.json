@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "1729802c8d2815f456f003dcbb7c63ff33c142721e3e8a9debb96deab58df58c",
+  "sourceBytes": 1473,
+  "scope": "Affected isolated X11 suite passed after changing only the test assertion to wait for documented asynchronous cancellation; independent clipboard payload/outcomes retained.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "1",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "17",
+    "timestamp": "2026-10-09T14:14:57"
+  },
+  "testcases": [
+    {
+      "name": "x11_isolated",
+      "classname": "x11_isolated",
+      "time": "17.2457",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

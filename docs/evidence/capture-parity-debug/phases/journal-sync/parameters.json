@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "unscored": true,
+  "purpose": "distinguish commit disk synchronization from lock waits; no paths/query text/buffers/exec arguments traced",
+  "syscalls": [
+    "fsync",
+    "fdatasync",
+    "fcntl",
+    "flock"
+  ],
+  "clockPair": {
+    "realtimeNs": 1791560138585052684,
+    "monotonicNs": 333270620166665
+  },
+  "invocations": 35,
+  "warmup": 5,
+  "samples": 30
+}

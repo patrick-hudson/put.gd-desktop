@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QQueue>
 #include <QThread>
+#include <QSet>
 #include <QTimer>
 #include <QLockFile>
 #include <atomic>
@@ -26,11 +27,31 @@ public:
  virtual quint64 clipboardRevision() const=0;
  virtual QJsonObject capabilities() const=0;
  // Freeze native target identity/layout on the session thread before persistence
- // yields. Starting acquisition remains deferred until its acceptance is durable.
+ // yields. Pixel acquisition waits until both journal checkpoints are durable.
  virtual PreparedAcquisition prepareAcquisition(const QString& action) {
   return [this,action](const ResourceLimits& limits,std::function<void(PayloadResult)> reply) {
    acquire(action,limits,std::move(reply));
   };
+ }
+ // Preparation may show region selection, but must not read pixels until the
+ // returned continuation is invoked after both durable journal checkpoints.
+ virtual PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits&) {
+  return prepareAcquisition(action);
+ }
+ // Early cancellation/failure reports metadata only; ordinary payload delivery
+ // still belongs to the durable continuation. Legacy adapters need no preview.
+ virtual PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits& limits,
+                                               std::function<void(Error)>) {
+  return prepareAcquisition(action,limits);
+ }
+ // Optional source release reports that an independent prepared helper drained.
+ // Legacy adapters keep interactive ownership until ordinary completion.
+ virtual PreparedAcquisition prepareAcquisition(const QString& action,const ResourceLimits& limits,
+                                               std::function<void(Error)> terminal,std::function<void()> released) {
+  // Keep legacy completion ownership. An adapter with an independent prepared
+  // helper must override this overload and report release only after drain.
+  if(released)released();
+  return prepareAcquisition(action,limits,std::move(terminal));
  }
  virtual void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)=0;
  virtual void cancelAcquisition()=0;
@@ -82,6 +103,7 @@ private:
  void scheduleHeapReclamation();
  Operation run(Job);
  void finish(Operation,JsonReply={});
+ void releaseActive(const QString&);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
  void deliverCopy(const CopyPayload&,std::function<void(Error)>);
  QString root_;
@@ -102,6 +124,7 @@ private:
  int running_=0;
  quint64 invocation_=0;
  QString selectingId_;
+ QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false;
  Error startupError_;

@@ -1,0 +1,6816 @@
+{
+  "schemaVersion": 2,
+  "unscored": true,
+  "pairing": "same PID/TID LIFO phase pairing; accepted worker owns its nested spans",
+  "syscallScope": "same TID and start within exact realtime span; names/timings only",
+  "groups": [
+    {
+      "index": 0,
+      "warmup": true,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330658,
+        "phase": "accepted-worker",
+        "begin": 344506362698301,
+        "end": 344506455503686,
+        "wallBegin": 1791571374327585109,
+        "wallEnd": 1791571374420390327,
+        "durationMs": 92.805385,
+        "beginRelativeMs": 23.132189,
+        "endRelativeMs": 115.937574,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.428,
+            "maxMs": 0.094
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 77.956,
+            "maxMs": 71.423
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "foreign-keys",
+          "begin": 344506367847981,
+          "end": 344506368395243,
+          "wallBegin": 1791571374332734681,
+          "wallEnd": 1791571374333281951,
+          "durationMs": 0.547262,
+          "beginRelativeMs": 28.281869,
+          "endRelativeMs": 28.829131,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "user-version-exec",
+          "begin": 344506368872207,
+          "end": 344506370037957,
+          "wallBegin": 1791571374333758900,
+          "wallEnd": 1791571374334924645,
+          "durationMs": 1.16575,
+          "beginRelativeMs": 29.306095,
+          "endRelativeMs": 30.471845,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.076,
+              "maxMs": 0.034
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "user-version-next",
+          "begin": 344506370447435,
+          "end": 344506370970039,
+          "wallBegin": 1791571374335334106,
+          "wallEnd": 1791571374335856711,
+          "durationMs": 0.522604,
+          "beginRelativeMs": 30.881323,
+          "endRelativeMs": 31.403927,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "history-initialize",
+          "begin": 344506366976499,
+          "end": 344506371572008,
+          "wallBegin": 1791571374331863235,
+          "wallEnd": 1791571374336458680,
+          "durationMs": 4.595509,
+          "beginRelativeMs": 27.410387,
+          "endRelativeMs": 32.005896,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.111,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "history-open",
+          "begin": 344506364446368,
+          "end": 344506371933329,
+          "wallBegin": 1791571374329333154,
+          "wallEnd": 1791571374336820014,
+          "durationMs": 7.486961,
+          "beginRelativeMs": 24.880256,
+          "endRelativeMs": 32.367217,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.111,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "history-commit",
+          "begin": 344506375319662,
+          "end": 344506455092337,
+          "wallBegin": 1791571374340206349,
+          "wallEnd": 1791571374419978993,
+          "durationMs": 79.772675,
+          "beginRelativeMs": 35.75355,
+          "endRelativeMs": 115.526225,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.153,
+              "maxMs": 0.094
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.956,
+              "maxMs": 71.423
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "history-save",
+          "begin": 344506372234168,
+          "end": 344506455252595,
+          "wallBegin": 1791571374337120829,
+          "wallEnd": 1791571374420139232,
+          "durationMs": 83.018427,
+          "beginRelativeMs": 32.668056,
+          "endRelativeMs": 115.686483,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.317,
+              "maxMs": 0.094
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.956,
+              "maxMs": 71.423
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330658,
+          "phase": "accepted-worker",
+          "begin": 344506362698301,
+          "end": 344506455503686,
+          "wallBegin": 1791571374327585109,
+          "wallEnd": 1791571374420390327,
+          "durationMs": 92.805385,
+          "beginRelativeMs": 23.132189,
+          "endRelativeMs": 115.937574,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.428,
+              "maxMs": 0.094
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.956,
+              "maxMs": 71.423
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 1,
+      "warmup": true,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330667,
+        "phase": "accepted-worker",
+        "begin": 344506655221437,
+        "end": 344506746219845,
+        "wallBegin": 1791571374620108152,
+        "wallEnd": 1791571374711106482,
+        "durationMs": 90.998408,
+        "beginRelativeMs": 23.58096,
+        "endRelativeMs": 114.579368,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.40499999999999997,
+            "maxMs": 0.046
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 77.53399999999999,
+            "maxMs": 74.862
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "foreign-keys",
+          "begin": 344506659401199,
+          "end": 344506659981333,
+          "wallBegin": 1791571374624287959,
+          "wallEnd": 1791571374624868028,
+          "durationMs": 0.580134,
+          "beginRelativeMs": 27.760722,
+          "endRelativeMs": 28.340856,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "user-version-exec",
+          "begin": 344506660487588,
+          "end": 344506661728941,
+          "wallBegin": 1791571374625374285,
+          "wallEnd": 1791571374626615637,
+          "durationMs": 1.241353,
+          "beginRelativeMs": 28.847111,
+          "endRelativeMs": 30.088464,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.123,
+              "maxMs": 0.046
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "user-version-next",
+          "begin": 344506662164817,
+          "end": 344506662471754,
+          "wallBegin": 1791571374627051501,
+          "wallEnd": 1791571374627358420,
+          "durationMs": 0.306937,
+          "beginRelativeMs": 30.52434,
+          "endRelativeMs": 30.831277,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "history-initialize",
+          "begin": 344506658615406,
+          "end": 344506662932804,
+          "wallBegin": 1791571374623502087,
+          "wallEnd": 1791571374627819476,
+          "durationMs": 4.317398,
+          "beginRelativeMs": 26.974929,
+          "endRelativeMs": 31.292327,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.147,
+              "maxMs": 0.046
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "history-open",
+          "begin": 344506656131812,
+          "end": 344506663327749,
+          "wallBegin": 1791571374621018615,
+          "wallEnd": 1791571374628214421,
+          "durationMs": 7.195937,
+          "beginRelativeMs": 24.491335,
+          "endRelativeMs": 31.687272,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.147,
+              "maxMs": 0.046
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "history-commit",
+          "begin": 344506666332144,
+          "end": 344506745883212,
+          "wallBegin": 1791571374631218833,
+          "wallEnd": 1791571374710769852,
+          "durationMs": 79.551068,
+          "beginRelativeMs": 34.691667,
+          "endRelativeMs": 114.242735,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.071,
+              "maxMs": 0.024
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.53399999999999,
+              "maxMs": 74.862
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "history-save",
+          "begin": 344506663609561,
+          "end": 344506745995239,
+          "wallBegin": 1791571374628496221,
+          "wallEnd": 1791571374710881875,
+          "durationMs": 82.385678,
+          "beginRelativeMs": 31.969084,
+          "endRelativeMs": 114.354762,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.258,
+              "maxMs": 0.038
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.53399999999999,
+              "maxMs": 74.862
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330667,
+          "phase": "accepted-worker",
+          "begin": 344506655221437,
+          "end": 344506746219845,
+          "wallBegin": 1791571374620108152,
+          "wallEnd": 1791571374711106482,
+          "durationMs": 90.998408,
+          "beginRelativeMs": 23.58096,
+          "endRelativeMs": 114.579368,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.40499999999999997,
+              "maxMs": 0.046
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.53399999999999,
+              "maxMs": 74.862
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 2,
+      "warmup": true,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330673,
+        "phase": "accepted-worker",
+        "begin": 344506947373545,
+        "end": 344507034514068,
+        "wallBegin": 1791571374912260274,
+        "wallEnd": 1791571374999400705,
+        "durationMs": 87.140523,
+        "beginRelativeMs": 25.703065,
+        "endRelativeMs": 112.843588,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 1.006,
+            "maxMs": 0.65
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 75.013,
+            "maxMs": 67.554
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "foreign-keys",
+          "begin": 344506950065212,
+          "end": 344506950523958,
+          "wallBegin": 1791571374914951882,
+          "wallEnd": 1791571374915410630,
+          "durationMs": 0.458746,
+          "beginRelativeMs": 28.394732,
+          "endRelativeMs": 28.853478,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "user-version-exec",
+          "begin": 344506950995579,
+          "end": 344506952204968,
+          "wallBegin": 1791571374915882311,
+          "wallEnd": 1791571374917091669,
+          "durationMs": 1.209389,
+          "beginRelativeMs": 29.325099,
+          "endRelativeMs": 30.534488,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.099,
+              "maxMs": 0.036
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "user-version-next",
+          "begin": 344506952509158,
+          "end": 344506952792379,
+          "wallBegin": 1791571374917395829,
+          "wallEnd": 1791571374917679039,
+          "durationMs": 0.283221,
+          "beginRelativeMs": 30.838678,
+          "endRelativeMs": 31.121899,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "history-initialize",
+          "begin": 344506949565277,
+          "end": 344506953199434,
+          "wallBegin": 1791571374914451948,
+          "wallEnd": 1791571374918086092,
+          "durationMs": 3.634157,
+          "beginRelativeMs": 27.894797,
+          "endRelativeMs": 31.528954,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.126,
+              "maxMs": 0.036
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "history-open",
+          "begin": 344506947892722,
+          "end": 344506953522069,
+          "wallBegin": 1791571374912779414,
+          "wallEnd": 1791571374918408727,
+          "durationMs": 5.629347,
+          "beginRelativeMs": 26.222242,
+          "endRelativeMs": 31.851589,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.126,
+              "maxMs": 0.036
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "history-commit",
+          "begin": 344506957667821,
+          "end": 344507034139013,
+          "wallBegin": 1791571374922554538,
+          "wallEnd": 1791571374999025669,
+          "durationMs": 76.471192,
+          "beginRelativeMs": 35.997341,
+          "endRelativeMs": 112.468533,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.067,
+              "maxMs": 0.019
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 75.013,
+              "maxMs": 67.554
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "history-save",
+          "begin": 344506953923655,
+          "end": 344507034239792,
+          "wallBegin": 1791571374918810358,
+          "wallEnd": 1791571374999126429,
+          "durationMs": 80.316137,
+          "beginRelativeMs": 32.253175,
+          "endRelativeMs": 112.569312,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.88,
+              "maxMs": 0.65
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 75.013,
+              "maxMs": 67.554
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330673,
+          "phase": "accepted-worker",
+          "begin": 344506947373545,
+          "end": 344507034514068,
+          "wallBegin": 1791571374912260274,
+          "wallEnd": 1791571374999400705,
+          "durationMs": 87.140523,
+          "beginRelativeMs": 25.703065,
+          "endRelativeMs": 112.843588,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 1.006,
+              "maxMs": 0.65
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 75.013,
+              "maxMs": 67.554
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 3,
+      "warmup": true,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330686,
+        "phase": "accepted-worker",
+        "begin": 344507214628010,
+        "end": 344507227593775,
+        "wallBegin": 1791571375179514706,
+        "wallEnd": 1791571375192480431,
+        "durationMs": 12.965765,
+        "beginRelativeMs": 9.477353,
+        "endRelativeMs": 22.443118,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.378,
+            "maxMs": 0.027
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.436,
+            "maxMs": 1.756
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "foreign-keys",
+          "begin": 344507215894774,
+          "end": 344507216139832,
+          "wallBegin": 1791571375180781430,
+          "wallEnd": 1791571375181026487,
+          "durationMs": 0.245058,
+          "beginRelativeMs": 10.744117,
+          "endRelativeMs": 10.989175,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "user-version-exec",
+          "begin": 344507216340467,
+          "end": 344507216924948,
+          "wallBegin": 1791571375181227123,
+          "wallEnd": 1791571375181811603,
+          "durationMs": 0.584481,
+          "beginRelativeMs": 11.18981,
+          "endRelativeMs": 11.774291,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.054000000000000006,
+              "maxMs": 0.02
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "user-version-next",
+          "begin": 344507217377506,
+          "end": 344507217697838,
+          "wallBegin": 1791571375182264184,
+          "wallEnd": 1791571375182584519,
+          "durationMs": 0.320332,
+          "beginRelativeMs": 12.226849,
+          "endRelativeMs": 12.547181,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "history-initialize",
+          "begin": 344507215701924,
+          "end": 344507218115458,
+          "wallBegin": 1791571375180588582,
+          "wallEnd": 1791571375183002130,
+          "durationMs": 2.413534,
+          "beginRelativeMs": 10.551267,
+          "endRelativeMs": 12.964801,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.079,
+              "maxMs": 0.025
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "history-open",
+          "begin": 344507214899820,
+          "end": 344507218434821,
+          "wallBegin": 1791571375179786522,
+          "wallEnd": 1791571375183321495,
+          "durationMs": 3.535001,
+          "beginRelativeMs": 9.749163,
+          "endRelativeMs": 13.284164,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.079,
+              "maxMs": 0.025
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "history-commit",
+          "begin": 344507221533596,
+          "end": 344507226677502,
+          "wallBegin": 1791571375186420285,
+          "wallEnd": 1791571375191564211,
+          "durationMs": 5.143906,
+          "beginRelativeMs": 16.382939,
+          "endRelativeMs": 21.526845,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.114,
+              "maxMs": 0.024
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.436,
+              "maxMs": 1.756
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "history-save",
+          "begin": 344507218742385,
+          "end": 344507226990070,
+          "wallBegin": 1791571375183629069,
+          "wallEnd": 1791571375191876748,
+          "durationMs": 8.247685,
+          "beginRelativeMs": 13.591728,
+          "endRelativeMs": 21.839413,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.299,
+              "maxMs": 0.027
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.436,
+              "maxMs": 1.756
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330686,
+          "phase": "accepted-worker",
+          "begin": 344507214628010,
+          "end": 344507227593775,
+          "wallBegin": 1791571375179514706,
+          "wallEnd": 1791571375192480431,
+          "durationMs": 12.965765,
+          "beginRelativeMs": 9.477353,
+          "endRelativeMs": 22.443118,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.378,
+              "maxMs": 0.027
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.436,
+              "maxMs": 1.756
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 4,
+      "warmup": true,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330692,
+        "phase": "accepted-worker",
+        "begin": 344507450644986,
+        "end": 344507482479900,
+        "wallBegin": 1791571375415531640,
+        "wallEnd": 1791571375447366540,
+        "durationMs": 31.834914,
+        "beginRelativeMs": 4.734389,
+        "endRelativeMs": 36.569303,
+        "syscalls": {
+          "clock_nanosleep": {
+            "count": 4,
+            "totalMs": 18.403,
+            "maxMs": 10.134
+          },
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.185,
+            "maxMs": 0.035
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 4.864,
+            "maxMs": 1.83
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "foreign-keys",
+          "begin": 344507454913494,
+          "end": 344507455136307,
+          "wallBegin": 1791571375419800150,
+          "wallEnd": 1791571375420022945,
+          "durationMs": 0.222813,
+          "beginRelativeMs": 9.002897,
+          "endRelativeMs": 9.22571,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "user-version-exec",
+          "begin": 344507455273767,
+          "end": 344507474479173,
+          "wallBegin": 1791571375420160410,
+          "wallEnd": 1791571375439365814,
+          "durationMs": 19.205406,
+          "beginRelativeMs": 9.36317,
+          "endRelativeMs": 28.568576,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.403,
+              "maxMs": 10.134
+            },
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.07700000000000001,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "user-version-next",
+          "begin": 344507474583880,
+          "end": 344507474694462,
+          "wallBegin": 1791571375439470522,
+          "wallEnd": 1791571375439581099,
+          "durationMs": 0.110582,
+          "beginRelativeMs": 28.673283,
+          "endRelativeMs": 28.783865,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "history-initialize",
+          "begin": 344507454765356,
+          "end": 344507474855165,
+          "wallBegin": 1791571375419652010,
+          "wallEnd": 1791571375439741801,
+          "durationMs": 20.089809,
+          "beginRelativeMs": 8.854759,
+          "endRelativeMs": 28.944568,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.403,
+              "maxMs": 10.134
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.08600000000000001,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "history-open",
+          "begin": 344507450748880,
+          "end": 344507474957285,
+          "wallBegin": 1791571375415635518,
+          "wallEnd": 1791571375439843928,
+          "durationMs": 24.208405,
+          "beginRelativeMs": 4.838283,
+          "endRelativeMs": 29.046688,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.403,
+              "maxMs": 10.134
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.08600000000000001,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "history-commit",
+          "begin": 344507476312201,
+          "end": 344507482037337,
+          "wallBegin": 1791571375441198860,
+          "wallEnd": 1791571375446923984,
+          "durationMs": 5.725136,
+          "beginRelativeMs": 30.401604,
+          "endRelativeMs": 36.12674,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.037,
+              "maxMs": 0.013
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.864,
+              "maxMs": 1.83
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "history-save",
+          "begin": 344507475146987,
+          "end": 344507482231279,
+          "wallBegin": 1791571375440033624,
+          "wallEnd": 1791571375447117921,
+          "durationMs": 7.084292,
+          "beginRelativeMs": 29.23639,
+          "endRelativeMs": 36.320682,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.099,
+              "maxMs": 0.013
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.864,
+              "maxMs": 1.83
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330692,
+          "phase": "accepted-worker",
+          "begin": 344507450644986,
+          "end": 344507482479900,
+          "wallBegin": 1791571375415531640,
+          "wallEnd": 1791571375447366540,
+          "durationMs": 31.834914,
+          "beginRelativeMs": 4.734389,
+          "endRelativeMs": 36.569303,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.403,
+              "maxMs": 10.134
+            },
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.185,
+              "maxMs": 0.035
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.864,
+              "maxMs": 1.83
+            }
+          }
+        }
+      ],
+      "priorOverlaps": [
+        {
+          "pid": 3330624,
+          "tid": 3330690,
+          "phase": "history-commit",
+          "begin": 344507387732885,
+          "end": 344507468407354,
+          "wallBegin": 1791571375352619534,
+          "wallEnd": 1791571375433294006,
+          "durationMs": 80.674469,
+          "beginRelativeMs": -58.177712,
+          "endRelativeMs": 22.496757,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.173,
+              "maxMs": 0.062
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 79.285,
+              "maxMs": 71.586
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330690,
+          "phase": "finish-worker",
+          "begin": 344507385238800,
+          "end": 344507469155892,
+          "wallBegin": 1791571375350125459,
+          "wallEnd": 1791571375434042536,
+          "durationMs": 83.917092,
+          "beginRelativeMs": -60.671797,
+          "endRelativeMs": 23.245295,
+          "syscalls": {
+            "fcntl": {
+              "count": 21,
+              "totalMs": 0.288,
+              "maxMs": 0.062
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 79.285,
+              "maxMs": 71.586
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330698,
+        "phase": "accepted-worker",
+        "begin": 344507664464895,
+        "end": 344507675067948,
+        "wallBegin": 1791571375629351537,
+        "wallEnd": 1791571375639954591,
+        "durationMs": 10.603053,
+        "beginRelativeMs": 6.098826,
+        "endRelativeMs": 16.701879,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.139,
+            "maxMs": 0.033
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 6.504,
+            "maxMs": 5.148
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "foreign-keys",
+          "begin": 344507665244731,
+          "end": 344507665366914,
+          "wallBegin": 1791571375630131368,
+          "wallEnd": 1791571375630253552,
+          "durationMs": 0.122183,
+          "beginRelativeMs": 6.878662,
+          "endRelativeMs": 7.000845,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "user-version-exec",
+          "begin": 344507665495480,
+          "end": 344507665794667,
+          "wallBegin": 1791571375630382118,
+          "wallEnd": 1791571375630681304,
+          "durationMs": 0.299187,
+          "beginRelativeMs": 7.129411,
+          "endRelativeMs": 7.428598,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.046,
+              "maxMs": 0.033
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "user-version-next",
+          "begin": 344507665895352,
+          "end": 344507665998653,
+          "wallBegin": 1791571375630781990,
+          "wallEnd": 1791571375630885299,
+          "durationMs": 0.103301,
+          "beginRelativeMs": 7.529283,
+          "endRelativeMs": 7.632584,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "history-initialize",
+          "begin": 344507665155170,
+          "end": 344507666169775,
+          "wallBegin": 1791571375630041807,
+          "wallEnd": 1791571375631056413,
+          "durationMs": 1.014605,
+          "beginRelativeMs": 6.789101,
+          "endRelativeMs": 7.803706,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.053000000000000005,
+              "maxMs": 0.033
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "history-open",
+          "begin": 344507664570017,
+          "end": 344507666253646,
+          "wallBegin": 1791571375629456659,
+          "wallEnd": 1791571375631140288,
+          "durationMs": 1.683629,
+          "beginRelativeMs": 6.203948,
+          "endRelativeMs": 7.887577,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.053000000000000005,
+              "maxMs": 0.033
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "history-commit",
+          "begin": 344507667214017,
+          "end": 344507674674783,
+          "wallBegin": 1791571375632100668,
+          "wallEnd": 1791571375639561425,
+          "durationMs": 7.460766,
+          "beginRelativeMs": 8.847948,
+          "endRelativeMs": 16.308714,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.038,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 6.504,
+              "maxMs": 5.148
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "history-save",
+          "begin": 344507666336750,
+          "end": 344507674785321,
+          "wallBegin": 1791571375631223394,
+          "wallEnd": 1791571375639671959,
+          "durationMs": 8.448571,
+          "beginRelativeMs": 7.970681,
+          "endRelativeMs": 16.419252,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.08600000000000001,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 6.504,
+              "maxMs": 5.148
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330698,
+          "phase": "accepted-worker",
+          "begin": 344507664464895,
+          "end": 344507675067948,
+          "wallBegin": 1791571375629351537,
+          "wallEnd": 1791571375639954591,
+          "durationMs": 10.603053,
+          "beginRelativeMs": 6.098826,
+          "endRelativeMs": 16.701879,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.139,
+              "maxMs": 0.033
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 6.504,
+              "maxMs": 5.148
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 6,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330704,
+        "phase": "accepted-worker",
+        "begin": 344507902063093,
+        "end": 344507924641168,
+        "wallBegin": 1791571375866949879,
+        "wallEnd": 1791571375889527818,
+        "durationMs": 22.578075,
+        "beginRelativeMs": 22.042869,
+        "endRelativeMs": 44.620944,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.52,
+            "maxMs": 0.065
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 8.08,
+            "maxMs": 5.48
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "foreign-keys",
+          "begin": 344507904920530,
+          "end": 344507905880033,
+          "wallBegin": 1791571375869807262,
+          "wallEnd": 1791571375870766774,
+          "durationMs": 0.959503,
+          "beginRelativeMs": 24.900306,
+          "endRelativeMs": 25.859809,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "user-version-exec",
+          "begin": 344507906772109,
+          "end": 344507908310447,
+          "wallBegin": 1791571375871658867,
+          "wallEnd": 1791571375873197134,
+          "durationMs": 1.538338,
+          "beginRelativeMs": 26.751885,
+          "endRelativeMs": 28.290223,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.13699999999999998,
+              "maxMs": 0.051
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "user-version-next",
+          "begin": 344507908782889,
+          "end": 344507909284502,
+          "wallBegin": 1791571375873669566,
+          "wallEnd": 1791571375874171178,
+          "durationMs": 0.501613,
+          "beginRelativeMs": 28.762665,
+          "endRelativeMs": 29.264278,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "history-initialize",
+          "begin": 344507904412036,
+          "end": 344507909924584,
+          "wallBegin": 1791571375869298773,
+          "wallEnd": 1791571375874811291,
+          "durationMs": 5.512548,
+          "beginRelativeMs": 24.391812,
+          "endRelativeMs": 29.90436,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.172,
+              "maxMs": 0.051
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "history-open",
+          "begin": 344507902561971,
+          "end": 344507910419048,
+          "wallBegin": 1791571375867448670,
+          "wallEnd": 1791571375875305738,
+          "durationMs": 7.857077,
+          "beginRelativeMs": 22.541747,
+          "endRelativeMs": 30.398824,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.172,
+              "maxMs": 0.051
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "history-commit",
+          "begin": 344507914629175,
+          "end": 344507924081520,
+          "wallBegin": 1791571375879515892,
+          "wallEnd": 1791571375888968197,
+          "durationMs": 9.452345,
+          "beginRelativeMs": 34.608951,
+          "endRelativeMs": 44.061296,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.093,
+              "maxMs": 0.031
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.08,
+              "maxMs": 5.48
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "history-save",
+          "begin": 344507910903901,
+          "end": 344507924269122,
+          "wallBegin": 1791571375875790582,
+          "wallEnd": 1791571375889155771,
+          "durationMs": 13.365221,
+          "beginRelativeMs": 30.883677,
+          "endRelativeMs": 44.248898,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.348,
+              "maxMs": 0.065
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.08,
+              "maxMs": 5.48
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330704,
+          "phase": "accepted-worker",
+          "begin": 344507902063093,
+          "end": 344507924641168,
+          "wallBegin": 1791571375866949879,
+          "wallEnd": 1791571375889527818,
+          "durationMs": 22.578075,
+          "beginRelativeMs": 22.042869,
+          "endRelativeMs": 44.620944,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.52,
+              "maxMs": 0.065
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.08,
+              "maxMs": 5.48
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 7,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330711,
+        "phase": "accepted-worker",
+        "begin": 344508135634909,
+        "end": 344508152094968,
+        "wallBegin": 1791571376100521572,
+        "wallEnd": 1791571376116981616,
+        "durationMs": 16.460059,
+        "beginRelativeMs": 11.409162,
+        "endRelativeMs": 27.869221,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.356,
+            "maxMs": 0.036
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 7.8709999999999996,
+            "maxMs": 5.717
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "foreign-keys",
+          "begin": 344508137410931,
+          "end": 344508137767215,
+          "wallBegin": 1791571376102297587,
+          "wallEnd": 1791571376102653906,
+          "durationMs": 0.356284,
+          "beginRelativeMs": 13.185184,
+          "endRelativeMs": 13.541468,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "user-version-exec",
+          "begin": 344508138066357,
+          "end": 344508138798007,
+          "wallBegin": 1791571376102953021,
+          "wallEnd": 1791571376103684661,
+          "durationMs": 0.73165,
+          "beginRelativeMs": 13.84061,
+          "endRelativeMs": 14.57226,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.07,
+              "maxMs": 0.025
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "user-version-next",
+          "begin": 344508139113612,
+          "end": 344508139379531,
+          "wallBegin": 1791571376104000268,
+          "wallEnd": 1791571376104266185,
+          "durationMs": 0.265919,
+          "beginRelativeMs": 14.887865,
+          "endRelativeMs": 15.153784,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "history-initialize",
+          "begin": 344508137059432,
+          "end": 344508139812657,
+          "wallBegin": 1791571376101946086,
+          "wallEnd": 1791571376104699311,
+          "durationMs": 2.753225,
+          "beginRelativeMs": 12.833685,
+          "endRelativeMs": 15.58691,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.095,
+              "maxMs": 0.025
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "history-open",
+          "begin": 344508135926329,
+          "end": 344508140155426,
+          "wallBegin": 1791571376100812983,
+          "wallEnd": 1791571376105042082,
+          "durationMs": 4.229097,
+          "beginRelativeMs": 11.700582,
+          "endRelativeMs": 15.929679,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.095,
+              "maxMs": 0.025
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "history-commit",
+          "begin": 344508142726439,
+          "end": 344508151682861,
+          "wallBegin": 1791571376107613134,
+          "wallEnd": 1791571376116569530,
+          "durationMs": 8.956422,
+          "beginRelativeMs": 18.500692,
+          "endRelativeMs": 27.457114,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.069,
+              "maxMs": 0.02
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 7.8709999999999996,
+              "maxMs": 5.717
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "history-save",
+          "begin": 344508140443462,
+          "end": 344508151845067,
+          "wallBegin": 1791571376105330115,
+          "wallEnd": 1791571376116731709,
+          "durationMs": 11.401605,
+          "beginRelativeMs": 16.217715,
+          "endRelativeMs": 27.61932,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.261,
+              "maxMs": 0.036
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 7.8709999999999996,
+              "maxMs": 5.717
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330711,
+          "phase": "accepted-worker",
+          "begin": 344508135634909,
+          "end": 344508152094968,
+          "wallBegin": 1791571376100521572,
+          "wallEnd": 1791571376116981616,
+          "durationMs": 16.460059,
+          "beginRelativeMs": 11.409162,
+          "endRelativeMs": 27.869221,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.356,
+              "maxMs": 0.036
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 7.8709999999999996,
+              "maxMs": 5.717
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 8,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330717,
+        "phase": "accepted-worker",
+        "begin": 344508388826272,
+        "end": 344508405487115,
+        "wallBegin": 1791571376353713139,
+        "wallEnd": 1791571376370373776,
+        "durationMs": 16.660843,
+        "beginRelativeMs": 26.097282,
+        "endRelativeMs": 42.758125,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.384,
+            "maxMs": 0.035
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 4.716,
+            "maxMs": 1.995
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "foreign-keys",
+          "begin": 344508392161762,
+          "end": 344508392608212,
+          "wallBegin": 1791571376357048453,
+          "wallEnd": 1791571376357494889,
+          "durationMs": 0.44645,
+          "beginRelativeMs": 29.432772,
+          "endRelativeMs": 29.879222,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "user-version-exec",
+          "begin": 344508392992989,
+          "end": 344508393954417,
+          "wallBegin": 1791571376357879665,
+          "wallEnd": 1791571376358841077,
+          "durationMs": 0.961428,
+          "beginRelativeMs": 30.263999,
+          "endRelativeMs": 31.225427,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.08,
+              "maxMs": 0.029
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "user-version-next",
+          "begin": 344508394298530,
+          "end": 344508394619227,
+          "wallBegin": 1791571376359185189,
+          "wallEnd": 1791571376359505886,
+          "durationMs": 0.320697,
+          "beginRelativeMs": 31.56954,
+          "endRelativeMs": 31.890237,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "history-initialize",
+          "begin": 344508391748728,
+          "end": 344508395115294,
+          "wallBegin": 1791571376356635415,
+          "wallEnd": 1791571376360001953,
+          "durationMs": 3.366566,
+          "beginRelativeMs": 29.019738,
+          "endRelativeMs": 32.386304,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.107,
+              "maxMs": 0.029
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "history-open",
+          "begin": 344508389467307,
+          "end": 344508395462318,
+          "wallBegin": 1791571376354354042,
+          "wallEnd": 1791571376360348981,
+          "durationMs": 5.995011,
+          "beginRelativeMs": 26.738317,
+          "endRelativeMs": 32.733328,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.107,
+              "maxMs": 0.029
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "history-commit",
+          "begin": 344508398947524,
+          "end": 344508404879647,
+          "wallBegin": 1791571376363834252,
+          "wallEnd": 1791571376369766308,
+          "durationMs": 5.932123,
+          "beginRelativeMs": 36.218534,
+          "endRelativeMs": 42.150657,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.081,
+              "maxMs": 0.022
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.716,
+              "maxMs": 1.995
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "history-save",
+          "begin": 344508395815669,
+          "end": 344508405086900,
+          "wallBegin": 1791571376360702331,
+          "wallEnd": 1791571376369973552,
+          "durationMs": 9.271231,
+          "beginRelativeMs": 33.086679,
+          "endRelativeMs": 42.35791,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.277,
+              "maxMs": 0.035
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.716,
+              "maxMs": 1.995
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330717,
+          "phase": "accepted-worker",
+          "begin": 344508388826272,
+          "end": 344508405487115,
+          "wallBegin": 1791571376353713139,
+          "wallEnd": 1791571376370373776,
+          "durationMs": 16.660843,
+          "beginRelativeMs": 26.097282,
+          "endRelativeMs": 42.758125,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.384,
+              "maxMs": 0.035
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.716,
+              "maxMs": 1.995
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 9,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330723,
+        "phase": "accepted-worker",
+        "begin": 344508641834111,
+        "end": 344508728731833,
+        "wallBegin": 1791571376606720817,
+        "wallEnd": 1791571376693618470,
+        "durationMs": 86.897722,
+        "beginRelativeMs": 26.23151,
+        "endRelativeMs": 113.129232,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.306,
+            "maxMs": 0.048
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 77.891,
+            "maxMs": 71.328
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "foreign-keys",
+          "begin": 344508643533913,
+          "end": 344508643908756,
+          "wallBegin": 1791571376608420572,
+          "wallEnd": 1791571376608795415,
+          "durationMs": 0.374843,
+          "beginRelativeMs": 27.931312,
+          "endRelativeMs": 28.306155,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "user-version-exec",
+          "begin": 344508644237805,
+          "end": 344508645144208,
+          "wallBegin": 1791571376609124487,
+          "wallEnd": 1791571376610030877,
+          "durationMs": 0.906403,
+          "beginRelativeMs": 28.635204,
+          "endRelativeMs": 29.541607,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.075,
+              "maxMs": 0.026
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "user-version-next",
+          "begin": 344508645515665,
+          "end": 344508645896541,
+          "wallBegin": 1791571376610402335,
+          "wallEnd": 1791571376610783201,
+          "durationMs": 0.380876,
+          "beginRelativeMs": 29.913064,
+          "endRelativeMs": 30.29394,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "history-initialize",
+          "begin": 344508643227174,
+          "end": 344508646429796,
+          "wallBegin": 1791571376608113832,
+          "wallEnd": 1791571376611316475,
+          "durationMs": 3.202622,
+          "beginRelativeMs": 27.624573,
+          "endRelativeMs": 30.827195,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.098,
+              "maxMs": 0.026
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "history-open",
+          "begin": 344508642094772,
+          "end": 344508646691543,
+          "wallBegin": 1791571376606981433,
+          "wallEnd": 1791571376611578205,
+          "durationMs": 4.596771,
+          "beginRelativeMs": 26.492171,
+          "endRelativeMs": 31.088942,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.098,
+              "maxMs": 0.026
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "history-commit",
+          "begin": 344508649110578,
+          "end": 344508728359631,
+          "wallBegin": 1791571376613997253,
+          "wallEnd": 1791571376693246287,
+          "durationMs": 79.249053,
+          "beginRelativeMs": 33.507977,
+          "endRelativeMs": 112.75703,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.09,
+              "maxMs": 0.048
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.891,
+              "maxMs": 71.328
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "history-save",
+          "begin": 344508646944066,
+          "end": 344508728482871,
+          "wallBegin": 1791571376611830718,
+          "wallEnd": 1791571376693369508,
+          "durationMs": 81.538805,
+          "beginRelativeMs": 31.341465,
+          "endRelativeMs": 112.88027,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.208,
+              "maxMs": 0.048
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.891,
+              "maxMs": 71.328
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330723,
+          "phase": "accepted-worker",
+          "begin": 344508641834111,
+          "end": 344508728731833,
+          "wallBegin": 1791571376606720817,
+          "wallEnd": 1791571376693618470,
+          "durationMs": 86.897722,
+          "beginRelativeMs": 26.23151,
+          "endRelativeMs": 113.129232,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.306,
+              "maxMs": 0.048
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.891,
+              "maxMs": 71.328
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 10,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330729,
+        "phase": "accepted-worker",
+        "begin": 344508913252294,
+        "end": 344508941388228,
+        "wallBegin": 1791571376878139075,
+        "wallEnd": 1791571376906274885,
+        "durationMs": 28.135934,
+        "beginRelativeMs": 20.165447,
+        "endRelativeMs": 48.301381,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.408,
+            "maxMs": 0.044
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 14.919,
+            "maxMs": 11.43
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "foreign-keys",
+          "begin": 344508916957004,
+          "end": 344508917442437,
+          "wallBegin": 1791571376881843676,
+          "wallEnd": 1791571376882329179,
+          "durationMs": 0.485433,
+          "beginRelativeMs": 23.870157,
+          "endRelativeMs": 24.35559,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "user-version-exec",
+          "begin": 344508917942112,
+          "end": 344508919209222,
+          "wallBegin": 1791571376882828874,
+          "wallEnd": 1791571376884095967,
+          "durationMs": 1.26711,
+          "beginRelativeMs": 24.855265,
+          "endRelativeMs": 26.122375,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.113,
+              "maxMs": 0.044
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "user-version-next",
+          "begin": 344508919609051,
+          "end": 344508919947298,
+          "wallBegin": 1791571376884495722,
+          "wallEnd": 1791571376884833970,
+          "durationMs": 0.338247,
+          "beginRelativeMs": 26.522204,
+          "endRelativeMs": 26.860451,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "history-initialize",
+          "begin": 344508916453289,
+          "end": 344508920507410,
+          "wallBegin": 1791571376881340010,
+          "wallEnd": 1791571376885394115,
+          "durationMs": 4.054121,
+          "beginRelativeMs": 23.366442,
+          "endRelativeMs": 27.420563,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.14,
+              "maxMs": 0.044
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "history-open",
+          "begin": 344508913844347,
+          "end": 344508920867923,
+          "wallBegin": 1791571376878731063,
+          "wallEnd": 1791571376885754595,
+          "durationMs": 7.023576,
+          "beginRelativeMs": 20.7575,
+          "endRelativeMs": 27.781076,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.14,
+              "maxMs": 0.044
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "history-commit",
+          "begin": 344508924391786,
+          "end": 344508940930766,
+          "wallBegin": 1791571376889278492,
+          "wallEnd": 1791571376905817434,
+          "durationMs": 16.53898,
+          "beginRelativeMs": 31.304939,
+          "endRelativeMs": 47.843919,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.095,
+              "maxMs": 0.034
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 14.919,
+              "maxMs": 11.43
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "history-save",
+          "begin": 344508921385035,
+          "end": 344508941088369,
+          "wallBegin": 1791571376886271706,
+          "wallEnd": 1791571376905975013,
+          "durationMs": 19.703334,
+          "beginRelativeMs": 28.298188,
+          "endRelativeMs": 48.001522,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.268,
+              "maxMs": 0.034
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 14.919,
+              "maxMs": 11.43
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330729,
+          "phase": "accepted-worker",
+          "begin": 344508913252294,
+          "end": 344508941388228,
+          "wallBegin": 1791571376878139075,
+          "wallEnd": 1791571376906274885,
+          "durationMs": 28.135934,
+          "beginRelativeMs": 20.165447,
+          "endRelativeMs": 48.301381,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.408,
+              "maxMs": 0.044
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 14.919,
+              "maxMs": 11.43
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 11,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330739,
+        "phase": "accepted-worker",
+        "begin": 344509150373597,
+        "end": 344509156605656,
+        "wallBegin": 1791571377115260254,
+        "wallEnd": 1791571377121492294,
+        "durationMs": 6.232059,
+        "beginRelativeMs": 4.580753,
+        "endRelativeMs": 10.812812,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.11900000000000001,
+            "maxMs": 0.01
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 2.493,
+            "maxMs": 1.259
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "foreign-keys",
+          "begin": 344509151088893,
+          "end": 344509151195235,
+          "wallBegin": 1791571377115975531,
+          "wallEnd": 1791571377116081874,
+          "durationMs": 0.106342,
+          "beginRelativeMs": 5.296049,
+          "endRelativeMs": 5.402391,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "user-version-exec",
+          "begin": 344509151285710,
+          "end": 344509151536461,
+          "wallBegin": 1791571377116172349,
+          "wallEnd": 1791571377116423100,
+          "durationMs": 0.250751,
+          "beginRelativeMs": 5.492866,
+          "endRelativeMs": 5.743617,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.021,
+              "maxMs": 0.008
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "user-version-next",
+          "begin": 344509151622254,
+          "end": 344509151715346,
+          "wallBegin": 1791571377116508893,
+          "wallEnd": 1791571377116601984,
+          "durationMs": 0.093092,
+          "beginRelativeMs": 5.82941,
+          "endRelativeMs": 5.922502,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "history-initialize",
+          "begin": 344509150976350,
+          "end": 344509151847090,
+          "wallBegin": 1791571377115862994,
+          "wallEnd": 1791571377116733728,
+          "durationMs": 0.87074,
+          "beginRelativeMs": 5.183506,
+          "endRelativeMs": 6.054246,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.028,
+              "maxMs": 0.008
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "history-open",
+          "begin": 344509150503637,
+          "end": 344509151938051,
+          "wallBegin": 1791571377115390275,
+          "wallEnd": 1791571377116824691,
+          "durationMs": 1.434414,
+          "beginRelativeMs": 4.710793,
+          "endRelativeMs": 6.145207,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.028,
+              "maxMs": 0.008
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "history-commit",
+          "begin": 344509153110117,
+          "end": 344509156248583,
+          "wallBegin": 1791571377117996771,
+          "wallEnd": 1791571377121135243,
+          "durationMs": 3.138466,
+          "beginRelativeMs": 7.317273,
+          "endRelativeMs": 10.455739,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.033,
+              "maxMs": 0.008
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.493,
+              "maxMs": 1.259
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "history-save",
+          "begin": 344509152037848,
+          "end": 344509156403835,
+          "wallBegin": 1791571377116924487,
+          "wallEnd": 1791571377121290473,
+          "durationMs": 4.365987,
+          "beginRelativeMs": 6.245004,
+          "endRelativeMs": 10.610991,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.091,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.493,
+              "maxMs": 1.259
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330739,
+          "phase": "accepted-worker",
+          "begin": 344509150373597,
+          "end": 344509156605656,
+          "wallBegin": 1791571377115260254,
+          "wallEnd": 1791571377121492294,
+          "durationMs": 6.232059,
+          "beginRelativeMs": 4.580753,
+          "endRelativeMs": 10.812812,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.11900000000000001,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.493,
+              "maxMs": 1.259
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 12,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330748,
+        "phase": "accepted-worker",
+        "begin": 344509386531504,
+        "end": 344509400583725,
+        "wallBegin": 1791571377351418235,
+        "wallEnd": 1791571377365470373,
+        "durationMs": 14.052221,
+        "beginRelativeMs": 23.111399,
+        "endRelativeMs": 37.16362,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.334,
+            "maxMs": 0.034
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 4.49,
+            "maxMs": 1.965
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "foreign-keys",
+          "begin": 344509388822713,
+          "end": 344509389247403,
+          "wallBegin": 1791571377353709375,
+          "wallEnd": 1791571377354134090,
+          "durationMs": 0.42469,
+          "beginRelativeMs": 25.402608,
+          "endRelativeMs": 25.827298,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "user-version-exec",
+          "begin": 344509389605814,
+          "end": 344509390374590,
+          "wallBegin": 1791571377354492485,
+          "wallEnd": 1791571377355261251,
+          "durationMs": 0.768776,
+          "beginRelativeMs": 26.185709,
+          "endRelativeMs": 26.954485,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.069,
+              "maxMs": 0.034
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "user-version-next",
+          "begin": 344509390685935,
+          "end": 344509391036567,
+          "wallBegin": 1791571377355572627,
+          "wallEnd": 1791571377355923226,
+          "durationMs": 0.350632,
+          "beginRelativeMs": 27.26583,
+          "endRelativeMs": 27.616462,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "history-initialize",
+          "begin": 344509388533214,
+          "end": 344509391469260,
+          "wallBegin": 1791571377353419896,
+          "wallEnd": 1791571377356355964,
+          "durationMs": 2.936046,
+          "beginRelativeMs": 25.113109,
+          "endRelativeMs": 28.049155,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.096,
+              "maxMs": 0.034
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "history-open",
+          "begin": 344509387113895,
+          "end": 344509391811194,
+          "wallBegin": 1791571377352000580,
+          "wallEnd": 1791571377356697864,
+          "durationMs": 4.697299,
+          "beginRelativeMs": 23.69379,
+          "endRelativeMs": 28.391089,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.096,
+              "maxMs": 0.034
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "history-commit",
+          "begin": 344509394607825,
+          "end": 344509400083643,
+          "wallBegin": 1791571377359494501,
+          "wallEnd": 1791571377364970327,
+          "durationMs": 5.475818,
+          "beginRelativeMs": 31.18772,
+          "endRelativeMs": 36.663538,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.06,
+              "maxMs": 0.014
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.49,
+              "maxMs": 1.965
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "history-save",
+          "begin": 344509392104812,
+          "end": 344509400246513,
+          "wallBegin": 1791571377356991463,
+          "wallEnd": 1791571377365133159,
+          "durationMs": 8.141701,
+          "beginRelativeMs": 28.684707,
+          "endRelativeMs": 36.826408,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.238,
+              "maxMs": 0.029
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.49,
+              "maxMs": 1.965
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330748,
+          "phase": "accepted-worker",
+          "begin": 344509386531504,
+          "end": 344509400583725,
+          "wallBegin": 1791571377351418235,
+          "wallEnd": 1791571377365470373,
+          "durationMs": 14.052221,
+          "beginRelativeMs": 23.111399,
+          "endRelativeMs": 37.16362,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.334,
+              "maxMs": 0.034
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.49,
+              "maxMs": 1.965
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 13,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330754,
+        "phase": "accepted-worker",
+        "begin": 344509603417430,
+        "end": 344509611576827,
+        "wallBegin": 1791571377568304087,
+        "wallEnd": 1791571377576463473,
+        "durationMs": 8.159397,
+        "beginRelativeMs": 4.238738,
+        "endRelativeMs": 12.398135,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.159,
+            "maxMs": 0.021
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 2.931,
+            "maxMs": 1.577
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "foreign-keys",
+          "begin": 344509604061462,
+          "end": 344509604202674,
+          "wallBegin": 1791571377568948102,
+          "wallEnd": 1791571377569089313,
+          "durationMs": 0.141212,
+          "beginRelativeMs": 4.88277,
+          "endRelativeMs": 5.023982,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "user-version-exec",
+          "begin": 344509604327371,
+          "end": 344509604746596,
+          "wallBegin": 1791571377569214008,
+          "wallEnd": 1791571377569633244,
+          "durationMs": 0.419225,
+          "beginRelativeMs": 5.148679,
+          "endRelativeMs": 5.567904,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.026,
+              "maxMs": 0.009
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "user-version-next",
+          "begin": 344509604881562,
+          "end": 344509605018472,
+          "wallBegin": 1791571377569768202,
+          "wallEnd": 1791571377569905114,
+          "durationMs": 0.13691,
+          "beginRelativeMs": 5.70287,
+          "endRelativeMs": 5.83978,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "history-initialize",
+          "begin": 344509603926379,
+          "end": 344509605211215,
+          "wallBegin": 1791571377568813018,
+          "wallEnd": 1791571377570097866,
+          "durationMs": 1.284836,
+          "beginRelativeMs": 4.747687,
+          "endRelativeMs": 6.032523,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.036,
+              "maxMs": 0.01
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "history-open",
+          "begin": 344509603517133,
+          "end": 344509605349499,
+          "wallBegin": 1791571377568403771,
+          "wallEnd": 1791571377570236153,
+          "durationMs": 1.832366,
+          "beginRelativeMs": 4.338441,
+          "endRelativeMs": 6.170807,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.036,
+              "maxMs": 0.01
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "history-commit",
+          "begin": 344509606918569,
+          "end": 344509611107196,
+          "wallBegin": 1791571377571805227,
+          "wallEnd": 1791571377575993847,
+          "durationMs": 4.188627,
+          "beginRelativeMs": 7.739877,
+          "endRelativeMs": 11.928504,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.059,
+              "maxMs": 0.021
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.931,
+              "maxMs": 1.577
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "history-save",
+          "begin": 344509605479739,
+          "end": 344509611278639,
+          "wallBegin": 1791571377570366382,
+          "wallEnd": 1791571377576165284,
+          "durationMs": 5.7989,
+          "beginRelativeMs": 6.301047,
+          "endRelativeMs": 12.099947,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.123,
+              "maxMs": 0.021
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.931,
+              "maxMs": 1.577
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330754,
+          "phase": "accepted-worker",
+          "begin": 344509603417430,
+          "end": 344509611576827,
+          "wallBegin": 1791571377568304087,
+          "wallEnd": 1791571377576463473,
+          "durationMs": 8.159397,
+          "beginRelativeMs": 4.238738,
+          "endRelativeMs": 12.398135,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.159,
+              "maxMs": 0.021
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.931,
+              "maxMs": 1.577
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 14,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330761,
+        "phase": "accepted-worker",
+        "begin": 344509845293180,
+        "end": 344509860780049,
+        "wallBegin": 1791571377810179840,
+        "wallEnd": 1791571377825666693,
+        "durationMs": 15.486869,
+        "beginRelativeMs": 11.845733,
+        "endRelativeMs": 27.332602,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.26,
+            "maxMs": 0.018
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 8.219,
+            "maxMs": 5.649
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "foreign-keys",
+          "begin": 344509846754388,
+          "end": 344509846982354,
+          "wallBegin": 1791571377811641048,
+          "wallEnd": 1791571377811869013,
+          "durationMs": 0.227966,
+          "beginRelativeMs": 13.306941,
+          "endRelativeMs": 13.534907,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "user-version-exec",
+          "begin": 344509847185246,
+          "end": 344509847690106,
+          "wallBegin": 1791571377812071899,
+          "wallEnd": 1791571377812576759,
+          "durationMs": 0.50486,
+          "beginRelativeMs": 13.737799,
+          "endRelativeMs": 14.242659,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.045,
+              "maxMs": 0.018
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "user-version-next",
+          "begin": 344509847890993,
+          "end": 344509848095285,
+          "wallBegin": 1791571377812777646,
+          "wallEnd": 1791571377812981936,
+          "durationMs": 0.204292,
+          "beginRelativeMs": 14.443546,
+          "endRelativeMs": 14.647838,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "history-initialize",
+          "begin": 344509846552481,
+          "end": 344509848335592,
+          "wallBegin": 1791571377811439171,
+          "wallEnd": 1791571377813222245,
+          "durationMs": 1.783111,
+          "beginRelativeMs": 13.105034,
+          "endRelativeMs": 14.888145,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.06,
+              "maxMs": 0.018
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "history-open",
+          "begin": 344509845560245,
+          "end": 344509848526418,
+          "wallBegin": 1791571377810446914,
+          "wallEnd": 1791571377813413071,
+          "durationMs": 2.966173,
+          "beginRelativeMs": 12.112798,
+          "endRelativeMs": 15.078971,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.06,
+              "maxMs": 0.018
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "history-commit",
+          "begin": 344509850705228,
+          "end": 344509860215550,
+          "wallBegin": 1791571377815591906,
+          "wallEnd": 1791571377825102201,
+          "durationMs": 9.510322,
+          "beginRelativeMs": 17.257781,
+          "endRelativeMs": 26.768103,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.077,
+              "maxMs": 0.018
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.219,
+              "maxMs": 5.649
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "history-save",
+          "begin": 344509848713264,
+          "end": 344509860404664,
+          "wallBegin": 1791571377813599915,
+          "wallEnd": 1791571377825291317,
+          "durationMs": 11.6914,
+          "beginRelativeMs": 15.265817,
+          "endRelativeMs": 26.957217,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.19999999999999998,
+              "maxMs": 0.018
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.219,
+              "maxMs": 5.649
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330761,
+          "phase": "accepted-worker",
+          "begin": 344509845293180,
+          "end": 344509860780049,
+          "wallBegin": 1791571377810179840,
+          "wallEnd": 1791571377825666693,
+          "durationMs": 15.486869,
+          "beginRelativeMs": 11.845733,
+          "endRelativeMs": 27.332602,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.26,
+              "maxMs": 0.018
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.219,
+              "maxMs": 5.649
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 15,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330767,
+        "phase": "accepted-worker",
+        "begin": 344510050467913,
+        "end": 344510066721858,
+        "wallBegin": 1791571378015354604,
+        "wallEnd": 1791571378031608538,
+        "durationMs": 16.253945,
+        "beginRelativeMs": 11.846567,
+        "endRelativeMs": 28.100512,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.606,
+            "maxMs": 0.065
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 2.957,
+            "maxMs": 1.405
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "foreign-keys",
+          "begin": 344510052459923,
+          "end": 344510053133927,
+          "wallBegin": 1791571378017346588,
+          "wallEnd": 1791571378018020607,
+          "durationMs": 0.674004,
+          "beginRelativeMs": 13.838577,
+          "endRelativeMs": 14.512581,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "user-version-exec",
+          "begin": 344510053555541,
+          "end": 344510054793615,
+          "wallBegin": 1791571378018442206,
+          "wallEnd": 1791571378019680328,
+          "durationMs": 1.238074,
+          "beginRelativeMs": 14.934195,
+          "endRelativeMs": 16.172269,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.166,
+              "maxMs": 0.065
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "user-version-next",
+          "begin": 344510055233021,
+          "end": 344510055624648,
+          "wallBegin": 1791571378020119686,
+          "wallEnd": 1791571378020511333,
+          "durationMs": 0.391627,
+          "beginRelativeMs": 16.611675,
+          "endRelativeMs": 17.003302,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "history-initialize",
+          "begin": 344510052181907,
+          "end": 344510056209349,
+          "wallBegin": 1791571378017068596,
+          "wallEnd": 1791571378021096014,
+          "durationMs": 4.027442,
+          "beginRelativeMs": 13.560561,
+          "endRelativeMs": 17.588003,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.20800000000000002,
+              "maxMs": 0.065
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "history-open",
+          "begin": 344510050821049,
+          "end": 344510056532885,
+          "wallBegin": 1791571378015707720,
+          "wallEnd": 1791571378021419550,
+          "durationMs": 5.711836,
+          "beginRelativeMs": 12.199703,
+          "endRelativeMs": 17.911539,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.20800000000000002,
+              "maxMs": 0.065
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "history-commit",
+          "begin": 344510060470428,
+          "end": 344510065625007,
+          "wallBegin": 1791571378025357184,
+          "wallEnd": 1791571378030511721,
+          "durationMs": 5.154579,
+          "beginRelativeMs": 21.849082,
+          "endRelativeMs": 27.003661,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.138,
+              "maxMs": 0.051
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.957,
+              "maxMs": 1.405
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "history-save",
+          "begin": 344510056906299,
+          "end": 344510066037065,
+          "wallBegin": 1791571378021792975,
+          "wallEnd": 1791571378030923759,
+          "durationMs": 9.130766,
+          "beginRelativeMs": 18.284953,
+          "endRelativeMs": 27.415719,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.398,
+              "maxMs": 0.059
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.957,
+              "maxMs": 1.405
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330767,
+          "phase": "accepted-worker",
+          "begin": 344510050467913,
+          "end": 344510066721858,
+          "wallBegin": 1791571378015354604,
+          "wallEnd": 1791571378031608538,
+          "durationMs": 16.253945,
+          "beginRelativeMs": 11.846567,
+          "endRelativeMs": 28.100512,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.606,
+              "maxMs": 0.065
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.957,
+              "maxMs": 1.405
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 16,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330773,
+        "phase": "accepted-worker",
+        "begin": 344510296087376,
+        "end": 344510324849687,
+        "wallBegin": 1791571378260974096,
+        "wallEnd": 1791571378289736375,
+        "durationMs": 28.762311,
+        "beginRelativeMs": 17.906691,
+        "endRelativeMs": 46.669002,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.478,
+            "maxMs": 0.046
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 14.121,
+            "maxMs": 11.981
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "foreign-keys",
+          "begin": 344510300088966,
+          "end": 344510300801827,
+          "wallBegin": 1791571378264975666,
+          "wallEnd": 1791571378265688552,
+          "durationMs": 0.712861,
+          "beginRelativeMs": 21.908281,
+          "endRelativeMs": 22.621142,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "user-version-exec",
+          "begin": 344510301442907,
+          "end": 344510302673592,
+          "wallBegin": 1791571378266329585,
+          "wallEnd": 1791571378267560284,
+          "durationMs": 1.230685,
+          "beginRelativeMs": 23.262222,
+          "endRelativeMs": 24.492907,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.102,
+              "maxMs": 0.045
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "user-version-next",
+          "begin": 344510303095707,
+          "end": 344510303519835,
+          "wallBegin": 1791571378267982407,
+          "wallEnd": 1791571378268406505,
+          "durationMs": 0.424128,
+          "beginRelativeMs": 24.915022,
+          "endRelativeMs": 25.33915,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "history-initialize",
+          "begin": 344510299374145,
+          "end": 344510304107640,
+          "wallBegin": 1791571378264260853,
+          "wallEnd": 1791571378268994340,
+          "durationMs": 4.733495,
+          "beginRelativeMs": 21.19346,
+          "endRelativeMs": 25.926955,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.132,
+              "maxMs": 0.045
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "history-open",
+          "begin": 344510296928392,
+          "end": 344510304519292,
+          "wallBegin": 1791571378261815115,
+          "wallEnd": 1791571378269406030,
+          "durationMs": 7.5909,
+          "beginRelativeMs": 18.747707,
+          "endRelativeMs": 26.338607,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.132,
+              "maxMs": 0.045
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "history-commit",
+          "begin": 344510308609364,
+          "end": 344510324277475,
+          "wallBegin": 1791571378273496039,
+          "wallEnd": 1791571378289164129,
+          "durationMs": 15.668111,
+          "beginRelativeMs": 30.428679,
+          "endRelativeMs": 46.09679,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.087,
+              "maxMs": 0.031
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 14.121,
+              "maxMs": 11.981
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "history-save",
+          "begin": 344510304948500,
+          "end": 344510324437677,
+          "wallBegin": 1791571378269835253,
+          "wallEnd": 1791571378289324333,
+          "durationMs": 19.489177,
+          "beginRelativeMs": 26.767815,
+          "endRelativeMs": 46.256992,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.34600000000000003,
+              "maxMs": 0.046
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 14.121,
+              "maxMs": 11.981
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330773,
+          "phase": "accepted-worker",
+          "begin": 344510296087376,
+          "end": 344510324849687,
+          "wallBegin": 1791571378260974096,
+          "wallEnd": 1791571378289736375,
+          "durationMs": 28.762311,
+          "beginRelativeMs": 17.906691,
+          "endRelativeMs": 46.669002,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.478,
+              "maxMs": 0.046
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 14.121,
+              "maxMs": 11.981
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 17,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330779,
+        "phase": "accepted-worker",
+        "begin": 344510513597266,
+        "end": 344510520928100,
+        "wallBegin": 1791571378478483915,
+        "wallEnd": 1791571378485814742,
+        "durationMs": 7.330834,
+        "beginRelativeMs": 4.718053,
+        "endRelativeMs": 12.048887,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.293,
+            "maxMs": 0.065
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 2.322,
+            "maxMs": 1.035
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "foreign-keys",
+          "begin": 344510514375175,
+          "end": 344510514520114,
+          "wallBegin": 1791571378479261817,
+          "wallEnd": 1791571378479406762,
+          "durationMs": 0.144939,
+          "beginRelativeMs": 5.495962,
+          "endRelativeMs": 5.640901,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "user-version-exec",
+          "begin": 344510514649962,
+          "end": 344510515017948,
+          "wallBegin": 1791571378479536603,
+          "wallEnd": 1791571378479904596,
+          "durationMs": 0.367986,
+          "beginRelativeMs": 5.770749,
+          "endRelativeMs": 6.138735,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.027999999999999997,
+              "maxMs": 0.01
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "user-version-next",
+          "begin": 344510515141206,
+          "end": 344510515267779,
+          "wallBegin": 1791571378480027844,
+          "wallEnd": 1791571378480154417,
+          "durationMs": 0.126573,
+          "beginRelativeMs": 6.261993,
+          "endRelativeMs": 6.388566,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "history-initialize",
+          "begin": 344510514249416,
+          "end": 344510515444664,
+          "wallBegin": 1791571378479136056,
+          "wallEnd": 1791571378480331304,
+          "durationMs": 1.195248,
+          "beginRelativeMs": 5.370203,
+          "endRelativeMs": 6.565451,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.036,
+              "maxMs": 0.01
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "history-open",
+          "begin": 344510513741338,
+          "end": 344510515572871,
+          "wallBegin": 1791571378478627982,
+          "wallEnd": 1791571378480459512,
+          "durationMs": 1.831533,
+          "beginRelativeMs": 4.862125,
+          "endRelativeMs": 6.693658,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.036,
+              "maxMs": 0.01
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "history-commit",
+          "begin": 344510517278032,
+          "end": 344510520547608,
+          "wallBegin": 1791571378482164688,
+          "wallEnd": 1791571378485434263,
+          "durationMs": 3.269576,
+          "beginRelativeMs": 8.398819,
+          "endRelativeMs": 11.668395,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.179,
+              "maxMs": 0.065
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.322,
+              "maxMs": 1.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "history-save",
+          "begin": 344510515698114,
+          "end": 344510520680582,
+          "wallBegin": 1791571378480584753,
+          "wallEnd": 1791571378485567224,
+          "durationMs": 4.982468,
+          "beginRelativeMs": 6.818901,
+          "endRelativeMs": 11.801369,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.257,
+              "maxMs": 0.065
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.322,
+              "maxMs": 1.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330779,
+          "phase": "accepted-worker",
+          "begin": 344510513597266,
+          "end": 344510520928100,
+          "wallBegin": 1791571378478483915,
+          "wallEnd": 1791571378485814742,
+          "durationMs": 7.330834,
+          "beginRelativeMs": 4.718053,
+          "endRelativeMs": 12.048887,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.293,
+              "maxMs": 0.065
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 2.322,
+              "maxMs": 1.035
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 18,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330785,
+        "phase": "accepted-worker",
+        "begin": 344510721344721,
+        "end": 344510748656585,
+        "wallBegin": 1791571378686231378,
+        "wallEnd": 1791571378713543226,
+        "durationMs": 27.311864,
+        "beginRelativeMs": 10.431397,
+        "endRelativeMs": 37.743261,
+        "syscalls": {
+          "clock_nanosleep": {
+            "count": 4,
+            "totalMs": 18.308,
+            "maxMs": 10.067
+          },
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.187,
+            "maxMs": 0.035
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.54,
+            "maxMs": 1.449
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "foreign-keys",
+          "begin": 344510722047589,
+          "end": 344510722153295,
+          "wallBegin": 1791571378686934226,
+          "wallEnd": 1791571378687039940,
+          "durationMs": 0.105706,
+          "beginRelativeMs": 11.134265,
+          "endRelativeMs": 11.239971,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "user-version-exec",
+          "begin": 344510722246433,
+          "end": 344510741120121,
+          "wallBegin": 1791571378687133073,
+          "wallEnd": 1791571378706006787,
+          "durationMs": 18.873688,
+          "beginRelativeMs": 11.333109,
+          "endRelativeMs": 30.206797,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.308,
+              "maxMs": 10.067
+            },
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.020999999999999998,
+              "maxMs": 0.009
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "user-version-next",
+          "begin": 344510741237822,
+          "end": 344510741348588,
+          "wallBegin": 1791571378706124461,
+          "wallEnd": 1791571378706235224,
+          "durationMs": 0.110766,
+          "beginRelativeMs": 30.324498,
+          "endRelativeMs": 30.435264,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "history-initialize",
+          "begin": 344510721940680,
+          "end": 344510741519471,
+          "wallBegin": 1791571378686827319,
+          "wallEnd": 1791571378706406122,
+          "durationMs": 19.578791,
+          "beginRelativeMs": 11.027356,
+          "endRelativeMs": 30.606147,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.308,
+              "maxMs": 10.067
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.028,
+              "maxMs": 0.009
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "history-open",
+          "begin": 344510721467335,
+          "end": 344510741624878,
+          "wallBegin": 1791571378686353972,
+          "wallEnd": 1791571378706511520,
+          "durationMs": 20.157543,
+          "beginRelativeMs": 10.554011,
+          "endRelativeMs": 30.711554,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.308,
+              "maxMs": 10.067
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.028,
+              "maxMs": 0.009
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "history-commit",
+          "begin": 344510743504092,
+          "end": 344510748256520,
+          "wallBegin": 1791571378708390741,
+          "wallEnd": 1791571378713143174,
+          "durationMs": 4.752428,
+          "beginRelativeMs": 32.590768,
+          "endRelativeMs": 37.343196,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.068,
+              "maxMs": 0.03
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.54,
+              "maxMs": 1.449
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "history-save",
+          "begin": 344510741729352,
+          "end": 344510748380684,
+          "wallBegin": 1791571378706616000,
+          "wallEnd": 1791571378713267321,
+          "durationMs": 6.651332,
+          "beginRelativeMs": 30.816028,
+          "endRelativeMs": 37.46736,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.159,
+              "maxMs": 0.035
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.54,
+              "maxMs": 1.449
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330785,
+          "phase": "accepted-worker",
+          "begin": 344510721344721,
+          "end": 344510748656585,
+          "wallBegin": 1791571378686231378,
+          "wallEnd": 1791571378713543226,
+          "durationMs": 27.311864,
+          "beginRelativeMs": 10.431397,
+          "endRelativeMs": 37.743261,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 4,
+              "totalMs": 18.308,
+              "maxMs": 10.067
+            },
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.187,
+              "maxMs": 0.035
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.54,
+              "maxMs": 1.449
+            }
+          }
+        }
+      ],
+      "priorOverlaps": [
+        {
+          "pid": 3330624,
+          "tid": 3330783,
+          "phase": "history-commit",
+          "begin": 344510638211210,
+          "end": 344510734491205,
+          "wallBegin": 1791571378603097877,
+          "wallEnd": 1791571378699377869,
+          "durationMs": 96.279995,
+          "beginRelativeMs": -72.702114,
+          "endRelativeMs": 23.577881,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.05,
+              "maxMs": 0.019
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 95.203,
+              "maxMs": 83.149
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330783,
+          "phase": "finish-worker",
+          "begin": 344510635558921,
+          "end": 344510735329703,
+          "wallBegin": 1791571378600445562,
+          "wallEnd": 1791571378700216369,
+          "durationMs": 99.770782,
+          "beginRelativeMs": -75.354403,
+          "endRelativeMs": 24.416379,
+          "syscalls": {
+            "fcntl": {
+              "count": 21,
+              "totalMs": 0.16,
+              "maxMs": 0.019
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 95.203,
+              "maxMs": 83.149
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 19,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330791,
+        "phase": "accepted-worker",
+        "begin": 344510968312147,
+        "end": 344511248050438,
+        "wallBegin": 1791571378933198839,
+        "wallEnd": 1791571379212937113,
+        "durationMs": 279.738291,
+        "beginRelativeMs": 20.206033,
+        "endRelativeMs": 299.944324,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.479,
+            "maxMs": 0.077
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 268.275,
+            "maxMs": 171.402
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "foreign-keys",
+          "begin": 344510970220240,
+          "end": 344510970615511,
+          "wallBegin": 1791571378935106926,
+          "wallEnd": 1791571378935502198,
+          "durationMs": 0.395271,
+          "beginRelativeMs": 22.114126,
+          "endRelativeMs": 22.509397,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "user-version-exec",
+          "begin": 344510970921168,
+          "end": 344510971693645,
+          "wallBegin": 1791571378935807854,
+          "wallEnd": 1791571378936580316,
+          "durationMs": 0.772477,
+          "beginRelativeMs": 22.815054,
+          "endRelativeMs": 23.587531,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.063,
+              "maxMs": 0.024
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "user-version-next",
+          "begin": 344510971993071,
+          "end": 344510972360167,
+          "wallBegin": 1791571378936879745,
+          "wallEnd": 1791571378937246838,
+          "durationMs": 0.367096,
+          "beginRelativeMs": 23.886957,
+          "endRelativeMs": 24.254053,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "history-initialize",
+          "begin": 344510969847080,
+          "end": 344510972783595,
+          "wallBegin": 1791571378934733804,
+          "wallEnd": 1791571378937670266,
+          "durationMs": 2.936515,
+          "beginRelativeMs": 21.740966,
+          "endRelativeMs": 24.677481,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.08499999999999999,
+              "maxMs": 0.024
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "history-open",
+          "begin": 344510968690613,
+          "end": 344510973148046,
+          "wallBegin": 1791571378933577314,
+          "wallEnd": 1791571378938034720,
+          "durationMs": 4.457433,
+          "beginRelativeMs": 20.584499,
+          "endRelativeMs": 25.041932,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.08499999999999999,
+              "maxMs": 0.024
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "history-commit",
+          "begin": 344510976661900,
+          "end": 344511247256467,
+          "wallBegin": 1791571378941548621,
+          "wallEnd": 1791571379212143170,
+          "durationMs": 270.594567,
+          "beginRelativeMs": 28.555786,
+          "endRelativeMs": 299.150353,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.178,
+              "maxMs": 0.077
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 268.275,
+              "maxMs": 171.402
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "history-save",
+          "begin": 344510973468751,
+          "end": 344511247518153,
+          "wallBegin": 1791571378938355423,
+          "wallEnd": 1791571379212404817,
+          "durationMs": 274.049402,
+          "beginRelativeMs": 25.362637,
+          "endRelativeMs": 299.412039,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.394,
+              "maxMs": 0.077
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 268.275,
+              "maxMs": 171.402
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330791,
+          "phase": "accepted-worker",
+          "begin": 344510968312147,
+          "end": 344511248050438,
+          "wallBegin": 1791571378933198839,
+          "wallEnd": 1791571379212937113,
+          "durationMs": 279.738291,
+          "beginRelativeMs": 20.206033,
+          "endRelativeMs": 299.944324,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.479,
+              "maxMs": 0.077
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 268.275,
+              "maxMs": 171.402
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 20,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330806,
+        "phase": "accepted-worker",
+        "begin": 344511615120956,
+        "end": 344511724934851,
+        "wallBegin": 1791571379580007707,
+        "wallEnd": 1791571379689821493,
+        "durationMs": 109.813895,
+        "beginRelativeMs": 17.239573,
+        "endRelativeMs": 127.053468,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.676,
+            "maxMs": 0.079
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 94.53099999999999,
+            "maxMs": 92.681
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "foreign-keys",
+          "begin": 344511617793787,
+          "end": 344511618342889,
+          "wallBegin": 1791571379582680483,
+          "wallEnd": 1791571379583229570,
+          "durationMs": 0.549102,
+          "beginRelativeMs": 19.912404,
+          "endRelativeMs": 20.461506,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "user-version-exec",
+          "begin": 344511618840888,
+          "end": 344511620114211,
+          "wallBegin": 1791571379583727570,
+          "wallEnd": 1791571379585000890,
+          "durationMs": 1.273323,
+          "beginRelativeMs": 20.959505,
+          "endRelativeMs": 22.232828,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.093,
+              "maxMs": 0.04
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "user-version-next",
+          "begin": 344511620615902,
+          "end": 344511621145585,
+          "wallBegin": 1791571379585502582,
+          "wallEnd": 1791571379586032282,
+          "durationMs": 0.529683,
+          "beginRelativeMs": 22.734519,
+          "endRelativeMs": 23.264202,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "history-initialize",
+          "begin": 344511617276974,
+          "end": 344511621860087,
+          "wallBegin": 1791571379582163688,
+          "wallEnd": 1791571379586746765,
+          "durationMs": 4.583113,
+          "beginRelativeMs": 19.395591,
+          "endRelativeMs": 23.978704,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.134,
+              "maxMs": 0.041
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "history-open",
+          "begin": 344511615526408,
+          "end": 344511622394788,
+          "wallBegin": 1791571379580413088,
+          "wallEnd": 1791571379587281469,
+          "durationMs": 6.86838,
+          "beginRelativeMs": 17.645025,
+          "endRelativeMs": 24.513405,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.134,
+              "maxMs": 0.041
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "history-commit",
+          "begin": 344511628327606,
+          "end": 344511724378112,
+          "wallBegin": 1791571379593214346,
+          "wallEnd": 1791571379689264770,
+          "durationMs": 96.050506,
+          "beginRelativeMs": 30.446223,
+          "endRelativeMs": 126.496729,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.109,
+              "maxMs": 0.031
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 94.53099999999999,
+              "maxMs": 92.681
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "history-save",
+          "begin": 344511622918001,
+          "end": 344511724565386,
+          "wallBegin": 1791571379587804686,
+          "wallEnd": 1791571379689452039,
+          "durationMs": 101.647385,
+          "beginRelativeMs": 25.036618,
+          "endRelativeMs": 126.684003,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.542,
+              "maxMs": 0.079
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 94.53099999999999,
+              "maxMs": 92.681
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330806,
+          "phase": "accepted-worker",
+          "begin": 344511615120956,
+          "end": 344511724934851,
+          "wallBegin": 1791571379580007707,
+          "wallEnd": 1791571379689821493,
+          "durationMs": 109.813895,
+          "beginRelativeMs": 17.239573,
+          "endRelativeMs": 127.053468,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.676,
+              "maxMs": 0.079
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 94.53099999999999,
+              "maxMs": 92.681
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 21,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330812,
+        "phase": "accepted-worker",
+        "begin": 344512081116355,
+        "end": 344512093137498,
+        "wallBegin": 1791571380046002997,
+        "wallEnd": 1791571380058024139,
+        "durationMs": 12.021143,
+        "beginRelativeMs": 5.888167,
+        "endRelativeMs": 17.90931,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.136,
+            "maxMs": 0.02
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 7.574000000000001,
+            "maxMs": 5.488
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "foreign-keys",
+          "begin": 344512081727212,
+          "end": 344512081846041,
+          "wallBegin": 1791571380046613855,
+          "wallEnd": 1791571380046732683,
+          "durationMs": 0.118829,
+          "beginRelativeMs": 6.499024,
+          "endRelativeMs": 6.617853,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "user-version-exec",
+          "begin": 344512081980592,
+          "end": 344512082366007,
+          "wallBegin": 1791571380046867234,
+          "wallEnd": 1791571380047252648,
+          "durationMs": 0.385415,
+          "beginRelativeMs": 6.752404,
+          "endRelativeMs": 7.137819,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.028,
+              "maxMs": 0.014
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "user-version-next",
+          "begin": 344512082451085,
+          "end": 344512082532831,
+          "wallBegin": 1791571380047337722,
+          "wallEnd": 1791571380047419468,
+          "durationMs": 0.081746,
+          "beginRelativeMs": 7.222897,
+          "endRelativeMs": 7.304643,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "history-initialize",
+          "begin": 344512081635284,
+          "end": 344512082659878,
+          "wallBegin": 1791571380046521926,
+          "wallEnd": 1791571380047546516,
+          "durationMs": 1.024594,
+          "beginRelativeMs": 6.407096,
+          "endRelativeMs": 7.43169,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.034,
+              "maxMs": 0.014
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "history-open",
+          "begin": 344512081232576,
+          "end": 344512082741593,
+          "wallBegin": 1791571380046119218,
+          "wallEnd": 1791571380047628231,
+          "durationMs": 1.509017,
+          "beginRelativeMs": 6.004388,
+          "endRelativeMs": 7.513405,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.034,
+              "maxMs": 0.014
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "history-commit",
+          "begin": 344512083839578,
+          "end": 344512092682197,
+          "wallBegin": 1791571380048726230,
+          "wallEnd": 1791571380057568841,
+          "durationMs": 8.842619,
+          "beginRelativeMs": 8.61139,
+          "endRelativeMs": 17.454009,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.051,
+              "maxMs": 0.02
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 7.574000000000001,
+              "maxMs": 5.488
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "history-save",
+          "begin": 344512082823625,
+          "end": 344512092817580,
+          "wallBegin": 1791571380047710263,
+          "wallEnd": 1791571380057704221,
+          "durationMs": 9.993955,
+          "beginRelativeMs": 7.595437,
+          "endRelativeMs": 17.589392,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.10200000000000001,
+              "maxMs": 0.02
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 7.574000000000001,
+              "maxMs": 5.488
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330812,
+          "phase": "accepted-worker",
+          "begin": 344512081116355,
+          "end": 344512093137498,
+          "wallBegin": 1791571380046002997,
+          "wallEnd": 1791571380058024139,
+          "durationMs": 12.021143,
+          "beginRelativeMs": 5.888167,
+          "endRelativeMs": 17.90931,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.136,
+              "maxMs": 0.02
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 7.574000000000001,
+              "maxMs": 5.488
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 22,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330818,
+        "phase": "accepted-worker",
+        "begin": 344512332625790,
+        "end": 344512346094264,
+        "wallBegin": 1791571380297512476,
+        "wallEnd": 1791571380310980924,
+        "durationMs": 13.468474,
+        "beginRelativeMs": 20.538069,
+        "endRelativeMs": 34.006543,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.319,
+            "maxMs": 0.03
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.83,
+            "maxMs": 1.499
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "foreign-keys",
+          "begin": 344512334615348,
+          "end": 344512334949558,
+          "wallBegin": 1791571380299502021,
+          "wallEnd": 1791571380299836229,
+          "durationMs": 0.33421,
+          "beginRelativeMs": 22.527627,
+          "endRelativeMs": 22.861837,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "user-version-exec",
+          "begin": 344512335308872,
+          "end": 344512336187378,
+          "wallBegin": 1791571380300195543,
+          "wallEnd": 1791571380301074118,
+          "durationMs": 0.878506,
+          "beginRelativeMs": 23.221151,
+          "endRelativeMs": 24.099657,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.076,
+              "maxMs": 0.03
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "user-version-next",
+          "begin": 344512336554033,
+          "end": 344512336908508,
+          "wallBegin": 1791571380301440739,
+          "wallEnd": 1791571380301795181,
+          "durationMs": 0.354475,
+          "beginRelativeMs": 24.466312,
+          "endRelativeMs": 24.820787,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "history-initialize",
+          "begin": 344512334303036,
+          "end": 344512337250984,
+          "wallBegin": 1791571380299189708,
+          "wallEnd": 1791571380302137643,
+          "durationMs": 2.947948,
+          "beginRelativeMs": 22.215315,
+          "endRelativeMs": 25.163263,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.094,
+              "maxMs": 0.03
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "history-open",
+          "begin": 344512332969754,
+          "end": 344512337491796,
+          "wallBegin": 1791571380297856440,
+          "wallEnd": 1791571380302378456,
+          "durationMs": 4.522042,
+          "beginRelativeMs": 20.882033,
+          "endRelativeMs": 25.404075,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.094,
+              "maxMs": 0.03
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "history-commit",
+          "begin": 344512340305135,
+          "end": 344512345466132,
+          "wallBegin": 1791571380305191822,
+          "wallEnd": 1791571380310352792,
+          "durationMs": 5.160997,
+          "beginRelativeMs": 28.217414,
+          "endRelativeMs": 33.378411,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.078,
+              "maxMs": 0.022
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.83,
+              "maxMs": 1.499
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "history-save",
+          "begin": 344512337728340,
+          "end": 344512345677800,
+          "wallBegin": 1791571380302615000,
+          "wallEnd": 1791571380310564459,
+          "durationMs": 7.94946,
+          "beginRelativeMs": 25.640619,
+          "endRelativeMs": 33.590079,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.225,
+              "maxMs": 0.027
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.83,
+              "maxMs": 1.499
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330818,
+          "phase": "accepted-worker",
+          "begin": 344512332625790,
+          "end": 344512346094264,
+          "wallBegin": 1791571380297512476,
+          "wallEnd": 1791571380310980924,
+          "durationMs": 13.468474,
+          "beginRelativeMs": 20.538069,
+          "endRelativeMs": 34.006543,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.319,
+              "maxMs": 0.03
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.83,
+              "maxMs": 1.499
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 23,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330824,
+        "phase": "accepted-worker",
+        "begin": 344512556378862,
+        "end": 344512565936373,
+        "wallBegin": 1791571380521265530,
+        "wallEnd": 1791571380530823039,
+        "durationMs": 9.557511,
+        "beginRelativeMs": 5.850301,
+        "endRelativeMs": 15.407812,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.196,
+            "maxMs": 0.018
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.778,
+            "maxMs": 2.295
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "foreign-keys",
+          "begin": 344512557102217,
+          "end": 344512557243836,
+          "wallBegin": 1791571380521988860,
+          "wallEnd": 1791571380522130479,
+          "durationMs": 0.141619,
+          "beginRelativeMs": 6.573656,
+          "endRelativeMs": 6.715275,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "user-version-exec",
+          "begin": 344512557359382,
+          "end": 344512557717804,
+          "wallBegin": 1791571380522246025,
+          "wallEnd": 1791571380522604450,
+          "durationMs": 0.358422,
+          "beginRelativeMs": 6.830821,
+          "endRelativeMs": 7.189243,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.027999999999999997,
+              "maxMs": 0.011
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "user-version-next",
+          "begin": 344512557874319,
+          "end": 344512558039480,
+          "wallBegin": 1791571380522760963,
+          "wallEnd": 1791571380522926129,
+          "durationMs": 0.165161,
+          "beginRelativeMs": 7.345758,
+          "endRelativeMs": 7.510919,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "history-initialize",
+          "begin": 344512556962851,
+          "end": 344512558263758,
+          "wallBegin": 1791571380521849495,
+          "wallEnd": 1791571380523150401,
+          "durationMs": 1.300907,
+          "beginRelativeMs": 6.43429,
+          "endRelativeMs": 7.735197,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.040999999999999995,
+              "maxMs": 0.013
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "history-open",
+          "begin": 344512556512121,
+          "end": 344512558525103,
+          "wallBegin": 1791571380521398763,
+          "wallEnd": 1791571380523411770,
+          "durationMs": 2.012982,
+          "beginRelativeMs": 5.98356,
+          "endRelativeMs": 7.996542,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.040999999999999995,
+              "maxMs": 0.013
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "history-commit",
+          "begin": 344512560341518,
+          "end": 344512565199170,
+          "wallBegin": 1791571380525228181,
+          "wallEnd": 1791571380530085827,
+          "durationMs": 4.857652,
+          "beginRelativeMs": 9.812957,
+          "endRelativeMs": 14.670609,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.068,
+              "maxMs": 0.018
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.778,
+              "maxMs": 2.295
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "history-save",
+          "begin": 344512558839902,
+          "end": 344512565522945,
+          "wallBegin": 1791571380523726546,
+          "wallEnd": 1791571380530409621,
+          "durationMs": 6.683043,
+          "beginRelativeMs": 8.311341,
+          "endRelativeMs": 14.994384,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.155,
+              "maxMs": 0.018
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.778,
+              "maxMs": 2.295
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330824,
+          "phase": "accepted-worker",
+          "begin": 344512556378862,
+          "end": 344512565936373,
+          "wallBegin": 1791571380521265530,
+          "wallEnd": 1791571380530823039,
+          "durationMs": 9.557511,
+          "beginRelativeMs": 5.850301,
+          "endRelativeMs": 15.407812,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.196,
+              "maxMs": 0.018
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.778,
+              "maxMs": 2.295
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 24,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330830,
+        "phase": "accepted-worker",
+        "begin": 344512775318741,
+        "end": 344512788283823,
+        "wallBegin": 1791571380740205385,
+        "wallEnd": 1791571380753170464,
+        "durationMs": 12.965082,
+        "beginRelativeMs": 4.229596,
+        "endRelativeMs": 17.194678,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.159,
+            "maxMs": 0.026
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 8.658,
+            "maxMs": 5.587
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "foreign-keys",
+          "begin": 344512775947603,
+          "end": 344512776095252,
+          "wallBegin": 1791571380740834242,
+          "wallEnd": 1791571380740981892,
+          "durationMs": 0.147649,
+          "beginRelativeMs": 4.858458,
+          "endRelativeMs": 5.006107,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "user-version-exec",
+          "begin": 344512776202163,
+          "end": 344512776472245,
+          "wallBegin": 1791571380741088802,
+          "wallEnd": 1791571380741358885,
+          "durationMs": 0.270082,
+          "beginRelativeMs": 5.113018,
+          "endRelativeMs": 5.3831,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.023,
+              "maxMs": 0.008
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "user-version-next",
+          "begin": 344512776570241,
+          "end": 344512776675738,
+          "wallBegin": 1791571380741456880,
+          "wallEnd": 1791571380741562378,
+          "durationMs": 0.105497,
+          "beginRelativeMs": 5.481096,
+          "endRelativeMs": 5.586593,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "history-initialize",
+          "begin": 344512775836557,
+          "end": 344512776839441,
+          "wallBegin": 1791571380740723196,
+          "wallEnd": 1791571380741726082,
+          "durationMs": 1.002884,
+          "beginRelativeMs": 4.747412,
+          "endRelativeMs": 5.750296,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.049,
+              "maxMs": 0.026
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "history-open",
+          "begin": 344512775432429,
+          "end": 344512776942088,
+          "wallBegin": 1791571380740319072,
+          "wallEnd": 1791571380741828729,
+          "durationMs": 1.509659,
+          "beginRelativeMs": 4.343284,
+          "endRelativeMs": 5.852943,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.049,
+              "maxMs": 0.026
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "history-commit",
+          "begin": 344512778383764,
+          "end": 344512787923827,
+          "wallBegin": 1791571380743270413,
+          "wallEnd": 1791571380752810490,
+          "durationMs": 9.540063,
+          "beginRelativeMs": 7.294619,
+          "endRelativeMs": 16.834682,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.039,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.658,
+              "maxMs": 5.587
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "history-save",
+          "begin": 344512777065524,
+          "end": 344512788055228,
+          "wallBegin": 1791571380741952166,
+          "wallEnd": 1791571380752941869,
+          "durationMs": 10.989704,
+          "beginRelativeMs": 5.976379,
+          "endRelativeMs": 16.966083,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.11,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.658,
+              "maxMs": 5.587
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330830,
+          "phase": "accepted-worker",
+          "begin": 344512775318741,
+          "end": 344512788283823,
+          "wallBegin": 1791571380740205385,
+          "wallEnd": 1791571380753170464,
+          "durationMs": 12.965082,
+          "beginRelativeMs": 4.229596,
+          "endRelativeMs": 17.194678,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.159,
+              "maxMs": 0.026
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.658,
+              "maxMs": 5.587
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 25,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330836,
+        "phase": "accepted-worker",
+        "begin": 344513019971584,
+        "end": 344513035496684,
+        "wallBegin": 1791571380984858289,
+        "wallEnd": 1791571381000383341,
+        "durationMs": 15.5251,
+        "beginRelativeMs": 25.47763,
+        "endRelativeMs": 41.00273,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.411,
+            "maxMs": 0.035
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 4.347,
+            "maxMs": 2.084
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "foreign-keys",
+          "begin": 344513022712806,
+          "end": 344513023141151,
+          "wallBegin": 1791571380987599468,
+          "wallEnd": 1791571380988027809,
+          "durationMs": 0.428345,
+          "beginRelativeMs": 28.218852,
+          "endRelativeMs": 28.647197,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "user-version-exec",
+          "begin": 344513023491831,
+          "end": 344513024391777,
+          "wallBegin": 1791571380988378511,
+          "wallEnd": 1791571380989278504,
+          "durationMs": 0.899946,
+          "beginRelativeMs": 28.997877,
+          "endRelativeMs": 29.897823,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.091,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "user-version-next",
+          "begin": 344513024739225,
+          "end": 344513025155257,
+          "wallBegin": 1791571380989625887,
+          "wallEnd": 1791571380990041929,
+          "durationMs": 0.416032,
+          "beginRelativeMs": 30.245271,
+          "endRelativeMs": 30.661303,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "history-initialize",
+          "begin": 344513022310970,
+          "end": 344513025663742,
+          "wallBegin": 1791571380987197643,
+          "wallEnd": 1791571380990550422,
+          "durationMs": 3.352772,
+          "beginRelativeMs": 27.817016,
+          "endRelativeMs": 31.169788,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.122,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "history-open",
+          "begin": 344513020551768,
+          "end": 344513026080016,
+          "wallBegin": 1791571380985438489,
+          "wallEnd": 1791571380990966675,
+          "durationMs": 5.528248,
+          "beginRelativeMs": 26.057814,
+          "endRelativeMs": 31.586062,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.122,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "history-commit",
+          "begin": 344513029041830,
+          "end": 344513034864899,
+          "wallBegin": 1791571380993928506,
+          "wallEnd": 1791571380999751575,
+          "durationMs": 5.823069,
+          "beginRelativeMs": 34.547876,
+          "endRelativeMs": 40.370945,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.097,
+              "maxMs": 0.025
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.347,
+              "maxMs": 2.084
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "history-save",
+          "begin": 344513026455626,
+          "end": 344513035092740,
+          "wallBegin": 1791571380991342285,
+          "wallEnd": 1791571380999979386,
+          "durationMs": 8.637114,
+          "beginRelativeMs": 31.961672,
+          "endRelativeMs": 40.598786,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.289,
+              "maxMs": 0.031
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.347,
+              "maxMs": 2.084
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330836,
+          "phase": "accepted-worker",
+          "begin": 344513019971584,
+          "end": 344513035496684,
+          "wallBegin": 1791571380984858289,
+          "wallEnd": 1791571381000383341,
+          "durationMs": 15.5251,
+          "beginRelativeMs": 25.47763,
+          "endRelativeMs": 41.00273,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.411,
+              "maxMs": 0.035
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.347,
+              "maxMs": 2.084
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 26,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330847,
+        "phase": "accepted-worker",
+        "begin": 344513293101662,
+        "end": 344513311478711,
+        "wallBegin": 1791571381257988334,
+        "wallEnd": 1791571381276365362,
+        "durationMs": 18.377049,
+        "beginRelativeMs": 21.284688,
+        "endRelativeMs": 39.661737,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.305,
+            "maxMs": 0.035
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 8.147,
+            "maxMs": 5.524
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "foreign-keys",
+          "begin": 344513295487486,
+          "end": 344513295940409,
+          "wallBegin": 1791571381260374221,
+          "wallEnd": 1791571381260827091,
+          "durationMs": 0.452923,
+          "beginRelativeMs": 23.670512,
+          "endRelativeMs": 24.123435,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "user-version-exec",
+          "begin": 344513296360089,
+          "end": 344513297267548,
+          "wallBegin": 1791571381261246761,
+          "wallEnd": 1791571381262154213,
+          "durationMs": 0.907459,
+          "beginRelativeMs": 24.543115,
+          "endRelativeMs": 25.450574,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.066,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "user-version-next",
+          "begin": 344513297568666,
+          "end": 344513297872996,
+          "wallBegin": 1791571381262455340,
+          "wallEnd": 1791571381262759652,
+          "durationMs": 0.30433,
+          "beginRelativeMs": 25.751692,
+          "endRelativeMs": 26.056022,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "history-initialize",
+          "begin": 344513294976135,
+          "end": 344513298341426,
+          "wallBegin": 1791571381259862806,
+          "wallEnd": 1791571381263228083,
+          "durationMs": 3.365291,
+          "beginRelativeMs": 23.159161,
+          "endRelativeMs": 26.524452,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.088,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "history-open",
+          "begin": 344513293399938,
+          "end": 344513298661735,
+          "wallBegin": 1791571381258286598,
+          "wallEnd": 1791571381263548398,
+          "durationMs": 5.261797,
+          "beginRelativeMs": 21.582964,
+          "endRelativeMs": 26.844761,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.088,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "history-commit",
+          "begin": 344513301671027,
+          "end": 344513310890949,
+          "wallBegin": 1791571381266557698,
+          "wallEnd": 1791571381275777598,
+          "durationMs": 9.219922,
+          "beginRelativeMs": 29.854053,
+          "endRelativeMs": 39.073975,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.055,
+              "maxMs": 0.014
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.147,
+              "maxMs": 5.524
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "history-save",
+          "begin": 344513298968060,
+          "end": 344513311088496,
+          "wallBegin": 1791571381263854723,
+          "wallEnd": 1791571381275975145,
+          "durationMs": 12.120436,
+          "beginRelativeMs": 27.151086,
+          "endRelativeMs": 39.271522,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.217,
+              "maxMs": 0.024
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.147,
+              "maxMs": 5.524
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330847,
+          "phase": "accepted-worker",
+          "begin": 344513293101662,
+          "end": 344513311478711,
+          "wallBegin": 1791571381257988334,
+          "wallEnd": 1791571381276365362,
+          "durationMs": 18.377049,
+          "beginRelativeMs": 21.284688,
+          "endRelativeMs": 39.661737,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.305,
+              "maxMs": 0.035
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.147,
+              "maxMs": 5.524
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 27,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330855,
+        "phase": "accepted-worker",
+        "begin": 344513527470561,
+        "end": 344513538482395,
+        "wallBegin": 1791571381492357219,
+        "wallEnd": 1791571381503369032,
+        "durationMs": 11.011834,
+        "beginRelativeMs": 4.839281,
+        "endRelativeMs": 15.851115,
+        "syscalls": {
+          "clock_nanosleep": {
+            "count": 2,
+            "totalMs": 3.16,
+            "maxMs": 2.068
+          },
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.164,
+            "maxMs": 0.036
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.711,
+            "maxMs": 1.76
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "foreign-keys",
+          "begin": 344513528156511,
+          "end": 344513528289487,
+          "wallBegin": 1791571381493043149,
+          "wallEnd": 1791571381493176124,
+          "durationMs": 0.132976,
+          "beginRelativeMs": 5.525231,
+          "endRelativeMs": 5.658207,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "user-version-exec",
+          "begin": 344513528393088,
+          "end": 344513532408359,
+          "wallBegin": 1791571381493279731,
+          "wallEnd": 1791571381497295001,
+          "durationMs": 4.015271,
+          "beginRelativeMs": 5.761808,
+          "endRelativeMs": 9.777079,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 2,
+              "totalMs": 3.16,
+              "maxMs": 2.068
+            },
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.074,
+              "maxMs": 0.036
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "user-version-next",
+          "begin": 344513532512215,
+          "end": 344513532624224,
+          "wallBegin": 1791571381497398857,
+          "wallEnd": 1791571381497510861,
+          "durationMs": 0.112009,
+          "beginRelativeMs": 9.880935,
+          "endRelativeMs": 9.992944,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "history-initialize",
+          "begin": 344513528066087,
+          "end": 344513532786476,
+          "wallBegin": 1791571381492952726,
+          "wallEnd": 1791571381497673113,
+          "durationMs": 4.720389,
+          "beginRelativeMs": 5.434807,
+          "endRelativeMs": 10.155196,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 2,
+              "totalMs": 3.16,
+              "maxMs": 2.068
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.078,
+              "maxMs": 0.036
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "history-open",
+          "begin": 344513527580492,
+          "end": 344513532889884,
+          "wallBegin": 1791571381492467129,
+          "wallEnd": 1791571381497776522,
+          "durationMs": 5.309392,
+          "beginRelativeMs": 4.949212,
+          "endRelativeMs": 10.258604,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 2,
+              "totalMs": 3.16,
+              "maxMs": 2.068
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.078,
+              "maxMs": 0.036
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "history-commit",
+          "begin": 344513533973850,
+          "end": 344513538214078,
+          "wallBegin": 1791571381498860505,
+          "wallEnd": 1791571381503100720,
+          "durationMs": 4.240228,
+          "beginRelativeMs": 11.34257,
+          "endRelativeMs": 15.582798,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.031,
+              "maxMs": 0.007
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.711,
+              "maxMs": 1.76
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "history-save",
+          "begin": 344513532990417,
+          "end": 344513538303833,
+          "wallBegin": 1791571381497877055,
+          "wallEnd": 1791571381503190471,
+          "durationMs": 5.313416,
+          "beginRelativeMs": 10.359137,
+          "endRelativeMs": 15.672553,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.08600000000000001,
+              "maxMs": 0.008
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.711,
+              "maxMs": 1.76
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330855,
+          "phase": "accepted-worker",
+          "begin": 344513527470561,
+          "end": 344513538482395,
+          "wallBegin": 1791571381492357219,
+          "wallEnd": 1791571381503369032,
+          "durationMs": 11.011834,
+          "beginRelativeMs": 4.839281,
+          "endRelativeMs": 15.851115,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 2,
+              "totalMs": 3.16,
+              "maxMs": 2.068
+            },
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.164,
+              "maxMs": 0.036
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.711,
+              "maxMs": 1.76
+            }
+          }
+        }
+      ],
+      "priorOverlaps": [
+        {
+          "pid": 3330624,
+          "tid": 3330853,
+          "phase": "history-commit",
+          "begin": 344513448126788,
+          "end": 344513531266560,
+          "wallBegin": 1791571381413013448,
+          "wallEnd": 1791571381496153217,
+          "durationMs": 83.139772,
+          "beginRelativeMs": -74.504492,
+          "endRelativeMs": 8.63528,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.033,
+              "maxMs": 0.009
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 82.41000000000001,
+              "maxMs": 75.555
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330853,
+          "phase": "finish-worker",
+          "begin": 344513445604253,
+          "end": 344513532134725,
+          "wallBegin": 1791571381410490910,
+          "wallEnd": 1791571381497021370,
+          "durationMs": 86.530472,
+          "beginRelativeMs": -77.027027,
+          "endRelativeMs": 9.503445,
+          "syscalls": {
+            "fcntl": {
+              "count": 21,
+              "totalMs": 0.136,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 82.41000000000001,
+              "maxMs": 75.555
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 28,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330861,
+        "phase": "accepted-worker",
+        "begin": 344513765280226,
+        "end": 344513784666573,
+        "wallBegin": 1791571381730166935,
+        "wallEnd": 1791571381749553235,
+        "durationMs": 19.386347,
+        "beginRelativeMs": 19.0222,
+        "endRelativeMs": 38.408547,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.569,
+            "maxMs": 0.074
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 4.683,
+            "maxMs": 1.769
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "foreign-keys",
+          "begin": 344513768329604,
+          "end": 344513769191996,
+          "wallBegin": 1791571381733216314,
+          "wallEnd": 1791571381734078756,
+          "durationMs": 0.862392,
+          "beginRelativeMs": 22.071578,
+          "endRelativeMs": 22.93397,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "user-version-exec",
+          "begin": 344513769965503,
+          "end": 344513771786197,
+          "wallBegin": 1791571381734852224,
+          "wallEnd": 1791571381736672919,
+          "durationMs": 1.820694,
+          "beginRelativeMs": 23.707477,
+          "endRelativeMs": 25.528171,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.191,
+              "maxMs": 0.074
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "user-version-next",
+          "begin": 344513772325848,
+          "end": 344513772913627,
+          "wallBegin": 1791571381737212525,
+          "wallEnd": 1791571381737800352,
+          "durationMs": 0.587779,
+          "beginRelativeMs": 26.067822,
+          "endRelativeMs": 26.655601,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "history-initialize",
+          "begin": 344513767647736,
+          "end": 344513773547809,
+          "wallBegin": 1791571381732534427,
+          "wallEnd": 1791571381738434491,
+          "durationMs": 5.900073,
+          "beginRelativeMs": 21.38971,
+          "endRelativeMs": 27.289783,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.22699999999999998,
+              "maxMs": 0.074
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "history-open",
+          "begin": 344513765736091,
+          "end": 344513773960940,
+          "wallBegin": 1791571381730622782,
+          "wallEnd": 1791571381738847684,
+          "durationMs": 8.224849,
+          "beginRelativeMs": 19.478065,
+          "endRelativeMs": 27.702914,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.22699999999999998,
+              "maxMs": 0.074
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "history-commit",
+          "begin": 344513777812938,
+          "end": 344513783968028,
+          "wallBegin": 1791571381742699649,
+          "wallEnd": 1791571381748854696,
+          "durationMs": 6.15509,
+          "beginRelativeMs": 31.554912,
+          "endRelativeMs": 37.710002,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.093,
+              "maxMs": 0.026
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.683,
+              "maxMs": 1.769
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "history-save",
+          "begin": 344513774396527,
+          "end": 344513784281969,
+          "wallBegin": 1791571381739283195,
+          "wallEnd": 1791571381749168652,
+          "durationMs": 9.885442,
+          "beginRelativeMs": 28.138501,
+          "endRelativeMs": 38.023943,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.342,
+              "maxMs": 0.033
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.683,
+              "maxMs": 1.769
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330861,
+          "phase": "accepted-worker",
+          "begin": 344513765280226,
+          "end": 344513784666573,
+          "wallBegin": 1791571381730166935,
+          "wallEnd": 1791571381749553235,
+          "durationMs": 19.386347,
+          "beginRelativeMs": 19.0222,
+          "endRelativeMs": 38.408547,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.569,
+              "maxMs": 0.074
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.683,
+              "maxMs": 1.769
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 29,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330867,
+        "phase": "accepted-worker",
+        "begin": 344514013086446,
+        "end": 344514029277891,
+        "wallBegin": 1791571381977973133,
+        "wallEnd": 1791571381994164564,
+        "durationMs": 16.191445,
+        "beginRelativeMs": 26.629224,
+        "endRelativeMs": 42.820669,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.46699999999999997,
+            "maxMs": 0.045
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 4.193,
+            "maxMs": 1.954
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "foreign-keys",
+          "begin": 344514016138889,
+          "end": 344514016663624,
+          "wallBegin": 1791571381981025572,
+          "wallEnd": 1791571381981550296,
+          "durationMs": 0.524735,
+          "beginRelativeMs": 29.681667,
+          "endRelativeMs": 30.206402,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "user-version-exec",
+          "begin": 344514017085137,
+          "end": 344514017983689,
+          "wallBegin": 1791571381981971804,
+          "wallEnd": 1791571381982870358,
+          "durationMs": 0.898552,
+          "beginRelativeMs": 30.627915,
+          "endRelativeMs": 31.526467,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.088,
+              "maxMs": 0.034
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "user-version-next",
+          "begin": 344514018343675,
+          "end": 344514018713413,
+          "wallBegin": 1791571381983230334,
+          "wallEnd": 1791571381983600073,
+          "durationMs": 0.369738,
+          "beginRelativeMs": 31.886453,
+          "endRelativeMs": 32.256191,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "history-initialize",
+          "begin": 344514015637752,
+          "end": 344514019211230,
+          "wallBegin": 1791571381980524456,
+          "wallEnd": 1791571381984097896,
+          "durationMs": 3.573478,
+          "beginRelativeMs": 29.18053,
+          "endRelativeMs": 32.754008,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.119,
+              "maxMs": 0.034
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "history-open",
+          "begin": 344514013666109,
+          "end": 344514019565316,
+          "wallBegin": 1791571381978552887,
+          "wallEnd": 1791571381984451995,
+          "durationMs": 5.899207,
+          "beginRelativeMs": 27.208887,
+          "endRelativeMs": 33.108094,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.119,
+              "maxMs": 0.034
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "history-commit",
+          "begin": 344514022890882,
+          "end": 344514028516584,
+          "wallBegin": 1791571381987777570,
+          "wallEnd": 1791571381993403252,
+          "durationMs": 5.625702,
+          "beginRelativeMs": 36.43366,
+          "endRelativeMs": 42.059362,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.09,
+              "maxMs": 0.022
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.193,
+              "maxMs": 1.954
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "history-save",
+          "begin": 344514019921419,
+          "end": 344514028776223,
+          "wallBegin": 1791571381984808077,
+          "wallEnd": 1791571381993662881,
+          "durationMs": 8.854804,
+          "beginRelativeMs": 33.464197,
+          "endRelativeMs": 42.319001,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.348,
+              "maxMs": 0.045
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.193,
+              "maxMs": 1.954
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330867,
+          "phase": "accepted-worker",
+          "begin": 344514013086446,
+          "end": 344514029277891,
+          "wallBegin": 1791571381977973133,
+          "wallEnd": 1791571381994164564,
+          "durationMs": 16.191445,
+          "beginRelativeMs": 26.629224,
+          "endRelativeMs": 42.820669,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.46699999999999997,
+              "maxMs": 0.045
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.193,
+              "maxMs": 1.954
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 30,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330874,
+        "phase": "accepted-worker",
+        "begin": 344514263800052,
+        "end": 344514282027767,
+        "wallBegin": 1791571382228686795,
+        "wallEnd": 1791571382246914429,
+        "durationMs": 18.227715,
+        "beginRelativeMs": 21.278239,
+        "endRelativeMs": 39.505954,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.40900000000000003,
+            "maxMs": 0.042
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.8230000000000004,
+            "maxMs": 1.747
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "foreign-keys",
+          "begin": 344514267831549,
+          "end": 344514268391881,
+          "wallBegin": 1791571382232718240,
+          "wallEnd": 1791571382233278619,
+          "durationMs": 0.560332,
+          "beginRelativeMs": 25.309736,
+          "endRelativeMs": 25.870068,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "user-version-exec",
+          "begin": 344514268898092,
+          "end": 344514270236223,
+          "wallBegin": 1791571382233784763,
+          "wallEnd": 1791571382235122935,
+          "durationMs": 1.338131,
+          "beginRelativeMs": 26.376279,
+          "endRelativeMs": 27.71441,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.097,
+              "maxMs": 0.042
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "user-version-next",
+          "begin": 344514270762463,
+          "end": 344514271286762,
+          "wallBegin": 1791571382235649149,
+          "wallEnd": 1791571382236173435,
+          "durationMs": 0.524299,
+          "beginRelativeMs": 28.24065,
+          "endRelativeMs": 28.764949,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "history-initialize",
+          "begin": 344514267297175,
+          "end": 344514271931512,
+          "wallBegin": 1791571382232183921,
+          "wallEnd": 1791571382236818182,
+          "durationMs": 4.634337,
+          "beginRelativeMs": 24.775362,
+          "endRelativeMs": 29.409699,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.135,
+              "maxMs": 0.042
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "history-open",
+          "begin": 344514264443735,
+          "end": 344514272307720,
+          "wallBegin": 1791571382229330446,
+          "wallEnd": 1791571382237194387,
+          "durationMs": 7.863985,
+          "beginRelativeMs": 21.921922,
+          "endRelativeMs": 29.785907,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.135,
+              "maxMs": 0.042
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "history-commit",
+          "begin": 344514275947733,
+          "end": 344514281270670,
+          "wallBegin": 1791571382240834436,
+          "wallEnd": 1791571382246157362,
+          "durationMs": 5.322937,
+          "beginRelativeMs": 33.42592,
+          "endRelativeMs": 38.748857,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.098,
+              "maxMs": 0.023
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.8230000000000004,
+              "maxMs": 1.747
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "history-save",
+          "begin": 344514272726072,
+          "end": 344514281533945,
+          "wallBegin": 1791571382237612742,
+          "wallEnd": 1791571382246420623,
+          "durationMs": 8.807873,
+          "beginRelativeMs": 30.204259,
+          "endRelativeMs": 39.012132,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.274,
+              "maxMs": 0.03
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.8230000000000004,
+              "maxMs": 1.747
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330874,
+          "phase": "accepted-worker",
+          "begin": 344514263800052,
+          "end": 344514282027767,
+          "wallBegin": 1791571382228686795,
+          "wallEnd": 1791571382246914429,
+          "durationMs": 18.227715,
+          "beginRelativeMs": 21.278239,
+          "endRelativeMs": 39.505954,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.40900000000000003,
+              "maxMs": 0.042
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.8230000000000004,
+              "maxMs": 1.747
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 31,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330880,
+        "phase": "accepted-worker",
+        "begin": 344514486260840,
+        "end": 344514502592960,
+        "wallBegin": 1791571382451147497,
+        "wallEnd": 1791571382467479616,
+        "durationMs": 16.33212,
+        "beginRelativeMs": 4.935665,
+        "endRelativeMs": 21.267785,
+        "syscalls": {
+          "clock_nanosleep": {
+            "count": 3,
+            "totalMs": 8.32,
+            "maxMs": 5.109
+          },
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.198,
+            "maxMs": 0.06
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.158,
+            "maxMs": 1.564
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "foreign-keys",
+          "begin": 344514487057204,
+          "end": 344514487195851,
+          "wallBegin": 1791571382451943857,
+          "wallEnd": 1791571382452082488,
+          "durationMs": 0.138647,
+          "beginRelativeMs": 5.732029,
+          "endRelativeMs": 5.870676,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "user-version-exec",
+          "begin": 344514487286729,
+          "end": 344514496393112,
+          "wallBegin": 1791571382452173367,
+          "wallEnd": 1791571382461279766,
+          "durationMs": 9.106383,
+          "beginRelativeMs": 5.961554,
+          "endRelativeMs": 15.067937,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 3,
+              "totalMs": 8.32,
+              "maxMs": 5.109
+            },
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.093,
+              "maxMs": 0.06
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "user-version-next",
+          "begin": 344514496508739,
+          "end": 344514496609614,
+          "wallBegin": 1791571382461395377,
+          "wallEnd": 1791571382461496251,
+          "durationMs": 0.100875,
+          "beginRelativeMs": 15.183564,
+          "endRelativeMs": 15.284439,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "history-initialize",
+          "begin": 344514486945920,
+          "end": 344514496777115,
+          "wallBegin": 1791571382451832567,
+          "wallEnd": 1791571382461663753,
+          "durationMs": 9.831195,
+          "beginRelativeMs": 5.620745,
+          "endRelativeMs": 15.45194,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 3,
+              "totalMs": 8.32,
+              "maxMs": 5.109
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.09999999999999999,
+              "maxMs": 0.06
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "history-open",
+          "begin": 344514486359168,
+          "end": 344514496879168,
+          "wallBegin": 1791571382451245811,
+          "wallEnd": 1791571382461765812,
+          "durationMs": 10.52,
+          "beginRelativeMs": 5.033993,
+          "endRelativeMs": 15.553993,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 3,
+              "totalMs": 8.32,
+              "maxMs": 5.109
+            },
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.09999999999999999,
+              "maxMs": 0.06
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "history-commit",
+          "begin": 344514498014317,
+          "end": 344514501801216,
+          "wallBegin": 1791571382462900979,
+          "wallEnd": 1791571382466687873,
+          "durationMs": 3.786899,
+          "beginRelativeMs": 16.689142,
+          "endRelativeMs": 20.476041,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.037,
+              "maxMs": 0.008
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.158,
+              "maxMs": 1.564
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "history-save",
+          "begin": 344514496982580,
+          "end": 344514501909898,
+          "wallBegin": 1791571382461869224,
+          "wallEnd": 1791571382466796537,
+          "durationMs": 4.927318,
+          "beginRelativeMs": 15.657405,
+          "endRelativeMs": 20.584723,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.098,
+              "maxMs": 0.01
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.158,
+              "maxMs": 1.564
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330880,
+          "phase": "accepted-worker",
+          "begin": 344514486260840,
+          "end": 344514502592960,
+          "wallBegin": 1791571382451147497,
+          "wallEnd": 1791571382467479616,
+          "durationMs": 16.33212,
+          "beginRelativeMs": 4.935665,
+          "endRelativeMs": 21.267785,
+          "syscalls": {
+            "clock_nanosleep": {
+              "count": 3,
+              "totalMs": 8.32,
+              "maxMs": 5.109
+            },
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.198,
+              "maxMs": 0.06
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.158,
+              "maxMs": 1.564
+            }
+          }
+        }
+      ],
+      "priorOverlaps": [
+        {
+          "pid": 3330624,
+          "tid": 3330878,
+          "phase": "history-commit",
+          "begin": 344514412634038,
+          "end": 344514491571755,
+          "wallBegin": 1791571382377520689,
+          "wallEnd": 1791571382456458420,
+          "durationMs": 78.937717,
+          "beginRelativeMs": -68.691137,
+          "endRelativeMs": 10.24658,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.054,
+              "maxMs": 0.017
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.829,
+              "maxMs": 70.931
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330878,
+          "phase": "finish-worker",
+          "begin": 344514409403003,
+          "end": 344514492380030,
+          "wallBegin": 1791571382374289666,
+          "wallEnd": 1791571382457266680,
+          "durationMs": 82.977027,
+          "beginRelativeMs": -71.922172,
+          "endRelativeMs": 11.054855,
+          "syscalls": {
+            "fcntl": {
+              "count": 21,
+              "totalMs": 0.288,
+              "maxMs": 0.081
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 77.829,
+              "maxMs": 70.931
+            }
+          }
+        }
+      ]
+    },
+    {
+      "index": 32,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330886,
+        "phase": "accepted-worker",
+        "begin": 344514720746941,
+        "end": 344514733510225,
+        "wallBegin": 1791571382685633592,
+        "wallEnd": 1791571382698396863,
+        "durationMs": 12.763284,
+        "beginRelativeMs": 6.688051,
+        "endRelativeMs": 19.451335,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.176,
+            "maxMs": 0.019
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 8.001999999999999,
+            "maxMs": 5.515
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "foreign-keys",
+          "begin": 344514721605060,
+          "end": 344514721762778,
+          "wallBegin": 1791571382686491709,
+          "wallEnd": 1791571382686649429,
+          "durationMs": 0.157718,
+          "beginRelativeMs": 7.54617,
+          "endRelativeMs": 7.703888,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "user-version-exec",
+          "begin": 344514721888294,
+          "end": 344514722186312,
+          "wallBegin": 1791571382686774935,
+          "wallEnd": 1791571382687072976,
+          "durationMs": 0.298018,
+          "beginRelativeMs": 7.829404,
+          "endRelativeMs": 8.127422,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.031,
+              "maxMs": 0.015
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "user-version-next",
+          "begin": 344514722294220,
+          "end": 344514722417832,
+          "wallBegin": 1791571382687180863,
+          "wallEnd": 1791571382687304474,
+          "durationMs": 0.123612,
+          "beginRelativeMs": 8.23533,
+          "endRelativeMs": 8.358942,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "history-initialize",
+          "begin": 344514721427346,
+          "end": 344514722611957,
+          "wallBegin": 1791571382686313997,
+          "wallEnd": 1791571382687498606,
+          "durationMs": 1.184611,
+          "beginRelativeMs": 7.368456,
+          "endRelativeMs": 8.553067,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.041999999999999996,
+              "maxMs": 0.015
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "history-open",
+          "begin": 344514720889990,
+          "end": 344514722744844,
+          "wallBegin": 1791571382685776639,
+          "wallEnd": 1791571382687631486,
+          "durationMs": 1.854854,
+          "beginRelativeMs": 6.8311,
+          "endRelativeMs": 8.685954,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.041999999999999996,
+              "maxMs": 0.015
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "history-commit",
+          "begin": 344514724456224,
+          "end": 344514733208152,
+          "wallBegin": 1791571382689342896,
+          "wallEnd": 1791571382698094794,
+          "durationMs": 8.751928,
+          "beginRelativeMs": 10.397334,
+          "endRelativeMs": 19.149262,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.044,
+              "maxMs": 0.011
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.001999999999999,
+              "maxMs": 5.515
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "history-save",
+          "begin": 344514722873397,
+          "end": 344514733308759,
+          "wallBegin": 1791571382687760041,
+          "wallEnd": 1791571382698195396,
+          "durationMs": 10.435362,
+          "beginRelativeMs": 8.814507,
+          "endRelativeMs": 19.249869,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.134,
+              "maxMs": 0.019
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.001999999999999,
+              "maxMs": 5.515
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330886,
+          "phase": "accepted-worker",
+          "begin": 344514720746941,
+          "end": 344514733510225,
+          "wallBegin": 1791571382685633592,
+          "wallEnd": 1791571382698396863,
+          "durationMs": 12.763284,
+          "beginRelativeMs": 6.688051,
+          "endRelativeMs": 19.451335,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.176,
+              "maxMs": 0.019
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 8.001999999999999,
+              "maxMs": 5.515
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 33,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330894,
+        "phase": "accepted-worker",
+        "begin": 344515008245896,
+        "end": 344515024498206,
+        "wallBegin": 1791571382973132630,
+        "wallEnd": 1791571382989384862,
+        "durationMs": 16.25231,
+        "beginRelativeMs": 24.899463,
+        "endRelativeMs": 41.151773,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.442,
+            "maxMs": 0.042
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 3.946,
+            "maxMs": 2.061
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "foreign-keys",
+          "begin": 344515010380400,
+          "end": 344515010772751,
+          "wallBegin": 1791571382975267079,
+          "wallEnd": 1791571382975659424,
+          "durationMs": 0.392351,
+          "beginRelativeMs": 27.033967,
+          "endRelativeMs": 27.426318,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "user-version-exec",
+          "begin": 344515011410912,
+          "end": 344515012762473,
+          "wallBegin": 1791571382976297622,
+          "wallEnd": 1791571382977649144,
+          "durationMs": 1.351561,
+          "beginRelativeMs": 28.064479,
+          "endRelativeMs": 29.41604,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.072,
+              "maxMs": 0.028
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "user-version-next",
+          "begin": 344515013078382,
+          "end": 344515013364305,
+          "wallBegin": 1791571382977965042,
+          "wallEnd": 1791571382978250966,
+          "durationMs": 0.285923,
+          "beginRelativeMs": 29.731949,
+          "endRelativeMs": 30.017872,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "history-initialize",
+          "begin": 344515009814850,
+          "end": 344515013842777,
+          "wallBegin": 1791571382974701569,
+          "wallEnd": 1791571382978729441,
+          "durationMs": 4.027927,
+          "beginRelativeMs": 26.468417,
+          "endRelativeMs": 30.496344,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.097,
+              "maxMs": 0.028
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "history-open",
+          "begin": 344515008551260,
+          "end": 344515014193660,
+          "wallBegin": 1791571382973437951,
+          "wallEnd": 1791571382979080335,
+          "durationMs": 5.6424,
+          "beginRelativeMs": 25.204827,
+          "endRelativeMs": 30.847227,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.097,
+              "maxMs": 0.028
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "history-commit",
+          "begin": 344515018032985,
+          "end": 344515023750217,
+          "wallBegin": 1791571382982919684,
+          "wallEnd": 1791571382988636900,
+          "durationMs": 5.717232,
+          "beginRelativeMs": 34.686552,
+          "endRelativeMs": 40.403784,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.125,
+              "maxMs": 0.042
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.946,
+              "maxMs": 2.061
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "history-save",
+          "begin": 344515014493740,
+          "end": 344515024056685,
+          "wallBegin": 1791571382979380400,
+          "wallEnd": 1791571382988943343,
+          "durationMs": 9.562945,
+          "beginRelativeMs": 31.147307,
+          "endRelativeMs": 40.710252,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.345,
+              "maxMs": 0.042
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.946,
+              "maxMs": 2.061
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330894,
+          "phase": "accepted-worker",
+          "begin": 344515008245896,
+          "end": 344515024498206,
+          "wallBegin": 1791571382973132630,
+          "wallEnd": 1791571382989384862,
+          "durationMs": 16.25231,
+          "beginRelativeMs": 24.899463,
+          "endRelativeMs": 41.151773,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.442,
+              "maxMs": 0.042
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 3.946,
+              "maxMs": 2.061
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    },
+    {
+      "index": 34,
+      "warmup": false,
+      "worker": {
+        "pid": 3330624,
+        "tid": 3330904,
+        "phase": "accepted-worker",
+        "begin": 344515273214703,
+        "end": 344515289931984,
+        "wallBegin": 1791571383238101415,
+        "wallEnd": 1791571383254818644,
+        "durationMs": 16.717281,
+        "beginRelativeMs": 22.630646,
+        "endRelativeMs": 39.347927,
+        "syscalls": {
+          "fcntl": {
+            "count": 17,
+            "totalMs": 0.396,
+            "maxMs": 0.038
+          },
+          "fdatasync": {
+            "count": 4,
+            "totalMs": 4.776,
+            "maxMs": 2.028
+          }
+        }
+      },
+      "spans": [
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "foreign-keys",
+          "begin": 344515276309362,
+          "end": 344515276862252,
+          "wallBegin": 1791571383241196048,
+          "wallEnd": 1791571383241749012,
+          "durationMs": 0.55289,
+          "beginRelativeMs": 25.725305,
+          "endRelativeMs": 26.278195,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "user-version-exec",
+          "begin": 344515277240341,
+          "end": 344515278227161,
+          "wallBegin": 1791571383242126998,
+          "wallEnd": 1791571383243113849,
+          "durationMs": 0.98682,
+          "beginRelativeMs": 26.656284,
+          "endRelativeMs": 27.643104,
+          "syscalls": {
+            "fcntl": {
+              "count": 3,
+              "totalMs": 0.089,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "user-version-next",
+          "begin": 344515278591189,
+          "end": 344515278967647,
+          "wallBegin": 1791571383243477863,
+          "wallEnd": 1791571383243854319,
+          "durationMs": 0.376458,
+          "beginRelativeMs": 28.007132,
+          "endRelativeMs": 28.38359,
+          "syscalls": {}
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "history-initialize",
+          "begin": 344515275770656,
+          "end": 344515279523006,
+          "wallBegin": 1791571383240657346,
+          "wallEnd": 1791571383244409698,
+          "durationMs": 3.75235,
+          "beginRelativeMs": 25.186599,
+          "endRelativeMs": 28.938949,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.123,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "history-open",
+          "begin": 344515273709311,
+          "end": 344515279946747,
+          "wallBegin": 1791571383238596007,
+          "wallEnd": 1791571383244833421,
+          "durationMs": 6.237436,
+          "beginRelativeMs": 23.125254,
+          "endRelativeMs": 29.36269,
+          "syscalls": {
+            "fcntl": {
+              "count": 4,
+              "totalMs": 0.123,
+              "maxMs": 0.035
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "history-commit",
+          "begin": 344515283406369,
+          "end": 344515289356001,
+          "wallBegin": 1791571383248293069,
+          "wallEnd": 1791571383254242680,
+          "durationMs": 5.949632,
+          "beginRelativeMs": 32.822312,
+          "endRelativeMs": 38.771944,
+          "syscalls": {
+            "fcntl": {
+              "count": 5,
+              "totalMs": 0.068,
+              "maxMs": 0.019
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.776,
+              "maxMs": 2.028
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "history-save",
+          "begin": 344515280346638,
+          "end": 344515289526422,
+          "wallBegin": 1791571383245233298,
+          "wallEnd": 1791571383254413070,
+          "durationMs": 9.179784,
+          "beginRelativeMs": 29.762581,
+          "endRelativeMs": 38.942365,
+          "syscalls": {
+            "fcntl": {
+              "count": 13,
+              "totalMs": 0.273,
+              "maxMs": 0.038
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.776,
+              "maxMs": 2.028
+            }
+          }
+        },
+        {
+          "pid": 3330624,
+          "tid": 3330904,
+          "phase": "accepted-worker",
+          "begin": 344515273214703,
+          "end": 344515289931984,
+          "wallBegin": 1791571383238101415,
+          "wallEnd": 1791571383254818644,
+          "durationMs": 16.717281,
+          "beginRelativeMs": 22.630646,
+          "endRelativeMs": 39.347927,
+          "syscalls": {
+            "fcntl": {
+              "count": 17,
+              "totalMs": 0.396,
+              "maxMs": 0.038
+            },
+            "fdatasync": {
+              "count": 4,
+              "totalMs": 4.776,
+              "maxMs": 2.028
+            }
+          }
+        }
+      ],
+      "priorOverlaps": []
+    }
+  ],
+  "unpairedBegins": 0,
+  "incompleteSyscalls": 0
+}

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "a8dcbb9fedd5dce478331ab13d6c3e350cb19888bd6c2f2b697302f232889397",
+  "sourceBytes": 887,
+  "scope": "Focused Activity renderer regression: two native-family font sizes and narrow columns, full tooltip/copy behavior.",
+  "suite": {
+    "name": "OperationsGui",
+    "timestamp": "2026-10-09T14:00:23",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "0",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.291"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "OperationsGui",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines",
+      "classname": "OperationsGui",
+      "time": "0.290",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "OperationsGui",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

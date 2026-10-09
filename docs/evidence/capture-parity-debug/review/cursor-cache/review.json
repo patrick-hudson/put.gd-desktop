@@ -1,0 +1,236 @@
+{
+  "status": "complete",
+  "verdict": "Not ready",
+  "scope": {
+    "base": "a7e05979115b16d6be4773dceb4663fe0727f943",
+    "branch": "codex/optimize-resident-native-boundary",
+    "head_sha": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "pr_url": null,
+    "files_changed": 17,
+    "mode": "standalone",
+    "frozen_packet_files": 21,
+    "original_snapshot": "snapshot.json",
+    "follow_up_snapshot": "post-review.json",
+    "follow_up_at": "2026-10-09T17:50:06.852765+00:00"
+  },
+  "intent": "Retain one resident-owned static server cursor to reduce repeated helper cursor loading while preserving native Qt fallback, strict build/nonce/generation binding, no pre-BEGIN capture side effects, cancellation and bounded resource ownership. Review the new integration only; earlier native selector/lifecycle code received separate reviews.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "testing",
+    "security",
+    "project-standards",
+    "adversarial-claude"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": null,
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "historical_resolutions": [
+    {
+      "#": 1,
+      "title": "Cached crosshair size survives a root-dimension change",
+      "severity": "P2",
+      "file": "src/platform/x11/CaptureProcessController.cpp",
+      "line": 55,
+      "confidence": 75,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "status": "addressed_static",
+      "original_scope": "packet/ (external reviewed frozen snapshot)",
+      "follow_up_scope": "post-review/ at 2026-10-09T17:50:06.852765+00:00",
+      "why_it_matters": "In the frozen packet, the region cache uses only layout.scale. When root dimensions change without a RESOURCE_MANAGER or XSETTINGS change, that key is unchanged. libXcursor 1.2.1 derives default cursor size from the smaller root dimension when XCURSOR_SIZE, Xcursor.size and Xft.dpi are unset, so a later helper can reuse an earlier-size resident cursor instead of matching a fresh Qt CrossCursor. The operating condition is established by the installed-version source; incidence on a declared desktop was not measured.",
+      "resolution": {
+        "summary": "Full-layout hash covers root dimensions",
+        "evidence": [
+          "post-review/src/platform/x11/CaptureProcessController.cpp:56 hashes the complete frozen layout; post-review/tests/integration/test_capture_process.cpp:85-111 adds root/output-only invalidation rows with unchanged scale and configuration."
+        ],
+        "verification": "Source inspection only; no build, test pass, runtime incidence or desktop acceptance claimed."
+      },
+      "current_action_required": false
+    },
+    {
+      "#": 2,
+      "title": "Cursor lifetime probe races source disconnect processing",
+      "severity": "P2",
+      "file": "tests/desktop/x11/test_native_region_overlay.cpp",
+      "line": 71,
+      "confidence": 75,
+      "reviewers": [
+        "testing"
+      ],
+      "status": "addressed_static",
+      "original_scope": "packet/ (external reviewed frozen snapshot)",
+      "follow_up_scope": "post-review/ at 2026-10-09T17:50:06.852765+00:00",
+      "why_it_matters": "cachedCursorSurvivesSourceClientExit closes one X11 client and immediately expects a BadCursor response on a different client. X11 orders requests per connection; closing the source socket does not establish that the server has processed its disconnect before servicing the probe connection. The probe can therefore still acquire the original cursor and fail QVERIFY(gone) even when the resident cache is correct. On that failure it also leaves the probe pointer grab held on the suite-wide connection, which can cause cascading failures in later slots. This is a test synchronization defect, not evidence of a production cursor lifetime defect.",
+      "resolution": {
+        "summary": "Bounded disconnect retry releases successful grabs",
+        "evidence": [
+          "post-review/tests/desktop/x11/test_native_region_overlay.cpp:70-80 retries the old ID for at most 2000 ms and releases/fences each successful pointer grab before retry."
+        ],
+        "verification": "Source inspection only; no build, test pass, runtime incidence or desktop acceptance claimed."
+      },
+      "current_action_required": false
+    },
+    {
+      "#": 3,
+      "title": "Tests never exercise the real seed path from helper to cache to grab",
+      "severity": "P2",
+      "file": "tests/fixtures/capture_helper_fixture.cpp",
+      "line": 19,
+      "confidence": 75,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "status": "addressed_static",
+      "original_scope": "packet/ (external reviewed frozen snapshot)",
+      "follow_up_scope": "post-review/ at 2026-10-09T17:50:06.852765+00:00",
+      "why_it_matters": "The frozen fixture emits only an empty cursor object, and controller tests use desktop actions. The new region seed parser and seed-to-begin/bootstrap ID exchange therefore receive no integration coverage. The Qt cursor equality test seeds from Qt itself and bypasses nativeCursorSeed; the real-helper preparation test does not inspect ready.cursor. Regressions in seed conversion, rejection or reuse can stay undetected even while direct cache tests pass. This is a material test gap, not a proved production visual defect.",
+      "resolution": {
+        "summary": "Actual-helper seed parity and controller protocol coverage added",
+        "evidence": [
+          "post-review/tests/desktop/x11/test_capture_preparation.cpp:50-64 compares an actual helper seed with Qt dimensions, hotspot and every ARGB pixel. post-review/tests/integration/test_capture_process.cpp:39-143 adds 18 malformed seed envelopes, non-region rejection, nonempty seed/reuse, layout invalidation, unsolicited replacement rejection and optional fallback; direct real-helper seeded cancellation is covered by the cache=true row. Resident seeded-cancel cache preservation remains a narrow soft gap."
+        ],
+        "verification": "Source inspection only; no build, test pass, runtime incidence or desktop acceptance claimed."
+      },
+      "current_action_required": false
+    }
+  ],
+  "residual_risks": [
+    {
+      "title": "Theme files may change without metadata notification",
+      "file": "src/platform/x11/CaptureProcessController.cpp",
+      "line": 55,
+      "severity": "P2",
+      "autofix_class": "advisory",
+      "owner": "human",
+      "body": "A default-theme file or symlink can change without RESOURCE_MANAGER or XSETTINGS metadata changing. The full-layout fingerprint cannot detect that file-only change. libXcursor reads theme files on a fresh load, so a resident cache may differ from a fresh helper in that operating condition. This remains informational: no regression on a declared supported desktop was established.",
+      "evidence": [
+        "packet/src/platform/x11/X11NativeSnapshot.cpp:34-39 hashes settings/resources and scaling environment; no on-disk theme metadata.",
+        "post-review/src/platform/x11/CaptureProcessController.cpp:56 hashes full layout, without adding theme-file metadata.",
+        "xcursor-library.c:338-344 loads the on-disk default theme."
+      ],
+      "suggested_fix": "If file-only theme updates are claimed as supported, exercise that exact change and decide an invalidation signal or cache bypass from the observed behavior."
+    }
+  ],
+  "testing_gaps": [
+    {
+      "title": "Helper parity test depends on the installed ambient theme",
+      "file": "tests/desktop/x11/test_capture_preparation.cpp",
+      "line": 54,
+      "severity": "P2",
+      "autofix_class": "advisory",
+      "owner": "human",
+      "body": "The new parity row requires a nonempty static seed from the installed default theme. A valid animated, oversized or missing crosshair should use Qt fallback and will legitimately emit no seed, causing this parity row to fail. The packet does not pin a generated theme for the row.",
+      "suggested_fix": "Generate a deterministic small single-frame cross cursor for the parity row and set its private XCURSOR_PATH; add separate animated/oversized/missing-theme rows asserting an empty seed and Qt fallback.",
+      "verification": "Static follow-up inspection only."
+    },
+    {
+      "title": "Resident cache preservation across seeded cancellation is not covered",
+      "file": "tests/integration/test_capture_process.cpp",
+      "line": 182,
+      "severity": "P2",
+      "autofix_class": "advisory",
+      "owner": "human",
+      "body": "The direct real-helper cache=true preparation row now compares a seed before cancelling. Controller cancellation/abandonment slots still use desktop snapshot() and the default empty cursor mode, so they do not demonstrate that a seeded resident cache survives cancellation and is reused by a later generation.",
+      "suggested_fix": "Prepare a region with cursor-seed mode, await readiness, cancel or discard it, then prepare the same region and assert bootstrap/begin reuse the resident-owned ID.",
+      "verification": "Static follow-up inspection only."
+    },
+    {
+      "title": "Maximum valid READY seed is not asserted",
+      "file": "tests/integration/test_capture_process.cpp",
+      "line": 39,
+      "severity": "P3",
+      "autofix_class": "advisory",
+      "owner": "human",
+      "body": "The new table rejects width 65 and overlong encoded input, but its valid seed is 2x2. There is no 64x64 valid envelope exercising the inclusive 21848-character Base64 limit.",
+      "suggested_fix": "Add a 64x64 canonical seed row and assert successful ready/begin alongside the existing oversized rejection row.",
+      "verification": "Static follow-up inspection only."
+    },
+    {
+      "title": "Pre-BEGIN safety lacks runtime observation",
+      "autofix_class": "advisory",
+      "owner": "release",
+      "body": "The preparation test observes state after READY; it cannot prove absence of transient pre-BEGIN mapping, grabs or image requests. Static bootstrap review found no forbidden acquisition. Runtime observation remains parent-owned."
+    }
+  ],
+  "coverage": {
+    "depth": "full",
+    "reviewer_roster": [
+      {
+        "reviewer": "correctness",
+        "tier": "session",
+        "reason": "Logic, resource ownership and lifecycle"
+      },
+      {
+        "reviewer": "testing",
+        "tier": "mid",
+        "reason": "Affected tests and regression detectors"
+      },
+      {
+        "reviewer": "security",
+        "tier": "session",
+        "reason": "Helper control and bounded cursor transfer"
+      },
+      {
+        "reviewer": "project-standards",
+        "tier": "mid",
+        "reason": "Applicable AGENTS.md requirements"
+      }
+    ],
+    "cross_model_outcome": "Cross-model review completed via claude; model_requested=claude-opus-5-5, effort_requested=high, receipt_supported=true, model_actual=claude-opus-5-5, effort_actual=unverified, independence_verified=true.",
+    "peer_outcome": "folded",
+    "peer_jobs_outstanding": 0,
+    "validator": {
+      "outcome": "empty-batch",
+      "reason": "No current retained findings require validation; three frozen-snapshot findings were statically addressed in follow-up. Runtime verification remains parent-owned.",
+      "selected": 0,
+      "confirmed": 0,
+      "rejected": 0,
+      "unresolved": 0,
+      "malformed": 0,
+      "failed": 0,
+      "shortcut_skipped": 0,
+      "protected_subject_reclassifications": 0,
+      "degraded_blockers": 0,
+      "bound_exceeded": false
+    },
+    "first_evidence_backfilled": 1,
+    "quote_demotions": 0,
+    "malformed_findings": 0,
+    "malformed_returns": 0,
+    "suppressed_by_confidence": {},
+    "mode_aware_demotions": 0,
+    "original_snapshot_primary_count": 3,
+    "statically_addressed_follow_up_count": 3,
+    "current_primary_count": 0,
+    "failed_reviewers": [],
+    "timed_out_reviewers": [],
+    "compound_packs": {
+      "roots": [],
+      "errors": [],
+      "warnings": []
+    },
+    "standards": "AGENTS.md was the sole criteria source, read across all changed paths; named standards fallback used. No Compound Packs selected.",
+    "settlement_suppression": "Not evaluated; no plan completeness obligations were extracted for this bounded fix.",
+    "runtime_checks_performed": [],
+    "notes": [
+      "The independent external review covered the original frozen 21-file packet. Its exact hashes are in snapshot.json; secrets, configuration, payloads and logs were excluded. Temporary source diagnostic traces in that packet were excluded from the functional verdict.",
+      "Post-review source is a separate eight-file frozen recheck at post-review.json. Diagnostic traces were removed by the parent. All three historical findings are statically addressed there; they are neither current apply work nor fixes applied by this review.",
+      "Retained official libXcursor 1.2.1 source establishes default-size dependence on root dimensions and the exact Qt loader input sequence. This installed version has no XCURSOR_RESIZED implementation; a resized-path defect on other distro versions remains unconfirmed.",
+      "The follow-up adds full-layout invalidation, bounded source-disconnect retries with successful-grab cleanup, actual helper seed comparison against Qt dimensions/hotspot/pixels, 18 malformed seed rows, valid reuse, layout-only invalidation and unsolicited replacement rejection. These are source observations, not test passes.",
+      "Direct actual-helper seeded cancellation exists. Resident-installed seed preservation and reuse after controller pre-BEGIN cancellation/discard remains a separate narrow testing gap.",
+      "No builds, tests, GUI, memory checks or timing checks were performed by this review. Parent-reported pixel proof was not independently assessed. No feature parity, release-source performance, compositor acceptance or shipping acceptance is established.",
+      "All four local reviewers and the independent peer completed without reported failures or exceeded bounds. Other selector/lifecycle work and broader product acceptance were outside scope."
+    ]
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261009-cursor-cache-173514",
+  "run_id": "20261009-cursor-cache-173514",
+  "verdict_reason": "The current actionable source queue is empty after static follow-up resolution. Acceptance remains pending: build and targeted tests, then Cinnamon functional/timing/memory gates; expand to GNOME/KDE only after Cinnamon passes. Each declared desktop needs current-version graphical evidence. This review provides no runtime pass.",
+  "next_action": "The parent must complete the pending candidate gates and record actual results before acceptance."
+}
