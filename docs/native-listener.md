@@ -20,12 +20,25 @@ not absence of a tray host. Host loss and return are tested separately from
 initial startup; a missing host preserves settings access. Notifications use the
 accepted user preference.
 
-`X11Clipboard` owns the output selection in the resident. Private, unlinked
-0600 files retain the encoded payload while ownership or an incremental transfer
-requires it. Transfers have separate leases, a sixteen-stream bound, idle and
-absolute deadlines. New output must not invalidate an earlier active transfer.
-Output copying remains synchronous; large spools can therefore delay the main
-thread on slow storage. Do not report this as a latency optimization.
+`X11Clipboard` owns the output selection in the resident. It retains one encoded
+payload for legitimate native clipboard ownership, sharing an image's existing
+QByteArray storage rather than decoding or duplicating that image. Text and URI
+representations are encoded once. SelectionClear or replacement releases current
+ownership; an earlier accepted incremental transfer retains its independent
+version only until completion, requestor destruction or its idle/absolute deadline.
+There are at most sixteen streams and seventeen retained versions, each bounded
+by the accepted Settings ceiling. Requests send chunks of at most 64 KiB.
+
+This is an explicit memory exception: a local-only image must remain pasteable
+while the resident owns the clipboard. Uploads normally own only the small URL
+text; history previews and finished upload buffers are separate and must not be
+kept alive by this owner. No disk spool is written or flushed on the event loop.
+Copy commit remains synchronous, with a final clipboard revision check and server
+ownership confirmation; asynchronous staging without an invocation eligibility
+contract would allow a stale completion to overwrite newer user activity. Large
+text/URI encoding still runs synchronously, and the native owner must be included
+in any payload-retention memory measurement. Do not describe this as zero payload
+heap retention or assume its tradeoff meets the cold/closed memory target.
 
 Graphical acquisition runs in the ephemeral `putgd-capture` process. Before
 launch, the resident freezes the active window, frame and output identities and

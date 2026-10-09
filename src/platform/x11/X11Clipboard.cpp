@@ -2,7 +2,6 @@
 #include "X11Reply.h"
 #include "platform/NativeSession.h"
 #include <QSet>
-#include <QDir>
 #include <QMimeData>
 #include <QBuffer>
 #include <QImageReader>
@@ -11,7 +10,6 @@
 #include <xcb/xfixes.h>
 #include <cstring>
 #include <algorithm>
-#include <unistd.h>
 #include <limits>
 namespace putgd {
 namespace {using x11::reply;PayloadResult failure(const char* code,const char* message){return {{},{QString::fromLatin1(code),QString::fromLatin1(message),{}}};}}
@@ -176,21 +174,11 @@ void X11Clipboard::copy(const CopyPayload& payload,std::function<void(Error)> ca
   bytes=payload.text.toUtf8();content->targets={atom("UTF8_STRING"),atom("text/plain;charset=utf-8"),atom("text/plain")};
  }else{callback({"source_unsupported","Unsupported clipboard result type",{}});return;}
  if(bytes.size()>bound){callback({"input_excessive","Clipboard result exceeds resource limits",{}});return;}
- // QTemporaryFile creates an exclusive 0600 regular file. Keep its open handle
- // rather than an archive/user path: deleting an artifact cannot break ownership.
- content->spool=std::make_unique<QTemporaryFile>(QDir::tempPath()+"/putgd-clipboard-XXXXXX");
- if(!content->spool->open()||!content->spool->setPermissions(QFileDevice::ReadOwner|QFileDevice::WriteOwner)){
-  callback({"clipboard_copy_failed","Cannot prepare private clipboard storage",{}});return;
- }
- // Unlink immediately: the open fd is the only lease. Even a crashed process
- // cannot leave a named payload behind, and replacement never touches user files.
- if(::unlink(QFile::encodeName(content->spool->fileName()).constData())!=0){
-  callback({"clipboard_copy_failed","Cannot secure private clipboard storage",{}});return;
- }
- content->spool->setAutoRemove(false);
- if(content->spool->write(bytes)!=bytes.size()||!content->spool->flush()){
-  callback({"clipboard_copy_failed","Cannot prepare private clipboard storage",{}});return;
- }
+ // Keep an implicitly shared encoded lease for genuine native ownership.
+ // Writing an entire accepted result to disk here blocks the listener; staging
+ // it asynchronously would open an invocation-eligibility publication gap.
+ // Transfer requests copy only bounded chunks and never decode/cache images.
+ content->data=std::move(bytes);
  const auto timestamp=serverTimestamp();
  if(!timestamp){callback({"clipboard_copy_failed","Cannot establish clipboard server time",{}});return;}
  if(revision()!=frozen){callback({"copy_suppressed","Clipboard changed before result ownership",{}});return;}
@@ -216,21 +204,20 @@ void X11Clipboard::selectionRequest(const xcb_selection_request_event_t& request
    auto error=reply(xcb_request_check(connection_,xcb_change_property_checked(connection_,XCB_PROP_MODE_REPLACE,request.requestor,property,XCB_ATOM_INTEGER,32,1,&owned_->timestamp)));accepted=!error;
   }else if(owned_->targets.contains(request.target)){
    constexpr qint64 chunk=64*1024;
-   if(owned_->spool->size()<=chunk){
-    if(owned_->spool->seek(0)){const auto data=owned_->spool->read(chunk);if(data.size()==owned_->spool->size()){
-     auto error=reply(xcb_request_check(connection_,xcb_change_property_checked(connection_,XCB_PROP_MODE_REPLACE,request.requestor,property,request.target,8,data.size(),data.constData())));accepted=!error;
-    }}
+   if(owned_->data.size()<=chunk){
+    const auto& data=owned_->data;
+    auto error=reply(xcb_request_check(connection_,xcb_change_property_checked(connection_,XCB_PROP_MODE_REPLACE,request.requestor,property,request.target,8,data.size(),data.constData())));accepted=!error;
    }else if(outgoing_.size()<16){
     QSet<const OwnedContent*> versions; qint64 leasedBytes=0;
-    for(const auto& transfer:outgoing_)if(!versions.contains(transfer.content.get())){versions.insert(transfer.content.get());leasedBytes+=transfer.content->spool->size();}
-    if(!versions.contains(owned_.get()))leasedBytes+=owned_->spool->size();
+    for(const auto& transfer:outgoing_)if(!versions.contains(transfer.content.get())){versions.insert(transfer.content.get());leasedBytes+=transfer.content->data.size();}
+    if(!versions.contains(owned_.get()))leasedBytes+=owned_->data.size();
     // At most 16 independently pinned stream versions plus current ownership.
     // This hard ceiling preserves all accepted Settings limits; no peer can
-    // allocate an additional spool merely by requesting a representation.
+    // allocate an additional payload merely by requesting a representation.
     if(leasedBytes<=17LL*1099511627776LL){
      const quint32 mask=XCB_EVENT_MASK_PROPERTY_CHANGE|XCB_EVENT_MASK_STRUCTURE_NOTIFY;
      auto error=reply(xcb_request_check(connection_,xcb_change_window_attributes_checked(connection_,request.requestor,XCB_CW_EVENT_MASK,&mask)));
-     if(!error){const quint32 length=quint32(std::min<qint64>(owned_->spool->size(),std::numeric_limits<quint32>::max()));
+     if(!error){const quint32 length=quint32(std::min<qint64>(owned_->data.size(),std::numeric_limits<quint32>::max()));
       error=reply(xcb_request_check(connection_,xcb_change_property_checked(connection_,XCB_PROP_MODE_REPLACE,request.requestor,property,incr_,32,1,&length)));
       if(!error){outgoing_.append({request.requestor,property,request.target,owned_,0,QDeadlineTimer(15000),QDeadlineTimer(60000)});if(!outgoingTimer_.isActive())outgoingTimer_.start();accepted=true;}
       else dropOutgoing(request.requestor,property);
@@ -253,9 +240,7 @@ void X11Clipboard::outgoingDeleted(xcb_window_t requestor,xcb_atom_t property){
  for(auto& transfer:outgoing_)if(transfer.requestor==requestor&&transfer.property==property){
   if(transfer.deadline.hasExpired()||transfer.maximumLifetime.hasExpired()){dropOutgoing(requestor,property);return;}
   constexpr qint64 chunk=64*1024;
-  if(!transfer.content->spool->seek(transfer.offset)){dropOutgoing(requestor,property);return;}
-  const auto data=transfer.content->spool->read(chunk);
-  if(data.isEmpty()&&transfer.offset<transfer.content->spool->size()){dropOutgoing(requestor,property);return;}
+  const auto data=transfer.content->data.mid(transfer.offset,chunk);
   auto error=reply(xcb_request_check(connection_,xcb_change_property_checked(connection_,XCB_PROP_MODE_REPLACE,requestor,property,transfer.target,8,data.size(),data.constData())));
   if(error||data.isEmpty()){dropOutgoing(requestor,property);xcb_flush(connection_);return;}
   transfer.offset+=data.size();transfer.deadline=QDeadlineTimer(15000);xcb_flush(connection_);return;

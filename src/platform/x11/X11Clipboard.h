@@ -8,7 +8,6 @@
 #include <QHash>
 #include <xcb/xcb.h>
 #include <memory>
-#include <QTemporaryFile>
 #include <QDeadlineTimer>
 namespace putgd {
 class X11Clipboard final:public QObject {
@@ -33,7 +32,10 @@ private:
  void received();
  void complete(PayloadResult);
  struct OwnedContent {
-  std::unique_ptr<QTemporaryFile> spool;
+  // Native selection ownership legitimately retains its encoded result until
+  // replacement/SelectionClear; independent INCR requests pin this version.
+  // QByteArray shares image input storage and never caches a decoded QImage.
+  QByteArray data;
   QList<xcb_atom_t> targets;
   xcb_timestamp_t timestamp=0;
  };

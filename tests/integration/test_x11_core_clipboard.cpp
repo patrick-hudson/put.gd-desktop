@@ -4,10 +4,6 @@
 #include <QtTest>
 #include <QBuffer>
 #include <QImage>
-#include <QDir>
-#include <QFileInfo>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <QUrl>
 #include <memory>
 #include <vector>
@@ -54,19 +50,7 @@ private:
 class CoreClipboardTest final:public QObject {
  Q_OBJECT
  static Error copy(X11Clipboard& owner,const CopyPayload& payload){Error result;bool completed=false;owner.copy(payload,[&](Error error){result=error;completed=true;});if(!completed)return {"test_incomplete","Copy callback was not synchronous",{}};if(result)qWarning().noquote()<<"Synthetic native copy failure:"<<result.code;return result;}
- static int spoolDescriptors(bool* allPrivate=nullptr){
-  // Qt may implement QTemporaryFile with O_TMPFILE: /proc's link then keeps
-  // the anonymous inode name even after fileName() creates/removes a link.
-  // Inspect fd identity/permissions instead of assuming a pathname prefix.
-  int count=0;bool safe=true;
-  for(const auto& entry:QDir("/proc/self/fd").entryList(QDir::AllEntries|QDir::NoDotAndDotDot)){
-   struct stat status{};bool number=false;const int fd=entry.toInt(&number);
-   if(!number||::fstat(fd,&status)!=0||!S_ISREG(status.st_mode)||status.st_nlink!=0||status.st_uid!=::geteuid())continue;
-   ++count;safe=safe&&(status.st_mode&0777)==0600;
-  }
-  if(allPrivate) *allPrivate=safe;
-  return count;
- }
+
 private slots:
  void nativeCoreGuards(){
   X11Clipboard clipboard;QVERIFY(clipboard.available());X11Shortcuts shortcuts;QVERIFY(shortcuts.available());shortcuts.bind({{"region","Ctrl+Shift+1"}});
@@ -122,18 +106,26 @@ private slots:
   QTest::qWait(16500);receiver.resume();QTest::qWait(100);QVERIFY(receiver.data.isEmpty());QVERIFY(!receiver.done);
   Receiver active;active.request("UTF8_STRING");QTRY_VERIFY(active.done);QCOMPARE(active.data,fresh.text.toUtf8());
  }
- void spoolDescriptorsFollowActualLeases(){
-  const int initial=spoolDescriptors();bool privateFiles=false;
+ void sharedEncodedImageLeasesReleaseOnReplacementAndClear(){
+  CopyPayload original;original.kind="image";
+  QImage pixels(512,256,QImage::Format_RGB32);quint32 seed=0x31415926;
+  for(int y=0;y<pixels.height();++y)for(int x=0;x<pixels.width();++x){seed=1664525*seed+1013904223;pixels.setPixel(x,y,0xff000000|(seed&0xffffff));}
+  QBuffer buffer(&original.encodedImage);QVERIFY(buffer.open(QIODevice::WriteOnly));QVERIFY(pixels.save(&buffer,"PNG"));buffer.close();
+  QVERIFY(original.encodedImage.size()>64*1024);QVERIFY(original.encodedImage.isDetached());
   {
-   X11Clipboard owner;CopyPayload old;old.kind="text";old.text=QString(192*1024,'z');QVERIFY(!copy(owner,old));
-   QCOMPARE(spoolDescriptors(&privateFiles),initial+1);QVERIFY(privateFiles);
-   Receiver receiver;receiver.request("UTF8_STRING",false,true);QTRY_VERIFY(receiver.incremental);
+   X11Clipboard owner;QVERIFY(!copy(owner,original));
+   // The owner shares encoded input rather than duplicating the whole image.
+   QVERIFY(!original.encodedImage.isDetached());
+   Receiver receiver;receiver.request("image/png",false,true);QTRY_VERIFY(receiver.incremental);
    CopyPayload fresh;fresh.kind="text";fresh.text="current small result";QVERIFY(!copy(owner,fresh));
-   QCOMPARE(spoolDescriptors(&privateFiles),initial+2);QVERIFY(privateFiles);
-   receiver.resume();QTRY_VERIFY(receiver.done);QCOMPARE(receiver.data,old.text.toUtf8());
-   QTRY_COMPARE(spoolDescriptors(),initial+1);
+   QVERIFY(!original.encodedImage.isDetached()); // only its accepted INCR lease remains
+   receiver.resume();QTRY_VERIFY(receiver.done);QCOMPARE(receiver.data,original.encodedImage);
+   QTRY_VERIFY(original.encodedImage.isDetached());
+   QVERIFY(!copy(owner,original));QVERIFY(!original.encodedImage.isDetached());
+   Receiver competing;competing.steal();QTRY_VERIFY(original.encodedImage.isDetached());
+   QVERIFY(!copy(owner,original));QVERIFY(!original.encodedImage.isDetached());
   }
-  QCOMPARE(spoolDescriptors(),initial);
+  QVERIFY(original.encodedImage.isDetached()); // destruction releases current ownership
  }
  void persistentAfterPayloadLifetimeAndRejectedCopy(){
   X11Clipboard owner;{CopyPayload temporary;temporary.kind="text";temporary.text="leased beyond the caller";QVERIFY(!copy(owner,temporary));}
