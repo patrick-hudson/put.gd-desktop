@@ -28,6 +28,7 @@ SourceAdapter::PreparedAcquisition X11SourceAdapter::prepareAcquisition(const QS
  return [guard,target,error](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(error){cb({{},error});return;}if(guard)guard->capture(target,limits,std::move(cb));else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};
 }
 void X11SourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
+void X11SourceAdapter::acquireFrozen(const X11Target& target,const ResourceLimits& limits,std::function<void(PayloadResult)> callback){capture(target,limits,std::move(callback));}
 void X11SourceAdapter::capture(const X11Target& target,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
  if(overlay_){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
  qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count>limits.imagePixels-pixels){cb({{},{"image_limit","Monitor snapshot exceeds resource limits",{}}});return;}pixels+=count;}

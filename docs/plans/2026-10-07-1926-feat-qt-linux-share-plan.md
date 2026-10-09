@@ -1160,3 +1160,12 @@ Several compatible improvements may form one candidate: acceptance is based on
 the combined whole-family result and preserved features, not a requirement that
 one isolated change reach 40 MiB. Save individual and integrated comparisons
 separately, and never add deltas measured against different baselines.
+
+The approved listener/tray candidate uses Qt Core only on verified Cinnamon X11,
+native StatusNotifier/menu and persistent XCB clipboard ownership, and a bounded
+on-demand graphical capture helper. Other desktops retain their existing route.
+The existing Qt Widgets views and native fonts/dialogs are preserved. See
+[native listener replay](../native-listener.md) for implementation boundaries,
+known limits and required gates. The candidate has no memory acceptance result
+until the clean current build passes native Cinnamon and repeated whole-family
+measurements. Temporary build/test failures remain in the experiment record.

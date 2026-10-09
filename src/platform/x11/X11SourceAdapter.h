@@ -17,6 +17,8 @@ public:
  QJsonObject capabilities()const override;
  PreparedAcquisition prepareAcquisition(const QString&) override;
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override;
+ // Private capture helper uses the resident's already frozen external target.
+ void acquireFrozen(const X11Target&,const ResourceLimits&,std::function<void(PayloadResult)>);
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
  void bindShortcuts(const QHash<QString,QString>&);

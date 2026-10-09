@@ -8,6 +8,7 @@
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
 #include <QApplication>
+#include "platform/NativeSession.h"
 #include <QCommandLineParser>
 #include <QStandardPaths>
 #include <QDir>
@@ -23,6 +24,7 @@
 #include <cstring>
 #ifdef PUTGD_NATIVE_X11
 #include "platform/x11/X11SourceAdapter.h"
+#include "platform/x11/X11CoreSourceAdapter.h"
 #endif
 #ifdef PUTGD_NATIVE_GNOME
 #include "platform/gnome/GnomeAdapter.h"
@@ -89,10 +91,24 @@ int main(int argc,char* argv[]) {
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)) {
   std::printf("putgd %s\n",putgd::buildVersion());return 0;
  }
- QApplication app(argc,argv);
- putgd::VisualStyle::apply(app);
- app.setDesktopFileName("putgd");
- app.setWindowIcon(putgd::VisualStyle::icon("brand"));
+ bool coreResident=false;
+#ifdef PUTGD_NATIVE_X11
+ coreResident=putgd::cinnamonCoreSessionEnvironment();
+ // Honor an explicit non-X11 QPA request; do not route an offscreen launcher
+ // into real desktop services just because its inherited DISPLAY is present.
+ for(int i=1;i<argc;++i)if(std::strcmp(argv[i],"-platform")==0)coreResident=false;
+#endif
+ std::unique_ptr<QCoreApplication> application;
+ if(coreResident)application=std::make_unique<QCoreApplication>(argc,argv);
+ else {
+  auto graphical=std::make_unique<QApplication>(argc,argv);
+  putgd::VisualStyle::apply(*graphical);
+  graphical->setDesktopFileName("putgd");
+  graphical->setWindowIcon(putgd::VisualStyle::icon("brand"));
+  graphical->setQuitOnLastWindowClosed(false);
+  application=std::move(graphical);
+ }
+ auto& app=*application;
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd");QCoreApplication::setApplicationVersion(putgd::buildVersion());
  QCommandLineParser parser;parser.addHelpOption();parser.addVersionOption();parser.addOption({"background","Start in tray after setup"});parser.addOption({"history","Show upload history"});parser.addOption({"activity","Show recent activity"});parser.process(app);
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
@@ -105,12 +121,14 @@ int main(int argc,char* argv[]) {
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
  const auto bindings=[&settings]{QHash<QString,QString> result;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)result.insert(i.key(),i.value().shortcut);return result;};
- const auto wayland=QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland";
+ const auto wayland=!coreResident&&QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland";
  const auto desktop=qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts);
 
 #ifdef PUTGD_NATIVE_X11
  putgd::X11SourceAdapter* native=nullptr;
- if(QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
+ putgd::X11CoreSourceAdapter* coreNative=nullptr;
+ if(coreResident){auto adapter=std::make_unique<putgd::X11CoreSourceAdapter>();coreNative=adapter.get();source=std::move(adapter);}
+ if(!coreResident&&QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
   auto adapter=std::make_unique<putgd::X11SourceAdapter>();native=adapter.get();source=std::move(adapter);
  }
 #endif
@@ -130,6 +148,11 @@ int main(int argc,char* argv[]) {
  const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
  const auto requested=[&operations](const QString& action){operations.invoke(action,[](putgd::Error error,QJsonObject){if(error)qWarning("Action rejected: %s",qPrintable(error.code));});};
 #ifdef PUTGD_NATIVE_X11
+ if(coreNative) {
+  const auto bind=[&] {coreNative->bindShortcuts(bindings());};
+  bind();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bind);
+  QObject::connect(coreNative,&putgd::X11CoreSourceAdapter::actionRequested,&operations,requested);
+ }
  if(native) {
   const auto bind=[&] {native->bindShortcuts(bindings());};
   bind();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bind);
@@ -164,6 +187,7 @@ int main(int argc,char* argv[]) {
  const auto refreshSettingsDiagnostics=[&]{ui.invalidate();};
 #ifdef PUTGD_NATIVE_X11
  if(native)QObject::connect(native,&putgd::X11SourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
+ if(coreNative)QObject::connect(coreNative,&putgd::X11CoreSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
 #ifdef PUTGD_NATIVE_GNOME
  if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
@@ -192,8 +216,14 @@ int main(int argc,char* argv[]) {
   operations.background([configRoot,executable,enabled,loginMutex,loginGeneration,ticket](putgd::Error& error){std::lock_guard lock(*loginMutex);if(ticket!=loginGeneration->load())return QJsonObject{};error=putgd::LoginStartup::apply(configRoot,executable,enabled);return QJsonObject{{"enabled",enabled},{"applied",!error}};},[&,loginGeneration,ticket](putgd::Error error,QJsonObject status){if(ticket!=loginGeneration->load())return;loginStatus=status;if(error)loginStatus["error"]=error.toJson();refreshSettingsDiagnostics();});
  };
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
- app.setQuitOnLastWindowClosed(false);
- if(!parser.isSet("background")||!tray.available()||settings.revision().isEmpty()) {if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();}
+ const auto showInitialView=[&]{if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();};
+ if(!parser.isSet("background")||settings.revision().isEmpty())showInitialView();
+ else {
+  // A pending native registration is not evidence that the tray is absent.
+  // The transport resolves its bounded discovery without a nested event loop.
+  if(tray.availabilityKnown()){if(!tray.available())showInitialView();}
+  else QObject::connect(&tray,&putgd::TrayController::availabilityResolved,&tray,[&tray]{if(!tray.available())tray.showSettings();},Qt::SingleShotConnection);
+ }
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,&putgd::OperationService::shutdown);
  return app.exec();
 }

@@ -1,6 +1,6 @@
 #include "X11Shortcuts.h"
 #include "X11Reply.h"
-#include <QGuiApplication>
+#include "platform/NativeSession.h"
 #include <QKeySequence>
 #include <QSet>
 #include <X11/keysym.h>
@@ -9,7 +9,7 @@ namespace putgd {
 namespace {xcb_keysym_t symbol(Qt::Key key){const int k=int(key);if(k>=Qt::Key_F1&&k<=Qt::Key_F35)return XK_F1+(k-Qt::Key_F1);if(k>=Qt::Key_A&&k<=Qt::Key_Z)return XK_a+(k-Qt::Key_A);if(k>=32&&k<=126)return k;
  switch(key){case Qt::Key_Escape:return XK_Escape;case Qt::Key_Print:return XK_Print;case Qt::Key_Space:return XK_space;case Qt::Key_Return:return XK_Return;case Qt::Key_Enter:return XK_KP_Enter;case Qt::Key_Tab:return XK_Tab;case Qt::Key_Backspace:return XK_BackSpace;case Qt::Key_Delete:return XK_Delete;case Qt::Key_Insert:return XK_Insert;case Qt::Key_Home:return XK_Home;case Qt::Key_End:return XK_End;case Qt::Key_PageUp:return XK_Page_Up;case Qt::Key_PageDown:return XK_Page_Down;case Qt::Key_Left:return XK_Left;case Qt::Key_Right:return XK_Right;case Qt::Key_Up:return XK_Up;case Qt::Key_Down:return XK_Down;default:return XCB_NO_SYMBOL;}}
 }
-X11Shortcuts::X11Shortcuts(QObject* parent):QObject(parent){if(QGuiApplication::platformName()!="xcb")return;connection_=xcb_connect(nullptr,nullptr);if(xcb_connection_has_error(connection_))return;root_=xcb_setup_roots_iterator(xcb_get_setup(connection_)).data->root;symbols_=xcb_key_symbols_alloc(connection_);if(!symbols_)return;notifier_=new QSocketNotifier(xcb_get_file_descriptor(connection_),QSocketNotifier::Read,this);connect(notifier_,&QSocketNotifier::activated,this,[this]{events();});}
+X11Shortcuts::X11Shortcuts(QObject* parent):QObject(parent){if(!nativeX11SessionEnvironment())return;connection_=xcb_connect(nullptr,nullptr);if(xcb_connection_has_error(connection_))return;root_=xcb_setup_roots_iterator(xcb_get_setup(connection_)).data->root;symbols_=xcb_key_symbols_alloc(connection_);if(!symbols_)return;notifier_=new QSocketNotifier(xcb_get_file_descriptor(connection_),QSocketNotifier::Read,this);connect(notifier_,&QSocketNotifier::activated,this,[this]{events();});}
 X11Shortcuts::~X11Shortcuts(){clear();if(symbols_)xcb_key_symbols_free(symbols_);if(connection_)xcb_disconnect(connection_);}
 bool X11Shortcuts::available()const{return notifier_&&connection_&&!xcb_connection_has_error(connection_);}
 uint16_t X11Shortcuts::modifier(const xcb_get_modifier_mapping_reply_t* map,xcb_keysym_t one,xcb_keysym_t two){if(!map)return 0;auto* codes=xcb_get_modifier_mapping_keycodes(map);uint16_t result=0;for(int m=0;m<8;++m)for(int i=0;i<map->keycodes_per_modifier;++i){auto code=codes[m*map->keycodes_per_modifier+i];if(!code)continue;for(int col=0;col<4;++col){auto sym=xcb_key_symbols_get_keysym(symbols_,code,col);if(sym==one||sym==two)result|=uint16_t(1<<m);}}return result;}

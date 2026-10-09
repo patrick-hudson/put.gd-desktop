@@ -16,7 +16,11 @@ private slots:
   auto environment=QProcessEnvironment::systemEnvironment();
   environment.remove("DISPLAY");environment.remove("WAYLAND_DISPLAY");
   environment.insert("QT_QPA_PLATFORM","this-platform-does-not-exist");
-  for(const auto& program:QList<QPair<QString,QString>>{{PUTGD_APP_PATH,"putgd"},{PUTGD_CLI_PATH,"putgd-cli"},{PUTGD_UI_PATH,"putgd-ui"}}) {
+  QList<QPair<QString,QString>> programs{{PUTGD_APP_PATH,"putgd"},{PUTGD_CLI_PATH,"putgd-cli"},{PUTGD_UI_PATH,"putgd-ui"}};
+#ifdef PUTGD_CAPTURE_PATH
+  programs.append(QPair<QString, QString>{QStringLiteral(PUTGD_CAPTURE_PATH), QStringLiteral("putgd-capture")});
+#endif
+  for(const auto& program:programs) {
    QProcess process;process.setProcessEnvironment(environment);process.start(program.first,{"--version"});
    QVERIFY(process.waitForFinished(5000));QCOMPARE(process.exitCode(),0);
    QCOMPARE(process.readAllStandardOutput().trimmed(),(program.second+" "+buildVersion()).toUtf8());

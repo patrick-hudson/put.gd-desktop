@@ -8,6 +8,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QHash>
+#include <QFileInfo>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <QPainter>
 #include <QProcess>
 #include <QSaveFile>
@@ -28,7 +31,29 @@ namespace {
 struct WindowWitness {
  double mapEventObservedMs=-1,mapValidatedMs=-1,firstWhiteObservedMs=-1,probeTotalMs=0,probeMaxMs=0;
  int probeCount=0;
+ quint32 ownerPid=0;quint64 ownerStartTicks=0;
 };
+// Admit only the supplied capture executable in an immediate owned child.
+// PID names or arbitrary descendants are insufficient ownership evidence.
+struct ProcessStamp { quint64 startTicks=0; quint32 parentPid=0; };
+ProcessStamp processStamp(quint32 pid) {
+ QFile file(QStringLiteral("/proc/%1/stat").arg(pid));
+ if(!file.open(QIODevice::ReadOnly))return {};
+ const auto bytes=file.read(4096);const auto close=bytes.lastIndexOf(')');
+ if(close<0||bytes.size()==4096)return {};
+ const auto fields=bytes.mid(close+1).simplified().split(' ');
+ if(fields.size()<20)return {};
+ bool parentOk=false,startOk=false;const auto parent=fields[1].toUInt(&parentOk);const auto start=fields[19].toULongLong(&startOk);
+ return parentOk&&startOk&&start?ProcessStamp{start,parent}:ProcessStamp{};
+}
+bool captureChild(quint32 pid,quint32 resident,const struct stat& expected,ProcessStamp& stamp) {
+ const auto path=QStringLiteral("/proc/%1").arg(pid);struct stat process{},executable{};
+ if(::stat(QFile::encodeName(path).constData(),&process)||process.st_uid!=::geteuid())return false;
+ const auto before=processStamp(pid);if(before.parentPid!=resident||!before.startTicks)return false;
+ if(::stat(QFile::encodeName(path+"/exe").constData(),&executable)||executable.st_dev!=expected.st_dev||executable.st_ino!=expected.st_ino)return false;
+ const auto after=processStamp(pid);if(after.startTicks!=before.startTicks||after.parentPid!=resident)return false;
+ stamp=after;return true;
+}
 class Canvas:public QWidget {
 public:
  explicit Canvas(QScreen* screen):QWidget(nullptr,Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint|Qt::X11BypassWindowManagerHint){setScreen(screen);setGeometry(screen->geometry());show();raise();}
@@ -66,10 +91,13 @@ bool visibleCanvas(xcb_connection_t* c,xcb_window_t root,xcb_window_t canvas){
 }
 int main(int argc,char** argv){
  QApplication application(argc,argv);
- QCommandLineParser parser;parser.addHelpOption();parser.addOption({"resident-pid","Owned release resident PID","pid"});parser.addOption({"output","Synthetic result JSON","path"});parser.addOption({"live-outline","Witness the first drawn outline on a transparent live selector"});parser.process(application);
+ QCommandLineParser parser;parser.addHelpOption();parser.addOption({"resident-pid","Owned release resident PID","pid"});parser.addOption({"output","Synthetic result JSON","path"});parser.addOption({"capture-helper","Exact capture helper executable whose immediate child may own the selector","path"});parser.addOption({"live-outline","Witness the first drawn outline on a transparent live selector"});parser.process(application);
  const bool liveOutline=parser.isSet("live-outline");
  const auto pid=parser.value("resident-pid").toUInt();const auto output=parser.value("output");
  if(!pid||output.isEmpty()||QGuiApplication::platformName()!="xcb"||qEnvironmentVariable("XDG_SESSION_TYPE")!="x11"||!qEnvironmentVariable("XDG_CURRENT_DESKTOP").contains("Cinnamon"))return 2;
+ const auto helperPath=parser.value("capture-helper");struct stat helperIdentity{};
+ if(!helperPath.isEmpty()&&(!QFileInfo(helperPath).isAbsolute()||::stat(QFile::encodeName(helperPath).constData(),&helperIdentity)||!S_ISREG(helperIdentity.st_mode)||::access(QFile::encodeName(helperPath).constData(),X_OK)))return 2;
+ const auto residentIdentity=processStamp(pid);if(!residentIdentity.startTicks)return 2;
  xcb_connection_t* connection=xcb_connect(nullptr,nullptr);if(xcb_connection_has_error(connection))return 2;
  auto* symbols=xcb_key_symbols_alloc(connection);
  std::vector<std::unique_ptr<Canvas>> canvases;QJsonArray displays;
@@ -124,9 +152,11 @@ int main(int argc,char** argv){
       auto* property=xcb_get_property_reply(connection,xcb_get_property(connection,0,window,pidAtom,XCB_ATOM_CARDINAL,0,1),nullptr);
       uint32_t owner=0;if(property&&property->format==32&&xcb_get_property_value_length(property)==4)memcpy(&owner,xcb_get_property_value(property),4);free(property);
       auto* attributes=xcb_get_window_attributes_reply(connection,xcb_get_window_attributes(connection,window),nullptr);
-      const bool own=owner==pid&&attributes&&attributes->override_redirect;free(attributes);
+      ProcessStamp ownerIdentity;const bool residentOwner=owner==pid&&processStamp(pid).startTicks==residentIdentity.startTicks;
+      const bool helperOwner=!helperPath.isEmpty()&&captureChild(owner,pid,helperIdentity,ownerIdentity);
+      const bool own=(residentOwner||helperOwner)&&attributes&&attributes->override_redirect;free(attributes);
       const auto validatedMs=elapsedMs();mapOwnershipQueriesMs+=validatedMs-observedMs;
-      if(own&&!overlays.contains(window)){overlays.append(window);auto& witness=witnesses[window];witness.mapEventObservedMs=observedMs;witness.mapValidatedMs=validatedMs;}
+      if(own&&!overlays.contains(window)){overlays.append(window);auto& witness=witnesses[window];witness.mapEventObservedMs=observedMs;witness.mapValidatedMs=validatedMs;witness.ownerPid=owner;witness.ownerStartTicks=residentOwner?residentIdentity.startTicks:ownerIdentity.startTicks;}
      }
      free(event);
     }
@@ -149,7 +179,7 @@ int main(int argc,char** argv){
    if(iteration>=5){QJsonObject sample{{"mapMs",mappedMs},{"paintMs",paintedMs}};
     if(liveOutline){sample["inputIssuedMs"]=inputIssuedMs;sample["paintAfterInputMs"]=paintedMs-inputIssuedMs;
      sample["driverCosts"]=QJsonObject{{"hotkeyInjectionMs",hotkeyIssuedMs},{"mapEventDrainMs",eventDrainMs},{"mapOwnershipQueriesMs",mapOwnershipQueriesMs},{"inputInjectionMs",inputIssuedMs-mappedMs},{"paintQueriesMs",paintQueriesMs},{"eventProcessingMs",eventProcessingMs},{"pollSleepMs",pollSleepMs},{"pollIterations",pollIterations}};
-     QJsonArray windows;for(auto window:overlays){const auto& witness=witnesses[window];windows.append(QJsonObject{{"mapEventObservedMs",witness.mapEventObservedMs},{"mapValidatedMs",witness.mapValidatedMs},{"firstWhiteObservedMs",witness.firstWhiteObservedMs},{"probeCount",witness.probeCount},{"probeTotalMs",witness.probeTotalMs},{"probeMaxMs",witness.probeMaxMs}});}sample["windowWitnesses"]=windows;
+     QJsonArray windows;for(auto window:overlays){const auto& witness=witnesses[window];windows.append(QJsonObject{{"ownerPid",qint64(witness.ownerPid)},{"ownerStartTicks",QString::number(witness.ownerStartTicks)},{"mapEventObservedMs",witness.mapEventObservedMs},{"mapValidatedMs",witness.mapValidatedMs},{"firstWhiteObservedMs",witness.firstWhiteObservedMs},{"probeCount",witness.probeCount},{"probeTotalMs",witness.probeTotalMs},{"probeMaxMs",witness.probeMaxMs}});}sample["windowWitnesses"]=windows;
     }
     samples.append(sample);
    }
@@ -158,6 +188,7 @@ int main(int argc,char** argv){
  std::vector<double> sorted;for(const auto& sample:samples)sorted.push_back(sample.toObject()["paintMs"].toDouble());std::sort(sorted.begin(),sorted.end());
  const double p95=sorted.size()==30?sorted[28]:-1;
  QJsonObject result{{"schemaVersion",1},{"scope","physical Cinnamon X11 release resident, actual hotkey to all-display mapped/painted selector; synthetic covering windows; selection cancelled"},{"warmupInvocations",5},{"samples",samples},{"displays",displays},{"p95PaintMs",p95},{"budgetPassed",error.isEmpty()&&p95>=0&&p95<=150},{"error",error}};
+ result["selectorOwnership"]=helperPath.isEmpty()?"resident PID/start identity":"resident or exact supplied executable immediate child PID/start/device/inode";
  if(liveOutline){
   result["schemaVersion"]=3;result["scope"]="physical Cinnamon X11 release hotkey to first drawn white outline on every actual transparent selector; synthetic canvases; scale1 shared vertical strip; Escape cancellation";
   result["witnessMode"]="live-outline";result["measurementLimit"]="Includes external press/drag injection and driver query/event/poll costs; differs from historical shaded-first-frame workload. White pixels witness the window drawable, not compositor presentation. Not native capture/outline-removal or mixed-DPI proof.";

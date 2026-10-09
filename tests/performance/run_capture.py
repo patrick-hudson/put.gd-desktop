@@ -18,12 +18,21 @@ def run(args):
     output = Path(args.output).resolve()
     output.mkdir(mode=0o700, parents=True, exist_ok=False)
     app, cli, driver = [str(Path(path).resolve()) for path in (args.app, args.cli, args.driver)]
+    helper = str(Path(args.capture_helper).resolve(strict=True)) if args.capture_helper else None
+    if helper:
+        app_version = subprocess.check_output([app, '--version'], text=True, timeout=5).strip()
+        helper_version = subprocess.check_output([helper, '--version'], text=True, timeout=5).strip()
+        if helper_version != 'putgd-capture ' + app_version.removeprefix('putgd '):
+            raise RuntimeError('Capture helper build version does not match resident')
     parameters = {'schemaVersion': 1, 'scope': 'synthetic covering windows; local-only; all selections cancelled',
         'desktop': os.environ['XDG_CURRENT_DESKTOP'], 'session': 'x11', 'kernel': os.uname().release,
         'shortcut': 'Ctrl+Shift+F12', 'warmupInvocations': 5, 'sampleCount': 30,
         'timeoutSeconds': 240, 'witnessMode': 'live-outline' if args.live_outline else 'shaded-first-frame',
         'harnessSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'binarySha256': {name: hashlib.sha256(Path(path).read_bytes()).hexdigest()
             for name, path in [('app', app), ('cli', cli), ('driver', driver)]}}
+    if helper:
+        parameters['binarySha256']['captureHelper'] = hashlib.sha256(Path(helper).read_bytes()).hexdigest()
+        parameters['captureHelperVersion'] = helper_version
     (output / 'parameters.json').write_text(json.dumps(parameters, indent=2) + '\n')
     # Keep the Unix socket path short even when the evidence directory is deep.
     with tempfile.TemporaryDirectory(prefix='putgd-capture-') as private, (output / 'resident.log').open('wb') as log:
@@ -79,6 +88,8 @@ def run(args):
                 command = [driver, '--resident-pid', str(resident.pid), '--output', str(output / 'results.json')]
                 if args.live_outline:
                     command.append('--live-outline')
+                if helper:
+                    command += ['--capture-helper', helper]
                 completed = subprocess.run(command,
                     env=environment, stdout=driver_log, stderr=subprocess.STDOUT, timeout=240)
             outcomes = []
@@ -97,5 +108,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     for argument in ('app', 'cli', 'driver', 'output'):
         parser.add_argument('--' + argument, required=True)
+    parser.add_argument('--capture-helper', help='Exact same-build ephemeral capture helper; omit for the original resident-owned selector')
     parser.add_argument('--live-outline', action='store_true', help='Measure the drawn outline of a transparent selector; distinct from the historical shaded-frame workload')
     raise SystemExit(run(parser.parse_args()))

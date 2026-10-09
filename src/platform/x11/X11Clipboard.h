@@ -7,6 +7,9 @@
 #include <QQueue>
 #include <QHash>
 #include <xcb/xcb.h>
+#include <memory>
+#include <QTemporaryFile>
+#include <QDeadlineTimer>
 namespace putgd {
 class X11Clipboard final:public QObject {
  Q_OBJECT
@@ -29,6 +32,29 @@ private:
  void property(bool incremental);
  void received();
  void complete(PayloadResult);
+ struct OwnedContent {
+  std::unique_ptr<QTemporaryFile> spool;
+  QList<xcb_atom_t> targets;
+  xcb_timestamp_t timestamp=0;
+ };
+ struct Outgoing {
+  xcb_window_t requestor;
+  xcb_atom_t property,target;
+  std::shared_ptr<OwnedContent> content;
+  qint64 offset=0;
+  QDeadlineTimer deadline,maximumLifetime;
+ };
+ void selectionRequest(const xcb_selection_request_event_t&);
+ void outgoingDeleted(xcb_window_t,xcb_atom_t);
+ void dropOutgoing(xcb_window_t,xcb_atom_t);
+ void expireOutgoing();
+ xcb_timestamp_t serverTimestamp();
+ std::shared_ptr<OwnedContent> owned_;
+ QList<Outgoing> outgoing_;
+ QTimer outgoingTimer_;
+ xcb_atom_t clockProperty_=0;
+ xcb_timestamp_t serverTime_=0;
+ quint32 clockSerial_=0;
  QHash<QByteArray,xcb_atom_t> atoms_;
  xcb_connection_t* connection_=nullptr;
  xcb_window_t window_=XCB_WINDOW_NONE;
