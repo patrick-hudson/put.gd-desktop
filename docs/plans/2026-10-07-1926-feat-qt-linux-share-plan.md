@@ -686,8 +686,11 @@ are implemented. Dev 41/41 and the 16 affected ASan/UBSan and instrumented-Qt TS
 contracts pass, as do the Release build and separate MCP suite. The completed
 review's four confirmed defects have caller fixes and regression evidence.
 See [the implementation receipt](../evidence/2026-10-08-ui-process.json).
-U11 remains in progress: GNOME ownership/setup-result recovery fixes, current
-Cinnamon/GNOME/KDE AE17 and total-process memory/reopen measurements are pending.
+GNOME ownership and setup-result recovery now have reproduced regressions and
+passing bounded fixes (see the linked follow-up receipts in verification.md).
+U11 remains in progress: current Cinnamon/GNOME/KDE AE17 and total-process
+memory/reopen measurements are pending. Reuse the three current test VMs; shut
+down superseded guests before starting replacements.
 
 ### U10. Packages, performance, and release acceptance
 

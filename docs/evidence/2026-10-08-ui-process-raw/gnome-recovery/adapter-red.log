@@ -1,0 +1,10 @@
+********* Start testing of GnomeAdapterTransportTest *********
+Config: Using QtTest library 6.10.2, Qt 6.10.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 15.2.0), ubuntu 26.04
+PASS   : GnomeAdapterTransportTest::initTestCase()
+FAIL!  : GnomeAdapterTransportTest::clearFailureRecoversWithoutUiReopen() 'windowAvailable(source)' returned FALSE. ()
+   Loc: [/home/lab/putgd-u11-gnome-recovery/tests/integration/test_gnome_bridge.cpp(127)]
+PASS   : GnomeAdapterTransportTest::liveFailureStaysClosedAndNewPidSupersedesClear()
+PASS   : GnomeAdapterTransportTest::ownerReplacementRegistersLatestPid()
+PASS   : GnomeAdapterTransportTest::cleanupTestCase()
+Totals: 4 passed, 1 failed, 0 skipped, 0 blacklisted, 22133ms
+********* Finished testing of GnomeAdapterTransportTest *********

@@ -42,7 +42,13 @@ GnomeAdapter::GnomeAdapter(QObject* parent):QObject(parent),bus_(QDBusConnection
  if(!QGuiApplication::platformName().startsWith("wayland")){helperError_={"session_unsupported","GNOME adapter requires native Qt Wayland",{}};return;}
  ownsName_=bus_.registerService(client);if(!ownsName_){helperError_={"helper_unavailable","Another resident process owns the GNOME bridge client name",{}};return;}
  connect(&watcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this]{helperChanged();});
- probe_.setInterval(3000);connect(&probe_,&QTimer::timeout,this,[this]{if(!ready_)discover();});probe_.start();discover();
+ probe_.setInterval(3000);connect(&probe_,&QTimer::timeout,this,[this]{
+  if(!ready_)discover();
+  // Closing the UI must not leave window hotkeys disabled after a transient
+  // clear failure. Retry only while no helper is registered; a newer live PID
+  // supersedes this recovery and stays fail-closed until its own registration.
+  else if(!uiProcess_&&uiProcessError_)setUiProcess(0);
+ });probe_.start();discover();
 }
 GnomeAdapter::~GnomeAdapter(){
  stopping_=true;probe_.stop();cancelAll("source_unavailable","GNOME adapter closed");

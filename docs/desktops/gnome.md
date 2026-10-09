@@ -33,3 +33,30 @@ Disable with `gnome-extensions disable putgd@put.gd`; remove only its own extens
 The helper exports `org.putgd.Gnome50` at `/org/gnome/Shell/Extensions/Putgd` on Shell's own session-bus connection. The native adapter resolves and pins the unique owner of `org.gnome.Shell`; it owns `org.putgd.App.Gnome50`, and the extension accepts only that name's current unique owner. D-Bus authenticates the session user. This prevents other session-bus names from submitting capture/clipboard requests and avoids using a caller allow-list workaround. Same-user process compromise is outside this session IPC boundary.
 
 Shell hotkeys freeze their external window actor/frame or clipboard revision inside the compositor callback, then dispatch a prepared UUID ticket to the adapter. GUI/CLI requests freeze through Prepare before journal work yields. Protocol version 1 uses opaque UUID request IDs, frozen preparation tickets, one-time acquisition, explicit cancellation/release, bounded PNG/MIME bytes, and at most 64 KiB decoded bytes per base64 chunk. Metadata includes exact byte lengths and each capture frame's identity, logical/native rectangles, density, and orientation. The adapter validates metadata before decoding on a worker. Clipboard revisions come from CLIPBOARD owner changes without reading payloads. Result transfer checks a frozen CLIPBOARD revision and copy epoch at ownership commit, so changed owners or newer invocations return `copy_suppressed`. Missing endpoints, incompatible protocol/Shell versions, stale tickets, vanished external targets, changed monitor layouts, unsupported offers, oversized offers, cancellation, and transfer deadlines produce distinct actionable results.
+
+## UI ownership recovery test
+
+When the final UI process exits, the adapter clears its registered PID. If that
+clear fails, window capture remains disabled until the existing three-second
+probe successfully repeats the clear. A newer live helper PID supersedes that
+recovery. Live-helper registration failures remain blocked, and a new Shell
+owner receives the latest PID during rediscovery.
+
+The production adapter has a focused transport regression using native Qt Wayland
+and a synthetic D-Bus peer on a **private test bus**. In an already-running
+Wayland desktop, build with the normal dev preset and run:
+
+```sh
+QT_QPA_PLATFORM=wayland dbus-run-session -- \
+  build/dev/test_gnome_bridge --adapter-transport
+```
+
+It opens no windows and changes neither the installed extension nor the real
+Shell service. The three scenarios cover failed clear recovery followed by an
+action ticket, preservation of a newer/live PID, and Shell-owner replacement.
+The default `gnome_bridge_contract` remains a headless decoder test. This extra
+mode fails if native Wayland is unavailable; it is not an offscreen replacement
+for graphical capture or tray acceptance.
+
+[The recovery receipt](../evidence/2026-10-08-ui-gnome-recovery.json) preserves the
+unchanged-production failure and passing correction, source hashes and replay.

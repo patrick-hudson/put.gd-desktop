@@ -527,3 +527,14 @@ JUnit results, source hashes and a 15-case total-process sampler test receipt.
 GNOME ownership-clear and expired setup-result recovery remain scheduled fixes.
 Graphical AE17, deterministic GNOME selector readiness, total-process memory and
 reopen latency remain open. The 40 MiB target is not yet met.
+
+The two conditional review concerns now have bounded recovery fixes. Setup
+inspection retains accepted jobs across transient errors, removes expired IDs
+without starving later results, and never repeats the accepted action. Its three
+new regressions failed before the fix; the full Settings suite and affected
+ASan/UBSan and instrumented-Qt TSan checks pass. GNOME now retries failed UI-PID
+clearing through the existing probe. A native Qt Wayland/private-D-Bus regression
+reproduced the failure and now passes all three recovery scenarios, including
+newer PID and Shell-owner protections. See the [setup receipt](evidence/2026-10-08-ui-setup-recovery.json)
+and [GNOME receipt](evidence/2026-10-08-ui-gnome-recovery.json). These checks do not
+close the pending current-source graphical or total-process memory gates.

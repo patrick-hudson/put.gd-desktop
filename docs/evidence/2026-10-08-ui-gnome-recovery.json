@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "unit": "U11",
+  "kind": "gnome-recovery",
+  "callerReview": "Confirmed the reported control-flow failure; applied smallest recovery correction, preserving accepted mutations and current helper ownership.",
+  "behaviorTests": "Actual red before production change and green after; see receipt and logs.",
+  "files": [
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/receipt.json",
+      "sha256": "84510769be19bd57db96889c2b57cfd9ccbc31aca2964541ebb8356a8d6cec53"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/adapter-red.log",
+      "sha256": "cdbee18ba6b740d63ae61e17357c89c5c7015504900a1677ceb241ef1c62a6fd"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/adapter-red.xml",
+      "sha256": "e90c3cdc0200762f605cd4b252cee1c0ec3496f1665a1152c183824cc26bf6ec"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/adapter-green.log",
+      "sha256": "c3fb3e1f2af10541a397aed1a2d3ac30ff7afee2700cc90f57d2bc5bb27ffb1d"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/adapter-green.xml",
+      "sha256": "18457e2fe4486e77871d3214d816f3e1152965eac2b06e5b2d54daf623404d5c"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/existing.log",
+      "sha256": "218b3a1d1e910e9bc5d4c7444d781743ee20e9c54f0ef11265db78f97d01967b"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/existing.xml",
+      "sha256": "cbaa2609a705781e384432e61d06e652ef92a4623f162e8296d5bd3f043ccb4e"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/extension-ownership.log",
+      "sha256": "806d39450506baa416657dec6d7270796224ad71184aae0cbaab68eb4021f3b3"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/source.json",
+      "sha256": "2d83a3d365b31ccd5c1ebde559bd81d4c53433d3ea9f9281678c5fdb7377f15c"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/source-binary.sha256",
+      "sha256": "880c43cbfca6aa3b3db1b4ba8b33fabf05f896cedef15995315e193429701851"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/gnome-recovery/replay.sh",
+      "sha256": "4ffb18d6fa8c178b0d7affa67f47cae0679a8ac3aa313ae0bebf82c7f460e0fa"
+    }
+  ],
+  "nativeAe17": "Still pending; GNOME isolated D-Bus test is transport proof, not compositor capture/tray proof."
+}

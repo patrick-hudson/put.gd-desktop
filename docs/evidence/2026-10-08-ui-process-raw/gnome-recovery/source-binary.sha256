@@ -1,0 +1,3 @@
+e7d446e1bcbc4de9fc63c060c2c6b801736ba4095f85140f739a24e8dda92457  src/platform/gnome/GnomeAdapter.cpp
+9ef1c3bdfecf8aa051bb24d6905c6086e26ca6ba8c26a1cbe6210442a888d630  tests/integration/test_gnome_bridge.cpp
+643bbb4c41f9bbb4fd0df59c5bf95826e4ec5769c0525e744242ae51edd11727  build/dev/test_gnome_bridge
