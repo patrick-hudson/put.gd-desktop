@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "protocolSha256": "f74742e36cc01262e52f1c5b47f60cb2941cc23383b27e53c6e74a843cf481af",
+  "scope": "Matched empty three-view physical Cinnamon workload, two runs per build, all observed processes counted",
+  "builds": {
+    "retained": {
+      "runs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/retained-1/results.json",
+          "sha256": "5b4d1e41dfc24c4b61e5f7625a45f82fdc931386d88f5dd12630083fe4355c62",
+          "summary": {
+            "finalTotals": {
+              "rssBytes": 68157440,
+              "pssBytes": 42273792,
+              "privateBytes": 39325696
+            },
+            "peakSampledTotals": {
+              "rssBytes": 76562432,
+              "pssBytes": 46476288,
+              "privateBytes": 39325696
+            },
+            "finalTotalRssAtOrBelow40MiB": false,
+            "coldIdleBudgetEstablished": false,
+            "cold40MiBTargetEstablished": false,
+            "renderedTrayAcceptanceEstablished": false,
+            "peakOpenTotals": {
+              "rssBytes": 76562432,
+              "pssBytes": 46476288,
+              "privateBytes": 39325696
+            },
+            "finalClosedTotals": {
+              "rssBytes": 68157440,
+              "pssBytes": 42273792,
+              "privateBytes": 39325696
+            },
+            "medianActivationAcknowledgementMilliseconds": 17.87056401371956
+          },
+          "mappedReadyMilliseconds": [
+            671.0694009670988,
+            248.38443094631657,
+            319.5526189520024,
+            89.89604696398601,
+            96.37176699470729,
+            90.90020996518433,
+            105.75146501651034,
+            111.05269996915013,
+            98.33896299824119
+          ]
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/retained-2/results.json",
+          "sha256": "84460ba2580b4b9d7452023dabe4bdff80d656fc07be4b7c4ae22a8aace02dc1",
+          "summary": {
+            "finalTotals": {
+              "rssBytes": 68341760,
+              "pssBytes": 42448896,
+              "privateBytes": 39497728
+            },
+            "peakSampledTotals": {
+              "rssBytes": 76746752,
+              "pssBytes": 46650368,
+              "privateBytes": 39497728
+            },
+            "finalTotalRssAtOrBelow40MiB": false,
+            "coldIdleBudgetEstablished": false,
+            "cold40MiBTargetEstablished": false,
+            "renderedTrayAcceptanceEstablished": false,
+            "peakOpenTotals": {
+              "rssBytes": 76746752,
+              "pssBytes": 46650368,
+              "privateBytes": 39497728
+            },
+            "finalClosedTotals": {
+              "rssBytes": 68341760,
+              "pssBytes": 42448896,
+              "privateBytes": 39497728
+            },
+            "medianActivationAcknowledgementMilliseconds": 19.375328964088112
+          },
+          "mappedReadyMilliseconds": [
+            193.21765197673813,
+            100.5021000164561,
+            108.24089701054618,
+            101.71471495414153,
+            91.08105802442878,
+            107.0193030172959,
+            100.1244549988769,
+            92.50837203580886,
+            127.06061598146334
+          ]
+        }
+      ],
+      "medianFinalClosedTotals": {
+        "rssBytes": 68249600.0,
+        "pssBytes": 42361344.0,
+        "privateBytes": 39411712.0
+      },
+      "maximumSampledOpenTotals": {
+        "rssBytes": 76746752,
+        "pssBytes": 46650368,
+        "privateBytes": 39497728
+      },
+      "medianMappedReadyMilliseconds": 103.73308998532593,
+      "maximumMappedReadyMilliseconds": 671.0694009670988
+    },
+    "split": {
+      "runs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+          "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d",
+          "summary": {
+            "finalTotals": {
+              "rssBytes": 47243264,
+              "pssBytes": 26640384,
+              "privateBytes": 24002560
+            },
+            "peakSampledTotals": {
+              "rssBytes": 126582784,
+              "pssBytes": 57610240,
+              "privateBytes": 33828864
+            },
+            "finalTotalRssAtOrBelow40MiB": false,
+            "coldIdleBudgetEstablished": false,
+            "cold40MiBTargetEstablished": false,
+            "renderedTrayAcceptanceEstablished": false,
+            "peakOpenTotals": {
+              "rssBytes": 126582784,
+              "pssBytes": 57610240,
+              "privateBytes": 33828864
+            },
+            "finalClosedTotals": {
+              "rssBytes": 47243264,
+              "pssBytes": 26640384,
+              "privateBytes": 24002560
+            },
+            "medianActivationAcknowledgementMilliseconds": 28.451752034015954
+          },
+          "mappedReadyMilliseconds": [
+            410.44171096291393,
+            147.5395510205999,
+            133.3336930256337,
+            329.63122898945585,
+            138.06506799301133,
+            115.05541898077354,
+            335.72212496073917,
+            138.37266602786258,
+            678.4580439561978
+          ]
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+          "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17",
+          "summary": {
+            "finalTotals": {
+              "rssBytes": 47214592,
+              "pssBytes": 26632192,
+              "privateBytes": 23994368
+            },
+            "peakSampledTotals": {
+              "rssBytes": 126705664,
+              "pssBytes": 57680896,
+              "privateBytes": 33865728
+            },
+            "finalTotalRssAtOrBelow40MiB": false,
+            "coldIdleBudgetEstablished": false,
+            "cold40MiBTargetEstablished": false,
+            "renderedTrayAcceptanceEstablished": false,
+            "peakOpenTotals": {
+              "rssBytes": 126705664,
+              "pssBytes": 57680896,
+              "privateBytes": 33865728
+            },
+            "finalClosedTotals": {
+              "rssBytes": 47214592,
+              "pssBytes": 26632192,
+              "privateBytes": 23994368
+            },
+            "medianActivationAcknowledgementMilliseconds": 31.166214030236006
+          },
+          "mappedReadyMilliseconds": [
+            348.5825369716622,
+            143.3031729538925,
+            153.14543299609795,
+            393.30363704357296,
+            173.48275997210294,
+            142.4744389951229,
+            325.35388303222135,
+            162.93171199504286,
+            150.1464020111598
+          ]
+        }
+      ],
+      "medianFinalClosedTotals": {
+        "rssBytes": 47228928.0,
+        "pssBytes": 26636288.0,
+        "privateBytes": 23998464.0
+      },
+      "maximumSampledOpenTotals": {
+        "rssBytes": 126705664,
+        "pssBytes": 57680896,
+        "privateBytes": 33865728
+      },
+      "medianMappedReadyMilliseconds": 158.0385724955704,
+      "maximumMappedReadyMilliseconds": 678.4580439561978
+    }
+  },
+  "closedSavingBytes": {
+    "rssBytes": 21020672.0,
+    "pssBytes": 15725056.0,
+    "privateBytes": 15413248.0
+  },
+  "limits": [
+    "Empty-view workload does not establish populated history or post-S3 memory.",
+    "RSS sums count shared pages more than once; PSS/private reported alongside.",
+    "VM outcomes are separate from physical cold idle target."
+  ],
+  "cold40MiBTargetEstablished": false
+}

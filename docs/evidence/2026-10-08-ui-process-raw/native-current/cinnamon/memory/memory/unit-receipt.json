@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-10-09T01:56:42.991433+00:00",
+  "status": "valid-timed-observation",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "sourceTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+  "sourceArchiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+  "version": "0.1.1-dev.41+g97ca3a521714",
+  "residentIdentity": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "uid": 1000,
+    "executable": "/usr/bin/putgd",
+    "device": 64771,
+    "inode": 1195873
+  },
+  "binarySha256": {
+    "app": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef",
+    "cli": "fe68622526ff25a3867e3d32078b0cc332e4ae53f3f5c8e28770275def7c37b2",
+    "helper": "e5cb88d8d6f022adea2b4d8c7189e2affff680a736b8432b95341dc92313b1c2"
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "commandSha256": "488ce1c47acb38b4b2747d2e732fc1ff6670d524546839bc493adf5ca450339c",
+  "sampleCount": 25,
+  "firstToLastSampleSeconds": 120.00031173000025,
+  "configuredSeconds": 120,
+  "configuredIntervalSeconds": 5,
+  "totalFinalBytes": {
+    "rssBytes": 60452864,
+    "pssBytes": 39129088,
+    "privateBytes": 37654528
+  },
+  "totalPeakSampledBytes": {
+    "rssBytes": 60452864,
+    "pssBytes": 39129088,
+    "privateBytes": 37654528
+  },
+  "totalFinalMiB": {
+    "rssBytes": 57.652,
+    "pssBytes": 37.316,
+    "privateBytes": 35.91
+  },
+  "operationCount": 23,
+  "operationAndUiGuardsUnchanged": true,
+  "guardPollCount": 26,
+  "uiLifecycle": {
+    "checkpointBytes": 2522,
+    "lastExit": {
+      "code": 0,
+      "generation": 22,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "allObservedFamiliesResidentOnly": true,
+  "helperAbsentThroughout": true,
+  "processesStopped": false,
+  "scope": "Quiet VM post-native plus 512MiB local acquisition/normal helper exit; Cinnamon additionally includes user-confirmed manual region (metadata only). Not a matched empty-view comparison or physical cold40MiB/idle CPU acceptance.",
+  "postIntervalMappingAttribution": "footprint.json; unchanged existing bench_idle.footprint, basenames only",
+  "limits": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "driverIncident": null
+}

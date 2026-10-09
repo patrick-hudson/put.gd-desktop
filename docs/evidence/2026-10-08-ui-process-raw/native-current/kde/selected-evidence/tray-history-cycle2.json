@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:36:34.698945+00:00",
+  "view": "history",
+  "uiBefore": {
+    "checkpointBytes": 2417,
+    "lastExit": {
+      "code": 0,
+      "generation": 3,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "trigger": "visible tray context-menu click",
+  "ok": true,
+  "tray": [
+    944,
+    773
+  ],
+  "row": [
+    1012,
+    636
+  ],
+  "uiAfter": {
+    "checkpointBytes": 2417,
+    "lastExit": {
+      "code": 0,
+      "generation": 3,
+      "status": "normal"
+    },
+    "pid": 130667,
+    "state": "ready"
+  },
+  "helperIdentity": {
+    "pid": 130667,
+    "parentPid": 105866,
+    "startTicks": 1832168,
+    "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909"
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/u11-tray-history-cycle2-head0.ppm",
+    "sha256": "f12e494ba2b7976501a836f7c2f29f1bca12ae3f19abbc55965d4d7bc868cd2a"
+  },
+  "png": "/home/patrick/work/put.gd/work/u11/native/kde/tray-history-cycle2.png",
+  "elapsedRequestToWitnessSeconds": 2.4076304129557684,
+  "latencyScope": "Includes QMP/SSH and explicit settle waits; not a render-latency benchmark",
+  "finishedUtc": "2026-10-09T01:36:37.389594+00:00"
+}

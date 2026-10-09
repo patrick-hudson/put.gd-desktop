@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "updatedUtc": "2026-10-09T02:09:49.830802+00:00",
+  "candidateCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "nativeSubsets": "passed",
+  "vmObservations": "complete and exported; GNOME post-measurement wrapper incident retained",
+  "physicalCold": "completed; peak44.390625MiB, original budgets pass, target40 fails",
+  "physicalMatched": "all four passed; comparison and latency breakdown verified",
+  "durableSummary": "docs/evidence/2026-10-08-ui-process-native-memory.json",
+  "decision": "retain split for matched closed-view benefit; cold40MiB unmet",
+  "next": "style cost probe complete; insufficient evidence to change product; remaining target and acceptance gates recorded"
+}

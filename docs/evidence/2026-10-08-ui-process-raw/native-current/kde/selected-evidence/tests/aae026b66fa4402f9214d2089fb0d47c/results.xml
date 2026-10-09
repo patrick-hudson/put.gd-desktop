@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="desktop-lab" tests="1" failures="0"><testcase name="region-cancel-zero-area-independent-paste" classname="kde-wayland" time="9.600665328965988" /></testsuite>

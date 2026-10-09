@@ -1,0 +1,79 @@
+{
+  "timestampUtc": "2026-10-09T01:39:36.579996+00:00",
+  "mode": "operation",
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "ok": true,
+  "beforeOperationIds": [
+    "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+    "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+    "254e5c26-62c8-497f-9c3e-714a13df8f18",
+    "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+    "288231e2-ba52-4b3a-8c33-770b55db321d",
+    "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+    "414c2482-5f1f-4057-90ed-169ece7558a4",
+    "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+    "56640793-ddad-4f0d-afc6-daae20c81476",
+    "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+    "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+    "a02d0838-75c1-4217-a536-743b636f164c",
+    "aeae2378-bebf-45e8-a442-68c75ae48177",
+    "bcdfd637-7e69-468f-861c-9ac986a8e339",
+    "d9974b81-6781-4150-9ebc-61ae82543791",
+    "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+    "ff0c4b13-c493-443c-9c21-d9f417814223"
+  ],
+  "uiBefore": {
+    "checkpointBytes": 2509,
+    "lastExit": {
+      "code": 0,
+      "generation": 6,
+      "status": "normal"
+    },
+    "pid": 133349,
+    "state": "ready"
+  },
+  "keys": [
+    "ctrl",
+    "shift",
+    "f10"
+  ],
+  "operation": {
+    "action": "window",
+    "cancelled": false,
+    "clipboardRevision": "31",
+    "copyStatus": "no_result",
+    "created": "2026-10-09T01:39:37.316Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "target_unavailable",
+      "details": {},
+      "message": "Focus an external window and invoke the window shortcut or CLI"
+    },
+    "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+    "invocation": "19",
+    "items": [],
+    "settingsRevision": "944c75b3521d234445c878157932e09da314809b70f9625aa8c84e5f79d13bfa",
+    "state": "failed"
+  },
+  "uiAfter": {
+    "checkpointBytes": 2509,
+    "lastExit": {
+      "code": 0,
+      "generation": 6,
+      "status": "normal"
+    },
+    "pid": 133349,
+    "state": "ready"
+  },
+  "finishedUtc": "2026-10-09T01:39:39.011308+00:00"
+}

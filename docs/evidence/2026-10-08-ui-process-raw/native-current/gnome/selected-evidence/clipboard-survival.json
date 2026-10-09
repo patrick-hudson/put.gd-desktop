@@ -1,0 +1,23 @@
+{
+  "utc": "2026-10-09T01:36:46.447663+00:00",
+  "passed": true,
+  "before": "clipboard-before-views.json",
+  "after": "clipboard-after-views.json",
+  "independentReader": "native GTK Wayland",
+  "ui": {
+    "checkpointBytes": 2447,
+    "lastExit": {
+      "code": 0,
+      "generation": 9,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "resident": {
+    "pid": 2848,
+    "startTicks": 3939,
+    "sha256": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8"
+  },
+  "scope": "Exact two-file URI text remains pasteable after nine normal UI helper exits, including GTK reader recreation"
+}

@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "desktop": "gnome",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "allowlistOnly": true,
+  "privacy": "No payloads, clipboard contents, credentials, private-key bytes, profile/configuration contents or user screenshot data. Guard exports are IDs/states/count/UI only. The sole user-generated region payload was never read/hashed/exported.",
+  "files": [
+    {
+      "path": "work/u11/native/gnome/memory/results.json",
+      "bytes": 14599,
+      "sha256": "e7f69b2e1fae29b402828c9e21a2dcc66e49774b19c5a3d5bd11d7feae7c22f5"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/progress.json",
+      "bytes": 5344,
+      "sha256": "a389d0bd480f49c45ccf79a6b70adf0f5cf44ba050e8c8d996d96323d5b9b51e"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/samples.jsonl",
+      "bytes": 15581,
+      "sha256": "cc8cecf580d745c0e24c2b6ed7d7cdaac711854cf52c2552fe339cfd28d08dff"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/footprint.json",
+      "bytes": 19394,
+      "sha256": "be2f9c3d4d652eb8c1af1b401232613c97d1b560f717889b58d03c4fa344a4b7"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/footprint-command.json",
+      "bytes": 655,
+      "sha256": "29dd0719d9d827d5dd42d92bdea3cc0a0b55f74fa439257f58d914c37bd6c783"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/observer.log",
+      "bytes": 6931,
+      "sha256": "424397a697ca6f0fca8be393dda672652e8ad3d15fc996cf78aa2d65921f3fea"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/unit-receipt.json",
+      "bytes": 2984,
+      "sha256": "0cedb447e5d5d070e8a5e837a2208512d19b653d61fb932c32d1e692b337ad55"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/command.json",
+      "bytes": 1550,
+      "sha256": "addd0d4a8a3a4fce4fdb7e6f31cdd4a4f6b180f18a771e768dc5ebd20d4f5145"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/quiet-guards.jsonl",
+      "bytes": 53534,
+      "sha256": "d49a6d253501a8dbda1efa3b5de8c23bccfca6b02eba76051958f539151efd79"
+    },
+    {
+      "path": "work/u11/native/gnome/quiet-memory-preflight/launcher.json",
+      "bytes": 451,
+      "sha256": "b1e25efb279192e17163a93af382fdc6604565c04ff03e912c3325b2bcd719de"
+    },
+    {
+      "path": "work/u11/native/gnome/quiet-memory-preflight/launcher.log",
+      "bytes": 246,
+      "sha256": "8baaf52434ce051df7ff403d6467b6f54264ab1ddf5590c3cee74a5461972de6"
+    },
+    {
+      "path": "work/u11/native/gnome/quiet-memory-preflight/launcher-exit.json",
+      "bytes": 59,
+      "sha256": "3dd81878b5998c6b58e5117fe18f1c9780d55ee076c2218d011eeb77129355bd"
+    },
+    {
+      "path": "work/u11/native/gnome/quiet-memory-preflight/restored-preflight.json",
+      "bytes": 6957,
+      "sha256": "71a58acf868952d4f6100809e7a3f0b1e5b51708f41fa762b519abf5fccdfd00"
+    },
+    {
+      "path": "work/u11/native/gnome/quiet-memory-preflight/console-before-converted.png",
+      "bytes": 3448,
+      "sha256": "76f9bcc850e9c7b2277cb9b07878a1ddc706c85867bed3db9a006c63a9725bf4"
+    },
+    {
+      "path": "work/u11/native/gnome/quiet-memory-preflight/console-restored.png",
+      "bytes": 853017,
+      "sha256": "81473e407330c4288be950ee21f6a7a5f4b15e076f46fc635edf0d623bbda698"
+    },
+    {
+      "path": "work/u11/native/gnome/sample-memory.py",
+      "bytes": 5885,
+      "sha256": "1eb880d6a13b04007b988c5fb67ffa5ee69040c8972f37c566b061a6b414808c"
+    }
+  ]
+}

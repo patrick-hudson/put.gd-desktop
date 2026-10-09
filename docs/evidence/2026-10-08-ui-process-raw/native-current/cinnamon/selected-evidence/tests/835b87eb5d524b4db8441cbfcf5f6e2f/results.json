@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "testId": "835b87eb5d524b4db8441cbfcf5f6e2f",
+  "profile": "cinnamon-x11",
+  "scenario": "clipboard-text-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": "Ctrl+Shift+4",
+      "bound": true,
+      "requested": "Ctrl+Shift+4"
+    },
+    "desktop": {
+      "actual": "Ctrl+Shift+3",
+      "bound": true,
+      "requested": "Ctrl+Shift+3"
+    },
+    "region": {
+      "actual": "Ctrl+Shift+1",
+      "bound": true,
+      "requested": "Ctrl+Shift+1"
+    },
+    "window": {
+      "actual": "Ctrl+Shift+2",
+      "bound": true,
+      "requested": "Ctrl+Shift+2"
+    }
+  },
+  "parameters": "parameters.json",
+  "operationId": "b0417aed-6b91-4f4b-8dd5-2258371449e6",
+  "operationState": "completed",
+  "copyStatus": "copied",
+  "itemOutcomes": [
+    {
+      "uploadStatus": "local_only",
+      "localStatus": "saved",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      }
+    }
+  ],
+  "artifact": {
+    "ok": true
+  },
+  "pasteMetadata": {
+    "formats": [
+      "text/plain",
+      "TARGETS",
+      "MULTIPLE",
+      "TIMESTAMP",
+      "SAVE_TARGETS"
+    ],
+    "schemaVersion": 1,
+    "text": "putgd synthetic clipboard text"
+  },
+  "paste": {
+    "ok": true,
+    "expected": {
+      "text": "putgd synthetic clipboard text"
+    },
+    "actual": {
+      "formats": [
+        "text/plain",
+        "TARGETS",
+        "MULTIPLE",
+        "TIMESTAMP",
+        "SAVE_TARGETS"
+      ],
+      "schemaVersion": 1,
+      "text": "putgd synthetic clipboard text"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/final-head0.ppm",
+    "sha256": "fb661e5a26047a7cb71118bc153f07f4fb75a4dc58ee1c06bee8bfb49cf1b30c"
+  },
+  "elapsedSeconds": 7.740687829966191,
+  "evidenceDirectory": "tests/835b87eb5d524b4db8441cbfcf5f6e2f"
+}

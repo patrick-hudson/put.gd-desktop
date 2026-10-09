@@ -21,6 +21,10 @@ it or asking for `--help` does not contact the display or launch the app.
 2. Complete the current-source functional wave on Cinnamon/X11, GNOME/Wayland and
    KDE/Wayland. Build and test independent VMs in parallel, keeping every graphical
    interaction visible through its localhost VNC listener and the display wall.
+   Reuse needed guests and shut down superseded guests before starting replacements.
+   Verify the old app's PID/start identity and terminal operations, preserve its
+   synthetic profile, then stop it while the replacement builds. A needed build VM
+   may stay running; an old app version must not remain live on the dashboard.
    The harness accepts `--acceptance-receipt` repeatedly to fingerprint those
    receipts; it does not infer their coverage or success from their existence.
 3. Check the tray remains visible after closing all windows, all four actions,
@@ -212,3 +216,33 @@ before/during child discovery, owner-only window selection and strict helper
 diagnostics. These tests can run on Linux GitHub Actions using the
 normal Python runtime; preserve stdout and the exit status. They establish sampler
 contracts, not native desktop acceptance or a measured application saving.
+
+## Replaying the source-41 observation
+
+The [current-source record](evidence/2026-10-08-ui-process-native-memory.json)
+links native receipts, exact executable/package identities, controlled commands,
+quiet guards and physical results. Its allowlists exclude private XDG state,
+resident logs, credentials and payloads. The tested software remains
+`0.1.1-dev.41+g97ca3a521714` when a later documentation commit saves that evidence;
+do not relabel the measurements as the later build.
+
+Use the portable production harness above for a fresh run. Historical driver
+scripts capture this machine's absolute paths, fixture and existing guest names.
+To replay them, restore their recorded `work/u11/` layout or adapt those paths,
+rebuild the exact recorded commits through normal CMake presets, and supply fresh
+verified resident identities and native receipts. Generate a new source archive
+from the requested full commit, check its checksum, and retain the original
+archive. Use new output labels and directories; never overwrite a successful or
+failed attempt. Native acceptance and lock restoration still require the visible
+VNC console. The GNOME corrected replay driver preserves its original failing
+launcher alongside the valid timed samples.
+
+Physical cold sampling is a separate >=300-second workload: five-second warmup,
+one-second family/mapped-window checks, recorded samples every five seconds, no
+views/actions/clipboard/upload, empty local-only fixture, native Cinnamon fonts
+and dialogs preserved. It records CPU ticks over the actual measured interval.
+The matched three-view runs follow serial retained/split/retained/split order;
+quiet VM observations finish before those activations. Record host memory/load
+before and after each run. Separate initial Settings activation, later Settings
+reopen, additional views and final-close latency; mapped readiness does not prove
+completed painting. A small number of activations does not establish a p95 budget.

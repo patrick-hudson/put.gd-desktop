@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-09T01:41:27.458069+00:00",
+  "passed": true,
+  "draftText": "/tmp/u11-draft",
+  "witness": "ui/draft-folder-scrolled.png",
+  "conflictShown": true,
+  "saveDisabled": true,
+  "normalCloseBeforeConflict": "ui/dirty-settings-normal-close.png",
+  "cancelDiscardedWithoutSaving": true,
+  "acceptedConfigurationRestored": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+  "uiAfterCancel": {
+    "checkpointBytes": 2447,
+    "lastExit": {
+      "code": 0,
+      "generation": 11,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  }
+}

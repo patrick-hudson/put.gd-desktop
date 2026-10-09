@@ -1,0 +1,12 @@
+{
+  "putgd": {
+    "path": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd",
+    "version": "putgd 0.1.1-dev.37+gbcbe63f0d1e1",
+    "sha256": "e23fc1f7c81bf3de38a4d0e70e7718962cd4b135ae94793dfe98bcf17d3aae97"
+  },
+  "putgd-cli": {
+    "path": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd-cli",
+    "version": "putgd-cli 0.1.1-dev.37+gbcbe63f0d1e1",
+    "sha256": "5abf7f05a78e257f4c7d9d6b6609fcfc2303d05978707068f7545d4a05f96363"
+  }
+}

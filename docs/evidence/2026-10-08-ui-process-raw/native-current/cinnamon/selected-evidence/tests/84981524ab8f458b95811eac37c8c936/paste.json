@@ -1,0 +1,11 @@
+{
+    "formats": [
+        "text/plain",
+        "TARGETS",
+        "MULTIPLE",
+        "TIMESTAMP",
+        "SAVE_TARGETS"
+    ],
+    "schemaVersion": 1,
+    "text": "putgd synthetic clipboard text"
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "exportedFileHashesVerified": 804,
+  "jsonExportsParsed": true,
+  "secretPatternFileHits": [],
+  "narrativeDiffCheck": "passed; explicit owned prose/summary paths",
+  "rawDiffCheck": {
+    "exitCode": 2,
+    "generatedWhitespacePaths": [
+      "native-current/gnome/selected-evidence/dev-test-inventory.json",
+      "native-current/host/configure.log",
+      "native-current/host/dev-configure.log",
+      "physical-current/style-cost-probe/results/configure.stdout"
+    ],
+    "disposition": "Preserve exact machine-generated CMake output/CTest inventory bytes matching pinned checksums; do not rewrite original logs to make a formatting check green"
+  },
+  "credentialFile": "Ignored and not tracked; never read, logged or included in export/staging"
+}

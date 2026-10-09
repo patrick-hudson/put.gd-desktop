@@ -1,0 +1,6 @@
+{
+  "timestampUtc": "2026-10-09T01:46:33.100449+00:00",
+  "attempt": "settings.patch without expectedRevision",
+  "outcome": "CLI rejected exit1; no mutation, confirmed authoritative false and prior accepted revision",
+  "acceptedRevision": "d46c1c54c991ea9e93e53524b5aba779750bb6d89e20a122af443a921d58f156"
+}

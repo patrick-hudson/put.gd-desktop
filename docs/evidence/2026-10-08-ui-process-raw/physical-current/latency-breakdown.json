@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "scope": "Post-measurement analysis of saved events only; no workload changes or app interaction",
+  "limits": [
+    "Mapped-window readiness includes observer/CLI overhead and does not prove completed pixel painting.",
+    "Small sample counts; no p95 performance certification.",
+    "Retained and split acknowledgements have different semantics; mapped readiness is the common condition."
+  ],
+  "builds": {
+    "retained": {
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/retained-1/results.json",
+          "sha256": "5b4d1e41dfc24c4b61e5f7625a45f82fdc931386d88f5dd12630083fe4355c62"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/retained-2/results.json",
+          "sha256": "84460ba2580b4b9d7452023dabe4bdff80d656fc07be4b7c4ae22a8aace02dc1"
+        }
+      ],
+      "groups": {
+        "initialSettings": {
+          "count": 2,
+          "milliseconds": [
+            671.0694009670988,
+            193.21765197673813
+          ],
+          "medianMilliseconds": 432.14352647191845,
+          "maximumMilliseconds": 671.0694009670988
+        },
+        "reopenedSettings": {
+          "count": 4,
+          "milliseconds": [
+            89.89604696398601,
+            105.75146501651034,
+            101.71471495414153,
+            100.1244549988769
+          ],
+          "medianMilliseconds": 100.91958497650921,
+          "maximumMilliseconds": 105.75146501651034
+        },
+        "additionalViews": {
+          "count": 12,
+          "milliseconds": [
+            248.38443094631657,
+            319.5526189520024,
+            96.37176699470729,
+            90.90020996518433,
+            111.05269996915013,
+            98.33896299824119,
+            100.5021000164561,
+            108.24089701054618,
+            91.08105802442878,
+            107.0193030172959,
+            92.50837203580886,
+            127.06061598146334
+          ],
+          "medianMilliseconds": 103.760701516876,
+          "maximumMilliseconds": 319.5526189520024
+        },
+        "allViewsClosed": {
+          "count": 6,
+          "milliseconds": [
+            150.16547695267946,
+            131.19043101323768,
+            134.23857296584174,
+            112.30971699114889,
+            108.35644498001784,
+            116.43458198523149
+          ],
+          "medianMilliseconds": 123.81250649923459,
+          "maximumMilliseconds": 150.16547695267946
+        }
+      }
+    },
+    "split": {
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+          "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+          "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+        }
+      ],
+      "groups": {
+        "initialSettings": {
+          "count": 2,
+          "milliseconds": [
+            410.44171096291393,
+            348.5825369716622
+          ],
+          "medianMilliseconds": 379.51212396728806,
+          "maximumMilliseconds": 410.44171096291393
+        },
+        "reopenedSettings": {
+          "count": 4,
+          "milliseconds": [
+            329.63122898945585,
+            335.72212496073917,
+            393.30363704357296,
+            325.35388303222135
+          ],
+          "medianMilliseconds": 332.6766769750975,
+          "maximumMilliseconds": 393.30363704357296
+        },
+        "additionalViews": {
+          "count": 12,
+          "milliseconds": [
+            147.5395510205999,
+            133.3336930256337,
+            138.06506799301133,
+            115.05541898077354,
+            138.37266602786258,
+            678.4580439561978,
+            143.3031729538925,
+            153.14543299609795,
+            173.48275997210294,
+            142.4744389951229,
+            162.93171199504286,
+            150.1464020111598
+          ],
+          "medianMilliseconds": 145.4213619872462,
+          "maximumMilliseconds": 678.4580439561978
+        },
+        "allViewsClosed": {
+          "count": 6,
+          "milliseconds": [
+            218.76715699909255,
+            140.14218997908756,
+            131.79397903149948,
+            162.30227198684588,
+            207.81127800000831,
+            205.02002100693062
+          ],
+          "medianMilliseconds": 183.66114649688825,
+          "maximumMilliseconds": 218.76715699909255
+        }
+      }
+    }
+  }
+}

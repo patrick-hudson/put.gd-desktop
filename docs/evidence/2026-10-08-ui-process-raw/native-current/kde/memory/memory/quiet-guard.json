@@ -1,0 +1,2987 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T01:55:15.643891+00:00",
+  "scriptSha256": "4b195099253fab835422d312e2251a963e56fdc186d6f559d2dc03e7ad41c258",
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "samplerCommand": [
+    "python3",
+    "/home/lab/putgd-u11-97ca3a521714/source/tests/performance/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--app",
+    "/usr/bin/putgd",
+    "--helper",
+    "/usr/bin/putgd-ui",
+    "--cli",
+    "/usr/bin/putgd-cli",
+    "--socket",
+    "/run/user/1000/putgd/session.sock",
+    "--source-revision",
+    "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "--source-archive",
+    "/home/lab/putgd-u11-97ca3a521714/source.tar",
+    "--acceptance-receipt",
+    "/home/lab/putgd-u11-97ca3a521714/native-acceptance.json",
+    "--pid",
+    "105866",
+    "--start-ticks",
+    "1779397",
+    "--seconds",
+    "120",
+    "--interval",
+    "5",
+    "--label",
+    "kde-after-u11-functional-wave",
+    "--output",
+    "/home/lab/putgd-u11-97ca3a521714/memory-observation"
+  ],
+  "intervalSeconds": 5,
+  "polls": [
+    {
+      "label": "before",
+      "elapsedSeconds": 0.062369383002078393,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 5.12074001700239,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 10.190281974002573,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 15.26393795200056,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 20.33816995700181,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 25.410220087000198,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 30.48261903800085,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 35.61375244100054,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 40.69322579200161,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 45.763024395000684,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 50.90213202600353,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 56.03747845900216,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 61.090432553002756,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 66.14946961000169,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 71.22490402900075,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 76.29465152800185,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 81.34773616700113,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 86.40913633600212,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 91.47130392800318,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 96.5270986980031,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 101.58582743200168,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 106.64531910799997,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 111.69766829400032,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 116.75335399300093,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "during",
+      "elapsedSeconds": 121.82746836200022,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    },
+    {
+      "label": "after",
+      "elapsedSeconds": 121.88598354100031,
+      "operationCount": 19,
+      "terminal": true,
+      "operations": [
+        {
+          "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+          "state": "failed",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "93b81229-5590-466d-926c-25dbe61321b8",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "a02d0838-75c1-4217-a536-743b636f164c",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+          "state": "completed",
+          "copyStatus": "copied"
+        },
+        {
+          "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        },
+        {
+          "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+          "state": "cancelled",
+          "copyStatus": "no_result"
+        }
+      ],
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      }
+    }
+  ],
+  "invalidReasons": [],
+  "complete": true,
+  "validQuietSample": true,
+  "scope": "Read-only operation IDs/states; no payloads or operation detail exported"
+}

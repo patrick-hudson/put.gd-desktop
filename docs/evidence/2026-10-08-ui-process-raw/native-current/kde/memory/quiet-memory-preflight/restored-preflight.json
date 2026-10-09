@@ -1,0 +1,293 @@
+{
+  "identity": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 41,
+    "dirty": null,
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.41+g97ca3a521714"
+  },
+  "diagnostics": {
+    "activeOperations": 0,
+    "backend": "Qt",
+    "build": {
+      "baseVersion": "0.1.1",
+      "commitCount": 41,
+      "dirty": null,
+      "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+      "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+      "schemaVersion": 1,
+      "sourceProvenance": "supplied",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "capabilities": {
+      "providers": {
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "source": {
+        "adapter": "kde-wayland",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "error": "",
+            "interface": "org.kde.KWin.ScreenShot2",
+            "interface_version": 5,
+            "mode": "compositor-native",
+            "permission": "restricted-desktop-entry",
+            "permission_entry_matches_executable": true,
+            "permission_rejected": false
+          },
+          "region": {
+            "available": true,
+            "error": "",
+            "interface": "org.kde.KWin.ScreenShot2",
+            "interface_version": 5,
+            "mode": "compositor-native",
+            "permission": "restricted-desktop-entry",
+            "permission_entry_matches_executable": true,
+            "permission_rejected": false
+          },
+          "window": {
+            "available": true,
+            "error": "",
+            "interface": "org.kde.KWin.ScreenShot2",
+            "interface_version": 5,
+            "mode": "compositor-native",
+            "permission": "restricted-desktop-entry",
+            "permission_entry_matches_executable": true,
+            "permission_rejected": false
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "error": "",
+          "import": "ext-data-control-v1",
+          "protocol_version": 1,
+          "result": "ext-data-control-v1-clipboard-only",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "loginStartup": {
+      "applied": true,
+      "enabled": false
+    },
+    "memory": {
+      "allocatorReclamationCount": 21,
+      "allocatorReclamationPending": false,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 300
+    },
+    "qtVersion": "6.10.2",
+    "schemaVersion": 1,
+    "shortcuts": {
+      "available": true,
+      "bindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      }
+    },
+    "trayAvailable": true,
+    "ui": {
+      "checkpointBytes": 2510,
+      "lastExit": {
+        "code": 0,
+        "generation": 10,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    }
+  },
+  "operations": [
+    {
+      "id": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+      "state": "failed",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "56640793-ddad-4f0d-afc6-daae20c81476",
+      "state": "failed",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "d9974b81-6781-4150-9ebc-61ae82543791",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "aeae2378-bebf-45e8-a442-68c75ae48177",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "bcdfd637-7e69-468f-861c-9ac986a8e339",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "414c2482-5f1f-4057-90ed-169ece7558a4",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "a02d0838-75c1-4217-a536-743b636f164c",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "288231e2-ba52-4b3a-8c33-770b55db321d",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+      "state": "cancelled",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "ff0c4b13-c493-443c-9c21-d9f417814223",
+      "state": "cancelled",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+      "state": "cancelled",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+      "state": "completed",
+      "copyStatus": "copied"
+    }
+  ],
+  "sessionBefore": "User=1000\nName=lab\nType=wayland\nLockedHint=no\n",
+  "sessionAfter": "User=1000\nName=lab\nType=wayland\nLockedHint=no\n",
+  "restoreAction": "none; visible desktop already active"
+}

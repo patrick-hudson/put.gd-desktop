@@ -1,0 +1,76 @@
+{
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "scope": "Frozen-source host builds, full Dev CTest and locked MCP integration; no native desktop or memory claim",
+  "files": [
+    {
+      "path": "receipt.json",
+      "sha256": "cdd53c63cb3d432b86b8b33f67568894ccdf35d62170af06fe1c34c3d89e9c87",
+      "size": 2932
+    },
+    {
+      "path": "mcp.log",
+      "sha256": "5cf763cfb9f4f4da9a00c501a8074a6ad54360b5e0817d62a90253684e450e4c",
+      "size": 3140
+    },
+    {
+      "path": "mcp-receipt.json",
+      "sha256": "87f11ecd09508889d2ab717cf93531ac8a786708417111ff6f55d9b898c06502",
+      "size": 929
+    },
+    {
+      "path": "dev-configure.log",
+      "sha256": "cc143293de0becf15d9c1d36dac9ea3daba0ea8b686ed3b238e4294ae8a2e665",
+      "size": 2451
+    },
+    {
+      "path": "dev-build.log",
+      "sha256": "02697b0f3891769fa8e94e35243a85bef9381973e4467c837e0783440787fb57",
+      "size": 25089
+    },
+    {
+      "path": "dev.log",
+      "sha256": "42832e44dd56e35b2f0282e2cab934ed12b33bbae2d676be0294035413163256",
+      "size": 4644
+    },
+    {
+      "path": "dev.xml",
+      "sha256": "fd6f2c7e94606791e18753fc7adcdf530a62622c877e2341d77e4d831da612f0",
+      "size": 39561
+    },
+    {
+      "path": "dev-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+      "size": 2
+    },
+    {
+      "path": "dev-receipt.json",
+      "sha256": "02e0c14f9c70c4911fb31a4ffc6f6d8d3c39b3931f1a0d92d5dcdbbb1259ed82",
+      "size": 1153
+    },
+    {
+      "path": "configure.log",
+      "sha256": "2111795dd3b1fcfbbf5188ca07dc85fa231f3befcba51ae052182c0c68c1cdd2",
+      "size": 2457
+    },
+    {
+      "path": "build.log",
+      "sha256": "a02661060bfe7ed6b34a6a23224553e946505b2c08935c3dbe0131e9a9c13fe8",
+      "size": 10747
+    },
+    {
+      "path": "package.log",
+      "sha256": "9c0698630aa62b1b397e146566d08f79ded0ff7ae75fdf5eae8c9a9f64cd6e01",
+      "size": 280
+    },
+    {
+      "path": "host-build.py",
+      "sha256": "0f93831eda943af4e194abf06b8e4e358a76fa10cf2609d64b01e7cf0bfbea45",
+      "size": 2280
+    },
+    {
+      "path": "host-dev.sh",
+      "sha256": "4fdd90078ebbeeac91b744ff85a9a2e3af5ab0d54c225978527ef65cfe477321",
+      "size": 731
+    }
+  ]
+}

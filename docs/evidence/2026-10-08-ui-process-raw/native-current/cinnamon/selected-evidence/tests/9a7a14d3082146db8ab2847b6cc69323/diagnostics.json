@@ -1,0 +1,104 @@
+{
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "ok": true,
+  "requestId": "613226a2-e21b-4da8-b851-11cb115f76fc",
+  "result": {
+    "activeOperations": 0,
+    "backend": "Qt",
+    "build": {
+      "baseVersion": "0.1.1",
+      "commitCount": 41,
+      "dirty": null,
+      "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+      "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+      "schemaVersion": 1,
+      "sourceProvenance": "supplied",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "capabilities": {
+      "providers": {
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "source": {
+        "adapter": "cinnamon-x11",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          },
+          "region": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          },
+          "window": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "import": "asynchronous-x11-selection",
+          "result": "qt-ownership",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "memory": {
+      "allocatorReclamationCount": 15,
+      "allocatorReclamationPending": false,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 545
+    },
+    "qtVersion": "6.4.2",
+    "schemaVersion": 1
+  },
+  "schemaVersion": 1
+}

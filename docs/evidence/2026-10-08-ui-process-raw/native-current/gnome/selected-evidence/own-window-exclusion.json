@@ -1,0 +1,41 @@
+{
+  "utc": "2026-10-09T01:38:57.887695+00:00",
+  "operation": {
+    "action": "window",
+    "cancelled": false,
+    "clipboardRevision": "30",
+    "copyStatus": "no_result",
+    "created": "2026-10-09T01:38:40.619Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "capture_target",
+      "details": {},
+      "message": "Focus an external application window before capture"
+    },
+    "id": "ee4c5d09-5ae7-4ac6-9f17-2fa0b56f11f4",
+    "invocation": "17",
+    "items": [],
+    "settingsRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+    "state": "failed"
+  },
+  "helper": {
+    "checkpointBytes": 2446,
+    "lastExit": {
+      "code": 0,
+      "generation": 9,
+      "status": "normal"
+    },
+    "pid": 21188,
+    "state": "ready"
+  },
+  "focusWitness": "ui/tray-settings-open.png",
+  "passed": true,
+  "driverCorrection": "action.invoke acknowledges acceptance; terminal operation.inspect establishes capture_target. Initial driver synchronous-error assertion was wrong and its tool output is preserved.",
+  "replay": "With the shown Settings/native chooser focused, call putgd-cli action.invoke with action=window. Inspect its returned operation ID until terminal; require failed/capture_target, no_result, and zero items. Acceptance itself is asynchronous."
+}

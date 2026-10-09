@@ -467,5 +467,7 @@
     "Sanitizer coverage is the 16 affected contracts, not all third-party dependencies. Existing narrow TSan suppression is unchanged.",
     "No current-source S3 acceptance or memory saving is claimed.",
     "Known conditional recovery concerns remain scheduled before native acceptance."
-  ]
+  ],
+  "followupCurrentSourceEvidence": "2026-10-08-ui-process-native-memory.json",
+  "followupNote": "Historical implementation checkpoint retained; later source41 native subsets, physical/VM measurements and measured decision are recorded separately."
 }

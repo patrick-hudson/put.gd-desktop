@@ -1,0 +1,43 @@
+{
+  "samplerCommand": [
+    "python3",
+    "/home/lab/putgd-u11-97ca3a521714/source/tests/performance/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--app",
+    "/usr/bin/putgd",
+    "--helper",
+    "/usr/bin/putgd-ui",
+    "--cli",
+    "/usr/bin/putgd-cli",
+    "--socket",
+    "/run/user/1000/putgd/session.sock",
+    "--source-revision",
+    "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "--source-archive",
+    "/home/lab/putgd-u11-97ca3a521714/source.tar",
+    "--acceptance-receipt",
+    "/home/lab/putgd-u11-97ca3a521714/native-acceptance.json",
+    "--pid",
+    "105866",
+    "--start-ticks",
+    "1779397",
+    "--seconds",
+    "120",
+    "--interval",
+    "5",
+    "--label",
+    "kde-after-u11-functional-wave",
+    "--output",
+    "/home/lab/putgd-u11-97ca3a521714/memory-observation"
+  ],
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "socket": "/run/user/1000/putgd/session.sock",
+  "cli": "/usr/bin/putgd-cli",
+  "monitorOutput": "/home/lab/putgd-u11-97ca3a521714/quiet-operation-monitor.json",
+  "driverLog": "/home/lab/putgd-u11-97ca3a521714/memory-driver.log"
+}

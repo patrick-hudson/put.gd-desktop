@@ -688,9 +688,29 @@ review's four confirmed defects have caller fixes and regression evidence.
 See [the implementation receipt](../evidence/2026-10-08-ui-process.json).
 GNOME ownership and setup-result recovery now have reproduced regressions and
 passing bounded fixes (see the linked follow-up receipts in verification.md).
-U11 remains in progress: current Cinnamon/GNOME/KDE AE17 and total-process
-memory/reopen measurements are pending. Reuse the three current test VMs; shut
-down superseded guests before starting replacements.
+The frozen source-41 build now passes the three desktops' native capture/clipboard
+matrix, actual tray actions, normal helper close/reopen, draft/conflict/Cancel,
+native-dialog and local-work continuity subsets. All three post-use VM memory
+observations are guarded and exported; retain RSS/PSS/private together, especially
+for KDE's shared graphics mappings. Full AE17 and remote-storage cases remain
+open. Physical cold and matched empty-view results are recorded in
+[the current-source evidence](../evidence/2026-10-08-ui-process-native-memory.json).
+All four matched physical runs pass: closed whole-family RSS falls from 65.09
+to 45.04 MiB, with PSS/private savings of 15.00/14.70 MiB. Retain the split for
+that benefit while recording higher open-state PSS and slower Settings reopens.
+The independent five-minute cold run remains at 44.390625 MiB; 40 MiB is unmet.
+Next locate resident styling, KDE's first graphics/theme load and repeated-capture
+buffer lifetimes using each desktop's own baseline. Prepared SQL queries already
+exist; avoid blind cache changes and integer narrowing without allocation evidence.
+A bounded four-run Qt styling probe found only 0.63 MiB settled RSS difference;
+keep product visuals unchanged. It is cost attribution, not a product saving.
+KDE graphics-load stages and controlled repeated-capture lifetimes remain the
+next locating work.
+Reuse the three current test VMs; shut
+down superseded guests before starting replacements. Stop superseded app residents
+after checking their identity and terminal operations; do not leave old versions
+running on the dashboards while their replacements build. Keep the needed VM
+running for its build, then verify the newly installed version before launching it.
 
 ### U10. Packages, performance, and release acceptance
 

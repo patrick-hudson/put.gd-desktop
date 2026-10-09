@@ -1,0 +1,87 @@
+Test project /home/patrick/work/put.gd/work/u11/native/host/source/build/dev
+      Start  1: version_contract
+ 1/41 Test  #1: version_contract ..................   Passed    5.40 sec
+      Start  2: kde_ownership_integration
+ 2/41 Test  #2: kde_ownership_integration .........   Passed    1.86 sec
+      Start  3: ui_split_services_integration
+ 3/41 Test  #3: ui_split_services_integration .....   Passed    0.89 sec
+      Start  4: ui_process_integration
+ 4/41 Test  #4: ui_process_integration ............   Passed   13.99 sec
+      Start  5: ui_endpoints_integration
+ 5/41 Test  #5: ui_endpoints_integration ..........   Passed    0.39 sec
+      Start  6: ui_control_integration
+ 6/41 Test  #6: ui_control_integration ............   Passed    1.13 sec
+      Start  7: session_client_integration
+ 7/41 Test  #7: session_client_integration ........   Passed   17.00 sec
+      Start  8: version_integration
+ 8/41 Test  #8: version_integration ...............   Passed    0.07 sec
+      Start  9: gui_application
+ 9/41 Test  #9: gui_application ...................   Passed    6.99 sec
+      Start 10: gui_tray
+10/41 Test #10: gui_tray ..........................   Passed    0.50 sec
+      Start 11: gui_version
+11/41 Test #11: gui_version .......................   Passed    0.04 sec
+      Start 12: geometry_contract
+12/41 Test #12: geometry_contract .................   Passed    0.01 sec
+      Start 13: ui_native_lifecycle_integration
+13/41 Test #13: ui_native_lifecycle_integration ...   Passed    3.41 sec
+      Start 14: x11_isolated
+14/41 Test #14: x11_isolated ......................   Passed   16.77 sec
+      Start 15: keychain_backend_integration
+15/41 Test #15: keychain_backend_integration ......   Passed    0.05 sec
+      Start 16: keychain_integration
+16/41 Test #16: keychain_integration ..............   Passed    0.13 sec
+      Start 17: collision_policy_integration
+17/41 Test #17: collision_policy_integration ......   Passed   10.17 sec
+      Start 18: s3_delete_integration
+18/41 Test #18: s3_delete_integration .............   Passed    8.91 sec
+      Start 19: s3_module_integration
+19/41 Test #19: s3_module_integration .............   Passed   32.61 sec
+      Start 20: s3_integration
+20/41 Test #20: s3_integration ....................   Passed    5.85 sec
+      Start 21: public_url
+21/41 Test #21: public_url ........................   Passed    0.01 sec
+      Start 22: build_contract
+22/41 Test #22: build_contract ....................   Passed    0.17 sec
+      Start 23: sdk_contract
+23/41 Test #23: sdk_contract ......................   Passed    0.59 sec
+      Start 24: payload_contract
+24/41 Test #24: payload_contract ..................   Passed    0.06 sec
+      Start 25: archive_contract
+25/41 Test #25: archive_contract ..................   Passed    0.02 sec
+      Start 26: upload_naming_contract
+26/41 Test #26: upload_naming_contract ............   Passed    0.03 sec
+      Start 27: history_contract
+27/41 Test #27: history_contract ..................   Passed    7.18 sec
+      Start 28: operations_contract
+28/41 Test #28: operations_contract ...............   Passed   37.12 sec
+      Start 29: storage_contract_integration
+29/41 Test #29: storage_contract_integration ......   Passed    3.39 sec
+      Start 30: cli_integration
+30/41 Test #30: cli_integration ...................   Passed   20.46 sec
+      Start 31: config_reload_integration
+31/41 Test #31: config_reload_integration .........   Passed    0.67 sec
+      Start 32: gnome_bridge_contract
+32/41 Test #32: gnome_bridge_contract .............   Passed    0.02 sec
+      Start 33: gnome_ui_ownership_contract
+33/41 Test #33: gnome_ui_ownership_contract .......   Passed    0.05 sec
+      Start 34: kwin_transfer_contract
+34/41 Test #34: kwin_transfer_contract ............   Passed    0.17 sec
+      Start 35: settings_contract
+35/41 Test #35: settings_contract .................   Passed    3.08 sec
+      Start 36: gui_settings
+36/41 Test #36: gui_settings ......................   Passed    8.98 sec
+      Start 37: gui_operations_view
+37/41 Test #37: gui_operations_view ...............   Passed    0.78 sec
+      Start 38: gui_history_view
+38/41 Test #38: gui_history_view ..................   Passed    4.29 sec
+      Start 39: login_startup_contract
+39/41 Test #39: login_startup_contract ............   Passed    0.09 sec
+      Start 40: local_ipc_contract
+40/41 Test #40: local_ipc_contract ................   Passed   13.22 sec
+      Start 41: ip_address_contract
+41/41 Test #41: ip_address_contract ...............   Passed    0.03 sec
+
+100% tests passed, 0 tests failed out of 41
+
+Total Test time (real) = 226.60 sec

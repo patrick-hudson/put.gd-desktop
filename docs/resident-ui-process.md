@@ -1,7 +1,8 @@
 # Resident service and an on-demand UI
 
-Status: implementation is under integration test. Native acceptance and the
-measured decision to retain the split remain pending. See [protocol and lifecycle](ui-process-protocol.md).
+Status: retain the implemented split for its measured reduction after views close.
+Current-source native subsets pass on Cinnamon, GNOME and KDE; full acceptance
+and the 40 MiB cold target remain open. See [protocol and lifecycle](ui-process-protocol.md).
 The resident must retain a tray icon and menu while all UI windows are closed.
 It must still offer capture/upload actions and reopen Settings, History and
 Activity. Closing the UI must leave shortcuts, clipboard ownership and operations
@@ -29,7 +30,7 @@ leave accepted uploads, local saves, clipboard ownership and recovery intact.
 
 `LocalServer` already exposes settings validation/patching, actions, operation
 status/cancellation/retry, history queries, prepared deletion and diagnostics.
-The S3 SDK is already loaded on demand. The current retained-window experiment
+The S3 SDK is already loaded on demand. The earlier retained-window experiment
 releases native drawing buffers after explicit close while preserving logical
 widgets and drafts. It does not unload Qt Widgets or desktop styling libraries.
 
@@ -52,6 +53,33 @@ Replacing all desktop integration with a new native framework is not justified
 by this analysis.
 
 ## Evidence and limits
+
+The source-41 split (`97ca3a521714`) passes the current native functional subsets
+on all three desktops. After identical empty-view workloads, two runs per build,
+the median closed whole-family RSS falls from 65.09 to 45.04 MiB, PSS from 40.40
+to 25.40 MiB and private memory from 37.59 to 22.89 MiB. The helper exits; the
+tray, clipboard and local operations remain resident. Retain the split for that
+measured benefit.
+
+There is an open-state cost: maximum sampled RSS/PSS is 120.84/55.01 MiB with
+the split versus 73.19/44.49 MiB retained. Summed RSS counts shared library pages
+twice; PSS still shows an additional cost. Four repeated Settings reopens per
+build have mapped-readiness medians of 332.68 versus 100.92 ms. These times include
+observer overhead and do not certify completed painting or p95 latency. The
+separate five-minute cold run peaks at 44.390625 MiB, so 40 MiB remains unmet.
+Native Cinnamon fonts/dialogs remain enabled. See the [measured decision and raw
+evidence](evidence/2026-10-08-ui-process-native-memory.json).
+
+A subsequent four-run standard Qt cost probe kept the native GTK/font integration
+and measured only 0.63 MiB settled RSS difference between full and native styling,
+with 0.19 MiB immediate style allocation. It used a temporary tray and five-second
+stages, so it establishes no product saving. Keep the custom styling. Next locate
+KDE's first driver/theme load and repeated-capture lifetimes against each desktop's
+own fresh baseline; integer-width changes and blind SQLite cache purges have no
+support from this attribution.
+
+The older attribution below predates the split; it is historical context, not
+a prediction of savings from the current build.
 
 The candidate's physical Cinnamon cold snapshot was 46,809,088 bytes RSS. Resident
 Qt Core/Gui/Widgets mappings contributed 13,025,280 bytes; Widgets alone contributed

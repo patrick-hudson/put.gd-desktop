@@ -1,0 +1,18 @@
+{
+  "timestampUtc": "2026-10-09T01:47:33.221290+00:00",
+  "keys": [
+    "ctrl",
+    "shift",
+    "f12"
+  ],
+  "thenKeys": [
+    "alt",
+    "f4"
+  ],
+  "helperIdentity": {
+    "pid": 142927,
+    "parentPid": 105866,
+    "startTicks": 1897355,
+    "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909"
+  }
+}

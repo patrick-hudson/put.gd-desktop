@@ -1,0 +1,87 @@
+{
+  "utc": "2026-10-09T01:01:50.800150+00:00",
+  "identity": {
+    "pid": 59314,
+    "startTicks": 922289,
+    "sha256": "ae7b2166db126735e23c913e0632539b312bf2be44d123fa3cb544d48273a5e1"
+  },
+  "operationIds": [
+    "ac260ac2-62c1-445b-b385-3bfdc3036fbd",
+    "8417393f-540d-4c90-a7a6-6eaf14ac17d8",
+    "fd980ebe-ea7a-4b21-9098-0de5047bd187",
+    "330579cf-fa80-461d-b5ba-b80bdf3e3044",
+    "881ff50f-5c24-4ef1-b099-5f956f26ca54",
+    "903988c2-3af1-407d-9993-b1333f7e8027",
+    "a5d3419b-b335-4750-8444-a431a19a0161",
+    "f66c757d-bd56-49ef-a0f1-b718060bf067",
+    "2861d334-3567-4599-8020-4a1c5d8827a7",
+    "a6e44b21-1798-428c-bd7b-cf24c89a0b62",
+    "42639d9a-4174-49e4-a1da-d622eb77e381",
+    "3be0fd99-447f-4330-b3eb-89c990e3e6ba",
+    "05d07970-535d-486c-a025-32dd899dfcae",
+    "e7f4015f-f970-49a4-b0e7-97a945d032f6",
+    "53c3dae0-484e-498c-b1e5-972066f317c9"
+  ],
+  "operations": [
+    {
+      "id": "ac260ac2-62c1-445b-b385-3bfdc3036fbd",
+      "state": "cancelled"
+    },
+    {
+      "id": "8417393f-540d-4c90-a7a6-6eaf14ac17d8",
+      "state": "completed"
+    },
+    {
+      "id": "fd980ebe-ea7a-4b21-9098-0de5047bd187",
+      "state": "completed"
+    },
+    {
+      "id": "330579cf-fa80-461d-b5ba-b80bdf3e3044",
+      "state": "completed"
+    },
+    {
+      "id": "881ff50f-5c24-4ef1-b099-5f956f26ca54",
+      "state": "completed"
+    },
+    {
+      "id": "903988c2-3af1-407d-9993-b1333f7e8027",
+      "state": "cancelled"
+    },
+    {
+      "id": "a5d3419b-b335-4750-8444-a431a19a0161",
+      "state": "cancelled"
+    },
+    {
+      "id": "f66c757d-bd56-49ef-a0f1-b718060bf067",
+      "state": "cancelled"
+    },
+    {
+      "id": "2861d334-3567-4599-8020-4a1c5d8827a7",
+      "state": "completed"
+    },
+    {
+      "id": "a6e44b21-1798-428c-bd7b-cf24c89a0b62",
+      "state": "completed"
+    },
+    {
+      "id": "42639d9a-4174-49e4-a1da-d622eb77e381",
+      "state": "completed"
+    },
+    {
+      "id": "3be0fd99-447f-4330-b3eb-89c990e3e6ba",
+      "state": "completed"
+    },
+    {
+      "id": "05d07970-535d-486c-a025-32dd899dfcae",
+      "state": "completed"
+    },
+    {
+      "id": "e7f4015f-f970-49a4-b0e7-97a945d032f6",
+      "state": "completed"
+    },
+    {
+      "id": "53c3dae0-484e-498c-b1e5-972066f317c9",
+      "state": "failed"
+    }
+  ]
+}

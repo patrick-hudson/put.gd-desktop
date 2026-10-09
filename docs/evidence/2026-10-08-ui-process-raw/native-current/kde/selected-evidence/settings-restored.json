@@ -1,0 +1,27 @@
+{
+  "timestampUtc": "2026-10-09T01:46:33.879003+00:00",
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "ui": {
+    "checkpointBytes": 2510,
+    "lastExit": {
+      "code": 0,
+      "generation": 9,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "patch": {
+    "preferences": {
+      "notifications": true
+    }
+  },
+  "beforeRevision": "d46c1c54c991ea9e93e53524b5aba779750bb6d89e20a122af443a921d58f156",
+  "afterRevision": "944c75b3521d234445c878157932e09da314809b70f9625aa8c84e5f79d13bfa",
+  "archiveRoot": "/home/lab/putgd-lab/archive",
+  "notifications": true
+}

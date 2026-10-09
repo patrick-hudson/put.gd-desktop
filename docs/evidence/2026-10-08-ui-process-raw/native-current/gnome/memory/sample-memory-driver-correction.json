@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "scope": "Future replay driver correction only; preserves original measured launcher and timed results without rerun",
+  "original": {
+    "path": "work/u11/native/gnome/sample-memory.py",
+    "sha256": "1eb880d6a13b04007b988c5fb67ffa5ee69040c8972f37c566b061a6b414808c"
+  },
+  "corrected": {
+    "path": "work/u11/native/gnome/sample-memory-replay.py",
+    "sha256": "32defaf93794ac8131e7f34e1671b4d13f387fcca052f2e61f951e02c53e9d5c"
+  },
+  "change": "Popen returncode is checked explicitly and failure raises CalledProcessError; CompletedProcess check_returncode in the separate mapping command remains unchanged",
+  "validation": "Python syntax compilation passed; no live sampler rerun or new application evidence claimed"
+}

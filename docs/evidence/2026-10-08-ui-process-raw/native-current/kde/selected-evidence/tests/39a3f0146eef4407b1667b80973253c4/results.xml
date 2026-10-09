@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="desktop-lab" tests="1" failures="0"><testcase name="window-independent-paste" classname="kde-wayland" time="11.351355833990965" /></testsuite>

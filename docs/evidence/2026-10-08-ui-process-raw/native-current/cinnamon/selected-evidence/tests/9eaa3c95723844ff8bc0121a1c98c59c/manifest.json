@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "testId": "9eaa3c95723844ff8bc0121a1c98c59c",
+  "profile": "cinnamon-x11",
+  "scenario": "region-cancel-escape",
+  "files": {
+    "parameters.json": "ca04573f91ccb4239d1bddf00247bd2d14525c66c95f5c25928a3850dd5c01c9",
+    "results.json": "ead236d5189abfd4557dc0b33d247145215e08f0d114ad021f4470df2d9e33f2",
+    "results.xml": "343ae13130b5f6056d5ddcfeb08e91c5d2cfdb5f950651ae034c0579593a678d",
+    "ready.json": "acf992c16f60eaac02d54134904a62d2df0ec6ce66cfe415f41115bf35ffe68a",
+    "paste.json": "adfad37963d16d290b05762db709527596f2459dde215d385e128ecf78f15b3b",
+    "before-head0.ppm": "d3852ac77ca585f8a8fca1de17e9d709869e75f465b7333a8008338ed76fe451",
+    "final-head0.ppm": "025060b07f4c2f1cd6d6d7cbc22764c38012d09aec75da8ac809328abe014c95",
+    "versions.json": "185257d4ea02fafaa43183fdc59daa5e2b3c4ef31f5f3dbf826c150401cc903d",
+    "package.json": "a0afef932a68ef1f48659fbba4c18274dae06d44f99afa94b332dc8ba685a632",
+    "diagnostics.json": "c9b9d1387e8b9cbdc16e60f13378c5b34f578aa706bf82ce01b62cd81621774b"
+  }
+}

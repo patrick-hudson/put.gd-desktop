@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T01:26:19.713078+00:00",
+  "status": "native-functional-subset-passed",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "sourceTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+  "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 41,
+    "dirty": null,
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.41+g97ca3a521714"
+  },
+  "package": {
+    "path": "/home/patrick/work/put.gd/work/u11/native/host/packages/putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb",
+    "sha256": "e5101eba6a56e255e1a087205913446689d80d42b5166219a10d02ec95fc7cfd"
+  },
+  "executables": [
+    {
+      "path": "/usr/bin/putgd",
+      "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef",
+      "version": "0.1.1-dev.41+g97ca3a521714",
+      "versionOutput": "putgd 0.1.1-dev.41+g97ca3a521714",
+      "exitCode": 0
+    },
+    {
+      "path": "/usr/bin/putgd-ui",
+      "sha256": "e5cb88d8d6f022adea2b4d8c7189e2affff680a736b8432b95341dc92313b1c2",
+      "version": "0.1.1-dev.41+g97ca3a521714",
+      "versionOutput": "putgd-ui 0.1.1-dev.41+g97ca3a521714",
+      "exitCode": 0
+    },
+    {
+      "path": "/usr/bin/putgd-cli",
+      "sha256": "fe68622526ff25a3867e3d32078b0cc332e4ae53f3f5c8e28770275def7c37b2",
+      "version": "0.1.1-dev.41+g97ca3a521714",
+      "versionOutput": "putgd-cli 0.1.1-dev.41+g97ca3a521714",
+      "exitCode": 0
+    }
+  ],
+  "resident": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef"
+  },
+  "ui": {
+    "checkpointBytes": 2450,
+    "lastExit": {
+      "code": 0,
+      "generation": 20,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "trayAvailable": true,
+  "renderedTrayMenuWitness": "selected-evidence/tray-menu-inspect.png",
+  "vnc": {
+    "host": "127.0.0.1",
+    "port": 5938,
+    "enabled": true
+  },
+  "nativeCases": {
+    "matrixPassed": 12,
+    "trayActionsPassed": 4,
+    "testIds": [
+      "9f4a8a5c586a4ed8a655513dd9e1f9e8",
+      "14e0932caeea4541b3ce0d91c335148a",
+      "7487123eecb24aac8a9b967e3ecf8d54",
+      "84981524ab8f458b95811eac37c8c936",
+      "fa43d51084384007afe616c46591946f",
+      "c447bd442a5a4f5caf08f7096b151acb",
+      "9eaa3c95723844ff8bc0121a1c98c59c",
+      "18645fd4f6ca4ab78518763ca96c79ad",
+      "e8d2aa9060504d94a326e0329292527d",
+      "61445954dd014427883d01dec333ab74",
+      "3488ff56869849cc82b7c4362b4632d4",
+      "d5a8e25a585544f286638f6ddf02d1df",
+      "8a5352058a1943ae897b879591665c0b",
+      "9a7a14d3082146db8ab2847b6cc69323",
+      "390dac16f93546279fcc4f44486b1226",
+      "835b87eb5d524b4db8441cbfcf5f6e2f"
+    ],
+    "operationIds": [
+      "ccbb7751-778b-4cd2-aec5-a19b18fafe8a",
+      "022df18f-0b29-4a66-8e8a-68203d6a2522",
+      "79721293-d8cc-441e-9739-d5a2bc8b82c9",
+      "3792fc81-0086-4a7b-8222-c7515c5bd77c",
+      "6b5a1a65-e49f-4270-aca0-4b568f9c3b7e",
+      "014dd418-db30-443d-be55-cc70293e482c",
+      "a20ef173-e5c9-4e4a-9fbe-807f682bbd5b",
+      "dd90270b-3518-413b-b4cb-96f9b73718ab",
+      "9ca4e0d1-67df-494b-9903-e487af7b91e0",
+      "7d6719fb-a3ad-4864-98cb-7062eb52e909",
+      "d68c8d36-2f03-4527-9d5a-df7092ec57f4",
+      "ae33e314-6c18-45a1-9dc4-e979dfb15321",
+      "f0fa1e9d-2b05-4c2b-abe5-e9fb0c201f8c",
+      "9fb98cfa-b1c6-43d5-bc93-1b115225972f",
+      "097b11ba-c142-4fe7-be80-64a7d38ca553",
+      "b0417aed-6b91-4f4b-8dd5-2258371449e6"
+    ]
+  },
+  "views": {
+    "trayOpenedViews": [
+      "settings",
+      "history",
+      "activity",
+      "about"
+    ],
+    "additionalCliCycles": 2,
+    "normalHelperExitAfterEachLastClose": true,
+    "populatedHistoryAndActivityVisuallyInspected": true,
+    "allViewsClosed": true,
+    "residentIdentityUnchanged": true
+  },
+  "draft": {
+    "syntheticNonSecretEditsRetainedAcrossNormalExit": true,
+    "externalChangeConflictRetainedAcrossNormalExit": true,
+    "cancelDiscardedDraftWithoutSaving": true,
+    "persistedProfileCountAfterCancel": 0,
+    "witnesses": [
+      "draft-final-reopened.png",
+      "draft-conflict-reopened.png",
+      "draft-cancel-reopened-clean.png"
+    ]
+  },
+  "nativeIntegration": {
+    "gtkFolderDialogOpenedAndCancelled": true,
+    "fontsAndLibraries": {
+      "helperPid": 54419,
+      "nativeIntegrationLibraries": [
+        "/usr/lib/x86_64-linux-gnu/libQt6Gui.so.6.4.2",
+        "/usr/lib/x86_64-linux-gnu/libQt6Widgets.so.6.4.2",
+        "/usr/lib/x86_64-linux-gnu/libfontconfig.so.1.12.1",
+        "/usr/lib/x86_64-linux-gnu/libgdk-3.so.0.2409.32",
+        "/usr/lib/x86_64-linux-gnu/libgtk-3.so.0.2409.32",
+        "/usr/lib/x86_64-linux-gnu/qt6/plugins/platformthemes/libqgtk3.so"
+      ],
+      "cinnamonFontSetting": "'Ubuntu 10'"
+    },
+    "limit": "Native GTK integration and configured Cinnamon font retained; live font-setting changes were not tested."
+  },
+  "ownedWindowCapture": {
+    "fourViewOperationIds": [
+      "6b6406ff-da72-4491-bda0-77d3f0d14915",
+      "714d5589-76ec-4d9f-b14e-b0aed3c195ab",
+      "aba08cd3-2a7e-4a07-b9c5-389308c1e470",
+      "30c380b2-a9b2-4d85-94b5-528d5b6866a5"
+    ],
+    "nativeModalOperationId": "dd781659-119c-4f06-9233-3c69afdff0f4",
+    "allRejectedWith": "capture_target",
+    "artifactsCreated": 0
+  },
+  "clipboardResultPastedAfterHelperExit": true,
+  "localContinuity": {
+    "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+    "bytes": 536870912,
+    "verdict": "pass",
+    "scope": "Real local clipboard-file acquisition/archive/copy only; no S3 transfer.",
+    "guestMonotonicLastHelperAliveSample": {
+      "monotonicSeconds": 17465.299083199,
+      "helperGoneBeforeInspect": false,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    "guestMonotonicFirstActiveAfterHelperGoneSample": {
+      "monotonicSeconds": 17465.602423744,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    "guestMonotonicLastActiveAfterHelperGoneSample": {
+      "monotonicSeconds": 17482.629040694,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    "guestMonotonicCompletionSample": {
+      "monotonicSeconds": 17483.357505555,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    "observedActiveAfterExitIntervalSeconds": 17.026616949999152,
+    "timingLimit": "Sample times bound observation; they are not an exact process-exit timestamp.",
+    "artifactSha256Output": "23bd4da48450e844221b7a1217e0ab57b82a2b0f3be2480e22914a9515540afc  /home/lab/putgd-lab/archive/text/synthetic-1-9f211a09-bf6f-4fe9-8fbb-737ea207be3f.txt\n010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209  /home/lab/putgd-lab/archive/text/synthetic-2-fdb8a345-57f1-47a3-95ae-2c1e1463c876.txt\n",
+    "artifactSizes": "536870912\n23\n",
+    "normalExit": {
+      "code": 0,
+      "generation": 19,
+      "status": "normal"
+    }
+  },
+  "finalOperations": {
+    "count": 23,
+    "states": {
+      "completed": 15,
+      "failed": 5,
+      "cancelled": 3
+    },
+    "expectedFailureIds": [
+      "6b6406ff-da72-4491-bda0-77d3f0d14915",
+      "714d5589-76ec-4d9f-b14e-b0aed3c195ab",
+      "aba08cd3-2a7e-4a07-b9c5-389308c1e470",
+      "30c380b2-a9b2-4d85-94b5-528d5b6866a5",
+      "dd781659-119c-4f06-9233-3c69afdff0f4"
+    ]
+  },
+  "preservedNonProductFailures": [
+    "Initial install precondition found the prior baseline resident had exited. No install mutation occurred. A read-only synthetic journal check verified all 13 historical operations terminal before preserving its directory; old code was not restarted.",
+    "A full-settings evidence write was rejected by automatic approval review before running. Subsequent draft evidence records only revisions, synthetic edited fields, one preference and UI/build state.",
+    "The first manual draft gesture was not held long enough after layout changed. Retained screenshots showed the Region field instead of Bucket; subsequent held-click witness verifies the actual synthetic Bucket and Region draft used for acceptance.",
+    "A nested shell here-document delimiter collision stopped one font probe before guest execution; the corrected probe is retained.",
+    "The first continuity preflight raced fixture ready.json, which is emitted one second after map. No payload or app operation was created. After adding an explicit ready-file condition, exactly one real 512 MiB operation was executed and passed."
+  ],
+  "limits": [
+    "Single-head Cinnamon/X11 QEMU KVM evidence; no physical-machine performance or complete compositor certification.",
+    "No native helper-crash/mismatch attempt, typed-credential close test, exact remote deletion, real S3 upload or interrupted remote recovery was performed here. Relevant headless contracts remain separate.",
+    "No memory measurement ran during this functional wave. The post-use memory scenario includes this large local copy and must not be described as empty cold idle.",
+    "Golden disk unchanged; existing overlay reused; VNC output remained visible. No cloud credentials, user payloads or remote objects were used.",
+    "Early mapped-window witnesses may capture Cinnamon fade animation; settled draft and native-dialog witnesses establish their final rendering.",
+    "One additional successful region operation at 2026-10-09T01:26:10.477Z was confirmed by the user as their manual VNC test; payload untouched/unexported and excluded from scripted acceptance."
+  ],
+  "fullAE17Complete": false,
+  "memoryAcceptanceEstablished": false,
+  "selectedEvidenceManifest": "selected-evidence/export-manifest.json",
+  "selectedEvidenceManifestSha256": "4c1313205b049e64dd50666ce80814dee2c640708fdca9d61d88f9af6e92bf57",
+  "additionalObservedOperation": [
+    {
+      "id": "a47dab06-4ce5-4101-abd1-43388623ba84",
+      "created": "2026-10-09T01:26:10.477Z",
+      "action": "region",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "name": null,
+          "path": "/home/lab/putgd-lab/archive/images/Screen-Capture-2026-10-08-20-26-10.png",
+          "mime": "image/png"
+        }
+      ]
+    }
+  ],
+  "additionalObservedOperationDisposition": "User confirms manual VNC region capture. Payload remains untouched/unexported and excluded from scripted acceptance. Later post-use memory label includes user-manual-region."
+}

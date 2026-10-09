@@ -1,0 +1,24 @@
+RUN region qt
+RESULT region qt True
+RUN window qt
+RESULT window qt True
+RUN desktop qt
+RESULT desktop qt True
+RUN clipboard-text qt
+RESULT clipboard-text qt True
+RUN clipboard-image qt
+RESULT clipboard-image qt True
+RUN clipboard-files qt
+RESULT clipboard-files qt True
+RUN region-cancel-escape qt
+RESULT region-cancel-escape qt True
+RUN region-cancel-right-click qt
+RESULT region-cancel-right-click qt True
+RUN region-cancel-zero-area qt
+RESULT region-cancel-zero-area qt True
+RUN clipboard-image gtk
+RESULT clipboard-image gtk True
+RUN clipboard-files gtk
+RESULT clipboard-files gtk True
+RUN clipboard-text gtk
+RESULT clipboard-text gtk True

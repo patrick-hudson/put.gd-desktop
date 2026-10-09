@@ -1,0 +1,10 @@
+{
+  "sha256": "5b21e5c2bf075efa322b42594a51cdc9aed64eda1b94a65e2ffd4ce808f2e5c1",
+  "filename": "candidate.deb",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "a1ce7495a292d0f8e6664fe2cd034c505ad30494229b4af80313b9de133264d1",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd-cli": "ddb8eb0dce09141a13add4aae8ce3eed7d49d14e0f5ae46c615872e5333f79cb",
+    "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+  }
+}

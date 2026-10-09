@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "candidateCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "candidateArchiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+  "baselineCommit": "bcbe63f0d1e1ad00f36ac110fb596d0245869617",
+  "baselineArchive": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/source.tar",
+  "fixture": "/tmp/putgd-startup-reclaim-exp001",
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "physicalSession": "Cinnamon/X11, preserve native GTK dialogs/fonts",
+  "prerequisites": [
+    "Current-source functional wave on all three existing VMs, including rendered tray and helper normal-close continuity",
+    "All builds and functional workers quiescent before sampling",
+    "Physical workload runs serially; no source/configuration changes between matched runs"
+  ],
+  "views": [
+    "settings",
+    "history",
+    "activity"
+  ],
+  "cycles": 3,
+  "warmupSeconds": 5,
+  "visibleSeconds": 2,
+  "quietSeconds": 30,
+  "sampleIntervalSeconds": 5,
+  "repeatPairs": 2,
+  "candidateExtraFunctionalViews": [
+    "settings",
+    "history",
+    "activity",
+    "about"
+  ],
+  "metrics": [
+    "total RSS",
+    "total PSS",
+    "total Private_Clean + Private_Dirty",
+    "per-process identity and child exits",
+    "request-to-visible and request-to-closed latency"
+  ],
+  "comparison": "Compare median finalClosedTotals across two matched runs; report open-process totals separately. No resident-only saving claim.",
+  "coldTargetBytes": 41943040,
+  "coldProtocol": {
+    "seconds": 300,
+    "helperAbsentRequired": true,
+    "separateFromPostView": true,
+    "workload": "work/u11/memory/cold_family.py",
+    "familyHarness": "tests/performance/bench_ui_process.py",
+    "fixtureInitialization": "Copy the previously validated local-only JSON into private empty XDG directories; no preliminary offscreen app instance.",
+    "warmupSeconds": 5,
+    "processAndWindowCheckIntervalSeconds": 1,
+    "sampleRecordIntervalSeconds": 5,
+    "cpuMeasure": "Sum actual observed family CPU tick differences over the measured interval; require a sole helper-free resident throughout.",
+    "comparisonLimit": "This strengthens family/visibility checks relative to the historical resident-only idle harness. Do not claim paired CPU improvement against a different observer."
+  },
+  "vmProtocol": {
+    "harnessMode": "existing-process",
+    "seconds": 120,
+    "interval": 5,
+    "verifyResidentPeer": true,
+    "allObservedDescendantsIncluded": true
+  },
+  "limits": [
+    "Empty-view workload does not establish populated history or post-S3 memory.",
+    "RSS sums count shared pages more than once; PSS/private reported alongside.",
+    "VM outcomes are separate from physical cold idle target."
+  ],
+  "executionStatus": "Frozen workload parameters; execution outcomes are recorded separately in matched-execution.json, cold results and each VM memory receipt.",
+  "workloadScripts": {
+    "run-matched.py": "e1ed16ede5063a8fe448bfc3a12ef086872f3a089d5a8e751ffc2d7bbab95bbb",
+    "compare.py": "c46061f76c14abcad475f17aa7e61d88ac350fad076992dd125dd8e4ea71f48d",
+    "cold_family.py": "a2990fde089422e53bab1dfdbc8db230a9c9f27a21dcdc4e37a0a679f2fbecd7"
+  },
+  "phaseOrder": [
+    "Independent quiet VM post-use observations (120s each, parallel) and physical cold idle (300s) after visible-console preflight",
+    "Physical matched view runs retained1,split1,retained2,split2 serially after cold idle; no VM graphical/build work"
+  ]
+}

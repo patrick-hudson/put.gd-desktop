@@ -1,0 +1,11 @@
+{
+  "utc": "2026-10-09T01:30:55.980052+00:00",
+  "action": "QMP click visible Restart",
+  "x": 732,
+  "y": 559,
+  "viewport": [
+    1280,
+    800
+  ],
+  "scope": "Only existing disposable GNOME guest; no build or resident still running"
+}

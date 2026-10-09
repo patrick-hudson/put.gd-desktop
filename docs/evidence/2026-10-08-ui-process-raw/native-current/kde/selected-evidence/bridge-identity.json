@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T01:31:51.166426+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "integration": "Compiled resident adapter; no put.gd KWin extension/script is installed or loaded",
+  "adapterSourceSha256": {
+    "src/platform/kde/KdeSourceAdapter.cpp": "48fcbce18598351f5c5fbe30f6e1d6dee205aeec3da2f1615e0f86d050b5ec4e",
+    "src/platform/kde/KWinCapture.cpp": "b68b495cc31e0d54702e4ceb6cd730971ef5ed83c01a52a58e718cb5f848a188",
+    "src/platform/kde/KdeShortcuts.cpp": "220a43bfa304d569d523c9b34bac79e51c3d5edc754085559833e6aba254383c",
+    "src/platform/kde/DataControlClipboard.cpp": "99ea4fd3de1b433960afa77cd1e4c8baaea50f444d3deee752609dc2388c06ba",
+    "src/platform/kde/KdeRegionOverlay.cpp": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+    "packaging/linux/app.desktop.in": "3a386ae74b245208344c33c95bb8350326ba4a57f9814f41c89e79eda7d0e994"
+  },
+  "actualServices": {
+    "services": {
+      "org.kde.KWin": {
+        "owner": ":1.16",
+        "pid": 1152,
+        "startTicks": 2811,
+        "processName": "kwin_wayland",
+        "liveExecutableReadable": false,
+        "limitation": "Kernel denies /proc compositor executable inspection to this user; no live compositor ELF hash claimed",
+        "installedExecutable": "/usr/bin/kwin_wayland",
+        "installedExecutableSha256": "31858ca3969a93efff4909693db543444bd52286dd5f9eb945bc2df5b6d3dbf3"
+      },
+      "org.kde.KWin.ScreenShot2": {
+        "owner": ":1.16",
+        "pid": 1152,
+        "startTicks": 2811,
+        "processName": "kwin_wayland",
+        "liveExecutableReadable": false,
+        "limitation": "Kernel denies /proc compositor executable inspection to this user; no live compositor ELF hash claimed",
+        "installedExecutable": "/usr/bin/kwin_wayland",
+        "installedExecutableSha256": "31858ca3969a93efff4909693db543444bd52286dd5f9eb945bc2df5b6d3dbf3"
+      },
+      "org.kde.kglobalaccel": {
+        "owner": ":1.16",
+        "pid": 1152,
+        "startTicks": 2811,
+        "processName": "kwin_wayland",
+        "liveExecutableReadable": false,
+        "limitation": "Kernel denies /proc compositor executable inspection to this user; no live compositor ELF hash claimed",
+        "installedExecutable": "/usr/bin/kwin_wayland",
+        "installedExecutableSha256": "31858ca3969a93efff4909693db543444bd52286dd5f9eb945bc2df5b6d3dbf3"
+      }
+    },
+    "screenShot2Version": {
+      "type": "u",
+      "data": 5
+    },
+    "restrictedDesktopEntry": {
+      "path": "/usr/share/applications/putgd.desktop",
+      "sha256": "d549e6cb36ff341a901d0a4b97b180db107513ead997ccceb720d5888c140fb9"
+    },
+    "kwinPackage": "kwin-wayland 4:6.6.6-0ubuntu0.1"
+  },
+  "capabilities": {
+    "adapter": "kde-wayland",
+    "capture": {
+      "desktop": {
+        "available": true,
+        "error": "",
+        "interface": "org.kde.KWin.ScreenShot2",
+        "interface_version": 5,
+        "mode": "compositor-native",
+        "permission": "restricted-desktop-entry",
+        "permission_entry_matches_executable": true,
+        "permission_rejected": false
+      },
+      "region": {
+        "available": true,
+        "error": "",
+        "interface": "org.kde.KWin.ScreenShot2",
+        "interface_version": 5,
+        "mode": "compositor-native",
+        "permission": "restricted-desktop-entry",
+        "permission_entry_matches_executable": true,
+        "permission_rejected": false
+      },
+      "window": {
+        "available": true,
+        "error": "",
+        "interface": "org.kde.KWin.ScreenShot2",
+        "interface_version": 5,
+        "mode": "compositor-native",
+        "permission": "restricted-desktop-entry",
+        "permission_entry_matches_executable": true,
+        "permission_rejected": false
+      }
+    },
+    "clipboard": {
+      "available": true,
+      "error": "",
+      "import": "ext-data-control-v1",
+      "protocol_version": 1,
+      "result": "ext-data-control-v1-clipboard-only",
+      "types": [
+        "files",
+        "image",
+        "text"
+      ]
+    },
+    "shortcuts": {
+      "available": true,
+      "bindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      }
+    }
+  },
+  "activationEvidence": "Current source compiled into verified running resident; actual native operation IDs are in matrix.json and tray-matrix.json",
+  "script": "python3 - <<'GUEST'\nimport json,subprocess,pathlib,hashlib,os\ndef call(*args):return json.loads(subprocess.check_output(['busctl','--user','--json=short',*args],text=True))\nout={'services':{}}\nfor name in ['org.kde.KWin','org.kde.KWin.ScreenShot2','org.kde.kglobalaccel']:\n owner=call('call','org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus','GetNameOwner','s',name)['data'][0]\n pid=call('call','org.freedesktop.DBus','/org/freedesktop/DBus','org.freedesktop.DBus','GetConnectionUnixProcessID','s',owner)['data'][0]\n p=pathlib.Path('/proc')/str(pid);a=(p/'stat').read_text().rsplit(')',1)[1].split();item={'owner':owner,'pid':pid,'startTicks':int(a[19]),'processName':(p/'comm').read_text().strip()}\n try:item.update(executable=str((p/'exe').readlink()),sha256=hashlib.sha256((p/'exe').read_bytes()).hexdigest(),liveExecutableReadable=True)\n except PermissionError:\n  item.update(liveExecutableReadable=False,limitation='Kernel denies /proc compositor executable inspection to this user; no live compositor ELF hash claimed')\n  if item['processName']=='kwin_wayland':item.update(installedExecutable='/usr/bin/kwin_wayland',installedExecutableSha256=hashlib.sha256(pathlib.Path('/usr/bin/kwin_wayland').read_bytes()).hexdigest())\n out['services'][name]=item\nout['screenShot2Version']=call('get-property','org.kde.KWin.ScreenShot2','/org/kde/KWin/ScreenShot2','org.kde.KWin.ScreenShot2','Version')\np=pathlib.Path('/usr/share/applications/putgd.desktop');out['restrictedDesktopEntry']={'path':str(p),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}\nout['kwinPackage']=subprocess.check_output(['dpkg-query','-W','-f=${Package} ${Version}','kwin-wayland'],text=True).strip()\nprint(json.dumps(out))\nGUEST\n",
+  "ok": true
+}

@@ -1,0 +1,12 @@
+{
+  "helperPid": 54419,
+  "nativeIntegrationLibraries": [
+    "/usr/lib/x86_64-linux-gnu/libQt6Gui.so.6.4.2",
+    "/usr/lib/x86_64-linux-gnu/libQt6Widgets.so.6.4.2",
+    "/usr/lib/x86_64-linux-gnu/libfontconfig.so.1.12.1",
+    "/usr/lib/x86_64-linux-gnu/libgdk-3.so.0.2409.32",
+    "/usr/lib/x86_64-linux-gnu/libgtk-3.so.0.2409.32",
+    "/usr/lib/x86_64-linux-gnu/qt6/plugins/platformthemes/libqgtk3.so"
+  ],
+  "cinnamonFontSetting": "'Ubuntu 10'"
+}

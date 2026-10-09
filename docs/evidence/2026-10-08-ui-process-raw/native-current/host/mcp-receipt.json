@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T01:12:48.327239+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "suite": "locked official Python SDK stdio integration forwarding to production CLI",
+  "testCount": 3,
+  "exitCode": 0,
+  "cliSha256": "ccc361860a8c347d830632ffd767e30539ec198f5ccbacf62873beec342bcc2e",
+  "logSha256": "5cf763cfb9f4f4da9a00c501a8074a6ad54360b5e0817d62a90253684e450e4c",
+  "log": "mcp.log",
+  "command": [
+    "uv",
+    "run",
+    "--project",
+    "tools/mcp",
+    "--locked",
+    "--offline",
+    "python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests/integration",
+    "-p",
+    "test_mcp.py",
+    "-v"
+  ],
+  "environmentOverrides": {
+    "PUTGD_CLI": "/home/patrick/work/put.gd/work/u11/native/host/source/build/dev/putgd-cli",
+    "PYTHONPATH": "/home/patrick/work/put.gd/work/u11/native/host/source/tools/mcp"
+  },
+  "nativeDesktopProof": false
+}

@@ -1,0 +1,12 @@
+{"name": "qt-region", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/2a71d8eadaa34499807eae63748d7368"}
+{"name": "qt-window", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/7662bc5dd66e409a9587c6653932715c"}
+{"name": "qt-desktop", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/58d7b2bcdb2049dc9a908238e20010d9"}
+{"name": "qt-clipboard-text", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/7e52deb03bbd4811be6fa364884c8006"}
+{"name": "qt-clipboard-image", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/49727612f8464ff1abbf68933722a2f1"}
+{"name": "qt-clipboard-files", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/da778b37f9824241b61bcf4a5ebe68d2"}
+{"name": "qt-region-cancel-escape", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/92086b903d6f4349ba7f8d3a927b832a"}
+{"name": "qt-region-cancel-right-click", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/f19873c5705c4340b2c16f31c1c3101a"}
+{"name": "qt-region-cancel-zero-area", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/9952006b2a2e4a2f8f773c122d84148e"}
+{"name": "gtk-clipboard-text", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/bfedc3dd7a06429f8beebed1e8832c83"}
+{"name": "gtk-clipboard-image", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/57bc7c86827b4d02a7fd363ca1c7bebf"}
+{"name": "gtk-clipboard-files", "exitCode": 0, "ok": true, "evidenceDirectory": "tests/f4e6028dfbd04ac89f6515d33a91fc43"}

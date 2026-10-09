@@ -1,0 +1,7 @@
+{
+  "utc": "2026-10-09T01:18:07.323700+00:00",
+  "exitCode": 0,
+  "stdout": "{\"stopped\": {\"pid\": 59314, \"startTicks\": 922289, \"sha256\": \"ae7b2166db126735e23c913e0632539b312bf2be44d123fa3cb544d48273a5e1\"}, \"statePreservedAt\": \"/home/lab/putgd-u11-97ca3a521714/previous-lab-data\", \"method\": \"identity-guarded pidfd SIGTERM\"}\n",
+  "stderr": "",
+  "userRequestedImmediateOldResidentStop": true
+}

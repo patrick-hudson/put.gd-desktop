@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T01:52:15.845217+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "functionalWorkersQuiet": true,
+  "buildsQuiet": true,
+  "nativeReceipts": [
+    {
+      "desktop": "cinnamon",
+      "path": "/home/patrick/work/put.gd/work/u11/native/cinnamon/receipt.json",
+      "sha256": "b210ca25dd320ccccc275ec50b74388eac680beac3e751bd98e6ae2bbfd6e5d0"
+    },
+    {
+      "desktop": "gnome",
+      "path": "/home/patrick/work/put.gd/work/u11/native/gnome/receipt.json",
+      "sha256": "36682ace9beb525103521ee7c71977844588886841e0ef7e46134198e2d8cb78"
+    },
+    {
+      "desktop": "kde",
+      "path": "/home/patrick/work/put.gd/work/u11/native/kde/receipt.json",
+      "sha256": "c9bc36a9f77aefd05f09622f42dc9211c7083c1a6d91237f94f7cd017f7977f1"
+    }
+  ],
+  "validationScope": "Root inspected completed current-source native functional subsets, real tray and helper close/reopen, clipboard/draft/native-dialog checks and one real512MiB local continuity case per desktop. This is an observation gate, not full AE17/S3 or compositor certification.",
+  "remainingGates": [
+    "Real S3 publication/deletion/slow upload",
+    "Native helper crash/version mismatch injection",
+    "Historical GNOME selector readiness determinism and focus caveats",
+    "Mixed-monitor/scaling/full desktop release gates"
+  ],
+  "protocolSha256": "f74742e36cc01262e52f1c5b47f60cb2941cc23383b27e53c6e74a843cf481af"
+}

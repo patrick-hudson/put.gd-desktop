@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-09T01:35:48.488470+00:00",
+  "cause": "Harness assumed ui.show gives keyboard focus. Native GNOME displayed Settings-is-ready notification and retained GTK fixture focus; Alt+F4 closed GTK fixture, not Settings. No product helper close was sent.",
+  "evidence": [
+    "../../ui/initial-settings-focused.png",
+    "../../ui/initial-settings-closed.png"
+  ],
+  "correction": "Close the visibly focused Settings normally; rerun view lifecycle with no external app window, retaining failed initial guard."
+}

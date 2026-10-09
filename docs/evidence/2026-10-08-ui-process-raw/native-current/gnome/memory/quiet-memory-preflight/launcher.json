@@ -1,0 +1,12 @@
+{
+  "utc": "2026-10-09T01:53:13.269134+00:00",
+  "command": [
+    "python3",
+    "/home/patrick/work/put.gd/work/u11/native/gnome/sample-memory.py",
+    "--functional-wave-quiescent"
+  ],
+  "driverSha256": "ca4b44de0846f5bba7ee9dbfc78393beaf1003d41343ac18889b34c0cf014e2e",
+  "phase": "native functional wave and builds finished; root authorized quiet sampling",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "wrapperPid": 2541440
+}

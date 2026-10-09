@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "testId": "aae026b66fa4402f9214d2089fb0d47c",
+  "profile": "kde-wayland",
+  "scenario": "region-cancel-zero-area",
+  "files": {
+    "parameters.json": "7983a9e24b7f5614c4c977414cd74bf6d0a92f5ca940be166d9a606e062bbb55",
+    "results.json": "4b4c0be237b478535985831d61cb9d30753b8184c695e4765de38a00bec62200",
+    "results.xml": "39a4fc13708a84bc043f20e138e3698699154ae444228c6404d806c1db4bd591",
+    "ready.json": "b4b33876792011b02ad63f8f1b23dd8b4af2639edecda6638963331fc5b0c53c",
+    "paste.json": "cf0904eab4d5535aa0efc63fc685da9aa3c5d50027be73230887fefbc40937d9",
+    "before-head0.ppm": "1d69e9fac5431f39d39e7de8c0241414264077effef0f2a0837e24a732b80cb9",
+    "final-head0.ppm": "8871a1b824cb6a2a30a57662a024e85e3520b0652ece926d43c957cb44a41641",
+    "versions.json": "9a0adfdb5fe31ba31383fc3288260929c0cde1a85439705d7a8be8032469b955",
+    "package.json": "ab72569f5415608a3645a43d33764b7e707317196881695cc46f29ea689cbcd3",
+    "diagnostics.json": "d28a266b1102ddec3717d4c52c7eac9c0c25997cf458d95e2d934093fc0f7acd"
+  }
+}

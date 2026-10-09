@@ -1,0 +1,100 @@
+{
+  "status": "prepared-not-run-awaiting-root-quiescence-signal",
+  "argv": [
+    "python3",
+    "/home/lab/putgd-lab/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--pid",
+    "38189",
+    "--start-ticks",
+    "1681006",
+    "--app",
+    "/usr/bin/putgd",
+    "--helper",
+    "/usr/bin/putgd-ui",
+    "--cli",
+    "/usr/bin/putgd-cli",
+    "--socket",
+    "/run/user/1000/putgd/session.sock",
+    "--source-revision",
+    "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "--output",
+    "/home/lab/putgd-lab/u11-memory-post-native-97ca3a5",
+    "--label",
+    "post-native-actions-and-512MiB-local-copy-and-user-manual-region",
+    "--seconds",
+    "120",
+    "--interval",
+    "5",
+    "--acceptance-receipt",
+    "/home/lab/putgd-lab/u11-native-acceptance.json"
+  ],
+  "resident": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef"
+  },
+  "samplerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "expectedSocketPeer": {
+    "pid": 38189,
+    "uid": 1000
+  },
+  "label": "post-native-actions-and-512MiB-local-copy-and-user-manual-region",
+  "additionalRegionOperation": [
+    {
+      "id": "a47dab06-4ce5-4101-abd1-43388623ba84",
+      "created": "2026-10-09T01:26:10.477Z",
+      "action": "region",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "name": null,
+          "path": "/home/lab/putgd-lab/archive/images/Screen-Capture-2026-10-08-20-26-10.png",
+          "mime": "image/png"
+        }
+      ]
+    }
+  ],
+  "scope": "VM post-use total process family only; not physical cold idle or matched empty views",
+  "unattributedActivityExcludedFromAcceptance": true,
+  "manualActivityOrigin": "User-confirmed VNC region capture",
+  "operationInvariant": {
+    "baseline": "Capture current operation IDs/count immediately before sampling",
+    "throughout": "Read-only operation.recent every 5 seconds, final check after sampler exit",
+    "violation": "Mark only this memory sample invalid; leave app and functional receipts untouched",
+    "guardScript": "/home/lab/putgd-lab/u11-memory-guard.py"
+  },
+  "preparationOperationBaseline": {
+    "timestampUtc": "2026-10-09T01:31:33.523293+00:00",
+    "count": 23,
+    "ids": [
+      "014dd418-db30-443d-be55-cc70293e482c",
+      "022df18f-0b29-4a66-8e8a-68203d6a2522",
+      "097b11ba-c142-4fe7-be80-64a7d38ca553",
+      "30c380b2-a9b2-4d85-94b5-528d5b6866a5",
+      "3792fc81-0086-4a7b-8222-c7515c5bd77c",
+      "6b5a1a65-e49f-4270-aca0-4b568f9c3b7e",
+      "6b6406ff-da72-4491-bda0-77d3f0d14915",
+      "714d5589-76ec-4d9f-b14e-b0aed3c195ab",
+      "79721293-d8cc-441e-9739-d5a2bc8b82c9",
+      "7d6719fb-a3ad-4864-98cb-7062eb52e909",
+      "9ca4e0d1-67df-494b-9903-e487af7b91e0",
+      "9fb98cfa-b1c6-43d5-bc93-1b115225972f",
+      "a20ef173-e5c9-4e4a-9fbe-807f682bbd5b",
+      "a47dab06-4ce5-4101-abd1-43388623ba84",
+      "aba08cd3-2a7e-4a07-b9c5-389308c1e470",
+      "ae33e314-6c18-45a1-9dc4-e979dfb15321",
+      "b0417aed-6b91-4f4b-8dd5-2258371449e6",
+      "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "ccbb7751-778b-4cd2-aec5-a19b18fafe8a",
+      "d68c8d36-2f03-4527-9d5a-df7092ec57f4",
+      "dd781659-119c-4f06-9233-3c69afdff0f4",
+      "dd90270b-3518-413b-b4cb-96f9b73718ab",
+      "f0fa1e9d-2b05-4c2b-abe5-e9fb0c201f8c"
+    ],
+    "allTerminal": true
+  }
+}

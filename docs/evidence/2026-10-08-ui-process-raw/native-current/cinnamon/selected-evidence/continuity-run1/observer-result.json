@@ -1,0 +1,926 @@
+{
+  "observations": [
+    {
+      "monotonicSeconds": 17465.299083199,
+      "helperGoneBeforeInspect": false,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17465.602423744,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17465.809171221,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.002500284,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.098330933,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.227973671,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.338243672,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.447931093,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.573310511,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.703493388,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.803290729,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17466.916121196,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17467.06032884,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17467.182904914,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17467.347619551,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17467.452528352,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17467.616191951,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17467.733255487,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17467.856435616,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17468.034669143,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17468.235139982,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17468.468279581,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17468.692283139,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17468.937242135,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.081833453,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.179370841,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.289357616,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.414727245,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.557063985,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.635903909,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.725923707,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.861436468,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17469.97385761,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.089169618,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.167815854,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.244679622,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.316777511,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.42323751,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.527439771,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.706609791,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.794663544,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17470.880306909,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.01633398,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.118185133,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.201386066,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.284105238,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.360188016,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.467628751,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.595334703,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.680975499,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.784847983,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17471.889946721,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.02154752,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.121230718,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.215220811,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.304316385,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.380778276,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.505071393,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.599156176,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.732178119,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.879839501,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17472.982730525,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.099238416,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.183133051,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.32253163,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.478769965,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.59975493,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.704449644,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.791648636,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17473.902708777,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.028812952,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.126427179,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.222221705,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.325804709,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.461155451,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.578090017,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.658608541,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17474.737130754,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17475.016378824,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17475.292214904,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17478.374259427,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17478.558664077,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17478.760615111,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17478.968979008,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.156143411,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.264138681,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.423789777,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.501957697,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.593748853,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.697950864,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.791067756,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.881112759,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17479.999640187,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17480.116802243,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17480.206118185,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17480.287111621,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17480.438612929,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17480.587668654,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17480.713968735,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17480.926511916,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.108061282,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.277751496,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.412980488,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.569488002,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.648464911,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.73819946,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.835356528,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17481.954780836,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17482.103438489,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17482.189738317,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17482.311149928,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17482.426534189,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17482.629040694,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 17483.357505555,
+      "helperGoneBeforeInspect": true,
+      "operationId": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+      "state": "completed",
+      "copyStatus": "copied"
+    }
+  ],
+  "operation": {
+    "action": "clipboard",
+    "cancelled": false,
+    "clipboardRevision": "46",
+    "copyStatus": "copied",
+    "created": "2026-10-09T01:23:06.031Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "ba3c4bb1-b9f2-4379-b46a-9c53dfd3f018",
+    "invocation": "22",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 536870912,
+          "category": "text",
+          "id": "3f2a0a74-0e1c-41e5-9c09-803eb1ae0c82",
+          "mime": "text/plain",
+          "name": "synthetic-1.txt",
+          "namingPrepared": true,
+          "originalFile": true,
+          "previewPath": "",
+          "sha256": "23bd4da48450e844221b7a1217e0ab57b82a2b0f3be2480e22914a9515540afc"
+        },
+        "candidate": "",
+        "concurrencyToken": "",
+        "condition": "",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "/home/lab/putgd-lab/archive/text/synthetic-1-9f211a09-bf6f-4fe9-8fbb-737ea207be3f.txt",
+          "status": "saved"
+        },
+        "objectReference": {},
+        "publicationId": "6d35e8ea-181a-469d-b3b3-a007ec320906",
+        "receipt": {
+          "concurrencyToken": "",
+          "destination": {
+            "credentials": {},
+            "profileId": "",
+            "profileRevision": "",
+            "providerId": "",
+            "settings": {}
+          },
+          "directUrl": "",
+          "objectReference": {},
+          "publicationId": "",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "uploadStatus": "local_only"
+      },
+      {
+        "artifact": {
+          "bytes": 23,
+          "category": "text",
+          "id": "121c9ae0-04ce-470c-a165-c47c3d325ca7",
+          "mime": "text/plain",
+          "name": "synthetic-2.txt",
+          "namingPrepared": true,
+          "originalFile": true,
+          "previewPath": "",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209"
+        },
+        "candidate": "",
+        "concurrencyToken": "",
+        "condition": "",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "/home/lab/putgd-lab/archive/text/synthetic-2-fdb8a345-57f1-47a3-95ae-2c1e1463c876.txt",
+          "status": "saved"
+        },
+        "objectReference": {},
+        "publicationId": "879b2881-0caa-4720-9510-a0ed90062635",
+        "receipt": {
+          "concurrencyToken": "",
+          "destination": {
+            "credentials": {},
+            "profileId": "",
+            "profileRevision": "",
+            "providerId": "",
+            "settings": {}
+          },
+          "directUrl": "",
+          "objectReference": {},
+          "publicationId": "",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "uploadStatus": "local_only"
+      }
+    ],
+    "settingsRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+    "state": "completed"
+  },
+  "failure": null,
+  "activeOperationObservedAfterHelperExit": true,
+  "elapsedSeconds": 18.388954138998088
+}

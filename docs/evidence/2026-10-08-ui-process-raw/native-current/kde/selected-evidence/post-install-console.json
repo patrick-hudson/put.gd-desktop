@@ -1,0 +1,13 @@
+{
+  "timestampUtc": "2026-10-09T01:28:01.853053+00:00",
+  "script": "set -eu\nsession_id=$(loginctl show-user \"$(id -u)\" -p Display --value)\n[ \"$(loginctl show-session \"$session_id\" -p User --value)\" = \"$(id -u)\" ]\n[ \"$(loginctl show-session \"$session_id\" -p Type --value)\" = wayland ]\nloginctl unlock-session \"$session_id\"\n",
+  "visibleKeys": [
+    "esc"
+  ],
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/u11-post-install-console-head0.ppm",
+    "sha256": "0896a0b48137e0ad3df71718b9590e71e8e3a41a52dcb263d01daa829fd9de05"
+  },
+  "vncPort": 5934,
+  "policyChanged": false
+}

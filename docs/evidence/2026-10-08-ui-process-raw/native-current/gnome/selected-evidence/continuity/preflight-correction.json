@@ -1,0 +1,9 @@
+{
+  "cause": "Initial click during tray menu opening left Recent activity highlighted but menu still open; preflight UI-ready assertion stopped before sharing action. Visible menu click now opened Activity.",
+  "witnesses": [
+    "../ui/continuity-preflight-observe.png",
+    "../ui/continuity-activity-open.png"
+  ],
+  "sharingActionsBeforeCorrection": 0,
+  "sourceChanges": false
+}

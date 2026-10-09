@@ -1,0 +1,29 @@
+{
+  "timestampUtc": "2026-10-09T01:16:29.691651+00:00",
+  "operation": {
+    "action": "window",
+    "cancelled": false,
+    "clipboardRevision": "44",
+    "copyStatus": "no_result",
+    "created": "2026-10-09T01:16:29.120Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "capture_target",
+      "details": {},
+      "message": "Focus an external window before invoking window capture"
+    },
+    "id": "aba08cd3-2a7e-4a07-b9c5-389308c1e470",
+    "invocation": "19",
+    "items": [],
+    "settingsRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+    "state": "failed"
+  },
+  "helperPid": 50445,
+  "activeWindow": "_NET_ACTIVE_WINDOW(WINDOW): window id # 0x4800006"
+}

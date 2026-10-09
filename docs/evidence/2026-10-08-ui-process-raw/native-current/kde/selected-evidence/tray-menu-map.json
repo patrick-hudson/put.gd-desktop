@@ -1,0 +1,50 @@
+{
+  "timestampUtc": "2026-10-09T01:30:15.644348+00:00",
+  "witness": "/home/patrick/work/put.gd/work/u11/native/kde/native-tray-menu-resume.png",
+  "witnessSha256": "ed5b24f2eb827bcf1ea7e9baa46a4435a0348b99fe56d8e8b5934f23d45f9b71",
+  "viewport": [
+    1280,
+    800
+  ],
+  "tray": [
+    944,
+    773
+  ],
+  "actions": {
+    "region": [
+      1012,
+      486
+    ],
+    "window": [
+      1012,
+      515
+    ],
+    "desktop": [
+      1012,
+      544
+    ],
+    "clipboard": [
+      1012,
+      573
+    ]
+  },
+  "views": {
+    "settings": [
+      1012,
+      607
+    ],
+    "history": [
+      1012,
+      636
+    ],
+    "activity": [
+      1012,
+      664
+    ],
+    "about": [
+      1012,
+      698
+    ]
+  },
+  "visualReview": "Visible resident put.gd menu contains all four capture actions, Settings, History, Activity, About and Quit while UI helper PID is zero."
+}

@@ -1,0 +1,42 @@
+{
+  "timestampUtc": "2026-10-09T01:19:40.835680+00:00",
+  "originalRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+  "externalRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+  "externalPatch": {
+    "preferences": {
+      "notifications": true
+    }
+  },
+  "savedProfileCount": 0,
+  "expectedDraft": {
+    "bucket": "u11-draft",
+    "region": "us-east-1u11-draft"
+  },
+  "ordinaryClose": {
+    "helperPid": 53444,
+    "diagnostics": {
+      "checkpointBytes": 3726,
+      "lastExit": {
+        "code": 0,
+        "generation": 15,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    }
+  },
+  "conflictClose": {
+    "helperPid": 53826,
+    "diagnostics": {
+      "checkpointBytes": 3725,
+      "lastExit": {
+        "code": 0,
+        "generation": 16,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    }
+  },
+  "visualReview": "pending"
+}
