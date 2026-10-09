@@ -43,7 +43,8 @@ TrayController::TrayController(OperationService& operations,
   if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick)
    showActivity();
  });
- if (available()) tray_->show();
+ // Qt registers a visible icon when a desktop tray becomes available later.
+ tray_->show();
  connect(&operations_, &OperationService::changed, this, [this](const QString& id) {
   if (!available() || !operations_.settingsSnapshot().notifications) return;
   operations_.inspect(id, [guard = QPointer<TrayController>(this)](Error error, QJsonObject operation) {

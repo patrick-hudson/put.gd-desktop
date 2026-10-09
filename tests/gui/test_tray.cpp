@@ -49,6 +49,8 @@ private slots:
   QPointer<QSystemTrayIcon> tray = controller->findChild<QSystemTrayIcon*>();
   QVERIFY(tray);
   QVERIFY(!tray->icon().isNull());
+  // Visibility intent must survive a desktop tray that appears after startup.
+  QVERIFY(tray->isVisible());
   QPointer<QMenu> menu = tray->contextMenu();
   QVERIFY(menu);
   const auto windows = QApplication::topLevelWidgets();
