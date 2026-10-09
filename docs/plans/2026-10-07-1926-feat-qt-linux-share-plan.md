@@ -1261,3 +1261,30 @@ and the forced-timeout cleanup checks. These checks launch synthetic processes
 only; they establish neither hosted CI execution nor physical memory acceptance.
 The documented acceptance evaluator uses explicit conditions that remain active
 under optimized Python; its synthetic failed-receipt rejection was verified.
+
+
+### Current Cinnamon gates and collector correction (2026-10-09)
+
+Clean source52 (`c19553b`, version `0.1.1-dev.52+gc19553b9e69e`) passed 48
+development suites, seven affected ASan/UBSan suites, twelve collector contracts,
+the unchanged twelve-case Cinnamon native matrix and focused tray, fonts, folder
+dialog, live-overlay, History and Activity checks. Its unchanged physical capture
+timing passed 30 samples at 124.812 ms p95 against the 150 ms limit.
+
+The first source52 cold observer failed after 70.216 seconds with
+ProcessLookupError and no completed five-minute primary. Its partial low RSS is
+invalid acceptance. Synthetic kernel churn confirmed ownership-metadata ESRCH
+and exit-time EACCES mechanisms. The narrow correction preserves all measured
+root/child sampling errors and normalizes metadata permissions only after exact
+process absence. It adds private bounded call-location diagnostics and a
+committed standard-Python stress recipe. The follow-up's 18 contracts and
+20-cohort/8,000-child stress passed; these are collector checks, not source52
+collector evidence or the memory target.
+[Evidence and limits](../evidence/2026-10-09-cold-family-metadata-race.json).
+
+Keep the next clean version's Cinnamon functional, timing, two cold and two
+closed-view gates ahead of GNOME/KDE runtime expansion. GNOME/KDE memory work
+remains open; current attribution must distinguish cold, post-view and post-upload
+memory and retain native clipboard/tray, codecs, invocation target, lock/owner
+checks and normal helper drain. Empty cold/view gates do not prove post-S3
+retention or full U9 acceptance. Preserve failed attempts and immutable bases.

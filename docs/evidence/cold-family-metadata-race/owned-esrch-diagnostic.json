@@ -1,0 +1,45 @@
+{
+  "scope": "Unscored controlled stdlib childchurn through unchangedOwnedSubtree.discover; no graphical/application workload",
+  "results": [
+    {
+      "cohort": 0,
+      "calls": 120,
+      "knownGenerations": 8,
+      "exitCode": 0,
+      "failure": {
+        "errorType": "ProcessLookupError",
+        "errno": 3,
+        "filename": null,
+        "frames": [
+          {
+            "file": "<stdin>",
+            "function": "<module>",
+            "line": 11
+          },
+          {
+            "file": "observe_cold_family.py",
+            "function": "discover",
+            "line": 124
+          },
+          {
+            "file": "observe_cold_family.py",
+            "function": "current",
+            "line": 80
+          },
+          {
+            "file": "bench_ui_process.py",
+            "function": "identity",
+            "line": 68
+          },
+          {
+            "file": "pathlib.py",
+            "function": "read_text",
+            "line": 1030
+          }
+        ]
+      },
+      "cleanupDiscoveryErrors": [],
+      "ownedLiveAfterCleanup": 0
+    }
+  ]
+}

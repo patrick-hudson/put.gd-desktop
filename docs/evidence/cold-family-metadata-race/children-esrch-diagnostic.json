@@ -1,0 +1,37 @@
+{
+  "scope": "Unscored synthetic subprocess churn through unchanged importedchildren; no graphical input/application workload",
+  "results": [
+    {
+      "cohort": 0,
+      "calls": 1207,
+      "exitCode": 0,
+      "failure": {
+        "errorType": "ProcessLookupError",
+        "errno": 3,
+        "filename": "/proc/3483678/task/3483678/children",
+        "frames": [
+          {
+            "file": "<stdin>",
+            "function": "<module>",
+            "line": 13
+          },
+          {
+            "file": "bench_ui_process.py",
+            "function": "children",
+            "line": 89
+          },
+          {
+            "file": "pathlib.py",
+            "function": "read_text",
+            "line": 1029
+          },
+          {
+            "file": "pathlib.py",
+            "function": "open",
+            "line": 1015
+          }
+        ]
+      }
+    }
+  ]
+}

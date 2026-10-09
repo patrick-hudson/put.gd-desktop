@@ -29,6 +29,47 @@ MAX_GAP_SECONDS = 3 * POLL_SECONDS
 MAX_OWNED_GENERATIONS = 512
 
 
+def failure_diagnostics(error):
+    """Export bounded trusted code locations, never exception content or locals."""
+    locations = {
+        str(Path(__file__).resolve()): 'observe_cold_family',
+        str((PERFORMANCE / 'bench_ui_process.py').resolve()): 'bench_ui_process',
+    }
+    functions = {'run', '__init__', 'current', 'discover', 'live', 'cleanup_discover',
+                 'stop', 'find_family', 'sample_cold_family', 'identity', 'children',
+                 'memory', 'sample', '_discover', '_remember', 'walk', 'sha256',
+                 'signal_generation', 'metadata_identity', 'mark_resident', 'mark_descendants'}
+    frames = []
+    frame = error.__traceback__
+    while frame is not None and len(frames) < 8:
+        code = frame.tb_frame.f_code
+        module = locations.get(code.co_filename)
+        if module is not None and code.co_name in functions:
+            frames.append({'module': module, 'function': code.co_name, 'line': frame.tb_lineno})
+        frame = frame.tb_next
+    number = error.errno if isinstance(error, OSError) else None
+    return {'errno': number if type(number) is int and 0 <= number <= 4096 else None,
+            'frames': frames}
+
+
+def metadata_identity(pid):
+    """Normalize exit-time EACCES only after exact process-directory absence.
+
+    This is ownership discovery, never a resident memory-sampling primitive.
+    A live, zombie, reused or inaccessible directory leaves the error fatal.
+    """
+    try:
+        return identity(pid)
+    except PermissionError:
+        try:
+            (Path('/proc') / str(pid)).stat()
+        except (FileNotFoundError, ProcessLookupError):
+            raise FileNotFoundError('owned_metadata_task_disappeared') from None
+        except OSError:
+            pass  # No absence proof: preserve the original identity failure.
+        raise
+
+
 def same_generation(left, right):
     """Ownership survives exec but never PID reuse or a changed UID."""
     return all(left[key] == right[key] for key in ('pid', 'startTicks', 'uid'))
@@ -51,7 +92,7 @@ def signal_generation(expected, sig):
         return False
     try:
         try:
-            if not same_generation(identity(expected['pid']), expected):
+            if not same_generation(metadata_identity(expected['pid']), expected):
                 return False
             signal.pidfd_send_signal(descriptor, sig)
             return True
@@ -77,7 +118,7 @@ class OwnedSubtree:
         self.cleanup_discovery_error_count = 0
 
     def current(self, expected, record=True):
-        current = identity(expected['pid'])
+        current = metadata_identity(expected['pid'])
         if not same_generation(current, expected):
             return None
         if not same_identity(current, expected):
@@ -126,12 +167,12 @@ class OwnedSubtree:
                     continue
                 observed.add(key)
                 descendants = children(current['pid'])
-                if not same_generation(identity(current['pid']), current):
+                if not same_generation(metadata_identity(current['pid']), current):
                     continue
                 for pid in descendants:
                     try:
-                        child = identity(pid)
-                    except FileNotFoundError:
+                        child = metadata_identity(pid)
+                    except (FileNotFoundError, ProcessLookupError):
                         continue
                     if child['uid'] != os.getuid():
                         raise EvidenceError('observer_descendant_uid_mismatch')
@@ -143,7 +184,7 @@ class OwnedSubtree:
                         self.known[child_key] = child
                     self.parents.setdefault(child_key, set()).add(key)
                     queue.append(self.known[child_key])
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
                 continue
         if self.resident_root:
             self.mark_descendants(observed)
@@ -155,7 +196,7 @@ class OwnedSubtree:
                 current = self.current(expected, record=record)
                 if current:
                     result.append(current)
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
                 continue
         return result
 
@@ -432,6 +473,7 @@ def run(args):
         failed = True
         data['status'] = 'failed-or-interrupted'
         data['errorType'] = type(error).__name__
+        data['failureDiagnostics'] = failure_diagnostics(error)
         # Fixed EvidenceError labels are safe; arbitrary exceptions may contain
         # user paths or data, so only their class is exported.
         if isinstance(error, EvidenceError):
@@ -447,6 +489,7 @@ def run(args):
                 process.wait(timeout=5)
         except BaseException as error:
             data['cleanupErrorType'] = type(error).__name__
+            data['cleanupFailureDiagnostics'] = failure_diagnostics(error)
             data['passed'] = data['cold40MiBTargetEstablished'] = False
             data['status'] = 'cleanup-failed'
             if not failed:

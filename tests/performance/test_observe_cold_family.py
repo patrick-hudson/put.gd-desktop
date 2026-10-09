@@ -175,6 +175,137 @@ class ColdFamilyTests(unittest.TestCase):
                 process.terminate()
                 process.wait(timeout=5)
 
+    def test_owned_metadata_esrch_retains_known_generations(self):
+        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        try:
+            owned = observer.OwnedSubtree(process)
+            original = dict(owned.known)
+            with patch.object(observer, 'identity', side_effect=ProcessLookupError(3, 'synthetic exited task')):
+                owned.discover()
+                self.assertEqual(owned.live(), [])
+            self.assertEqual(owned.known, original)
+            self.assertEqual(len(owned.live()), 1)
+            self.retain({'knownGenerationRetained': True, 'outerDiscoveryAndLiveExitHandled': True,
+                         'liveIdentityStillObservedAfterTransientError': True})
+        finally:
+            process.terminate()
+            process.wait(timeout=5)
+
+    def test_owned_child_and_task_children_esrch(self):
+        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        try:
+            owned = observer.OwnedSubtree(process)
+            real_identity = observer.identity
+            missing = 999999999
+            def probe(pid):
+                if pid == missing:
+                    raise ProcessLookupError(3, 'synthetic child exited')
+                return real_identity(pid)
+            with patch.object(observer, 'children', return_value={missing}), \
+                    patch.object(observer, 'identity', side_effect=probe):
+                owned.discover()
+            self.assertEqual(len(owned.known), 1)
+            with patch.object(observer, 'children', side_effect=ProcessLookupError(3, 'synthetic task exited')):
+                owned.discover()
+            self.assertEqual(len(owned.known), 1)
+            with patch.object(observer, 'identity', side_effect=PermissionError(13, 'synthetic denial')):
+                with self.assertRaises(PermissionError):
+                    owned.discover()
+                with self.assertRaises(PermissionError):
+                    owned.live()
+            self.retain({'newChildExitHandled': True, 'taskChildrenExitHandled': True,
+                         'permissionErrorsStillPropagate': True})
+        finally:
+            process.terminate()
+            process.wait(timeout=5)
+
+    def test_sample_esrch_is_not_owned_metadata_disappearance(self):
+        base = self.root / 'strict-sampling-esrch'
+        base.mkdir(mode=0o700)
+        for failure in [ProcessLookupError(3, 'synthetic measured task exited'),
+                        PermissionError(13, 'synthetic measured task denied')]:
+            def sample(): raise failure
+            family = SimpleNamespace(sample=sample)
+            with self.assertRaises(type(failure)) as raised:
+                observer.sample_cold_family(family, base)
+            self.assertIs(raised.exception, failure)
+        self.retain({'residentOrMeasuredChildEsrchStillRejects': True,
+                     'terminalNormalizerUnchanged': True})
+
+    def test_failure_diagnostics_exclude_sensitive_exception_content(self):
+        try:
+            owned = observer.OwnedSubtree.__new__(observer.OwnedSubtree)
+            with patch.object(observer, 'identity', side_effect=ProcessLookupError(3, 'PRIVATE-MESSAGE', '/PRIVATE-PATH')):
+                owned.current({'pid': 1})
+        except ProcessLookupError as error:
+            result = observer.failure_diagnostics(error)
+        encoded = json.dumps(result)
+        self.assertEqual(result['errno'], 3)
+        self.assertLessEqual(len(result['frames']), 8)
+        self.assertEqual([frame['function'] for frame in result['frames']], ['current', 'metadata_identity'])
+        self.assertTrue(all(frame['module'] == 'observe_cold_family'
+                            and type(frame['line']) is int and frame['line'] > 0 for frame in result['frames']))
+        self.assertNotIn('PRIVATE', encoded)
+        self.assertEqual(set(result), {'errno', 'frames'})
+        self.retain({'errnoPreserved': True, 'rawMessagePathAndArgsExcluded': True,
+                     'boundedAllowlistedFramesOnly': True})
+
+    def test_metadata_permission_normalization_requires_absent_process(self):
+        failure = PermissionError(13, 'PRIVATE-MESSAGE', '/PRIVATE-PATH')
+        missing = 999999999
+        self.assertFalse(Path('/proc', str(missing)).exists())
+        with patch.object(observer, 'identity', side_effect=failure):
+            with self.assertRaises(FileNotFoundError):
+                observer.metadata_identity(missing)
+            with self.assertRaises(PermissionError) as raised:
+                observer.metadata_identity(os.getpid())
+            self.assertIs(raised.exception, failure)
+            for probe_error in [PermissionError(13, 'synthetic directory denial'),
+                                OSError(5, 'synthetic directory read error')]:
+                with patch.object(Path, 'stat', side_effect=probe_error):
+                    with self.assertRaises(PermissionError) as raised:
+                        observer.metadata_identity(missing)
+                    self.assertIs(raised.exception, failure)
+            with patch.object(Path, 'stat', return_value=object()):
+                with self.assertRaises(PermissionError) as raised:
+                    observer.metadata_identity(missing)
+                self.assertIs(raised.exception, failure)
+        self.retain({'absentProcessReclassified': True, 'liveProcessPermissionStillFatal': True,
+                     'directoryProbeDenialStillFatal': True, 'rootMemorySamplerUnchanged': True})
+
+    def test_churn_recipe_bounds_loop_and_retains_interruptions(self):
+        import importlib.util
+        recipe_path = observer.REPO_ROOT / 'docs/evidence/cold-family-metadata-race/metadata_churn.py'
+        specification = importlib.util.spec_from_file_location('private_churn_recipe', recipe_path)
+        recipe = importlib.util.module_from_spec(specification)
+        specification.loader.exec_module(recipe)
+        results = {}
+        for label, expected in [('deadline', 'TimeoutError'), ('interrupt', 'KeyboardInterrupt')]:
+            base = self.root / ('recipe-' + label)
+            base.mkdir(mode=0o700)
+            process = SimpleNamespace(returncode=None, poll=lambda: None, wait=lambda timeout: 0)
+            def stop(): process.returncode = 0
+            owned = SimpleNamespace(known={}, live=lambda record=True: [], stop=stop)
+            owned.discover = lambda: (_ for _ in ()).throw(KeyboardInterrupt())
+            clock = iter([0, 21] if label == 'deadline' else [0, 0])
+            with patch.object(recipe.subprocess, 'Popen', return_value=process), \
+                    patch.object(observer, 'OwnedSubtree', return_value=owned), \
+                    patch.object(recipe, 'time', SimpleNamespace(monotonic=lambda: next(clock)), create=True), \
+                    patch.object(sys, 'argv', ['recipe', '--cohorts', '1', '--output', str(base / 'results.json')]):
+                try:
+                    code = recipe.main()
+                except BaseException as error:
+                    self.fail('recipe failed to retain interruption: ' + type(error).__name__)
+            result = json.loads((base / 'results.json').read_text())
+            self.assertEqual(code, 1)
+            self.assertFalse(result['passed'])
+            self.assertEqual(result['rows'][0]['failure']['errorType'], expected)
+            self.assertIsNone(result['rows'][0]['cleanupFailure'])
+            self.assertEqual(result['rows'][0]['ownedLiveAfterCleanup'], 0)
+            self.assertEqual(process.returncode, 0)
+            results[label] = {'failedReceiptRetained': True, 'knownCleanupInvoked': True}
+        self.retain({'syntheticControlFlowOnly': True, 'noPhysicalAcceptance': True, 'cases': results})
+
     def test_coverage_rejects_sparse_or_gapped_samples(self):
         regular = [{'elapsedSeconds': value} for value in range(299)]
         sparse = [{'elapsedSeconds': 0}, {'elapsedSeconds': 300}]

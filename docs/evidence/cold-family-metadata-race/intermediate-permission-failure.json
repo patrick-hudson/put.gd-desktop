@@ -1,0 +1,46 @@
+{
+  "scope": "Unscored synthetic metadata churn through correctedobserver, not physical memory acceptance",
+  "rows": [
+    {
+      "cohort": 0,
+      "calls": 233,
+      "knownGenerations": 50,
+      "failure": null,
+      "exitCode": 0,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 1,
+      "calls": 135,
+      "knownGenerations": 20,
+      "failure": {
+        "errorType": "PermissionError",
+        "diagnostics": {
+          "errno": 13,
+          "frames": [
+            {
+              "module": "observe_cold_family",
+              "function": "discover",
+              "line": 156
+            },
+            {
+              "module": "bench_ui_process",
+              "function": "identity",
+              "line": 70
+            }
+          ]
+        }
+      },
+      "exitCode": 0,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 2,
+      "calls": 206,
+      "knownGenerations": 56,
+      "failure": null,
+      "exitCode": 0,
+      "ownedLiveAfterCleanup": 0
+    }
+  ]
+}

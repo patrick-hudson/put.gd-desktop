@@ -1,0 +1,2377 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T21:41:19.123324+00:00",
+  "scope": "supplemental physical cold whole-family observation; frozen workload unchanged",
+  "command": [
+    "/usr/bin/python3",
+    "<candidate>/tests/performance/observe_cold_family.py",
+    "--app",
+    "<candidate>/build/release/putgd",
+    "--cli",
+    "<candidate>/build/release/putgd-cli",
+    "--helper",
+    "<candidate>/build/release/putgd-ui",
+    "--source-revision",
+    "c19553b9e69e2c21fccf5e10ff6054d0c3819e42",
+    "--output",
+    "<synthetic52>-cold1",
+    "--receipt",
+    "<synthetic52>-family1",
+    "--seconds",
+    "300"
+  ],
+  "workingDirectory": "<candidate>",
+  "seconds": 300,
+  "familyPollSeconds": 1,
+  "sourceRevision": "c19553b9e69e2c21fccf5e10ff6054d0c3819e42",
+  "observerSha256": "0edee329afb807c16b39c5c0d3f8e2387e90ba761f2a09f56eeca1e4bf33a626",
+  "harnesses": {
+    "observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "bench_ui_process.py": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+  },
+  "samples": [
+    {
+      "elapsedSeconds": 5.97716730699176,
+      "sampleSeconds": 0.011059048003517091,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 7.003325104014948,
+      "sampleSeconds": 0.010929832002148032,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 8.034822463989258,
+      "sampleSeconds": 0.010570930957328528,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 9.07158512796741,
+      "sampleSeconds": 0.01025730703258887,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 10.102980864990968,
+      "sampleSeconds": 0.009769038995727897,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 11.133061844971962,
+      "sampleSeconds": 0.010838422982487828,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 12.168507041002158,
+      "sampleSeconds": 0.012442638049833477,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 13.213975703984033,
+      "sampleSeconds": 0.0323081620153971,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 14.278669797990005,
+      "sampleSeconds": 0.014269865001551807,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 15.337195316969883,
+      "sampleSeconds": 0.010257440968416631,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 16.386091344000306,
+      "sampleSeconds": 0.03292616398539394,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 17.442899957008194,
+      "sampleSeconds": 0.010361263004597276,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 18.479185642965604,
+      "sampleSeconds": 0.03227686899481341,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 19.561442247009836,
+      "sampleSeconds": 0.033444724045693874,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 20.632763877976686,
+      "sampleSeconds": 0.017361085047014058,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 21.694521274010185,
+      "sampleSeconds": 0.034363924991339445,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 22.747872728970833,
+      "sampleSeconds": 0.009924150945153087,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 23.797928816988133,
+      "sampleSeconds": 0.029537861002609134,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 24.87571668700548,
+      "sampleSeconds": 0.027890247001778334,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 25.938231219013687,
+      "sampleSeconds": 0.02323313703527674,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 26.999120884982403,
+      "sampleSeconds": 0.028922079014591873,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 28.077753852005117,
+      "sampleSeconds": 0.012310954974964261,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 29.137796751980204,
+      "sampleSeconds": 0.03676859400002286,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 30.219017894007266,
+      "sampleSeconds": 0.032706105965189636,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25985024,
+          "pssBytes": 16573440,
+          "privateBytes": 15802368,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 7,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25985024,
+        "pssBytes": 16573440,
+        "privateBytes": 15802368
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 31.29082976799691,
+      "sampleSeconds": 0.009466176968999207,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 32.33268285699887,
+      "sampleSeconds": 0.010790087981149554,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 33.378821613965556,
+      "sampleSeconds": 0.017022755986545235,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 34.43941214197548,
+      "sampleSeconds": 0.03052720898995176,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 35.510986742971,
+      "sampleSeconds": 0.028541109000798315,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 36.57529607397737,
+      "sampleSeconds": 0.033989746996667236,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 37.64903567399597,
+      "sampleSeconds": 0.011244021006859839,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 38.69469156500418,
+      "sampleSeconds": 0.010008110024500638,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 39.75156837498071,
+      "sampleSeconds": 0.02924714400433004,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 40.81633464898914,
+      "sampleSeconds": 0.030601598031353205,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 41.88298836600734,
+      "sampleSeconds": 0.009570566995535046,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 42.935391136968974,
+      "sampleSeconds": 0.0321257880423218,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 44.01418547600042,
+      "sampleSeconds": 0.03260351199423894,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 45.086497023003176,
+      "sampleSeconds": 0.031504603975918144,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 46.15288263600087,
+      "sampleSeconds": 0.01925262698205188,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 47.216126233979594,
+      "sampleSeconds": 0.027939396037254483,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 48.28579030500259,
+      "sampleSeconds": 0.011597340984735638,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 49.32710396300536,
+      "sampleSeconds": 0.011088545026723295,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 50.35574990900932,
+      "sampleSeconds": 0.010756154952105135,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 51.39496071299072,
+      "sampleSeconds": 0.016536043025553226,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 52.45337371999631,
+      "sampleSeconds": 0.020524520019534975,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 53.50918382796226,
+      "sampleSeconds": 0.014428992988541722,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 54.56547020300059,
+      "sampleSeconds": 0.009429858007933944,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 55.61415386601584,
+      "sampleSeconds": 0.015607297013048083,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 56.66475968301529,
+      "sampleSeconds": 0.010772116016596556,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 57.71205559099326,
+      "sampleSeconds": 0.010859797999728471,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 58.74529132596217,
+      "sampleSeconds": 0.017812880978453904,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 59.79692359600449,
+      "sampleSeconds": 0.015675292001105845,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 60.85483872098848,
+      "sampleSeconds": 0.018541957018896937,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 61.92128295399016,
+      "sampleSeconds": 0.009667459991760552,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 62.958317509968765,
+      "sampleSeconds": 0.010867181001231074,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 64.00143632397521,
+      "sampleSeconds": 0.01727226300863549,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16528384,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16528384,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 65.04514711699449,
+      "sampleSeconds": 0.011599474004469812,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 66.07825161900837,
+      "sampleSeconds": 0.01106242201058194,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 67.10943717701593,
+      "sampleSeconds": 0.01049448800040409,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 68.14176244998816,
+      "sampleSeconds": 0.012378507002722472,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 69.180633054988,
+      "sampleSeconds": 0.011262588028330356,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    },
+    {
+      "elapsedSeconds": 70.21579872100847,
+      "sampleSeconds": 0.010348636948037893,
+      "processes": [
+        {
+          "pid": 3480150,
+          "startTicks": 35521177,
+          "uid": 1000,
+          "executable": "<candidate>/build/release/putgd",
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+          "role": "resident",
+          "rssBytes": 25956352,
+          "pssBytes": 16544768,
+          "privateBytes": 15773696,
+          "privateHugetlbBytes": 0,
+          "swapBytes": 0,
+          "cpuTicks": 2,
+          "threads": 3,
+          "inResidentTree": true
+        }
+      ],
+      "totals": {
+        "rssBytes": 25956352,
+        "pssBytes": 16544768,
+        "privateBytes": 15773696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0
+    }
+  ],
+  "status": "failed-or-interrupted",
+  "passed": false,
+  "cold40MiBTargetEstablished": false,
+  "limitations": [
+    "Sequential sampled /proc snapshots can miss descendants born and exited between polls.",
+    "Family tracking begins after the frozen five-second warmup and first primary progress.",
+    "Observed escaped/reparented descendants remain charged until their recorded identity exits.",
+    "Summed RSS double-counts shared pages; PSS and private memory are reported separately.",
+    "Desktop services outside the observed descendant family are not charged.",
+    "The observer adds host work; compare candidates using this same observer.",
+    "No rendered-tray, clipboard, capture, compositor, leak or post-use acceptance is established."
+  ],
+  "socketPreflight": {
+    "command": [
+      "/usr/bin/python3",
+      "<candidate>/tools/diagnostics/check_socket_paths.py",
+      "--socket",
+      "<synthetic52>-cold1/runtime/putgd/session.sock"
+    ],
+    "checkerSha256": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55",
+    "exitCode": 0,
+    "result": {
+      "schemaVersion": 1,
+      "passed": true,
+      "limitBytesExcludingNul": 107,
+      "paths": [
+        {
+          "path": "<synthetic52>-cold1/runtime/putgd/session.sock",
+          "utf8Bytes": 42,
+          "passed": true
+        }
+      ]
+    }
+  },
+  "binaries": {
+    "app": {
+      "path": "<candidate>/build/release/putgd",
+      "sha256": "8262ac35007b97da54ed1f69282f8e8030a94884c5236851e264aaabdcb1fa88",
+      "version": "0.1.1-dev.52+gc19553b9e69e"
+    },
+    "cli": {
+      "path": "<candidate>/build/release/putgd-cli",
+      "sha256": "87e445e348f23568d592a124773ca8e8348af98ef940386981ba0fa17481e5d7",
+      "version": "0.1.1-dev.52+gc19553b9e69e"
+    },
+    "helper": {
+      "path": "<candidate>/build/release/putgd-ui",
+      "sha256": "1da610e173e009629aee792b9e78917368da13c1d908ab0136509d86f5d5fa44",
+      "version": "0.1.1-dev.52+gc19553b9e69e"
+    }
+  },
+  "primaryCommand": [
+    "/usr/bin/python3",
+    "<candidate>/tests/performance/observe_idle.py",
+    "--app",
+    "<candidate>/build/release/putgd",
+    "--cli",
+    "<candidate>/build/release/putgd-cli",
+    "--output",
+    "<synthetic52>-cold1",
+    "--seconds",
+    "300"
+  ],
+  "observerIdentity": {
+    "pid": 3480132,
+    "startTicks": 35521125,
+    "uid": 1000,
+    "executable": "/usr/bin/python3.12",
+    "device": 66306,
+    "inode": 1574207
+  },
+  "residentIdentity": {
+    "pid": 3480150,
+    "startTicks": 35521177,
+    "uid": 1000,
+    "executable": "<candidate>/build/release/putgd",
+    "device": 66306,
+    "inode": 28082856
+  },
+  "errorType": "ProcessLookupError",
+  "ownershipMetadataLimit": 512,
+  "ownedObserverGenerations": [
+    {
+      "pid": 3480132,
+      "startTicks": 35521125,
+      "uid": 1000,
+      "executable": "/usr/bin/python3.12",
+      "device": 66306,
+      "inode": 1574207
+    },
+    {
+      "pid": 3480135,
+      "startTicks": 35521133,
+      "uid": 1000,
+      "executable": "/usr/bin/python3.12",
+      "device": 66306,
+      "inode": 1574207
+    },
+    {
+      "pid": 3480137,
+      "startTicks": 35521137,
+      "uid": 1000,
+      "executable": "<candidate>/build/release/putgd",
+      "device": 66306,
+      "inode": 28082856
+    },
+    {
+      "pid": 3480143,
+      "startTicks": 35521139,
+      "uid": 1000,
+      "executable": "<candidate>/build/release/putgd-ui",
+      "device": 66306,
+      "inode": 28082803
+    },
+    {
+      "pid": 3480147,
+      "startTicks": 35521165,
+      "uid": 1000,
+      "executable": "<candidate>/build/release/putgd-cli",
+      "device": 66306,
+      "inode": 28082285
+    },
+    {
+      "pid": 3480148,
+      "startTicks": 35521167,
+      "uid": 1000,
+      "executable": "<candidate>/build/release/putgd-cli",
+      "device": 66306,
+      "inode": 28082285
+    },
+    {
+      "pid": 3480150,
+      "startTicks": 35521177,
+      "uid": 1000,
+      "executable": "<candidate>/build/release/putgd",
+      "device": 66306,
+      "inode": 28082856
+    },
+    {
+      "pid": 3480169,
+      "startTicks": 35521238,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480353,
+      "startTicks": 35522075,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480367,
+      "startTicks": 35522177,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480406,
+      "startTicks": 35522384,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480461,
+      "startTicks": 35522597,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480687,
+      "startTicks": 35523850,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480717,
+      "startTicks": 35523956,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480760,
+      "startTicks": 35524172,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480774,
+      "startTicks": 35524276,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480799,
+      "startTicks": 35524381,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480816,
+      "startTicks": 35524487,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480835,
+      "startTicks": 35524594,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3480930,
+      "startTicks": 35525028,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481017,
+      "startTicks": 35525443,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481196,
+      "startTicks": 35526173,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481210,
+      "startTicks": 35526278,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481414,
+      "startTicks": 35527213,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481432,
+      "startTicks": 35527319,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481619,
+      "startTicks": 35527848,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481639,
+      "startTicks": 35527952,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481658,
+      "startTicks": 35528055,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    },
+    {
+      "pid": 3481681,
+      "startTicks": 35528159,
+      "uid": 1000,
+      "executable": "/usr/bin/xprop",
+      "device": 66306,
+      "inode": 1574709
+    }
+  ],
+  "cleanupDiscoveryErrorCount": 0,
+  "cleanupDiscoveryErrors": [],
+  "ownedExecTransitions": [
+    {
+      "before": {
+        "pid": 3480687,
+        "startTicks": 35523850,
+        "uid": 1000,
+        "executable": "/usr/bin/python3.12",
+        "device": 66306,
+        "inode": 1574207
+      },
+      "after": {
+        "pid": 3480687,
+        "startTicks": 35523850,
+        "uid": 1000,
+        "executable": "/usr/bin/xprop",
+        "device": 66306,
+        "inode": 1574709
+      }
+    },
+    {
+      "before": {
+        "pid": 3481658,
+        "startTicks": 35528055,
+        "uid": 1000,
+        "executable": "/usr/bin/python3.12",
+        "device": 66306,
+        "inode": 1574207
+      },
+      "after": {
+        "pid": 3481658,
+        "startTicks": 35528055,
+        "uid": 1000,
+        "executable": "/usr/bin/xprop",
+        "device": 66306,
+        "inode": 1574709
+      }
+    }
+  ],
+  "observedResidentDescendants": [],
+  "exitedProcesses": [],
+  "finishedUtc": "2026-10-09T21:42:29.665573+00:00"
+}

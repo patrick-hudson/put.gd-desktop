@@ -508,3 +508,62 @@ services are outside the app descendant family. It does not prove a permanent
 plateau, post-upload behavior, native tray rendering or mixed-DPI capture. Keep
 those acceptance gates and their receipts separately. Only after these Cinnamon
 functional/memory gates pass may current-source GNOME/KDE testing expand.
+
+
+## Linux ownership-metadata exit races
+
+Source52 passed its current Cinnamon native gates and unchanged30-sample capture
+timing (124.812ms p95 against150ms), but its first cold collector stopped after
+70.216seconds with ProcessLookupError. There is no final five-minute primary
+result, and inner cleanup interrupted the window observer. This attempt remains
+invalid, regardless of its low partial RSS. Its original failing call was not
+recorded. The [structured record](evidence/2026-10-09-cold-family-metadata-race.json)
+preserves that limit and the original failed outputs.
+
+Bounded synthetic Linux process churn reproduced ESRCH in the unchanged owned
+discovery path through /proc/PID/stat, and separately when opening task children.
+The existing metadata scanner treated ENOENT as disappearance but let ESRCH
+escape. An ESRCH-only correction then exposed EACCES reading a short-lived
+child's executable; a fresh exact process-directory/stat check confirmed it was
+already gone. These synthetic traces establish the mechanisms, not the original
+physical failing call. They do not certify application memory or a compositor.
+
+The supplemental scanner handles ESRCH only at its existing ownership-metadata
+disappearance sites. Its metadata_identity helper converts an identity permission
+error only when fresh exact /proc/PID directory stat confirms absence. A live,
+zombie, reused or inaccessible directory leaves the original error fatal. Known
+generations/ancestry and PIDFD signal guards remain; this does not authorize a
+signal. The frozen measured family/root memory sampler and terminal-primary
+validation are unchanged, and measured ESRCH/EACCES still fail.
+
+The 18 stdlib contracts cover these boundaries and require actual positive
+allowlisted diagnostic frames. A 20-cohort/8,000-child synthetic stress run finished
+with zero discovery failures or known owned residue. Future failures export only
+trusted module/function/line frames (at most8) and numeric errno, never raw
+exception text/paths/arguments, source lines, locals or process arguments. Run the
+contract command above before repeating the entire current-source physical
+sequence in fresh output directories. Do not reuse the interrupted source52
+fixture or infer memory acceptance from its timing/native pass.
+
+The committed synthetic [churn recipe](evidence/cold-family-metadata-race/metadata_churn.py)
+replays at most20 cohorts of400 short-lived `/usr/bin/true` children each through
+the selected checkout's actual OwnedSubtree code. It records code hashes, errors
+and known-owned cleanup; it performs no display query, upload or putgd action.
+Create a new private output directory for every invocation:
+
+```sh
+churn_output=$(mktemp -d /tmp/pg-churn-XXXXXX)
+python3 docs/evidence/cold-family-metadata-race/metadata_churn.py \
+  --repo "$PWD" --cohorts 20 --output "$churn_output/results.json"
+```
+
+A historical source52 checkout supplied with `--repo` can expose the race without
+altering that checkout; a single green churn run does not prove it absent. The
+original unscored traces retain exact trusted failure frames. The final correction
+still needs full unchanged physical workload confirmation after its clean build.
+
+The churn loop has a 20-second per-cohort deadline. Failure or interruption starts
+known-owned cleanup immediately and retains a failed receipt. The contract suite
+checks both timeout and KeyboardInterrupt retention using synthetic control-flow
+stubs; real process-tree cleanup and the actual 20-cohort stress have separate
+evidence. Neither replaces the app's five-minute memory measurement.
