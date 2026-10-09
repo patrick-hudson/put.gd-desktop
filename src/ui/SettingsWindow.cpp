@@ -272,7 +272,7 @@ bool SettingsWindow::restoreViewState(const QJsonObject& state){
  QSignalBlocker stateSignals(this);clearCredentialInputs();loading_=true;draft_=state["draft"].toObject();profileEditors_=state["profileEditors"].toArray();baseRevision_=state["baseRevision"].toString();observed_=state["observedRevision"].toString();initialProfile_=state["initialProfile"].toBool();
  populate();loading_=true;profile_->setCurrentIndex(state["profileIndex"].toInt(-1));loadProfile();const auto numbers=state["numbers"].toObject();for(auto it=numbers_.begin();it!=numbers_.end();++it)it.value()->setText(numbers[it.key()].toString());
  findChild<QToolButton*>("advancedSettings")->setChecked(state["advanced"].toBool());findChild<QListWidget*>("settingsNavigation")->setCurrentRow(state["section"].toInt());const auto box=state["geometry"].toArray();setGeometry(box[0].toInt(),box[1].toInt(),box[2].toInt(),box[3].toInt());
- dirty_=state["dirty"].toBool();conflict_=state["conflict"].toBool();loading_=false;save_->setEnabled(!conflict_);setupJobs_=state["setupJobs"].toArray();if(!setupJobs_.isEmpty()){for(auto value:setupJobs_)if(value.toObject()["kind"]=="testDestination")findChild<QPushButton*>("testDestination")->setEnabled(false);setupTimer_->start();pollSetup();}
+ dirty_=state["dirty"].toBool();conflict_=state["conflict"].toBool();loading_=false;save_->setEnabled(!conflict_);setupJobs_=state["setupJobs"].toArray();updateSetupButton();if(!setupJobs_.isEmpty()){setupTimer_->start();pollSetup();}
  configurationChanged();stateSignals.unblock();emit viewStateChanged();return true;
 }
 void SettingsWindow::clearCredentialInputs(){access_->clear();secret_->clear();token_->clear();}
@@ -286,12 +286,40 @@ void SettingsWindow::configurationChanged(){
 void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  if(dirty_||conflict_||initialProfile_||profile_->currentIndex()<0){status({"save_first","Save or reload the destination before setup",{}});return;}
  const auto profileId=profileId_->text();QJsonObject params{{"profileId",profileId},{"expectedRevision",settings_.revision()}};if(kind=="storeCredentials")params["credentials"]=input;
- if(kind=="testDestination")findChild<QPushButton*>("testDestination")->setEnabled(false);
- ++setupAccepting_;emit viewStateChanged();settings_.request("setup."+kind,params,this,[this,kind,profileId](Error e,QJsonObject data){--setupAccepting_;if(e){if(kind=="testDestination")findChild<QPushButton*>("testDestination")->setEnabled(true);status(e);emit viewStateChanged();return;}for(int i=setupJobs_.size()-1;i>=0;--i){const auto old=setupJobs_[i].toObject();if(old["kind"]==kind&&old["profileId"]==profileId)setupJobs_.removeAt(i);}setupJobs_.append(QJsonObject{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId}});VisualStyle::feedback(status_,"Setup accepted; waiting for the resident result.");emit viewStateChanged();setupTimer_->start();pollSetup();});
+ if(kind=="testDestination")testAccepting_=true;
+ updateSetupButton();
+ ++setupAccepting_;emit viewStateChanged();
+ settings_.request("setup."+kind,params,this,[this,kind,profileId](Error e,QJsonObject data){
+  --setupAccepting_;if(kind=="testDestination")testAccepting_=false;
+  if(e){updateSetupButton();status(e);emit viewStateChanged();return;}
+  for(int i=setupJobs_.size()-1;i>=0;--i){const auto old=setupJobs_[i].toObject();if(old["kind"]==kind&&old["profileId"]==profileId)setupJobs_.removeAt(i);}
+  setupJobs_.append(QJsonObject{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId}});
+  updateSetupButton();VisualStyle::feedback(status_,"Setup accepted; waiting for the resident result.");
+  emit viewStateChanged();setupTimer_->start();pollSetup();
+ });
+}
+void SettingsWindow::updateSetupButton(){
+ const bool pending=std::any_of(setupJobs_.cbegin(),setupJobs_.cend(),[](const QJsonValue& value){return value.toObject()["kind"]=="testDestination";});
+ findChild<QPushButton*>("testDestination")->setEnabled(!testAccepting_&&!pending);
 }
 void SettingsWindow::pollSetup(){
  if(setupPollActive_||setupJobs_.isEmpty()){if(setupJobs_.isEmpty())setupTimer_->stop();return;}
- setupPollActive_=true;const auto job=setupJobs_.first().toObject();const auto id=job["setupId"].toString();
- settings_.request("setup.inspect",{{"id",id}},this,[this,id,kind=job["kind"].toString()](Error e,QJsonObject data){setupPollActive_=false;if(e){setupTimer_->stop();if(kind=="testDestination")findChild<QPushButton*>("testDestination")->setEnabled(true);status(e);return;}if(data["state"]!="running"){if(kind=="testDestination")findChild<QPushButton*>("testDestination")->setEnabled(true);for(int i=0;i<setupJobs_.size();++i)if(setupJobs_[i].toObject()["setupId"]==id){setupJobs_.removeAt(i);break;}if(!e){auto error=data["error"].toObject();e={error["code"].toString(),error["message"].toString(),error["details"].toObject()};}if(e)status(e);else VisualStyle::success(status_,"Setup completed.");emit viewStateChanged();}else if(setupJobs_.size()>1){const QJsonValue first=setupJobs_.first();setupJobs_.removeFirst();setupJobs_.append(first);}});
+ setupPollActive_=true;const auto id=setupJobs_.first().toObject()["setupId"].toString();
+ settings_.request("setup.inspect",{{"id",id}},this,[this,id](Error e,QJsonObject data){
+  setupPollActive_=false;
+  int index=0;while(index<setupJobs_.size()&&setupJobs_[index].toObject()["setupId"]!=id)++index;
+  if(index==setupJobs_.size())return;
+  if(e.code=="setup_not_found"||(!e&&data["state"]!="running")){
+   setupJobs_.removeAt(index);updateSetupButton();if(setupJobs_.isEmpty())setupTimer_->stop();
+   if(e)e.message="This setup result is no longer available; the action was not repeated.";
+   else{const auto error=data["error"].toObject();e={error["code"].toString(),error["message"].toString(),error["details"].toObject()};}
+   if(e)status(e);else VisualStyle::success(status_,"Setup completed.");
+   emit viewStateChanged();
+  }else{
+   if(e)status(e);
+   // Retry only the read-only inspection. Keep other accepted jobs moving too.
+   if(setupJobs_.size()>1){const QJsonValue pending=setupJobs_[index];setupJobs_.removeAt(index);setupJobs_.append(pending);}
+  }
+ });
 }
 }

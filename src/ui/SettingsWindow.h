@@ -22,11 +22,11 @@ signals:
 protected:
  void closeEvent(QCloseEvent*) override;
 private:
- void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void configurationChanged();
+ void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void refresh();void refreshMetadata();void dirty();void save();void addS3Profile();void cancel();void resetDraft(bool reloadFile);QJsonObject candidate() const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
  UiSession& settings_;
- QJsonArray setupJobs_;QTimer* setupTimer_=nullptr;bool setupPollActive_=false,saving_=false,resetting_=false;
+ QJsonArray setupJobs_;QTimer* setupTimer_=nullptr;bool setupPollActive_=false,testAccepting_=false,saving_=false,resetting_=false;
  QJsonArray profileEditors_;int setupAccepting_=0;
  QString baseRevision_;quint64 editGeneration_=0;
  QJsonObject draft_;QString observed_;bool loading_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;

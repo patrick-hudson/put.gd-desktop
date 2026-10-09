@@ -57,6 +57,71 @@ private slots:
  void acceptedSetupIdSurvivesAnUncertainInspectionReply(){
   QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(service.save(Settings::developmentTemplate(),{}));int starts=0;std::function<void(Error)> finish;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++starts;finish=reply;});fixture.client.failOnce["setup.inspect"]={"client_unavailable","Synthetic lost inspection reply",{}};SettingsWindow window(fixture.session);window.findChild<QPushButton*>("testDestination")->click();QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("client_unavailable"));const auto saved=window.saveViewState();QCOMPARE(saved["setupJobs"].toArray().size(),1);SettingsWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));QVERIFY(finish);finish({});QTRY_VERIFY(reopened.findChild<QLabel*>("settingsStatus")->text().contains("Setup completed"));QCOMPARE(starts,1);
  }
+ void transientSetupInspectionRecoversWithoutReplayingAcceptedWork(){
+  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);
+  SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  int starts=0;std::function<void(Error)> finish;
+  UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++starts;finish=reply;});
+  fixture.client.failOnce["setup.inspect"]={"client_unavailable","Synthetic lost inspection reply",{}};
+  SettingsWindow window(fixture.session);
+  auto* test=window.findChild<QPushButton*>("testDestination");
+  auto* status=window.findChild<QLabel*>("settingsStatus");
+  test->click();
+  QTRY_VERIFY(status->text().contains("client_unavailable"));
+  QCOMPARE(starts,1);QVERIFY(finish);QVERIFY(!test->isEnabled());
+  window.findChild<QLineEdit*>("s3Bucket")->setText("unsaved-bucket");
+  window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-unsubmitted-secret");
+  finish({});
+  QTRY_VERIFY_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().isEmpty(),2000);
+  QVERIFY(status->text().contains("Setup completed"));QVERIFY(test->isEnabled());
+  QCOMPARE(starts,1);
+  QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),QString("unsaved-bucket"));
+  QCOMPARE(window.findChild<QLineEdit*>("credentialSecretKey")->text(),QString("synthetic-unsubmitted-secret"));
+  QVERIFY(window.saveViewState()["dirty"].toBool());
+  QVERIFY(!QJsonDocument(window.saveViewState()).toJson().contains("synthetic-unsubmitted-secret"));
+ }
+ void expiredSetupResultDoesNotStarveLaterAcceptedWork(){
+  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);
+  SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  int starts=0;bool hold=false;std::function<void(Error)> finish;
+  UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++starts;if(hold)finish=reply;else reply({});});
+  auto start=[&]{QString id;fixture.setup.start("testDestination","development-s3",service.revision(),{},[&](Error error,QJsonObject data){QVERIFY(!error);id=data["setupId"].toString();});return id;};
+  auto completed=[&](const QString& id){bool done=false;fixture.setup.inspect(id,[&](Error error,QJsonObject data){done=!error&&data["state"]=="completed";});return done;};
+  QString expired;
+  for(int i=0;i<65;++i){const auto id=start();QVERIFY(!id.isEmpty());if(i==0)expired=id;QTRY_VERIFY(completed(id));}
+  Error missing;fixture.setup.inspect(expired,[&](Error error,QJsonObject){missing=error;});QCOMPARE(missing.code,QString("setup_not_found"));
+  hold=true;const auto pending=start();QVERIFY(!pending.isEmpty());QVERIFY(finish);QCOMPARE(starts,66);
+  SettingsWindow window(fixture.session);auto state=window.saveViewState();
+  state["setupJobs"]=QJsonArray{QJsonObject{{"setupId",expired},{"kind","testDestination"},{"profileId","development-s3"}},QJsonObject{{"setupId",pending},{"kind","testDestination"},{"profileId","development-s3"}}};
+  QVERIFY(window.restoreViewState(state));
+  auto* test=window.findChild<QPushButton*>("testDestination");
+  QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("setup_not_found"));
+  QTRY_COMPARE_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().size(),1,2000);
+  QCOMPARE(window.saveViewState()["setupJobs"].toArray().first().toObject()["setupId"].toString(),pending);
+  QVERIFY(!test->isEnabled());
+  finish({});
+  QTRY_VERIFY_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().isEmpty(),2000);
+  QVERIFY(test->isEnabled());QCOMPARE(starts,66);
+ }
+ void destinationTestButtonStaysDisabledUntilEveryAcceptedTestFinishes(){
+  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);
+  SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});
+  auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto second=profiles.first().toObject();second["id"]="second-s3";profiles.append(second);document["profiles"]=profiles;QVERIFY(service.save(document,{}));
+  int starts=0;QHash<QString,std::function<void(Error)>> finish;
+  UiSessionFixture fixture(service,secrets,[&](const QString& profile,auto,auto reply){++starts;finish[profile]=reply;});
+  QJsonArray jobs;
+  for(const auto& profile:QStringList{"development-s3","second-s3"})fixture.setup.start("testDestination",profile,service.revision(),{},[&](Error error,QJsonObject data){QVERIFY(!error);jobs.append(QJsonObject{{"setupId",data["setupId"]},{"kind","testDestination"},{"profileId",profile}});});
+  QCOMPARE(starts,2);QCOMPARE(finish.size(),2);
+  finish["development-s3"]({});
+  SettingsWindow window(fixture.session);auto state=window.saveViewState();state["setupJobs"]=jobs;QVERIFY(window.restoreViewState(state));
+  QTRY_COMPARE_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().size(),1,2000);
+  QVERIFY(!window.findChild<QPushButton*>("testDestination")->isEnabled());
+  finish["second-s3"]({});
+  QTRY_VERIFY_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().isEmpty(),2000);
+  QVERIFY(window.findChild<QPushButton*>("testDestination")->isEnabled());QCOMPARE(starts,2);
+ }
  void ownSaveRetainsEditsMadeWhileItsAsyncReplyIsPending(){
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);auto* root=window.findChild<QLineEdit*>("archiveRoot");root->setText(d.filePath("submitted"));window.findChild<QPushButton*>("saveSettings")->click();QVERIFY(validateUiState({{"schemaVersion",1},{"settings",window.saveViewState()}}));root->setText(d.filePath("newer-unsaved"));QTRY_COMPARE(service.document()["archive"].toObject()["root"].toString(),d.filePath("submitted"));QTRY_VERIFY(window.findChild<QPushButton*>("saveSettings")->isEnabled());QCOMPARE(root->text(),d.filePath("newer-unsaved"));QVERIFY(!window.saveViewState()["conflict"].toBool());QVERIFY(window.saveViewState()["dirty"].toBool());
  }

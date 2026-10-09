@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite name="SettingsGui" timestamp="2026&#x002D;10&#x002D;08T19:52:03" hostname="patrick&#x002D;Precision&#x002D;5540" tests="5" failures="3" errors="0" skipped="0" time="12.833">
+  <properties>
+    <property name="QTestVersion" value="6.4.2"/>
+    <property name="QtVersion" value="6.4.2"/>
+    <property name="QtBuild" value="Qt 6.4.2 (x86_64&#x002D;little_endian&#x002D;lp64 shared (dynamic) release build; by GCC 13.2.0)"/>
+  </properties>
+  <testcase name="initTestCase" classname="SettingsGui" time="0.000"/>
+  <testcase name="transientSetupInspectionRecoversWithoutReplayingAcceptedWork" classname="SettingsGui" time="6.413">
+    <failure type="fail" message="&apos;window.saveViewState()[&quot;setupJobs&quot;].toArray().isEmpty()&apos; returned FALSE. ()"/>
+  </testcase>
+  <testcase name="expiredSetupResultDoesNotStarveLaterAcceptedWork" classname="SettingsGui" time="6.258">
+    <failure type="fail" message="Compared values are not the same">
+      <![CDATA[   Actual   (window.saveViewState()["setupJobs"].toArray().size()): 2
+   Expected (1)                                                   : 1]]>
+    </failure>
+  </testcase>
+  <testcase name="destinationTestButtonStaysDisabledUntilEveryAcceptedTestFinishes" classname="SettingsGui" time="0.161">
+    <failure type="fail" message="&apos;!window.findChild&lt;QPushButton*&gt;(&quot;testDestination&quot;)&#x002D;&gt;isEnabled()&apos; returned FALSE. ()"/>
+  </testcase>
+  <testcase name="cleanupTestCase" classname="SettingsGui" time="0.000"/>
+</testsuite>
