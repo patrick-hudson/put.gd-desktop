@@ -18,7 +18,7 @@ struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<vo
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){if(error)return {{},error};if(image.isNull())return {{},{"capture_failed","KWin provided no image",{}}};if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds accepted operation resource limits",{}}};ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};}
 }
 KdeSourceAdapter::KdeSourceAdapter(QObject* parent):QObject(parent),core_(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())){connect(&outputs_,&KdeOutputs::changed,this,[this]{if(region_.busy())region_.cancel({"display_changed","Display layout changed during region selection",{}});emit capabilitiesChanged();});connect(&capture_,&KWinCapture::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&clipboard_,&DataControlClipboard::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::activated,this,&KdeSourceAdapter::actionRequested);}
-KdeSourceAdapter::~KdeSourceAdapter(){cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}const auto selectors=findChildren<KdeRegionOverlay*>(QString{},Qt::FindDirectChildrenOnly);for(auto* selector:selectors)delete selector;}
+KdeSourceAdapter::~KdeSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}const auto selectors=findChildren<KdeRegionOverlay*>(QString{},Qt::FindDirectChildrenOnly);for(auto* selector:selectors)delete selector;}
 quint64 KdeSourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 QList<CaptureFrame> KdeSourceAdapter::layout()const{return core_?outputs_.layout():graphicalLayout();}
 bool KdeSourceAdapter::unchanged(const QList<CaptureFrame>& before,quint64 revision)const{
@@ -43,7 +43,8 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
  if(action=="clipboard"){const auto revision=clipboard_.revision();return [guard,revision](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(guard)guard->clipboard_.acquire(limits,std::move(cb),revision);else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};}
  if(action=="window"){
   if(core_&&region_.cleanupRequired())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});};
-  if(region_.busy()||(!core_&&QGuiApplication::applicationState()==Qt::ApplicationActive&&QGuiApplication::focusWindow()))return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}}});};
+  if(region_.busy())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"busy_selecting","Region selection is already active",{}}});};
+  if(!core_&&QGuiApplication::applicationState()==Qt::ApplicationActive&&QGuiApplication::focusWindow())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"target_unavailable","Focus an external window and invoke the window shortcut or CLI",{}}});};
   // ScreenShot2 freezes active focus at method invocation. Starting this bounded
   // request now prevents persistence or GUI focus changes from retargeting it.
   auto snapshot=std::make_shared<WindowSnapshot>();const auto generation=generation_;

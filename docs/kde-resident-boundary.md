@@ -27,7 +27,10 @@ values; they are not reconstructed from the integer output scale.
 An actual output-property change invalidates the resident's layout revision before
 completion, including a change away and back. Invocation, selection, transfer and
 composition check the frozen revision. Output removal, connection loss or incomplete
-metadata fail closed. Version 3 supplies atomic completion. After a real change,
+metadata fail closed. Reconnection failures notify capability observers when their
+status changes; repeated identical failures do not churn the revision. Socket
+notifiers are disabled and disconnected immediately, then retired after their
+current event returns. Version 3 supplies atomic completion. After a real change,
 version 2 conservatively requires fresh completions on both channels; a compositor
 that omits one remains unavailable rather than exposing guessed density. `kde_ownership_integration` includes a small native Wayland
 server fixture for protocol batching and invalidation. This fixture is a contract
@@ -51,7 +54,8 @@ without an authenticated cleanup certificate blocks further screen captures unti
 the resident restarts; clipboard and UI remain available. Process death or a sync
 on another connection is not treated as surface-cleanup proof. Cancellation and
 malformed replies fail closed. Diagnostics retain launch PID/start ticks and the last exit without
-retaining image data. `kde_region_control` checks lifecycle failures with a C++ test
+retaining image data. Adapter shutdown discards pending region callbacks before
+member teardown; ordinary cancellation still replies exactly once. `kde_region_control` checks lifecycle failures with a C++ test
 peer; no Node.js fixture is required on guests.
 
 ## Repeating verification
@@ -82,7 +86,7 @@ Before acceptance, validate native tray/shortcuts, window/desktop/region acquisi
 clipboard ownership and independent paste, live selector/cancellation, UI native
 fonts/dialogs, notification and history behavior, and normal helper drain. Confirm
 two independent post-local-native 300-second memory runs and a fresh empty-profile
-cold run, with the frozen quiet/identity/coverage/CPU checks. The target is at most
+cold run with a prepared local configuration and real default shortcuts, with the frozen quiet/identity/coverage/CPU checks. The target is at most
 40 MiB peak RSS for the complete resident family. Preserve PSS/private measurements
 as diagnostics. Local capture evidence does not establish remote upload or deletion.
 

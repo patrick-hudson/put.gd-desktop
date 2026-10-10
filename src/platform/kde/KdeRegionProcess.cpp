@@ -28,16 +28,22 @@ KdeRegionProcess::KdeRegionProcess(QString helperPath,QObject* parent)
  connect(&deadline_,&QTimer::timeout,this,[this]{fail(unavailable(ready_?"capture_timeout":"capture_start_timeout"));});
  connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_) process_->kill();});
 }
-KdeRegionProcess::~KdeRegionProcess() {
- closing_=true; deadline_.stop(); stopDeadline_.stop();
+KdeRegionProcess::~KdeRegionProcess() { shutdown(); }
+void KdeRegionProcess::shutdown() {
+ if(closing_) return;
+ closing_=true; reply_={}; deadline_.stop(); stopDeadline_.stop();
  if(control_) control_->stop();
- if(process_) { process_->disconnect(this); process_->kill(); process_->waitForFinished(1000); }
- if(reply_) { auto cb=std::move(reply_); cb({},unavailable("cancelled")); }
+ if(process_) {
+  auto* child=process_; child->disconnect(this); child->kill(); child->waitForFinished(1000);
+  process_=nullptr; control_=nullptr; child->deleteLater();
+ }
+ frames_.clear(); result_={};
 }
 QJsonObject KdeRegionProcess::diagnostics() const {
  return {{"active",busy()},{"processId",processId()},{"lastExit",lastExit_},{"cleanupRequired",cleanupRequired_},{"build",build()}};
 }
 void KdeRegionProcess::start(const QList<CaptureFrame>& frames,std::function<void(QRectF,Error)> callback) {
+ if(closing_) { callback({},unavailable("cancelled")); return; }
  if(busy()) { callback({},unavailable("busy_selecting")); return; }
  if(cleanupRequired_) { callback({},{"capture_cleanup_pending","Restart put.gd before capturing again: the region helper did not confirm surface cleanup",{}}); return; }
  Error error; const auto layout=kdeRegionLayout(frames,error);

@@ -5,6 +5,7 @@
 #include <chrono>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <thread>
 #include <algorithm>
 #include <csignal>
@@ -141,6 +142,36 @@ private slots:
   QVERIFY(!process.diagnostics()["lastExit"].toObject()["teardownCertified"].toBool());
   process.start(frames(),[&](QRectF r,Error e){QVERIFY(r.isEmpty());QCOMPARE(e.code,QString("capture_cleanup_pending"));++completed;});
   QCOMPARE(completed,2);QCOMPARE(process.processId(),qint64(0));
+ }
+ void ownerDestructionCannotReenterCallback_data() {
+  QTest::addColumn<bool>("explicitShutdown");
+  QTest::newRow("explicit-idempotent-shutdown")<<true;
+  QTest::newRow("active-owner-destructor")<<false;
+ }
+ void ownerDestructionCannotReenterCallback() {
+  QFETCH(bool,explicitShutdown);qputenv("PUTGD_TEST_KDE_REGION_HELPER","wait-cancel");
+  bool tearingDown=false;int callbacks=0,reentries=0;
+  struct Owner {
+   bool& tearingDown;KdeRegionProcess process;
+   Owner(bool& flag):tearingDown(flag),process(QCoreApplication::applicationFilePath()){}
+   ~Owner(){tearingDown=true;}
+  };
+  auto owner=std::make_unique<Owner>(tearingDown);auto* raw=owner.get();
+  owner->process.start(frames(),[&,raw](QRectF,Error){
+   ++callbacks;
+   // A callback during destruction would reenter its partially dying owner.
+   if(tearingDown){++reentries;raw->process.cancel();}
+  });
+  QTRY_VERIFY(owner->process.processId()>0);
+  QPointer<QProcess> child=owner->process.findChild<QProcess*>();QVERIFY(child);
+  if(explicitShutdown){
+   owner->process.shutdown();owner->process.shutdown();
+   QVERIFY(!owner->process.busy());QCOMPARE(owner->process.processId(),qint64(0));
+   QCOMPARE(child->state(),QProcess::NotRunning);
+  }
+  owner.reset();QVERIFY(child.isNull());
+  QTest::qWait(40);qunsetenv("PUTGD_TEST_KDE_REGION_HELPER");
+  QVERIFY(tearingDown);QCOMPARE(callbacks,0);QCOMPARE(reentries,0);
  }
  void missingHelperFailsOnce() {
   KdeRegionProcess process("/does-not-exist-putgd-kde-region");int callbacks=0;

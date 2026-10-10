@@ -67,7 +67,7 @@ struct KdeOutputs::Impl:QObject {
  KdeOutputs& q;wl_display* display=nullptr;wl_registry* registry=nullptr;zxdg_output_manager_v1* manager=nullptr;
  uint32_t managerName=0,managerVersion=0;wl_callback* initialSync=nullptr;
  QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect;
- QMap<uint32_t,Output*> outputs;QSet<uint32_t> overflowOutputs;bool overflowUntracked=false;
+ QMap<uint32_t,Output*> outputs;QSet<uint32_t> overflowOutputs,unsupportedOutputs;bool overflowUntracked=false;
  QList<CaptureFrame> current;quint64 epoch=0;QString error="Native output discovery has not connected";
  bool dispatching=false,lossPending=false,closing=false;
  explicit Impl(KdeOutputs& q):q(q){
@@ -76,10 +76,11 @@ struct KdeOutputs::Impl:QObject {
   else error="Native output discovery is reserved for the KDE Core session";
  }
  ~Impl() override{closing=true;reconnect.stop();reset();}
- void publish(){
+ void publish(const QString& connectionError={}){
   QList<Metadata> complete;QString nextError;
-  if(!display)nextError="Native output connection is unavailable";
+  if(!display)nextError=connectionError.isEmpty()?QStringLiteral("Native output connection is unavailable"):connectionError;
   else if(!manager)nextError="Compositor lacks named xdg-output support";
+  else if(!unsupportedOutputs.isEmpty())nextError="Compositor output protocol lacks wl_output v2 batch completion";
   else if((!overflowOutputs.isEmpty()||overflowUntracked))nextError="Compositor output count exceeds supported bounds";
   else if(outputs.isEmpty())nextError="Waiting for compositor outputs";
   else for(const auto* output:outputs){
@@ -165,7 +166,11 @@ struct KdeOutputs::Impl:QObject {
    for(auto* output:self->outputs)self->makeLogical(output);
   }else if(QByteArray(interface)==wl_output_interface.name){
    // wl_output v2 is needed for atomic mode/transform/scale completion.
-   if(version<2||self->outputs.size()>=maximumOutputs){if(self->overflowOutputs.size()<maximumOutputs)self->overflowOutputs.insert(id);else self->overflowUntracked=true;self->publish();return;}
+   if(version<2||self->outputs.size()>=maximumOutputs){
+    auto& rejected=version<2?self->unsupportedOutputs:self->overflowOutputs;
+    if(self->overflowOutputs.size()+self->unsupportedOutputs.size()<maximumOutputs)rejected.insert(id);else self->overflowUntracked=true;
+    self->publish();return;
+   }
    auto* output=new Output;output->owner=self;output->global=id;
    output->native=static_cast<wl_output*>(wl_registry_bind(registry,id,&wl_output_interface,std::min(version,uint32_t(4))));self->outputs.insert(id,output);
    static const wl_output_listener listener={geometry,mode,done,scale,nativeName,description};
@@ -181,7 +186,8 @@ struct KdeOutputs::Impl:QObject {
  static void removed(void* data,wl_registry*,uint32_t id){
   auto* self=static_cast<Impl*>(data);
   if(auto* output=self->outputs.take(id)){self->destroyOutput(output);++self->epoch;self->publish();}
-  if(self->overflowOutputs.remove(id))self->publish();
+  const bool removedUnsupported=self->unsupportedOutputs.remove(id);
+  if(self->overflowOutputs.remove(id)||removedUnsupported)self->publish();
   if(id==self->managerName){
    for(auto* output:self->outputs){self->dirty(output);if(output->logical)zxdg_output_v1_destroy(output->logical);output->logical=nullptr;output->xdgDone=false;output->coherent=false;}
    zxdg_output_manager_v1_destroy(self->manager);self->manager=nullptr;self->managerName=self->managerVersion=0;self->publish();
@@ -190,7 +196,7 @@ struct KdeOutputs::Impl:QObject {
  void open(){
   if(closing||display)return;
   display=wl_display_connect(nullptr);
-  if(!display){error="Cannot connect to the Wayland compositor for output discovery";return;}
+  if(!display){publish(QStringLiteral("Cannot connect to the Wayland compositor for output discovery"));return;}
   registry=wl_display_get_registry(display);static const wl_registry_listener listener={global,removed};wl_registry_add_listener(registry,&listener,this);
   const auto fd=wl_display_get_fd(display);readNotifier=new QSocketNotifier(fd,QSocketNotifier::Read,this);writeNotifier=new QSocketNotifier(fd,QSocketNotifier::Write,this);writeNotifier->setEnabled(false);
   connect(readNotifier,&QSocketNotifier::activated,this,[this]{events();});connect(writeNotifier,&QSocketNotifier::activated,this,[this]{flush();});
@@ -212,10 +218,13 @@ struct KdeOutputs::Impl:QObject {
   dispatching=false;flush();
  }
  void reset(){
-  if(readNotifier){readNotifier->setEnabled(false);delete readNotifier;readNotifier=nullptr;}if(writeNotifier){writeNotifier->setEnabled(false);delete writeNotifier;writeNotifier=nullptr;}
+  // Loss can occur inside activated(). Disable and detach immediately, but
+  // retire QObject senders after their current event dispatch returns.
+  if(readNotifier){auto* retired=readNotifier;readNotifier=nullptr;retired->setEnabled(false);retired->disconnect(this);retired->deleteLater();}
+  if(writeNotifier){auto* retired=writeNotifier;writeNotifier=nullptr;retired->setEnabled(false);retired->disconnect(this);retired->deleteLater();}
   if(initialSync){wl_callback_destroy(initialSync);initialSync=nullptr;}
   for(auto* output:outputs)destroyOutput(output);
-  outputs.clear();overflowOutputs.clear();overflowUntracked=false;
+  outputs.clear();overflowOutputs.clear();unsupportedOutputs.clear();overflowUntracked=false;
   if(manager){zxdg_output_manager_v1_destroy(manager);manager=nullptr;}
   if(registry){wl_registry_destroy(registry);registry=nullptr;}if(display){wl_display_disconnect(display);display=nullptr;}
   managerName=managerVersion=0;

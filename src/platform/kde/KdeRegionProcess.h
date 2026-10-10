@@ -16,6 +16,8 @@ public:
  ~KdeRegionProcess() override;
  void start(const QList<CaptureFrame>&,std::function<void(QRectF,Error)>);
  void cancel(Error={"cancelled","Region selection cancelled",{}});
+ // Permanently stop this request owner without calling into its dying caller.
+ void shutdown();
  bool busy() const { return process_!=nullptr; }
  bool cleanupRequired() const { return cleanupRequired_; }
  qint64 processId() const { return process_?process_->processId():0; }

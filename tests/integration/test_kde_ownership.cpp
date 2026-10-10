@@ -45,7 +45,9 @@ class NativeOutputFixture final:public QObject {
   auto* output=static_cast<Output*>(data);auto* resource=wl_resource_create(client,&wl_output_interface,int(version),id);
   static const struct wl_output_interface implementation={destroyRequest};wl_resource_set_implementation(resource,&implementation,output,outputDestroyed);output->native.append(resource);
   sendGeometry(*output,resource);if(output->sendMode)wl_output_send_mode(resource,WL_OUTPUT_MODE_CURRENT,output->mode.width(),output->mode.height(),60000);
-  wl_output_send_scale(resource,output->scale);if(version>=4)wl_output_send_name(resource,output->name.toUtf8().constData());wl_output_send_done(resource);
+  if(version>=2)wl_output_send_scale(resource,output->scale);
+  if(version>=4)wl_output_send_name(resource,output->name.toUtf8().constData());
+  if(version>=2)wl_output_send_done(resource);
  }
  static void getLogical(wl_client* client,wl_resource* manager,uint32_t id,wl_resource* native){
   auto* output=static_cast<Output*>(wl_resource_get_user_data(native));const auto version=wl_resource_get_version(manager);
@@ -60,14 +62,14 @@ class NativeOutputFixture final:public QObject {
  }
  void flush(){if(display_)wl_display_flush_clients(display_);}
 public:
- explicit NativeOutputFixture(int version=3,bool sendMode=true):version_(version){
+ explicit NativeOutputFixture(int version=3,bool sendMode=true,int nativeVersion=4):version_(version){
   struct stat metadata{};
   if(!directory_.isValid()||lstat(directory_.path().toUtf8().constData(),&metadata)<0||!S_ISDIR(metadata.st_mode)||metadata.st_uid!=geteuid()||(metadata.st_mode&077)!=0){error_="Fixture runtime directory is not private and owned";return;}
   const auto socketPath=directory_.filePath("wayland-test").toUtf8();
   if(socketPath.size()>107){error_="Fixture Unix socket exceeds Linux byte limit";return;}
   environment_.set("XDG_RUNTIME_DIR",directory_.path().toUtf8());environment_.set("WAYLAND_DISPLAY","wayland-test");environment_.set("XDG_SESSION_TYPE","wayland");environment_.set("XDG_CURRENT_DESKTOP","KDE");environment_.set("QT_QPA_PLATFORM","wayland");
   display_=wl_display_create();if(!display_||wl_display_add_socket(display_,"wayland-test")<0){error_="Cannot bind private native-output fixture socket";return;}
-  output_.sendMode=sendMode;output_.global=wl_global_create(display_,&wl_output_interface,4,&output_,bindOutput);
+  output_.sendMode=sendMode;output_.global=wl_global_create(display_,&wl_output_interface,nativeVersion,&output_,bindOutput);
   wl_global_create(display_,&zxdg_output_manager_v1_interface,version_,this,bindManager);
   auto* loop=wl_display_get_event_loop(display_);notifier_=new QSocketNotifier(wl_event_loop_get_fd(loop),QSocketNotifier::Read,this);
   connect(notifier_,&QSocketNotifier::activated,this,[this,loop]{wl_event_loop_dispatch(loop,0);flush();});
@@ -81,6 +83,8 @@ public:
  void nativeDone(){for(auto* native:output_.native)wl_output_send_done(native);flush();}
  void transformAwayAndBack(){for(auto* native:output_.native){output_.transform=1;sendGeometry(output_,native);output_.transform=0;sendGeometry(output_,native);wl_output_send_done(native);}flush();}
  void remove(){wl_global_destroy(output_.global);output_.global=nullptr;flush();}
+ void disconnectClients(){wl_display_destroy_clients(display_);}
+ void socketAvailable(bool available){environment_.set("WAYLAND_DISPLAY",available?"wayland-test":"wayland-missing");}
 };
 
 // Disposable-bus fixtures prove transport, ownership, and frozen identity. They
@@ -132,6 +136,26 @@ private slots:
  }
  void cleanupTestCase(){QDBusConnection::disconnectFromBus("putgd-kde-ownership-fixture");}
  void init(){screenshot_.captures=0;screenshot_.windowId=frozenId;info_.queries.clear();info_.info={{"uuid",frozenId},{"resourceClass","external-fixture"},{"desktopFile","external-fixture"}};info_.fail=false;info_.delayMs=0;}
+ void outputConnectionLossAndReconnectNotifyStatus(){
+  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_VERIFY(outputs.status()["available"].toBool());QSignalSpy changed(&outputs,&KdeOutputs::changed);
+  compositor.socketAvailable(false);compositor.disconnectClients();
+  QTRY_COMPARE(outputs.status()["error"].toString(),QString("Native output connection is unavailable"));
+  const auto lostRevision=outputs.revision();const auto lostSignals=changed.count();QVERIFY(lostSignals>0);
+  QTRY_COMPARE(outputs.status()["error"].toString(),QString("Cannot connect to the Wayland compositor for output discovery"));
+  QVERIFY(outputs.revision()>lostRevision);QVERIFY(changed.count()>lostSignals);QVERIFY(outputs.layout().isEmpty());
+  const auto failedRevision=outputs.revision();const auto failedSignals=changed.count();
+  QTest::qWait(1100);QCOMPARE(outputs.revision(),failedRevision);QCOMPARE(changed.count(),failedSignals);
+  compositor.socketAvailable(true);QTRY_VERIFY(outputs.status()["available"].toBool());QVERIFY(outputs.revision()>failedRevision);
+  QCOMPARE(outputs.layout().front().identity,QString("DP-1"));
+ }
+ void lowVersionOutputReportsProtocolNotOverflow(){
+  NativeOutputFixture compositor(3,true,1);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_COMPARE(outputs.status()["error"].toString(),QString("Compositor output protocol lacks wl_output v2 batch completion"));
+  QVERIFY(outputs.layout().isEmpty());const auto revision=outputs.revision();QSignalSpy changed(&outputs,&KdeOutputs::changed);
+  compositor.remove();QTRY_COMPARE(outputs.status()["error"].toString(),QString("Waiting for compositor outputs"));
+  QVERIFY(outputs.revision()>revision);QVERIFY(changed.count()>0);
+ }
  void nativeV3WaitsForWlDone(){
   NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
   QTRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
