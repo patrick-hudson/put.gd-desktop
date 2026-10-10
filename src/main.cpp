@@ -22,6 +22,9 @@
 #include <memory>
 #include <cstdio>
 #include <cstring>
+#if defined(Q_OS_LINUX) && defined(__GLIBC__)
+#include <malloc.h>
+#endif
 #ifdef PUTGD_NATIVE_X11
 #include "platform/x11/X11SourceAdapter.h"
 #include "platform/x11/X11CoreSourceAdapter.h"
@@ -105,6 +108,13 @@ int main(int argc,char* argv[]) {
  bool kdeCoreResident=false;
 #ifdef PUTGD_NATIVE_KDE
  kdeCoreResident=putgd::kdeCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
+#endif
+#if defined(Q_OS_LINUX) && defined(__GLIBC__)
+ // Favor mmap for larger transient KDE image allocations. A fixed threshold
+ // prevents adaptation after large transfers; existing free arena chunks may
+ // still satisfy allocations. Keep the existing idle cleanup gate active.
+ if(kdeCoreResident&&mallopt(M_MMAP_THRESHOLD,128*1024)==0)
+  qWarning("Could not apply KDE transient image allocation threshold");
 #endif
  std::unique_ptr<QCoreApplication> application;
  if(coreResident||gnomeCoreResident||kdeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
