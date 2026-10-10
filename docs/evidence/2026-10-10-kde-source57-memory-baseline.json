@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "scope": "KDE source57 single-head Wayland VM post-local-native RSS baseline; not optimization acceptance",
+  "source": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.57+g2a02118ffc7b",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.57+g2a02118ffc7b",
+    "gitCommit": "2a02118ffc7bcf3f4643b83f83d5dd7594a8207f",
+    "gitTree": "c0e6b8d924bd2fafb6bd4a8d68a679799b214031",
+    "commitCount": 57,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "environment": {
+    "distribution": "Kubuntu26.04",
+    "qtVersion": "6.10.2",
+    "desktop": "KDE Wayland",
+    "vncPort": 5934,
+    "dimensions": [
+      1280,
+      800
+    ],
+    "vmRun": "work/lab-runs/current-kde-a3d70dc",
+    "qemu": {
+      "pid": 93514,
+      "startTicks": 41818601,
+      "sha256": "8a35ccba41582fc6c38b9df85fc9e35fa1d42f414d2d7d8090ee9b2f5e7c0854"
+    },
+    "resident": {
+      "pid": 8940,
+      "startTicks": 130427,
+      "uid": 1000,
+      "executable": "/usr/bin/putgd",
+      "sha256": "e642d2f4231fb2c99900f68cb565aaf37f70219a2e9ab78191b441ba1d76b484",
+      "device": 64769,
+      "inode": 1312189
+    }
+  },
+  "requiredProtocol": {
+    "primarySeconds": 300,
+    "warmupSeconds": 5,
+    "intervalSeconds": 5,
+    "sampleCount": 61,
+    "minimumSpanSeconds": 299.5,
+    "maximumGapSeconds": 7.5,
+    "residentFamilyCount": 1,
+    "uiHelperCount": 0,
+    "escapedFamilyCount": 0,
+    "rssTargetBytes": 41943040,
+    "cpuMaximumPercentOneCoreExclusive": 0.5,
+    "frozenSampler": {
+      "path": "tests/performance/bench_ui_process.py",
+      "sha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+    },
+    "frozenObserver": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/local-native-memory/finalized-41041a41048f0cfb/observe.py",
+      "sha256": "122bdfd69f2bb8b5d456b131334fbe8b33fcbb07b7e3525a6d138b3c1c3b93f8"
+    },
+    "evaluator": {
+      "path": "work/kde-native-boundary/evaluate.py",
+      "sha256": "ec6d9bffd4170482ad047fc6ecda880659dc538d4d1bf4c9f942a2be87b6502a"
+    }
+  },
+  "nativeVerification": {
+    "registeredTests": 49,
+    "gnomeOptionalGjsTestUnavailableOnKde": true,
+    "sameExactRegistryAsSource57Host": true,
+    "testsPassed": true,
+    "registration": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/dev-registered.json",
+      "sha256": "e0459cf1ee8980b2982277f77d28ff112e21e0b1ba80e8746c6878255faf600e"
+    },
+    "junit": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/dev.xml",
+      "sha256": "3250e7adf15c67aa24da75e9162d4f524d1706fd151184db92b5d254574398c1"
+    },
+    "packageSha256": "196473cb3fb83bec6abdfc69632b852b05755949daa49aedc4f2bceac40eb4a6",
+    "installation": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T153153914262-install/install-complete.json",
+      "sha256": "88d86049067f232ed8cee8c67e86604455a74925cb6f78aa61d9535f5755b98f"
+    },
+    "installedManifest": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/installed.json",
+      "sha256": "1211ab88a0c484d04f18ee41c801fffa8963124cca1ea0bf06821749ee04d64a"
+    },
+    "matrixCases": 12,
+    "matrix": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/matrix.json",
+      "sha256": "4607008dadd8eae0502fe5c3eaf3162da3ffa67ac7d7df7a3d362d3477716e25"
+    },
+    "packet": {
+      "path": "work/kde-native-boundary/local-native-packet-root57-a1/packet.json",
+      "sha256": "6287f30fb120f86d1d695dca43a057134b78dc937535551837106a5069b98f1a"
+    },
+    "rootSemanticDecision": {
+      "path": "work/kde-native-boundary/root-native-decision57-a1/root-decision.json",
+      "sha256": "2f99656d31681443affa136bc5d9ab4b9a25a4404b4733f13be2d2f74324d42a"
+    },
+    "focusedOriginal": {
+      "path": "work/kde-native-boundary/root-native-decision57-a1/focused.json",
+      "sha256": "f9885a48fd73083bc1c848d05ad7cb11bc5ac929594ca0f4bea345aeda2c007c"
+    },
+    "independentPacketReview": {
+      "path": "work/kde-native-boundary/final-packet-review/review.json",
+      "sha256": "c10ef2e904233d3208828fc04ed05ac357f29b80303b384315dd103ea0713e37"
+    },
+    "localNativeWorkflowsPassed": true,
+    "uiNormalExitGeneration": 4,
+    "activitySingleItemOnly": true,
+    "resolvedFontFamilyIntrospected": false,
+    "nativeCrosshairAlphaProven": true,
+    "legacyVncFullCrossVisible": false,
+    "cursorAlpha": {
+      "path": "work/kde-native-boundary/cursor-alpha-preparation/runtime/kde57-selector-native-alpha-cross/cursor.json",
+      "sha256": "d1d830c889ac25f2f2be14fad166c04ac8e7ca66a17a300becc139ebec306286"
+    },
+    "cursorNonzeroAlphaPixels": 432,
+    "cursorAlpha255Pixels": 23,
+    "alpha255ExactlyReproducesLegacyMask": true,
+    "upstreamQemuFix": "https://fuchsia.googlesource.com/third_party/qemu/+/b4189dbf805c297fdd6dd228ffab673d44560bcd%5E%21/",
+    "quiet": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T165304106309-final-drain-quiet/quiet-production.json",
+      "sha256": "5247a0d74dbefef1f379c9671a2b494a3ee54bfcdfe5066529a1f38e53c73775"
+    },
+    "drain": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T165304106309-final-drain-quiet/fixture-drain.json",
+      "sha256": "758bd9b19695a33d436415f3fa5e65441ad2de9f6a6532cfd63c2dde44de81a8"
+    }
+  },
+  "workload": {
+    "matrixCases": 12,
+    "localHistoryEntriesAtVisibleView": 14,
+    "finalJournalOperationCountOwnerReport": 16,
+    "finalJournalCountIndependentlyEnumerated": false,
+    "archiveKeepUploads": true,
+    "notificationsRestoredFalse": true,
+    "remoteProfiles": 0,
+    "extraOperationsExcludedFromMatrixButRetainedInProfile": [
+      {
+        "id": "3c5613c4-c8bf-471a-bc5c-95fc7c44b6ff",
+        "effect": "Synthetic two-file clipboard operation from wrong tray row"
+      },
+      {
+        "id": "e7dbc7f8-d4db-488b-8917-dfa419a7d7bd",
+        "effect": "Synthetic text operation for actual production notification and Activity copies"
+      },
+      {
+        "id": "19c7c130-5ca1-44f6-9996-66ab688d8cf0",
+        "effect": "Live clock selector, cancelled without items"
+      },
+      {
+        "id": "d5819d69-4bb3-42a6-9eb9-0dde43f8d9a5",
+        "effect": "Native alpha cursor selector, cancelled without items"
+      }
+    ]
+  },
+  "attributionOutsideScoring": {
+    "receipt": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T165639580709-post-native-attribution/attribution.json",
+      "sha256": "4a1615f191344103df2256cfa939d29257177be898ec19dc15ba7554735b3dfd"
+    },
+    "stage": "post-local-native",
+    "rssBytes": 146194432,
+    "pssBytes": 35608576,
+    "privateBytes": 22163456,
+    "identityUnchanged": true,
+    "coldMeasured": false,
+    "removableMemoryEstablished": false
+  },
+  "commands": {
+    "transferRecipe": {
+      "path": "work/kde-native-boundary/memory-transfer-materialized-a1/prepare-memory-transfer57-kde.py",
+      "sha256": "cf6059fbaf5b97f2af75bdcbd02af88bacf2acc1879af9b46df9f5c7cc184176"
+    },
+    "transferComplete": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T165700851285-memory-metadata-transfer/complete.json",
+      "sha256": "061f5edf6d6a2f24bc6963e40d2225c2d7341d3439806fb50440584340ba2875"
+    },
+    "measurementRecipe": {
+      "path": "work/kde-native-boundary/memory-measurement-materialized-a1/run-memory57-kde-a1.py",
+      "sha256": "380cdea357b76063085ccf2e54dff174556772023f58a855fff633032cabc758"
+    },
+    "inputDirectory": "/tmp/pg57km1",
+    "outputDirectory": "/tmp/pg57kcm1",
+    "resolvedSocketLengths": {
+      "qmp": 68,
+      "production": 33,
+      "potentialUiRuntime": 40
+    }
+  },
+  "baseline": {
+    "metrics": {
+      "postNativePeakRssBytes": 146194432,
+      "peakPssBytes": 35613696,
+      "peakPrivateBytes": 22175744,
+      "idleCpuPercentOneCore": 0.06667606550755284,
+      "measurementValid": 1,
+      "localNativePassed": 1,
+      "normalHelperExitPassed": 1,
+      "sourceCommit": "2a02118ffc7bcf3f4643b83f83d5dd7594a8207f",
+      "remoteHistoryProven": false,
+      "fullNativeParityAccepted": false,
+      "samples": 61,
+      "spanSeconds": 299.95771117800086,
+      "maximumGapSeconds": 5.050377163000121
+    },
+    "finalBytes": {
+      "rssBytes": 146194432,
+      "pssBytes": 35613696,
+      "privateBytes": 22175744
+    },
+    "peakMiB": {
+      "rssBytes": 139.421875,
+      "pssBytes": 33.9638671875,
+      "privateBytes": 21.1484375
+    },
+    "rss40MiBTargetMet": false,
+    "coldMeasured": false,
+    "rssVariationBytes": 0,
+    "results": {
+      "path": "work/kde-native-boundary/kde-memory-run-a1/results.json",
+      "sha256": "5b01ddce5d38b11b036e37c5364431dd54e481e02f9f0359f6283dca5a7f46e9"
+    },
+    "samples": {
+      "path": "work/kde-native-boundary/kde-memory-run-a1/samples.jsonl",
+      "sha256": "e14e02a110041937af4fea25e497cffe5c560a92f24c3dd2424ca3efd463e014"
+    },
+    "smaps": {
+      "path": "work/kde-native-boundary/kde-memory-run-a1/smaps-attribution.json",
+      "sha256": "20a83ad32ec778310d3faf2a14efe7dc4d298cca211b7c2292c38e4419713339"
+    },
+    "evaluation": {
+      "path": "work/kde-native-boundary/kde-memory-run-a1/measurement-evaluation.json",
+      "sha256": "e0253f25af1f1e8e4aa8d12c5439057bc9f134d4d1eda10b01b92c46802ab868"
+    },
+    "independentNumericReview": {
+      "path": "work/kde-native-boundary/numeric-review-preparation/actual-kde-a1-review.json",
+      "sha256": "a1806747ce3ff01060790c0f20d79e08dbfcae15e8ee4cda9288e67ca11149cc"
+    },
+    "independentNumericReviewReceipt": {
+      "path": "work/kde-native-boundary/numeric-review-preparation/actual-kde-a1-review-receipt.json",
+      "sha256": "757a4fed9e3852734d84ac6722b6678ee3a10ac04c88f33e4b74fb7ac307cf7e"
+    },
+    "ownerCompletion": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T165828893320-memory-observation-kde-a1/complete.json",
+      "sha256": "edfdf818b88e9c629befe603e0edb171a761c5150daefb899f1e994bf60233c7"
+    },
+    "measurementIntegrityPassed": true,
+    "degenerateGatesPassed": true,
+    "cpuSecondsOneCore": 0.2,
+    "physicalCertification": false
+  },
+  "optimizationCandidateImplemented": false,
+  "cinnamonImplementationChanged": false,
+  "gnomeImplementationChanged": false,
+  "remoteHistoryProven": false,
+  "fullNativeParityAccepted": false,
+  "postS3MemoryEstablished": false,
+  "coldMemoryEstablished": false,
+  "payloadsOrCredentialsExported": false,
+  "canonicalCleanCheckoutReplayEstablished": false,
+  "failedAttemptsPreserved": [
+    "Immutable inventory publication called twice before compile",
+    "Wrong cross-distro hardcoded test count after successful49tests/package",
+    "Legacy installed index missing full schema rejected before focused effects",
+    "Wrong tray row invoked extra clipboard operation",
+    "Private fixture marker guard rejected before paste",
+    "Plain F9 instead of bound Ctrl+Shift+F9",
+    "Incomplete legacy VNC cursor mask; actual native alpha separately proven"
+  ],
+  "remainingGates": [
+    "KDE40MiB cold/post-local-native target",
+    "Remote History direct-link copy/deletion",
+    "Post-S3 retained memory",
+    "Multi-item Activity subset copy",
+    "Full native focus/output/geometry profile",
+    "Physical KDE certification",
+    "Canonical repository lab session discovery replay",
+    "Full MCP and release acceptance"
+  ],
+  "updatedUtc": "2026-10-10T17:05:13.683984+00:00",
+  "proposedOptimizationScope": {
+    "approved": false,
+    "targetRssBytes": 41943040,
+    "maximumCandidates": 2,
+    "maximumHoursAfterApproval": 4,
+    "newDependencies": false,
+    "newCloudMachines": false,
+    "newCloudSpend": false,
+    "ordinaryModelUsageSeparateDollarCap": null,
+    "preserveCinnamonAndGnomeKeepers": true,
+    "newCandidateCinnamonFunctionalAndMemoryFirst": true,
+    "sharedStartupGnomeRegressionRequired": true,
+    "serialMeasurements": true,
+    "confirmationRuns": "Two post-local-native300second runs and one fresh-empty-data cold300second run, all RSS<=40MiB; keep saving>1MiB with feature parity."
+  }
+}

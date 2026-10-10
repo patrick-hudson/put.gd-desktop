@@ -686,3 +686,35 @@ checkout; it is not integrated into main. This establishes the scoped GNOME VM
 cold/post-local-native target, with Cinnamon implementation unchanged. GNOME
 remote History, KDE and post-S3 memory remain open; see
 [the replay procedure](testing-gnome-memory.md).
+
+### KDE source57 memory baseline — 2026-10-10
+
+KDE now uses the same clean source57 keeper. Its standard development/release
+builds, package and all 49 registered tests completed; its registry matches the
+host exactly. GNOME's additional GJS ownership contract is conditional and absent
+on KDE. The installed package and live resident match
+`0.1.1-dev.57+g2a02118ffc7b`. Twelve native single-head Qt/GTK capture, clipboard
+and cancellation cases passed, along with focused tray, native dialog/font
+integration, notification, live background, Activity copy and normal view-helper
+exit checks. Single-item Activity checks do not prove multi-item subset copy.
+
+The complete native crosshair is confirmed by actual cursor alpha. The installed
+QEMU's legacy VNC mask keeps only fully opaque pixels and exactly reproduces the
+incomplete crosshair shown on the display wall. That infrastructure limitation
+and the rejected original mask observation remain recorded; no cursor image was
+substituted and no product or host QEMU change was made.
+
+One five-minute populated post-local-native observation measured 139.42 MiB
+peak/final RSS, 33.96 MiB PSS, 21.15 MiB private memory and 0.0667% CPU of one
+core. All 61 samples passed coverage and exact process/family identity checks:
+299.958 seconds, maximum gap 5.050 seconds, one resident, no UI/helper and a
+normal generation-four helper exit. Independent recomputation verified counters,
+attribution hashes and native/source joins. Measurement integrity and CPU pass;
+the 40 MiB RSS target fails. PSS does not replace the requested RSS target.
+
+The [bounded record](evidence/2026-10-10-kde-source57-memory-baseline.json) and
+[procedure](testing-kde-memory.md) preserve deterministic parameters, commands,
+hashes, failed attempts and workload qualifications. Current cold and post-S3
+memory, remote History, full geometry, physical KDE, canonical clean-checkout
+lab replay, MCP and release acceptance remain open. No KDE optimization candidate
+has been implemented. The retained Cinnamon and GNOME implementations are unchanged.

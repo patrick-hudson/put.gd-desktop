@@ -1290,3 +1290,36 @@ an owned fixture fails its privacy checks; do not weaken application, clipboard
 or timing oracles. GNOME work precedes KDE, and neither desktop inherits
 Cinnamon acceptance. The complete native, remote, geometry, visual, MCP and
 release gates in this plan remain required.
+
+### KDE memory baseline follows the checkpoints (2026-10-10)
+
+User-directed: proceed to KDE while preserving the accepted Cinnamon and GNOME
+memory work. Use unchanged source57 for the baseline, then isolate any KDE
+implementation candidate. New candidates still pass Cinnamon functional and
+memory checks first; shared startup changes also require GNOME regression.
+
+KDE's standard development/release builds and package completed against its
+distro Qt. All 49 registered tests passed. The exact registry matches the
+source57 host; GNOME has one additional optional GJS ownership test. Preserve
+the rejected cross-distro count assumption and original successful JUnit rather
+than rebuilding to satisfy a number. The package is installed and the live
+resident matches source57. All twelve native Qt/GTK capture and clipboard cases
+passed on KDE's single-head Wayland session. Focused tray, native folder-dialog,
+production notification, live background, Activity copies and normal helper exits
+passed. Actual cursor alpha proves the complete native crosshair; the installed
+QEMU's legacy VNC mask loses its partially transparent pixels, so full crosshair
+visibility on the display wall remains a documented infrastructure limitation.
+The five-minute KDE baseline passed measurement integrity at 139.42 MiB peak RSS,
+33.96 MiB PSS, 21.15 MiB private memory and 0.0667% CPU of one core. All 61
+samples covered 299.958 seconds, with no live UI/helper and constant RSS.
+The 40 MiB RSS target remains unmet; current cold memory was not measured.
+No KDE optimization candidate has been built. Historical KDE memory figures
+are not this baseline. These local checks do not establish remote History behavior,
+multi-item Activity subset copy or the full geometry profile.
+
+Follow [the KDE measurement procedure](../testing-kde-memory.md). Preserve
+native dialogs/fonts, tray/menu, live transparent selection, focus/output
+guards and normal helper exits. Attribute cold and post-use RSS/PSS/private
+memory outside scored sampling windows before choosing changes. Record actual
+baseline and experiment evidence separately; a KDE memory miss does not undo
+the passing sibling desktops.
