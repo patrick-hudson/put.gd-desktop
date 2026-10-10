@@ -1,5 +1,7 @@
 #include "DataControlClipboard.h"
 #include "KWinTransfer.h"
+#include "platform/NativeSession.h"
+#include <QCoreApplication>
 #include "ext-data-control-v1-client-protocol.h"
 #include <wayland-client.h>
 #include <QGuiApplication>
@@ -44,7 +46,7 @@ struct DataControlClipboard::Impl:QObject {
  struct Source {Impl* owner;ext_data_control_source_v1* native;QHash<QString,QByteArray> data;QString token;};QHash<ext_data_control_source_v1*,Source*> sources;
  std::function<void(Error)> copyReply;QString copyToken;wl_callback* copyFence=nullptr;QHash<QString,QByteArray> pendingCopyData;bool copyCommitted=false;quint64 copyEpoch=0,copyRevision=0,pendingCopyEpoch=0;
  struct Import {ResourceLimits limits;std::function<void(PayloadResult)> reply;quint64 revision;QStringList formats;QString mime;};QQueue<std::shared_ptr<Import>> pending;std::shared_ptr<Import> active;QPointer<AsyncFdReader> reader;QList<QThread*> workers;
- explicit Impl(DataControlClipboard& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});copyTimer.setSingleShot(true);connect(&copyTimer,&QTimer::timeout,this,[this]{finishCopy({"clipboard_copy_failed","Data-control ownership acknowledgement timed out",{}});});if(QGuiApplication::platformName().startsWith("wayland")){open();reconnect.start();}else error="The native Qt Wayland platform is required";}
+ explicit Impl(DataControlClipboard& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});copyTimer.setSingleShot(true);connect(&copyTimer,&QTimer::timeout,this,[this]{finishCopy({"clipboard_copy_failed","Data-control ownership acknowledgement timed out",{}});});const bool graphical=qobject_cast<QGuiApplication*>(QCoreApplication::instance())!=nullptr;const bool allowed=graphical?QGuiApplication::platformName().startsWith("wayland"):kdeCoreSessionEnvironment();if(allowed){open();reconnect.start();}else error="A native KDE Wayland Core session or Qt Wayland platform is required";}
  ~Impl() override{closing=true;reconnect.stop();cancel();finishCopy({"cancelled","Clipboard adapter closed",{}});for(auto* worker:workers){worker->wait();delete worker;}reset();}
  bool available()const{return display&&manager&&seat&&device&&selectionReady;}
  void notify(){emit q.changed();}

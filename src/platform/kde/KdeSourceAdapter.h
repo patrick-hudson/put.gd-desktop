@@ -4,6 +4,8 @@
 #include "DataControlClipboard.h"
 #include "KdeShortcuts.h"
 #include "KdeRegionOverlay.h"
+#include "KdeOutputs.h"
+#include "KdeRegionProcess.h"
 #include <QPointer>
 #include <QThread>
 namespace putgd {
@@ -26,12 +28,16 @@ signals:
  void actionRequested(const QString&);void capabilitiesChanged();
 private:
  void verifyExternalWindow(const QString&,std::function<void(Error)>);
- void capture(QString,QList<CaptureFrame>,ResourceLimits,std::function<void(PayloadResult)>);
- void captureScreens(QList<CaptureFrame>,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
- void compose(QList<CaptureFrame>,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
+ QList<CaptureFrame> layout()const;
+ bool unchanged(const QList<CaptureFrame>&,quint64)const;
+ void capture(QString,QList<CaptureFrame>,quint64,ResourceLimits,std::function<void(PayloadResult)>);
+ void captureScreens(QList<CaptureFrame>,quint64,QRectF,ResourceLimits,std::function<void(PayloadResult)>);
+ void compose(QList<CaptureFrame>,QList<CaptureFrame>,quint64,QRectF,const ResourceLimits&,std::function<void(PayloadResult)>);
  ResourceLimits limits_;
  qint64 uiProcess_=0;
+ bool core_=false;
  KWinCapture capture_;DataControlClipboard clipboard_;KdeShortcuts shortcuts_;
+ KdeOutputs outputs_;KdeRegionProcess region_;
  QPointer<KdeRegionOverlay> overlay_;QList<QThread*> workers_;quint64 generation_=0;
 };
 }

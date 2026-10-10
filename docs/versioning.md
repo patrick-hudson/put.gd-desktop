@@ -42,8 +42,9 @@ retain binary/archive SHA-256 values for experiments as before.
 
 ## Packages and ordering
 
-CPack and `cmake --install` use the built manifest and check all three executable
-versions (`putgd`, `putgd-cli` and `putgd-ui`) before installing files.
+CPack and `cmake --install` use the built manifest and check `putgd`, `putgd-cli`
+and `putgd-ui`, plus `putgd-kde-region` when that target is built, before installing
+files. The selector version command also works without a display.
 Advancing Git without rebuilding leaves the old binaries and their old package
 identity intact. Project runtime assets, including the GNOME extension, and
 packaged metadata, notices and licenses are copied into the build directory during
@@ -51,8 +52,10 @@ configuration. Installation uses these snapshots, so an unbuilt checkout change
 does not substitute newer assets into an older package. A normal build refreshes
 changed inputs through CMake's configuration dependencies.
 Rebuilding only one executable can leave a mixed build; packaging
-rejects it and asks for all three to be built. Rebuilding the resident and CLI
-while leaving the UI helper at an older version is also rejected. Configuring
+rejects it and asks for all product executables to be built. Rebuilding the resident and CLI
+while leaving the UI helper at an older version is also rejected. On KDE builds,
+updating those three while leaving the region selector stale is rejected before
+any installation writes. Configuring
 after Git changes and then installing without rebuilding also fails before
 writing any installed files.
 Do not copy a generated manifest between
@@ -117,8 +120,8 @@ CMake/Ninja builds. It checks all three executable versions and embedded manifes
 immediately after a commit-only rebuild. It also covers dirty state,
 embedded/installed manifest agreement, package identity and runtime asset snapshots
 after Git advances,
-mixed executable rejection (including a stale UI helper in ordinary install and
-CPack) and supplied/unknown archive provenance. Every run
+mixed executable rejection (including stale UI and KDE region helpers in ordinary
+install and CPack), absent-KDE builds, and supplied/unknown archive provenance. Every run
 keeps its isolated fixture under the test build's `Testing/version-contract-*`
 directory and prints its path. Expected install/package rejection logs remain
 in that fixture directory. `version_integration` checks the production

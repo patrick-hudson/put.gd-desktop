@@ -21,6 +21,12 @@ stop expansion and fix or reject it before building/testing GNOME or KDE.
 After Cinnamon passes, independent cross-desktop checks may run in parallel;
 all declared desktops still require current-version evidence before acceptance.
 
+For the user-approved KDE resident-memory experiment, iterate on KDE first.
+Defer Cinnamon and GNOME functional/memory regression runs until KDE has a
+satisfactory candidate, then require both on that exact candidate before keeping
+it. Preserve their checkpointed implementations. This exception avoids repeating
+the full desktop matrix for each small KDE iteration.
+
 Use synthetic payloads and an isolated test destination. Never commit `credentials.txt`, including with force-add. It is user-provided local
 test input only; never include its contents in logs, diagnostics, or review packets.
 Never put credentials in source,

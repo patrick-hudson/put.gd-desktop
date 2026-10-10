@@ -8,12 +8,81 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <QGuiApplication>
+#include <QSocketNotifier>
+#include <QMap>
+#include <QSet>
+#include <wayland-server.h>
+#include "xdg-output-unstable-v1-server-protocol.h"
+#include <sys/stat.h>
+#include <memory>
 #include <unistd.h>
 using namespace putgd;
 namespace {
 const QString frozenId="{00000000-0000-0000-0000-000000000001}";
 const QString otherId="{00000000-0000-0000-0000-000000000002}";
 }
+// A private in-process compositor fixture proves only native protocol state.
+// It does not prove Plasma integration, real output topology, or pixel capture.
+class NativeOutputFixture final:public QObject {
+ struct SavedEnvironment {
+  QMap<QByteArray,QByteArray> values;QSet<QByteArray> absent;
+  void set(const QByteArray& key,const QByteArray& value){if(!values.contains(key)&&!absent.contains(key)){if(qEnvironmentVariableIsSet(key.constData()))values.insert(key,qgetenv(key.constData()));else absent.insert(key);}qputenv(key.constData(),value);}
+  ~SavedEnvironment(){for(auto it=values.cbegin();it!=values.cend();++it)qputenv(it.key().constData(),it.value());for(const auto& key:absent)qunsetenv(key.constData());}
+ } environment_;
+ struct Logical;
+ struct Output {
+  NativeOutputFixture* fixture;wl_global* global=nullptr;QList<wl_resource*> native;QList<Logical*> logical;
+  QString name="DP-1";QRect rectangle=QRect(0,0,2560,1440);QSize mode=QSize(3840,2160);int scale=2,transform=0;bool sendMode=true;
+ } output_{this,nullptr,{},{}};
+ struct Logical {Output* output;wl_resource* resource;wl_resource* native;};
+ QTemporaryDir directory_{"/tmp/pgo-XXXXXX"};wl_display* display_=nullptr;QSocketNotifier* notifier_=nullptr;int version_;QString error_;
+ static void destroyRequest(wl_client*,wl_resource* resource){wl_resource_destroy(resource);}
+ static void outputDestroyed(wl_resource* resource){auto* output=static_cast<Output*>(wl_resource_get_user_data(resource));output->native.removeOne(resource);}
+ static void logicalDestroyed(wl_resource* resource){auto* logical=static_cast<Logical*>(wl_resource_get_user_data(resource));logical->output->logical.removeOne(logical);delete logical;}
+ static void sendGeometry(Output& output,wl_resource* resource){wl_output_send_geometry(resource,0,0,0,0,WL_OUTPUT_SUBPIXEL_UNKNOWN,"fixture","fixture",output.transform);}
+ static void sendLogical(Logical* logical){const auto rect=logical->output->rectangle;zxdg_output_v1_send_logical_position(logical->resource,rect.x(),rect.y());zxdg_output_v1_send_logical_size(logical->resource,rect.width(),rect.height());}
+ static void bindOutput(wl_client* client,void* data,uint32_t version,uint32_t id){
+  auto* output=static_cast<Output*>(data);auto* resource=wl_resource_create(client,&wl_output_interface,int(version),id);
+  static const struct wl_output_interface implementation={destroyRequest};wl_resource_set_implementation(resource,&implementation,output,outputDestroyed);output->native.append(resource);
+  sendGeometry(*output,resource);if(output->sendMode)wl_output_send_mode(resource,WL_OUTPUT_MODE_CURRENT,output->mode.width(),output->mode.height(),60000);
+  wl_output_send_scale(resource,output->scale);if(version>=4)wl_output_send_name(resource,output->name.toUtf8().constData());wl_output_send_done(resource);
+ }
+ static void getLogical(wl_client* client,wl_resource* manager,uint32_t id,wl_resource* native){
+  auto* output=static_cast<Output*>(wl_resource_get_user_data(native));const auto version=wl_resource_get_version(manager);
+  auto* resource=wl_resource_create(client,&zxdg_output_v1_interface,version,id);auto* logical=new Logical{output,resource,native};
+  static const struct zxdg_output_v1_interface implementation={destroyRequest};wl_resource_set_implementation(resource,&implementation,logical,logicalDestroyed);output->logical.append(logical);
+  sendLogical(logical);if(version>=2)zxdg_output_v1_send_name(resource,output->name.toUtf8().constData());
+  if(version>=3)wl_output_send_done(native);else zxdg_output_v1_send_done(resource);
+ }
+ static void bindManager(wl_client* client,void* data,uint32_t version,uint32_t id){
+  auto* resource=wl_resource_create(client,&zxdg_output_manager_v1_interface,int(version),id);
+  static const struct zxdg_output_manager_v1_interface implementation={destroyRequest,getLogical};wl_resource_set_implementation(resource,&implementation,data,nullptr);
+ }
+ void flush(){if(display_)wl_display_flush_clients(display_);}
+public:
+ explicit NativeOutputFixture(int version=3,bool sendMode=true):version_(version){
+  struct stat metadata{};
+  if(!directory_.isValid()||lstat(directory_.path().toUtf8().constData(),&metadata)<0||!S_ISDIR(metadata.st_mode)||metadata.st_uid!=geteuid()||(metadata.st_mode&077)!=0){error_="Fixture runtime directory is not private and owned";return;}
+  const auto socketPath=directory_.filePath("wayland-test").toUtf8();
+  if(socketPath.size()>107){error_="Fixture Unix socket exceeds Linux byte limit";return;}
+  environment_.set("XDG_RUNTIME_DIR",directory_.path().toUtf8());environment_.set("WAYLAND_DISPLAY","wayland-test");environment_.set("XDG_SESSION_TYPE","wayland");environment_.set("XDG_CURRENT_DESKTOP","KDE");environment_.set("QT_QPA_PLATFORM","wayland");
+  display_=wl_display_create();if(!display_||wl_display_add_socket(display_,"wayland-test")<0){error_="Cannot bind private native-output fixture socket";return;}
+  output_.sendMode=sendMode;output_.global=wl_global_create(display_,&wl_output_interface,4,&output_,bindOutput);
+  wl_global_create(display_,&zxdg_output_manager_v1_interface,version_,this,bindManager);
+  auto* loop=wl_display_get_event_loop(display_);notifier_=new QSocketNotifier(wl_event_loop_get_fd(loop),QSocketNotifier::Read,this);
+  connect(notifier_,&QSocketNotifier::activated,this,[this,loop]{wl_event_loop_dispatch(loop,0);flush();});
+ }
+ ~NativeOutputFixture() override{if(notifier_){notifier_->setEnabled(false);delete notifier_;}if(display_){wl_display_destroy_clients(display_);wl_display_destroy(display_);}}
+ bool ready()const{return display_&&error_.isEmpty();}QString error()const{return error_;}
+ bool discovered()const{return !output_.native.isEmpty()&&!output_.logical.isEmpty();}
+ void logical(QRect rect,bool complete){output_.rectangle=rect;for(auto* logical:output_.logical){sendLogical(logical);if(complete){if(version_>=3)wl_output_send_done(logical->native);else zxdg_output_v1_send_done(logical->resource);}}flush();}
+ void deprecatedDone(){for(auto* logical:output_.logical)zxdg_output_v1_send_done(logical->resource);flush();}
+ void nativeMode(QSize size,int scale){output_.mode=size;output_.scale=scale;for(auto* native:output_.native){wl_output_send_mode(native,WL_OUTPUT_MODE_CURRENT,size.width(),size.height(),60000);wl_output_send_scale(native,scale);}flush();}
+ void nativeDone(){for(auto* native:output_.native)wl_output_send_done(native);flush();}
+ void transformAwayAndBack(){for(auto* native:output_.native){output_.transform=1;sendGeometry(output_,native);output_.transform=0;sendGeometry(output_,native);wl_output_send_done(native);}flush();}
+ void remove(){wl_global_destroy(output_.global);output_.global=nullptr;flush();}
+};
+
 // Disposable-bus fixtures prove transport, ownership, and frozen identity. They
 // cannot establish KWin desktop acceptance or actual capture permission.
 class ScreenshotFixture final:public QObject,protected QDBusContext {
@@ -63,6 +132,88 @@ private slots:
  }
  void cleanupTestCase(){QDBusConnection::disconnectFromBus("putgd-kde-ownership-fixture");}
  void init(){screenshot_.captures=0;screenshot_.windowId=frozenId;info_.queries.clear();info_.info={{"uuid",frozenId},{"resourceClass","external-fixture"},{"desktopFile","external-fixture"}};info_.fail=false;info_.delayMs=0;}
+ void nativeV3WaitsForWlDone(){
+  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
+  compositor.logical(QRect(-2560,0,2560,1440),false);QTRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.revision()>revision);
+  compositor.deprecatedDone();QTest::qWait(20);QVERIFY(!outputs.status()["available"].toBool());
+  compositor.nativeDone();QTRY_VERIFY(outputs.status()["available"].toBool());
+  const auto frames=outputs.layout();QCOMPARE(frames.size(),1);QCOMPARE(frames[0].logicalRect,QRectF(-2560,0,2560,1440));QCOMPARE(frames[0].density,1.5);
+ }
+ void nativeV2CannotCompleteDuringPendingNativeBatch(){
+  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_VERIFY(outputs.status()["available"].toBool());
+  compositor.nativeMode(QSize(5120,2880),2);compositor.logical(QRect(0,0,3200,1800),true);
+  QTRY_VERIFY(!outputs.status()["available"].toBool());compositor.nativeDone();QTRY_VERIFY(outputs.status()["available"].toBool());
+  QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,3200,1800));QCOMPARE(outputs.layout().front().density,1.6);
+ }
+ void nativeV2CannotReuseOldLogicalCompletion(){
+  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
+  compositor.nativeMode(QSize(5120,2880),2);compositor.nativeDone();
+  QTRY_VERIFY(!outputs.status()["available"].toBool());QVERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);
+  compositor.logical(QRect(0,0,3200,1800),true);QTRY_VERIFY(outputs.status()["available"].toBool());
+  QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,3200,1800));QCOMPARE(outputs.layout().front().density,1.6);
+ }
+ void nativeV2UnchangedBatchesPreserveSnapshot(){
+  NativeOutputFixture compositor(2);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_VERIFY(outputs.status()["available"].toBool());const auto revision=outputs.revision();
+  compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();compositor.logical(QRect(0,0,2560,1440),true);
+  QTest::qWait(20);QVERIFY(outputs.status()["available"].toBool());QCOMPARE(outputs.revision(),revision);
+  QCOMPARE(outputs.layout().front().logicalRect,QRectF(0,0,2560,1440));QCOMPARE(outputs.layout().front().density,1.5);
+ }
+ void nativeRemovalAndAwayBackInvalidateSnapshots(){
+  NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_VERIFY(outputs.status()["available"].toBool());const auto before=outputs.layout();auto revision=outputs.revision();
+  compositor.transformAwayAndBack();QTRY_VERIFY(outputs.revision()>revision);QTRY_VERIFY(outputs.status()["available"].toBool());
+  QCOMPARE(outputs.layout().front().logicalRect,before.front().logicalRect);QCOMPARE(outputs.layout().front().rotation,before.front().rotation);
+  revision=outputs.revision();compositor.remove();QTRY_VERIFY(outputs.layout().isEmpty());QVERIFY(outputs.revision()>revision);QVERIFY(!outputs.status()["available"].toBool());
+ }
+ void nativeOutputRequiresCurrentMode(){
+  NativeOutputFixture compositor(3,false);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
+  QTRY_VERIFY(compositor.discovered());QVERIFY(!outputs.status()["available"].toBool());
+  compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();QTRY_VERIFY(outputs.status()["available"].toBool());
+ }
+ void coreCapabilitiesRemainValidWhileOutputsUnavailable(){
+  NativeOutputFixture compositor(3,false);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeSourceAdapter source;
+  QTRY_VERIFY(compositor.discovered());QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());
+  for(int i=0;i<100;++i){
+   const QJsonObject capabilities=source.capabilities();const auto capture=capabilities["capture"].toObject();
+   QCOMPARE(capabilities["resident"].toString(),QString("qt-core"));QVERIFY(!capabilities["outputs"].toObject()["available"].toBool());
+   QVERIFY(!capture["region"].toObject()["available"].toBool());QVERIFY(!capture["desktop"].toObject()["available"].toBool());
+   QVERIFY(!capture["desktop"].toObject()["error"].toString().isEmpty());QVERIFY(capture["window"].toObject()["available"].toBool());
+   const QJsonObject helper=capture["region"].toObject()["helper"].toObject();
+   QVERIFY(helper["active"].isBool());QVERIFY(!helper["active"].toBool());QVERIFY(helper["processId"].isDouble());QCOMPARE(helper["processId"].toInteger(),qint64(0));
+   QCOMPARE(helper,capabilities["captureHelper"].toObject());
+  }
+  compositor.nativeMode(QSize(3840,2160),2);compositor.nativeDone();
+  QTRY_VERIFY(source.capabilities()["capture"].toObject()["desktop"].toObject()["available"].toBool());
+ }
+ void coreApplicationOwnsNoGraphicalConnection(){QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));}
+ void nativeLogicalGeometryPreservesFractionalScaleAndRotation(){
+  QString error;
+  const KdeOutputs::Metadata fractional{"DP-1",QRect(-1920,0,2560,1440),QSize(3840,2160),0,2};
+  const KdeOutputs::Metadata rotated{"DP-2",QRect(640,0,1080,1920),QSize(1920,1080),1,1};
+  auto frames=KdeOutputs::framesFromMetadata({rotated,fractional},&error);
+  QVERIFY2(error.isEmpty(),qPrintable(error));QCOMPARE(frames.size(),2);
+  QCOMPARE(frames[0].identity,QString("DP-1"));QCOMPARE(frames[0].logicalRect,QRectF(fractional.logical));QCOMPARE(frames[0].density,1.5);
+  QCOMPARE(frames[0].nativeRect.size(),QSize(3840,2160));QCOMPARE(frames[1].logicalRect,QRectF(rotated.logical));
+  QCOMPARE(frames[1].nativeRect.size(),QSize(1080,1920));QCOMPARE(frames[1].rotation,90);
+ }
+ void nativeOutputMetadataFailsClosed(){
+  const KdeOutputs::Metadata valid{"DP-1",QRect(0,0,1920,1080),QSize(1920,1080),0,1};
+  for(int mode=0;mode<7;++mode){
+   auto altered=valid;QList<KdeOutputs::Metadata> outputs;
+   if(mode==0)altered.name.clear();
+   if(mode==1)altered.logical.setWidth(0);
+   if(mode==2)altered.transform=8;
+   if(mode==3)altered.scale=0;
+   if(mode==4)altered.mode.setHeight(0);
+   if(mode==5)altered.logical.moveLeft(1000001);
+   outputs.append(altered);if(mode==6)outputs.append(valid);
+   QString error;QVERIFY(KdeOutputs::framesFromMetadata(outputs,&error).isEmpty());QVERIFY(!error.isEmpty());
+  }
+ }
  void externalWindowCaptureRemainsNative(){
   KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);
   auto prepared=source.prepareAcquisition("window");
@@ -109,5 +260,5 @@ private slots:
   QVERIFY(!result.error);QVERIFY(info_.queries.isEmpty());
  }
 };
-QTEST_MAIN(KdeOwnershipTest)
+QTEST_GUILESS_MAIN(KdeOwnershipTest)
 #include "test_kde_ownership.moc"
