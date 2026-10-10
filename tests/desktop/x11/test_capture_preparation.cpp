@@ -5,6 +5,8 @@
 #include "platform/x11/X11Reply.h"
 #include "core/BuildInfo.h"
 #include <QTest>
+#include <QVersionNumber>
+#include <QLibrary>
 #include <QProcess>
 #include <QTemporaryDir>
 #include <QFile>
@@ -89,6 +91,19 @@ QByteArray wireFrame(const QString& type,const QJsonObject& payload,int sequence
 class CapturePreparationTest final:public QObject {
  Q_OBJECT
 private slots:
+ void cursorEnvironmentInvalidatesAndRestoresFrozenLayout_data(){
+  QTest::addColumn<QByteArray>("variable");QTest::addColumn<bool>("emptyPresence");
+  for(const auto* name:{"XCURSOR_THEME","XCURSOR_SIZE","XCURSOR_PATH","XCURSOR_RESIZED","XCURSOR_DISCOVER","XCURSOR_CORE"}){QTest::newRow(name)<<QByteArray(name)<<false;QTest::newRow((QByteArray(name)+"-set-empty").constData())<<QByteArray(name)<<true;}
+ }
+ void cursorEnvironmentInvalidatesAndRestoresFrozenLayout(){
+  QFETCH(QByteArray,variable);QFETCH(bool,emptyPresence);const bool present=qEnvironmentVariableIsSet(variable.constData());const auto previous=qgetenv(variable.constData());
+  const auto restore=qScopeGuard([&]{if(present)qputenv(variable.constData(),previous);else qunsetenv(variable.constData());});
+  if(emptyPresence)qunsetenv(variable.constData());
+  X11NativeSnapshot snapshot;QVERIFY(snapshot.available());Error error;const auto original=snapshot.freeze("region",{},error)["layout"].toObject();QVERIFY(!error);
+  qputenv(variable.constData(),emptyPresence?QByteArray{}:previous+"-putgd-synthetic-change");const auto changed=snapshot.freeze("region",{},error)["layout"].toObject();QVERIFY(!error);QVERIFY(changed["scale"]!=original["scale"]);
+  if(!emptyPresence&&present)qputenv(variable.constData(),previous);else qunsetenv(variable.constData());
+  QCOMPARE(snapshot.freeze("region",{},error)["layout"].toObject(),original);QVERIFY(!error);
+ }
  void adapterTeardownSuppressesDeferredSelection(){
   qputenv("XCURSOR_THEME","static");
   auto* connection=xcb_connect(nullptr,nullptr);QVERIFY(connection&&!xcb_connection_has_error(connection));const auto close=qScopeGuard([&]{xcb_disconnect(connection);});
@@ -179,17 +194,43 @@ private slots:
   QTRY_COMPARE(pointerGrabStatus(connection),int(XCB_GRAB_STATUS_SUCCESS));QVERIFY(selectorWindows(connection,helper.process.processId()).isEmpty());
  }
  void bootstrapRemainsInvisibleAndDoesNotOwnInput_data(){
-  QTest::addColumn<bool>("badBegin");QTest::addColumn<bool>("cache");QTest::addColumn<QByteArray>("theme");QTest::addColumn<bool>("seedExpected");
-  QTest::newRow("cancel-before-begin")<<false<<false<<QByteArray("static")<<false;
-  QTest::newRow("cancel-before-begin-with-cursor-seed")<<false<<true<<QByteArray("static")<<true;
-  QTest::newRow("animated-cursor-falls-back")<<false<<true<<QByteArray("animated")<<false;
-  QTest::newRow("oversized-cursor-falls-back")<<false<<true<<QByteArray("oversized")<<false;
-  QTest::newRow("missing-cursor-falls-back")<<false<<true<<QByteArray("missing")<<false;
-  QTest::newRow("reject-foreign-begin")<<true<<false<<QByteArray("static")<<false;
+  QTest::addColumn<bool>("badBegin");QTest::addColumn<bool>("cache");QTest::addColumn<QByteArray>("theme");QTest::addColumn<bool>("seedExpected");QTest::addColumn<bool>("resizeRequested");QTest::addColumn<bool>("resourceResize");
+  QLibrary cursorLibrary(QStringLiteral("Xcursor"),1);QVERIFY(cursorLibrary.load());const bool resizeApi=cursorLibrary.resolve("XcursorGetResizable")!=nullptr;
+  const bool oldLoader=QVersionNumber::fromString(QString::fromLatin1(qVersion()))<QVersionNumber(6,5,0);
+  QTest::newRow("cancel-before-begin")<<false<<false<<QByteArray("static")<<false<<false<<false;
+  QTest::newRow("cancel-before-begin-with-cursor-seed")<<false<<true<<QByteArray("static")<<(QVersionNumber::fromString(QString::fromLatin1(qVersion()))<QVersionNumber(6,5,0))<<false<<false;
+  QTest::newRow("animated-cursor-falls-back")<<false<<true<<QByteArray("animated")<<false<<false<<false;
+  QTest::newRow("oversized-cursor-falls-back")<<false<<true<<QByteArray("oversized")<<false<<false<<false;
+  QTest::newRow("missing-cursor-falls-back")<<false<<true<<QByteArray("missing")<<false<<false<<false;
+  QTest::newRow("resized-cursor-falls-back")<<false<<true<<QByteArray("static")<<false<<true<<false;
+  QTest::newRow("resource-resized-cursor-policy")<<false<<true<<QByteArray("static")<<(oldLoader&&!resizeApi)<<false<<true;
+  QTest::newRow("reject-foreign-begin")<<true<<false<<QByteArray("static")<<false<<false<<false;
  }
  void bootstrapRemainsInvisibleAndDoesNotOwnInput(){
-  QFETCH(bool,badBegin);QFETCH(bool,cache);QFETCH(QByteArray,theme);QFETCH(bool,seedExpected);
+  QFETCH(bool,badBegin);QFETCH(bool,cache);QFETCH(QByteArray,theme);QFETCH(bool,seedExpected);QFETCH(bool,resizeRequested);QFETCH(bool,resourceResize);
+  const bool hadResize=qEnvironmentVariableIsSet("XCURSOR_RESIZED");const auto previousResize=qgetenv("XCURSOR_RESIZED");
+  if(resizeRequested)qputenv("XCURSOR_RESIZED","1");else qunsetenv("XCURSOR_RESIZED");
+  const auto restoreResize=qScopeGuard([&]{if(hadResize)qputenv("XCURSOR_RESIZED",previousResize);else qunsetenv("XCURSOR_RESIZED");});
   qputenv("XCURSOR_THEME",theme);
+  auto* resources=resourceResize?xcb_connect(nullptr,nullptr):nullptr;
+  xcb_atom_t oldResourceType=XCB_ATOM_NONE;uint8_t oldResourceFormat=0;QByteArray oldResourceBytes;bool resourceChanged=false;
+  const auto restoreResourceState=[&]{
+   if(!resourceChanged)return true;
+   const auto cookie=oldResourceType==XCB_ATOM_NONE?xcb_delete_property_checked(resources,xcb_setup_roots_iterator(xcb_get_setup(resources)).data->root,XCB_ATOM_RESOURCE_MANAGER):
+    xcb_change_property_checked(resources,XCB_PROP_MODE_REPLACE,xcb_setup_roots_iterator(xcb_get_setup(resources)).data->root,XCB_ATOM_RESOURCE_MANAGER,oldResourceType,oldResourceFormat,uint32_t(oldResourceBytes.size()/(oldResourceFormat/8)),oldResourceBytes.constData());
+   auto error=x11::reply(xcb_request_check(resources,cookie));if(error)return false;resourceChanged=false;return true;
+  };
+  const auto restoreResource=qScopeGuard([&]{if(resources){restoreResourceState();xcb_disconnect(resources);}});
+  if(resourceResize){
+   QVERIFY(resources&&!xcb_connection_has_error(resources));const auto root=xcb_setup_roots_iterator(xcb_get_setup(resources)).data->root;
+   auto previous=x11::reply(xcb_get_property_reply(resources,xcb_get_property(resources,0,root,XCB_ATOM_RESOURCE_MANAGER,XCB_GET_PROPERTY_TYPE_ANY,0,262144),nullptr));QVERIFY(previous);QCOMPARE(previous->bytes_after,uint32_t(0));
+   oldResourceType=previous->type;oldResourceFormat=previous->format;oldResourceBytes=QByteArray(static_cast<const char*>(xcb_get_property_value(previous.get())),xcb_get_property_value_length(previous.get()));
+   QVERIFY(oldResourceType==XCB_ATOM_NONE||(oldResourceType==XCB_ATOM_STRING&&oldResourceFormat==8));
+   // A fresh helper Display reads this private server resource. Never export
+   // existing resource bytes; preserve exact property identity for restoration.
+   const auto replacement=oldResourceBytes+"\nXcursor.resized: true\n";
+   auto error=x11::reply(xcb_request_check(resources,xcb_change_property_checked(resources,XCB_PROP_MODE_REPLACE,root,XCB_ATOM_RESOURCE_MANAGER,XCB_ATOM_STRING,8,uint32_t(replacement.size()),replacement.constData())));QVERIFY(!error);resourceChanged=true;
+  }
   X11NativeSnapshot snapshot;QVERIFY(snapshot.available());Error error;
   const auto frozen=snapshot.freeze(badBegin?"desktop":"region",{},error);QVERIFY2(!error,qPrintable(error.code));
   QTemporaryDir directory("/tmp/putgd-capture-XXXXXX");QVERIFY(directory.isValid());
@@ -244,7 +285,7 @@ private slots:
   // by the buffered valid begin could leave encoded bytes on this inode.
   // Zero bytes alone cannot prove no earlier screen read; decoder-stop coverage
   // separately verifies that no following buffered command is delivered.
-  QCOMPARE(file.size(),qint64(0));
+  QCOMPARE(file.size(),qint64(0));QVERIFY(restoreResourceState());
  }
 };
 int main(int argc,char** argv){

@@ -1,4 +1,5 @@
 #include "CaptureProcessController.h"
+#include "CaptureCursorPolicy.h"
 #include "X11NativeSnapshot.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
@@ -53,7 +54,9 @@ CaptureProcessController::Ticket CaptureProcessController::prepare(const QJsonOb
  if(limits.imagePixels<1||limits.imageBytes<4||limits.maxFileBytes<1){ticket->failure_=unavailable("input_excessive");if(earlyReleased)earlyReleased();return ticket;}
  // Cursor defaults may depend on root dimensions as well as theme/DPI.
  // Key the bounded resource by all frozen layout metadata, not scale alone.
- cursorFingerprint_=frozen["action"]=="region"?QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(frozen["layout"].toObject()).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex()):QString{};requestedCursor_=cursorFingerprint_.isEmpty()?0:cursorCache_.lookup(cursorFingerprint_);
+ const bool cursorCompatible=captureCursorCacheCompatible();
+ if(!cursorCompatible)cursorCache_.clear();
+ cursorFingerprint_=cursorCompatible&&frozen["action"]=="region"?QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(frozen["layout"].toObject()).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex()):QString{};requestedCursor_=cursorFingerprint_.isEmpty()?0:cursorCache_.lookup(cursorFingerprint_);
  earlyTerminal_=std::move(earlyTerminal);earlyReleased_=std::move(earlyReleased);region_=frozen["action"]=="region";previewed_=false;previewCursor_=0;
  launchPid_=0;launchStartTicks_.clear();limits_=limits;nonce_=QUuid::createUuid().toString(QUuid::WithoutBraces);++generation_;ticket->generation_=generation_;preparation_=ticket;prepared_=true;beginRequested_=begun_=false;failure_={};result_={};ready_=resultReceived_=accepted_=exited_=cancelling_=false;
  directory_=std::make_unique<QTemporaryDir>("/tmp/putgd-capture-XXXXXX");
@@ -84,7 +87,7 @@ void CaptureProcessController::discard(const Ticket& ticket){if(ticket&&ticket->
 void CaptureProcessController::abandon(quint64 generation){if(!closing_&&prepared_&&!beginRequested_&&generation==generation_)cancel();}
 void CaptureProcessController::sendPreview(){
  if(!region_||previewed_||!ready_||failure_||cancelling_)return;
- previewCursor_=cursorCache_.lookup(cursorFingerprint_);previewed_=true;
+ previewCursor_=cursorFingerprint_.isEmpty()?0:cursorCache_.lookup(cursorFingerprint_);previewed_=true;
  QPointer<CaptureProcessController> guard(this);
  const bool sent=control_&&control_->send("preview",{{"nonce",nonce_},{"generation",QString::number(generation_)},{"cursor",QString::number(previewCursor_)}});
  if(!guard)return;

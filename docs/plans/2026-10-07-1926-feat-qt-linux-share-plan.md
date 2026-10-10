@@ -1288,3 +1288,43 @@ remains open; current attribution must distinguish cold, post-view and post-uplo
 memory and retain native clipboard/tray, codecs, invocation target, lock/owner
 checks and normal helper drain. Empty cold/view gates do not prove post-S3
 retention or full U9 acceptance. Preserve failed attempts and immutable bases.
+
+
+### Clean source53 Cinnamon checkpoint and Wayland compatibility
+
+Clean source53 (`1ee42f32c61c`, `0.1.1-dev.53+g1ee42f32c61c`) passed the
+Cinnamon functional, timing and memory gates. The unchanged native matrix passed
+12 cases, followed by focused tray, native fonts/folder dialog, live selector,
+History and Activity Copy checks. Five warmups and 30 physical timing samples
+produced 95.400 ms p95 painted selection against the unchanged 150 ms limit;
+all 35 operations were distinct cancellations without a result.
+
+Two five-minute physical cold repeats peaked at 24.770 and 24.734 MiB RSS.
+Original three-cycle view repeats settled at 25.223 and 25.328 MiB RSS. Separate
+normal-exit supplements proved exit code 0 for all three helper generations in
+both repeats; their largest closed RSS was 25.359 MiB, closed PSS 16.391 MiB
+and open-family peak PSS 50.887 MiB. Preserve original and supplemental samples
+separately: the original view reports omit the last helper's exit status.
+These pass the 40 MiB cold/closed RSS, 29 MiB closed PSS and 60 MiB open PSS
+limits. They do not establish post-upload retention, a permanent plateau,
+mixed-DPI support or full U9 acceptance.
+
+Current-version GNOME/KDE validation follows this Cinnamon gate. Source53's KDE
+development suite exposed a real cursor-loader compatibility issue: Qt 6.5
+and newer use libxcb-cursor, while the optional seed loader uses libXcursor.
+The loaders disagree when XCURSOR_THEME differs from the X resource theme.
+Decline the optional cache on unproven runtime Qt versions, retain Qt's actual
+cursor fallback, and reject resized Xcursor seeds. Keep exact cursor dimensions,
+hotspot and pixel comparisons on the verified older loader; test empty seeds
+and zero cached cursor IDs on newer runtimes. Hash cursor environment inputs
+with the existing bounded root/XSETTINGS fingerprint. No assertion relaxation
+or synthetic theme alias may conceal the disagreement.
+
+Use each guest's actual CMake-registered test list, including GNOME's native GJS
+ownership check when available. Before installing any CPack DEB, inspect actual
+directory traversal permissions; private build umasks must not produce
+root-only installed directories. Run packaging with normal CPack and a
+packaging-only public directory umask, retain private source/artifact roots,
+and verify original versus corrected package payloads. Preserve failed builds
+and original package receipts. Guest memory attribution starts only after
+current native acceptance and exact fixture/helper cleanup.

@@ -280,3 +280,52 @@ final cold/closed memory gates. A final combined static scan found no actionable
 issue in the cursor, selector, helper and operation lifecycle changes. The later
 release extension has local review and runtime coverage; the earlier bounded
 Anthropic packet is separately identified.
+
+
+### Runtime Qt cursor-loader boundary
+
+The source53 KDE distro build (Qt 6.10.2, libxcb-cursor 0.1.6) failed the real-helper
+static cursor equality test: the helper selected the environment theme, while Qt
+selected the resource/default theme. Preserve `work/capture-parity/clean53/kde-dev-failure.json`, SHA256
+`f555418c6ba8a5ccf71d55c200f94c7a012b16b1ed765a7e5158f213d1b00d19`
+and its recovered dev JUnit SHA256
+`51531f8517a2a8351b565756886bb3da231e877a1d2c1f81c3eae8d4b3e3c8cd`.
+They are source53 failures; the earlier Cinnamon gate remains historical evidence.
+
+[Qt 6.4.2](https://code.qt.io/cgit/qt/qtbase.git/plain/src/plugins/platforms/xcb/qxcbcursor.cpp?h=v6.4.2)
+uses libXcursor (source SHA256
+`62adba886c6a4c1b188dd62f2b8e572f121f3bf78c0667887191bbdfe601ae64`);
+[Qt 6.5.0](https://code.qt.io/cgit/qt/qtbase.git/plain/src/plugins/platforms/xcb/qxcbcursor.cpp?h=v6.5.0)
+already uses libxcb-cursor (SHA256
+`144c2fde1a65f1bf61391b1830a3de07f26a3c27a79ac3fea5c23b3d8c37b306`).
+[Official xcb-util-cursor 0.1.6 source](https://xcb.freedesktop.org/dist/xcb-util-cursor-0.1.6.tar.gz)
+(archive SHA256 `eae38b2dfc5c529a886e507ef576b12d2a20aa1f149608e4853af760f31be60b`)
+uses the root resource theme and honors XCURSOR_PATH/SIZE, but ignores
+XCURSOR_THEME. [libXcursor 1.2.3 source](https://xorg.freedesktop.org/archive/individual/lib/libXcursor-1.2.3.tar.xz)
+(archive SHA256 `fde9402dd4cfe79da71e2d96bb980afc5e6ff4f8a7d74c159e1966afb2b2c2c0`)
+adds a display-based resizing path that the helper's image lookup cannot reproduce.
+
+The optional cache therefore uses the **runtime** Qt version: Qt 6.5 and newer
+clear/bypass resident cache lookup, request no seed and send cursor ID 0 at
+bootstrap/preview/begin. Qt supplies its normal native cursor. Explicit
+XCURSOR_RESIZED also disables the cache; the helper declines display-based
+resizing when the public runtime XcursorGetResizable API is present. Existing
+1.2.1/1.2.2 headers lack that API, so it is resolved through QtCore QLibrary;
+library-load failure declines the seed. No extra package or private Qt API is used.
+The frozen layout now hashes cursor environment values and presence bits
+(unset differs from set-empty) as well as root/XSETTINGS
+metadata; file-only theme changes still require separate invalidation evidence.
+
+After the normal dev configure/build, replay:
+
+```sh
+ctest --preset dev -R '^(capture_control_integration|capture_process_integration|capture_preparation_x11)$'
+```
+
+ The actual-helper suite requires empty
+seeds on newer Qt/resizing and retains exact dimensions, hotspot and every-pixel
+Qt comparison on 6.4. Controller tests retain malformed-seed rejection and
+normal helper cleanup, and assert all-zero fallback IDs when incompatible.
+These private Xvfb checks establish protocol behavior only. A corrected candidate
+still needs current-version visible Cinnamon functional/timing/memory gates before
+GNOME/KDE expansion; no newer-Qt desktop, timing or memory acceptance is implied.

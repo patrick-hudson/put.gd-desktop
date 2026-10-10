@@ -1,4 +1,5 @@
 #include "platform/x11/CaptureControl.h"
+#include "platform/x11/CaptureCursorPolicy.h"
 #include "platform/x11/X11NativeSnapshot.h"
 #include <QTest>
 #include <QJsonDocument>
@@ -19,6 +20,14 @@ QJsonObject frozen(){return {{"schemaVersion",1},{"action","desktop"},{"window",
 class CaptureControlTests final:public QObject {
  Q_OBJECT
 private slots:
+ void cursorLoaderPolicyUsesRuntimeVersion_data(){
+  QTest::addColumn<QString>("version");QTest::addColumn<bool>("compatible");
+  QTest::newRow("minimum")<<QString("6.4.2")<<true;
+  QTest::newRow("same-loader-patch")<<QString("6.4.99")<<true;
+  for(const auto& version:{"6.4.1","6.5.0","6.10.2","7.0.0","5.15.8","6.4","6.4.2-patched","invalid",""})
+   QTest::newRow(version)<<QString::fromLatin1(version)<<false;
+ }
+ void cursorLoaderPolicyUsesRuntimeVersion(){QFETCH(QString,version);QFETCH(bool,compatible);QCOMPARE(putgd::captureCursorCacheCompatible(version),compatible);}
  void fragmentedFrameAndSequence(){Duplex pipe;putgd::CaptureControl control(pipe);int frames=0,failures=0;connect(&control,&putgd::CaptureControl::frame,this,[&](const QString& type,const QJsonObject& o){QCOMPARE(type,QString("ready"));QCOMPARE(o["nonce"].toString(),QString("nonce"));++frames;});connect(&control,&putgd::CaptureControl::failed,this,[&](putgd::Error){++failures;});const QByteArray frame="{\"version\":1,\"sequence\":\"1\",\"type\":\"ready\",\"payload\":{\"nonce\":\"nonce\"}}\n";pipe.feed(frame.left(12));QCOMPARE(frames,0);pipe.feed(frame.mid(12));QCOMPARE(frames,1);pipe.feed(frame);QCOMPARE(failures,1);QCOMPARE(frames,1);}
  void stoppingInsideDeliveryDiscardsFollowingBufferedCommand(){
   Duplex pipe;putgd::CaptureControl control(pipe);int delivered=0;

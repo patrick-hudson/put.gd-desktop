@@ -35,7 +35,7 @@ QString X11NativeSnapshot::scaleFingerprint(Error& error){
  QCryptographicHash hash(QCryptographicHash::Sha256);hash.addData(property(root_,"RESOURCE_MANAGER",error));if(error)return {};
  const auto selection=atom("_XSETTINGS_S0");auto owner=x11::reply(xcb_get_selection_owner_reply(connection_,xcb_get_selection_owner(connection_,selection),nullptr));if(!owner){error=changedError();return {};}
  hash.addData(QByteArray::number(owner->owner));if(owner->owner)hash.addData(property(owner->owner,"_XSETTINGS_SETTINGS",error));if(error)return {};
- for(const auto* name:{"DISPLAY","QT_SCALE_FACTOR","QT_SCREEN_SCALE_FACTORS","QT_AUTO_SCREEN_SCALE_FACTOR","QT_ENABLE_HIGHDPI_SCALING","QT_FONT_DPI","QT_USE_PHYSICAL_DPI","QT_SCALE_FACTOR_ROUNDING_POLICY"}){hash.addData(name);hash.addData(QByteArray(1,'\0'));hash.addData(qgetenv(name));hash.addData(QByteArray(1,'\0'));}
+ for(const auto* name:{"DISPLAY","QT_SCALE_FACTOR","QT_SCREEN_SCALE_FACTORS","QT_AUTO_SCREEN_SCALE_FACTOR","QT_ENABLE_HIGHDPI_SCALING","QT_FONT_DPI","QT_USE_PHYSICAL_DPI","QT_SCALE_FACTOR_ROUNDING_POLICY","XCURSOR_THEME","XCURSOR_SIZE","XCURSOR_PATH","XCURSOR_RESIZED","XCURSOR_DISCOVER","XCURSOR_CORE"}){hash.addData(name);hash.addData(QByteArray(1,'\0'));if(std::strncmp(name,"XCURSOR_",8)==0)hash.addData(QByteArray(1,qEnvironmentVariableIsSet(name)?'1':'0'));hash.addData(qgetenv(name));hash.addData(QByteArray(1,'\0'));}
  return QString::fromLatin1(hash.result().toHex());
 }
 QJsonObject X11NativeSnapshot::layout(Error& error){

@@ -14,8 +14,8 @@ public:
  bool supported()const{return supported_;}
  xcb_cursor_t lookup(const QString& fingerprint);
  bool seed(int width,int height,int xhot,int yhot,const QByteArray& networkArgb,const QString& fingerprint);
-private:
  void clear();
+private:
  bool checked(xcb_void_cookie_t);
  xcb_connection_t* connection_=nullptr;
  xcb_cursor_t cursor_=XCB_CURSOR_NONE;

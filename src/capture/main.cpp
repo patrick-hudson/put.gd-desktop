@@ -1,6 +1,8 @@
 #include "platform/x11/X11SourceAdapter.h"
 #include "platform/x11/X11NativeSnapshot.h"
 #include "platform/x11/CaptureControl.h"
+#include "platform/x11/CaptureCursorPolicy.h"
+#include <QLibrary>
 #include "platform/x11/CaptureArtifactLease.h"
 #include "ui/StdioDevice.h"
 #include "core/BuildInfo.h"
@@ -49,9 +51,21 @@ bool identity(const struct stat& s,const QString& device,const QString& inode){r
 bool positive(const QJsonValue& v,qint64 maximum){return v.isDouble()&&v.toInteger()>0&&v.toInteger()<=maximum&&v.toDouble()==v.toInteger();}
 QJsonObject nativeCursorSeed(){
 #if QT_CONFIG(xcb)
+ if(!putgd::captureCursorCacheCompatible())return {};
  auto* native=qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
  auto* display=native?native->display():nullptr;
  if(!display||!XcursorSupportsARGB(display))return {};
+ // The display-based Qt loader may resize images, unlike LibraryLoadImages.
+ // The shared policy already declines explicit environment resize requests.
+ // Resolve this public 1.2.3 API at runtime so old distro headers still build
+ // and an ABI-compatible library upgrade cannot bypass the resize check.
+ static QLibrary cursorLibrary(QStringLiteral("Xcursor"),1);
+ if(!cursorLibrary.isLoaded()&&!cursorLibrary.load())return {};
+ using GetResizable=XcursorBool(*)(Display*);
+ const auto getResizable=reinterpret_cast<GetResizable>(cursorLibrary.resolve("XcursorGetResizable"));
+ // Official 1.2.1/1.2.2 lack both resizing and this API. A loaded SONAME1 with
+ // no symbol retains that pre-resizing ABI; load failure never admits a seed.
+ if(getResizable&&getResizable(display))return {};
  // This is the same first "cross" lookup Qt uses. If it cannot produce one
  // small static ARGB image, preserve Qt's full theme/core/animation fallback.
  std::unique_ptr<XcursorImages,decltype(&XcursorImagesDestroy)> images(XcursorLibraryLoadImages("cross",XcursorGetTheme(display),XcursorGetDefaultSize(display)),&XcursorImagesDestroy);

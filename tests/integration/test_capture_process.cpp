@@ -1,6 +1,8 @@
 #include "platform/x11/CaptureProcessController.h"
 #include "platform/x11/CaptureCursorCache.h"
+#include "platform/x11/X11NativeSnapshot.h"
 #include <QTest>
+#include <QVersionNumber>
 #include <QJsonArray>
 #include <QColor>
 #include <memory>
@@ -15,6 +17,7 @@
 #include <QScopeGuard>
 #include <QTemporaryDir>
 namespace {
+bool cacheExpected(){return QVersionNumber::fromString(QString::fromLatin1(qVersion()))<QVersionNumber(6,5,0);}
 QJsonObject regionSnapshot(char fingerprint='a');
 bool createCursorTrace(const QString& path){
  QFile file(path);if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return false;
@@ -74,8 +77,9 @@ private slots:
    const auto bootstrap=frames[index*2],begin=frames[index*2+1];
    QCOMPARE(bootstrap["phase"].toString(),QString("bootstrap"));QCOMPARE(begin["phase"].toString(),QString("begin"));
    QCOMPARE(bootstrap["generation"].toString(),QString::number(index+1));QCOMPARE(begin["generation"],bootstrap["generation"]);
-   QCOMPARE(bootstrap["action"],targets[index]["action"]);QCOMPARE(bootstrap["cache"].toBool(),index!=1);
+   QCOMPARE(bootstrap["action"],targets[index]["action"]);QCOMPARE(bootstrap["cache"].toBool(),cacheExpected()&&index!=1);
   }
+  if(!cacheExpected()){for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}return;}
   const auto first=frames[1]["cursorId"].toString();QVERIFY(first.toULongLong()>0);QCOMPARE(frames[0]["cursorId"].toString(),QString("0"));
   QCOMPARE(frames[2]["cursorId"].toString(),QString("0"));QCOMPARE(frames[3]["cursorId"].toString(),QString("0"));
   QCOMPARE(frames[4]["cursorId"].toString(),first);QCOMPARE(frames[5]["cursorId"].toString(),first);
@@ -106,10 +110,39 @@ private slots:
    QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
   }
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),8);
+  if(!cacheExpected()){for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}return;}
   const auto first=frames[1]["cursorId"].toString();QVERIFY(first.toULongLong()>0);
   QCOMPARE(frames[0]["cursorId"].toString(),QString("0"));QCOMPARE(frames[2]["cursorId"].toString(),first);QCOMPARE(frames[3]["cursorId"].toString(),first);
   QCOMPARE(frames[4]["cursorId"].toString(),QString("0"));const auto second=frames[5]["cursorId"].toString();QVERIFY(second.toULongLong()>0);QVERIFY(second!=first);
   QCOMPARE(frames[6]["cursorId"].toString(),second);QCOMPARE(frames[7]["cursorId"].toString(),second);
+ }
+ void cursorEnvironmentFrozenLayoutInvalidatesResidentCache(){
+  const QList<QByteArray> names{"XDG_SESSION_TYPE","WAYLAND_DISPLAY","QT_QPA_PLATFORM","XCURSOR_RESIZED","XCURSOR_THEME"};
+  QList<bool> present;QList<QByteArray> previous;
+  for(const auto& name:names){present.append(qEnvironmentVariableIsSet(name.constData()));previous.append(qgetenv(name.constData()));}
+  const auto restore=qScopeGuard([&]{for(qsizetype i=0;i<names.size();++i){if(present[i])qputenv(names[i].constData(),previous[i]);else qunsetenv(names[i].constData());}});
+  // This CTest owns a private Xvfb server; isolate its native metadata route from the host session.
+  qputenv("XDG_SESSION_TYPE","x11");qunsetenv("WAYLAND_DISPLAY");qputenv("QT_QPA_PLATFORM","xcb");qunsetenv("XCURSOR_RESIZED");
+  putgd::X11NativeSnapshot native;QVERIFY(native.available());putgd::Error error;
+  const auto original=native.freeze("region",{},error);QVERIFY2(!error,qPrintable(error.code));
+  putgd::CaptureCursorCache backend;QVERIFY2(backend.supported(),"Run environment cache tests on the private Render-capable Xvfb server");
+  QTemporaryDir directory("/tmp/putgd-cache-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-seed");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
+  for(int stage=0;stage<2;++stage){
+   QJsonObject target=original;
+   if(stage){qputenv("XCURSOR_THEME",previous.last()+"-putgd-synthetic-change");target=native.freeze("region",{},error);QVERIFY2(!error,qPrintable(error.code));QVERIFY(target["layout"].toObject()["scale"]!=original["layout"].toObject()["scale"]);}
+   for(int repeat=0;repeat<2;++repeat){
+    int count=0;putgd::PayloadResult result;controller.start(target,{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);
+    QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));
+    const auto exit=controller.diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);
+   }
+  }
+  const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),8);
+  for(int index=0;index<4;++index){QCOMPARE(frames[index*2]["phase"].toString(),QString("bootstrap"));QCOMPARE(frames[index*2+1]["phase"].toString(),QString("begin"));QCOMPARE(frames[index*2]["generation"].toString(),QString::number(index+1));QCOMPARE(frames[index*2+1]["generation"],frames[index*2]["generation"]);}
+  if(!cacheExpected()){for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}return;}
+  for(int index=0;index<4;++index)QVERIFY(frames[index*2]["cache"].toBool());
+  const auto first=frames[1]["cursorId"].toString();QVERIFY(first.toULongLong()>0);QCOMPARE(frames[0]["cursorId"].toString(),QString("0"));QCOMPARE(frames[2]["cursorId"].toString(),first);QCOMPARE(frames[3]["cursorId"].toString(),first);
+  const auto changed=frames[5]["cursorId"].toString();QVERIFY(changed.toULongLong()>0);QVERIFY(changed!=first);QCOMPARE(frames[4]["cursorId"].toString(),QString("0"));QCOMPARE(frames[6]["cursorId"].toString(),changed);QCOMPARE(frames[7]["cursorId"].toString(),changed);
  }
  void unsolicitedReplacementSeedCannotPoisonCachedCursor(){
   putgd::CaptureCursorCache backend;QVERIFY2(backend.supported(),"Run cache replacement tests on the private Render-capable Xvfb server");
@@ -121,7 +154,9 @@ private slots:
    if(index==1)QCOMPARE(result.error.code,QString("capture_protocol"));else QVERIFY2(!result.error,qPrintable(result.error.code));
    QVERIFY(!controller.busy());
   }
-  const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),5);const auto first=frames[1]["cursorId"].toString();QVERIFY(first.toULongLong()>0);
+  const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),5);
+  if(!cacheExpected()){for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}return;}
+  const auto first=frames[1]["cursorId"].toString();QVERIFY(first.toULongLong()>0);
   QCOMPARE(frames[2]["phase"].toString(),QString("bootstrap"));QCOMPARE(frames[2]["cursorId"].toString(),first);
   QCOMPARE(frames[3]["phase"].toString(),QString("bootstrap"));QCOMPARE(frames[3]["cursorId"].toString(),first);QCOMPARE(frames[4]["cursorId"].toString(),first);
  }
@@ -131,7 +166,18 @@ private slots:
   qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-empty");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);
   for(int index=0;index<2;++index){int count=0;putgd::PayloadResult result;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult value){result=std::move(value);++count;});QTRY_COMPARE(count,1);QVERIFY2(!result.error,qPrintable(result.error.code));QVERIFY(!controller.busy());}
   const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),4);
-  for(const auto& frame:frames){QVERIFY(frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}
+  for(const auto& frame:frames){QCOMPARE(frame["cache"].toBool(),cacheExpected());QCOMPARE(frame["cursorId"].toString(),QString("0"));}
+ }
+ void explicitResizeDisablesResidentCacheAcrossGenerations(){
+  const bool present=qEnvironmentVariableIsSet("XCURSOR_RESIZED");const auto previous=qgetenv("XCURSOR_RESIZED");
+  const auto restore=qScopeGuard([&]{if(present)qputenv("XCURSOR_RESIZED",previous);else qunsetenv("XCURSOR_RESIZED");});
+  QTemporaryDir directory("/tmp/putgd-cache-XXXXXX");QVERIFY(directory.isValid());const auto trace=directory.filePath("trace.jsonl");QVERIFY(createCursorTrace(trace));
+  qunsetenv("XCURSOR_RESIZED");putgd::CaptureProcessController controller(PUTGD_CAPTURE_FIXTURE);qputenv("PUTGD_TEST_CAPTURE_MODE","cursor-seed");
+  int primed=0;putgd::Error error;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult result){error=result.error;++primed;});QTRY_COMPARE(primed,1);QVERIFY(!error);
+  QVERIFY(!controller.busy());const auto prior=cursorTrace(trace);QCOMPARE(prior.size(),2);QCOMPARE(prior[0]["cache"].toBool(),cacheExpected());if(cacheExpected())QVERIFY(prior[1]["cursorId"].toString().toULongLong()>0);else QCOMPARE(prior[1]["cursorId"].toString(),QString("0"));
+  QVERIFY(createCursorTrace(trace));qputenv("XCURSOR_RESIZED","1");
+  for(int index=0;index<2;++index){int count=0;controller.start(regionSnapshot(),{},[&](putgd::PayloadResult result){error=result.error;++count;});QTRY_COMPARE(count,1);QVERIFY(!error);QVERIFY(!controller.busy());QCOMPARE(controller.processId(),qint64(0));}
+  const auto frames=cursorTrace(trace);QCOMPARE(frames.size(),4);for(const auto& frame:frames){QVERIFY(!frame["cache"].toBool());QCOMPARE(frame["cursorId"].toString(),QString("0"));}
  }
  void unavailableCursorCachePreservesOptionalFallback(){
   const bool hadDisplay=qEnvironmentVariableIsSet("DISPLAY");const auto previousDisplay=qgetenv("DISPLAY");qunsetenv("DISPLAY");
@@ -171,7 +217,8 @@ private slots:
   QTRY_COMPARE(cursorTrace(trace).size(),2);QVERIFY(controller.preparedReady());QCOMPARE(early,0);
   const auto before=cursorTrace(trace);QCOMPARE(before[0]["phase"].toString(),QString("bootstrap"));QCOMPARE(before[1]["phase"].toString(),QString("preview"));
   QCOMPARE(before[1]["generation"],before[0]["generation"]);
-  const auto preview=before[1]["cursorId"].toString();if(cachedCursor)QVERIFY(preview.toULongLong()>0);else QCOMPARE(preview,QString("0"));
+  QCOMPARE(before[0]["cache"].toBool(),cacheExpected());if(!cacheExpected())QCOMPARE(before[0]["cursorId"].toString(),QString("0"));
+  const auto preview=before[1]["cursorId"].toString();if(cachedCursor&&cacheExpected())QVERIFY(preview.toULongLong()>0);else QCOMPARE(preview,QString("0"));
   QTest::qWait(40);QCOMPARE(cursorTrace(trace).size(),2);QCOMPARE(early,0);QVERIFY(controller.busy());
   int completed=0;putgd::PayloadResult result;
   controller.begin(ticket,[&](putgd::PayloadResult value){result=std::move(value);++completed;});
