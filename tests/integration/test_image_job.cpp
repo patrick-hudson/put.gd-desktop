@@ -12,9 +12,44 @@
 #include <chrono>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QtEndian>
 
 using namespace putgd;
 namespace {
+class ScopedDisplayEnvironment final {
+public:
+    ScopedDisplayEnvironment(){
+        for(const auto* name:{"DISPLAY","WAYLAND_DISPLAY","QT_QPA_PLATFORM"})
+            values_.append({QByteArray(name),qEnvironmentVariableIsSet(name),qgetenv(name)});
+    }
+    ~ScopedDisplayEnvironment(){
+        for(const auto& value:values_)
+            if(value.present)qputenv(value.name.constData(),value.bytes);
+            else qunsetenv(value.name.constData());
+    }
+    void clear(){for(const auto& value:values_)qunsetenv(value.name.constData());}
+    ScopedDisplayEnvironment(const ScopedDisplayEnvironment&)=delete;
+    ScopedDisplayEnvironment& operator=(const ScopedDisplayEnvironment&)=delete;
+private:
+    struct Value{QByteArray name;bool present;QByteArray bytes;};
+    QList<Value> values_;
+};
+// Actual BITMAPV4HEADER + BGRA pixels, not a fabricated helper response.
+// The narrow random-alpha rows expose PNG row-filter transport overhead while
+// keeping the encoded input and decoded image under a small finite budget.
+QByteArray tallAlphaBmp(int height){
+    constexpr int offset=14+108;
+    QByteArray bytes(offset+4*height,'\0');bytes[0]='B';bytes[1]='M';
+    auto put16=[&](int at,quint16 value){qToLittleEndian(value,reinterpret_cast<uchar*>(bytes.data()+at));};
+    auto put32=[&](int at,quint32 value){qToLittleEndian(value,reinterpret_cast<uchar*>(bytes.data()+at));};
+    put32(2,quint32(bytes.size()));put32(10,offset);put32(14,108);put32(18,1);
+    put32(22,quint32(height));put16(26,1);put16(28,32);put32(30,3);put32(34,4*height);
+    put32(54,0x00ff0000);put32(58,0x0000ff00);put32(62,0x000000ff);put32(66,0xff000000);
+    put32(70,0x73524742); // LCS_sRGB
+    quint32 state=0x9e3779b9;
+    for(int y=0;y<height;++y){state^=state<<13;state^=state>>17;state^=state<<5;put32(offset+4*y,state);}
+    return bytes;
+}
 const QByteArray svgText = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"96\" height=\"64\"><rect width=\"96\" height=\"64\" fill=\"white\"/><text x=\"4\" y=\"44\" font-family=\"sans-serif\" font-size=\"18\" fill=\"black\">put.gd</text></svg>";
 QByteArray imageBytes(const char* format) {
     QImage image(32,16,QImage::Format_ARGB32);
@@ -60,6 +95,41 @@ private slots:
         QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));
         Error error; const auto formats=ImageJob(product()).discover(error);
         QVERIFY2(!error,qPrintable(error.code));QVERIFY(formats.contains("image/png"));
+        QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));
+    }
+    void genericDecodeAndArtifactPreviewWithoutDisplay(){
+        ScopedDisplayEnvironment environment;environment.clear();
+        for(const auto* name:{"DISPLAY","WAYLAND_DISPLAY","QT_QPA_PLATFORM"})QVERIFY(!qEnvironmentVariableIsSet(name));
+        QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));
+        const auto bytes=imageBytes("BMP");QVERIFY(!bytes.isEmpty());
+        Error error;const auto decoded=ImageJob(product()).decode(bytes,ResourceLimits{},error);
+        QVERIFY2(!error,qPrintable(error.code));QCOMPARE(decoded.size(),QSize(32,16));
+        QCOMPARE(decoded.pixelColor(0,0),QColor(Qt::blue));QCOMPARE(decoded.pixelColor(8,8),QColor(Qt::red));
+        QTemporaryDir dir;QVERIFY(dir.isValid());QFile file(dir.filePath("image.bmp"));
+        QVERIFY(file.open(QIODevice::WriteOnly));QCOMPARE(file.write(bytes),qint64(bytes.size()));file.close();
+        ArtifactStore store(dir.filePath("spool"));ClipboardPayload payload;payload.kind="files";payload.files={file.fileName()};
+        const auto acquired=store.acquire(QUuid::createUuid().toString(QUuid::WithoutBraces),payload,ResourceLimits{});
+        QVERIFY2(!acquired.error,qPrintable(acquired.error.code));QCOMPARE(acquired.artifacts.size(),1);
+        const auto artifact=acquired.artifacts.constFirst();QCOMPARE(artifact.category,QString("images"));
+        QVERIFY(QFileInfo(artifact.path).suffix().isEmpty());
+        const auto path=store.preview(artifact,1024*1024,32*16);QVERIFY(!path.isEmpty());
+        QFile preview(path);QVERIFY(preview.open(QIODevice::ReadOnly));const auto thumbnail=readPng(preview.readAll());
+        QCOMPARE(thumbnail.size(),QSize(256,128));QCOMPARE(thumbnail.pixelColor(0,0),QColor(Qt::blue));
+        QVERIFY(!store.verify(artifact));QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));
+        for(const auto* name:{"DISPLAY","WAYLAND_DISPLAY","QT_QPA_PLATFORM"})QVERIFY(!qEnvironmentVariableIsSet(name));
+    }
+    void tallBmpTransportPreservesValidPixelsBeyondRawPlusConstant(){
+        constexpr int height=500000;const auto bytes=tallAlphaBmp(height);
+        QBuffer input;input.setData(bytes);QVERIFY(input.open(QIODevice::ReadOnly));
+        QImageReader reader(&input);QCOMPARE(reader.size(),QSize(1,height));
+        const auto original=reader.read();QCOMPARE(original.size(),QSize(1,height));
+        QByteArray png;QBuffer output(&png);QVERIFY(output.open(QIODevice::WriteOnly));QVERIFY(original.save(&output,"PNG"));
+        ResourceLimits limits;limits.imagePixels=height;limits.imageBytes=bytes.size();limits.maxFileBytes=8*1024*1024;
+        QVERIFY(original.sizeInBytes()<=limits.imageBytes);QVERIFY(bytes.size()<=limits.imageBytes);
+        QVERIFY2(png.size()>limits.imageBytes+65536,"The real fixture does not expose the previous transport ceiling");
+        QVERIFY(png.size()<limits.maxFileBytes);
+        Error error;const auto decoded=ImageJob(product()).decode(bytes,limits,error);
+        QVERIFY2(!error,qPrintable(error.code));QCOMPARE(decoded.size(),original.size());QCOMPARE(decoded,original);
         QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));
     }
     void realHelperDecodesBuiltinFormats_data(){

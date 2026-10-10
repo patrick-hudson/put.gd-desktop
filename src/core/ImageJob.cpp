@@ -11,6 +11,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QTemporaryDir>
 #include <QUuid>
 #include <algorithm>
@@ -129,14 +130,18 @@ QByteArray ImageJob::run(const QString& task,const QByteArray* bytes,const QStri
   }
   protocolFailed=true;
  });
+ const auto inheritedEnvironment=QProcessEnvironment::systemEnvironment();
+ if(inheritedEnvironment.value("QT_QPA_PLATFORM").isEmpty()&&inheritedEnvironment.value("DISPLAY").isEmpty()&&inheritedEnvironment.value("WAYLAND_DISPLAY").isEmpty()){
+  auto childEnvironment=inheritedEnvironment;childEnvironment.insert("QT_QPA_PLATFORM","offscreen");process.setProcessEnvironment(childEnvironment);
+ }
  process.start(helperPath_,{"--image-job"});
  bool started=false;
  while(!started&&!protocolFailed&&!stopped()){
-  if(process.waitForStarted(int(std::min<qint64>(50,timeoutMs_-clock.elapsed())))){started=true;break;}
+  if(process.waitForStarted(int(std::clamp<qint64>(timeoutMs_-clock.elapsed(),1,50)))){started=true;break;}
   if(process.error()==QProcess::FailedToStart){error=failure("image_job_start");break;}
  }
  if(started&&!error){if(control.send("bootstrap",request).isEmpty())protocolFailed=true;}
- while(started&&process.state()!=QProcess::NotRunning&&!protocolFailed&&!stopped())process.waitForReadyRead(int(std::min<qint64>(50,timeoutMs_-clock.elapsed())));
+ while(started&&process.state()!=QProcess::NotRunning&&!protocolFailed&&!stopped())process.waitForReadyRead(int(std::clamp<qint64>(timeoutMs_-clock.elapsed(),1,50)));
  if(protocolFailed)error=failure("image_job_protocol");
  if(process.state()!=QProcess::NotRunning){control.stop();process.terminate();if(!process.waitForFinished(500)){process.kill();process.waitForFinished(1500);}}
  if(!error&&(!started||!ready||!result||process.state()!=QProcess::NotRunning||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0))error=failure("image_job_exit");
@@ -173,8 +178,7 @@ QList<QByteArray> ImageJob::discover(Error& error,Cancel cancelled) const {
  return types;
 }
 QImage ImageJob::decode(const QByteArray& input,const ResourceLimits& limits,Error& error,Cancel cancelled) const {
- const qint64 extra=limits.imageBytes>maximumInput-65536?0:65536;
- auto encoded=run("decode",&input,{},limits.imagePixels,limits.imageBytes,std::min(limits.maxFileBytes,limits.imageBytes+extra),error,cancelled);if(error)return {};
+ auto encoded=run("decode",&input,{},limits.imagePixels,limits.imageBytes,limits.maxFileBytes,error,cancelled);if(error)return {};
  QBuffer buffer(&encoded);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");
  const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){error=failure("input_excessive");return {};}
  auto image=reader.read();if(image.isNull()){error=failure("source_unsupported");return {};}
