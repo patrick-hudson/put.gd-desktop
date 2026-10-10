@@ -421,7 +421,8 @@ if(BUILD_TESTING)
     add_executable(test_gnome_bridge tests/integration/test_gnome_bridge.cpp)
     target_link_libraries(test_gnome_bridge PRIVATE putgd_gnome Qt6::Test)
     add_test(NAME gnome_bridge_contract COMMAND test_gnome_bridge)
-    add_test(NAME gnome_core_transport_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_gnome_bridge> --core-adapter-transport)
+    find_program(PUTGD_DBUS_RUN_SESSION NAMES dbus-run-session REQUIRED)
+    add_test(NAME gnome_core_transport_integration COMMAND "${PUTGD_DBUS_RUN_SESSION}" -- $<TARGET_FILE:test_gnome_bridge> --core-adapter-transport)
     set_tests_properties(gnome_core_transport_integration PROPERTIES
       ENVIRONMENT "XDG_CURRENT_DESKTOP=GNOME;XDG_SESSION_TYPE=wayland;WAYLAND_DISPLAY=putgd-synthetic-wayland;DISPLAY=;QT_QPA_PLATFORM=wayland" TIMEOUT 60)
     # The extension is GJS code: use GNOME's existing runtime on its desktop,

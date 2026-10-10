@@ -19,9 +19,13 @@ The Core route requires all of these conditions before Qt application constructi
 - `QT_QPA_PLATFORM` is empty, or its plugin token is exactly `wayland` or
   `wayland-egl`, optionally followed by colon options. Empty plugin names,
   lookalike prefixes, other plugins and semicolon fallback lists reject Core.
-- There is no `-platform`, `--platform`, `-platform=...` or `--platform=...`
-  argument. An explicit request uses the graphical Qt path, including a request
-  for Wayland itself. Arguments after `--` are treated conservatively too.
+- Every argument is one of the resident's existing flags: `--background`,
+  `--history`, `--activity`, `-h`, `--help`, `--help-all`, `-v` or `--version`.
+  Any other token uses the graphical Qt path, so QApplication still consumes
+  its GUI options (for example `-platformtheme gtk3` or `-style fusion`) before
+  the application parser runs. This includes explicit Wayland requests and
+  arguments after `--`. Unknown options retain the graphical parser's behavior.
+  This conservative argument rule applies only to the GNOME route.
 
 Rejected routes use the existing QApplication path. The GNOME adapter verifies
 its session-bus peer and protocol independently: environment variables alone
@@ -42,7 +46,11 @@ ctest --preset dev --output-junit build/dev/Testing/results.xml
 `native_session_guards` covers both the unchanged Cinnamon characterization and
 the GNOME routing/argument table. `gnome_core_transport_integration` uses
 `dbus-run-session`, QCoreApplication and a separate synthetic helper process.
-CTest sets a synthetic GNOME environment; it does not connect to Wayland or
+Linux builds with testing enabled require `dbus-run-session` at configure time;
+install the distro package providing it if configuration reports it missing.
+The test is never silently skipped. Both the fixture and the Core transport
+parent construct QCoreApplication, so the synthetic Wayland name needs no QPA
+connection. CTest sets a synthetic GNOME environment; it does not connect to Wayland or
 claim desktop acceptance. The test verifies actual D-Bus shortcut conversion,
 clipboard import and chunked UTF-8 result copying, unsupported-session rejection,
 UI-PID failure/recovery and helper-owner replacement. A separate graphical

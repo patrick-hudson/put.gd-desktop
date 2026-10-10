@@ -36,7 +36,12 @@ inline bool gnomeCoreSessionEnvironment() {
 inline bool gnomeCoreSessionArguments(int argc,const char* const* argv) {
  for(int i=1;i<argc;++i){
   const QByteArray argument(argv[i]);
-  if(argument=="-platform"||argument=="--platform"||argument.startsWith("-platform=")||argument.startsWith("--platform="))return false;
+  // Only the resident's existing parser flags are safe before QCoreApplication.
+  // Delegate every other token to QApplication, which consumes its own GUI
+  // options before the app parser runs. Keep this guard GNOME-specific.
+  if(argument!="--background"&&argument!="--history"&&argument!="--activity"&&
+     argument!="-h"&&argument!="--help"&&argument!="--help-all"&&
+     argument!="-v"&&argument!="--version")return false;
  }
  return true;
 }

@@ -32,12 +32,27 @@ private slots:
   qputenv("XDG_SESSION_TYPE",type);qputenv("WAYLAND_DISPLAY",wayland);qputenv("XDG_CURRENT_DESKTOP",desktop);qputenv("QT_QPA_PLATFORM",platform);
   QCOMPARE(putgd::gnomeCoreSessionEnvironment(),expected);
  }
+ void gnomeArgumentOverrides_data(){
+  QTest::addColumn<QStringList>("arguments");QTest::addColumn<bool>("expected");
+  QTest::newRow("no-options")<<QStringList{"putgd"}<<true;
+  for(const auto* option:{"--background","--history","--activity","-h","--help","--help-all","-v","--version"})
+   QTest::newRow(option)<<QStringList{"putgd",option}<<true;
+  QTest::newRow("combined-app-flags")<<QStringList{"putgd","--background","--history","--activity"}<<true;
+  QTest::newRow("platformtheme-gtk3")<<QStringList{"putgd","-platformtheme","gtk3","--background"}<<false;
+  QTest::newRow("style-fusion")<<QStringList{"putgd","-style","fusion","--background"}<<false;
+  for(const auto* option:{"-platform","--platform","-platform=offscreen","--platform=wayland",
+                         "--platformtheme","--platformpluginpath","-stylesheet","--stylesheet=theme.qss",
+                         "-reverse","--reverse","-qwindowgeometry","--qwindowicon","-qwindowtitle",
+                         "-plugin","-session","-testability","-widgetcount","-qdebug","-qdevel",
+                         "--future-qt-option","--background=unexpected","--","payload","-hv"})
+   QTest::newRow(option)<<QStringList{"putgd",option}<<false;
+  QTest::newRow("gui-after-terminator")<<QStringList{"putgd","--","-platformtheme","gtk3"}<<false;
+ }
  void gnomeArgumentOverrides(){
-  const char* normal[]{"putgd","--background"};QVERIFY(putgd::gnomeCoreSessionArguments(2,normal));
-  for(const auto* override:{"-platform","--platform","-platform=offscreen","--platform=wayland"}){
-   const char* args[]{"putgd",override,"wayland"};QVERIFY(!putgd::gnomeCoreSessionArguments(3,args));
-  }
-  const char* terminator[]{"putgd","--","-platform"};QVERIFY(!putgd::gnomeCoreSessionArguments(3,terminator));
+  QFETCH(QStringList,arguments);QFETCH(bool,expected);
+  QList<QByteArray> storage;for(const auto& argument:arguments)storage.append(argument.toLocal8Bit());
+  QList<const char*> argv;for(const auto& argument:storage)argv.append(argument.constData());
+  QCOMPARE(putgd::gnomeCoreSessionArguments(static_cast<int>(argv.size()),argv.constData()),expected);
  }
  void routingGuards() {
   const QList<QByteArray> names{"DISPLAY","WAYLAND_DISPLAY","XDG_SESSION_TYPE","QT_QPA_PLATFORM","XDG_CURRENT_DESKTOP"};
