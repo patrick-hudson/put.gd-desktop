@@ -119,7 +119,19 @@ spaces in paths, metadata-only inspection, and expected-revision conflict forwar
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
 
-Full U9 remains gated on real U4 Cinnamon capture/paste evidence, U6's documented lab
-runner and a fresh-agent walkthrough of build/run/debug instructions. Lab/package commands
-are pending until those interfaces land. [agents.md](agents.md) maps source and evidence;
-[verification.md](verification.md) records actual tests and outstanding acceptance.
+The native CLI, graphical lab runner and development-package commands are implemented.
+Use [vm-lab.md](vm-lab.md) for disposable overlays and native scenarios,
+[release.md](release.md) for existing CMake/CPack commands and pending installed
+lifecycle checks, and [agents.md](agents.md) for the source and verification map.
+An earlier [fresh-agent Cinnamon walkthrough](evidence/2026-10-08-fresh-cinnamon.json)
+exercised build/package/run/collect instructions, actual MCP/CLI local-operation
+parity and configuration-error recovery. Its local-only scope and source-identity
+limitations remain recorded; it did not exercise cloud publication or deletion.
+
+Full U9 still requires complete production-resident tool/effect coverage and a
+current-source reproducible walkthrough, including remote receipt/history/deletion
+behavior. The source55 Cinnamon live S3 check used the production CLI and GUI,
+so it does not establish MCP cloud parity. Current native and memory checkpoints
+also leave the remaining U6 display/failure cases, GNOME/KDE current-version gates
+and U10 release lifecycle open. [verification.md](verification.md) records the
+source-specific checks and outstanding acceptance.

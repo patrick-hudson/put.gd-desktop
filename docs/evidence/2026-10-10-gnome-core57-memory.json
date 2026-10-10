@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "updatedUtc": "2026-10-10T08:02:15.301476+00:00",
+  "source": {
+    "gitCommit": "2a02118ffc7bcf3f4643b83f83d5dd7594a8207f",
+    "gitTree": "c0e6b8d924bd2fafb6bd4a8d68a679799b214031",
+    "commitCount": 57,
+    "version": "0.1.1-dev.57+g2a02118ffc7b",
+    "dirty": false
+  },
+  "scope": "GNOME50 Wayland VM local-native resident memory; remote History and post-S3 pending",
+  "environment": {
+    "guest": "current-gnome-a3d70dc",
+    "gnome": "50.1",
+    "mutter": "50",
+    "qt": "6.10.2",
+    "distro": "Ubuntu26.04",
+    "vncPort": 5936,
+    "vncVisible": true
+  },
+  "implementation": "Strict GNOME Core resident; native tray/Shell bridge; on-demand Qt Widgets UI",
+  "cinnamonImplementationChanged": false,
+  "requiredProtocol": {
+    "warmupSeconds": 5,
+    "primarySeconds": 300,
+    "intervalSeconds": 5,
+    "samples": 61,
+    "minimumSpanSeconds": 299.5,
+    "maximumGapSeconds": 7.5,
+    "peakRssLimitBytes": 41943040,
+    "cpuPercentOneCoreExclusiveLimit": 0.5,
+    "postNativeConfirmations": 2,
+    "freshColdConfirmations": 1
+  },
+  "reference": {
+    "sourceCommit": "033b73fb58a38f853bd79b1902d88117e723a122",
+    "postNativePeakRssBytes": 68710400,
+    "actualRoute": "QApplication",
+    "launchProvenanceDifference": "Source56 locating run explicitly lacked WAYLAND_DISPLAY; current57 native display is verified. Source55 stored launch environment is unavailable, so this is not a strictly matched code-only comparison."
+  },
+  "nativeVerification": {
+    "registeredGuestTests": 50,
+    "passedGuestTests": 50,
+    "elapsedTestSeconds": 248.3,
+    "captureClipboardCancellationCases": 12,
+    "localFocusedPassed": true,
+    "normalUiExitGeneration": 4,
+    "normalUiExitCode": 0,
+    "matrix": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/native57-a1/gnome/matrix.json",
+      "sha256": "1d570920eee05d07f417d7d5097f6ea4705d6deb87b7980b0f52a2b374377446"
+    },
+    "rootReview": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/root-decision-current57-reviewed.json",
+      "sha256": "a4a930c35e3eb7a32f3af7083681e80abe02433cf63c30cdd6d1982c4582ea24"
+    },
+    "independentReview": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/actual57-packet-independent-review.json",
+      "sha256": "d6ecae972a4408c09c2f8f29c15a36099f86727991ae51c69211d9eb47e750b8"
+    }
+  },
+  "postNativeRuns": [
+    {
+      "run": 1,
+      "result": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/gnome-memory-run-a1/results.json",
+        "sha256": "5569a21ee95103c2ca46e792bac88dfda753faa45ede7813bd7f3e3ed67f5b4e"
+      },
+      "samples": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/gnome-memory-run-a1/samples.jsonl",
+        "sha256": "787f64df86a9785c9d803968506005d26d77dac8578a8f62c2bdc646f36f9734"
+      },
+      "passed": true,
+      "summary": {
+        "coverage": {
+          "samples": 61,
+          "sampleSpanSeconds": 300.0300633939987,
+          "maximumGapSeconds": 5.057029922001675,
+          "maximumAllowedGapSeconds": 7.5,
+          "minimumSpanSeconds": 299.5,
+          "adequate": true
+        },
+        "peak": {
+          "rssBytes": 34365440,
+          "pssBytes": 23299072,
+          "privateBytes": 22253568
+        },
+        "final": {
+          "rssBytes": 34365440,
+          "pssBytes": 23299072,
+          "privateBytes": 22253568
+        },
+        "familyCpuSeconds": 0.09,
+        "familyCpuPercentOneCore": 0.02999699396183916,
+        "vmNumeric40MiBPeakComparison": true,
+        "physical40MiBCertification": false,
+        "performanceTargetEnforced": false
+      }
+    },
+    {
+      "run": 2,
+      "result": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/gnome-memory-run-a2/results.json",
+        "sha256": "5167be526f4ed2e1bf49786d3c2cad414d1983949f10505d2cf761f43de3e5a2"
+      },
+      "samples": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/gnome-memory-run-a2/samples.jsonl",
+        "sha256": "a88e7b7ee630d5ad56d4778e221f81aa5d153d3868aee75ba0ddec25e13b9b5a"
+      },
+      "passed": true,
+      "summary": {
+        "coverage": {
+          "samples": 61,
+          "sampleSpanSeconds": 300.00840504900043,
+          "maximumGapSeconds": 5.053484126998228,
+          "maximumAllowedGapSeconds": 7.5,
+          "minimumSpanSeconds": 299.5,
+          "adequate": true
+        },
+        "peak": {
+          "rssBytes": 34365440,
+          "pssBytes": 23303168,
+          "privateBytes": 22261760
+        },
+        "final": {
+          "rssBytes": 34365440,
+          "pssBytes": 23303168,
+          "privateBytes": 22261760
+        },
+        "familyCpuSeconds": 0.1,
+        "familyCpuPercentOneCore": 0.033332399465163975,
+        "vmNumeric40MiBPeakComparison": true,
+        "physical40MiBCertification": false,
+        "performanceTargetEnforced": false
+      }
+    }
+  ],
+  "freshCold": {
+    "status": "pending",
+    "executed": false
+  },
+  "retention": "pending required fresh-cold confirmation; two post-use confirmations passed",
+  "remoteHistoryProven": false,
+  "fullNativeParityAccepted": false,
+  "postS3MemoryEstablished": false,
+  "kdeMemoryEstablished": false,
+  "payloadsOrCredentialsExported": false,
+  "experimentStop": {
+    "reason": "max_hours",
+    "approvedHours": 4,
+    "phase3StartedUtc": "2026-10-10T03:59:27Z",
+    "deadlineUtc": "2026-10-10T07:59:27Z",
+    "lastGuestWorkCompletedUtc": "2026-10-10T07:58:04Z",
+    "recordedUtc": "2026-10-10T08:02:15.301476+00:00",
+    "extensionRequested": true,
+    "extensionApproved": false,
+    "coldExecuted": false,
+    "candidateRetained": false,
+    "allGuestCommandsDrained": true,
+    "userDecisionPending": true
+  }
+}

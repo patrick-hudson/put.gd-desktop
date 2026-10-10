@@ -1232,3 +1232,55 @@ memory remains an open gate. The test resident then exited normally, with its
 exact process generation and session socket absent. Credentials remained local
 and session-only throughout; no memory-zeroization claim is made. Follow
 [the repeatable live S3 procedure](../testing-live-s3.md) with fresh synthetic IDs.
+
+
+### Current GNOME boundary checkpoint (2026-10-10)
+
+The corrected isolated candidate is `2a02118ffc7bc` / version
+`0.1.1-dev.57+g2a02118ffc7b`. Its GNOME Core route preserves Qt GUI argument
+parsing by falling back to QApplication when graphical or unknown arguments
+are supplied. Cinnamon implementation remains unchanged.
+
+Current-source57 Cinnamon regression passed the twelve native cases, native
+tray/dialog/font and clipboard checks, live region selection, and normal view
+helper teardown. Physical region-selection p95 was 113.6 ms; the 300-second
+cold run peaked at 24.62 MiB RSS, and settled closed-view RSS was at most
+25.19 MiB. A separate unchanged-workload supplement verifies all three normal
+helper exits. These are the existing cold/view regression workloads, not
+post-upload acceptance; preserve the separate 49.14 MiB source55 post-cloud
+diagnostic and its open gate.
+
+Source56 GNOME passed all fifty registered guest tests and the twelve native
+capture/clipboard cases. Root also verified the native tray, production
+notification delivery in GNOME's notification center, native fonts/folder
+dialog, live background and crosshair, fresh independent parent/file Activity
+pastes, and normal helper exits. The transient notification banner was not
+observed. This is local-native diagnostic evidence with remote History
+link-copy still pending; source56 remains a locating candidate because its Qt
+argument regression is corrected only in source57. The unchanged 300-second
+locating run measured 63.01 MiB RSS, against the 65.53 MiB reference, and missed
+the target. A bounded process-environment check proved that the lab-launched
+resident lacked WAYLAND_DISPLAY and therefore used QApplication: these native
+checks prove the graphical fallback, not the intended Core route.
+
+Read-only user-manager environment provenance confirms that it publishes
+wayland-0 and its owned native socket; the lab copied an earlier compositor
+environment. GNOME-only test-launch discovery now uses that verified client
+environment, preserving the product guard and Cinnamon implementation. Clean
+source57 passed all fifty registered guest tests, installed normally and
+actually selected the Core route. Its initial 26.72 MiB RSS snapshot is not
+memory acceptance. Its current-version local-native capture/clipboard, tray,
+notification, native dialog, live selector, Activity and normal-exit gates passed.
+Both 300-second post-use runs passed at 32.77 MiB peak RSS, with worst CPU
+0.0334% of one core. Retaining source57 still requires the fresh cold run;
+remote History link-copy remains pending.
+Follow [the repeatable GNOME procedure](../testing-gnome-memory.md). The corrected
+discovery currently lives in the pinned run adapter; incorporate it into the
+repository lab runner with focused contracts before claiming clean-checkout replay.
+
+Keep deterministic parameters, source/build/process identities, all failed
+attempts and structured logs. Fix only the specific test-input problem when
+an owned fixture fails its privacy checks; do not weaken application, clipboard
+or timing oracles. GNOME work precedes KDE, and neither desktop inherits
+Cinnamon acceptance. The complete native, remote, geometry, visual, MCP and
+release gates in this plan remain required.
