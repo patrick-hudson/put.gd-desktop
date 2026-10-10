@@ -4,6 +4,41 @@
 class NativeSessionTest final:public QObject {
  Q_OBJECT
 private slots:
+ void gnomeRouting_data(){
+  QTest::addColumn<QByteArray>("type");QTest::addColumn<QByteArray>("wayland");QTest::addColumn<QByteArray>("desktop");QTest::addColumn<QByteArray>("platform");QTest::addColumn<bool>("expected");
+  QTest::newRow("native")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray()<<true;
+  QTest::newRow("desktop-token")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("ubuntu:gnome")<<QByteArray("wayland:opaque-option")<<true;
+  QTest::newRow("wayland-egl")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray("wayland-egl")<<true;
+  QTest::newRow("missing-display")<<QByteArray("wayland")<<QByteArray()<<QByteArray("GNOME")<<QByteArray()<<false;
+  QTest::newRow("x11")<<QByteArray("x11")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray()<<false;
+  QTest::newRow("missing-session")<<QByteArray()<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray()<<false;
+  QTest::newRow("prefix-desktop")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME-unknown")<<QByteArray()<<false;
+  QTest::newRow("kde")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("KDE")<<QByteArray()<<false;
+  QTest::newRow("mixed-kde")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME:KDE")<<QByteArray()<<false;
+  QTest::newRow("mixed-cinnamon")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME:X-Cinnamon")<<QByteArray()<<false;
+  QTest::newRow("offscreen")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray("offscreen")<<false;
+  QTest::newRow("explicit-xcb")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray("xcb")<<false;
+  QTest::newRow("prefix-platform")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray("wayland-unknown")<<false;
+  QTest::newRow("missing-plugin")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray(":opaque-option")<<false;
+  QTest::newRow("colon-only")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray(":")<<false;
+  QTest::newRow("fallback-list")<<QByteArray("wayland")<<QByteArray("wayland-0")<<QByteArray("GNOME")<<QByteArray("wayland;xcb")<<false;
+ }
+ void gnomeRouting(){
+  QFETCH(QByteArray,type);QFETCH(QByteArray,wayland);QFETCH(QByteArray,desktop);QFETCH(QByteArray,platform);QFETCH(bool,expected);
+  const QList<QByteArray> names{"XDG_SESSION_TYPE","WAYLAND_DISPLAY","XDG_CURRENT_DESKTOP","QT_QPA_PLATFORM"};
+  struct Previous{QByteArray name,value;bool present;};QList<Previous> saved;
+  for(const auto& name:names)saved.append({name,qgetenv(name),qEnvironmentVariableIsSet(name.constData())});
+  const auto restore=qScopeGuard([&]{for(const auto& p:saved){if(p.present)qputenv(p.name,p.value);else qunsetenv(p.name);}});
+  qputenv("XDG_SESSION_TYPE",type);qputenv("WAYLAND_DISPLAY",wayland);qputenv("XDG_CURRENT_DESKTOP",desktop);qputenv("QT_QPA_PLATFORM",platform);
+  QCOMPARE(putgd::gnomeCoreSessionEnvironment(),expected);
+ }
+ void gnomeArgumentOverrides(){
+  const char* normal[]{"putgd","--background"};QVERIFY(putgd::gnomeCoreSessionArguments(2,normal));
+  for(const auto* override:{"-platform","--platform","-platform=offscreen","--platform=wayland"}){
+   const char* args[]{"putgd",override,"wayland"};QVERIFY(!putgd::gnomeCoreSessionArguments(3,args));
+  }
+  const char* terminator[]{"putgd","--","-platform"};QVERIFY(!putgd::gnomeCoreSessionArguments(3,terminator));
+ }
  void routingGuards() {
   const QList<QByteArray> names{"DISPLAY","WAYLAND_DISPLAY","XDG_SESSION_TYPE","QT_QPA_PLATFORM","XDG_CURRENT_DESKTOP"};
   struct Previous {QByteArray name,value;bool present;};QList<Previous> saved;

@@ -98,8 +98,12 @@ int main(int argc,char* argv[]) {
  // into real desktop services just because its inherited DISPLAY is present.
  for(int i=1;i<argc;++i)if(std::strcmp(argv[i],"-platform")==0)coreResident=false;
 #endif
+ bool gnomeCoreResident=false;
+#ifdef PUTGD_NATIVE_GNOME
+ gnomeCoreResident=putgd::gnomeCoreSessionEnvironment()&&putgd::gnomeCoreSessionArguments(argc,argv);
+#endif
  std::unique_ptr<QCoreApplication> application;
- if(coreResident)application=std::make_unique<QCoreApplication>(argc,argv);
+ if(coreResident||gnomeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
  else {
   auto graphical=std::make_unique<QApplication>(argc,argv);
   putgd::VisualStyle::apply(*graphical);
@@ -121,14 +125,14 @@ int main(int argc,char* argv[]) {
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
  const auto bindings=[&settings]{QHash<QString,QString> result;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)result.insert(i.key(),i.value().shortcut);return result;};
- const auto wayland=!coreResident&&QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland";
+ const auto wayland=gnomeCoreResident||(!coreResident&&QGuiApplication::platformName().startsWith("wayland")&&qEnvironmentVariable("XDG_SESSION_TYPE")=="wayland");
  const auto desktop=qEnvironmentVariable("XDG_CURRENT_DESKTOP").split(':',Qt::SkipEmptyParts);
 
 #ifdef PUTGD_NATIVE_X11
  putgd::X11SourceAdapter* native=nullptr;
  putgd::X11CoreSourceAdapter* coreNative=nullptr;
  if(coreResident){auto adapter=std::make_unique<putgd::X11CoreSourceAdapter>();coreNative=adapter.get();source=std::move(adapter);}
- if(!coreResident&&QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
+ if(!coreResident&&!gnomeCoreResident&&QGuiApplication::platformName()=="xcb"&&qEnvironmentVariable("XDG_SESSION_TYPE")!="wayland"&&qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) {
   auto adapter=std::make_unique<putgd::X11SourceAdapter>();native=adapter.get();source=std::move(adapter);
  }
 #endif

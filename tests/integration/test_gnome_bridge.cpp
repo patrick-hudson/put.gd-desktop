@@ -10,6 +10,8 @@
 #include <QJsonDocument>
 #include <QGuiApplication>
 #include <QDBusMessage>
+#include <QDBusConnectionInterface>
+#include <QScopeGuard>
 #include <QProcess>
 #include <QUuid>
 #include <cstdio>
@@ -71,7 +73,8 @@ private slots:
  }
 };
 
-// These adapter cases use a real native Qt Wayland connection but no windows.
+// The graphical mode uses a real native Qt Wayland connection but no windows.
+// The Core mode uses a synthetic GNOME session environment and no display.
 // The separate, private-bus peer is synthetic: this proves the resident bridge
 // state machine and D-Bus transport, never GNOME Shell capture acceptance.
 class GnomeHelperFixture final:public QObject {
@@ -79,7 +82,9 @@ class GnomeHelperFixture final:public QObject {
  Q_CLASSINFO("D-Bus Interface","org.putgd.Gnome50")
  uint currentPid_=0,failPid_=0,failures_=0;
  QJsonArray registrations_;
- int hellos_=0,binds_=0;
+ int hellos_=0,binds_=0,commits_=0;
+ QJsonObject lastBindings_;
+ QString copyId_,copyMime_;QByteArray copyBytes_;qulonglong copySize_=0;
  static QString json(const QJsonObject& value){return QString::fromUtf8(QJsonDocument(value).toJson(QJsonDocument::Compact));}
 public slots:
  QString Hello(){++hellos_;return json({{"version",1},{"shellMajor",50},{"uiProcessVersion",1},{"clipboardRevision",1}});}
@@ -88,13 +93,26 @@ public slots:
   if(pid==failPid_&&failures_){--failures_;return json({{"error",QJsonObject{{"code","helper_unavailable"},{"message","Synthetic registration failure"},{"details",QJsonObject{}}}}});}
   currentPid_=pid;return json({});
  }
- QString Bind(const QString&){++binds_;return json({{"bindings",QJsonObject{}}});}
+ QString Bind(const QString& encoded){
+  ++binds_;lastBindings_=QJsonDocument::fromJson(encoded.toUtf8()).object();QJsonObject bindings;
+  for(auto i=lastBindings_.begin();i!=lastBindings_.end();++i){const auto entry=i.value().toObject();bindings[i.key()]=QJsonObject{{"requested",entry["requested"]},{"bound",!entry["accelerator"].toString().isEmpty()}};}
+  return json({{"bindings",bindings}});
+ }
+ QString BeginCopy(const QString& id,const QString& mime,qulonglong size){copyId_=id;copyMime_=mime;copySize_=size;copyBytes_.clear();return json({});}
+ QString WriteCopy(const QString& id,qulonglong offset,const QString& data){
+  if(id!=copyId_||offset!=qulonglong(copyBytes_.size()))return json({{"error",QJsonObject{{"code","bridge_protocol"},{"message","Synthetic copy identity mismatch"}}}});
+  copyBytes_+=QByteArray::fromBase64(data.toLatin1());return json({});
+ }
+ QString CommitCopy(const QString& id){
+  if(id!=copyId_||qulonglong(copyBytes_.size())!=copySize_)return json({{"error",QJsonObject{{"code","bridge_protocol"},{"message","Synthetic copy size mismatch"}}}});
+  ++commits_;return json({{"clipboardRevision",2}});
+ }
  QString Prepare(const QString& id,const QString&){return json({{"version",1},{"requestId",id}});}
  QString Acquire(const QString& id,const QString&){return json({{"version",1},{"requestId",id},{"mime","text/plain;charset=utf-8"},{"bytes",1}});}
  QString Read(const QString& id,qulonglong offset,uint){return json({{"version",1},{"requestId",id},{"offset",double(offset)},{"data","eA=="}});}
  QString Release(const QString&){return json({});}
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
- QString State(){return json({{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_}});}
+ QString State(){return json({{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
  signals:
  void Action(const QString& action,const QString& ticket);
@@ -102,6 +120,10 @@ public slots:
 class GnomeAdapterTransportTest final:public QObject {
  Q_OBJECT
  QProcess fixture_;
+ bool coreMode_;
+public:
+ explicit GnomeAdapterTransportTest(bool coreMode=false):coreMode_(coreMode){}
+private:
  QDBusMessage control(const QString& method,const QVariantList& args={}){
   auto request=QDBusMessage::createMethodCall("org.gnome.Shell","/org/gnome/Shell/Extensions/Putgd","org.putgd.Gnome50",method);request.setArguments(args);
   return QDBusConnection::sessionBus().call(request,QDBus::Block,2000);
@@ -116,9 +138,41 @@ class GnomeAdapterTransportTest final:public QObject {
  bool helperAvailable(const GnomeAdapter& source){return source.capabilities()["helper"].toObject()["available"].toBool();}
  void stopFixture(){if(fixture_.state()!=QProcess::NotRunning){fixture_.terminate();if(!fixture_.waitForFinished(3000)){fixture_.kill();fixture_.waitForFinished(3000);}}}
 private slots:
- void initTestCase(){QVERIFY2(QGuiApplication::platformName().startsWith("wayland"),"--adapter-transport requires native Qt Wayland and an isolated dbus-run-session");QVERIFY(QDBusConnection::sessionBus().isConnected());}
+ void initTestCase(){
+  if(coreMode_){
+   QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));
+   QCOMPARE(qEnvironmentVariable("XDG_SESSION_TYPE"),QString("wayland"));
+   QCOMPARE(qEnvironmentVariable("XDG_CURRENT_DESKTOP"),QString("GNOME"));
+   QVERIFY(!qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"));
+  }else{
+   QVERIFY2(QGuiApplication::platformName().startsWith("wayland"),"--adapter-transport requires native Qt Wayland and an isolated dbus-run-session");
+  }
+  QVERIFY(QDBusConnection::sessionBus().isConnected());
+ }
  void init(){QVERIFY2(startFixture(),fixture_.readAllStandardError().constData());}
  void cleanup(){stopFixture();}
+ void clipboardAndShortcutTransport(){
+  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  source.bindShortcuts({{"region","Ctrl+Shift+1"},{"clipboard","Ctrl+Alt+V"}});
+  QTRY_COMPARE(state()["lastBindings"].toObject()["region"].toObject()["accelerator"].toString(),QString("<Control><Shift>1"));
+  QCOMPARE(state()["lastBindings"].toObject()["clipboard"].toObject()["accelerator"].toString(),QString("<Control><Alt>v"));
+  QTRY_VERIFY(source.capabilities()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
+  bool acquired=false;PayloadResult acquiredResult;
+  source.acquire("clipboard",{},[&](PayloadResult value){acquiredResult=std::move(value);acquired=true;});
+  QTRY_VERIFY(acquired);QVERIFY2(!acquiredResult.error,qPrintable(acquiredResult.error.message));QCOMPARE(acquiredResult.payload.bytes,QByteArray("x"));
+  CopyPayload payload;payload.kind="text";payload.text=QString(gnome::chunkBytes+17,QChar('x'))+QString::fromUtf8("\xc3\xa9");
+  bool copied=false;Error copyError;source.copy(payload,[&](Error error){copyError=error;copied=true;});
+  QTRY_VERIFY(copied);QVERIFY2(!copyError,qPrintable(copyError.message));
+  const auto copiedState=state();QCOMPARE(copiedState["copyMime"].toString(),QString("text/plain;charset=utf-8"));
+  QCOMPARE(QByteArray::fromBase64(copiedState["copyData"].toString().toLatin1()),payload.text.toUtf8());QCOMPARE(copiedState["commits"].toInt(),1);
+ }
+ void unsupportedCoreSessionCannotClaimClientName(){
+  if(!coreMode_)QSKIP("Core routing guard; graphical mode retains its native Qt platform check");
+  const auto previous=qgetenv("XDG_CURRENT_DESKTOP");const auto restore=qScopeGuard([&]{qputenv("XDG_CURRENT_DESKTOP",previous);});
+  qputenv("XDG_CURRENT_DESKTOP","KDE");GnomeAdapter source;
+  QVERIFY(!helperAvailable(source));QCOMPARE(source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString(),QString("session_unsupported"));
+  QVERIFY(!QDBusConnection::sessionBus().interface()->isServiceRegistered("org.putgd.App.Gnome50").value());
+ }
  void clearFailureRecoversWithoutUiReopen(){
   GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);
   QCOMPARE(control("FailRegistration",{uint(0),uint(1)}).type(),QDBusMessage::ReplyMessage);source.setUiProcess(0);
@@ -152,6 +206,11 @@ int main(int argc,char** argv){
   QCoreApplication app(argc,argv);GnomeHelperFixture fixture;auto bus=QDBusConnection::sessionBus();
   if(!bus.registerObject("/org/gnome/Shell/Extensions/Putgd",&fixture,QDBusConnection::ExportAllSlots|QDBusConnection::ExportAllSignals)||!bus.registerService("org.gnome.Shell"))return 2;
   std::fputs("ready\n",stdout);std::fflush(stdout);return app.exec();
+ }
+ if(argc>1&&QByteArray(argv[1])=="--core-adapter-transport"){
+  for(int i=1;i<argc;++i)argv[i]=argv[i+1];
+  --argc;
+  QCoreApplication app(argc,argv);GnomeAdapterTransportTest test(true);return QTest::qExec(&test,argc,argv);
  }
  if(argc>1&&QByteArray(argv[1])=="--adapter-transport"){
   for(int i=1;i<argc;++i)argv[i]=argv[i+1];

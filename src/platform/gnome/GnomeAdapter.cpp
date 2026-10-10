@@ -1,5 +1,6 @@
 #include "GnomeAdapter.h"
 #include "GnomeProtocol.h"
+#include "platform/NativeSession.h"
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
@@ -39,7 +40,9 @@ QString accelerator(const QString& text){
 }
 }
 GnomeAdapter::GnomeAdapter(QObject* parent):QObject(parent),bus_(QDBusConnection::sessionBus()),watcher_(service,bus_,QDBusServiceWatcher::WatchForOwnerChange,this){
- if(!QGuiApplication::platformName().startsWith("wayland")){helperError_={"session_unsupported","GNOME adapter requires native Qt Wayland",{}};return;}
+ const auto graphical=qobject_cast<QGuiApplication*>(QCoreApplication::instance());
+ const bool supported=graphical?QGuiApplication::platformName().startsWith("wayland"):gnomeCoreSessionEnvironment();
+ if(!supported){helperError_={"session_unsupported","GNOME adapter requires a native GNOME Wayland session",{}};return;}
  ownsName_=bus_.registerService(client);if(!ownsName_){helperError_={"helper_unavailable","Another resident process owns the GNOME bridge client name",{}};return;}
  connect(&watcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this]{helperChanged();});
  probe_.setInterval(3000);connect(&probe_,&QTimer::timeout,this,[this]{
