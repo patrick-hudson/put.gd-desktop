@@ -1,0 +1,33 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/home/patrick/work/put.gd/work/capture-parity/clean52/cold1-failed-checkpoint.json",
+    "sha256": "a55a7e283f039d8f36b3f70acee6867c03b3088dd422bb4209ab1de9d88bc248"
+  },
+  "data": {
+    "sampledSeconds": 70.21579872100847,
+    "peakSampledFamilyRssBytes": 25985024,
+    "sampleCount": 62,
+    "accepted": false,
+    "causeConfirmed": false,
+    "primaryCompleted": false,
+    "sourceCommit": "c19553b9e69e2c21fccf5e10ff6054d0c3819e42",
+    "errorType": "ProcessLookupError",
+    "outputFingerprints": [
+      {
+        "path": "/tmp/pg52-family1/results.json",
+        "sha256": "8a7b0162a1ed62c6fb383475dc83c1f9015b3c21977203a1bab5ed6cb83d96a3"
+      },
+      {
+        "path": "/tmp/pg52-cold1-windows.json",
+        "sha256": "98097006fef3a8328385d777debfd30a4e627c50821bc243284d253941f17a6d"
+      },
+      {
+        "path": "/tmp/pg52-cold1/progress.json",
+        "sha256": "76cb651c3851723385480bb4f2aa4f8363b53455f47518cce90d6ce1825cade0"
+      }
+    ],
+    "acceptanceQualifier": "Invalid collector attempt; low sampled RSS is not target proof. Diagnosis is not exact original-call attribution."
+  }
+}

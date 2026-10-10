@@ -1,0 +1,146 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/cinnamon-expansion-gate.json",
+    "sha256": "834071fcf867ac6be7a032a1e2a67228703046776820c854fef820387926fece"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "sourceCommit": "1ee42f32c61c3d93d88cc1d3dc624d9ad086bb70",
+    "sourceCount": 53,
+    "version": "0.1.1-dev.53+g1ee42f32c61c",
+    "passed": true,
+    "nativeFunctionalPassed": true,
+    "physicalTimingPassed": true,
+    "p95PaintMilliseconds": 95.400159,
+    "cold": [
+      {
+        "repeat": 1,
+        "peakRssMiB": 24.76953125,
+        "idleCpuPercentOneCore": 0.0033319121697479464,
+        "elapsedSeconds": 300.1279592780047
+      },
+      {
+        "repeat": 2,
+        "peakRssMiB": 24.734375,
+        "idleCpuPercentOneCore": 0.0033318093494543693,
+        "elapsedSeconds": 300.1372212860151
+      }
+    ],
+    "views": [
+      {
+        "repeat": 1,
+        "label": "original",
+        "peakOpenPssMiB": 50.7607421875,
+        "settledCycles": [
+          {
+            "cycle": 1,
+            "rssMiB": 24.94140625,
+            "pssMiB": 15.9970703125
+          },
+          {
+            "cycle": 2,
+            "rssMiB": 25.21875,
+            "pssMiB": 16.2744140625
+          },
+          {
+            "cycle": 3,
+            "rssMiB": 25.22265625,
+            "pssMiB": 16.2783203125
+          }
+        ]
+      },
+      {
+        "repeat": 1,
+        "label": "supplement",
+        "peakOpenPssMiB": 50.8251953125,
+        "settledCycles": [
+          {
+            "cycle": 1,
+            "rssMiB": 25.06640625,
+            "pssMiB": 16.09765625
+          },
+          {
+            "cycle": 2,
+            "rssMiB": 25.34375,
+            "pssMiB": 16.375
+          },
+          {
+            "cycle": 3,
+            "rssMiB": 25.359375,
+            "pssMiB": 16.390625
+          }
+        ]
+      },
+      {
+        "repeat": 2,
+        "label": "original",
+        "peakOpenPssMiB": 50.744140625,
+        "settledCycles": [
+          {
+            "cycle": 1,
+            "rssMiB": 25.046875,
+            "pssMiB": 16.05859375
+          },
+          {
+            "cycle": 2,
+            "rssMiB": 25.3203125,
+            "pssMiB": 16.33203125
+          },
+          {
+            "cycle": 3,
+            "rssMiB": 25.328125,
+            "pssMiB": 16.33984375
+          }
+        ]
+      },
+      {
+        "repeat": 2,
+        "label": "supplement",
+        "peakOpenPssMiB": 50.88671875,
+        "settledCycles": [
+          {
+            "cycle": 1,
+            "rssMiB": 25.0546875,
+            "pssMiB": 16.10546875
+          },
+          {
+            "cycle": 2,
+            "rssMiB": 25.33203125,
+            "pssMiB": 16.3828125
+          },
+          {
+            "cycle": 3,
+            "rssMiB": 25.3359375,
+            "pssMiB": 16.38671875
+          }
+        ]
+      }
+    ],
+    "normalExitSupplements": [
+      {
+        "repeat": 1,
+        "normalExitGenerations": [
+          1,
+          2,
+          3
+        ],
+        "queryCount": 3
+      },
+      {
+        "repeat": 2,
+        "normalExitGenerations": [
+          1,
+          2,
+          3
+        ],
+        "queryCount": 3
+      }
+    ],
+    "limitations": [
+      "Original view runs omit final generation3 status; separate unchanged-workload supplements add three snapshot queries and explicit normal0 proof.",
+      "No post-S3/post-upload/populated-history retained-memory, permanent plateau, mixed-DPI, GNOME/KDE or full U9 claim."
+    ]
+  }
+}

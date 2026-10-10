@@ -1,0 +1,638 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "1ee42f32c61c3d93d88cc1d3dc624d9ad086bb70",
+  "sourceCount": 53,
+  "transformed": true,
+  "gateOriginal": {
+    "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/cinnamon-expansion-gate.json",
+    "sha256": "834071fcf867ac6be7a032a1e2a67228703046776820c854fef820387926fece"
+  },
+  "originalGateFingerprints": [
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/release-identity.json",
+      "sha256": "e24646031b9cebb5a39dcced068f1dc0e67c2ac7574b0d9d5cd1bcfc3d588fda"
+    },
+    {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+      "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332"
+    },
+    {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+      "sha256": "6a7182de8ce00ea405bcf453c36befd53926aa5d4c3149c3a34c483577fca7de"
+    },
+    {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+      "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a"
+    },
+    {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-capture",
+      "sha256": "c177b3dd0b7ab78376899054253eea230979daafa237f8b9f9c99cb811dc01e1"
+    },
+    {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-bench-capture",
+      "sha256": "67f00c7b680bd0e32d8230624610b19c182662de96db00ee429c133a9f4d0f3f"
+    },
+    {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/packaging/linux/putgd-desktop-fixture",
+      "sha256": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+    },
+    {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/libputgd-s3.so",
+      "sha256": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/ready.json",
+      "sha256": "36650810c5741a27e2de002e4d547938b8e09e411ac47e75cb7d554419db2c26"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/packages/putgd_0.1.1~dev.53+g1ee42f32c61c_amd64.deb",
+      "sha256": "6623485f4927a4d495169f84912877e0b84db4917d219443b0599fb5a99f2c82"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/full-dev/result.json",
+      "sha256": "9a1d697838fce9efd9338fc11b512ce7e5e0d35a3319b004b1d4551e0ca4b446"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/full-dev.xml",
+      "sha256": "0e2801db2b259ef3f7e954bbd1a6a89ca1e460c903d4a048e7cc076e0357ec14"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/asan-focused/result.json",
+      "sha256": "fa784a9517ae526287ec7e5a3c627f955b778f4bd815efbb0d89eb0c5b51bf26"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/asan-focused.xml",
+      "sha256": "0e439221bd1e80ef35317f284df557da2d750f91382b7bfdc737025cabd62ee4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/functional.json",
+      "sha256": "3ae21bc7d50f40b774c2b5854e51954b09394b7c20686d49ae2c1013d5a0bd17"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/source.json",
+      "sha256": "73abcb7a99217f6da9dd71d2b3d0d77050f61d9449431d136be5ac068cd975d8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/host/build.json",
+      "sha256": "9bc6c82cca454d2563f52dcc45eb156f215d533bceb37cf65a21bcbdc3311a1d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/installed.json",
+      "sha256": "4f4301d20b0569238d4a86b5ac088b49d1b4234b4e97965f9dd0c35776eefa02"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/start.json",
+      "sha256": "afc36cc3c67cadde700bd4f8203e9e819b70fe620954414cf1080b426d8ee4a9"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/matrix.json",
+      "sha256": "cd21f38d7c552976a12497b0166988abaf4f6d942ec4cdc2dc06b7737cfa7009"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/clipboard-operation.json",
+      "sha256": "9cdb7bb09dc25e4727b82d3e5e6e823801ea8a79a9349b40d4e8a65467ec1736"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/native-visual-review.json",
+      "sha256": "72cc2b08018c99421ec878e24148c999bbcf14ae129d9f709ebb66d7a3cf6052"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/root-live-visual-review.json",
+      "sha256": "3ec2531d13a34b2018451d774f23a4056763deac705fe05785974ef6820ea855"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-1/paste-scp.json",
+      "sha256": "fafcf7ef971cc08b7a897cd4313fd3b1ec699a6371b42644fac5b483600750b3"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-1/copy-log-recipe.json",
+      "sha256": "03e2393d412b47e7409a9be98fad1a449ef693585762d891dd0593474d1fc6ee"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-2/paste-scp.json",
+      "sha256": "5e9c9295d1cec51c7a4d28c7cefe985140ee581f5089d9ce274051240563620d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-2/copy-log-recipe.json",
+      "sha256": "0c858ced89c78e3e8ee4edbfc5959a0de97135d1ec794a7ce0c8e9e07e436965"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-3/paste-scp.json",
+      "sha256": "9ffe25e24340a249c60b69fc717398a1facb738bbb7314e4a6ce1c1b928c8c22"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-3/copy-log-recipe.json",
+      "sha256": "9b97d11a1f595faa9c3a35f9e4f875c58dce87a2d8cb14b3becab07be96aa35b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-4/paste-scp.json",
+      "sha256": "16f8522f81c2128f18ab017af8be5b41a00d76725ee2bed561fd8ba36d5c79b1"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-4/copy-log-recipe.json",
+      "sha256": "a4d31554c5e493ed946f33579d2fcd9fb92d797a217b119458e90a114c128f2f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-5/paste-scp.json",
+      "sha256": "99ae5443a6cac888db2606cd0405c7889751b4ae5de9accca58803ca98585cb8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-5/copy-log-recipe.json",
+      "sha256": "e35047b0004f0f8d959867c0c479fe9892e96bc16c83e0ce71a3b3812b892386"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-6/paste-scp.json",
+      "sha256": "5c974126c6432784373ef13e8d5fc8ba2a9417d111ff4979364d8832e8867a53"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-6/copy-log-recipe.json",
+      "sha256": "ac5fca958ecf9b1d3c853102a9e43fc05e0e9fa1862690d2914146319933df1f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-7/paste-scp.json",
+      "sha256": "adbf463ba3048205bbafb7dd78ada4e7b45a7617fb3d1826b605c1f16c24730c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-7/copy-log-recipe.json",
+      "sha256": "9be98a417fa1c7ddafee3cfbde21a18e45c980945ad30588baa3dd4f817ca31c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-8/paste-scp.json",
+      "sha256": "94b3b325ec15c95986eb1845e2622aca93384d343aa450715241d79e75d2c8c4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-8/copy-log-recipe.json",
+      "sha256": "c2efd6dbc5b9e92ffccf2b6e8770d0761eefafc47a7c21119b8e0892e26b961b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-9/paste-scp.json",
+      "sha256": "f22a0c60ad75fed03152444c2e5ad58c00a02e956a1b4894fb780fd35b4e0d75"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-9/copy-log-recipe.json",
+      "sha256": "78e3e590bb0816f91559a85389263ec8f83b2efb34c9a268b900e87ae0835393"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-10/paste-scp.json",
+      "sha256": "4d55f31b3dab02fbb859ebd508f1ab32bf9e6910280d48fc848f204c90d435da"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-10/copy-log-recipe.json",
+      "sha256": "0a283dc3b8baad99a8c9a4c3bb1e555d27519637fc9934134517e017c24b1253"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-11/paste-scp.json",
+      "sha256": "8c94f97dab7de7aa5106e5703700ab78e6de2594e2a617c62d2e3d2c28351489"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-11/copy-log-recipe.json",
+      "sha256": "778a66328aef73acfde0eace4824e08044ecb96df2ea7fe369ac68994887aee6"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-12/paste-scp.json",
+      "sha256": "5a7eb284650bda4e0f1f275b0a4a2084f9dc217355bfff6f72df22ee7d35a1e6"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T221018607998-12/copy-log-recipe.json",
+      "sha256": "145af9055cd092baf4d945015e8409eafc930f8b7ddfec0b632007059a2a00a8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221018607998-matrix-copy-log/complete.json",
+      "sha256": "3cdc01bf3c4c4b142c642f0407e31b5de23b81a6b3d896b07ed3502a15336a48"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221237138699-drain-fixtures/fixtures-drained.json",
+      "sha256": "f36026a9271ec1142df7b9715366a023e66ecae72d7b62a3732642f5920d8bd3"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221343009688-native-font-integration/font-integration.json",
+      "sha256": "9a52eb353a22104abf563b4792e7e7686d81f1a4f214869f03d5bfd7c0c0c674"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221405633082-live-region/results.json",
+      "sha256": "0793c67d9329cc9aababc5e7f0382aa2de1dd41ba03923d8215fc34847840c8a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221905805015-standalone-drain/drained.json",
+      "sha256": "3ca61ad815dfd648248a60d65a8f0387f45c9efb4bc21fa934edca3b98ad8843"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221911502620-final-quiet/quiet.json",
+      "sha256": "aff2ed1faa925c86bf97c8c8f46d29d02f6d8a20574fcb682e2fff0c83943c5a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221709729037-fixture/activity-result-copy.json",
+      "sha256": "241964eff305239a10c156a7a4eec782e58be91413c2366e24495e62eb60ae32"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221845162782-fixture/activity-result-copy.json",
+      "sha256": "3e8de4bdeb158eb69f9603a30bbc267cddac9a2b417a628e3b95ce28f8c65e1d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221629861341-clipboard-poison-parent/poisoned.json",
+      "sha256": "8c2a04ac774b7113d55132ee6b7cf5a76effd8e98de35bb942eb7d8b2761269e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221730230344-clipboard-poison-child/poisoned.json",
+      "sha256": "466f237471ed2e627b56661b4fc61c641fe5fff28fa62d4b5d8f8b5f46371528"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221007767832-close/closed.json",
+      "sha256": "98a1c21f05d95fcc0e8c7926a4927b71eae37ac342bf0aa4d64dab366c3019ee"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221357905590-close/closed.json",
+      "sha256": "ce99454bbec07026cb24a9851eca8b0167206871940027f6c4871f1c33249fd3"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221506232843-close/closed.json",
+      "sha256": "90fb6eea39345ba86ac048cf94a5de0e99665f4395ceb8b3c249d22ab175dcbf"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221900264092-close/closed.json",
+      "sha256": "a467c2cd250735823e681f2ae820fa26c8e0e6f4b4c83dac0b3605014188cd78"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221538962094-settled-copy/settled.json",
+      "sha256": "34f0d7f7c7dc5409e7bf3033fbca7f0a561738f17006b789ade0aa3e0b8a6e14"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221649191366-settled-copy/settled.json",
+      "sha256": "34f0d7f7c7dc5409e7bf3033fbca7f0a561738f17006b789ade0aa3e0b8a6e14"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/attempts/20261009T221831448092-settled-copy/settled.json",
+      "sha256": "34f0d7f7c7dc5409e7bf3033fbca7f0a561738f17006b789ade0aa3e0b8a6e14"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/cinnamon/native-recipe-manifest.json",
+      "sha256": "fa6b9466bb46fe458cc950c45e11362917952cd2d2671408aed736baf3f1bc5e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-clean53/source.tar",
+      "sha256": "a35fdc7c6b110a43e1d31441aef64d4b44502cf4b8a89bcf45417e185f0d90e5"
+    },
+    {
+      "path": "/tmp/pg53-cap1/results.json",
+      "sha256": "f3d58d28ec9ba2b141d857ee0a0eebbc68723a6b5f7df5b2573ad852915c28ca"
+    },
+    {
+      "path": "/tmp/pg53-cap1/operations.json",
+      "sha256": "baba8d1d7e19e72817a5a63123ecf7789adc1c9576900b16299d17e60e83850f"
+    },
+    {
+      "path": "/tmp/pg53-cap1/parameters.json",
+      "sha256": "88e99a7f785d12c54bf4783499161edf86f861177c38d1b350c1bff687e68535"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/timing-operation-gate.json",
+      "sha256": "53897b9a7b5cfc520ff79e24dc82cdfa92048ba9e71ff227bdab309fc02e8741"
+    },
+    {
+      "path": "/tmp/pg53-family1/results.json",
+      "sha256": "410b9ecb68479391f17ec214b5b7c0346ab76c6e0d2aa95e5c4433c922e2c372"
+    },
+    {
+      "path": "/tmp/pg53-cold1/results.json",
+      "sha256": "79d0f93d7bf318117ef5d10050005ae943ce0ac46f111f246443d1cb4c15d91e"
+    },
+    {
+      "path": "/tmp/pg53-cold1-windows.json",
+      "sha256": "f90d35a5e29111104ccc1a8d0318464815e1bfd8bdba98bfd44515e8cd12954c"
+    },
+    {
+      "path": "/tmp/pg53-views1/results.json",
+      "sha256": "d7b459da45e5343fd8e1ef715743403b8310a48cf846756d78a78cac3a0070d2"
+    },
+    {
+      "path": "/tmp/pg53-vex1/results.json",
+      "sha256": "a5d0f05ab44aa681ce542393018ae3dae197f4a03c5d2602c28259455ce636bb"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-supplement/repeat1/results.json",
+      "sha256": "8b88af3539296778199cfd8fed5339cca8bf045c2fe1680e03fd59e59e43c4b9"
+    },
+    {
+      "path": "/tmp/pg53-family2/results.json",
+      "sha256": "e9e058f3d1f4eb5c775f930e09f6190391320f22218627a44b5a32b10994ce25"
+    },
+    {
+      "path": "/tmp/pg53-cold2/results.json",
+      "sha256": "6960e2d24a065ea74f682c2ed87bb19e5da901ed4023f5d953dc450d2b1ec8cc"
+    },
+    {
+      "path": "/tmp/pg53-cold2-windows.json",
+      "sha256": "e12ef8a29c892d09a543c96868a6226685509e96a5ce8a181832c3b1237dde25"
+    },
+    {
+      "path": "/tmp/pg53-views2/results.json",
+      "sha256": "e4c83d3f3b029722350196ec4df94d06cf7619f8b79c12c0d94eb22e84778017"
+    },
+    {
+      "path": "/tmp/pg53-vex2/results.json",
+      "sha256": "1e98ae4b5eeb286237810ec5245e5d722132c2ce5ff7ba7c8109fb6f1f72628d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-supplement/repeat2/results.json",
+      "sha256": "8f7f84e271dab20c7a970c548de89d0b86f56c0372672ddc93dd63831308dfc0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/timing/result.json",
+      "sha256": "6065bdba054fea39ceb6e9537fab9badc98ceb3536f98e5b3faefa67ec2643cb"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/timing/command.json",
+      "sha256": "d43fe084af2a3befcdc089d9e42490a00f95ba85fc3b4b0a2d14420cc82d1466"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/cold1/result.json",
+      "sha256": "36bb91d7e4579dd1ee8529663c8d178eb98fc14d72f80a58931725c17a00aea0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/cold1/command.json",
+      "sha256": "8fc983adf5d292099a41f12e3b46d89f44be28c2d531bd2e7c0ea915d94cf371"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/views1/result.json",
+      "sha256": "67363060e9f9b791f6b761b36f10df4485149ad797358f8966cc5ae69c48a2bb"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/views1/command.json",
+      "sha256": "df905d3aef4ffd88cb523bef8005f4c5499cf6c7dddb780784df80c25418b0da"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/cold2/result.json",
+      "sha256": "986e5398ec8c7da27ff2504e3d8c36d9f61ec36a43e5cafaa399de26f31ca38e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/cold2/command.json",
+      "sha256": "cabdbe6c226a40ceca20f194a3c8ea4aebba164cc7bf07732e3f4ac14d1dfb96"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/views2/result.json",
+      "sha256": "b4c091cb17e3c6e58f73d16d1bc6c2a4bcdd0704746fce1169c5b04edf5e9a9a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/views2/command.json",
+      "sha256": "7f11d3866a9c0ed2d53e6696aefe2873147e593252ffa85c6f394b5ae4aa700b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/native-gate-root.json",
+      "sha256": "8584567bd90dda21de4f847abfb2d5b09d81bc5e8bfbf78ad5f2212373ffaab5"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-audit.json",
+      "sha256": "8f3d0a494cb6eff42d87746487a374ed48813dba0c15b09ecc0ad41e663ff277"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-supplement/supplemental-review.json",
+      "sha256": "2a262cc66131364834267f85fb3bc254ff3c1c6514b2f4b86ae0faf132696361"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-supplement/contracts.json",
+      "sha256": "535217c7eb50e78715751b06e689e56ca7ea51a5af354d8038e8cc0eeb576ccd"
+    }
+  ],
+  "exports": [
+    {
+      "file": "timing.json",
+      "sha256": "340e12e3bd3882c8300984a663dbd1c485276830f0432426e2ec53c01b7fdb4e",
+      "bytes": 50450,
+      "original": {
+        "path": "/tmp/pg53-cap1/results.json",
+        "sha256": "f3d58d28ec9ba2b141d857ee0a0eebbc68723a6b5f7df5b2573ad852915c28ca"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "timing-parameters.json",
+      "sha256": "ea65fff7fa0a7da7e157ccf2948ab1cb8d1b3514b83ebe0ff620ec042349b047",
+      "bytes": 850,
+      "original": {
+        "path": "/tmp/pg53-cap1/parameters.json",
+        "sha256": "88e99a7f785d12c54bf4783499161edf86f861177c38d1b350c1bff687e68535"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "timing-operations.json",
+      "sha256": "06f01610b56f0b89ac24b2771d8b66c4d1db6f128ec10318922c6be6f84b14f2",
+      "bytes": 4973,
+      "original": {
+        "path": "/tmp/pg53-cap1/operations.json",
+        "sha256": "baba8d1d7e19e72817a5a63123ecf7789adc1c9576900b16299d17e60e83850f"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "cold-1.json",
+      "sha256": "2ce169970668f21c28f1921ee68ce44857620d509f50c30f9e3857f4045b0449",
+      "bytes": 17894,
+      "original": {
+        "path": "/tmp/pg53-cold1/results.json",
+        "sha256": "79d0f93d7bf318117ef5d10050005ae943ce0ac46f111f246443d1cb4c15d91e"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "family-1.json",
+      "sha256": "2aa53c0a5574841d9a565e5ccbc73ea92315cfb3ffde5305206ca95e260ed05a",
+      "bytes": 267280,
+      "original": {
+        "path": "/tmp/pg53-family1/results.json",
+        "sha256": "410b9ecb68479391f17ec214b5b7c0346ab76c6e0d2aa95e5c4433c922e2c372"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "views-original-1.json",
+      "sha256": "6ef570a1cc3ad9d9269f79dac65fc6ee6def238c40fac77d540a8c72f3d35300",
+      "bytes": 23844,
+      "original": {
+        "path": "/tmp/pg53-views1/results.json",
+        "sha256": "d7b459da45e5343fd8e1ef715743403b8310a48cf846756d78a78cac3a0070d2"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "views-original-family-1.json",
+      "sha256": "861e7dd10ed68c33187b03686dccd2c05f3062b81fe3536fe84f0977ca025438",
+      "bytes": 50352,
+      "original": {
+        "path": "/tmp/pg53-views1/samples.jsonl",
+        "sha256": "69f3bdd452f252a51721982704c6cc34df47f70ef7db435a9fe781890bd2887c"
+      },
+      "binding": "additional-numeric-detail"
+    },
+    {
+      "file": "views-supplement-1.json",
+      "sha256": "27ddbc8eaf11f5d5912b37129da8d992dce4dac296e0e5d1d985ca93a6a52cb0",
+      "bytes": 23846,
+      "original": {
+        "path": "/tmp/pg53-vex1/results.json",
+        "sha256": "a5d0f05ab44aa681ce542393018ae3dae197f4a03c5d2602c28259455ce636bb"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "views-supplement-family-1.json",
+      "sha256": "98264deedcfe43a5bdf0361195b018152d904ac831ba4efe3d990c61a11576ab",
+      "bytes": 50351,
+      "original": {
+        "path": "/tmp/pg53-vex1/samples.jsonl",
+        "sha256": "b78ccacd6b5b5dd8af073e07187e79315e7333045faf49262bb142f03e06bca6"
+      },
+      "binding": "additional-numeric-detail"
+    },
+    {
+      "file": "view-exits-1.json",
+      "sha256": "c4be4584ecfa9e17116bede7aec5a0fb8cd26453a90e0612665a02c8b7c2209c",
+      "bytes": 4773,
+      "original": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-supplement/repeat1/results.json",
+        "sha256": "8b88af3539296778199cfd8fed5339cca8bf045c2fe1680e03fd59e59e43c4b9"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "cold-2.json",
+      "sha256": "3537a138a5f4e3b6f967846bcbfc1f388ac66766a08b7c2fb043e83b092326df",
+      "bytes": 17899,
+      "original": {
+        "path": "/tmp/pg53-cold2/results.json",
+        "sha256": "6960e2d24a065ea74f682c2ed87bb19e5da901ed4023f5d953dc450d2b1ec8cc"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "family-2.json",
+      "sha256": "4a4729c461d7d9d6f87e6fe781e9be1311ff887fb07f787de144fb09f0ae159f",
+      "bytes": 266352,
+      "original": {
+        "path": "/tmp/pg53-family2/results.json",
+        "sha256": "e9e058f3d1f4eb5c775f930e09f6190391320f22218627a44b5a32b10994ce25"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "views-original-2.json",
+      "sha256": "1724125e799b84dfaa918ba29e0e1b9dde850e6ca9a2c352fecdca6c2c384c20",
+      "bytes": 23843,
+      "original": {
+        "path": "/tmp/pg53-views2/results.json",
+        "sha256": "e4c83d3f3b029722350196ec4df94d06cf7619f8b79c12c0d94eb22e84778017"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "views-original-family-2.json",
+      "sha256": "cad66539c7976f4d8223430ed096439d964df39a6c5433cd304d4ba99b556e6a",
+      "bytes": 50351,
+      "original": {
+        "path": "/tmp/pg53-views2/samples.jsonl",
+        "sha256": "466d40abf0fca52da73e3bdf5bad4877e3c01d86b1c3d6eaefcd39968e2c0e22"
+      },
+      "binding": "additional-numeric-detail"
+    },
+    {
+      "file": "views-supplement-2.json",
+      "sha256": "f96d36e71b7ada1db8d406d2957cc93c4a1676b28577b737ed56663f6b128892",
+      "bytes": 23842,
+      "original": {
+        "path": "/tmp/pg53-vex2/results.json",
+        "sha256": "1e98ae4b5eeb286237810ec5245e5d722132c2ce5ff7ba7c8109fb6f1f72628d"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "views-supplement-family-2.json",
+      "sha256": "a89bc54c89903936d0f445cb4a9baecf830d45e609d1268128bf66cb7ec3f622",
+      "bytes": 50352,
+      "original": {
+        "path": "/tmp/pg53-vex2/samples.jsonl",
+        "sha256": "bd94440a45fd2dde42b83a2bbf7c51ee5edcc5c3afb71e6d4e131bec7894f085"
+      },
+      "binding": "additional-numeric-detail"
+    },
+    {
+      "file": "view-exits-2.json",
+      "sha256": "fdf908702fabe978177d2b52dbad033ef07cb2e16e5fde6b2e9f0e03962b9731",
+      "bytes": 4776,
+      "original": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-supplement/repeat2/results.json",
+        "sha256": "8f7f84e271dab20c7a970c548de89d0b86f56c0372672ddc93dd63831308dfc0"
+      },
+      "binding": "final-gate-receipt"
+    },
+    {
+      "file": "failed-source51.json",
+      "sha256": "9e7f31209b5bb702e4be12bc450c54242562537e8636dd7f5438a54b38feb4b6",
+      "bytes": 1096,
+      "original": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean51/cold1-failed-checkpoint.json",
+        "sha256": "1991b7cc6ce27212aacb7a7b586cb62fe7bbef5001a58d4bf31df2b6f7280ab9"
+      },
+      "binding": "prior-failed-checkpoint"
+    },
+    {
+      "file": "failed-source51-exit.json",
+      "sha256": "1b446347b8c24830ba062404002426dc304efe14948f20221a85f83b392e9d84",
+      "bytes": 282,
+      "original": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean51/cold1/result.json",
+        "sha256": "b9a9dcbf5c297daa64ddea54d6620c9b382206582a141e273f63be0550d448bc"
+      },
+      "binding": "prior-failed-checkpoint"
+    },
+    {
+      "file": "failed-source52.json",
+      "sha256": "b3585d7617d6ebbed74a8569e44778e6c0a3fad0202565a0662b61dcc0aa2c7f",
+      "bytes": 1198,
+      "original": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean52/cold1-failed-checkpoint.json",
+        "sha256": "a55a7e283f039d8f36b3f70acee6867c03b3088dd422bb4209ab1de9d88bc248"
+      },
+      "binding": "prior-failed-checkpoint"
+    },
+    {
+      "file": "failed-source52-exit.json",
+      "sha256": "1a233f255421c5ded9e8dd38696c2b4ef60def0800024aef78bf72ca49060a84",
+      "bytes": 282,
+      "original": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean52/cold1/result.json",
+        "sha256": "1433078bbfd2e46e20c85d772c4554a9beb795013d870bf648cbb2ca7937517c"
+      },
+      "binding": "prior-failed-checkpoint"
+    },
+    {
+      "file": "gate-summary.json",
+      "sha256": "aca6850f702443bd90966de658a38ee9133250c264199852642e986fcaa2a4da",
+      "bytes": 3555,
+      "original": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/cinnamon-expansion-gate.json",
+        "sha256": "834071fcf867ac6be7a032a1e2a67228703046776820c854fef820387926fece"
+      },
+      "binding": "final-gate-receipt"
+    }
+  ],
+  "qualifiers": [
+    "Original view runs retain only normal-zero generations 1 and 2; generation 3 status is missing.",
+    "Separate unchanged-workload supplements add three read-only queries per repeat and their own timing noise.",
+    "No source54, GNOME/KDE, post-upload/populated-history, permanent plateau, mixed-DPI or full U9 certification.",
+    "Transformed numeric exports omit raw config, paths/mappings, payloads, logs, source/binary bytes, argv and environment."
+  ],
+  "tools": [
+    {
+      "file": "tools/export.py",
+      "sha256": "a13e10cd38132e6cb1de6ba52acb0e54745b038ac8cd35135e06459a3ffca524"
+    },
+    {
+      "file": "tools/verify.py",
+      "sha256": "163defab5ea27544a70ed19db96c6068a814dfc578714ce168ed916db17c134e"
+    },
+    {
+      "file": "tools/test_verify.py",
+      "sha256": "62e0e7c3518baa11c776bf8338d090770c661be63ba7196bdc41a4d2962ea903"
+    }
+  ]
+}

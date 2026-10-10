@@ -1,0 +1,24 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/home/patrick/work/put.gd/work/capture-parity/clean51/cold1-failed-checkpoint.json",
+    "sha256": "1991b7cc6ce27212aacb7a7b586cb62fe7bbef5001a58d4bf31df2b6f7280ab9"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "primaryDurationSeconds": 300.14719235902885,
+    "primaryPeakRssMiB": 24.88671875,
+    "primaryCpuPercentOneCore": 0.00666339732942645,
+    "residentSampleCount": 283,
+    "observedResidentDescendants": 0,
+    "wholeFamilyAcceptance": false,
+    "primaryLegacyBudgetPassed": true,
+    "sourceCommit": "09097adb457534fb148b81bc4f871480016ad60b",
+    "errorType": "FileNotFoundError",
+    "familySha256": "fd2c8de91e3c1b73264cf83c2b0be564f61748c098449d3427b37bd757e733a3",
+    "primarySha256": "6e902dda46d0ac510ad6b04af50a5ab8ea8911ca35ceb2141153ddf6cc6de549",
+    "sidecarSha256": "f817fc2e29d5cfbd48d5d514fba8fc9964b057a3b0ce5fa49ce349cba6b478e3",
+    "acceptanceQualifier": "Invalid collector attempt; low sampled RSS is not target proof. Diagnosis is not exact original-call attribution."
+  }
+}

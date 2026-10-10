@@ -1,0 +1,22 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/tmp/pg53-cap1/parameters.json",
+    "sha256": "88e99a7f785d12c54bf4783499161edf86f861177c38d1b350c1bff687e68535"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "warmupInvocations": 5,
+    "sampleCount": 30,
+    "timeoutSeconds": 240,
+    "harnessSha256": "caf58fd076ce0c46835753739055bbda2ee3c2cfd1b0ce2822290f8b2783fb94",
+    "binarySha256": {
+      "app": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+      "cli": "6a7182de8ce00ea405bcf453c36befd53926aa5d4c3149c3a34c483577fca7de",
+      "driver": "67f00c7b680bd0e32d8230624610b19c182662de96db00ee429c133a9f4d0f3f",
+      "captureHelper": "c177b3dd0b7ab78376899054253eea230979daafa237f8b9f9c99cb811dc01e1"
+    },
+    "captureHelperVersion": "putgd-capture 0.1.1-dev.53+g1ee42f32c61c"
+  }
+}
