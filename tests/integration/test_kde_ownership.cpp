@@ -1,5 +1,6 @@
 #include "platform/kde/KdeSourceAdapter.h"
 #include "platform/kde/KdeClipboardFormats.h"
+#include "platform/kde/KdeCaptureCompose.h"
 #include "core/ImageFormat.h"
 #include <QtTest>
 #include <QDBusConnection>
@@ -238,6 +239,35 @@ private slots:
    if(mode==5)altered.logical.moveLeft(1000001);
    outputs.append(altered);if(mode==6)outputs.append(valid);
    QString error;QVERIFY(KdeOutputs::framesFromMetadata(outputs,&error).isEmpty());QVERIFY(!error.isEmpty());
+  }
+ }
+ void fullOutputCompositionSharesImmutablePixels(){
+  CaptureFrame frame;frame.identity="DP-1";frame.logicalRect=QRectF(-10.25,5.5,64,32);
+  frame.nativeRect=QRect(-20,11,128,64);frame.density=2;frame.rotation=1;
+  frame.pixels=QImage(128,64,QImage::Format_ARGB32);frame.pixels.fill(Qt::red);frame.pixels.setDevicePixelRatio(2);
+  Error error;auto result=composeKdeFrames({frame},frame.logicalRect,128*64,error);
+  QVERIFY(!error);QCOMPARE(result.constBits(),frame.pixels.constBits());
+  QCOMPARE(result.devicePixelRatio(),qreal(2));QCOMPARE(result.pixelColor(30,20),QColor(Qt::red));
+  frame.pixels.fill(Qt::blue);QCOMPARE(result.pixelColor(30,20),QColor(Qt::red));
+  QCOMPARE(frame.pixels.pixelColor(30,20),QColor(Qt::blue));
+ }
+ void fullOutputOptimizationPreservesGeometryAndBudgetFailures(){
+  CaptureFrame frame;frame.identity="DP-1";frame.logicalRect=QRectF(0,0,64,32);
+  frame.nativeRect=QRect(0,0,64,32);frame.pixels=QImage(64,32,QImage::Format_ARGB32);frame.pixels.fill(Qt::green);
+  for(int variant=0;variant<8;++variant){
+   auto candidate=frame;auto selection=frame.logicalRect;auto budget=qint64(64*32);
+   if(variant==0)--budget;
+   if(variant==1)candidate.identity.clear();
+   if(variant==2)candidate.density=0;
+   if(variant==3)candidate.nativeRect.setWidth(63);
+   if(variant==4)selection.setWidth(32);
+   if(variant==5)selection.setWidth(70);
+   if(variant==6){candidate.logicalRect.moveLeft(-10.25);selection=candidate.logicalRect;candidate.logicalRect.setWidth(42.7);selection=candidate.logicalRect;}
+   if(variant==7)candidate.pixels={};
+   Error expectedError,actualError;
+   const auto expected=composeFrames({candidate},selection,budget,expectedError);
+   const auto actual=composeKdeFrames({candidate},selection,budget,actualError);
+   QCOMPARE(actualError.code,expectedError.code);QCOMPARE(actual.size(),expected.size());QCOMPARE(actual,expected);
   }
  }
  void pngSignatureHintUsesActualBytes(){

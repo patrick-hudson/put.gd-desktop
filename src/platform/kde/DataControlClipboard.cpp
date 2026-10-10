@@ -2,6 +2,7 @@
 #include "KWinTransfer.h"
 #include "KdeClipboardFormats.h"
 #include "core/ImageFormat.h"
+#include "core/ImageJob.h"
 #include "platform/NativeSession.h"
 #include <QCoreApplication>
 #include "ext-data-control-v1-client-protocol.h"
@@ -47,7 +48,7 @@ struct DataControlClipboard::Impl:QObject {
  QString error="Native Wayland data control has not connected";QHash<ext_data_control_offer_v1*,QStringList> offers;ext_data_control_offer_v1* selection=nullptr;
  struct Source {Impl* owner;ext_data_control_source_v1* native;QHash<QString,QByteArray> data;QString token;};QHash<ext_data_control_source_v1*,Source*> sources;
  std::function<void(Error)> copyReply;QString copyToken;wl_callback* copyFence=nullptr;QHash<QString,QByteArray> pendingCopyData;bool copyCommitted=false;quint64 copyEpoch=0,copyRevision=0,pendingCopyEpoch=0;
- struct Import {ResourceLimits limits;std::function<void(PayloadResult)> reply;quint64 revision;QStringList formats;QString mime;};QQueue<std::shared_ptr<Import>> pending;std::shared_ptr<Import> active;QPointer<AsyncFdReader> reader;QList<QThread*> workers;
+ struct Import {ResourceLimits limits;std::function<void(PayloadResult)> reply;quint64 revision;QStringList formats;QString mime;ImageJob::Cancel cancelled=std::make_shared<std::atomic_bool>(false);};QQueue<std::shared_ptr<Import>> pending;std::shared_ptr<Import> active;QPointer<AsyncFdReader> reader;QList<QThread*> workers;
  explicit Impl(DataControlClipboard& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});copyTimer.setSingleShot(true);connect(&copyTimer,&QTimer::timeout,this,[this]{finishCopy({"clipboard_copy_failed","Data-control ownership acknowledgement timed out",{}});});const bool graphical=qobject_cast<QGuiApplication*>(QCoreApplication::instance())!=nullptr;const bool allowed=graphical?QGuiApplication::platformName().startsWith("wayland"):kdeCoreSessionEnvironment();if(allowed){open();reconnect.start();}else error="A native KDE Wayland Core session or Qt Wayland platform is required";}
  ~Impl() override{closing=true;reconnect.stop();cancel();finishCopy({"cancelled","Clipboard adapter closed",{}});for(auto* worker:workers){worker->wait();delete worker;}reset();}
  bool available()const{return display&&manager&&seat&&device&&selectionReady;}
@@ -95,10 +96,29 @@ struct DataControlClipboard::Impl:QObject {
   if(pending.size()+(active||!workers.isEmpty()?1:0)>=qint64(limits.pendingOperations)+limits.concurrentUploads){cb(failure("queue_full","Clipboard acquisition queue reached resource limits"));return;}
   auto request=std::make_shared<Import>();request->limits=limits;request->reply=std::move(cb);request->revision=expected;pending.enqueue(request);pump();
  }
- void pump(){if(closing||active||!workers.isEmpty()||pending.isEmpty())return;active=pending.dequeue();events();if(!available()){complete(failure("clipboard_unavailable","Data-control clipboard is unavailable"));return;}if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed after invocation; invoke sharing again"));return;}
+ void pump(){if(closing||active||!workers.isEmpty()||pending.isEmpty())return;active=pending.dequeue();
+  const auto dispatchedRequest=active;const auto dispatchedGeneration=generation;QPointer<Impl> self(this);
+  events();if(!self||active!=dispatchedRequest||generation!=dispatchedGeneration)return;
+  if(!available()){complete(failure("clipboard_unavailable","Data-control clipboard is unavailable"));return;}if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed after invocation; invoke sharing again"));return;}
   if(!selection){complete(failure("source_unsupported","Clipboard has no owner"));return;}
-  active->formats=kdeClipboardImportFormats(offers.value(selection),[]{return QImageReader::supportedMimeTypes();});
-  nextFormat();
+  const auto offered=offers.value(selection);bool needsDiscovery=false;
+  active->formats=kdeClipboardImportFormats(offered,[&]{needsDiscovery=true;return QList<QByteArray>{};});
+  if(!needsDiscovery){nextFormat();return;}
+  // Unknown plugin aliases keep their original priority without instantiating
+  // image codecs in the Core resident or blocking its Wayland event loop.
+  const auto currentGeneration=generation;const auto request=active;const auto cancelled=request->cancelled;
+  auto types=std::make_shared<QList<QByteArray>>();auto error=std::make_shared<Error>();
+  auto* worker=QThread::create([types,error,cancelled]{*types=ImageJob().discover(*error,cancelled);});
+  workers.append(worker);connect(worker,&QThread::finished,this,[this,worker,types,error,offered,currentGeneration,request]{
+   workers.removeOne(worker);worker->deleteLater();
+   if(currentGeneration!=generation||active!=request){pump();return;}
+   QPointer<Impl> self(this);events();if(!self)return;
+   // Dispatch may finish the old request and synchronously enqueue a new one.
+   if(currentGeneration!=generation||active!=request)return;
+   if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed during image format discovery"));return;}
+   if(*error){complete({{},*error});return;}
+   active->formats=kdeClipboardImportFormats(offered,[&]{return *types;});nextFormat();
+  });worker->start();
  }
  void nextFormat(){if(!active)return;if(active->formats.isEmpty()){complete(failure("source_unsupported","Clipboard offers no supported local files, image, or text"));return;}if(!selection||active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed before import"));return;}
   active->mime=active->formats.takeFirst();int pipes[2];if(pipe2(pipes,O_NONBLOCK|O_CLOEXEC)<0){complete(failure("transfer_fd","Cannot create a clipboard transfer pipe"));return;}auto* transfer=new AsyncFdReader(this);reader=transfer;const auto mime=active->mime;const auto limits=active->limits;const auto currentGeneration=generation;
@@ -106,14 +126,24 @@ struct DataControlClipboard::Impl:QObject {
   ext_data_control_offer_v1_receive(selection,mime.toUtf8().constData(),pipes[1]);close(pipes[1]);flush();
  }
  void decode(QByteArray bytes,QString mime,ResourceLimits limits,quint64 currentGeneration){
-  auto result=std::make_shared<PayloadResult>();auto noLocal=std::make_shared<bool>(false);auto* worker=QThread::create([bytes=std::move(bytes),mime,limits,result,noLocal]{QMimeData data;
+  auto result=std::make_shared<PayloadResult>();auto noLocal=std::make_shared<bool>(false);const auto request=active;const auto cancelled=request->cancelled;auto* worker=QThread::create([bytes=std::move(bytes),mime,limits,result,noLocal,cancelled]{QMimeData data;
    if(mime=="text/uri-list"){QList<QUrl> urls;for(auto line:bytes.split('\n')){line=line.trimmed();if(!line.isEmpty()&&!line.startsWith('#'))urls.append(QUrl::fromEncoded(line));}*noLocal=true;for(const auto& url:urls)if(url.isLocalFile())*noLocal=false;data.setUrls(urls);}
-   else if(mime.startsWith("image/")){QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,imageFormatHint(bytes));const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}auto image=reader.read();if(image.isNull()){*result=failure("source_unsupported","Clipboard image could not be decoded");return;}data.setImageData(image);}
+   else if(mime.startsWith("image/")){
+    QImage image;
+    if(imageFormatHint(bytes)=="png"){
+     QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");
+     const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}
+     image=reader.read();if(image.isNull()){*result=failure("source_unsupported","Clipboard image could not be decoded");return;}
+    }else{
+     Error error;image=ImageJob().decode(bytes,limits,error,cancelled);if(error){*result={{},error};return;}
+    }
+    data.setImageData(image);
+   }
    else data.setText(QString::fromUtf8(bytes));
    *result=ClipboardPayload::fromMime(data,limits);
-  });workers.append(worker);connect(worker,&QThread::finished,this,[this,worker,result,noLocal,currentGeneration]{workers.removeOne(worker);worker->deleteLater();if(currentGeneration!=generation||!active){pump();return;}events();if(!active)return;if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed during decoding"));return;}if(*noLocal&&!active->formats.isEmpty()){nextFormat();return;}complete(std::move(*result));});worker->start();
+  });workers.append(worker);connect(worker,&QThread::finished,this,[this,worker,result,noLocal,currentGeneration,request]{workers.removeOne(worker);worker->deleteLater();if(currentGeneration!=generation||active!=request){pump();return;}QPointer<Impl> self(this);events();if(!self)return;if(currentGeneration!=generation||active!=request)return;if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed during decoding"));return;}if(*noLocal&&!active->formats.isEmpty()){nextFormat();return;}complete(std::move(*result));});worker->start();
  }
- void complete(PayloadResult result){++generation;auto request=std::move(active);active.reset();if(reader){auto* transfer=reader.data();reader=nullptr;transfer->cancel();transfer->deleteLater();}QPointer<Impl> self(this);if(request&&request->reply){auto cb=std::move(request->reply);cb(std::move(result));}if(self)QTimer::singleShot(0,this,[this]{pump();});}
+ void complete(PayloadResult result){++generation;auto request=std::move(active);active.reset();if(request)request->cancelled->store(true);if(reader){auto* transfer=reader.data();reader=nullptr;transfer->cancel();transfer->deleteLater();}QPointer<Impl> self(this);if(request&&request->reply){auto cb=std::move(request->reply);cb(std::move(result));}if(self)QTimer::singleShot(0,this,[this]{pump();});}
  void cancel(){++generation;auto queued=std::move(pending);pending.clear();if(active)complete(failure("cancelled","Clipboard acquisition cancelled"));for(auto& request:queued)request->reply(failure("cancelled","Clipboard acquisition cancelled"));}
  void finishCopy(Error e){copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb)cb(std::move(e));}
  void invalidateCopy(){++copyEpoch;if(copyReply&&!copyCommitted)finishCopy({"copy_suppressed","A newer sharing invocation superseded this unsent native result copy",{}});}

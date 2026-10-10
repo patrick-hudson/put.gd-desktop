@@ -1,4 +1,5 @@
 #include "UiApplicationController.h"
+#include "ImageJob.h"
 #include "StdioDevice.h"
 #include "ViewState.h"
 #include "VisualStyle.h"
@@ -18,6 +19,10 @@ int main(int argc,char** argv){
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());
  app.setDesktopFileName("putgd-ui");app.setQuitOnLastWindowClosed(false);
+ if(argc==2&&std::strcmp(argv[1],"--image-job")==0){
+  putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;
+  return putgd::runImageJob(app,pipes);
+ }
  putgd::VisualStyle::apply(app);app.setWindowIcon(putgd::VisualStyle::icon("brand"));
  putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;
  putgd::UiControl control(pipes);

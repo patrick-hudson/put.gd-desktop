@@ -9,6 +9,7 @@
 #include <QMimeDatabase>
 #include <QImageReader>
 #include "ImageFormat.h"
+#include "ImageJob.h"
 #include <QRegularExpression>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -39,10 +40,24 @@ QString ArtifactStore::preview(const Artifact& artifact,qint64 budget,qint64 max
  // UUID spool files have no suffix. Hint only a signature-proven PNG; keep
  // content detection for other formats, including inaccurate MIME metadata.
  QFile input(artifact.path);if(!input.open(QIODevice::ReadOnly))return {};
- QImageReader reader(&input,imageFormatHint(input.peek(8)));const auto size=reader.size();
- if(!size.isValid()||qint64(size.width())*size.height()>maxPixels)return {};
- reader.setScaledSize(size.scaled(256,256,Qt::KeepAspectRatio));auto image=reader.read();if(image.isNull())return {};
- image=image.scaled(256,256,Qt::KeepAspectRatio,Qt::SmoothTransformation);QByteArray png;QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);if(!image.save(&buffer,"PNG")||png.size()>budget)return {};
+ QByteArray png;
+#ifdef Q_OS_UNIX
+ const bool useWorker=imageFormatHint(input.peek(8))!="png";
+#else
+ // Non-Unix residents retain GUI initialization and their existing codec path.
+ const bool useWorker=false;
+#endif
+ if(!useWorker){
+  QImageReader reader(&input,imageFormatHint(input.peek(8)));const auto size=reader.size();
+  if(!size.isValid()||qint64(size.width())*size.height()>maxPixels)return {};
+  reader.setScaledSize(size.scaled(256,256,Qt::KeepAspectRatio));auto image=reader.read();if(image.isNull())return {};
+  image=image.scaled(256,256,Qt::KeepAspectRatio,Qt::SmoothTransformation);QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);if(!image.save(&buffer,"PNG")||png.size()>budget)return {};
+ }else{
+  // Generic codecs may render text (SVG), which requires GUI font services.
+  // The transient job preserves content sniffing without adding those services
+  // or plugin caches to a Core resident. Retained upload bytes are unchanged.
+  input.close();Error error;png=ImageJob().preview(artifact.path,maxPixels,budget,error);if(error||png.isEmpty())return {};
+ }
  QDir cache(root_+"/../previews");if(!QDir().mkpath(cache.path()))return {};QFile::setPermissions(cache.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  qint64 used=0;const auto files=cache.entryInfoList(QDir::Files,QDir::Time|QDir::Reversed);for(const auto& file:files)if(file.suffix()=="png"&&!QUuid(file.completeBaseName()).isNull())used+=file.size();
  for(const auto& file:files)if(used+png.size()>budget&&file.suffix()=="png"&&!QUuid(file.completeBaseName()).isNull()) {if(QFile::remove(file.absoluteFilePath()))used-=file.size();}
