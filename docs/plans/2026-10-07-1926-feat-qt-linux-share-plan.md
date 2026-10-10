@@ -1185,3 +1185,50 @@ Details column elides size/status text. Refine that presentation with readable
 column allocation or an accessible selected-item detail view, preserving the
 MiB/GiB display and full tooltip explanations. Clean painting and native helper
 lifecycle checks establish functionality, not completed visual design.
+
+### Independent desktop memory acceptance (2026-10-09)
+
+User-directed: retain the passing Cinnamon memory changes if GNOME or KDE misses
+its memory target. Treat each desktop's measurements and remaining work
+separately; a Wayland memory miss does not trigger a Cinnamon rollback. Improve
+GNOME first, then KDE, while preserving the passing Cinnamon behavior and
+measurements. Feature regressions still require correction before that desktop
+can be accepted. Keep cold, post-view, post-capture and post-upload workloads
+distinct, and record each build identity and whole-family RSS/PSS/private memory.
+Do not promote a Cinnamon result into GNOME or KDE acceptance.
+
+The approved GNOME experiment changes only GNOME startup routing and its bridge
+constructor, preserving Cinnamon's environment guard and capture implementation.
+Rebuild and test Cinnamon to detect shared-startup regressions; do not refactor
+its implementation while optimizing GNOME. The verified source55 GNOME
+post-local-native baseline is 65.527 MiB peak RSS, 38.920 MiB PSS and 35.348 MiB
+private over 61 samples/300 seconds. This is a populated VM observation, with
+remote-history acceptance pending; it establishes neither cold nor full-parity
+acceptance. The experiment retains native on-demand settings/history fonts and
+folder dialogs and tests the existing native tray on GNOME.
+
+Candidate `578f6c29` (version `0.1.1-dev.56`) passed the unchanged Cinnamon
+regression workload: twelve native cases, 117.6 ms region-selection p95,
+24.6 MiB cold peak RSS over 300 seconds, and 25.1 MiB worst settled RSS after
+closing views. Native dialogs/fonts and transparent live region selection were
+verified; all three view-helper generations exited normally. This one-pair
+regression confirms preservation of the already passing Cinnamon implementation.
+GNOME memory is still unmeasured, and review found a GNOME Qt-argument routing
+regression that must be corrected before retaining its candidate. See the
+[bounded regression record](../evidence/2026-10-10-gnome-candidate-cinnamon-regression.json).
+
+Live S3 provider testing now passes against the isolated synthetic root object:
+upload, unsigned public URL byte comparison and guarded deletion succeeded.
+Ordinary fresh root-name HEAD returns missing as required for collision checks.
+The actual source55 Cinnamon resident also uploaded one native synthetic text
+item, passed unsigned public-byte verification, and copied its actual URL into
+the independent native receiver. The operation and History receipt identities
+match. Actual History Copy link also passes after a verified clipboard reset;
+the selected test object was guardedly removed, its History entry shows Removed,
+and the original configuration was restored. The view helper exited normally
+and the owned test fixture was stopped. A single post-cloud diagnostic measured
+49.14 MiB RSS; this is not the frozen memory acceptance workload, and post-upload
+memory remains an open gate. The test resident then exited normally, with its
+exact process generation and session socket absent. Credentials remained local
+and session-only throughout; no memory-zeroization claim is made. Follow
+[the repeatable live S3 procedure](../testing-live-s3.md) with fresh synthetic IDs.

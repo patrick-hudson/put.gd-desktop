@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "observedUtc": "2026-10-10T04:22:07.330296+00:00",
+  "source": {
+    "commit": "033b73fb58a38f853bd79b1902d88117e723a122",
+    "count": 55,
+    "version": "0.1.1-dev.55+g033b73fb58a3"
+  },
+  "desktop": "Cinnamon X11 disposable VM",
+  "scope": "one real production resident S3 clipboard workflow; not full desktop acceptance",
+  "workflow": {
+    "upload": true,
+    "unsignedPublicBytes": true,
+    "nativeAutomaticUrlPaste": true,
+    "nativeHistoryButtonPasteAfterClipboardReset": true,
+    "guardedOwnOriginDeletion": true,
+    "historyRetainedAsRemoved": true,
+    "originalConfigurationRestored": true,
+    "normalUiExit": true,
+    "ownedFixtureCleaned": true,
+    "normalResidentExitAfterRestoration": true
+  },
+  "operationId": "b8c5f393-b3e6-4460-9555-c58ea6c5d106",
+  "historyId": "82fb0006-e31b-40bc-985e-4ddf934595ac",
+  "publicationId": "ce29a332-2eee-4829-a19c-6cca1d950976",
+  "deleteOperationId": "38c44e0e-02cb-4181-8995-75397568ed8c",
+  "syntheticBytes": 30,
+  "deletedObjectKey": "putgd-live-source55-cinnamon-82fb0006-e31b-40bc-985e-4ddf934595ac.txt",
+  "postCloudDiagnostic": {
+    "sampleCount": 1,
+    "familyRssBytes": 51523584,
+    "familyPssBytes": 34400256,
+    "familyPrivateBytes": 32526336,
+    "cold": false,
+    "memoryAcceptance": false,
+    "sessionCredentialsResident": true
+  },
+  "receiptSha256": {
+    "history-button-proof.json": "af6a84c17cd12f8d5d531ceb63e6da4e342a2b3ed071039b84c81dc2058032ee",
+    "actual-history-button-summary.json": "5509571f6b441c1c814f780d91096ad3ee4192bf9c9793408426a892ecfbdbae",
+    "owned-cleanup-restoration.json": "5a7ad872d50a7b2aae1621b92b56f08f5f38785fa36a54a9acecca9690519b20",
+    "post-cloud-memory-diagnostic.json": "baa9ca2eaa5c1ef8195138ba5958076eea6a249abc4f10b5e96e5ebb634abce3",
+    "normal-resident-quit.json": "6f7da9d47f7160acaa5bda6e5605d34e7dae8f879e2a9f9daa576c750a210ff3"
+  },
+  "limitations": [
+    "No browser or CDN cache invalidation tested",
+    "No frozen post-cloud memory acceptance",
+    "No GNOME or KDE cloud acceptance inferred",
+    "The credential-bearing resident exited normally; no memory-zeroization claim"
+  ],
+  "reproduction": "Follow docs/testing-live-s3.md with fresh owned synthetic IDs and exact deletion acknowledgement; never replay historical deletion IDs."
+}
