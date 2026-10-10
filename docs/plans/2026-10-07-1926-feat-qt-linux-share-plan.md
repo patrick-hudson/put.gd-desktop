@@ -1272,8 +1272,14 @@ actually selected the Core route. Its initial 26.72 MiB RSS snapshot is not
 memory acceptance. Its current-version local-native capture/clipboard, tray,
 notification, native dialog, live selector, Activity and normal-exit gates passed.
 Both 300-second post-use runs passed at 32.77 MiB peak RSS, with worst CPU
-0.0334% of one core. Retaining source57 still requires the fresh cold run;
-remote History link-copy remains pending.
+0.0334% of one core. The user-approved 30-minute extension completed the fresh
+empty-profile cold confirmation at 26.95 MiB peak RSS and 0.0067% of one core,
+with 61 valid samples over 300.000 seconds. Independent numeric/lifecycle review
+confirmed normal shutdown and the unchanged populated profile. Source57 is kept
+in its clean isolated checkout for this scoped GNOME VM memory experiment;
+main integration and remote History link-copy remain pending. Cinnamon's
+implementation remains unchanged. The two orchestration failures before sampling
+are preserved and documented rather than counted as observations.
 Follow [the repeatable GNOME procedure](../testing-gnome-memory.md). The corrected
 discovery currently lives in the pinned run adapter; incorporate it into the
 repository lab runner with focused contracts before claiming clean-checkout replay.

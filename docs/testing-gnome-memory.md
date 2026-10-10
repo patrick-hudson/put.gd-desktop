@@ -83,6 +83,59 @@ failures and normal-exit/cleanup receipts under the run directory. Export bounde
 nonsecret summaries to tracked evidence; never export clipboard payloads, credential
 files or raw environment dumps.
 
+## Cold-run lifecycle and failure recovery
+
+Use a new private directory for each attempt. Before launch, run
+`python3 tools/diagnostics/check_socket_paths.py --socket` with every complete
+resolved path: the application socket, the harness output's runtime/socket path,
+the original Wayland and session D-Bus sockets, and the lab QMP socket. Save the
+exact command and JSON result. Reject paths longer than 107 UTF-8 bytes before
+starting the app. Never shorten paths by changing the frozen sampler.
+
+Preserve the populated test profile in place. Snapshot its accepted configuration
+and export the intended cold template before requesting one normal `ui.quit`.
+Verify the old process, socket and bridge name are absent. Fingerprint the old
+profile after its legitimate shutdown checkpoint; require that fingerprint to
+remain unchanged throughout the cold test. Prewrite and production-validate a
+fresh local-only configuration with empty profiles, blank shortcuts, notifications
+and login startup disabled, and an archive under the new private directory.
+Do not copy old history, operation records or UI checkpoints into it.
+
+Two orchestration failures preceded the source57 cold observation. Neither reached
+the sampler, and both original attempts remain preserved:
+
+- The old resident exited between two `/proc` reads after a successful normal quit.
+  An exit poll may accept `FileNotFoundError` only when that exact process path is
+  now absent. A live changed/recycled identity still fails. Socket, bridge and
+  native-process absence checks remain required. Never repeat an uncertain quit
+  or substitute a signal. In this attempt the template had not been exported;
+  the continuation instead pinned the previously accepted configuration and
+  source57 production defaults, reconstructed the same intended document, and
+  required production validation on the fresh resident.
+- A peer check compared the entire socket `stat` result before and after connecting.
+  A separate host-only probe reproduced a connection changing only access time.
+  The original guest's changed field was not recorded, so its precise cause remains
+  unproven. The corrected check permits access-time changes while requiring every
+  other checked field to match: device, inode, type/permissions, owner, group,
+  link count, size, device identifier, modification time and change time. It also
+  retains nonsymlink path checks, `SO_PEERCRED`, and exact executable/PID/start/hash
+  checks. Record changed metadata before rejecting it. Preserve the failed private
+  profile and use a fresh directory for the corrected attempt. Three metadata
+  changes in the successful guest attempt were recorded and independently checked;
+  each changed access time alone. This does not establish the unrecorded difference
+  in the first failed attempt.
+
+Capture the actual fresh PID/start identity and installed hashes after readiness;
+do not copy historical IDs into a new invocation. Require a live native tray/bridge,
+no QPA plugin, stopped UI with empty last-exit state, empty history/operations,
+and accepted configuration revision equal to its observed revision. Record launch,
+preparation and observation times, including the external five-second warmup.
+"Cold" here means a fresh resident with empty application data; it does not measure
+the transient peak before observation starts or an empty operating-system page cache.
+After the observation, use normal quit and retain exact absence and unchanged-profile
+receipts together with the original numeric samples. No forced cleanup establishes
+successful teardown.
+
 ## Current status
 
 Clean source57 (`2a02118ffc7bc`, `0.1.1-dev.57+g2a02118ffc7b`) passed all 50 registered
@@ -90,13 +143,18 @@ GNOME guest tests and installed through the normal package. Its actual GNOME Cor
 route and unchanged twelve-case capture/clipboard/cancellation matrix are verified.
 The tray, native folder dialog, full production notification banner, Activity parent
 and item copies with independent paste, live selection background/crosshair and
-normal UI exit also passed. All helpers and fixtures stopped; the resident is idle.
+normal UI exit also passed. All helpers and fixtures stopped; the fresh cold resident
+subsequently exited normally after its observation.
 An initial 26.72 MiB RSS snapshot is a locating observation. Two frozen five-minute
 post-use runs both passed at 32.77 MiB peak RSS, with worst CPU 0.0334% of one
-core and all 61 samples valid in each. The required fresh-start confirmation
-is pending; the candidate has not been retained. All guest commands finished
-before the approved four-hour experiment limit. That limit has now ended;
-the requested extension must be approved before further measurements.
+core and all 61 samples valid in each. The required fresh empty-profile observation
+passed at 26.95 MiB peak RSS over 300.000 seconds, with 61 valid samples and
+0.0067% of one core. It used an externally recorded 5.119-second quiet warmup.
+Independent review joined every sample to the exact fresh resident and verified
+normal process/socket/bridge teardown. The existing populated profile remained
+unchanged. Source57 is retained in its clean isolated checkout; it is not yet
+integrated into the main branch. The original four-hour stop is preserved, and
+the user-approved 30-minute extension completed the cold check before its deadline.
 Structured results are in [the source57 evidence](evidence/2026-10-10-gnome-core57-memory.json). Remote History direct-link copy
 is explicitly unproven on this guest; the local-native diagnostic is not full parity.
 The Cinnamon regression passed with its implementation unchanged. KDE and post-S3

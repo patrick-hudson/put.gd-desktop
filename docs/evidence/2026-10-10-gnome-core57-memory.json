@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedUtc": "2026-10-10T08:02:15.301476+00:00",
+  "updatedUtc": "2026-10-10T15:04:32.818734+00:00",
   "source": {
     "gitCommit": "2a02118ffc7bcf3f4643b83f83d5dd7594a8207f",
     "gitTree": "c0e6b8d924bd2fafb6bd4a8d68a679799b214031",
@@ -136,16 +136,150 @@
     }
   ],
   "freshCold": {
-    "status": "pending",
-    "executed": false
+    "executed": true,
+    "passed": true,
+    "sourceCommit": "2a02118ffc7bcf3f4643b83f83d5dd7594a8207f",
+    "resident": {
+      "pid": 143719,
+      "startTicks": 5658112,
+      "uid": 1000,
+      "executable": "/usr/bin/putgd",
+      "sha256": "ad63df45f5e5f1beec6a4dd616f287d7446d8214b836a51912e59e684d59ae0e",
+      "device": 64770,
+      "inode": 1049779
+    },
+    "startedUtc": "2026-10-10T14:53:26.350134+00:00",
+    "summary": {
+      "coverage": {
+        "samples": 61,
+        "sampleSpanSeconds": 300.0001180600011,
+        "maximumGapSeconds": 5.0419316480038106,
+        "maximumAllowedGapSeconds": 7.5,
+        "minimumSpanSeconds": 299.5,
+        "adequate": true
+      },
+      "peak": {
+        "rssBytes": 28254208,
+        "pssBytes": 17375232,
+        "privateBytes": 16416768
+      },
+      "final": {
+        "rssBytes": 28254208,
+        "pssBytes": 17375232,
+        "privateBytes": 16416768
+      },
+      "familyCpuSeconds": 0.02,
+      "familyCpuPercentOneCore": 0.006666664043112119,
+      "vmNumeric40MiBPeakComparison": true,
+      "physical40MiBCertification": false,
+      "performanceTargetEnforced": false
+    },
+    "result": {
+      "path": "work/gnome-native-boundary/gnome-cold57-extension/actual-cold57-result-a2/results.json",
+      "sha256": "2552451460d2396204ef807fe0973494fa47536e5ca55da2bad9081499783a9e"
+    },
+    "samples": {
+      "path": "work/gnome-native-boundary/gnome-cold57-extension/actual-cold57-result-a2/samples.jsonl",
+      "sha256": "a05b3c9ca3c445b039fd87028d22b57c8693245b987247f3b6a2e8a693dee36d"
+    },
+    "frozenReview": {
+      "path": "work/gnome-native-boundary/gnome-cold57-extension/actual-cold57-result-a2/cold-review.json",
+      "sha256": "18a1ff21202331236dcf6b6e9fcbbfa168edba8a42486059e3a2ea619c801def"
+    },
+    "stageReceipt": {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/native57-a1/gnome/attempts/20261010T145313156429-cold57-measure/cold-stage-result.json",
+      "sha256": "c39214d6e5f1b6c220b75c14918e085d9980e6f60983bc2e6220377dfcb023eb"
+    },
+    "rootActualRehashedAndEvaluated": true,
+    "retained": true,
+    "fullNativeParityAccepted": false,
+    "physical40MiBCertification": false,
+    "populatedProfilePreserved": true,
+    "normalColdQuitCompleted": true,
+    "status": "passed; independently reviewed; retained for scoped GNOME VM experiment",
+    "independentResultReview": {
+      "path": "work/gnome-native-boundary/cold57-extension-review/actualcold-result-review.json",
+      "sha256": "2b7e933192fdeb63ea1057b914f3a0c0a24f09bb20c9067aec6a5a1c7681bd5a"
+    },
+    "independentLifecycleReview": {
+      "path": "work/gnome-native-boundary/cold57-extension-review/actualcold-lifecycle-review.json",
+      "sha256": "d0e5e340222f72b56ca6a728eee73ebcd5e5d66159c160d2b4ec0bb2d5a0c9e6"
+    },
+    "lifecycleOriginals": {
+      "retrieval": {
+        "path": "work/gnome-native-boundary/gnome-cold57-extension/cold-a2-lifecycle-originals/retrieval.json",
+        "sha256": "85530af1ea5199ceb3752584aea092ac8946ee7987791ea7ad300ec400a6a89c"
+      },
+      "files": [
+        {
+          "name": "warmup.json",
+          "bytes": 1240,
+          "sha256": "2d94e73e95ebad71efc3b7254047b09eb838ae2d6ffda41d01397faa5dd11803"
+        },
+        {
+          "name": "before-warmup.json",
+          "bytes": 1130,
+          "sha256": "22a4095275e2632e66dadf7466fb5bc2b3e586e0adcd58baa58ef2bda124264f"
+        },
+        {
+          "name": "after-measurement.json",
+          "bytes": 1130,
+          "sha256": "22a4095275e2632e66dadf7466fb5bc2b3e586e0adcd58baa58ef2bda124264f"
+        },
+        {
+          "name": "measurement-intent.json",
+          "bytes": 770,
+          "sha256": "d137abc7567273187af9c96cb0ac278d7b9dd505369dcf8688d8649d5d0f50f9"
+        },
+        {
+          "name": "measurement-finished.json",
+          "bytes": 2805,
+          "sha256": "464ca125aa1ada1bd47f194f7d1afde85eab233676764d71863f505df0e43a82"
+        },
+        {
+          "name": "final-normal-close-intent.json",
+          "bytes": 248,
+          "sha256": "f0567f72223f5b3b8fac74f35853b08c905de9dfeed1e149f50e6a5091c6a4ea"
+        },
+        {
+          "name": "final-normal-close-absent.json",
+          "bytes": 306,
+          "sha256": "400b2e4cc1ed9edeb95b602a0bbe375ffea3be7d7faa2ce2835f4a19347e6fb2"
+        },
+        {
+          "name": "socket-stat-1791643911636209464-1791644001048972318.json",
+          "bytes": 573,
+          "sha256": "2b8ef16957bb9d7d03b6744f50c9b56c3dad37e53c716f3d85ce3708b72c5e89"
+        },
+        {
+          "name": "socket-stat-1791644001146972058-1791644006164958748.json",
+          "bytes": 573,
+          "sha256": "4c00331018005b0688e377ce695926b84fd4b375d1845d46540186b69fb92324"
+        },
+        {
+          "name": "socket-stat-1791644006490957884-1791644306581163059.json",
+          "bytes": 573,
+          "sha256": "27bc9155d707f65e5bf2489650c26285e9e698c18fd4d64270726609955aea65"
+        }
+      ]
+    },
+    "warmupSeconds": 5.1190967459988315
   },
-  "retention": "pending required fresh-cold confirmation; two post-use confirmations passed",
+  "retention": "KEEP source57 in clean isolated checkout: all scoped GNOME VM cold/post-use confirmations and independent reviews passed; main integration and full parity remain separate",
   "remoteHistoryProven": false,
   "fullNativeParityAccepted": false,
   "postS3MemoryEstablished": false,
   "kdeMemoryEstablished": false,
   "payloadsOrCredentialsExported": false,
-  "experimentStop": {
+  "extensionApproval": {
+    "userReply": "Yes",
+    "approvedAdditionalMinutes": 30,
+    "activeStartUtc": "2026-10-10T14:40:38Z",
+    "activeDeadlineUtc": "2026-10-10T15:10:38Z",
+    "scope": "Finish required source57 fresh-cold confirmation; no new candidate/dependencies/cloud; Cinnamon unchanged",
+    "originalSpecUnchanged": true
+  },
+  "historicalExperimentStop": {
     "reason": "max_hours",
     "approvedHours": 4,
     "phase3StartedUtc": "2026-10-10T03:59:27Z",
@@ -158,5 +292,91 @@
     "candidateRetained": false,
     "allGuestCommandsDrained": true,
     "userDecisionPending": true
+  },
+  "experimentStop": {
+    "reason": "required_targets_met",
+    "recordedUtc": "2026-10-10T15:04:32.818734+00:00",
+    "extensionDeadlineUtc": "2026-10-10T15:10:38Z",
+    "coldExecuted": true,
+    "candidateRetained": true,
+    "allGuestCommandsDrained": true,
+    "furtherMeasurementsNeeded": false
+  },
+  "finalDecision": {
+    "decision": "keep",
+    "metricDecision": {
+      "path": ".context/compound-engineering/ce-optimize/gnome-native-boundary/candidate57-decision-final-output.json",
+      "sha256": "29297d01bf37d216003d764e5513265645fe60bafde0439f2112fed4b049b7ad"
+    },
+    "coldConstraintPassed": true,
+    "independentReviews": [
+      {
+        "path": "work/gnome-native-boundary/cold57-extension-review/actualcold-result-review.json",
+        "sha256": "2b7e933192fdeb63ea1057b914f3a0c0a24f09bb20c9067aec6a5a1c7681bd5a"
+      },
+      {
+        "path": "work/gnome-native-boundary/cold57-extension-review/actualcold-lifecycle-review.json",
+        "sha256": "d0e5e340222f72b56ca6a728eee73ebcd5e5d66159c160d2b4ec0bb2d5a0c9e6"
+      }
+    ],
+    "cinnamonImplementationChanged": false,
+    "fullNativeParityAccepted": false,
+    "remoteHistoryAndS3Proven": false,
+    "kdeMemoryEstablished": false,
+    "integratedIntoMain": false,
+    "recordedUtc": "2026-10-10T15:04:32.818734+00:00",
+    "metricDecisionResult": {
+      "decision": "keep",
+      "eligible": true,
+      "next_measurement": "none",
+      "target_reached": true,
+      "improved_objectives": [
+        "postNativePeakRssBytes"
+      ],
+      "violated_objectives": [],
+      "comparisons": {
+        "postNativePeakRssBytes": {
+          "verdict": "improved",
+          "delta": 34344960,
+          "relative": 0.4998509687034277,
+          "violated": false
+        }
+      },
+      "primary_delta": 34344960,
+      "rank_score": 0.4998509687034277,
+      "reason": "improved postNativePeakRssBytes without violating other required objectives"
+    }
+  },
+  "runAccounting": {
+    "scope": "Standalone retained GNOME VM candidate, not main integration or full parity",
+    "originalBudgetHours": 4,
+    "approvedExtensionMinutes": 30,
+    "extensionStartedUtc": "2026-10-10T14:40:38Z",
+    "measurementCompletedUtc": "2026-10-10T14:58:29Z",
+    "activeExtensionToMeasurementCompletionSeconds": 1071,
+    "recordedUtc": "2026-10-10T15:05:36.013990+00:00",
+    "hypothesisFamilies": 1,
+    "productCodeRevisions": 2,
+    "retainedCandidates": 1,
+    "locatingFallbackVariants": 1,
+    "preSamplingHarnessFailures": 2,
+    "validPostNativeRuns": 2,
+    "validFreshColdRuns": 1,
+    "validSamplesTotal": 183,
+    "newDependencies": 0,
+    "cloudMachines": 0,
+    "wholeRunModelUsageCostUsd": null,
+    "distinctOptimizationFeeUsd": 0,
+    "costBasis": "Ordinary model usage unavailable; no cloud machines or separately billed optimization service",
+    "forecastAssessment": "Unknown exact reduction was forecast; 16.86 MiB mapped graphical/native-theme attribution was not a removability prediction. Measured post-native reference difference 32.75390625 MiB (~49.9851%) is launch-provenance qualified, so not proof of matched code-only forecast. Cold uses another workload and is not a reference incremental saving.",
+    "remainingOpportunity": "KDE and post-S3/populated-history retained memory need their own measurements; further bottleneck magnitude unknown."
+  },
+  "opportunityForecast": {
+    "workload": "GNOME source55 populated post-local-native VM",
+    "baseline": "65.52734375 MiB RSS, 38.919921875 MiB PSS",
+    "evidence": "Actual smaps attribution: GTK7.71MiB, QtGui5.59MiB, QtWidgets3.56MiB. Actual source: GNOME DBus bridge only uses QGuiApplication in constructor guard; resident currently QApplication initializes GUI/cache/native theme. Existing QCore native tray and on-demand QApplication UI helper already implemented for Cinnamon.",
+    "expected_benefit": "Unknown exact savings; direct graphical/native-theme file attribution is roughly16.86MiB RSS, not a removability claim. Anonymous cache savings unknown; no cheaper locating measurement changes whether deferring QApplication is worth trying because actual mapped attribution and owning code already establish the boundary. Target requires25.53MiB reduction; this candidate alone may miss it.",
+    "confidence": "Medium mechanism evidence, low numerical forecast; real tray/clipboard/capture checks mandatory.",
+    "cost_and_risk": "Small GNOME routing/constructor change, no new dependencies; native SNI tray/notifications need real GNOME validation; preserve Cinnamon guard and X11/KDE code."
   }
 }

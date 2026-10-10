@@ -675,7 +675,14 @@ native capture/clipboard/cancellation cases and the local focused UI gates on
 its verified Core route. Two separate 300-second post-use observations both
 peaked at 32.77 MiB RSS, with 61 valid samples each and worst CPU 0.0334% of one
 core. The [structured record](evidence/2026-10-10-gnome-core57-memory.json)
-pins exact source, workload, process and original result hashes. The fresh cold
-confirmation remains unexecuted because the approved four-hour window ended.
-The candidate is preserved and not retained or integrated. GNOME remote History,
-KDE and post-S3 memory remain open; see [the replay procedure](testing-gnome-memory.md).
+pins exact source, workload, process and original result hashes. The approved
+30-minute extension completed the fresh empty-profile cold confirmation at
+26.95 MiB peak RSS and 0.0067% of one CPU core over 300.000 seconds. All 61
+samples passed coverage and exact identity checks. Independent numeric and
+lifecycle review confirmed the external 5.119-second warmup, normal shutdown
+and unchanged populated profile. Both preceding orchestration failures reached
+no samples and remain preserved. Source57 is retained in its clean isolated
+checkout; it is not integrated into main. This establishes the scoped GNOME VM
+cold/post-local-native target, with Cinnamon implementation unchanged. GNOME
+remote History, KDE and post-S3 memory remain open; see
+[the replay procedure](testing-gnome-memory.md).
