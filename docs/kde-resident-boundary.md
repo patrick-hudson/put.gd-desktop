@@ -58,6 +58,36 @@ retaining image data. Adapter shutdown discards pending region callbacks before
 member teardown; ordinary cancellation still replies exactly once. `kde_region_control` checks lifecycle failures with a C++ test
 peer; no Node.js fixture is required on guests.
 
+## Image codec loading
+
+The Core boundary alone passed the initial capture smoke checks but did not meet
+post-capture memory: source59 measured 27.98 MiB cold and a 51.53 MiB diagnostic
+snapshot after clipboard text, window, desktop and region cancellation. The latter
+was not a five-minute acceptance run. The allocator had already reclaimed idle
+free pages; the resident still mapped optional image handlers and codecs that
+those text/PNG actions did not need. Mapping presence does not prove how many
+bytes a change will recover.
+
+Qt 6.10.2 instantiates installed image plugins when enumerating supported MIME
+types. Automatic content detection can also try every plugin before the built-in
+PNG handler when an artifact has its normal suffixless UUID filename. The next
+candidate avoids eager discovery for a PNG offer or standard text/URI-only offers.
+Unknown/custom MIME offers and non-PNG images retain the existing discovery path.
+URI priority, ownership validation, resource limits and terminal image errors stay
+in force.
+
+A shared reader hint selects PNG only after checking its eight-byte signature on
+the same open device. MIME metadata alone is insufficient: other or mislabeled
+image bytes retain content detection. The user explicitly approved this shared
+preview change on 2026-10-10; Cinnamon and GNOME implementation routes are retained
+and still require current-candidate regression checks after KDE is satisfactory.
+The tests cover PNG preview pixels and bounds, inaccurate MIME metadata, format
+priority and whether image discovery is invoked. Unit tests do not prove memory
+savings: repeat the cheap native KDE smoke and attribution in a fresh resident,
+then the required complete native and five-minute workloads if promising. Record
+non-PNG/custom codec workloads separately; this fast path does not promise a
+40 MiB ceiling after every optional codec is used.
+
 ## Repeating verification
 
 Use the normal build tools:

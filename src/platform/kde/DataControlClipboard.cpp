@@ -1,5 +1,7 @@
 #include "DataControlClipboard.h"
 #include "KWinTransfer.h"
+#include "KdeClipboardFormats.h"
+#include "core/ImageFormat.h"
 #include "platform/NativeSession.h"
 #include <QCoreApplication>
 #include "ext-data-control-v1-client-protocol.h"
@@ -94,9 +96,8 @@ struct DataControlClipboard::Impl:QObject {
   auto request=std::make_shared<Import>();request->limits=limits;request->reply=std::move(cb);request->revision=expected;pending.enqueue(request);pump();
  }
  void pump(){if(closing||active||!workers.isEmpty()||pending.isEmpty())return;active=pending.dequeue();events();if(!available()){complete(failure("clipboard_unavailable","Data-control clipboard is unavailable"));return;}if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed after invocation; invoke sharing again"));return;}
-  if(!selection){complete(failure("source_unsupported","Clipboard has no owner"));return;}const auto types=offers.value(selection);if(types.contains("text/uri-list"))active->formats.append("text/uri-list");
-  auto imageTypes=QImageReader::supportedMimeTypes();imageTypes.removeAll("image/png");imageTypes.prepend("image/png");for(const auto& mime:imageTypes)if(types.contains(QString::fromLatin1(mime)))active->formats.append(QString::fromLatin1(mime));
-  for(const char* mime:{"text/plain;charset=utf-8","text/plain","UTF8_STRING"})if(types.contains(QString::fromLatin1(mime)))active->formats.append(QString::fromLatin1(mime));
+  if(!selection){complete(failure("source_unsupported","Clipboard has no owner"));return;}
+  active->formats=kdeClipboardImportFormats(offers.value(selection),[]{return QImageReader::supportedMimeTypes();});
   nextFormat();
  }
  void nextFormat(){if(!active)return;if(active->formats.isEmpty()){complete(failure("source_unsupported","Clipboard offers no supported local files, image, or text"));return;}if(!selection||active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed before import"));return;}
@@ -107,7 +108,7 @@ struct DataControlClipboard::Impl:QObject {
  void decode(QByteArray bytes,QString mime,ResourceLimits limits,quint64 currentGeneration){
   auto result=std::make_shared<PayloadResult>();auto noLocal=std::make_shared<bool>(false);auto* worker=QThread::create([bytes=std::move(bytes),mime,limits,result,noLocal]{QMimeData data;
    if(mime=="text/uri-list"){QList<QUrl> urls;for(auto line:bytes.split('\n')){line=line.trimmed();if(!line.isEmpty()&&!line.startsWith('#'))urls.append(QUrl::fromEncoded(line));}*noLocal=true;for(const auto& url:urls)if(url.isLocalFile())*noLocal=false;data.setUrls(urls);}
-   else if(mime.startsWith("image/")){QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer);const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}auto image=reader.read();if(image.isNull()){*result=failure("source_unsupported","Clipboard image could not be decoded");return;}data.setImageData(image);}
+   else if(mime.startsWith("image/")){QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,imageFormatHint(bytes));const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}auto image=reader.read();if(image.isNull()){*result=failure("source_unsupported","Clipboard image could not be decoded");return;}data.setImageData(image);}
    else data.setText(QString::fromUtf8(bytes));
    *result=ClipboardPayload::fromMime(data,limits);
   });workers.append(worker);connect(worker,&QThread::finished,this,[this,worker,result,noLocal,currentGeneration]{workers.removeOne(worker);worker->deleteLater();if(currentGeneration!=generation||!active){pump();return;}events();if(!active)return;if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed during decoding"));return;}if(*noLocal&&!active->formats.isEmpty()){nextFormat();return;}complete(std::move(*result));});worker->start();

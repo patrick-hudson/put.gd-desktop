@@ -1,4 +1,6 @@
 #include "platform/kde/KdeSourceAdapter.h"
+#include "platform/kde/KdeClipboardFormats.h"
+#include "core/ImageFormat.h"
 #include <QtTest>
 #include <QDBusConnection>
 #include <QDBusContext>
@@ -237,6 +239,40 @@ private slots:
    outputs.append(altered);if(mode==6)outputs.append(valid);
    QString error;QVERIFY(KdeOutputs::framesFromMetadata(outputs,&error).isEmpty());QVERIFY(!error.isEmpty());
   }
+ }
+ void pngSignatureHintUsesActualBytes(){
+  const auto png=QByteArray::fromHex("89504e470d0a1a0a");
+  QCOMPARE(imageFormatHint(png),QByteArray("png"));
+  QCOMPARE(imageFormatHint(png+QByteArray("body")),QByteArray("png"));
+  for(qsizetype size=0;size<png.size();++size)QVERIFY(imageFormatHint(QByteArrayView(png).first(size)).isEmpty());
+  auto altered=png;altered[7]='x';QVERIFY(imageFormatHint(altered).isEmpty());
+  QVERIFY(imageFormatHint(QByteArray::fromHex("ffd8ffe000104a464946")).isEmpty());
+ }
+ void standardTextAndUriOffersSkipImageDiscovery(){
+  int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"image/jpeg","application/x-plugin-image"};};
+  const QStringList offered{"UTF8_STRING","text/plain","text/uri-list","text/plain;charset=utf-8"};
+  QCOMPARE(kdeClipboardImportFormats(offered,discover),QStringList({"text/uri-list","text/plain;charset=utf-8","text/plain","UTF8_STRING"}));
+  QCOMPARE(discoveries,0);
+  QVERIFY(kdeClipboardImportFormats({},discover).isEmpty());QCOMPARE(discoveries,0);
+ }
+ void pngPrioritySkipsImageDiscoveryDespiteAlternativeOffers(){
+  int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"image/jpeg","image/png","application/x-plugin-image"};};
+  const QStringList offered{"image/jpeg","text/plain","application/x-plugin-image","image/png","text/uri-list"};
+  QCOMPARE(kdeClipboardImportFormats(offered,discover),QStringList({"text/uri-list","image/png","text/plain"}));
+  QCOMPARE(discoveries,0);
+  // A URI list without local files advances to PNG; terminal PNG errors never
+  // fall back to another image, matching the production importer contract.
+  QCOMPARE(kdeClipboardImportFormats({"image/png"},discover),QStringList({"image/png"}));QCOMPARE(discoveries,0);
+ }
+ void customImageAliasesRetainDiscoveryAndOriginalOrder(){
+  int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"image/webp","application/x-plugin-image","image/jpeg","image/png"};};
+  const QStringList offered{"image/jpeg","text/plain","application/x-plugin-image","image/webp","text/uri-list"};
+  QCOMPARE(kdeClipboardImportFormats(offered,discover),QStringList({"text/uri-list","image/webp","application/x-plugin-image","image/jpeg","text/plain"}));QCOMPARE(discoveries,1);
+  QCOMPARE(kdeClipboardImportFormats({"application/x-plugin-image","text/plain"},discover),QStringList({"application/x-plugin-image","text/plain"}));QCOMPARE(discoveries,2);
+ }
+ void unknownNonImageOffersKeepDiscoveryFallback(){
+  int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"application/x-unknown"};};
+  QCOMPARE(kdeClipboardImportFormats({"application/x-unknown","text/plain"},discover),QStringList({"application/x-unknown","text/plain"}));QCOMPARE(discoveries,1);
  }
  void externalWindowCaptureRemainsNative(){
   KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);

@@ -8,6 +8,7 @@
 #include <QFileInfo>
 #include <QMimeDatabase>
 #include <QImageReader>
+#include "ImageFormat.h"
 #include <QRegularExpression>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -35,7 +36,10 @@ void ArtifactStore::clearPreviews() {
 }
 QString ArtifactStore::preview(const Artifact& artifact,qint64 budget,qint64 maxPixels) {
  if(budget<=0||artifact.category!="images")return {};
- QImageReader reader(artifact.path);const auto size=reader.size();
+ // UUID spool files have no suffix. Hint only a signature-proven PNG; keep
+ // content detection for other formats, including inaccurate MIME metadata.
+ QFile input(artifact.path);if(!input.open(QIODevice::ReadOnly))return {};
+ QImageReader reader(&input,imageFormatHint(input.peek(8)));const auto size=reader.size();
  if(!size.isValid()||qint64(size.width())*size.height()>maxPixels)return {};
  reader.setScaledSize(size.scaled(256,256,Qt::KeepAspectRatio));auto image=reader.read();if(image.isNull())return {};
  image=image.scaled(256,256,Qt::KeepAspectRatio,Qt::SmoothTransformation);QByteArray png;QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);if(!image.save(&buffer,"PNG")||png.size()>budget)return {};
