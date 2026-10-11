@@ -43,7 +43,7 @@
     "kdePackageBuilt": true,
     "packageSha256": "bc652760cdbdab8df927c0b775c8d0e873ce6c62874d9d01e7843860a3b87217",
     "kdeGuestTestsRegistered": 51,
-    "kdeGuestTestsExecuted": false,
+    "kdeGuestTestsExecuted": true,
     "compiledInstalledManifest": {
       "schemaVersion": 1,
       "version": "0.1.1-dev.63+g050b702c6a6d",
@@ -63,7 +63,29 @@
       "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750",
       "/usr/bin/putgd-kde-region": "0ddb504080ca8eaaedb3d06fa1613bb0fc9ec0470f0755a3741d59f97bde6c43",
       "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": "1239cd5963342c157446507df81fe5eb991d9a7bb3ba9b3b43f1a23486ad3dd0"
-    }
+    },
+    "kdeGuestTestsPassed": 51,
+    "kdeGuestVerification": {
+      "complete": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024543970388-candidate63-deferred-ctest/complete.json",
+        "sha256": "fe8cd4df989c34c1c1518481c1d965e3797da35fb7bb6e037aef65cc06070930"
+      },
+      "junit": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024543970388-candidate63-deferred-ctest/dev-full63.xml",
+        "sha256": "7b48653e8e369293e4630d378c36f68fdcc1689f0d194e1f7a511c9ef07a5afd"
+      },
+      "registeredTests": 51,
+      "passedRegisteredTests": 51,
+      "rootIndependentXmlNamesAndHashVerified": true,
+      "fullNativeParityAccepted": false,
+      "memoryAcceptance": false
+    },
+    "guestInternalSkips": [
+      {
+        "case": "S3ModuleContract::unavailableFacadeChild()",
+        "qualification": "subprocess helper case; no registered test omitted"
+      }
+    ]
   },
   "residentIdentity": {
     "device": 64769,
@@ -332,10 +354,7 @@
     }
   },
   "pendingGates": [
-    "Guest51 registered tests without acceptance skips",
-    "Native tray/settings/history/activity and native fonts/folder dialogs",
-    "Transparent live selector/clock/cursor alpha and durable cancellation",
-    "Two populated postnative300s observations and one independently fresh empty-profile cold300s observation",
+    "One independently fresh empty-profile cold300s observation; both populated postnative300s observations passed",
     "Current source63 Cinnamon physical functional and memory gate",
     "Current source63 GNOME functional and memory gate after Cinnamon",
     "Remote S3/history acceptance where declared"
@@ -545,7 +564,7 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T02:36:57.959251+00:00",
+  "exportedUtc": "2026-10-11T03:00:18.861645+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
   "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
   "freshCancellationCase": {
@@ -824,7 +843,7 @@
     "activityRendered": true,
     "activityIndependentCopyPastePending": false,
     "notificationScreenshotMissedToastLifetime": true,
-    "liveRegionProofPending": true,
+    "liveRegionProofPending": false,
     "qualification": "Actual UI progress; no full native parity or scored memory acceptance.",
     "notificationObservedDuringRequiredParentCopy": true,
     "originalMissedNotificationWitnessPreserved": true
@@ -893,6 +912,97 @@
       },
       "semanticAcceptance": false,
       "setupCorrectionPending": true
+    },
+    "attempt3": {
+      "rootReviewed": true,
+      "sameOperationId": "40d109c3-e9b6-4dd0-834b-5d2274eb9871",
+      "liveClockChanged": true,
+      "cursorMatched": true,
+      "cancelledNoResultEmptyItems": true,
+      "normalHelperExitCertified": true,
+      "originals": [
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024156178229-selector63-clock-a3-before/observation.json",
+          "sha256": "6c5bd064fb8c088efc82376e449c87bef14b2626b869750b6de9ccd5e38cc68a"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024246067485-selector63-clock-a3-after/observation.json",
+          "sha256": "6b9e082f213100837e3cb439dc7a637ca82f1e7fee1815d9a25969ee5f22389c"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-live-retry-a2/alpha/runtime/kde63-active-selector/cursor.json",
+          "sha256": "11b3e634d5d3319b1b1f61b85fbd4f6193f06680e5a05542bf43a1859285b021"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-live-retry-a2/root-live-visual-review-a3.json",
+          "sha256": "ebfffa48cfc93af100dec418fdaa82de9664421a18007ef3230a562894a455a7"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024349154057-selector63-clock-a3-terminal/observation.json",
+          "sha256": "048adb376332611e89b189e1b2ceb35c2947596874c7bd86a433d7722cff6963"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024317787486-candidate63-key/after.json",
+          "sha256": "43c6d3bae939d70e7800fd4a2fb2234a92b8423390b2aeb9a0c80e819e9af718"
+        }
+      ],
+      "fullNativeParityAccepted": false
+    },
+    "acceptedLocalSemanticCheck": true
+  },
+  "localNativeSemanticChecks": {
+    "sixChecksReviewed": true,
+    "matrix12Passed": true,
+    "remoteHistoryExcluded": true,
+    "finalPacketPending": false,
+    "fullNativeParityAccepted": false,
+    "freshFinalDrainQuietReviewed": true
+  },
+  "localNativePacket": {
+    "reviewer": "root",
+    "utc": "2026-10-11T02:46:27.835127+00:00",
+    "packet": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-final-native-packet-a1/packet.json",
+      "sha256": "2dd3b7dd6183c5a9b89fb43706903fda6441f272c41bf8e81105595b7ec4a95a"
+    },
+    "decision": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-final-native-decision-a1/root-decision.json",
+      "sha256": "5bd4a8a87b261d390a7246df52c3d30336edeb6eca8dfa3dcbbc4fcfc43f3159"
+    },
+    "sixLocalNativeGatesReviewed": true,
+    "twelveOriginalMatrixCasesReviewed": true,
+    "allOriginalRoleHashesIndependentlyVerified": true,
+    "canonicalProjectionHashesVerified": true,
+    "mirroredFileCount": 10,
+    "safeUiAssetCount": 3,
+    "payloadsConfigSecretsRawLogsExported": false,
+    "remoteHistoryAccepted": false,
+    "fullNativeParityAccepted": false,
+    "currentSiblingRegressionsPending": true,
+    "memoryAcceptance": false,
+    "independentReview": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-final-native-packet-a1/root-independent-review.json",
+      "sha256": "46af75cb69cd651992144ff0d3459352f30b909da278cef02fc95ff594a2deaa"
     }
-  }
+  },
+  "measuredPostNativeRuns": [
+    {
+      "path": "docs/evidence/kde-source63/post-native-a1.json",
+      "sha256": "804aa59ecdb55dbef7ea0964debf6dd6a642fc5dea3f549ce21cb3bd6d42b0a5",
+      "samplesSha256": "4b903f61e04303ceaf7a547d75242f09ce99f2e591bebe7caf966bb1d6c68570",
+      "rssMiB": 30.05078125,
+      "confirmationPending": true
+    },
+    {
+      "path": "docs/evidence/kde-source63/post-native-a2.json",
+      "sha256": "1a127d08c0a753957b8e24b27c983798677aae1ff4c16cb3eb9af030bb594721",
+      "rawSamplesSha256": "18b5d6989a74e1452e589ccb11ee35ddf21255af41d5a33e9ac4008ac27aa132",
+      "peakRssMiB": 30.05078125,
+      "confirmationPending": [
+        "fresh cold300",
+        "current sibling regressions"
+      ]
+    }
+  ],
+  "postNativeTwoRunsConfirmed": true
 }

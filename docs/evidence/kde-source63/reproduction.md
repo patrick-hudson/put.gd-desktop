@@ -1,8 +1,8 @@
 # Source63 candidate4 interim evidence
 
-This is a nonterminal metadata projection exported from the host campaign. Source63 is `050b702c6a6da5c945ea8b4e138dee50e6fdbd83`, version `0.1.1-dev.63+g050b702c6a6d`. No app, build, guest, input or memory run was started while preparing it.
+This is a nonterminal metadata projection exported from the host campaign. Source63 is `050b702c6a6da5c945ea8b4e138dee50e6fdbd83`, version `0.1.1-dev.63+g050b702c6a6d`. Exporting this document does not launch an app or test. Completed runs and pending acceptance checks are recorded below.
 
-The host standard build passed all 51 registered CTest tests; two SVG cases skipped because that host lacks the optional codec. The KDE standard build produced the exact source63 package and registered 51 tests; its guest suite is pending. The first-cold diagnostic is 27.921875 MiB RSS, 6.2744140625 MiB PSS and 4.8046875 MiB private memory. It is one sequential attribution snapshot, not a five-minute result or proof of the 40 MiB target.
+The host standard build passed all 51 registered CTest tests; two SVG cases skipped because that host lacks the optional codec. The KDE standard build produced the exact source63 package. Its full guest suite passed all 51 registered tests; one subprocess-only S3 helper case skipped internally, with no registered test omitted. The full host ASan suite also passed all 51 registered tests; its two SVG codec skips remain a host qualification, while the three actual KDE SVG paths passed. The first-cold diagnostic is 27.921875 MiB RSS, 6.2744140625 MiB PSS and 4.8046875 MiB private memory. It is one sequential attribution snapshot, not a five-minute result or proof of the 40 MiB target.
 
 The original Qt smoke run passed clipboard text, active window and desktop. Its region-cancellation case failed and remains failed. The corrected timing interpretation places the last key receipt inside an approximate deadline bracket; neither receipt publication nor this bracket proves the product outcome. The actual journal now confirms operation `79246861-13be-4e44-911e-22fd0b566d77` is cancelled with `no_result` and no items. The later drain confirms certified normal-zero selector helper exit and no fixture residue. These receipts diagnose the timeout; they do not retroactively pass the original cancellation artifact and independent clipboard checks. The journal proves `items[]`. A separately recorded fresh Escape case subsequently passed the original cancellation and independent clipboard checks. The original failed case remains failed.
 
@@ -96,4 +96,41 @@ The five-second warmup is external in existing-process mode; passing `--warmup-s
 
 Check the original raw 61 rows, span >=299.5 seconds, maximum gap <=7.5 seconds, unchanged PID/start/executable/family, peak charged RSS <=41943040 bytes, and CPU from actual clock ticks and elapsed time. Preserve parameters, manifests and raw sample/result hashes. PSS remains diagnostic. Two postnative runs plus one fresh cold run are all required; no repetitions to select favorable noise. Current-source Cinnamon physical acceptance and GNOME regression evidence follow satisfactory KDE under the approved ordering. The portable commands show available tracked protocols, not completion of those pending gates.
 
-The target is cumulative: the complete source63 candidate combines the preceding KDE Core/image-worker changes with allocator tuning. Each individual change need not reach 40 MiB. Every required functional, CPU, memory and current-version sibling gate still applies. The fresh single-case cancellation check passed separately with the original 90-second action deadline and independent paste oracle. After SVG and combined four-action coverage, one diagnostic measured 29.813 MiB RSS, 7.394 MiB PSS and 5.680 MiB private memory. This is not a five-minute observation. All twelve current-version Qt/GTK native cases subsequently passed, including the three cancellation paths and independent paste checks. Views/live selector, repeated memory windows and sibling regressions remain pending.
+The target is cumulative: the complete source63 candidate combines the preceding KDE Core/image-worker changes with allocator tuning. Each individual change need not reach 40 MiB. Every required functional, CPU, memory and current-version sibling gate still applies. The fresh single-case cancellation check passed separately with the original 90-second action deadline and independent paste oracle. After SVG and combined four-action coverage, one diagnostic measured 29.813 MiB RSS, 7.394 MiB PSS and 5.680 MiB private memory. This is not a five-minute observation. All twelve current-version Qt/GTK native cases subsequently passed, including the three cancellation paths and independent paste checks. Native tray, settings Save/Cancel/Reload, KDE font integration and folder dialogs, local History rendering, Activity parent/item independent paste, and normal UI/capture-helper exit have now passed. The original settings document was restored. A corrected fresh live selector retained the same operation while the clock advanced from 9:42 to 9:43 PM; its themed crosshair matched the frozen RGB and actual ARGB-alpha geometry, then Escape produced cancelled/no_result/empty_items with certified normal helper exit. Earlier setup failures and timed-out selectors remain preserved. Remote History/S3, fresh cold confirmation and current-source sibling regressions remain pending.
+
+The first scored populated observation is exported in `post-native-a1.json` with its unchanged, content-free 61 raw rows in `post-native-a1.samples.jsonl`. It measured 31,510,528 bytes (30.051 MiB) peak RSS and 0.05333% of one core over 300.014 seconds, compared with the matched original 146,194,432-byte (139.422 MiB) baseline. This is a cumulative candidate result, not an attributed allocator-only saving. The second populated window and fresh cold window must still confirm it; this first observation does not authorize keeper acceptance. Raw configuration, payloads, credentials and full smaps are excluded from this tracked export.
+
+A second independent populated window also peaked at 31,510,528 bytes (30.051 MiB), with 61 samples over 300.048 seconds and 0.04999% of one core. Its unchanged content-free rows and bounded metadata are exported as `post-native-a2.samples.jsonl` and `post-native-a2.json`. Both populated windows passed; the fresh cold window and current-source sibling regressions are still pending.
+
+The exported samples can be checked without a VM, Qt, Node.js or AWS access. This checks recorded measurements; it cannot establish new desktop acceptance. Run from the repository root:
+
+```sh
+python3 - <<'PYTHON'
+import json, math
+from pathlib import Path
+for name in ("post-native-a1", "post-native-a2"):
+    metadata = json.loads(Path(f"docs/evidence/kde-source63/{name}.json").read_text())
+    rows = [json.loads(line) for line in
+            Path(metadata["trackedSamples"]).read_text().splitlines()]
+    assert len(rows) == 61 and [r["index"] for r in rows] == list(range(61))
+    span = rows[-1]["elapsedSeconds"] - rows[0]["elapsedSeconds"]
+    gaps = [b["elapsedSeconds"] - a["elapsedSeconds"]
+            for a, b in zip(rows, rows[1:])]
+    assert span >= 299.5 and all(0 < gap <= 7.5 for gap in gaps)
+    for row in rows:
+        assert row["processCount"] == 1 and row["uiProcessCount"] == 0
+        assert row["escapedProcessCount"] == 0
+        process = row["processes"][0]
+        for key in ("pid", "startTicks", "sha256", "device", "inode"):
+            assert process[key] == metadata["resident"][key]
+        for key in ("rssBytes", "pssBytes", "privateBytes"):
+            assert row["totals"][key] == sum(p[key] for p in row["processes"])
+    peak = max(r["totals"]["rssBytes"] for r in rows)
+    cpu = ((rows[-1]["familyCpuTicks"] - rows[0]["familyCpuTicks"])
+           / metadata["system"]["clockTicksPerSecond"] / span * 100)
+    assert peak == metadata["evaluation"]["postNativePeakRssBytes"]
+    assert math.isclose(cpu, metadata["evaluation"]["idleCpuPercentOneCore"], rel_tol=1e-12)
+    assert peak <= 41943040 and cpu < 0.5
+    print(f"{name}: {peak / 1048576:.3f} MiB, {cpu:.5f}% CPU, {len(rows)} samples")
+PYTHON
+```
