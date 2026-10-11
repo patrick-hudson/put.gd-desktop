@@ -563,7 +563,7 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T05:10:27.813919+00:00",
+  "exportedUtc": "2026-10-11T05:25:23.349390+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
   "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
   "freshCancellationCase": {
@@ -1104,12 +1104,21 @@
       "qtCases": 9,
       "gtkCases": 3,
       "trackedAutomatedBuildEvidence": "docs/evidence/kde-source63/gnome-guest-build-a1.json",
-      "trackedNativeMatrixEvidence": "docs/evidence/kde-source63/gnome-native12-a1.json"
+      "trackedNativeMatrixEvidence": "docs/evidence/kde-source63/gnome-native12-a1.json",
+      "settingsSaveCancelReloadRestorationPassed": true,
+      "trackedSettingsEvidence": "docs/evidence/kde-source63/gnome-settings-a1.json",
+      "nativeGtkFolderDialogVerified": true,
+      "localHistoryPreviewVerified": true,
+      "normalViewExitsVerified": true,
+      "trackedFocusedCheckpoint": "docs/evidence/kde-source63/gnome-focused-checkpoint-a1.json",
+      "safeSameResidentContinuation": true
     },
-    "qualification": "Current63 Cinnamon complete local regression passed. GNOME standard guest build, 52 registered tests and exact current-source package installation passed. Native graphical matrix is progressing; focused GUI and memory acceptance remain pending."
+    "qualification": "Current KDE and Cinnamon local regression passed. GNOME52/native12/Settings full restoration/native GTK folder chooser/local History image preview/normal view exits passed. Guest test actions stopped at approved deadline with the same quiet current resident preserved. Activity/live-selection/final local packet and three GNOME memory windows remain pending."
   },
   "regressionWindow": {
     "deadlineUtc": "2026-10-11T05:28:20.881985Z",
-    "scope": "Current-source Cinnamon then GNOME regressions only; no new optimization candidates, dependencies or desktop-setting changes."
+    "scope": "Current-source Cinnamon then GNOME regressions only; no new optimization candidates, dependencies or desktop-setting changes.",
+    "stoppedAtApprovedDeadline": true,
+    "additional30MinutesApproved": false
   }
 }

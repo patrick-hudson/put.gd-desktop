@@ -1408,3 +1408,28 @@ was rejected after an actual dependency check; its normal guest build is running
 acceptance remain pending; local memory results do not satisfy those gates.
 The content-free samples and reproducible checks are recorded in
 [the source63 evidence](../evidence/kde-source63/reproduction.md).
+
+### Current GNOME regression checkpoint — 2026-10-11
+
+The exact source63 guest build and all52 registered tests passed using the normal
+CMake presets, Ninja and CPack. All12 native Qt/GTK action cases passed on the
+current resident, and the synthetic fixtures drained normally. Settings Cancel
+preserved the entire configuration and revisions; Save changed only the intended
+notification setting; Reload matched the saved document and revisions; the final
+restore returned the entire original configuration. These checks do not establish
+the remaining focused History/Activity/live-selection gates or GNOME memory
+acceptance. Preserve the passing KDE and Cinnamon checkpoints while completing
+those gates. Portable metadata is in [the source63 evidence](../evidence/kde-source63/reproduction.md)
+and `../evidence/kde-source63/gnome-guest-build-a1.json`, `gnome-native12-a1.json`
+and `gnome-settings-a1.json`. No payload or raw configuration is included.
+
+The regression-only window ended at `2026-10-11T05:28:20.881985Z`. Before that
+cutoff, the actual native GTK folder dialog cancelled normally and local History
+displayed11 entries plus the selected synthetic image preview. Settings and History
+helpers exited normally (generations3 and4). The same current GNOME resident/VM
+remains available with UI stopped, operations0, tray present, journal ready and the
+original configuration restored. Activity parent/item copy, live selection/cursor,
+final local packet and two post-use plus one fresh-cold300-second GNOME memory
+windows remain required. An additional30 minutes was requested but not approved;
+do not treat this checkpoint as full regression or memory acceptance. See
+[the partial GNOME checkpoint](../evidence/kde-source63/gnome-focused-checkpoint-a1.json).

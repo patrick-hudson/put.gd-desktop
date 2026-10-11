@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "evidenceClass": "graphical-kvm-with-readonly-production-cli-metadata",
+  "profile": "gnome-wayland",
+  "resident": {
+    "pid": 14107,
+    "startTicks": 237790,
+    "sha256": "9e40f493557a051172df632a4745bbe6ea0444644f5bfecf7944050682cf1f57"
+  },
+  "steps": [
+    {
+      "step": "baseline",
+      "proofSha256": "93e2aff73fff142718edcb7b29c1c7890ae50d831ee780b3754d18f22005d77d",
+      "settingsProjection": {
+        "label": "baseline",
+        "notifications": false,
+        "launchAtLogin": false,
+        "documentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "notificationsFalseDocumentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "acceptedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+        "observedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+        "profilesEmpty": true,
+        "actionsLocal": true
+      },
+      "uiSnapshot": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "passed": true
+    },
+    {
+      "step": "cancelled",
+      "proofSha256": "bb75a20d1a6c36d21a32d06d65f79a93ce069d5a7e9a5c5ddf61bb68ef8e6704",
+      "settingsProjection": {
+        "label": "cancelled",
+        "notifications": false,
+        "launchAtLogin": false,
+        "documentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "notificationsFalseDocumentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "acceptedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+        "observedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+        "profilesEmpty": true,
+        "actionsLocal": true
+      },
+      "uiSnapshot": {
+        "checkpointBytes": 1934,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "passed": true
+    },
+    {
+      "step": "saved",
+      "proofSha256": "dde1bc0e0535e9f4f22e12678e9ba6b81087bde60c099e4e104a4a9d0e65e68c",
+      "settingsProjection": {
+        "label": "saved-true",
+        "notifications": true,
+        "launchAtLogin": false,
+        "documentSha256": "ecf8379fc1f78fdc8086f90a583f6544a6ed33da42639d093337ac15e2143384",
+        "notificationsFalseDocumentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+        "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+        "profilesEmpty": true,
+        "actionsLocal": true
+      },
+      "uiSnapshot": {
+        "checkpointBytes": 1933,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 37309,
+        "state": "ready"
+      },
+      "passed": true
+    },
+    {
+      "step": "reloaded",
+      "proofSha256": "0f9e2ea4cde28efd8aa26675a5292cf989f32e94ff5a9481c319b1b9a358c4ea",
+      "settingsProjection": {
+        "label": "reloaded-true",
+        "notifications": true,
+        "launchAtLogin": false,
+        "documentSha256": "ecf8379fc1f78fdc8086f90a583f6544a6ed33da42639d093337ac15e2143384",
+        "notificationsFalseDocumentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+        "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+        "profilesEmpty": true,
+        "actionsLocal": true
+      },
+      "uiSnapshot": {
+        "checkpointBytes": 1933,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 37309,
+        "state": "ready"
+      },
+      "passed": true
+    },
+    {
+      "step": "restored",
+      "proofSha256": "b89eefb098cf2fa3b625cb2e253de21e505b636788c0cc4069aed79198e4ced8",
+      "settingsProjection": {
+        "label": "restored-false",
+        "notifications": false,
+        "launchAtLogin": false,
+        "documentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "notificationsFalseDocumentSha256": "e808853c9640deb3607d8829c49132b0bdbb916f70c83428ee2550c0c2d169f9",
+        "acceptedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+        "observedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+        "profilesEmpty": true,
+        "actionsLocal": true
+      },
+      "uiSnapshot": {
+        "checkpointBytes": 1934,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 37309,
+        "state": "ready"
+      },
+      "passed": true
+    }
+  ],
+  "saveCancelReloadRestorationPassed": true,
+  "entireOriginalDocumentRestored": true,
+  "nativeDialogHistoryActivityLiveSelectionAcceptance": false,
+  "memoryAcceptance": false,
+  "remoteAcceptance": false,
+  "rawConfigurationOrPayloadExported": false,
+  "qualification": "Actual UI gestures and root-reviewed frames joined to canonical full-document hashes and accepted/observed revisions. Cancel preserved both revisions; Reload matched saved document/revisions; restore returned full original document. Other focused gates remain pending."
+}
