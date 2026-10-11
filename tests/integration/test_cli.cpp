@@ -13,6 +13,13 @@ class CliContract:public QObject {
  Q_OBJECT
  static QJsonObject raw(const QString& path,const QByteArray& bytes) {QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(1000))return {};socket.write(bytes);QElapsedTimer timer;timer.start();QByteArray response;while(timer.elapsed()<5000&&!response.contains('\n')) {QCoreApplication::processEvents();response+=socket.readAll();QTest::qWait(1);}return QJsonDocument::fromJson(response).object();}
 private slots:
+ void credentialEntryIsRejectedBeforeConnecting() {
+  QTemporaryDir d;QLocalServer server;server.setSocketOptions(QLocalServer::UserAccessOption);QVERIFY(server.listen(d.filePath("session.sock")));int connections=0;
+  connect(&server,&QLocalServer::newConnection,this,[&]{++connections;auto* socket=server.nextPendingConnection();socket->setParent(&server);socket->disconnectFromServer();});
+  QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"setup.storeCredentials","{\"accessKey\":\"synthetic-access\",\"secretKey\":\"synthetic-secret\"}"});
+  QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);const auto output=client.readAllStandardOutput();const auto response=QJsonDocument::fromJson(output).object();
+  QCOMPARE(response["error"].toObject()["code"].toString(),QString("credentials_require_settings"));QCOMPARE(connections,0);QVERIFY(!server.hasPendingConnections());QVERIFY(!output.contains("synthetic-access"));QVERIFY(!output.contains("synthetic-secret"));QVERIFY(client.readAllStandardError().isEmpty());
+ }
  void quitAcknowledgesBeforeDeferredShutdownAndRejectsUnexpectedParameters(){
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);
   auto request=[&](const QJsonObject& params){return QJsonObject{{"schemaVersion",1},{"requestId","quit"},{"session",server.socketPath()},{"method","ui.quit"},{"params",params}};};

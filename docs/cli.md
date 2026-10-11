@@ -96,3 +96,5 @@ to return free heap pages after successful startup or payload work and backgroun
 by two seconds of quiet. An attempt need not reclaim any pages. These fields carry
 no payloads or addresses; measure RSS separately using [testing-memory.md](testing-memory.md).
 Other allocators report unsupported and keep the existing cleanup behavior.
+
+`setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint.
