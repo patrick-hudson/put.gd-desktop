@@ -1400,8 +1400,11 @@ runs remain separate because the supplement adds three read-only queries.
 
 Current63 GNOME regressions are the remaining local acceptance gate. Preserve
 the passing Cinnamon implementation, and park completed unused lab VMs normally
-before resuming GNOME. Keep VNC output visible and use the exact current package
-only after its actual guest ABI check passes. Remote S3/history and full U9
+before resuming GNOME. Keep VNC output visible. Verify the current package against the guest before
+installation; if distro package names differ, build the same source commit with
+the guest’s standard CMake/Ninja toolchain and official SDK. Do not force-install
+or rewrite package dependencies. The source63 GNOME host-package reuse attempt
+was rejected after an actual dependency check; its normal guest build is running. Remote S3/history and full U9
 acceptance remain pending; local memory results do not satisfy those gates.
 The content-free samples and reproducible checks are recorded in
 [the source63 evidence](../evidence/kde-source63/reproduction.md).

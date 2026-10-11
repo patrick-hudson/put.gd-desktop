@@ -354,8 +354,7 @@
     }
   },
   "pendingGates": [
-    "Current source63 Cinnamon physical functional and memory gate",
-    "Current source63 GNOME functional and memory gate after Cinnamon",
+    "Current source63 GNOME functional and memory gate",
     "Remote S3/history acceptance where declared"
   ],
   "acceptance": {
@@ -1046,10 +1045,30 @@
       "trackedEvidence": "docs/evidence/kde-source63/cinnamon-regression-a1.json"
     },
     "gnome": {
-      "runtimeTestStarted": false,
-      "passed": false
+      "runtimeTestStarted": true,
+      "passed": false,
+      "buildStarted": true,
+      "buildComplete": false,
+      "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+      "hostPackageReuseRejected": true,
+      "reason": "Five required t64 package names are unavailable in this GNOME guest despite all 22 ELF loader checks passing.",
+      "route": "Original guest CMake dev/Release presets, Ninja, registered CTest and CPack using verified official AWS SDK; no dependency workaround.",
+      "references": {
+        "abi": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T042347099284-abi/abi-result.json",
+          "sha256": "863015af6230e7815581bacf5eff5dfc71a0fbc2428d7831e3a0fa9df8e88292"
+        },
+        "aptDiagnosis": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T042551568855-abi/abi-diagnosis.json",
+          "sha256": "69044a631434bc78e0df449baa5a90abecb3074e74077b0aabdc92ddede679fd"
+        },
+        "sdkAndSource": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T043149326330-guest-build/source-sdk-verification.json",
+          "sha256": "5b2105d318f503f3a5fc9140adcb24983913da9fcb030ed915d01d62730bd0d4"
+        }
+      }
     },
-    "qualification": "Current63 Cinnamon local native12/focusedGUI and physical timing/cold/closed-view/normal-exit regressions passed. GNOME runtime preparation admitted; actual current-version acceptance pending."
+    "qualification": "Current63 Cinnamon complete local regression passed; GNOME standard build is running after actual package compatibility rejection. GNOME functional and memory acceptance remain pending."
   },
   "regressionWindow": {
     "deadlineUtc": "2026-10-11T05:28:20.881985Z",
