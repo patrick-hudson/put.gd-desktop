@@ -1,0 +1,817 @@
+{
+  "schemaVersion": 1,
+  "status": "prepared-source62-interim-evidence-not-native-acceptance-or-keeper",
+  "source": {
+    "sourceCommit": "a7a3aa02d3ea7fc26fbd290007dcd8671e906080",
+    "sourceTree": "74dc074628d40995d108263774321e9d30376e13",
+    "sourceCount": 62,
+    "version": "0.1.1-dev.62+ga7a3aa02d3ea",
+    "clean": true
+  },
+  "packageVersion": "0.1.1~dev.62+ga7a3aa02d3ea",
+  "installed": {
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.62+ga7a3aa02d3ea",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.62+ga7a3aa02d3ea",
+      "gitCommit": "a7a3aa02d3ea7fc26fbd290007dcd8671e906080",
+      "gitTree": "74dc074628d40995d108263774321e9d30376e13",
+      "commitCount": 62,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "binarySha256": {
+      "/usr/bin/putgd": "fc7c50e8309a9cfc451f26a98463a71a26cac1c92852df400448d94ac3033818",
+      "/usr/bin/putgd-cli": "82a22151d42c6fe4e1be938732c5e7e2f444a985f0e7183a5a79dc83fe1a23b9",
+      "/usr/bin/putgd-ui": "c4fec9057bc29ea5602550dea648ec35154d9a9e4144b7101820e6f18b82da57",
+      "/usr/bin/putgd-capture": "ae7fcfe79bd9f6e8c97c65a54d8a3f440f9016ee14c4e5a0c3cd8e0df518c2c4",
+      "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750",
+      "/usr/bin/putgd-kde-region": "1a333773f231c1742e58f2478e00adc17a9b8ede2cdc70ddadefcbbb576ccdbe",
+      "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": "1239cd5963342c157446507df81fe5eb991d9a7bb3ba9b3b43f1a23486ad3dd0"
+    },
+    "versions": {
+      "/usr/bin/putgd": "putgd 0.1.1-dev.62+ga7a3aa02d3ea",
+      "/usr/bin/putgd-cli": "putgd-cli 0.1.1-dev.62+ga7a3aa02d3ea",
+      "/usr/bin/putgd-ui": "putgd-ui 0.1.1-dev.62+ga7a3aa02d3ea",
+      "/usr/bin/putgd-capture": "putgd-capture 0.1.1-dev.62+ga7a3aa02d3ea",
+      "/usr/bin/putgd-kde-region": "putgd-kde-region 0.1.1-dev.62+ga7a3aa02d3ea"
+    },
+    "s3": {
+      "path": "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so",
+      "module": {
+        "buildIdentity": "7c023da82c0834e8923d338d5a5b5bf98d5e27b1a4bfc6295cebd3bc5ec90f1a",
+        "contractVersion": 1,
+        "file": "libputgd-s3.so",
+        "sha256": "1239cd5963342c157446507df81fe5eb991d9a7bb3ba9b3b43f1a23486ad3dd0"
+      },
+      "runtimeManifestSha256": "f364266c7ad725927bd7ed1ed29ac3de942acb5af7767438ea34c100f75d560f"
+    }
+  },
+  "residentAtDeployment": {
+    "pid": 102528,
+    "startTicks": 2746709,
+    "uid": 1000,
+    "executable": "/usr/bin/putgd",
+    "sha256": "fc7c50e8309a9cfc451f26a98463a71a26cac1c92852df400448d94ac3033818",
+    "parentPid": 1,
+    "state": "S",
+    "comm": "putgd"
+  },
+  "environment": {
+    "guest": "kde",
+    "cohort": "kdebase57-a1",
+    "profile": "current-kde-a3d70dc",
+    "qemuPid": 93514,
+    "qemuStartTicks": 41818601,
+    "vncLocalPort": 5934,
+    "vncDisplayWall": "http://127.0.0.1:8765/",
+    "userAdjustedPowerSettings": true,
+    "agentMustNotMutatePowerSettings": true,
+    "maintenanceNote": {
+      "path": "docs/vm-lab.md",
+      "line": 227
+    },
+    "powerSettingsQualification": "User disabled KDE dimming and related power behavior after unchanged pixel locator rejected dimmed fixtures. Exact future deterministic defaults remain lab-maintenance work; do not claim a fully specified base environment."
+  },
+  "host": {
+    "registeredCtestPassed": 51,
+    "qtCaseSkipQualifications": [
+      "SKIP   : ImageJobTest::svgTextDecodeHasFontServicesOnlyInChild() The installed Qt SVG image codec is absent; real desktop acceptance requires this test to pass.",
+      "SKIP   : ImageJobTest::svgRegularFilePreviewThroughArtifactStore() The installed Qt SVG image codec is absent; real desktop acceptance requires this test to pass.",
+      "SKIP   : S3ModuleContract::unavailableFacadeChild() Subprocess helper"
+    ],
+    "durationSeconds": 278.3969663659809,
+    "graphicalDesktopAcceptance": false
+  },
+  "guestImageJob": {
+    "qtCases": {
+      "passed": 38,
+      "failed": 0,
+      "skipped": 0
+    },
+    "devTest": "image_job_integration",
+    "junitSha256": "f761bde3683dcb4d3c89e8f5d714e663d7ff5cd23edc332b42feccb013882c17",
+    "qualification": "Current62 test binary on actual KDE Qt with SVG codec; not installed-release full graphical certification. At time of isolated dev test the baseline source60 resident remained unchanged; source62 installed runtime proofs follow the separate deployment receipt."
+  },
+  "supplementalSVG3": {
+    "cases": [
+      {
+        "case": "svg-clipboard",
+        "operationId": "3f021c68-f0ab-4cf6-ad64-3c1ffcc751e2",
+        "passed": true
+      },
+      {
+        "case": "svg-file-uri",
+        "operationId": "14fc8ee1-7aea-4599-acb9-46f07e6bc19b",
+        "passed": true
+      },
+      {
+        "case": "svg-mislabeled-png",
+        "operationId": "926e7ed3-f27e-422a-a79a-5960a2882a69",
+        "passed": true
+      }
+    ],
+    "firstCaseReusedWithoutReinvoke": true,
+    "firstPasteNotRepeated": true,
+    "exactSettingsRestorationVerified": true,
+    "exactRegisteredFixtureDrainVerified": true,
+    "rootOriginalVisualReview": "Font preview is nonblank and renders put.gd; original verified native GTK fixture frames are fully visible and bright. Pixel/original-file/independent-paste checks retain exact original oracle results.",
+    "workerNormalExitQualification": "Production successful checkpoint plus NormalExit0 gates and observed subsequent singleton; transient worker PID generation not independently recorded.",
+    "ownerChangeCancellation": "Native timing test pending deterministic barrier; core integration readiness/cancellation tests passed separately."
+  },
+  "selectedNative4": [
+    {
+      "client": "qt",
+      "scenario": "clipboard-text",
+      "passed": true,
+      "operationId": "b1d85f2a-ffa4-4e88-b2a3-5e2035ec00a8",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 131.67016606900143,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "result": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T232417792695-matrix/matrix-qt-clipboard-text.json",
+        "sha256": "fba30a35d8f6149a3a72288f0d2969b8c40aa1261a2bb9c65b435238e39aad67"
+      },
+      "parametersRef": {
+        "path": "work/lab-runs/ui43-kde-20261010T232417792695-1/tests/15cb11ee5eaa4bc8bce7afc7a282bc34/parameters.json",
+        "sha256": "0b6fc7e4d0e1eee80d1e2d27a1e08ed9481c3f46cccf2edd98ed64ffd54e20d9"
+      },
+      "parameters": {
+        "profile": "kde-wayland",
+        "scenario": "clipboard-text",
+        "clipboardClient": "qt",
+        "destination": "local",
+        "hotkeys": {
+          "region": {
+            "shortcut": "Ctrl+Shift+F9",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f9"
+            ]
+          },
+          "window": {
+            "shortcut": "Ctrl+Shift+F10",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f10"
+            ]
+          },
+          "desktop": {
+            "shortcut": "Ctrl+Shift+F11",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f11"
+            ]
+          },
+          "clipboard": {
+            "shortcut": "Ctrl+Shift+F12",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f12"
+            ]
+          }
+        },
+        "displayLayout": [
+          {
+            "height": 800,
+            "name": "Virtual-1",
+            "nativeHeight": 800,
+            "nativeWidth": 1280,
+            "rotation": 2,
+            "scale": 1,
+            "width": 1280,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "qtVersion": "6.10.2",
+        "acceleration": "kvm",
+        "goldenSha256": "a5b75be961ecff6bbbc0008667529648918f20f0458260971d8e077ba4e5bb7a",
+        "timingSeconds": {
+          "keyHold": 0.05,
+          "focusPoll": 0.1,
+          "focusAttemptLimit": 2,
+          "clipboardSourceSettle": 0.3,
+          "selectorSettle": 0.5,
+          "operationPoll": 0.2
+        },
+        "selection": {
+          "fixtureOffset": {
+            "x": 30,
+            "y": 30
+          },
+          "width": 80,
+          "height": 60,
+          "start": {
+            "x": 350,
+            "y": 207
+          },
+          "end": {
+            "x": 430,
+            "y": 267
+          },
+          "inputViewport": {
+            "width": 1280,
+            "height": 800
+          }
+        },
+        "timeoutSeconds": 90
+      },
+      "originalWitnessSha256": "75c3b7f41c4b9d3cc7909df4a44c967237f74267a92eeed3055f3a80ef36acc7"
+    },
+    {
+      "client": "qt",
+      "scenario": "window",
+      "passed": true,
+      "operationId": "79d8e252-2968-4134-b859-8ce373f92db9",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 152.75797356298426,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "result": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T232417792695-matrix/matrix-qt-window.json",
+        "sha256": "5bfbff98ab70c1845c1c5ad81fbf916a5e18d356ccb9ef037c140497d5931890"
+      },
+      "parametersRef": {
+        "path": "work/lab-runs/ui43-kde-20261010T232417792695-2/tests/53105234bd154dcfb392a6611a8cdd54/parameters.json",
+        "sha256": "0c0677ce26906b2a34cc2c5b27946b9143e43c59e6091b3fd4102136ef79efc4"
+      },
+      "parameters": {
+        "profile": "kde-wayland",
+        "scenario": "window",
+        "clipboardClient": "qt",
+        "destination": "local",
+        "hotkeys": {
+          "region": {
+            "shortcut": "Ctrl+Shift+F9",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f9"
+            ]
+          },
+          "window": {
+            "shortcut": "Ctrl+Shift+F10",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f10"
+            ]
+          },
+          "desktop": {
+            "shortcut": "Ctrl+Shift+F11",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f11"
+            ]
+          },
+          "clipboard": {
+            "shortcut": "Ctrl+Shift+F12",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f12"
+            ]
+          }
+        },
+        "displayLayout": [
+          {
+            "height": 800,
+            "name": "Virtual-1",
+            "nativeHeight": 800,
+            "nativeWidth": 1280,
+            "rotation": 2,
+            "scale": 1,
+            "width": 1280,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "qtVersion": "6.10.2",
+        "acceleration": "kvm",
+        "goldenSha256": "a5b75be961ecff6bbbc0008667529648918f20f0458260971d8e077ba4e5bb7a",
+        "timingSeconds": {
+          "keyHold": 0.05,
+          "focusPoll": 0.1,
+          "focusAttemptLimit": 2,
+          "clipboardSourceSettle": 0.3,
+          "selectorSettle": 0.5,
+          "operationPoll": 0.2
+        },
+        "selection": {
+          "fixtureOffset": {
+            "x": 30,
+            "y": 30
+          },
+          "width": 80,
+          "height": 60,
+          "start": {
+            "x": 350,
+            "y": 207
+          },
+          "end": {
+            "x": 430,
+            "y": 267
+          },
+          "inputViewport": {
+            "width": 1280,
+            "height": 800
+          }
+        },
+        "timeoutSeconds": 90
+      },
+      "originalWitnessSha256": "c9c955067e9b4ff345340168c8fbf5adbdb15d669ba6f122074b504471242bd4"
+    },
+    {
+      "client": "qt",
+      "scenario": "desktop",
+      "passed": true,
+      "operationId": "777c039a-97ba-4d7c-87bc-d6c98f47d716",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 130.29528092901455,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "result": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T232417792695-matrix/matrix-qt-desktop.json",
+        "sha256": "318dd690eb0564cffe72fb6f68d5121c6b137f456724bb66588b0704a94c7efa"
+      },
+      "parametersRef": {
+        "path": "work/lab-runs/ui43-kde-20261010T232417792695-3/tests/9e7bc9bbf3c840c798e8844b4c5afaff/parameters.json",
+        "sha256": "eaf9ce2e25f24db0afea00dd051473d8188611f5648078fb372d1430117d1d20"
+      },
+      "parameters": {
+        "profile": "kde-wayland",
+        "scenario": "desktop",
+        "clipboardClient": "qt",
+        "destination": "local",
+        "hotkeys": {
+          "region": {
+            "shortcut": "Ctrl+Shift+F9",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f9"
+            ]
+          },
+          "window": {
+            "shortcut": "Ctrl+Shift+F10",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f10"
+            ]
+          },
+          "desktop": {
+            "shortcut": "Ctrl+Shift+F11",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f11"
+            ]
+          },
+          "clipboard": {
+            "shortcut": "Ctrl+Shift+F12",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f12"
+            ]
+          }
+        },
+        "displayLayout": [
+          {
+            "height": 800,
+            "name": "Virtual-1",
+            "nativeHeight": 800,
+            "nativeWidth": 1280,
+            "rotation": 2,
+            "scale": 1,
+            "width": 1280,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "qtVersion": "6.10.2",
+        "acceleration": "kvm",
+        "goldenSha256": "a5b75be961ecff6bbbc0008667529648918f20f0458260971d8e077ba4e5bb7a",
+        "timingSeconds": {
+          "keyHold": 0.05,
+          "focusPoll": 0.1,
+          "focusAttemptLimit": 2,
+          "clipboardSourceSettle": 0.3,
+          "selectorSettle": 0.5,
+          "operationPoll": 0.2
+        },
+        "selection": {
+          "fixtureOffset": {
+            "x": 30,
+            "y": 30
+          },
+          "width": 80,
+          "height": 60,
+          "start": {
+            "x": 350,
+            "y": 207
+          },
+          "end": {
+            "x": 430,
+            "y": 267
+          },
+          "inputViewport": {
+            "width": 1280,
+            "height": 800
+          }
+        },
+        "timeoutSeconds": 90
+      },
+      "originalWitnessSha256": "21ffb8d3683c4df2f96106de3c9df886e3e0f3b909dd1063a0a1021cff3fb95c"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-escape",
+      "passed": true,
+      "operationId": "08a0715a-f7f7-4561-ad21-24213e00d5fa",
+      "operationState": "cancelled",
+      "copyStatus": "no_result",
+      "elapsedSeconds": 136.01232710498152,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "result": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T232417792695-matrix/matrix-qt-region-cancel-escape.json",
+        "sha256": "92e7ec92baa235967c1ab5087e137325ae49fb72cebfcc2ace5fe1528999ada1"
+      },
+      "parametersRef": {
+        "path": "work/lab-runs/ui43-kde-20261010T232417792695-4/tests/3846062892384b83980849c654aafd4d/parameters.json",
+        "sha256": "3a86fe00d74c9806ecbacce0a0ce46736186fc137d70b2d861b07f3a8e3cf9d0"
+      },
+      "parameters": {
+        "profile": "kde-wayland",
+        "scenario": "region-cancel-escape",
+        "clipboardClient": "qt",
+        "destination": "local",
+        "hotkeys": {
+          "region": {
+            "shortcut": "Ctrl+Shift+F9",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f9"
+            ]
+          },
+          "window": {
+            "shortcut": "Ctrl+Shift+F10",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f10"
+            ]
+          },
+          "desktop": {
+            "shortcut": "Ctrl+Shift+F11",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f11"
+            ]
+          },
+          "clipboard": {
+            "shortcut": "Ctrl+Shift+F12",
+            "keys": [
+              "ctrl",
+              "shift",
+              "f12"
+            ]
+          }
+        },
+        "displayLayout": [
+          {
+            "height": 800,
+            "name": "Virtual-1",
+            "nativeHeight": 800,
+            "nativeWidth": 1280,
+            "rotation": 2,
+            "scale": 1,
+            "width": 1280,
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "qtVersion": "6.10.2",
+        "acceleration": "kvm",
+        "goldenSha256": "a5b75be961ecff6bbbc0008667529648918f20f0458260971d8e077ba4e5bb7a",
+        "timingSeconds": {
+          "keyHold": 0.05,
+          "focusPoll": 0.1,
+          "focusAttemptLimit": 2,
+          "clipboardSourceSettle": 0.3,
+          "selectorSettle": 0.5,
+          "operationPoll": 0.2
+        },
+        "selection": {
+          "fixtureOffset": {
+            "x": 30,
+            "y": 30
+          },
+          "width": 80,
+          "height": 60,
+          "start": {
+            "x": 350,
+            "y": 207
+          },
+          "end": {
+            "x": 430,
+            "y": 267
+          },
+          "inputViewport": {
+            "width": 1280,
+            "height": 800
+          }
+        },
+        "timeoutSeconds": 90
+      },
+      "originalWitnessSha256": "c56e0daa66d71d2b9612f6ae1593cd9066c310327ff171e24d2fb0b7eb9e0cdf"
+    }
+  ],
+  "retainedFailures": [
+    {
+      "originalFailure": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T224101945126-candidate62-standard-build/failed.json",
+        "sha256": "381036e9ccbc93fc7bd652ffefc109e566305380c3ffade897f5b3ee44163543"
+      },
+      "errorType": "CalledProcessError",
+      "qualification": "Initial typed-source consumer rejected raw export string records before compilation; immutable export retained, separate typed projection joined all original hashes."
+    },
+    {
+      "originalFailure": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T225504217830-kde62-svg3/failed.json",
+        "sha256": "65a9e05f9f517fdf38976160121296b9c02b2d730a32b5c6505ccb3ab4f8c97b"
+      },
+      "errorType": "AssertionError",
+      "qualification": "Uppercase T label rejected by the test label regex before any operation. Original failed attempt retained; later corrected-label admission is separate."
+    },
+    {
+      "originalFailure": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T230033494748-kde62-svg3/failed.json",
+        "sha256": "c23996890ecbca0b817cf4b7a04dbdfb9131d26bc990b0c8fb8227145ecd0a9b"
+      },
+      "errorType": "GuardError",
+      "qualification": "Idle dimming reduced fixture colors to approximately59.5%; the unchanged pixel locator rejected the actual fixture. Original failed attempt retained; user power environment adjustment and scoped recovery are separately qualified, without pixel threshold changes."
+    },
+    {
+      "originalFailure": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T230405768825-kde62-svg3/failed.json",
+        "sha256": "e55ec01d65047f642496cbfa065ecd53c95df5faf8e9a28f39306e2ac3249a50"
+      },
+      "errorType": "RuntimeError",
+      "qualification": "First operation completed; test collection rejected exact production artifacts/../previews spelling. Narrow path continuation reused this operation, preserving original traversal/ownership bounds."
+    },
+    {
+      "originalFailure": {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T231102729524-kde62-svg3/failed.json",
+        "sha256": "e49ae848bc446244ce5b368a70d114dea904449cf8ee2bf23b247c29f8af4dae"
+      },
+      "errorType": "Rejected",
+      "qualification": "Actual first-case files and independent paste retained; oracle rejected truthy exact empty three-field Error envelope. Strict copy-only projection normalized only exact successful Error::toJson, preserving raw operation and rejecting other envelopes; no repeated first capture or paste."
+    }
+  ],
+  "frozenProvenance": {
+    "historicalSourceCount": 57,
+    "historicalGateSha256": "41041a41048f0cfb34d8c7ee514d6cb065c76c97b2d1f635c2f748b9b80123d3",
+    "historicalGateIsCurrentAuthorization": false,
+    "files": [
+      {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/guards.py",
+        "sha256": "fc500e862532f692e838817ca4da8e3c8658992b2e93e43bbc77629286fc8690"
+      },
+      {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/adapter.py",
+        "sha256": "91d96c507dbb0037073c746e0be66493e2c0218c59b51279af60d170c2bb5733"
+      },
+      {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/fixture_registry.py",
+        "sha256": "d3dfe4d7fbc3fca3bf38c690ac0cfe442699d0c7554bb5318ac7b331fd46bb3d"
+      },
+      {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/matrix_fixture_wrapper.py",
+        "sha256": "530a776e09096dd6f6e649a93b42df4fa969d65fe62c54b6565a56bcf878c39d"
+      },
+      {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/guest_checks.py",
+        "sha256": "cbe0f6f1bad5593b065b59a1d824fe63827d56a466f739d35ef9d086ebe23c61"
+      },
+      {
+        "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/binding-current57-a1.json",
+        "sha256": "521035ec29c9a109abaf189262cd080f4af46c45459dae63ef8507572f217543"
+      }
+    ]
+  },
+  "reproduction": {
+    "standardTools": [
+      "C++20",
+      "distro Qt6 dynamically linked",
+      "CMake presets",
+      "Ninja",
+      "official AWS C++ SDK"
+    ],
+    "standardCommands": [
+      "cmake --preset dev",
+      "cmake --build --preset dev",
+      "ctest --preset dev"
+    ],
+    "minimumQt": "6.4.2",
+    "actualGuestQt": "6.10.2",
+    "testingDestination": "isolated synthetic local-only; no S3 workload performed here",
+    "testShortcutQualification": "Native selected4 uses real registered Ctrl+Shift+F9/F10/F11/F12 test bindings, not product default binding certification.",
+    "socketPathRule": "Official checker before each isolated launch; 107 UTF-8 bytes excluding NUL; private short outputs, original failures retained.",
+    "memoryProtocol": {
+      "rssTargetBytes": 41943040,
+      "rssTargetMiB": 40,
+      "diagnosticPssNotTarget": true,
+      "warmupSeconds": 5,
+      "durationSeconds": 300,
+      "intervalSeconds": 5,
+      "requiredSamples": 61,
+      "requiredIdleCpuPercentOneCoreBelow": 0.5,
+      "requiredRuns": "two independent post-local-native runs plus one fresh empty-profile cold run",
+      "samplerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "evaluatorSha256": "ec6d9bffd4170482ad047fc6ecda880659dc538d4d1bf4c9f942a2be87b6502a",
+      "originalCoverageIdentityFamilyQuietNumericOraclesUnchanged": true
+    },
+    "executionOrder": "KDE iteration first; current62 Cinnamon and GNOME functional/memory regressions after satisfactory KDE candidate; checkpointed siblings preserved."
+  },
+  "pendingGates": [
+    "Quick attribution joined and target miss preserved; full runtime expansion held pending diagnosis and a satisfactory KDE candidate.",
+    "guest full registered CTest51 execution",
+    "original all12 native matrix with Qt/GTK clipboard offers",
+    "native tray/settings/history/activity, native fonts/folder dialogs, save/cancel/reload/notifications and normal UI/helper exit",
+    "transparent live-background region selection and actual themed crosshair proof",
+    "two post-native300s plus fresh empty-profile cold300s with original numeric/CPU/identity/quiet/coverage gates",
+    "current62 Cinnamon functional/memory regression",
+    "current62 GNOME functional/memory regression",
+    "populated-history and post-S3 workloads, isolated real-S3 parity and full remote history effects",
+    "deterministic native owner-change cancellation barrier"
+  ],
+  "acceptance": {
+    "fullNative": false,
+    "memory": false,
+    "keeper": false,
+    "remote": false,
+    "siblingCurrentVersion": false
+  },
+  "references": [
+    {
+      "path": "work/kde-native-boundary/candidate3-source62/source-metadata.json",
+      "sha256": "7bb2db5742720e9f2d97db449ab9333af865590d936d144adf7ef8a0c5eaaa5e"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-source62/source.json",
+      "sha256": "3db8517489e76723a54bab28e68bd49bd30c2b42cae94445f88271b887c94703"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-source62/source.tar",
+      "sha256": "fedbb455b47c18ba310c9a6efba69d7266ad24b2fa7f9c8e2d8bb9394a8e55f8"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-materialized62-continuation-a1/source.json",
+      "sha256": "e70198949f14cce87f7418ab5948524e74cceb66f001e7b7c85ebbbc916b3c0b"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate62-native-preparation/source.json",
+      "sha256": "59d26d97182554caeba6c3b78410824c6343cc6fc44734ae5fe8b7e86eedd41f"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate62-native-preparation/binding-request.json",
+      "sha256": "09ed99dd39ac74f7aa7b5f02d3f26fa31a8e9e0644057db7af49b466961b3799"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate62-native-preparation/manifest.json",
+      "sha256": "28f015539d43576a31465d7078567d79786d5072bb19d58790e80772289ec279"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T224811639536-candidate62-deploy-first-cold/complete.json",
+      "sha256": "32769e9791f2342847d54f07f81984358fa9e9732e1c758a615e723b3fb22206"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-host/verification-source62.json",
+      "sha256": "7f39a249b0b72f6237df3884c5725007845c463aaec8165f18f883b4c5cf1286"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-host/build-source62-clean.result.json",
+      "sha256": "5dc5ccf747d626eb593678bc9ce2daca814cf25f48e781c097e9502db1645234"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-host/full-source62-clean.result.json",
+      "sha256": "9395bbd44e34ea23f389d6a60fc70dd6dbe6a7baa86856311aea83d8a2bf7a84"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-host/full-source62-clean.xml",
+      "sha256": "85a7a17d005e472b0945f0945062e1f9185f2fb77eb8343aac220d2cbf02f696"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-host/source62-clean-socket-preflight.json",
+      "sha256": "836f20f212682f777c191e2b45d12737c30fbf754b8f01725beea891611871c7"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T224654911981-candidate62-dev-image-job-check/complete.json",
+      "sha256": "240ab2edf1023cb66957aed2c20cf09d018c8f47b2477aedc5d4cf7449613f48"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T224654911981-candidate62-dev-image-job-check/artifacts/image-job.xml",
+      "sha256": "f761bde3683dcb4d3c89e8f5d714e663d7ff5cd23edc332b42feccb013882c17"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-materialized62-continuation-a1/focused-socket-preflight.json",
+      "sha256": "0a4afbfec4491975f8eaba3f971b112580de6918b1bcd08c16dd0279efa68c2f"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T231802851781-kde62-svg3/complete.json",
+      "sha256": "8c1f570383759b9864d8a57e6fd148143b21c8165cb940c54b599c852edc6606"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T231802851781-kde62-svg3/svg3-result.json",
+      "sha256": "2782fd9927c0cc17fde736a8f2ba7e19264c95cb67e1848e969d896af6fba83e"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T231802851781-kde62-svg3/svg-settings-restored.json",
+      "sha256": "ac88ef5aa6a08815a1db83b2c7166c23ec16bf9f733efcfff4faf37751c2196d"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T231802851781-kde62-svg3/fixture-drain.json",
+      "sha256": "01c499ffdb2443c8b96cff958a354d7d399a49cb8e602caee48e84b82fc54956"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-svg-retained-continuation62-a1/root-actual-svg3-review.json",
+      "sha256": "24cab8cb0bf325b12856770b38fc36ba0d9e9d70c3ade957475e54b434cdbfc5"
+    },
+    {
+      "path": "work/kde-native-boundary/svg-continuation-review/retained-projection-review.json",
+      "sha256": "0ad42b0b241cde1882e795a8578fc03343e88da62b1143f6cef1b065b7db8fb3"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T232417792695-matrix/complete.json",
+      "sha256": "2c9ad887d3851b758996ecb0007a6e021d7bfc3dddad4d7d7faeb5857ac6a7d5"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T232417792695-matrix/matrix.json",
+      "sha256": "68c8a1751ce181055ae0ae367d4f9cb387b18b31ed6df9674ea2cefe39f9df8d"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T232417792695-matrix/fixture-safety.json",
+      "sha256": "1a82ec7dd7d24b061a297e570c01ff7e7acd19e7fb413aa7e1898662340eb0fe"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate62-native-preparation/root-selected4-review.json",
+      "sha256": "c6f8a8d9d8a11ec67ccba5980471312cbaf462c104930641ec308e67aba78e01"
+    },
+    {
+      "path": "work/kde-native-boundary/deferred-ctest62-independent-review/review-a2.json",
+      "sha256": "799112cfb1eb19dbd1eb81bbf6b095438d325c1323cf56b0de4a347383011b8a"
+    },
+    {
+      "path": "work/kde-native-boundary/candidate3-svg-retained-continuation62-a1/projection-contracts.json",
+      "sha256": "1116542f6e077e5885049ef798bf57b8488220e8aac5ab6eb96ae8133abebfcf"
+    },
+    {
+      "path": "docs/vm-lab.md",
+      "sha256": "96773a33bfe7eb499c35d02c9a233d08aa3c53b9e29efb6b188bb929100e0011"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T233642174349-candidate62-quick-attribution/attribution.json",
+      "sha256": "b0d5c5e11a4de8b44f0df33645b8022e7fe067cf16e6b2a46a940a4f9e682c22"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T233642174349-candidate62-quick-attribution/complete.json",
+      "sha256": "257dc9210ecae298f2c6d9731bf254a71dd9d789bd9ececc8a0b5f493ee5b0e0"
+    },
+    {
+      "path": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T233553930539-candidate62-selected4-fixture-drain/complete.json",
+      "sha256": "3fb463d62a779564dc16d461165aed9cd724d59f891d6597c28b15a28ac9b255"
+    }
+  ],
+  "payloadExported": false,
+  "secretsExported": false,
+  "fullDiagnosticMapsExported": false,
+  "guestEffectsByExporter": false,
+  "quickDiagnosticPoint": {
+    "rssBytes": 42475520,
+    "rssMiB": 40.5078125,
+    "pssBytes": 18910208,
+    "privateBytes": 17092608,
+    "rssTargetBytes": 41943040,
+    "targetPassedAtPoint": false,
+    "rssExcessBytes": 532480,
+    "qualification": "Single post-SVG3/selected4 quiet diagnostic outside frozen sampling; not a scored300s result. Runtime expansion held after40.5078125MiB miss. Allocation ownership is unknown; categories do not prove reclaimable memory.",
+    "limitations": [
+      "smaps and rollup are sequential, not an atomic allocation snapshot.",
+      "Categories do not prove allocator ownership or removable memory.",
+      "This is not a scored five-minute sample or native acceptance."
+    ]
+  },
+  "selectedNative4ExactDrainJoined": true
+}
