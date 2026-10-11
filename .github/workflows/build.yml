@@ -25,6 +25,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+      - name: Trust container checkout for build identity
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Provision pinned AWS SDK
         run: |
           git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
@@ -134,6 +136,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
+      - name: Enable long Git paths for Windows dependencies
+        if: runner.os == 'Windows'
+        shell: bash
+        run: git config --global core.longpaths true
       - if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
       - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
