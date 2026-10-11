@@ -162,7 +162,14 @@ jobs:
       - name: Compile shared application
         shell: bash
         run: |
-          cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$PWD/build/sdk;$QT_ROOT_DIR"
+          sdk_prefix="$PWD/build/sdk"
+          qt_prefix="$QT_ROOT_DIR"
+          if [ "$RUNNER_OS" = 'Windows' ]; then
+            sdk_prefix="$(cygpath -m "$sdk_prefix")"
+            qt_prefix="$(cygpath -m "$qt_prefix")"
+            export MSYS2_ARG_CONV_EXCL='-DCMAKE_PREFIX_PATH='
+          fi
+          cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$sdk_prefix;$qt_prefix"
           cmake --build --preset release
       - name: Preserve compiled build identity
         if: always()
