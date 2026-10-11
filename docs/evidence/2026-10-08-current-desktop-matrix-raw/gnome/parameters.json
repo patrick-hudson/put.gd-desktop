@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:33:53.987192+00:00",
+  "scope": "GNOME current-source functional verification before coordinated memory wave; synthetic local-only; VNC visible",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "sourceArchive": "work/cross-desktop-current/source-a3d70dc.tar",
+  "sourceArchiveSha256": "ec179214a662010c7f6d21a2cc5fe29479423ff6a6e9292433ef35b0aebd3fab",
+  "buildScriptSha256": "b3a7d20cdbd0176e8d1362118bb38dd6aebe3fb569dfa761ae701901f32c2b28",
+  "buildVm": "gnome-001",
+  "buildDirectory": "/home/lab/putgd-current-a3d70dc",
+  "verifiedSdkPrefix": "/home/lab/putgd-native/build/sdk",
+  "testVm": "current-gnome-a3d70dc",
+  "testRun": "work/lab-runs/current-gnome-a3d70dc",
+  "testSshPort": 22236,
+  "testVncPort": 5936,
+  "baseSha256": "ffb4aecd868da250b091c1ae9759552b71cfd3ffed12995b56560ace8f8602ad",
+  "testProfile": "gnome-wayland",
+  "sourceAndPackageVariant": "Dev full CTest; Release packaged via normal CPack; two build jobs per preset",
+  "graphicalScenarios": [
+    "region",
+    "window",
+    "desktop",
+    "clipboard-text",
+    "clipboard-image",
+    "clipboard-files",
+    "region-cancel-escape",
+    "region-cancel-right-click",
+    "region-cancel-zero-area"
+  ],
+  "gtkScenarios": [
+    "clipboard-text",
+    "clipboard-image",
+    "clipboard-files"
+  ],
+  "uiSmoke": [
+    "settings",
+    "history",
+    "activity"
+  ],
+  "limits": [
+    "No S3/cloud traffic or credentials",
+    "No comparative memory measurements before root releases the shared barrier",
+    "Single-head functional evidence cannot certify multi-display/scaling or physical performance",
+    "Fresh overlay shares authenticated golden host key; new local SSH port pinned to prior authenticated same-base host key"
+  ],
+  "releaseTargetBoundary": "release-target-boundary.json",
+  "releaseResumeScriptSha256": "b518e60ddbbdabb218886b27e22b6b46cf30d9ac6328f3cea308d975824ad201",
+  "releaseBuildTargets": [
+    "putgd",
+    "putgd-cli",
+    "putgd_s3_module",
+    "putgd-desktop-fixture"
+  ]
+}

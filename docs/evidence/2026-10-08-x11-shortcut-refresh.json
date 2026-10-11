@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T23:03:02.257870+00:00",
+  "status": "Deterministic red reproduced, corrected, isolated native tests pass, independent review Ready to merge",
+  "scope": "Retain unchanged X11 passive-key grabs during MappingNotify reconciliation",
+  "base": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+  "evidenceRoot": "2026-10-08-x11-shortcut-refresh-raw",
+  "validation": {
+    "isolatedNativeQtTestCases": 25,
+    "failures": 0,
+    "fullDevCtest": 31,
+    "fullDevReceipt": "2026-10-08-build-versioning-raw/corrected-dev-receipt.json",
+    "review": "review.json"
+  },
+  "limits": [
+    "Original intermittent Qt6.10.2 VM event scheduling was not recorded; exact cause remains unproven.",
+    "Isolated Xvfb checks do not establish native compositor acceptance.",
+    "Frozen retained-window memory candidate excludes this separate fix; integrated source/package identity must be recorded."
+  ]
+}

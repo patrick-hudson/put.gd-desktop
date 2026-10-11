@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:37:26.349681+00:00",
+  "scope": "Actual GNOME tray menu invokes all four production local-only actions with no UI helper",
+  "cases": [
+    {
+      "action": "region",
+      "menuWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/region-menu.png",
+        "sha256": "3ebad670f4016da49e01a47e5d67a36b9c10c343af395fb5a79ca16eadff51dc"
+      },
+      "operationId": "6ba0d689-0a3e-410b-8139-20a37dc92933",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "538f978134c7813d45728e1688c779f001ebf3e7313d944b80878305ccb38184",
+      "artifactDimensions": [
+        80,
+        60
+      ],
+      "uiAfter": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "afterWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/region-completed.png",
+        "sha256": "84357b7b542c81646b502d2f967a7110e17758e27fbda8a3537aff72a0c94033"
+      }
+    },
+    {
+      "action": "window",
+      "menuWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/window-menu.png",
+        "sha256": "e057c04ee085207d9f80786a01ae5aa52ad08942fbe61ab36004cc580bd04844"
+      },
+      "operationId": "aa83def5-6d90-4b7e-aff8-5fe533dfc43f",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "3972a6db2a53ad2376b364e66372ff3f4868d365b042c37e58fc537e654f2554",
+      "artifactDimensions": [
+        668,
+        449
+      ],
+      "uiAfter": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "afterWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/window-completed.png",
+        "sha256": "84357b7b542c81646b502d2f967a7110e17758e27fbda8a3537aff72a0c94033"
+      }
+    },
+    {
+      "action": "desktop",
+      "menuWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/desktop-menu.png",
+        "sha256": "e057c04ee085207d9f80786a01ae5aa52ad08942fbe61ab36004cc580bd04844"
+      },
+      "operationId": "296c32b6-9cc2-4137-a19a-1562968696bb",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "532ade6b08ef82e9f9bb9d9f432ef80c87113db0617e9e48795698db9b0fce65",
+      "artifactDimensions": [
+        1280,
+        800
+      ],
+      "uiAfter": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "afterWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/desktop-completed.png",
+        "sha256": "84357b7b542c81646b502d2f967a7110e17758e27fbda8a3537aff72a0c94033"
+      }
+    },
+    {
+      "action": "clipboard",
+      "menuWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/clipboard-menu.png",
+        "sha256": "e057c04ee085207d9f80786a01ae5aa52ad08942fbe61ab36004cc580bd04844"
+      },
+      "operationId": "7b94266f-d13e-4b9a-8172-1ff0b7366a40",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "artifactSha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+      "uiAfter": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "afterWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/tray-actions/clipboard-completed.png",
+        "sha256": "84357b7b542c81646b502d2f967a7110e17758e27fbda8a3537aff72a0c94033"
+      }
+    }
+  ],
+  "passed": true,
+  "resident": {
+    "pid": 2848,
+    "startTicks": 3939,
+    "sha256": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8"
+  }
+}

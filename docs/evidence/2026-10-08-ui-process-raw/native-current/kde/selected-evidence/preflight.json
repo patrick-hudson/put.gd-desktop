@@ -1,0 +1,20 @@
+{
+  "timestampUtc": "2026-10-09T00:51:09.073592+00:00",
+  "profile": "kde-wayland",
+  "sshPort": 22234,
+  "vncDisplay": 34,
+  "baselineIdentity": {
+    "pid": 82341,
+    "startTicks": 1011360,
+    "sha256": "a1ce7495a292d0f8e6664fe2cd034c505ad30494229b4af80313b9de133264d1"
+  },
+  "operationStates": {
+    "cancelled": 5,
+    "completed": 9
+  },
+  "baselineOnly": true,
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/u11-before-upgrade-head0.ppm",
+    "sha256": "5d7d732b6065090c1cc779f3df3ae09f82101b9091f3283375b74cf40807b142"
+  }
+}

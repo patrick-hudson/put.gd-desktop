@@ -1,0 +1,211 @@
+{
+  "timestampUtc": "2026-10-08T21:22:16.495879+00:00",
+  "pid": 2958,
+  "startTicks": 81226,
+  "memfdMappings": [
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1753088,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2097152,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 704512,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "wayland",
+      "exactFixedName": "wayland-shm",
+      "counters": {
+        "SizeBytes": 2801664,
+        "RssBytes": 2801664,
+        "PssBytes": 1400832,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 2801664,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    },
+    {
+      "familyPrefix": "[other]",
+      "exactFixedName": "[redacted-variable-name]",
+      "counters": {
+        "SizeBytes": 4096,
+        "RssBytes": 0,
+        "PssBytes": 0,
+        "Shared_CleanBytes": 0,
+        "Shared_DirtyBytes": 0,
+        "Private_CleanBytes": 0,
+        "Private_DirtyBytes": 0,
+        "AnonymousBytes": 0
+      }
+    }
+  ],
+  "nativeQtPluginBasenames": [
+    "KDEPlasmaPlatformTheme6.so",
+    "breeze6.so",
+    "kimg_ani.so",
+    "kimg_avif.so",
+    "kimg_dds.so",
+    "kimg_eps.so",
+    "kimg_exr.so",
+    "kimg_hdr.so",
+    "kimg_heif.so",
+    "kimg_iff.so",
+    "kimg_jp2.so",
+    "kimg_jxl.so",
+    "kimg_kra.so",
+    "kimg_ora.so",
+    "kimg_pcx.so",
+    "kimg_pfm.so",
+    "kimg_pic.so",
+    "kimg_psd.so",
+    "kimg_pxr.so",
+    "kimg_qoi.so",
+    "kimg_ras.so",
+    "kimg_raw.so",
+    "kimg_rgb.so",
+    "kimg_sct.so",
+    "kimg_xcf.so",
+    "libqgif.so",
+    "libqicns.so",
+    "libqico.so",
+    "libqjpeg.so",
+    "libqmng.so",
+    "libqsqlite.so",
+    "libqsvg.so",
+    "libqt-plugin-wayland-egl.so",
+    "libqtga.so",
+    "libqtiff.so",
+    "libqwayland.so",
+    "libqwbmp.so",
+    "libqwebp.so",
+    "libxdg-shell.so"
+  ],
+  "knownBuildCachePaths": {
+    "/home/lab/putgd-native/build/sdk": false,
+    "/home/lab/putgd-native/build/dependencies/aws-sdk-cpp": false,
+    "/home/lab/putgd-current-a3d70dc": false,
+    "/usr/bin/cmake": false,
+    "/usr/bin/ninja": false,
+    "/usr/bin/g++": false
+  },
+  "limits": "Known fixed names/prefixes only; unknown memfd names redacted. Counter sum does not identify actual owner, renderer or allocation lifetime. Runtime build paths existence checked only, no credentials/config/environment read."
+}

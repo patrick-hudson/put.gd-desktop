@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "-R",
+    "^(capture_control_integration|capture_process_integration|native_region_overlay|capture_preparation_x11)$",
+    "--output-on-failure",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/server-cursor-cache/final-dev.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T18:07:41.936179+00:00"
+}

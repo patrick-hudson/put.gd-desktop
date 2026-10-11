@@ -1,0 +1,160 @@
+{
+  "name": "resident-local-ipc",
+  "description": "Next proposed memory experiment: remove Linux resident QtNetwork linkage while preserving existing private JSON IPC, IP validation, native Cinnamon fonts/dialogs and all features.",
+  "metric": {
+    "primary": {
+      "type": "hard",
+      "name": "peakSampledRssBytes",
+      "direction": "minimize",
+      "target": 41943040
+    },
+    "degenerate_gates": [
+      {
+        "name": "budgetPassed",
+        "check": "== 1",
+        "description": "Preserve unchanged five-minute idle CPU and100MiB limits."
+      }
+    ],
+    "diagnostics": [
+      {
+        "name": "idleCpuPercentOneCore"
+      },
+      {
+        "name": "finalRssBytes"
+      }
+    ]
+  },
+  "measurement": {
+    "command": "python3 tests/performance/observe_idle.py --app build/release/putgd --cli build/release/putgd-cli --output /tmp/putgd-local-ipc-unique --seconds 300",
+    "timeout_seconds": 360,
+    "working_directory": ".",
+    "output_format": "json",
+    "stability": {
+      "mode": "stable",
+      "noise_threshold": 1048576,
+      "comparison": {
+        "method": "relative",
+        "relative_threshold": 0.05
+      }
+    }
+  },
+  "scope": {
+    "mutable": [
+      "CMakeLists.txt",
+      "src/main.cpp",
+      "src/app/LocalServer.cpp",
+      "src/app/LocalServer.h",
+      "src/app/LocalIpc.cpp",
+      "src/app/LocalIpc.h",
+      "src/storage/s3/S3Provider.cpp",
+      "src/storage/s3/IpAddress.cpp",
+      "src/storage/s3/IpAddress.h",
+      "tests/integration/test_local_ipc.cpp",
+      "tests/unit/test_ip_address.cpp",
+      "docs/architecture.md",
+      "docs/build.md",
+      "docs/testing-memory.md"
+    ],
+    "immutable": [
+      "tests/desktop/cinnamon.yaml",
+      "tests/desktop/common.yaml",
+      "tests/desktop/gnome.yaml",
+      "tests/desktop/kde.yaml",
+      "tests/desktop/test_lab.py",
+      "tests/desktop/test_windows_lab.py",
+      "tests/desktop/x11/test_x11.cpp",
+      "tests/fixtures/U2Fixtures.h",
+      "tests/fixtures/X11DesktopFixture.h",
+      "tests/fixtures/X11SelectionFixture.h",
+      "tests/fixtures/desktop_fixture.cpp",
+      "tests/fixtures/s3_server.py",
+      "tests/gui/test_history_view.cpp",
+      "tests/gui/test_operations_view.cpp",
+      "tests/gui/test_settings.cpp",
+      "tests/integration/test_cli.cpp",
+      "tests/integration/test_collision_policy.cpp",
+      "tests/integration/test_config_reload.cpp",
+      "tests/integration/test_config_schema.py",
+      "tests/integration/test_gnome_bridge.cpp",
+      "tests/integration/test_keychain.cpp",
+      "tests/integration/test_keychain_backend.cpp",
+      "tests/integration/test_kwin_transfer.cpp",
+      "tests/integration/test_mcp.py",
+      "tests/integration/test_s3.cpp",
+      "tests/integration/test_s3_delete.cpp",
+      "tests/integration/test_storage_contract.cpp",
+      "tests/performance/bench_capture.cpp",
+      "tests/performance/bench_idle.py",
+      "tests/performance/run_capture.py",
+      "tests/sanitizer/probes/CMakeLists.txt",
+      "tests/sanitizer/probes/known_deadlock.cpp",
+      "tests/sanitizer/probes/known_race.cpp",
+      "tests/sanitizer/probes/qt_dbus.cpp",
+      "tests/sanitizer/probes/qt_queue.cpp",
+      "tests/sanitizer/tsan.supp",
+      "tests/storage/s3/test_sdk_contract.cpp",
+      "tests/unit/test_archive.cpp",
+      "tests/unit/test_build_contract.cpp",
+      "tests/unit/test_geometry.cpp",
+      "tests/unit/test_history.cpp",
+      "tests/unit/test_login_startup.cpp",
+      "tests/unit/test_operations.cpp",
+      "tests/unit/test_payload.cpp",
+      "tests/unit/test_public_url.cpp",
+      "tests/unit/test_settings.cpp",
+      "tests/unit/test_upload_naming.cpp",
+      "schemas/",
+      "src/platform/",
+      "src/ui/",
+      "src/app/OperationService.cpp",
+      "src/app/OperationService.h",
+      "src/cli/main.cpp",
+      "src/core/",
+      "credentials.txt",
+      "tests/performance/observe_idle.py",
+      "tests/performance/bench_views.py"
+    ]
+  },
+  "execution": {
+    "mode": "serial",
+    "backend": "worktree",
+    "max_concurrent": 1
+  },
+  "parallel": {
+    "port_strategy": "none",
+    "exclusive_resources": [
+      "physical-cinnamon-session"
+    ]
+  },
+  "dependencies": {
+    "approved": []
+  },
+  "constraints": [
+    "Standard CMake/Ninja, dynamically linked distroQt; no new dependencies without approval.",
+    "Preserve capture, clipboard ownership, S3 safety, configuration, history, drafts, custom visuals, accessibility and native input methods.",
+    "Freeze benchmark while comparing experiments. Attribute startup cost before selecting changes.",
+    "Only private synthetic local configuration, no host pixels, user clipboard content, credentials or cloud objects in memory benchmarks.",
+    "Use serial physical measurements and separately record post-use costs; VNC stays active for lab acceptance.",
+    "Keep original failed/successful experiment evidence; regression tests and graphical checks before integration.",
+    "Preserve the exact versioned JSON protocol, owner-only socket path, live-resident protection, request/client limits and deadlines, CLI/MCP compatibility, shutdown and response delivery.",
+    "Keep Qt local socket implementation on non-Linux; use normal Linux local sockets with Qt Core event notification if the measured candidate justifies it. No private Qt APIs or modified distro libraries.",
+    "Preserve endpoint/public URL numeric-address and loopback validation with differential tests against Qt QHostAddress.",
+    "Do not move memory into an always-running helper or weaken test thresholds. Compare against retained cadd9ed reviewed binary using the same observer."
+  ],
+  "stopping": {
+    "max_iterations": 3,
+    "max_hours": 2,
+    "plateau_iterations": 2,
+    "target_reached": true,
+    "max_total_cost_usd": 5
+  },
+  "reference": {
+    "revision": "cadd9ed7463ee51888ae0a2b0ddc4650e27157a5",
+    "peakSampledRssBytes": 54407168,
+    "seconds": 300.248478522,
+    "idleCpuPercentOneCore": 0.003330574745699256,
+    "source": "/tmp/putgd-native-idle-module-review-fixed/results.json",
+    "locatingProbe": "docs/evidence/2026-10-08-memory-continuation-raw/native-qt-network-network-comparison.json",
+    "expectedOpportunity": "Measured causal dependency cost6.06\u20136.22MiB; optimistic remaining45.7MiB, not guaranteed40MiB."
+  }
+}

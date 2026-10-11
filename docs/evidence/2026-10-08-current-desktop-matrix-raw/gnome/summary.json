@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:53:16.961496+00:00",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "sourceArchiveSha256": "ec179214a662010c7f6d21a2cc5fe29479423ff6a6e9292433ef35b0aebd3fab",
+  "profile": "gnome-wayland",
+  "distribution": "Ubuntu26.04.1",
+  "qtVersion": "6.10.2",
+  "compiler": "GCC15.2.0",
+  "sdkVersion": "1.11.907;15locked submodules verified; reusable normal distro build prefix",
+  "testRun": "work/lab-runs/current-gnome-a3d70dc",
+  "vncPort": 5936,
+  "package": {
+    "path": "work/cross-desktop-current/gnome/putgd_0.1.0_amd64.deb",
+    "sha256": "10d9c0023b71e40b66ffa714fefe3b923ba38a39b915ff83b48206943228f974"
+  },
+  "fullDevTests": {
+    "tests": 28,
+    "failures": 0,
+    "timeSeconds": 128.0,
+    "junit": "work/cross-desktop-current/gnome/build-evidence/ctest-dev.xml",
+    "ctestLogElapsedSeconds": 128.23
+  },
+  "nativeMatrix": {
+    "passed": true,
+    "caseCount": 12,
+    "artifact": "work/cross-desktop-current/gnome/matrix.json"
+  },
+  "views": {
+    "passed": true,
+    "cycles": 2,
+    "openClosePairs": 6,
+    "artifact": "work/cross-desktop-current/gnome/views/results.json"
+  },
+  "liveRegion": {
+    "passed": true,
+    "operationId": "41beab8b-8ee3-40f9-b267-5719adcb4d56",
+    "dimensions": [
+      80,
+      60
+    ],
+    "matchingUpdatedColorPixels": 4800,
+    "artifact": "work/cross-desktop-current/gnome/live-region/results.json"
+  },
+  "runningResident": [
+    {
+      "pid": 2775,
+      "startTicks": "4592",
+      "executableSha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3",
+      "installedExecutableMatch": true,
+      "QtNetworkMapped": false,
+      "awsMapped": false,
+      "s3ModuleMapped": false
+    }
+  ],
+  "operationCount": 13,
+  "extraFunctionalWorkload": "One live-region capture beyond baseline12actions; history/views already exercised; unsuitable as cold baseline",
+  "oldBuildVm": {
+    "name": "gnome-001",
+    "hostPid": 1673704,
+    "stopped": true,
+    "diskPreservedFor": "Pinned official SDK source/install and normal distro build cache; no active memory use"
+  },
+  "readyForParentSampler": true,
+  "limitations": [
+    "No S3 cloud access; synthetic local-only actions",
+    "Single display at one scale; no full GNOME support certification",
+    "Views prove visible render/open/close/reopen only, not exhaustive settings/history editing/deletion",
+    "No cold or physical memory acceptance measured here",
+    "Original GNOME session reboot did complete late; an extra graceful restart was unnecessary and explicitly corrected in its receipt",
+    "Release package targets built; full Dev28test suite run; duplicate Release tests not built/run"
+  ],
+  "artifactsManifest": "work/cross-desktop-current/gnome/manifest.json"
+}

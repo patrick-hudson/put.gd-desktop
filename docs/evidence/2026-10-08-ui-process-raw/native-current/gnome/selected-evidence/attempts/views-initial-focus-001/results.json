@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:34:32.090338+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "scope": "Normal GNOME window-manager close/reopen for Settings, History, Activity and About; activation through production CLI. Actual tray clicks are separate evidence.",
+  "runnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "scriptSha256": "ba00706a32e5174137720b60b09d59054e97aec5b908621a9c966f7ea79f8319",
+  "cases": [],
+  "passed": false,
+  "resident": {
+    "pid": 2848,
+    "startTicks": 3939,
+    "sha256": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8"
+  },
+  "errorType": "AssertionError",
+  "error": "{'activeOperations': 0, 'backend': 'Qt', 'build': {'baseVersion': '0.1.1', 'commitCount': 41, 'dirty': None, 'gitCommit': '97ca3a521714e2717cedc1139976130627bfb8a8', 'gitTree': '888460466ff1d240bd8e3c61189f36f407fb3485', 'packageVersion': '0.1.1~dev.41+g97ca3a521714', 'schemaVersion': 1, 'sourceProvenance': 'supplied', 'version': '0.1.1-dev.41+g97ca3a521714'}, 'capabilities': {'providers': {'s3': {'conditionalCreate': True, 'conditionalDelete': True, 'conditionalReplace': True, 'delete': True, 'deletionEffect': 'Guarded origin removal; selected versions only; browser/CDN caches may retain bytes', 'maximumNameBytes': 1024, 'stat': True, 'urls': True, 'versionAddressing': True}}, 'source': {'adapter': 'gnome-wayland', 'capture': {'desktop': {'available': True, 'consent': 'one-time-extension-setup', 'mode': 'compositor-native'}, 'region': {'available': True, 'consent': 'one-time-extension-setup', 'mode': 'compositor-native'}, 'window': {'available': True, 'consent': 'one-time-extension-setup', 'mode': 'compositor-native'}}, 'clipboard': {'available': True, 'import': 'bounded-mutter-selection', 'result': 'st-clipboard-only', 'types': ['files', 'image', 'text']}, 'helper': {'available': True, 'error': {'code': '', 'details': {}, 'message': ''}, 'extensionVersion': 1, 'protocol': 1, 'shellMajor': 50, 'uuid': 'putgd@put.gd'}, 'shortcuts': {'available': True, 'bindings': {'clipboard': {'actual': 'Ctrl+Shift+4', 'bound': True, 'requested': 'Ctrl+Shift+4'}, 'desktop': {'actual': 'Ctrl+Shift+3', 'bound': True, 'requested': 'Ctrl+Shift+3'}, 'region': {'actual': 'Ctrl+Shift+1', 'bound': True, 'requested': 'Ctrl+Shift+1'}, 'window': {'actual': 'Ctrl+Shift+2', 'bound': True, 'requested': 'Ctrl+Shift+2'}}}}}, 'journalReady': True, 'loginStartup': {'applied': True, 'enabled': False}, 'memory': {'allocatorReclamationCount': 13, 'allocatorReclamationPending': False, 'allocatorReclamationSupported': True, 'lastAllocatorReclamationUsec': 144}, 'qtVersion': '6.10.2', 'schemaVersion': 1, 'shortcuts': {'available': True, 'bindings': {'clipboard': {'actual': 'Ctrl+Shift+4', 'bound': True, 'requested': 'Ctrl+Shift+4'}, 'desktop': {'actual': 'Ctrl+Shift+3', 'bound': True, 'requested': 'Ctrl+Shift+3'}, 'region': {'actual': 'Ctrl+Shift+1', 'bound': True, 'requested': 'Ctrl+Shift+1'}, 'window': {'actual': 'Ctrl+Shift+2', 'bound': True, 'requested': 'Ctrl+Shift+2'}}}, 'trayAvailable': True, 'ui': {'checkpointBytes': 3027, 'lastExit': {}, 'pid': 2911, 'state': 'ready'}}"
+}

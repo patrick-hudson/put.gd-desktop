@@ -1,0 +1,26 @@
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev
+    Start 2: ui_endpoints_integration
+1/1 Test #2: ui_endpoints_integration .........***Failed    0.09 sec
+********* Start testing of UiEndpointsTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiEndpointsTest::initTestCase()
+FAIL!  : UiEndpointsTest::snapshotIncludesResidentIdentitySettingsAndDiagnostics() '!error' returned FALSE. (unknown_method)
+   Loc: [/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/integration/test_ui_endpoints.cpp(28)]
+FAIL!  : UiEndpointsTest::saveReturnsAcceptedDocumentAndMetadataWithConflictProtection() '!error' returned FALSE. (invalid_request)
+   Loc: [/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/integration/test_ui_endpoints.cpp(43)]
+FAIL!  : UiEndpointsTest::setupEndpointsWithoutServiceReportUnavailable() Compared values are not the same
+   Actual   (error.code)                  : "invalid_request"
+   Expected (QString("setup_unavailable")): "setup_unavailable"
+   Loc: [/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/integration/test_ui_endpoints.cpp(55)]
+PASS   : UiEndpointsTest::cleanupTestCase()
+Totals: 2 passed, 3 failed, 0 skipped, 0 blacklisted, 79ms
+********* Finished testing of UiEndpointsTest *********
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.09 sec
+
+The following tests FAILED:
+	  2 - ui_endpoints_integration (Failed)
+Errors while running CTest

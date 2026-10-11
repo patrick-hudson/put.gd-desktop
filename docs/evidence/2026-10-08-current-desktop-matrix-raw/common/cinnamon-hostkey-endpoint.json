@@ -1,0 +1,6 @@
+{
+  "scope": "Reuse authenticated golden host public key, change only local forwarded endpoint label",
+  "beforeSha256": "d14d4dc54adafc8dd899464a13c757d65bf83aa0f5c9dbca55b435893e4df0b9",
+  "afterSha256": "11c64cb089e4e1a46638f493d1a0bdf035c54802fda7ec25323c350769f035de",
+  "endpoint": "[127.0.0.1]:22238"
+}

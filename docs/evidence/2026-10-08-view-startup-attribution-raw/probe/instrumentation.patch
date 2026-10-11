@@ -1,0 +1,182 @@
+--- a/src/ui/main.cpp
++++ b/src/ui/main.cpp
+@@ -1,4 +1,5 @@
+ #include "UiApplicationController.h"
++#include "StartupTrace.h"
+ #include "StdioDevice.h"
+ #include "ViewState.h"
+ #include "VisualStyle.h"
+@@ -10,15 +11,19 @@
+ #include <cstring>
+ #include <memory>
+ int main(int argc,char** argv){
++ putgd::startupTrace("main-entry");
+  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)){
+   std::printf("putgd-ui %s\n",putgd::buildVersion());return 0;
+  }
+  putgd::UiControlPipes handles;if(!handles.valid())return 2;
++ putgd::startupTrace("qapplication-pre");
+  QApplication app(argc,argv);
++ putgd::startupTrace("qapplication-post");
+  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");
+  QCoreApplication::setApplicationVersion(putgd::buildVersion());
+  app.setDesktopFileName("putgd-ui");app.setQuitOnLastWindowClosed(false);
+  putgd::VisualStyle::apply(app);app.setWindowIcon(putgd::VisualStyle::icon("brand"));
++ putgd::startupTrace("visual-style-post");
+  putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;
+  putgd::UiControl control(pipes);
+  std::unique_ptr<putgd::SessionClient> client;std::unique_ptr<putgd::UiSession> session;
+@@ -37,16 +42,18 @@
+   bootstrapped=true;epoch=payload["residentEpoch"].toString();
+   auto state=payload["state"].toObject();if(state.isEmpty())state={{"schemaVersion",1}};
+   if(putgd::validateUiState(state)){control.send("incompatible");app.exit(4);return;}
++  putgd::startupTrace("bootstrap-accepted");
+   client=std::make_unique<putgd::SessionClient>(payload["socketPath"].toString());
+   session=std::make_unique<putgd::UiSession>(*client);
+   session->refreshSnapshot([&,state](putgd::Error error){
+    if(error||session->build()!=build||session->residentEpoch()!=epoch){control.send("incompatible");app.exit(4);return;}
++   putgd::startupTrace("snapshot-accepted");
+    windows=std::make_unique<putgd::UiApplicationController>(*session,control,state);
+    QObject::connect(windows.get(),&putgd::UiApplicationController::exitRequested,&app,&QCoreApplication::quit);
+    QObject::connect(session.get(),&putgd::UiSession::statusChanged,&app,[&]{
+     if(session->build()!=build||session->residentEpoch()!=epoch){control.send("incompatible");app.exit(4);}
+    });
+-   deadline.stop();control.send("ready",{{"build",build},{"residentEpoch",epoch}});
++   deadline.stop();putgd::startupTrace("ready-pre");control.send("ready",{{"build",build},{"residentEpoch",epoch}});putgd::startupTrace("ready-post");
+   });
+  });
+  return app.exec();
+--- a/src/ui/UiSession.cpp
++++ b/src/ui/UiSession.cpp
+@@ -1,4 +1,5 @@
+ #include "UiSession.h"
++#include "StartupTrace.h"
+ #include <QPointer>
+ #include <QRunnable>
+ #include <utility>
+@@ -12,7 +13,8 @@
+  if(callback)snapshotCallbacks_.append(std::move(callback));
+  if(snapshotActive_||mutations_){snapshotPending_=true;return;}
+  snapshotActive_=true;snapshotPending_=false;const auto generation=generation_;
+- request("ui.snapshot",{},this,[this,generation](Error e,QJsonObject data){snapshotActive_=false;if(generation!=generation_){snapshotPending_=true;refreshSnapshot();return;}if(!e)applySnapshot(data);else emit unavailable(e);auto callbacks=std::exchange(snapshotCallbacks_,{});for(auto& cb:callbacks)cb(e);if(snapshotPending_)refreshSnapshot();});
++ startupTrace("snapshot-request");
++ request("ui.snapshot",{},this,[this,generation](Error e,QJsonObject data){startupTrace("snapshot-reply");snapshotActive_=false;if(generation!=generation_){snapshotPending_=true;refreshSnapshot();return;}if(!e)applySnapshot(data);else emit unavailable(e);auto callbacks=std::exchange(snapshotCallbacks_,{});for(auto& cb:callbacks)cb(e);if(snapshotPending_)refreshSnapshot();});
+ }
+ void UiSession::invalidate(){++generation_;refreshSnapshot();}
+ void UiSession::saveAsync(const QJsonObject& document,const QString& expected,std::function<void(Result)> callback){
+--- a/src/ui/SettingsWindow.cpp
++++ b/src/ui/SettingsWindow.cpp
+@@ -1,4 +1,5 @@
+ #include "SettingsWindow.h"
++#include "StartupTrace.h"
+ #include "ViewState.h"
+ #include <QTimer>
+ #include <QSignalBlocker>
+@@ -43,6 +44,7 @@
+ }
+ }
+ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWindow(parent),settings_(settings) {
++ startupTrace("settings-constructor-enter");
+  setObjectName("putgdWindow");VisualStyle::apply(*qApp);setWindowIcon(VisualStyle::icon("brand"));
+  setWindowTitle("put.gd — Settings");resize(1000,700);
+  auto* layout=new QVBoxLayout(this);layout->setContentsMargins(20,18,20,18);layout->setSpacing(12);
+@@ -185,6 +187,7 @@
+  setupTimer_=new QTimer(this);setupTimer_->setInterval(500);connect(setupTimer_,&QTimer::timeout,this,&SettingsWindow::pollSetup);
+  connect(advanced,&QToolButton::toggled,this,&SettingsWindow::viewStateChanged);connect(navigation,&QListWidget::currentRowChanged,this,&SettingsWindow::viewStateChanged);
+  refresh();refreshDiagnostics();
++ startupTrace("settings-constructor-exit");
+ }
+ void SettingsWindow::refreshMetadata(){metadata_->setText("Configuration: "+settings_.path()+"\nAccepted revision: "+settings_.revision()+"\nObserved file revision: "+settings_.metadata()["observedRevision"].toString());}
+ void SettingsWindow::dirty(){if(loading_)return;dirty_=true;++editGeneration_;emit viewStateChanged();}
+--- a/src/ui/UiApplicationController.cpp
++++ b/src/ui/UiApplicationController.cpp
+@@ -1,4 +1,5 @@
+ #include "UiApplicationController.h"
++#include "StartupTrace.h"
+ #include "SettingsWindow.h"
+ #include "HistoryWindow.h"
+ #include "RecentOperations.h"
+@@ -101,12 +102,16 @@
+  if(type=="shutdown"){allowClose();return;}
+  if(type=="activate"){
+   const auto name=payload["view"].toString();
++  if(name=="settings")startupTrace("settings-activate-enter");
+   auto* window=closing_?nullptr:view(name);
+   if(!window){control_.send("activationFailed",{{"replyTo",sequence},{"view",name}});return;}
+   openViews_.insert(window);
++  if(name=="settings")startupTrace("settings-show-pre");
+   if(window->isMinimized())window->showNormal();else window->show();
++  if(name=="settings")startupTrace("settings-show-post");
+   window->raise();window->activateWindow();
+-  control_.send("shown",{{"replyTo",sequence},{"view",name}});return;
++  control_.send("shown",{{"replyTo",sequence},{"view",name}});
++  if(name=="settings")startupTrace("settings-shown-sent");return;
+  }
+  if(type=="invalidated"){
+   QPointer<UiApplicationController> guard(this);
+--- a/src/app/UiProcessController.cpp
++++ b/src/app/UiProcessController.cpp
+@@ -1,4 +1,5 @@
+ #include "UiProcessController.h"
++#include "ui/StartupTrace.h"
+ #include "core/BuildInfo.h"
+ #include <QJsonDocument>
+ #include <QPointer>
+@@ -52,12 +53,19 @@
+  control_=new UiControl(*child,child);
+  connect(control_,&UiControl::frame,this,&UiProcessController::receive);
+  connect(control_,&UiControl::failed,this,&UiProcessController::fail);
+- connect(child,&QProcess::readyReadStandardError,this,[child]{
+-  // Helper diagnostics must never persist private protocol or credential input.
+-  while(!child->readAllStandardError().isEmpty()){}
++ connect(child,&QProcess::readyReadStandardError,this,[child,tail=QByteArray{}]()mutable{
++  // Diagnostic overlay: relay only fixed, validated timestamp records.
++  // Ordinary helper diagnostics remain discarded; never persist private input.
++  tail.append(child->readAllStandardError());
++  int newline;while((newline=tail.indexOf('\n'))>=0){
++   const auto line=tail.left(newline);tail.remove(0,newline+1);
++   if(validStartupTrace(line)){std::fwrite(line.constData(),1,line.size(),stderr);std::fputc('\n',stderr);std::fflush(stderr);}
++  }
++  if(tail.size()>256)tail.clear();
+  });
+  connect(child,&QProcess::started,this,[this,child,generation]{
+   if(process_!=child||processGeneration_!=generation)return;
++  startupTrace("resident-process-started");
+   QPointer<UiProcessController> guard(this);
+   emit helperPidChanged(child->processId());
+   if(!guard||process_!=child||stopping_)return;
+@@ -73,7 +81,7 @@
+  });
+  connect(child,qOverload<int,QProcess::ExitStatus>(&QProcess::finished),this,
+   [this,child,generation](int code,QProcess::ExitStatus status){finished(child,generation,code,status);});
+- startup_.start();child->start(helperPath_,{});
++ startup_.start();startupTrace("resident-launch-pre");child->start(helperPath_,{});
+ }
+ void UiProcessController::flushActivations(){
+  if(phase_!=Phase::Ready||!control_)return;
+--- /dev/null
++++ b/src/ui/StartupTrace.h
+@@ -0,0 +1,23 @@
++#pragma once
++// Diagnostic overlay only: fixed labels and monotonic clocks, no private data.
++#include <QByteArray>
++#include <chrono>
++#include <cstdio>
++#include <cstring>
++#include <unistd.h>
++namespace putgd {
++inline bool knownStartupStage(const QByteArray& stage){
++ for(const char* token:{"main-entry","qapplication-pre","qapplication-post","visual-style-post","bootstrap-accepted","snapshot-request","snapshot-reply","snapshot-accepted","ready-pre","ready-post","settings-constructor-enter","settings-constructor-exit","settings-activate-enter","settings-show-pre","settings-show-post","settings-shown-sent","resident-launch-pre","resident-process-started"})if(stage==token)return true;
++ return false;
++}
++inline void startupTrace(const char* stage){
++ const auto ns=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
++ std::fprintf(stderr,"startup-stage-v1 %ld %lld %s\n",static_cast<long>(::getpid()),static_cast<long long>(ns),stage);std::fflush(stderr);
++}
++inline bool validStartupTrace(const QByteArray& line){
++ if(line.size()>256)return false;
++ const auto parts=line.split(' ');if(parts.size()!=4||parts[0]!="startup-stage-v1"||!knownStartupStage(parts[3]))return false;
++ for(int i:{1,2}){if(parts[i].isEmpty()||parts[i].size()>20)return false;for(auto c:parts[i])if(c<'0'||c>'9')return false;}
++ return true;
++}
++}

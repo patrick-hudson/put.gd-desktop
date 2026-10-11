@@ -1,0 +1,8 @@
+{
+  "command": [
+    "python3",
+    "tests/desktop/test_lab.py"
+  ],
+  "exitCode": 0,
+  "scope": "Host protocol contracts only; no graphical desktop acceptance"
+}

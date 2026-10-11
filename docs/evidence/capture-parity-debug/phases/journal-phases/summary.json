@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "scope": "unscored fixed-label accepted-worker attribution; matched by numeric thread identity, first point per phase",
+  "traceSha256": "64d7415415af05dd8bcc094f4dc97a0f216a50867a16ad989e81bed11012fd25",
+  "acceptedWorkers": 35,
+  "warmSamples": 30,
+  "p95Definition": "nearest-rank ceil(0.95*n)-1,29th of30",
+  "spans": {
+    "acceptedWorker": {
+      "count": 30,
+      "medianMs": 8.776436499999999,
+      "p95Ms": 83.065463,
+      "maxMs": 83.782634
+    },
+    "constructorAndInitialize": {
+      "count": 30,
+      "medianMs": 0.3775025,
+      "p95Ms": 0.874162,
+      "maxMs": 1.005398
+    },
+    "databaseOpen": {
+      "count": 30,
+      "medianMs": 0.14236549999999998,
+      "p95Ms": 0.324291,
+      "maxMs": 0.366143
+    },
+    "schemaRead": {
+      "count": 30,
+      "medianMs": 0.1147055,
+      "p95Ms": 0.235863,
+      "maxMs": 0.313892
+    },
+    "save": {
+      "count": 30,
+      "medianMs": 7.9363909999999995,
+      "p95Ms": 82.376831,
+      "maxMs": 82.549151
+    },
+    "commit": {
+      "count": 30,
+      "medianMs": 6.730623,
+      "p95Ms": 81.242394,
+      "maxMs": 81.735247
+    }
+  },
+  "samples": [
+    {
+      "acceptedWorker": 9.724789,
+      "constructorAndInitialize": 0.70064,
+      "databaseOpen": 0.232282,
+      "schemaRead": 0.204958,
+      "save": 8.714837,
+      "commit": 7.461913
+    },
+    {
+      "acceptedWorker": 21.398329,
+      "constructorAndInitialize": 0.71069,
+      "databaseOpen": 0.282869,
+      "schemaRead": 0.203575,
+      "save": 20.484023,
+      "commit": 19.043692
+    },
+    {
+      "acceptedWorker": 3.393047,
+      "constructorAndInitialize": 0.191684,
+      "databaseOpen": 0.064594,
+      "schemaRead": 0.060254,
+      "save": 3.073438,
+      "commit": 2.519451
+    },
+    {
+      "acceptedWorker": 5.011372,
+      "constructorAndInitialize": 0.302157,
+      "databaseOpen": 0.08246,
+      "schemaRead": 0.121683,
+      "save": 4.478998,
+      "commit": 3.910214
+    },
+    {
+      "acceptedWorker": 10.845017,
+      "constructorAndInitialize": 0.386197,
+      "databaseOpen": 0.145279,
+      "schemaRead": 0.106498,
+      "save": 10.135139,
+      "commit": 8.989162
+    },
+    {
+      "acceptedWorker": 78.004986,
+      "constructorAndInitialize": 0.280125,
+      "databaseOpen": 0.093262,
+      "schemaRead": 0.114113,
+      "save": 77.638585,
+      "commit": 77.179296
+    },
+    {
+      "acceptedWorker": 79.066679,
+      "constructorAndInitialize": 0.723604,
+      "databaseOpen": 0.252259,
+      "schemaRead": 0.225868,
+      "save": 78.135035,
+      "commit": 76.908809
+    },
+    {
+      "acceptedWorker": 6.101278,
+      "constructorAndInitialize": 0.834722,
+      "databaseOpen": 0.303055,
+      "schemaRead": 0.220823,
+      "save": 4.945651,
+      "commit": 3.570567
+    },
+    {
+      "acceptedWorker": 81.949194,
+      "constructorAndInitialize": 0.267907,
+      "databaseOpen": 0.083928,
+      "schemaRead": 0.091257,
+      "save": 81.511097,
+      "commit": 80.967061
+    },
+    {
+      "acceptedWorker": 4.128305,
+      "constructorAndInitialize": 0.24043,
+      "databaseOpen": 0.065843,
+      "schemaRead": 0.068832,
+      "save": 3.648439,
+      "commit": 3.291951
+    },
+    {
+      "acceptedWorker": 83.065463,
+      "constructorAndInitialize": 0.393812,
+      "databaseOpen": 0.148195,
+      "schemaRead": 0.115298,
+      "save": 82.376831,
+      "commit": 81.735247
+    },
+    {
+      "acceptedWorker": 7.361122,
+      "constructorAndInitialize": 0.529606,
+      "databaseOpen": 0.174689,
+      "schemaRead": 0.142772,
+      "save": 6.460624,
+      "commit": 5.350904
+    },
+    {
+      "acceptedWorker": 7.420179,
+      "constructorAndInitialize": 0.544047,
+      "databaseOpen": 0.176261,
+      "schemaRead": 0.227033,
+      "save": 6.707869,
+      "commit": 6.029108
+    },
+    {
+      "acceptedWorker": 4.599082,
+      "constructorAndInitialize": 0.267399,
+      "databaseOpen": 0.101397,
+      "schemaRead": 0.098133,
+      "save": 4.23988,
+      "commit": 3.616565
+    },
+    {
+      "acceptedWorker": 83.782634,
+      "constructorAndInitialize": 0.752164,
+      "databaseOpen": 0.285569,
+      "schemaRead": 0.167221,
+      "save": 82.549151,
+      "commit": 81.242394
+    },
+    {
+      "acceptedWorker": 11.805177,
+      "constructorAndInitialize": 0.67536,
+      "databaseOpen": 0.220214,
+      "schemaRead": 0.170723,
+      "save": 10.669178,
+      "commit": 9.317492
+    },
+    {
+      "acceptedWorker": 4.22091,
+      "constructorAndInitialize": 0.287888,
+      "databaseOpen": 0.12191,
+      "schemaRead": 0.084264,
+      "save": 3.798251,
+      "commit": 3.396955
+    },
+    {
+      "acceptedWorker": 3.903452,
+      "constructorAndInitialize": 0.368808,
+      "databaseOpen": 0.139452,
+      "schemaRead": 0.112447,
+      "save": 3.377254,
+      "commit": 2.806553
+    },
+    {
+      "acceptedWorker": 75.339006,
+      "constructorAndInitialize": 0.235244,
+      "databaseOpen": 0.097201,
+      "schemaRead": 0.058067,
+      "save": 74.981308,
+      "commit": 74.657021
+    },
+    {
+      "acceptedWorker": 10.977336,
+      "constructorAndInitialize": 0.22917,
+      "databaseOpen": 0.069957,
+      "schemaRead": 0.098153,
+      "save": 10.663441,
+      "commit": 10.241096
+    },
+    {
+      "acceptedWorker": 2.839674,
+      "constructorAndInitialize": 0.214267,
+      "databaseOpen": 0.069713,
+      "schemaRead": 0.059226,
+      "save": 2.490631,
+      "commit": 2.085479
+    },
+    {
+      "acceptedWorker": 3.46387,
+      "constructorAndInitialize": 0.180698,
+      "databaseOpen": 0.061931,
+      "schemaRead": 0.05327,
+      "save": 3.063722,
+      "commit": 2.742351
+    },
+    {
+      "acceptedWorker": 15.884848,
+      "constructorAndInitialize": 1.005398,
+      "databaseOpen": 0.366143,
+      "schemaRead": 0.313892,
+      "save": 14.574492,
+      "commit": 13.140015
+    },
+    {
+      "acceptedWorker": 82.4172,
+      "constructorAndInitialize": 0.591024,
+      "databaseOpen": 0.222895,
+      "schemaRead": 0.149506,
+      "save": 81.691199,
+      "commit": 80.572952
+    },
+    {
+      "acceptedWorker": 3.326761,
+      "constructorAndInitialize": 0.327327,
+      "databaseOpen": 0.108918,
+      "schemaRead": 0.089704,
+      "save": 2.881419,
+      "commit": 2.267117
+    },
+    {
+      "acceptedWorker": 6.8024,
+      "constructorAndInitialize": 0.510787,
+      "databaseOpen": 0.202605,
+      "schemaRead": 0.133959,
+      "save": 6.055184,
+      "commit": 5.123755
+    },
+    {
+      "acceptedWorker": 3.807543,
+      "constructorAndInitialize": 0.431927,
+      "databaseOpen": 0.160373,
+      "schemaRead": 0.121772,
+      "save": 3.16893,
+      "commit": 2.574294
+    },
+    {
+      "acceptedWorker": 9.501109,
+      "constructorAndInitialize": 0.874162,
+      "databaseOpen": 0.324291,
+      "schemaRead": 0.235863,
+      "save": 8.230652,
+      "commit": 6.193212
+    },
+    {
+      "acceptedWorker": 19.276263,
+      "constructorAndInitialize": 0.276299,
+      "databaseOpen": 0.107605,
+      "schemaRead": 0.075763,
+      "save": 18.771677,
+      "commit": 18.297662
+    },
+    {
+      "acceptedWorker": 8.051764,
+      "constructorAndInitialize": 0.204277,
+      "databaseOpen": 0.073767,
+      "schemaRead": 0.061266,
+      "save": 7.64213,
+      "commit": 7.268034
+    }
+  ]
+}

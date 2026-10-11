@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T04:24:38.630944+00:00",
+  "phase": "matrix",
+  "errorType": "CalledProcessError",
+  "error": "Command '['/usr/bin/python3', '/home/patrick/work/put.gd/tools/lab/lab.py', 'run', '--run', '/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T042304792474-1', '--scenario', 'region', '--clipboard-client', 'qt', '--timeout', '90', '--keep']' returned non-zero exit status 1."
+}

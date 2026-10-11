@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T04:59:46.030770+00:00",
+  "phase": "configure",
+  "errorType": "AssertionError",
+  "error": "Close every view before CLI configuration"
+}

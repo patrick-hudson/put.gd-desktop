@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "classification": "Two original source41 diagnostic overlays; cost attribution only, no optimization saving/native certification",
+  "baseCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "workload": "Physical Cinnamon, native Qt fonts/dialogs, no concurrent builds/graphical tests; empty fixture, three views/three cycles, warmup5/visible2/quiet30/interval5; no operations",
+  "stageFinding": "Native Qt56\u201359ms, initial protocol under7ms, Settings constructor/show116\u2013129ms in first probe",
+  "fineFinding": "Hidden advanced construction30.0\u201332.6ms + disjoint show exclusive Polish11.3\u201311.5ms across two reopens =gross41.3\u201344.1ms, net saving unknown",
+  "selection": "One bounded lazy advanced page variant selected; potential saving near40ms threshold, no keep decision yet",
+  "artifacts": {
+    "approved-spec.json": "486f68ec387174c7feb9a30d2a98289d498136a2b6f4601c96e252cf829ae304",
+    "evaluate.py": "64145d8ab6036195dc290a9b99abe0201f1f2b7deda16618b8f5fbdcae8cda72",
+    "hidden-page-probe/README.md": "fa292e4c9f3d040cd4d076a75eeb8f6634f1822dbfa68144bc3ff9d67235efc3",
+    "hidden-page-probe/build-commands.json": "a75637d10b1c8c09f6089c88e1af37eb703deabac4b73f66833190bfbf1d034d",
+    "hidden-page-probe/instrumentation.patch": "b0f22b61d447488040fd96f932eb50be28ba1978d86d99d0ead420c13cdd9694",
+    "hidden-page-probe/parse_trace.py": "e2f0472c496744316657462703fe13169835234514f9ee7839a5d33e358b6a40",
+    "hidden-page-probe/results.json": "aebfb69aa99b6e176bb91af6e773bc84e25bc6d087ae0a7ddac06ec4b895bb79",
+    "hidden-page-probe/safe-trace.log": "d254d6349cd5ea49f1163c14d8225194446fdd1f27c3c919269f465586606fbb",
+    "hidden-page-probe/source-provenance.json": "36ca04de4363c514d1fb03272324e0d4e66c1c9543f5f3e9ecd7286df066c5fb",
+    "hidden-page-probe/stage-attribution.json": "9acd136bb9f10907155674088c6fc76739a07e5581d00238c0e27c316e518efa",
+    "lazy-design.md": "b1a4262360e6c3270bac5b42ec827e18e4ec6bf20cf1aa9d59b1f2dd9d780be4",
+    "locating-ledger.json": "7d2157c8b0b16df926d3c397cda4a867a9c9a59f60112236849e3a4f78977437",
+    "probe/README.md": "303cded5657fd0315bc856793ec24d92f98189b6c7c83486f7bcbc3f8616a64d",
+    "probe/build-commands.json": "f28ca67216698b76604f1d49875b0917a41ea0dc0637729a8e3725d174466ae9",
+    "probe/instrumentation.patch": "2a1a13bf41e39d50a090443ef722a191020b060102c9040593213ab3aac04102",
+    "probe/parse_trace.py": "9f7751f8d879293a9fc159b641aa6b06c7937f971eaef45729a1445405f9cf3e",
+    "probe/results.json": "e0f62f1c099f30cba85d8ef604cd99b2c5fb151ea4c66c618ff81fcd82f19d24",
+    "probe/safe-trace.log": "0696247542df2132becc279eb8f6dc658f70262a276716f5e4c58ac03b773fa3",
+    "probe/source-provenance.json": "9814b8bd77c1b1240926889cc4d3827f41d2e28838c1cb84f8482cea2bf363ce",
+    "probe/stage-attribution.json": "cf74d08d54956097e741631dd094655ec341eebb14139768276354035343bb08"
+  },
+  "limitations": [
+    "Diagnostic instrumentation overhead",
+    "Polish excludes other font/style/layout work; pre-reparenting work can be unassigned",
+    "CLI shown does not prove mapped/painted pixels; observer overhead kept separately",
+    "No p95/populated-history/postupload/40MiB claim"
+  ],
+  "excluded": "Secrets, credentials.txt, payloads, general raw stderr; fixed safe numeric trace records only"
+}

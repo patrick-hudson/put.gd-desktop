@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "xvfb-run",
+    "-a",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/test_capture_process",
+    "cancelledMissingHelperRetainsFirstTerminalError",
+    "-o",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/precedence-red.xml,junitxml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:07:18.429879+00:00"
+}

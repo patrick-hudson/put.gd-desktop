@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite name="SettingsGui" timestamp="2026&#x002D;10&#x002D;08T19:24:35" hostname="patrick&#x002D;Precision&#x002D;5540" tests="34" failures="0" errors="0" skipped="0" time="61.779">
+  <properties>
+    <property name="QTestVersion" value="6.4.2"/>
+    <property name="QtVersion" value="6.4.2"/>
+    <property name="QtBuild" value="Qt 6.4.2 (x86_64&#x002D;little_endian&#x002D;lp64 shared (dynamic) release build; by GCC 13.3.0)"/>
+  </properties>
+  <testcase name="initTestCase" classname="SettingsGui" time="0.001"/>
+  <testcase name="quitWithoutTrayIsExplicitAndDoesNotSaveDraft" classname="SettingsGui" time="1.654">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="quitFallbackRequiresExplicitMissingTrayDiagnostic" classname="SettingsGui" time="1.896">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="acceptedSetupIdSurvivesAnUncertainInspectionReply" classname="SettingsGui" time="2.546"/>
+  <testcase name="ownSaveRetainsEditsMadeWhileItsAsyncReplyIsPending" classname="SettingsGui" time="1.540"/>
+  <testcase name="stateCodecRejectsSecretFieldsAndOversizeWithoutEchoingContents" classname="SettingsGui" time="1.473"/>
+  <testcase name="recreatedDraftDetectsValidAndInvalidExternalChanges" classname="SettingsGui" time="4.626"/>
+  <testcase name="profileDraftsRoundTripRemovalOrderAndMalformedNonsecretText" classname="SettingsGui" time="2.130"/>
+  <testcase name="checkpointRejectsUnclassifiedProviderFieldsWithoutExportingThem" classname="SettingsGui" time="0.805"/>
+  <testcase name="acceptedSetupIsInspectedAfterRecreationWithoutRepeatingMutation" classname="SettingsGui" time="2.595"/>
+  <testcase name="recreatedSettingsRetainsRawDraftAndExcludesCredentialEntry" classname="SettingsGui" time="2.181"/>
+  <testcase name="explicitCloseReleasesResourcesAndKeepsConflictDraft" classname="SettingsGui" time="2.607">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="resourceReleaseGuardsReopenMinimizeDialogsAndTeardown" classname="SettingsGui" time="3.268">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="nativeStateSurvivesCloseRecreation" classname="SettingsGui" time="2.545">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="freshMissingConfigIsNormalSetup" classname="SettingsGui" time="2.101">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="advancedFilenameTemplatesUseSharedConfiguration" classname="SettingsGui" time="2.518">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="simpleSetupStartsWithoutDevelopmentAndSavesCompleteDestination" classname="SettingsGui" time="1.964">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="advancedExpansionPreservesDraftAndCustomEndpoint" classname="SettingsGui" time="2.005">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="regionSuggestionsAllowCustomRegionsWithoutChangingCustomEndpoints" classname="SettingsGui" time="1.531">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="cancelDiscardsDraftClearsCredentialsAndCloses" classname="SettingsGui" time="1.681">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="everySettingHasDetailedKeyboardAccessibleHelp" classname="SettingsGui" time="2.794">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="savingShowsSuccessAndReloadIsExplicit" classname="SettingsGui" time="1.645">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="sizeInputsSaveFractionalMiBAndPreserveExactAcceptedBytes" classname="SettingsGui" time="1.582"/>
+  <testcase name="shortcutStatesAreReadableAndExactDiagnosticsRemainAvailable" classname="SettingsGui" time="0.147">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="sectionsAreKeyboardReachableAndFooterStaysInsideCompactWindow" classname="SettingsGui" time="2.251">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="destinationsCanBeCreatedAndRemovedWithoutChangingOtherProfiles" classname="SettingsGui" time="1.603"/>
+  <testcase name="reloadingInvalidFileKeepsValidationVisible" classname="SettingsGui" time="1.427"/>
+  <testcase name="guiActionsAreAvailableWithoutTray" classname="SettingsGui" time="0.913"/>
+  <testcase name="s3SetupOptionalUrlAndSessionModeUseSharedValidation" classname="SettingsGui" time="1.833"/>
+  <testcase name="invalidExternalFilePreservesAcceptedStateAndBlocksStaleSave" classname="SettingsGui" time="1.470"/>
+  <testcase name="localSetupAndAtomicValidation" classname="SettingsGui" time="1.647">
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="externalAcceptancePreservesDraftAndRequiresReload" classname="SettingsGui" time="1.436"/>
+  <testcase name="actionAndFolderChangesRemainIndependent" classname="SettingsGui" time="1.362"/>
+  <testcase name="cleanupTestCase" classname="SettingsGui" time="0.000"/>
+</testsuite>

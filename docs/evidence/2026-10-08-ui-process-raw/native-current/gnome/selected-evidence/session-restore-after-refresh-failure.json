@@ -1,0 +1,9 @@
+{
+  "before": "User=1000\nName=lab\nType=wayland\nLockedHint=yes\nold-resident-absent\n",
+  "unlockOutput": "",
+  "actions": [
+    "loginctl unlock-session 1",
+    "QMP Escape"
+  ],
+  "witness": "unlocked-after-refresh-failure.png"
+}

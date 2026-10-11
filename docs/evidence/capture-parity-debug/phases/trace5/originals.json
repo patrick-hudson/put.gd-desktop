@@ -1,0 +1,8 @@
+{
+  "src/capture/main.cpp": "98a85287281373577bf941eefcf3f3e99ba400ab256dc8208f8ffafb45befc43",
+  "src/platform/x11/X11NativeSnapshot.cpp": "d68a2ad85bce7ac19abdfe976e9eec299a3e30416461ec7a6324305b5e82140c",
+  "src/platform/x11/X11CoreSourceAdapter.cpp": "74bfe3871e8b1f0c44e57da5e3e440f08aadccdc4e590648b32ced9ee5dbe7f8",
+  "src/app/OperationService.cpp": "e07f7e5809a9a05e19d9822efa9259e57b43b5c43775503139e246ca6809c5b2",
+  "src/platform/x11/CaptureProcessController.cpp": "29d1e59a8a949018341a1da3704079e480cec9bf3409c98beb49f1221a5d4dc0",
+  "src/ui/RegionOverlay.cpp": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1"
+}

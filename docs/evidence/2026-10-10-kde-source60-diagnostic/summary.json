@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-10T19:34:25.059027+00:00",
+  "source": {
+    "commit": "2b0f1fd15f34dc2fb064b0ba863afb6ed6d85a7f",
+    "tree": "ed9c2dbbdeb75764ff290ce72102573f24516104",
+    "version": "0.1.1-dev.60+g2b0f1fd15f34",
+    "commitCount": 60
+  },
+  "runtime": {
+    "desktop": "KDE Wayland",
+    "qt": "6.10.2",
+    "vm": "current-kde-a3d70dc",
+    "vncPort": 5934,
+    "residentPid": 75031,
+    "residentStartTicks": 1446908
+  },
+  "nativeSmoke": {
+    "cases": [
+      {
+        "client": "qt",
+        "scenario": "clipboard-text",
+        "ok": true,
+        "operationId": "371d140c-f920-43b2-8eb6-b13fea45353f"
+      },
+      {
+        "client": "qt",
+        "scenario": "window",
+        "ok": true,
+        "operationId": "27af5d84-c6aa-43c9-9dbb-8784144df402"
+      },
+      {
+        "client": "qt",
+        "scenario": "desktop",
+        "ok": true,
+        "operationId": "47bd215a-07a7-44c2-871c-f43a4c1446e1"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-escape",
+        "ok": true,
+        "operationId": "30d13eab-af26-4c6a-85eb-ee31aa0d2b74"
+      }
+    ],
+    "full12Passed": false,
+    "visualAcceptance": false,
+    "matrixSha256": "cf663c07a285c4e420c0468301e48090e92f7182cf93b3c5a49131eb4366b5f7",
+    "exactFixtureDrainCompleteSha256": "c6d4c9354bf807ab0ae478f6d6a342c3b9352292d51990d969cb42c19886c638"
+  },
+  "memory": {
+    "coldRssBytes": 29483008,
+    "postSelected4RssBytes": 42147840,
+    "targetRssBytes": 41943040,
+    "targetPassed": false,
+    "overTargetBytes": 204800,
+    "postSelected4PssBytes": 18909184,
+    "postSelected4PrivateBytes": 17088512,
+    "allocatorReclaimsCompleted": 5,
+    "scored": false,
+    "fiveMinuteConfirmationPerformed": false
+  },
+  "svg": {
+    "dependencyOnly": true,
+    "coreExitSignal": 6,
+    "guiExitCode": 0,
+    "guiInkPixels": 296,
+    "productInput": false,
+    "interpretation": "Confirmed QFontDatabase GUI requirement for this supported text SVG; generic product decoder callers are reachable. Not a production SVG action acceptance."
+  },
+  "acceptance": {
+    "keeperAccepted": false,
+    "guestCtestPerformed": false,
+    "cinnamonCurrentCandidateTestsPerformed": false,
+    "gnomeCurrentCandidateTestsPerformed": false,
+    "remoteStorageTested": false,
+    "scopeExtensionApproved": false
+  },
+  "files": {
+    "post-selected4-attribution.json": {
+      "sha256": "49dcb8af64e7715bb8b9116c20c1f3400f3b96176aae65cfc4a90026991c07bb",
+      "bytes": 9840,
+      "original": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T193138781938-candidate60-quick-attribution/attribution.json"
+    },
+    "svg-dependency-result.json": {
+      "sha256": "593e088bce7e83a4228d3e62ca6e04844e3e66b08656c1991f3b5d68d740620a",
+      "bytes": 2169,
+      "original": "work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261010T193240952714-candidate60-svg-dependency-probe/result.json"
+    },
+    "svg-probe/CMakeLists.txt": {
+      "sha256": "98d18c90497413cae94c5d54ff3f3e3191468b6dc6df9f5689bc33cb3d569ac6",
+      "bytes": 356,
+      "original": "work/kde-native-boundary/candidate60-svg-parity-preparation/CMakeLists.txt"
+    },
+    "svg-probe/CMakePresets.json": {
+      "sha256": "8185d612a324c2d05aa86b400d281357e97f145f5376a1dcf25639fea8aba14e",
+      "bytes": 318,
+      "original": "work/kde-native-boundary/candidate60-svg-parity-preparation/CMakePresets.json"
+    },
+    "svg-probe/main.cpp": {
+      "sha256": "b1900e2a79e65cccd7b91b1ed82c6e761eff5d3b25c38aadd83b4d72c93925fe",
+      "bytes": 2808,
+      "original": "work/kde-native-boundary/candidate60-svg-parity-preparation/main.cpp"
+    },
+    "svg-probe/run_probe.py": {
+      "sha256": "fc8ea9b52ffb8e3ef4b5ca140b539d73141ed7d89a8170d9ccd5aac703f14bc9",
+      "bytes": 3899,
+      "original": "work/kde-native-boundary/candidate60-svg-parity-preparation/run_probe.py"
+    }
+  },
+  "limitations": [
+    "Only four Qt local smoke cases; GTK/full12/UI/live-selector and current-candidate siblings pending.",
+    "Snapshot only; no coverage/CPU gate and no same-workload comparison to139.42MiB frozen fullnative baseline.",
+    "Local ignored raw commands/archives remain referenced by hashes; they are not all included in this bounded export.",
+    "The build of the probe uses distro Qt; missing SVG codec makes this comparison inconclusive."
+  ]
+}

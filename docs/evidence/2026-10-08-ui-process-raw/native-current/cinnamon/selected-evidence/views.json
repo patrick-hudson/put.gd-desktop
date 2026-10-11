@@ -1,0 +1,12 @@
+{
+  "timestampUtc": "2026-10-09T01:16:55.969773+00:00",
+  "cycles": 2,
+  "views": 8,
+  "trigger": "production CLI, normal visible Alt+F4 close",
+  "residentUnchanged": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef"
+  },
+  "visualReview": "pending"
+}

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "35814c0c8acbc5735a91377404fad07210e6c629bae37403768481d6013a1716",
+  "sourceBytes": 970,
+  "scope": "Existing synchronous interactive acceptance/cancellation regression exposed when extending early release; failed attempt retained.",
+  "suite": {
+    "name": "OperationsTest",
+    "timestamp": "2026-10-09T14:27:48",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "1",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.117"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "interactiveAcceptanceAndCancellation",
+      "classname": "OperationsTest",
+      "time": "0.116",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (code)                     : \"\"\n   Expected (QString(\"busy_selecting\")): \"busy_selecting\"\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, raw logs, configuration, databases, credentials and payload bytes"
+}

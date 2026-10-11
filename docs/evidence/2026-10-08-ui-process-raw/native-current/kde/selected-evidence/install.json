@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:27:31.660410+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "packageSha256": "63935e7eda18e0f183b4fb0eadcc19085a904da01ba181175c1b0ba909b4a63b",
+  "previousResident": {
+    "pid": 82341,
+    "startTicks": 1011360,
+    "sha256": "a1ce7495a292d0f8e6664fe2cd034c505ad30494229b4af80313b9de133264d1"
+  },
+  "previousOperationStates": [
+    {
+      "id": "942d316d-6ae4-4d21-b885-9c50d7cdcd6f",
+      "state": "completed"
+    },
+    {
+      "id": "b0d600ec-9ffa-443a-ad60-103f412dbe2b",
+      "state": "completed"
+    },
+    {
+      "id": "196a19ea-ec1c-4ac7-829a-0ec32bca6070",
+      "state": "completed"
+    },
+    {
+      "id": "fc40492e-57ac-4862-a7c7-b1b0b7a80b23",
+      "state": "completed"
+    },
+    {
+      "id": "84a1afd6-9d4b-44a0-a578-4b5bfcafb87c",
+      "state": "completed"
+    },
+    {
+      "id": "f5b071de-8ce1-4c19-a787-a1c80d755bfa",
+      "state": "completed"
+    },
+    {
+      "id": "668c2b0c-9af4-4653-ac79-f59b0c3ac024",
+      "state": "cancelled"
+    },
+    {
+      "id": "90e25ab9-1091-4960-bd4a-e13e05d3d947",
+      "state": "cancelled"
+    },
+    {
+      "id": "9ef363da-ba78-46f6-bd94-36744ce648d9",
+      "state": "cancelled"
+    },
+    {
+      "id": "f780ac39-b7f4-4075-9165-8059081fa92a",
+      "state": "completed"
+    },
+    {
+      "id": "a0a81bb7-776e-48d7-b25c-02683e2e644c",
+      "state": "completed"
+    },
+    {
+      "id": "597af8a0-6405-403f-96d8-5019da855df2",
+      "state": "completed"
+    },
+    {
+      "id": "8e96c122-22ed-49ea-88bb-195623f0025c",
+      "state": "cancelled"
+    },
+    {
+      "id": "aa65378a-26e8-4eef-949a-5ad4c9c044e8",
+      "state": "cancelled"
+    }
+  ],
+  "preservedGuestProfile": "/home/lab/putgd-lab-before-u11-97ca3a521714",
+  "baselineStopReceipt": "baseline-stop.json",
+  "ok": true,
+  "preInstallGuard": {
+    "command": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "IdentitiesOnly=yes",
+      "-o",
+      "StrictHostKeyChecking=yes",
+      "-o",
+      "ConnectTimeout=5",
+      "-o",
+      "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+      "-i",
+      "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+      "-p",
+      "22234",
+      "lab@127.0.0.1",
+      "python3",
+      "-"
+    ],
+    "script": "import pathlib,os,json\nbackup=pathlib.Path('/home/lab/putgd-lab-before-u11-97ca3a521714')\nassert backup.is_dir() and not backup.is_symlink() and backup.stat().st_uid==os.getuid()\nassert not pathlib.Path('/home/lab/putgd-lab').exists()\nfor p in pathlib.Path('/proc').iterdir():\n try:\n  if p.name.isdecimal() and p.stat().st_uid==os.getuid():assert (p/'comm').read_text().strip() not in ['putgd','putgd-ui'],'An app process was relaunched before upgrade'\n except (FileNotFoundError,ProcessLookupError):pass\nprint(json.dumps({'noOldAppProcesses':True,'preservedProfile':str(backup)}))\n",
+    "exitCode": 0,
+    "result": {
+      "noOldAppProcesses": true,
+      "preservedProfile": "/home/lab/putgd-lab-before-u11-97ca3a521714"
+    }
+  },
+  "command": [
+    "python3",
+    "/home/patrick/work/put.gd/tools/lab/lab.py",
+    "install",
+    "--run",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc",
+    "--deb",
+    "/home/patrick/work/put.gd/work/u11/native/kde/putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb"
+  ],
+  "exitCode": 0,
+  "runningApp": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "version": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.41+g97ca3a521714",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "commitCount": 41,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "operationCount": 0,
+  "package": {
+    "sha256": "63935e7eda18e0f183b4fb0eadcc19085a904da01ba181175c1b0ba909b4a63b",
+    "filename": "putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb",
+    "installedBinarySha256": {
+      "/usr/bin/putgd": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c",
+      "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+      "/usr/bin/putgd-ui": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+      "/usr/bin/putgd-cli": "f979812e68ffd8fa039dd0322b2056e8d0e771de33f1f9562c6bec7b4ca55549",
+      "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+    }
+  },
+  "finishedUtc": "2026-10-09T01:27:50.241884+00:00"
+}

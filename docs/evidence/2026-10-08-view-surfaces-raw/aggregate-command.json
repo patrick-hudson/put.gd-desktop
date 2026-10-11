@@ -1,0 +1,14 @@
+{
+  "command": [
+    "bash",
+    "/home/patrick/.codex/plugins/cache/compound-engineering-plugin/compound-engineering/3.30.4/skills/ce-optimize/scripts/measure.sh",
+    "python3 /home/patrick/work/put.gd/work/memory-next/score-surfaces.py --physical \"$PUTGD_PHYSICAL_1\" \"$PUTGD_PHYSICAL_2\" --wave \"$PUTGD_DESKTOP_WAVE\"",
+    "60",
+    "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001",
+    "PUTGD_PHYSICAL_1=/home/patrick/work/put.gd/work/memory-surfaces/physical-1/results.json",
+    "PUTGD_PHYSICAL_2=/home/patrick/work/put.gd/work/memory-surfaces/physical-2/results.json",
+    "PUTGD_DESKTOP_WAVE=/home/patrick/work/put.gd/work/memory-surfaces/memory-wave.json"
+  ],
+  "exitCode": 0,
+  "timestampUtc": "2026-10-08T22:44:52.903304+00:00"
+}

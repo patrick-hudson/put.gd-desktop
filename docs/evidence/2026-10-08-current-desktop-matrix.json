@@ -1,0 +1,567 @@
+{
+  "schemaVersion": 1,
+  "status": "Bounded current-source native matrix and post-functional memory observation complete; release and 40 MiB gates remain open",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "sourceArchiveSha256": "ec179214a662010c7f6d21a2cc5fe29479423ff6a6e9292433ef35b0aebd3fab",
+  "productSourceChangedDuringWave": false,
+  "rawManifest": "2026-10-08-current-desktop-matrix-raw/manifest.json",
+  "rawManifestSha256": "6f20f3bbb0a6a8d9615db38578d723954849c55834aad37b1620102b379d1543",
+  "parameters": {
+    "durationSeconds": 120,
+    "intervalSeconds": 5,
+    "warmupSeconds": 5
+  },
+  "scope": "Single-display installed Release packages, native Cinnamon X11 / GNOME Wayland / KDE Wayland; synthetic local-only capture/clipboard and visible view smoke. Parallel profiles, serial actions per guest, then concurrent read-only memory samples with no build or GUI activity.",
+  "runner": {
+    "finalSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+    "note": "Each scenario retains its actual runner hash. GTK X11 locator fixed during the wave; final install-receipt invalidation affects subsequent installations only. App source stayed frozen."
+  },
+  "profiles": {
+    "cinnamon": {
+      "profile": "cinnamon-x11",
+      "vncPort": 5938,
+      "vcpus": 2,
+      "vmMemoryMiB": 6144,
+      "package": {
+        "sha256": "78d744b30bb2f883ccd543ca57553ee3e3e173944624151427c88b78db14f5ef",
+        "filename": "putgd_0.1.0_amd64.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+          "/usr/bin/putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+        }
+      },
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      },
+      "nativeCases": {
+        "passed": 12,
+        "failedAttempts": 1,
+        "attempts": [
+          {
+            "testId": "2e383f1a604f414a973cd646a8b9b815",
+            "scenario": "window-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/2e383f1a604f414a973cd646a8b9b815/results.json"
+          },
+          {
+            "testId": "44ac5ba5a2d44f93b7e53dfc523f8582",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": false,
+            "error": "Independent fixture is obscured; focus witnesses preserved",
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/44ac5ba5a2d44f93b7e53dfc523f8582/results.json"
+          },
+          {
+            "testId": "5f79e7cdd55b4c1eace3dea4ea7d7e32",
+            "scenario": "region-cancel-right-click-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/5f79e7cdd55b4c1eace3dea4ea7d7e32/results.json"
+          },
+          {
+            "testId": "6bb3cdae8c074d98960bf58fa9318e77",
+            "scenario": "clipboard-files-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/6bb3cdae8c074d98960bf58fa9318e77/results.json"
+          },
+          {
+            "testId": "7a847de2c3214daa955bdbbb107b06ac",
+            "scenario": "region-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/7a847de2c3214daa955bdbbb107b06ac/results.json"
+          },
+          {
+            "testId": "81abdd55e12a42faadf5254ed5dbeaa7",
+            "scenario": "region-cancel-escape-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/81abdd55e12a42faadf5254ed5dbeaa7/results.json"
+          },
+          {
+            "testId": "8d5e99088ca347f58972a31227a763d4",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/8d5e99088ca347f58972a31227a763d4/results.json"
+          },
+          {
+            "testId": "9023f9d6ca4b42a5a242f6c926ede3ff",
+            "scenario": "desktop-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/9023f9d6ca4b42a5a242f6c926ede3ff/results.json"
+          },
+          {
+            "testId": "93ac5cc310fe421c8c916665b4b35a4e",
+            "scenario": "clipboard-image-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/93ac5cc310fe421c8c916665b4b35a4e/results.json"
+          },
+          {
+            "testId": "9a2d93f1369b458c9d1465f21b3cd269",
+            "scenario": "clipboard-files-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/9a2d93f1369b458c9d1465f21b3cd269/results.json"
+          },
+          {
+            "testId": "9cada367f0b143c2aa6f9c26b4cd42ec",
+            "scenario": "clipboard-image-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/9cada367f0b143c2aa6f9c26b4cd42ec/results.json"
+          },
+          {
+            "testId": "c9ff16b9a973495cbdddae69583de1e6",
+            "scenario": "region-cancel-zero-area-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/c9ff16b9a973495cbdddae69583de1e6/results.json"
+          },
+          {
+            "testId": "fe6c496bdab14e4ab9dff434d7f6e6f7",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/tests/fe6c496bdab14e4ab9dff434d7f6e6f7/results.json"
+          }
+        ]
+      },
+      "viewSmoke": {
+        "views": [
+          "settings",
+          "history",
+          "activity"
+        ],
+        "cyclesPerView": 2,
+        "openClosePairs": 6,
+        "scope": "Visible render, close and reopen, not exhaustive editing/history validation"
+      },
+      "operationCount": 12,
+      "memory": {
+        "scope": "Post-functional VM observation",
+        "samples": 25,
+        "elapsedSeconds": 120.00190402600015,
+        "finalRssMiB": 83.3046875,
+        "peakSampledRssMiB": 83.3046875,
+        "finalPssMiB": 54.5107421875,
+        "finalPrivateMiB": 48.22265625,
+        "finalSharedMiB": 35.08203125,
+        "cpuPercentOneCore": 0.008333201111403496,
+        "swapBytes": 0,
+        "rssUnchangedThroughout": true,
+        "receipt": "2026-10-08-current-desktop-matrix-raw/cinnamon/memory-sample.json"
+      },
+      "fullDevTests": {
+        "passed": 28,
+        "total": 28,
+        "reusedExactProductEvidence": true,
+        "reference": "2026-10-08-startup-reclaim-raw/integration.json",
+        "note": "Earlier integration suite and sanitizer evidence reused; no new full Cinnamon Dev run claimed. Current VM native cases and package hashes checked separately."
+      },
+      "resolvedFailure": "GTK replacement window has independent X11 coordinates; derive its location from QMP witness rather than stale Qt fixture geometry. All three GTK cases rerun and passed."
+    },
+    "gnome": {
+      "profile": "gnome-wayland",
+      "vncPort": 5936,
+      "vcpus": 2,
+      "vmMemoryMiB": 6144,
+      "package": {
+        "sha256": "10d9c0023b71e40b66ffa714fefe3b923ba38a39b915ff83b48206943228f974",
+        "filename": "putgd_0.1.0_amd64.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-cli": "41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85",
+          "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+        }
+      },
+      "runningApp": {
+        "pid": 2775,
+        "startTicks": 4592,
+        "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+      },
+      "nativeCases": {
+        "passed": 12,
+        "failedAttempts": 0,
+        "attempts": [
+          {
+            "testId": "06076f40e19147aca797ee98854c6952",
+            "scenario": "clipboard-files-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/06076f40e19147aca797ee98854c6952/results.json"
+          },
+          {
+            "testId": "2ea60c75515f4738abdecf697d2c70ca",
+            "scenario": "clipboard-image-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/2ea60c75515f4738abdecf697d2c70ca/results.json"
+          },
+          {
+            "testId": "47bfb4a7cc6c48f6ac0702806966f9f0",
+            "scenario": "region-cancel-escape-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/47bfb4a7cc6c48f6ac0702806966f9f0/results.json"
+          },
+          {
+            "testId": "8bd3896517f6404782fb705af1359275",
+            "scenario": "desktop-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/8bd3896517f6404782fb705af1359275/results.json"
+          },
+          {
+            "testId": "8f073530a87944b4b545c28a16528ba8",
+            "scenario": "clipboard-image-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/8f073530a87944b4b545c28a16528ba8/results.json"
+          },
+          {
+            "testId": "b41cd07fe4354bf7b9dd012a145ea187",
+            "scenario": "window-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/b41cd07fe4354bf7b9dd012a145ea187/results.json"
+          },
+          {
+            "testId": "bf8e981b692c439aaa69aeab8e7f0059",
+            "scenario": "region-cancel-right-click-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/bf8e981b692c439aaa69aeab8e7f0059/results.json"
+          },
+          {
+            "testId": "c88e7d7378784c6abe30650aed98f3bd",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/c88e7d7378784c6abe30650aed98f3bd/results.json"
+          },
+          {
+            "testId": "cd8fd7c215dd479eb5488c80c731d2f6",
+            "scenario": "region-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/cd8fd7c215dd479eb5488c80c731d2f6/results.json"
+          },
+          {
+            "testId": "dc0630627011473f8e88cf28017b8f8e",
+            "scenario": "region-cancel-zero-area-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/dc0630627011473f8e88cf28017b8f8e/results.json"
+          },
+          {
+            "testId": "edc9d4fc3dea426d89638e0af77509a9",
+            "scenario": "clipboard-files-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/edc9d4fc3dea426d89638e0af77509a9/results.json"
+          },
+          {
+            "testId": "fbda695e1ac9445bac8939b0811021c9",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/tests/fbda695e1ac9445bac8939b0811021c9/results.json"
+          }
+        ]
+      },
+      "viewSmoke": {
+        "views": [
+          "settings",
+          "history",
+          "activity"
+        ],
+        "cyclesPerView": 2,
+        "openClosePairs": 6,
+        "scope": "Visible render, close and reopen, not exhaustive editing/history validation"
+      },
+      "operationCount": 13,
+      "memory": {
+        "scope": "Post-functional VM observation",
+        "samples": 25,
+        "elapsedSeconds": 120.004281682,
+        "finalRssMiB": 114.36328125,
+        "peakSampledRssMiB": 114.36328125,
+        "finalPssMiB": 71.576171875,
+        "finalPrivateMiB": 54.7890625,
+        "finalSharedMiB": 59.57421875,
+        "cpuPercentOneCore": 0.008333036004914437,
+        "swapBytes": 0,
+        "rssUnchangedThroughout": true,
+        "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/memory-sample.json"
+      },
+      "fullDevTests": {
+        "passed": 28,
+        "total": 28,
+        "junit": "2026-10-08-current-desktop-matrix-raw/gnome/build-evidence/ctest-dev.xml",
+        "release": "Normal Release package targets built; duplicate Release test executables not run"
+      },
+      "liveRegion": {
+        "operationId": "41beab8b-8ee3-40f9-b267-5719adcb4d56",
+        "dimensions": [
+          80,
+          60
+        ],
+        "updatedColorPixels": 4800,
+        "outlineAbsentFromCapture": true,
+        "receipt": "2026-10-08-current-desktop-matrix-raw/gnome/live-region/results.json"
+      }
+    },
+    "kde": {
+      "profile": "kde-wayland",
+      "vncPort": 5934,
+      "vcpus": 2,
+      "vmMemoryMiB": 6144,
+      "package": {
+        "sha256": "5a85f0b4117ae0bc5e2f14aebc408e3dc909ec58f58385edc6b1c9710a5e8fbc",
+        "filename": "putgd-release_0.1.0_amd64.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-cli": "41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85",
+          "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+        }
+      },
+      "runningApp": {
+        "pid": 2958,
+        "startTicks": 81226,
+        "sha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1"
+      },
+      "nativeCases": {
+        "passed": 12,
+        "failedAttempts": 1,
+        "attempts": [
+          {
+            "testId": "0d3739864c454a0a8415574b03a7c798",
+            "scenario": "window-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/0d3739864c454a0a8415574b03a7c798/results.json"
+          },
+          {
+            "testId": "0f3e8e9cbc294d99970de5e2b7a4c704",
+            "scenario": "clipboard-files-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/0f3e8e9cbc294d99970de5e2b7a4c704/results.json"
+          },
+          {
+            "testId": "1ef01cabb1e04609b09ed4016249f1c9",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": false,
+            "error": "Independent GTK clipboard client readiness timeout",
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/1ef01cabb1e04609b09ed4016249f1c9/results.json"
+          },
+          {
+            "testId": "3e30812142ce413d9a10407780e9012a",
+            "scenario": "region-cancel-zero-area-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/3e30812142ce413d9a10407780e9012a/results.json"
+          },
+          {
+            "testId": "550d8534b2474b018e7fe91e59c8e117",
+            "scenario": "region-cancel-right-click-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/550d8534b2474b018e7fe91e59c8e117/results.json"
+          },
+          {
+            "testId": "5973619c0c6c42059e20a1e8357bcffc",
+            "scenario": "clipboard-image-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/5973619c0c6c42059e20a1e8357bcffc/results.json"
+          },
+          {
+            "testId": "90eadbabfab94805b88ebd036807bf01",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/90eadbabfab94805b88ebd036807bf01/results.json"
+          },
+          {
+            "testId": "959a9a06b4fd40baa9be77e37743d7f6",
+            "scenario": "desktop-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/959a9a06b4fd40baa9be77e37743d7f6/results.json"
+          },
+          {
+            "testId": "98a77ab449614050a1fa20e2e7822082",
+            "scenario": "clipboard-image-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/98a77ab449614050a1fa20e2e7822082/results.json"
+          },
+          {
+            "testId": "bcf3c0718f894e6d8a327eccb48fff42",
+            "scenario": "clipboard-files-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/bcf3c0718f894e6d8a327eccb48fff42/results.json"
+          },
+          {
+            "testId": "d5051965b7c140b0b585ce4fb4764fb5",
+            "scenario": "region-cancel-escape-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/d5051965b7c140b0b585ce4fb4764fb5/results.json"
+          },
+          {
+            "testId": "d572b09a31a64655a830de07172b1ac4",
+            "scenario": "clipboard-text-independent-paste",
+            "clipboardClient": "gtk",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/d572b09a31a64655a830de07172b1ac4/results.json"
+          },
+          {
+            "testId": "f40d55922410492d8e48c814d530f4d7",
+            "scenario": "region-independent-paste",
+            "clipboardClient": "qt",
+            "ok": true,
+            "error": null,
+            "receipt": "2026-10-08-current-desktop-matrix-raw/kde/tests/f40d55922410492d8e48c814d530f4d7/results.json"
+          }
+        ]
+      },
+      "viewSmoke": {
+        "views": [
+          "settings",
+          "history",
+          "activity"
+        ],
+        "cyclesPerView": 2,
+        "openClosePairs": 6,
+        "scope": "Visible render, close and reopen, not exhaustive editing/history validation"
+      },
+      "operationCount": 12,
+      "memory": {
+        "scope": "Post-functional VM observation",
+        "samples": 25,
+        "elapsedSeconds": 120.00511030099983,
+        "finalRssMiB": 186.16796875,
+        "peakSampledRssMiB": 186.16796875,
+        "finalPssMiB": 64.3515625,
+        "finalPrivateMiB": 37.3984375,
+        "finalSharedMiB": 148.76953125,
+        "cpuPercentOneCore": 0.016665956932863525,
+        "swapBytes": 0,
+        "rssUnchangedThroughout": true,
+        "receipt": "2026-10-08-current-desktop-matrix-raw/kde/memory-sample.json"
+      },
+      "fullDevTests": {
+        "passed": 28,
+        "total": 28,
+        "junit": "2026-10-08-current-desktop-matrix-raw/kde/dev-tests.xml",
+        "release": "Normal Release package targets built; duplicate Release test executables not run"
+      },
+      "resolvedFailure": "GTK text fixture lacked GI Cairo binding; installed normal guest package, reran and passed. Obscured first view smoke was not accepted; repeated with visible focus."
+    }
+  },
+  "retiredVms": {
+    "timestampUtc": "2026-10-08T20:58:44.980354+00:00",
+    "scope": "Host namespace verification of requested obsolete VM PIDs",
+    "oldVms": [
+      {
+        "pid": 1794904,
+        "processPresent": false
+      },
+      {
+        "pid": 1691093,
+        "processPresent": false
+      },
+      {
+        "pid": 1673704,
+        "processPresent": false
+      }
+    ]
+  },
+  "hostContracts": {
+    "passed": 11,
+    "total": 11,
+    "receipt": "2026-10-08-current-desktop-matrix-raw/common/lab-contracts-final.json",
+    "ciStepExecutedLocally": true,
+    "githubActionsRun": false
+  },
+  "review": {
+    "skill": "compound-engineering:ce-code-review",
+    "status": "complete",
+    "runId": "current-lab-identity",
+    "receipt": "2026-10-08-current-desktop-matrix-raw/review/review.json",
+    "followup": "2026-10-08-current-desktop-matrix-raw/review/caller-followup.json",
+    "modelRequested": "claude-opus-5-5",
+    "modelActual": "claude-opus-5-5",
+    "effortRequested": "high",
+    "effortActual": "unverified",
+    "actionableFindings": 1,
+    "resolved": 1,
+    "resolution": "Invalidate old package receipt before attempted reinstall; upload/verification failure regression first failed, then passed. Also retain CI reports after earlier job failures. No external re-review after fix."
+  },
+  "limits": [
+    "No live S3 operation or remote deletion in this wave; local-only fixtures do not close cloud gates.",
+    "Single-head geometry and two view cycles do not certify mixed DPI, display changes, all history/settings interactions, package upgrade/removal, or the full release contract.",
+    "VM post-use RSS is not comparable as a paired optimization result with the physical Cinnamon cold baseline or the previous old-VM snapshots.",
+    "GNOME includes one extra live-background region capture; exact action ordering differs across profiles.",
+    "Two minutes of stable RSS is not proof of absence of leaks, nor allocation-level heap attribution.",
+    "The running executable guard does not independently attest every mapped library. This wave also uses fresh overlays and exact package/module/helper records.",
+    "Raw synthetic PPM and saved-payload files remain local, indexed by hashes; committed copies contain selected PNG witnesses, parameters, results, logs and JUnit."
+  ],
+  "physicalTarget": {
+    "targetMiB": 40,
+    "latestColdRssMiB": 44.96484375,
+    "met": false,
+    "reference": "2026-10-08-startup-reclaim.json",
+    "nextAttribution": "Post-view native backing storage and retained allocations remain candidates; no new memory-saving implementation is claimed in this wave."
+  }
+}

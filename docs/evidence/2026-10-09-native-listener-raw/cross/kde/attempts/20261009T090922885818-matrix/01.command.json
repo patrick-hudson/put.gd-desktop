@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tools/diagnostics/check_socket_paths.py",
+    "--socket",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/qmp.sock",
+    "/run/user/1000/putgd/session.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-1/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-2/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-3/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-4/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-5/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-6/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-7/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-8/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-9/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-10/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-11/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-12/qmp.sock"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T09:09:23.649033+00:00"
+}

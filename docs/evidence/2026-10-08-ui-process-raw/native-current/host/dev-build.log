@@ -1,0 +1,307 @@
+[1/304] cd /home/patrick/work/put.gd/work/u11/native/host/source/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/put.gd/work/u11/native/host/source -DOUTPUT_DIR=/home/patrick/work/put.gd/work/u11/native/host/source/build/dev/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT=97ca3a521714e2717cedc1139976130627bfb8a8 -DSUPPLIED_TREE=888460466ff1d240bd8e3c61189f36f407fb3485 -DSUPPLIED_COUNT=41 -P /home/patrick/work/put.gd/work/u11/native/host/source/cmake/GenerateBuildInfo.cmake
+[2/304] Automatic MOC and UIC for target putgd_s3_runtime
+[3/304] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[4/304] Linking CXX static library libputgd_build_identity.a
+[5/304] Automatic MOC and UIC for target putgd_ui_control
+[6/304] Automatic MOC and UIC for target putgd_ui_state
+[7/304] Automatic MOC and UIC for target putgd_client
+[8/304] Building CXX object CMakeFiles/putgd_s3_runtime.dir/putgd_s3_runtime_autogen/mocs_compilation.cpp.o
+[9/304] Automatic MOC and UIC for target putgd_visual
+[10/304] Automatic MOC and UIC for target putgd_core
+[11/304] Building CXX object CMakeFiles/putgd_s3_runtime.dir/src/storage/s3/SdkRuntime.cpp.o
+[12/304] Linking CXX static library libputgd_s3_runtime.a
+[13/304] Building CXX object CMakeFiles/putgd_core.dir/putgd_core_autogen/mocs_compilation.cpp.o
+[14/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/Settings.cpp.o
+[15/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/SettingsService.cpp.o
+[16/304] Building CXX object CMakeFiles/putgd_core.dir/src/platform/Geometry.cpp.o
+[17/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/ClipboardPayload.cpp.o
+[18/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/LocalArchive.cpp.o
+[19/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/ArtifactStore.cpp.o
+[20/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageReceipt.cpp.o
+[21/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/UploadNaming.cpp.o
+[22/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageProvider.cpp.o
+[23/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/Operation.cpp.o
+[24/304] Building CXX object CMakeFiles/putgd_core.dir/src/core/HistoryStore.cpp.o
+[25/304] Building CXX object CMakeFiles/putgd_ui_control.dir/putgd_ui_control_autogen/mocs_compilation.cpp.o
+[26/304] Linking CXX static library libputgd_core.a
+[27/304] Building CXX object CMakeFiles/putgd_ui_control.dir/src/ui/StdioDevice.cpp.o
+[28/304] Automatic MOC and UIC for target putgd_credentials
+[29/304] Building CXX object CMakeFiles/putgd_credentials.dir/putgd_credentials_autogen/mocs_compilation.cpp.o
+[30/304] Building CXX object CMakeFiles/putgd_ui_control.dir/src/app/UiControl.cpp.o
+[31/304] Linking CXX static library libputgd_ui_control.a
+[32/304] Automatic MOC and UIC for target putgd_s3_module
+[33/304] Building CXX object CMakeFiles/putgd_s3_module.dir/putgd_s3_module_autogen/mocs_compilation.cpp.o
+[34/304] Building CXX object CMakeFiles/putgd_credentials.dir/src/secrets/CredentialStore.cpp.o
+[35/304] Linking CXX static library libputgd_credentials.a
+[36/304] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Module.cpp.o
+[37/304] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3SdkContext.cpp.o
+[38/304] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/PublicUrl.cpp.o
+[39/304] Automatic MOC and UIC for target putgd_app
+[40/304] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Driver.cpp.o
+[41/304] Linking CXX shared module libputgd-s3.so
+[42/304] Building CXX object CMakeFiles/putgd_app.dir/putgd_app_autogen/mocs_compilation.cpp.o
+[43/304] Building CXX object CMakeFiles/putgd_app.dir/src/app/HistoryService.cpp.o
+[44/304] Building CXX object CMakeFiles/putgd_app.dir/src/app/OperationService.cpp.o
+[45/304] Building CXX object CMakeFiles/putgd_app.dir/src/app/SetupService.cpp.o
+[46/304] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalIpc.cpp.o
+[47/304] Building CXX object CMakeFiles/putgd_app.dir/src/app/LocalServer.cpp.o
+[48/304] Automatic MOC and UIC for target putgd_s3
+[49/304] Building CXX object CMakeFiles/putgd_s3.dir/putgd_s3_autogen/mocs_compilation.cpp.o
+[50/304] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/IpAddress.cpp.o
+[51/304] Building CXX object CMakeFiles/putgd_app.dir/src/app/LoginStartup.cpp.o
+[52/304] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Provider.cpp.o
+[53/304] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/S3Module.cpp.o
+[54/304] Linking CXX static library libputgd_app.a
+[55/304] Generating wayland-protocols/ext-data-control-v1-client-protocol.h
+[56/304] Generating wayland-protocols/ext-data-control-v1-protocol.c
+[57/304] Automatic MOC and UIC for target putgd_x11
+[58/304] Building CXX object CMakeFiles/putgd_s3.dir/src/storage/s3/PublicUrl.cpp.o
+[59/304] Linking CXX static library libputgd_s3.a
+[60/304] Building CXX object CMakeFiles/putgd_x11.dir/putgd_x11_autogen/mocs_compilation.cpp.o
+[61/304] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Capture.cpp.o
+[62/304] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/CinnamonRegionCapture.cpp.o
+[63/304] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Clipboard.cpp.o
+[64/304] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11Shortcuts.cpp.o
+[65/304] Building CXX object CMakeFiles/putgd_x11.dir/src/platform/x11/X11SourceAdapter.cpp.o
+[66/304] Automatic MOC and UIC for target putgd_gnome
+[67/304] Building CXX object CMakeFiles/putgd_x11.dir/src/ui/RegionOverlay.cpp.o
+[68/304] Linking CXX static library libputgd_x11.a
+[69/304] Building CXX object CMakeFiles/putgd_gnome.dir/putgd_gnome_autogen/mocs_compilation.cpp.o
+[70/304] Building CXX object CMakeFiles/putgd_gnome.dir/src/platform/gnome/GnomeProtocol.cpp.o
+[71/304] Automatic MOC and UIC for target putgd_kde
+[72/304] Building CXX object CMakeFiles/putgd_gnome.dir/src/platform/gnome/GnomeAdapter.cpp.o
+[73/304] Linking CXX static library libputgd_gnome.a
+[74/304] Building CXX object CMakeFiles/putgd_kde.dir/putgd_kde_autogen/mocs_compilation.cpp.o
+[75/304] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KWinTransfer.cpp.o
+[76/304] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KWinCapture.cpp.o
+[77/304] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeShortcuts.cpp.o
+[78/304] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeRegionOverlay.cpp.o
+[79/304] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/DataControlClipboard.cpp.o
+[80/304] Building C object CMakeFiles/putgd_kde.dir/wayland-protocols/ext-data-control-v1-protocol.c.o
+[81/304] Automatic MOC and UIC for target putgd_ui_supervisor
+[82/304] Building CXX object CMakeFiles/putgd_ui_supervisor.dir/putgd_ui_supervisor_autogen/mocs_compilation.cpp.o
+[83/304] Building CXX object CMakeFiles/putgd_kde.dir/src/platform/kde/KdeSourceAdapter.cpp.o
+[84/304] Linking CXX static library libputgd_kde.a
+[85/304] Building CXX object CMakeFiles/putgd_ui_supervisor.dir/src/app/UiProcessController.cpp.o
+[86/304] Linking CXX static library libputgd_ui_supervisor.a
+[87/304] Building CXX object CMakeFiles/putgd_client.dir/putgd_client_autogen/mocs_compilation.cpp.o
+[88/304] Building CXX object CMakeFiles/putgd_ui_state.dir/putgd_ui_state_autogen/mocs_compilation.cpp.o
+[89/304] Building CXX object CMakeFiles/putgd_ui_state.dir/src/ui/ViewState.cpp.o
+[90/304] Linking CXX static library libputgd_ui_state.a
+[91/304] Building CXX object CMakeFiles/putgd_visual.dir/putgd_visual_autogen/mocs_compilation.cpp.o
+[92/304] Building CXX object CMakeFiles/putgd_client.dir/src/client/SessionClient.cpp.o
+[93/304] Linking CXX static library libputgd_client.a
+[94/304] Automatic MOC and UIC for target putgd-cli
+[95/304] Building CXX object CMakeFiles/putgd-cli.dir/putgd-cli_autogen/mocs_compilation.cpp.o
+[96/304] Building CXX object CMakeFiles/putgd-cli.dir/src/cli/main.cpp.o
+[97/304] Building CXX object CMakeFiles/putgd_visual.dir/src/ui/VisualStyle.cpp.o
+[98/304] Linking CXX static library libputgd_visual.a
+[99/304] Automatic MOC and UIC for target putgd_tray
+[100/304] Linking CXX executable putgd-cli
+[101/304] Building CXX object CMakeFiles/putgd_tray.dir/putgd_tray_autogen/mocs_compilation.cpp.o
+[102/304] Automatic MOC and UIC for target putgd_about
+[103/304] Building CXX object CMakeFiles/putgd_about.dir/putgd_about_autogen/mocs_compilation.cpp.o
+[104/304] Building CXX object CMakeFiles/putgd_tray.dir/src/ui/TrayController.cpp.o
+[105/304] Linking CXX static library libputgd_tray.a
+[106/304] Automatic MOC and UIC for target putgd_ui
+[107/304] Building CXX object CMakeFiles/putgd_about.dir/src/ui/AboutWindow.cpp.o
+[108/304] Linking CXX static library libputgd_about.a
+[109/304] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/mocs_compilation.cpp.o
+[110/304] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/UiSession.cpp.o
+[111/304] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+[112/304] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/ShortcutEditor.cpp.o
+[113/304] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/RecentOperations.cpp.o
+[114/304] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryWindow.cpp.o
+[115/304] Automatic MOC and UIC for target putgd
+[116/304] Building CXX object CMakeFiles/putgd.dir/putgd_autogen/mocs_compilation.cpp.o
+[117/304] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryModel.cpp.o
+[118/304] Linking CXX static library libputgd_ui.a
+[119/304] Automatic MOC and UIC for target putgd_ui_application
+[120/304] Building CXX object CMakeFiles/putgd_ui_application.dir/putgd_ui_application_autogen/mocs_compilation.cpp.o
+[121/304] Building CXX object CMakeFiles/putgd.dir/src/main.cpp.o
+[122/304] Linking CXX executable putgd
+[123/304] Automatic MOC and UIC for target test_kde_ownership
+[124/304] Building CXX object CMakeFiles/test_kde_ownership.dir/test_kde_ownership_autogen/mocs_compilation.cpp.o
+[125/304] Building CXX object CMakeFiles/putgd_ui_application.dir/src/ui/UiApplicationController.cpp.o
+[126/304] Linking CXX static library libputgd_ui_application.a
+[127/304] Automatic MOC and UIC for target putgd-ui
+[128/304] Building CXX object CMakeFiles/putgd-ui.dir/putgd-ui_autogen/mocs_compilation.cpp.o
+[129/304] Building CXX object CMakeFiles/putgd-ui.dir/src/ui/main.cpp.o
+[130/304] Linking CXX executable putgd-ui
+[131/304] Automatic MOC and UIC for target test_ui_split_services
+[132/304] Building CXX object CMakeFiles/test_ui_split_services.dir/test_ui_split_services_autogen/mocs_compilation.cpp.o
+[133/304] Building CXX object CMakeFiles/test_kde_ownership.dir/tests/integration/test_kde_ownership.cpp.o
+[134/304] Linking CXX executable test_kde_ownership
+[135/304] Automatic MOC and UIC for target test_ui_helper_fixture
+[136/304] Building CXX object CMakeFiles/test_ui_helper_fixture.dir/test_ui_helper_fixture_autogen/mocs_compilation.cpp.o
+[137/304] Building CXX object CMakeFiles/test_ui_helper_fixture.dir/tests/fixtures/ui_helper_fixture.cpp.o
+[138/304] Linking CXX executable test_ui_helper_fixture
+[139/304] Automatic MOC and UIC for target test_ui_process
+[140/304] Building CXX object CMakeFiles/test_ui_process.dir/test_ui_process_autogen/mocs_compilation.cpp.o
+[141/304] Building CXX object CMakeFiles/test_ui_split_services.dir/tests/integration/test_ui_split_services.cpp.o
+[142/304] Linking CXX executable test_ui_split_services
+[143/304] Automatic MOC and UIC for target test_ui_endpoints
+[144/304] Building CXX object CMakeFiles/test_ui_endpoints.dir/test_ui_endpoints_autogen/mocs_compilation.cpp.o
+[145/304] Building CXX object CMakeFiles/test_ui_process.dir/tests/integration/test_ui_process.cpp.o
+[146/304] Linking CXX executable test_ui_process
+[147/304] Automatic MOC and UIC for target test_ui_control
+[148/304] Building CXX object CMakeFiles/test_ui_control.dir/test_ui_control_autogen/mocs_compilation.cpp.o
+[149/304] Building CXX object CMakeFiles/test_ui_endpoints.dir/tests/integration/test_ui_endpoints.cpp.o
+[150/304] Linking CXX executable test_ui_endpoints
+[151/304] Automatic MOC and UIC for target test_session_client
+[152/304] Building CXX object CMakeFiles/test_session_client.dir/test_session_client_autogen/mocs_compilation.cpp.o
+[153/304] Building CXX object CMakeFiles/test_ui_control.dir/tests/integration/test_ui_control.cpp.o
+[154/304] Linking CXX executable test_ui_control
+[155/304] Automatic MOC and UIC for target test_version
+[156/304] Building CXX object CMakeFiles/test_version.dir/test_version_autogen/mocs_compilation.cpp.o
+[157/304] Building CXX object CMakeFiles/test_session_client.dir/tests/integration/test_session_client.cpp.o
+[158/304] Linking CXX executable test_session_client
+[159/304] Automatic MOC and UIC for target test_gui_application
+[160/304] Building CXX object CMakeFiles/test_gui_application.dir/test_gui_application_autogen/mocs_compilation.cpp.o
+[161/304] Building CXX object CMakeFiles/test_version.dir/tests/integration/test_version.cpp.o
+[162/304] Linking CXX executable test_version
+[163/304] Automatic MOC and UIC for target test_gui_version
+[164/304] Building CXX object CMakeFiles/test_gui_version.dir/test_gui_version_autogen/mocs_compilation.cpp.o
+[165/304] Building CXX object CMakeFiles/test_gui_version.dir/tests/gui/test_version.cpp.o
+[166/304] Linking CXX executable test_gui_version
+[167/304] Automatic MOC and UIC for target test_gui_tray
+[168/304] Building CXX object CMakeFiles/test_gui_tray.dir/test_gui_tray_autogen/mocs_compilation.cpp.o
+[169/304] Building CXX object CMakeFiles/test_gui_application.dir/tests/gui/test_ui_application.cpp.o
+[170/304] Linking CXX executable test_gui_application
+[171/304] Automatic MOC and UIC for target test_geometry
+[172/304] Building CXX object CMakeFiles/test_geometry.dir/test_geometry_autogen/mocs_compilation.cpp.o
+[173/304] Building CXX object CMakeFiles/test_gui_tray.dir/tests/gui/test_tray.cpp.o
+[174/304] Linking CXX executable test_gui_tray
+[175/304] Automatic MOC and UIC for target test_ui_native_lifecycle
+[176/304] Building CXX object CMakeFiles/test_ui_native_lifecycle.dir/test_ui_native_lifecycle_autogen/mocs_compilation.cpp.o
+[177/304] Building CXX object CMakeFiles/test_geometry.dir/tests/unit/test_geometry.cpp.o
+[178/304] Linking CXX executable test_geometry
+[179/304] Automatic MOC and UIC for target test_x11
+[180/304] Building CXX object CMakeFiles/test_x11.dir/test_x11_autogen/mocs_compilation.cpp.o
+[181/304] Building CXX object CMakeFiles/test_ui_native_lifecycle.dir/tests/integration/test_ui_native_lifecycle.cpp.o
+[182/304] Linking CXX executable test_ui_native_lifecycle
+[183/304] Automatic MOC and UIC for target test_keychain_backend
+[184/304] Building CXX object CMakeFiles/test_keychain_backend.dir/test_keychain_backend_autogen/mocs_compilation.cpp.o
+[185/304] Building CXX object CMakeFiles/test_keychain_backend.dir/tests/integration/test_keychain_backend.cpp.o
+[186/304] Linking CXX executable test_keychain_backend
+[187/304] Building CXX object CMakeFiles/test_x11.dir/tests/desktop/x11/test_x11.cpp.o
+[188/304] Automatic MOC and UIC for target test_keychain
+[189/304] Building CXX object CMakeFiles/test_keychain.dir/test_keychain_autogen/mocs_compilation.cpp.o
+[190/304] Linking CXX executable test_x11
+[191/304] Automatic MOC and UIC for target test_collision_policy
+[192/304] Building CXX object CMakeFiles/test_collision_policy.dir/test_collision_policy_autogen/mocs_compilation.cpp.o
+[193/304] Building CXX object CMakeFiles/test_keychain.dir/tests/integration/test_keychain.cpp.o
+[194/304] Linking CXX executable test_keychain
+[195/304] Automatic MOC and UIC for target test_s3_delete
+[196/304] Building CXX object CMakeFiles/test_s3_delete.dir/test_s3_delete_autogen/mocs_compilation.cpp.o
+[197/304] Building CXX object CMakeFiles/test_collision_policy.dir/tests/integration/test_collision_policy.cpp.o
+[198/304] Linking CXX executable test_collision_policy
+[199/304] Automatic MOC and UIC for target test_s3_incompatible
+AutoMoc: /home/patrick/work/put.gd/work/u11/native/host/source/tests/integration/test_s3_module.cpp:0:1: note: No relevant classes found. No output generated.
+[200/304] Building CXX object CMakeFiles/test_s3_incompatible.dir/test_s3_incompatible_autogen/mocs_compilation.cpp.o
+[201/304] Building CXX object CMakeFiles/test_s3_delete.dir/tests/integration/test_s3_delete.cpp.o
+[202/304] Linking CXX executable test_s3_delete
+[203/304] Automatic MOC and UIC for target test_s3_wrong_build
+AutoMoc: /home/patrick/work/put.gd/work/u11/native/host/source/tests/integration/test_s3_module.cpp:0:1: note: No relevant classes found. No output generated.
+[204/304] Building CXX object CMakeFiles/test_s3_wrong_build.dir/test_s3_wrong_build_autogen/mocs_compilation.cpp.o
+[205/304] Building CXX object CMakeFiles/test_s3_incompatible.dir/tests/integration/test_s3_module.cpp.o
+[206/304] Linking CXX shared module libtest_s3_incompatible.so
+[207/304] Automatic MOC and UIC for target test_s3_wrong_transport
+AutoMoc: /home/patrick/work/put.gd/work/u11/native/host/source/tests/integration/test_s3_module.cpp:0:1: note: No relevant classes found. No output generated.
+[208/304] Building CXX object CMakeFiles/test_s3_wrong_transport.dir/test_s3_wrong_transport_autogen/mocs_compilation.cpp.o
+[209/304] Building CXX object CMakeFiles/test_s3_wrong_build.dir/tests/integration/test_s3_module.cpp.o
+[210/304] Linking CXX shared module libtest_s3_wrong_build.so
+[211/304] Automatic MOC and UIC for target test_s3
+[212/304] Building CXX object CMakeFiles/test_s3.dir/test_s3_autogen/mocs_compilation.cpp.o
+[213/304] Building CXX object CMakeFiles/test_s3_wrong_transport.dir/tests/integration/test_s3_module.cpp.o
+[214/304] Linking CXX shared module libtest_s3_wrong_transport.so
+[215/304] Automatic MOC and UIC for target test_s3_module
+[216/304] Building CXX object CMakeFiles/test_s3_module.dir/test_s3_module_autogen/mocs_compilation.cpp.o
+[217/304] Building CXX object CMakeFiles/test_s3.dir/tests/integration/test_s3.cpp.o
+[218/304] Linking CXX executable test_s3
+[219/304] Building CXX object CMakeFiles/test_s3_module.dir/tests/integration/test_s3_module.cpp.o
+[220/304] Automatic MOC and UIC for target test_public_url
+[221/304] Building CXX object CMakeFiles/test_public_url.dir/test_public_url_autogen/mocs_compilation.cpp.o
+[222/304] Linking CXX executable test_s3_module
+[223/304] Automatic MOC and UIC for target test_build_contract
+[224/304] Building CXX object CMakeFiles/test_build_contract.dir/test_build_contract_autogen/mocs_compilation.cpp.o
+[225/304] Building CXX object CMakeFiles/test_public_url.dir/tests/unit/test_public_url.cpp.o
+[226/304] Linking CXX executable test_public_url
+[227/304] Automatic MOC and UIC for target test_sdk_contract
+[228/304] Building CXX object CMakeFiles/test_sdk_contract.dir/test_sdk_contract_autogen/mocs_compilation.cpp.o
+[229/304] Building CXX object CMakeFiles/test_build_contract.dir/tests/unit/test_build_contract.cpp.o
+[230/304] Linking CXX executable test_build_contract
+[231/304] Automatic MOC and UIC for target test_payload
+[232/304] Building CXX object CMakeFiles/test_payload.dir/test_payload_autogen/mocs_compilation.cpp.o
+[233/304] Building CXX object CMakeFiles/test_payload.dir/tests/unit/test_payload.cpp.o
+[234/304] Building CXX object CMakeFiles/test_sdk_contract.dir/tests/storage/s3/test_sdk_contract.cpp.o
+[235/304] Linking CXX executable test_payload
+[236/304] Linking CXX executable test_sdk_contract
+[237/304] Automatic MOC and UIC for target test_archive
+[238/304] Building CXX object CMakeFiles/test_archive.dir/test_archive_autogen/mocs_compilation.cpp.o
+[239/304] Automatic MOC and UIC for target test_upload_naming
+[240/304] Building CXX object CMakeFiles/test_upload_naming.dir/test_upload_naming_autogen/mocs_compilation.cpp.o
+[241/304] Building CXX object CMakeFiles/test_archive.dir/tests/unit/test_archive.cpp.o
+[242/304] Building CXX object CMakeFiles/test_upload_naming.dir/tests/unit/test_upload_naming.cpp.o
+[243/304] Linking CXX executable test_archive
+[244/304] Automatic MOC and UIC for target test_history
+[245/304] Building CXX object CMakeFiles/test_history.dir/test_history_autogen/mocs_compilation.cpp.o
+[246/304] Linking CXX executable test_upload_naming
+[247/304] Automatic MOC and UIC for target test_operations
+[248/304] Building CXX object CMakeFiles/test_operations.dir/test_operations_autogen/mocs_compilation.cpp.o
+[249/304] Building CXX object CMakeFiles/test_history.dir/tests/unit/test_history.cpp.o
+[250/304] Linking CXX executable test_history
+[251/304] Automatic MOC and UIC for target test_storage_contract
+[252/304] Building CXX object CMakeFiles/test_storage_contract.dir/test_storage_contract_autogen/mocs_compilation.cpp.o
+[253/304] Building CXX object CMakeFiles/test_operations.dir/tests/unit/test_operations.cpp.o
+[254/304] Linking CXX executable test_operations
+[255/304] Automatic MOC and UIC for target test_cli
+[256/304] Building CXX object CMakeFiles/test_cli.dir/test_cli_autogen/mocs_compilation.cpp.o
+[257/304] Building CXX object CMakeFiles/test_storage_contract.dir/tests/integration/test_storage_contract.cpp.o
+[258/304] Linking CXX executable test_storage_contract
+[259/304] Automatic MOC and UIC for target test_config_reload
+[260/304] Building CXX object CMakeFiles/test_config_reload.dir/test_config_reload_autogen/mocs_compilation.cpp.o
+[261/304] Building CXX object CMakeFiles/test_cli.dir/tests/integration/test_cli.cpp.o
+[262/304] Linking CXX executable test_cli
+[263/304] Automatic MOC and UIC for target test_gnome_bridge
+[264/304] Building CXX object CMakeFiles/test_gnome_bridge.dir/test_gnome_bridge_autogen/mocs_compilation.cpp.o
+[265/304] Building CXX object CMakeFiles/test_config_reload.dir/tests/integration/test_config_reload.cpp.o
+[266/304] Linking CXX executable test_config_reload
+[267/304] Automatic MOC and UIC for target test_kwin_transfer
+[268/304] Building CXX object CMakeFiles/test_kwin_transfer.dir/test_kwin_transfer_autogen/mocs_compilation.cpp.o
+[269/304] Building CXX object CMakeFiles/test_gnome_bridge.dir/tests/integration/test_gnome_bridge.cpp.o
+[270/304] Linking CXX executable test_gnome_bridge
+[271/304] Automatic MOC and UIC for target test_settings
+[272/304] Building CXX object CMakeFiles/test_settings.dir/test_settings_autogen/mocs_compilation.cpp.o
+[273/304] Building CXX object CMakeFiles/test_kwin_transfer.dir/tests/integration/test_kwin_transfer.cpp.o
+[274/304] Building CXX object CMakeFiles/test_settings.dir/tests/unit/test_settings.cpp.o
+[275/304] Linking CXX executable test_kwin_transfer
+[276/304] Linking CXX executable test_settings
+[277/304] Automatic MOC and UIC for target test_gui_settings
+[278/304] Building CXX object CMakeFiles/test_gui_settings.dir/test_gui_settings_autogen/mocs_compilation.cpp.o
+[279/304] Automatic MOC and UIC for target test_gui_operations_view
+[280/304] Building CXX object CMakeFiles/test_gui_operations_view.dir/test_gui_operations_view_autogen/mocs_compilation.cpp.o
+[281/304] Building CXX object CMakeFiles/test_gui_operations_view.dir/tests/gui/test_operations_view.cpp.o
+[282/304] Linking CXX executable test_gui_operations_view
+[283/304] Automatic MOC and UIC for target test_gui_history_view
+[284/304] Building CXX object CMakeFiles/test_gui_history_view.dir/test_gui_history_view_autogen/mocs_compilation.cpp.o
+[285/304] Building CXX object CMakeFiles/test_gui_settings.dir/tests/gui/test_settings.cpp.o
+[286/304] Linking CXX executable test_gui_settings
+[287/304] Automatic MOC and UIC for target test_login_startup
+[288/304] Building CXX object CMakeFiles/test_login_startup.dir/test_login_startup_autogen/mocs_compilation.cpp.o
+[289/304] Building CXX object CMakeFiles/test_login_startup.dir/tests/unit/test_login_startup.cpp.o
+[290/304] Linking CXX executable test_login_startup
+[291/304] Automatic MOC and UIC for target test_local_ipc
+[292/304] Building CXX object CMakeFiles/test_local_ipc.dir/test_local_ipc_autogen/mocs_compilation.cpp.o
+[293/304] Building CXX object CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o
+[294/304] Linking CXX executable test_gui_history_view
+[295/304] Automatic MOC and UIC for target test_ip_address
+[296/304] Building CXX object CMakeFiles/test_ip_address.dir/test_ip_address_autogen/mocs_compilation.cpp.o
+[297/304] Building CXX object CMakeFiles/test_local_ipc.dir/tests/integration/test_local_ipc.cpp.o
+[298/304] Linking CXX executable test_local_ipc
+[299/304] Automatic MOC and UIC for target putgd-desktop-fixture
+[300/304] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/putgd-desktop-fixture_autogen/mocs_compilation.cpp.o
+[301/304] Building CXX object CMakeFiles/test_ip_address.dir/tests/unit/test_ip_address.cpp.o
+[302/304] Linking CXX executable test_ip_address
+[303/304] Building CXX object packaging/linux/CMakeFiles/putgd-desktop-fixture.dir/__/__/tests/fixtures/desktop_fixture.cpp.o
+[304/304] Linking CXX executable packaging/linux/putgd-desktop-fixture

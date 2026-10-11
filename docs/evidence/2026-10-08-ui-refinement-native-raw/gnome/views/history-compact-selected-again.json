@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:50:33.043292+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-compact-selected-again.png",
+  "sha256": "1ea1486e86178393e449590e4ebe28c9e3269b0e1f5d7c2310e495b9b8ff0367",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-history-compact-selected-again-head0.ppm",
+    "sha256": "e33ba3041b2eac71cfd01fe6c37199dd0486557fea654c79f95436a194b624bc"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5936,
+  "visualReview": "pending"
+}

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T08:45:42.337494+00:00",
+  "scope": "Locating only, not scored. Existing clean49 binaries. No source or dependencies changed.",
+  "syscalls": [
+    "process",
+    "fsync",
+    "fdatasync",
+    "poll",
+    "ppoll",
+    "pselect6"
+  ],
+  "excluded": [
+    "read",
+    "write",
+    "send",
+    "recv",
+    "environment dumps",
+    "user payload capture"
+  ],
+  "limitations": [
+    "strace adds overhead",
+    "guest build activity may overlap, so elapsed benchmark is not a comparison",
+    "no confirmed causal attribution until trace read"
+  ],
+  "trace": "/tmp/pg-nc1-capture-syscalls.log"
+}

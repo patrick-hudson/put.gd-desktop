@@ -1,0 +1,33 @@
+{
+  "metrics": {
+    "settingsReopenMilliseconds": 332.6766769750975,
+    "closedRssBytes": 47228928.0,
+    "closedPssBytes": 26636288.0,
+    "peakOpenPssBytes": 57680896,
+    "functionalPassed": 1,
+    "normalHelperExitPassed": 1
+  },
+  "identity": {
+    "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+    "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "inputs": [
+      {
+        "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+        "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+        "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+      }
+    ],
+    "samples": [
+      329.63122898945585,
+      335.72212496073917,
+      393.30363704357296,
+      325.35388303222135
+    ],
+    "currentHeadAtIntake": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+    "reuseReason": "Recent native baseline is reused. The following evidence-only commit changes no runtime, build, schema, platform or performance-harness path. Existing measured binaries retain their original identity; no relabelled build."
+  }
+}

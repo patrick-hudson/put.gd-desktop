@@ -1,0 +1,68 @@
+{
+  "reviewer": "adversarial-claude",
+  "cross_model_route": "claude",
+  "cross_model_target": "claude",
+  "cross_model_harness": "claude",
+  "serving_family": "claude",
+  "independence_verified": true,
+  "model_requested": "claude-opus-5-5",
+  "model_actual": "claude-opus-5-5",
+  "effort_requested": "high",
+  "effort_actual": "unverified",
+  "receipt_supported": true,
+  "findings": [
+    {
+      "title": "Cached crosshair goes stale when the theme or size changes outside the fingerprint",
+      "severity": "P2",
+      "file": "src/platform/x11/CaptureProcessController.cpp",
+      "line": 55,
+      "why_it_matters": "The resident cache is keyed only on layout.scale, which hashes RESOURCE_MANAGER, the XSETTINGS owner and settings, and a few Qt scaling env vars. libXcursor also reads inputs that are not in that hash: the on-disk 'default' theme (~/.icons/default/index.theme Inherits=, or the x-cursor-theme alternative), and the root-window dimensions it uses for size when XCURSOR_SIZE, Xcursor.size and Xft.dpi are all unset (size = min(DisplayWidth, DisplayHeight)/48). When one of those changes, a fresh helper's Qt cursor changes, but every later region capture still grabs with the old server cursor until the resident restarts. That breaks the stated themed-cursor parity requirement. The helper never reloads the theme on a cache hit, so nothing can notice the mismatch.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Key the cache on the inputs libXcursor actually resolves, not on layout.scale alone. On every ready frame (cheap, no theme file IO), have the helper report XcursorGetTheme(display) and XcursorGetDefaultSize(display), plus the mtime and inode of the resolved index.theme. Store that key with the cursor in CaptureCursorCache. In sendBegin, send cursor 0 when the reported key differs from the stored one. Relax the helper check `(preparedCursor&&cursor!=preparedCursor)` so it accepts a downgrade to 0 and falls back to the normal Qt cursor load. At minimum, include the full frozen layout (root rect) in the fingerprint, not just layout.scale.",
+      "confidence": 75,
+      "evidence": [
+        "src/platform/x11/CaptureProcessController.cpp:55: cursorFingerprint_=frozen[\"action\"]==\"region\"?frozen[\"layout\"].toObject()[\"scale\"].toString():QString{};requestedCursor_=cursorFingerprint_.isEmpty()?0:cursorCache_.lookup(cursorFingerprint_);",
+        "src/platform/x11/X11NativeSnapshot.cpp:34-39 scaleFingerprint hashes only RESOURCE_MANAGER, the _XSETTINGS_S0 owner and its settings, DISPLAY and QT_* scaling env vars. The root size is a separate layout key ('root') that is not part of the cache key, and no on-disk theme state is hashed.",
+        "src/capture/main.cpp:57 seed uses XcursorLibraryLoadImages(\"cross\",XcursorGetTheme(display),XcursorGetDefaultSize(display)). With no theme set, libXcursor falls back to the 'default' theme on disk. With no XCURSOR_SIZE, Xcursor.size or Xft.dpi, the size is min(root w,h)/48.",
+        "Scenario A: an i3/openbox user without a settings daemon changes the theme with lxappearance, which writes ~/.icons/default/index.theme. RESOURCE_MANAGER and XSETTINGS are unchanged, so the fingerprint matches, lookup() returns the old cursor, the helper skips the Qt load (preparedCursor!=0), and the grab shows the old theme's crosshair.",
+        "Scenario B: with no Xft.dpi set, a laptop at 1920x1080 seeds a size-22 (nearest 24) crosshair. After docking a 4K monitor the root becomes 5760x2160, so a fresh Qt process would load size 45 (nearest 48). The fingerprint is unchanged, so the cached size-24 cursor keeps being used."
+      ],
+      "pre_existing": false,
+      "first_evidence": "src/platform/x11/CaptureProcessController.cpp:55: cursorFingerprint_=frozen[\"action\"]==\"region\"?frozen[\"layout\"].toObject()[\"scale\"].toString():QString{};requestedCursor_=cursorFingerprint_.isEmpty()?0:cursorCache_.lookup(cursorFingerprint_);"
+    },
+    {
+      "title": "Tests never exercise the real seed path from helper to cache to grab",
+      "severity": "P2",
+      "file": "tests/fixtures/capture_helper_fixture.cpp",
+      "line": 19,
+      "why_it_matters": "No test runs the real path: nativeCursorSeed byte conversion → controller ready-seed validation → CaptureCursorCache::seed → begin cursor ID → NativeRegionOverlay grab. The fixture always replies cursor:{}, so the controller's seed parser, base64 and size bounds, and the seed-then-begin ID handoff are dead code under test. test_capture_preparation talks to the real helper but never inspects ready.cursor. Under Xvfb there is usually no installed 'cross' theme, so nativeCursorSeed() returns {} and the cache=true row silently takes the prewarm fallback. nativeCursorMatchesQtCrosshair builds its seed from XFixes GetCursorImage of Qt's own cursor, not from XcursorLibraryLoadImages, so it proves the cache round-trip but not that the helper's seed matches Qt. On a themed desktop, the suite stays green even if nativeCursorSeed byte order, theme or size choice, or the controller's seed acceptance regress.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Add a fixture mode that sends a well-formed non-empty cursor seed (for example the 3x2 ARGB vector from cachePreservesArgbChannelsAndAsymmetricHotspot). Assert that the following begin frame carries a non-zero cursor ID, and that a second prepare() sends that ID in bootstrap. In test_capture_preparation, set XCURSOR_PATH to a test directory with a generated single-frame 'cross' Xcursor file. Assert that ready.cursor is non-empty and matches the XFixes image of a Qt CrossCursor loaded from the same theme.",
+      "confidence": 75,
+      "evidence": [
+        "tests/fixtures/capture_helper_fixture.cpp:19: auto ready=identity;ready[\"cursor\"]=QJsonObject{};",
+        "tests/desktop/x11/test_capture_preparation.cpp: the ready handler only checks nonce and generation, never payload[\"cursor\"]. The cache=true row only verifies cancellation.",
+        "tests/desktop/x11/test_native_region_overlay.cpp:105-111: the cached row seeds from xcb_xfixes_get_cursor_image of Qt's cursor, bypassing nativeCursorSeed in src/capture/main.cpp:50-66.",
+        "src/platform/x11/CaptureProcessController.cpp:116-126 (ready seed validation plus cursorCache_.seed) is reachable only when the helper sends a non-empty seed, which no test does."
+      ],
+      "pre_existing": false,
+      "first_evidence": "tests/fixtures/capture_helper_fixture.cpp:19: auto ready=identity;ready[\"cursor\"]=QJsonObject{};"
+    }
+  ],
+  "residual_risks": [
+    "Preparation::~Preparation runs on a journal worker thread and reads QPointer controller_ before calling QMetaObject::invokeMethod(controller,...). If the main thread destroys the CaptureProcessController between that check and the invoke (for example at resident shutdown while a worker still holds the last ticket), the invoke dereferences a freed QObject. Whether the journal worker is joined before the controller is destroyed is not visible in this packet.",
+    "libXcursor 1.2.x has a display-aware resize option (XCURSOR_RESIZED / Xcursor.resized) that Qt's XcursorLibraryLoadCursor(dpy,...) path honors. The display-less XcursorLibraryLoadImages(file,theme,size) used by nativeCursorSeed cannot honor it. If the option is enabled and the theme lacks the exact size, the seeded cursor's dimensions can differ from Qt's. Could not confirm the installed libXcursor's defaults.",
+    "CaptureCursorCache's constructor calls xcb_connect(nullptr,nullptr) unconditionally in the resident. Unlike X11NativeSnapshot, it has no nativeX11SessionEnvironment() guard. If CaptureProcessController is constructed on a Wayland session with DISPLAY set, this opens or auto-starts an Xwayland connection that lives as long as the resident. Construction sites are not in the packet.",
+    "The seed is captured using the helper's theme and size at bootstrap but stored under the fingerprint frozen earlier by the resident. If the theme changes from A to B and back to A between freeze and helper startup, a B cursor ends up cached under A's fingerprint. begin's native.unchanged() fails that capture, but the cache entry is not cleared, and the next capture with A's fingerprint reuses the B cursor.",
+    "putgd-capture now links libXcursor (and with it libX11) directly instead of relying on Qt's runtime loading. A missing or broken libXcursor stops the helper from starting, so every capture action fails with capture_start_failed, not just region selection. Packaging dependencies need to reflect this.",
+    "ParitySpan/parityTrace instrumentation (marked '// CAPTURE_PARITY_TRACE') is compiled into production paths in the resident and the helper. core/CaptureParityTrace.h is not in the packet, so whether it is a no-op in release builds, and where any trace output goes, could not be checked."
+  ],
+  "testing_gaps": [
+    "No test covers a cached resident cursor that becomes invalid (for example after the cache's X connection is lost) between bootstrap and begin. invalidResidentCursorReleasesBothGrabs only checks that the overlay cancels with capture_unavailable. Nothing checks that the controller stops offering the bad ID on later captures, so a stuck failure loop would go undetected.",
+    "No test checks that the controller's ready-seed validation accepts the maximum valid seed (64x64, 21848 base64 chars) and rejects 65x64 or non-canonical base64. Off-by-one changes to the 21848 bound would go unnoticed."
+  ]
+}

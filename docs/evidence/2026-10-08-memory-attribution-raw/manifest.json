@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "scope": "Completed read-only desktop attribution and unchanged physical baseline; no product change or saving. Cold probe has a separate manifest. No credentials, payloads, raw memory, binaries, VM disks or SDK archive included.",
+  "files": [
+    {
+      "path": "gnome/inspect-resident.py",
+      "originalPath": "work/memory-next/gnome/inspect-resident.py",
+      "bytes": 4756,
+      "sha256": "b8c9e79f891b3f403fbc93d7e38c475f231a6e136eda48c1dae21ed214589ec8"
+    },
+    {
+      "path": "gnome/inspect-shm.py",
+      "originalPath": "work/memory-next/gnome/inspect-shm.py",
+      "bytes": 1855,
+      "sha256": "828d8d929fad587aa4226ee9def4d774f67736a19faf91733eeb65b292e4303e"
+    },
+    {
+      "path": "gnome/resident-attribution.json",
+      "originalPath": "work/memory-next/gnome/resident-attribution.json",
+      "bytes": 74802,
+      "sha256": "63357eb62dac250a19a12a7a43b94627b5381db57b5be5155be21d1e5d50e9e6"
+    },
+    {
+      "path": "gnome/resident-attribution.stderr.log",
+      "originalPath": "work/memory-next/gnome/resident-attribution.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "gnome/replay-command.json",
+      "originalPath": "work/memory-next/gnome/replay-command.json",
+      "bytes": 951,
+      "sha256": "e96f647d1d0a32af0404554beb0458b269b7012cf7006edd63c169019dfc257d"
+    },
+    {
+      "path": "gnome/shm-shapes.json",
+      "originalPath": "work/memory-next/gnome/shm-shapes.json",
+      "bytes": 3668,
+      "sha256": "d7a3d38102cf88dbaddcc45e537b4395271dd421cfb52cccb97d0af403b285f2"
+    },
+    {
+      "path": "kde/guest-attribution.py",
+      "originalPath": "work/memory-next/kde/guest-attribution.py",
+      "bytes": 7477,
+      "sha256": "ba13bcbdb76729d57dea155679ea4816aacac04efcc34d7eafc390c9fef8c95f"
+    },
+    {
+      "path": "kde/collect.py",
+      "originalPath": "work/memory-next/kde/collect.py",
+      "bytes": 1118,
+      "sha256": "4767d5e01e83eac85da44b2cf41ab3cd673f6b703b0cd099716720262e0bfeec"
+    },
+    {
+      "path": "kde/attribution.json",
+      "originalPath": "work/memory-next/kde/attribution.json",
+      "bytes": 213434,
+      "sha256": "931fb1ac8bb17d6c497ed716d5b144b8324966e2e29ee74a758388f682ebc47d"
+    },
+    {
+      "path": "kde/guest-memfd-and-cache.py",
+      "originalPath": "work/memory-next/kde/guest-memfd-and-cache.py",
+      "bytes": 1945,
+      "sha256": "635a785a474b0d32c19501ac824aa998d8294b02a827d701bdaa0e2bf433185d"
+    },
+    {
+      "path": "kde/memfd-and-cache.json",
+      "originalPath": "work/memory-next/kde/memfd-and-cache.json",
+      "bytes": 5461,
+      "sha256": "0d96349a1b8562f46b295ab472836e50573859eeece1aa55e5c6e66faa8ab091"
+    },
+    {
+      "path": "kde/memfd-command.json",
+      "originalPath": "work/memory-next/kde/memfd-command.json",
+      "bytes": 491,
+      "sha256": "f00fd024484421d85c430050672dc79ff1c02990c5115cd5f3badfd3d97501cd"
+    },
+    {
+      "path": "kde/guest-compositor-renderer.py",
+      "originalPath": "work/memory-next/kde/guest-compositor-renderer.py",
+      "bytes": 1189,
+      "sha256": "cf658e6736d9b471487b9bd86f080872477cd64a5ea28ab9e3dfc2eaf1653e5a"
+    },
+    {
+      "path": "kde/compositor-renderer.json",
+      "originalPath": "work/memory-next/kde/compositor-renderer.json",
+      "bytes": 826,
+      "sha256": "48a602a211b1866e7b3b303598689e25683e946e55b9c07bc09d21ddf87d40b9"
+    },
+    {
+      "path": "kde/compositor-command.json",
+      "originalPath": "work/memory-next/kde/compositor-command.json",
+      "bytes": 474,
+      "sha256": "81921de43b42db65e55aefe18822e44fbf8ccb11a43a0e93ba5dd73ed29caae0"
+    },
+    {
+      "path": "kde/summary.json",
+      "originalPath": "work/memory-next/kde/summary.json",
+      "bytes": 3933,
+      "sha256": "47b6da554e6b20f92093299d4918f0f60798e62f8bf0cfbb889e157540b45a18"
+    },
+    {
+      "path": "physical/baseline-identity.json",
+      "originalPath": "work/memory-next/baseline-identity.json",
+      "bytes": 371,
+      "sha256": "98c49b4f706ca39d83f4ab2d4c71237551f42f96fb560043742615d334d32c1e"
+    },
+    {
+      "path": "physical/measure-views.py",
+      "originalPath": "work/memory-next/measure-views.py",
+      "bytes": 1698,
+      "sha256": "8f51d0fb328bdeccc9797ff8214f4b12d3e491d93a6094e3f1a62e875a013d5d"
+    },
+    {
+      "path": "physical/score-surfaces.py",
+      "originalPath": "work/memory-next/score-surfaces.py",
+      "bytes": 2383,
+      "sha256": "68efb51ee9742df94ff0aa7765b28767fc4247265a729205884ea3b7689eca3c"
+    },
+    {
+      "path": "physical/required-verification.json",
+      "originalPath": "work/memory-next/required-verification.json",
+      "bytes": 2160,
+      "sha256": "43ad8d951656f09ce60f55ec9c90aea8e00c1f6e8bbfe6fca57b3988683d5243"
+    },
+    {
+      "path": "physical/baseline-views-1/results.json",
+      "originalPath": "work/memory-next/baseline-views-1/results.json",
+      "bytes": 320711,
+      "sha256": "107a766f97ee1605ec3ca948a7fa16ee50f60cb2953c379f8333a5354e2019d6"
+    },
+    {
+      "path": "physical/baseline-views-2/results.json",
+      "originalPath": "work/memory-next/baseline-views-2/results.json",
+      "bytes": 320609,
+      "sha256": "99d93a595aefd88c3b485413c4ddb93e8bd7d9a0ca1acab86f38b0d49ec7948b"
+    },
+    {
+      "path": "gnome/upstream-source-hashes.json",
+      "originalPath": null,
+      "bytes": 1139,
+      "sha256": "92395f952da00cb1f85eb2b2fcab68821374382716a95dc62913288f91722a24"
+    },
+    {
+      "path": "kde/upstream-source-hashes.json",
+      "originalPath": null,
+      "bytes": 1491,
+      "sha256": "e7d794e3ae8397cb008b4d6e01688f3c75069fc7c77e88ec7cdce7f66d2decac"
+    },
+    {
+      "path": "proposal/preflight.json",
+      "originalPath": ".context/compound-engineering/ce-optimize/resident-view-surfaces/preflight.json",
+      "bytes": 1419,
+      "sha256": "f20984f6a6496df16937cbf55009ced9c53af0d4444a523a37c22469f21db955"
+    },
+    {
+      "path": "proposal/spec.yaml",
+      "originalPath": ".context/compound-engineering/ce-optimize/resident-view-surfaces/spec.yaml",
+      "bytes": 10814,
+      "sha256": "0b8b16b18e8ae36061f02ba199d4f62b0959a787e438248bbdce84928f3297db"
+    },
+    {
+      "path": "proposal/initial-spec.yaml",
+      "originalPath": ".context/compound-engineering/ce-optimize/resident-view-surfaces/spec.yaml",
+      "bytes": 10653,
+      "sha256": "a11531fbc21c57ffe83975cf9aff344e43118d6d824fed3bb069c321ca3bc1a3"
+    },
+    {
+      "path": "proposal/experiment-log.json",
+      "originalPath": ".context/compound-engineering/ce-optimize/resident-view-surfaces/experiment-log.json",
+      "bytes": 4109,
+      "sha256": "6fa03e2068d28f59320835df7edfa45ed62c7b507f89e66fbc7ccb790a5eb7d7"
+    },
+    {
+      "path": "proposal/initial-experiment-log.json",
+      "originalPath": ".context/compound-engineering/ce-optimize/resident-view-surfaces/experiment-log.json",
+      "bytes": 3731,
+      "sha256": "6062c90f4173c8487bb9eddb748857fcb7da30d2f9d732092a2c109dc39987ad"
+    },
+    {
+      "path": "documentation-review.json",
+      "originalPath": null,
+      "bytes": 1256,
+      "sha256": "9a9cdba3884c7cb01a613065493155f9ba9ca4d6f0b74fbfd80a836e7e9e7e4e"
+    }
+  ]
+}

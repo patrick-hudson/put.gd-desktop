@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:01:15.890808+00:00",
+  "finishedUtc": "2026-10-09T01:26:24.181806+00:00",
+  "command": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/identity",
+    "-p",
+    "22236",
+    "lab@127.0.0.1",
+    "sh /home/lab/putgd-u11-97ca3a521714/build.sh"
+  ],
+  "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "guestDirectory": "/home/lab/putgd-u11-97ca3a521714",
+  "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+  "exitCode": 0,
+  "elapsedSeconds": 1503.413181098993,
+  "phase": "build only; native acceptance pending",
+  "package": {
+    "path": "/home/patrick/work/put.gd/work/u11/native/gnome/putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb",
+    "sha256": "fe7d6a24d27e6e9f202e8e2a64d133fe3ebc88a8675b4ab10e7cfcba3ef9af71"
+  }
+}

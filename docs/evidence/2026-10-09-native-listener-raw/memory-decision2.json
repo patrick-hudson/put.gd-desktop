@@ -1,0 +1,21 @@
+{
+  "decision": "keep",
+  "eligible": true,
+  "next_measurement": "none",
+  "target_reached": true,
+  "improved_objectives": [
+    "closedRssBytes"
+  ],
+  "violated_objectives": [],
+  "comparisons": {
+    "closedRssBytes": {
+      "verdict": "improved",
+      "delta": 21360640,
+      "relative": 0.4467383389728873,
+      "violated": false
+    }
+  },
+  "primary_delta": 21360640,
+  "rank_score": 0.4467383389728873,
+  "reason": "improved closedRssBytes without violating other required objectives"
+}

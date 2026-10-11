@@ -1,0 +1,17 @@
+ 0x0000000000000001 (NEEDED)             Shared library: [libQt6Sql.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libQt6Core.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libstdc++.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libgcc_s.so.1]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [ld-linux-x86-64.so.2]
+25:CMAKE_BUILD_TYPE:STRING=Release
+28:CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++
+248:Qt6Core_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt6Core
+251:Qt6Sql_DIR:PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt6Sql
+55:  FLAGS = -O3 -DNDEBUG -std=gnu++20 -fPIC
+71:  FLAGS = -O3 -DNDEBUG
+2e6ebb66aaf667018027e5c87f411d952b8d748bea14a478b477d00ce1150c2a  work/sqlite-latency-probe/probe.cpp
+0e61c53f1baec41fe6cd047ef30c182fd5e546b0c35a58e54167a63fe9662ee2  work/sqlite-latency-probe/CMakeLists.txt
+6e7e529aff5a467d91a5235f950ffbf1079da1f0a05b3ca3cf4bba6827425152  work/sqlite-latency-probe/configure.log
+bed57d1592768f994f612ac20e74c9cccae746cae929d58bcf98a60bb5021d6b  work/sqlite-latency-probe/build.log
+d4419f7c36fee1b21fd6435f72ff1d36946ec4b86432880e7bcf0605c89051fb  /tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe

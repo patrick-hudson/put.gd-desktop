@@ -10,6 +10,9 @@ jobs:
   linux:
     runs-on: ubuntu-24.04
     container: ubuntu:${{ matrix.distribution }}
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     strategy:
       fail-fast: false
       matrix:
@@ -18,8 +21,16 @@ jobs:
       - name: Install distro dependencies
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates python3 cmake ninja-build qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
+          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
+          if [ '${{ matrix.distribution }}' = '26.04' ]; then
+            apt-get install -y liblayershellqtinterface-dev
+          fi
+          useradd --create-home --shell /bin/bash putgd-ci
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Trust container checkout for build identity
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Provision pinned AWS SDK
         run: |
           git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
@@ -31,7 +42,124 @@ jobs:
         run: |
           cmake --preset dev
           cmake --build --preset dev
-          ctest --preset dev
+          test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
+          ctest --preset dev --show-only=json-v1 > build/dev/registered-tests.json
+          CI_TEST_TMP="$test_tmp" python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          root = pathlib.Path('build/dev')
+          registry = json.loads((root / 'registered-tests.json').read_text())
+          temporary = pathlib.Path(os.environ['CI_TEST_TMP']).resolve()
+          names = {'test_' + test['name'] for test in registry['tests']}
+          names.update(pathlib.Path(argument).name
+                       for test in registry['tests'] for argument in test.get('command', [])
+                       if pathlib.Path(argument).name.startswith('test_'))
+          paths = [str(temporary / (name + '-XXXXXX') / 'runtime/putgd/session.sock')
+                   for name in sorted(names)]
+          paths += [str(temporary / 'putgd mcp socket XXXXXXXX/session socket'),
+                    '/tmp/.X11-unix/X65535', '/tmp/dbus-XXXXXXXXXX']
+          with (root / 'socket-preflight.json').open('w') as output:
+              subprocess.run(['python3', 'tools/diagnostics/check_socket_paths.py',
+                              '--socket', *paths], stdout=output, check=True)
+          (root / 'ci-test-context.json').write_text(json.dumps({
+              'configuredUser': 'putgd-ci', 'configuredUid': int(subprocess.check_output(['runuser', '-u', 'putgd-ci', '--', 'id', '-u'])),
+              'observedUidFile': 'ctest-observed-uid',
+              'locale': os.environ['LC_ALL'], 'temporaryDirectory': str(temporary),
+              'socketPreflight': 'Conservative length-preserving normal socket templates; intentional rejection cases unchanged',
+              'scope': 'Hosted contract tests; no native desktop or physical memory acceptance'
+          }, indent=2) + '\n')
+          PY
+          chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml"
+      - name: Verify lab identity and protocol contracts
+        if: always()
+        run: |
+          mkdir -p build/dev
+          chown -R putgd-ci:putgd-ci build/dev
+          runuser -u putgd-ci -- python3 - <<'PY'
+          import json, pathlib, subprocess
+          pathlib.Path('build/dev').mkdir(parents=True, exist_ok=True)
+          command = ['python3', 'tests/desktop/test_lab.py']
+          result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+          pathlib.Path('build/dev/lab-contracts.log').write_text(result.stdout)
+          pathlib.Path('build/dev/lab-contracts.json').write_text(json.dumps({
+              'command': command, 'exitCode': result.returncode,
+              'scope': 'Host protocol contracts only; no graphical desktop acceptance'
+          }, indent=2) + '\n')
+          print(result.stdout, end='')
+          raise SystemExit(result.returncode)
+          PY
+      - name: Verify cold-family observer contracts
+        if: always()
+        run: |
+          mkdir -p build/dev
+          chown -R putgd-ci:putgd-ci build/dev
+          runuser -u putgd-ci -- python3 - <<'PYCODE'
+          import json, os, pathlib, subprocess, sys, time
+          sys.path.insert(0, 'tests/performance')
+          from observe_cold_family import OwnedSubtree, require_pidfd_support
+          root = pathlib.Path('build/dev')
+          root.mkdir(parents=True, exist_ok=True)
+          command = ['python3', 'tests/performance/test_observe_cold_family.py']
+          environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
+                             PUTGD_OBSERVER_TEST_RECEIPTS=str((root / 'cold-family-unit').resolve()))
+          process = owned = None
+          code, failure, cleanup = 1, None, None
+          try:
+              require_pidfd_support()
+              with (root / 'cold-family-contracts.log').open('x') as log:
+                  process = subprocess.Popen(command, env=environment, stdout=log,
+                                             stderr=subprocess.STDOUT, start_new_session=True)
+                  owned = OwnedSubtree(process)
+                  deadline = time.monotonic() + 45
+                  while process.poll() is None:
+                      owned.discover()
+                      if time.monotonic() >= deadline:
+                          raise TimeoutError('observer_contract_deadline')
+                      time.sleep(.1)
+                  code = process.wait()
+          except Exception as error:
+              failure = type(error).__name__
+              code = 124 if isinstance(error, TimeoutError) else 1
+          finally:
+              try:
+                  if owned and (process.poll() is None or owned.live(record=False)):
+                      owned.stop()
+              except Exception as error:
+                  cleanup = type(error).__name__
+                  code = 1
+              (root / 'cold-family-contracts.json').write_text(json.dumps({
+                  'command': command, 'exitCode': code, 'timeoutSeconds': 45,
+                  'failureType': failure, 'cleanupErrorType': cleanup,
+                  'observedOwnedGenerations': len(owned.known) if owned else 0,
+                  'knownOwnedCleanupComplete': owned is not None and not owned.live(record=False),
+                  'scope': 'Synthetic Linux process/observer contracts only; no application or physical memory acceptance'
+              }, indent=2) + '\n')
+          log = root / 'cold-family-contracts.log'
+          if log.is_file():
+              print(log.read_text(), end='')
+          raise SystemExit(code)
+          PYCODE
+      - name: Preserve structured test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ctest-linux-${{ matrix.distribution }}
+          path: |
+            build/dev/ctest-results.xml
+            build/dev/registered-tests.json
+            build/dev/socket-preflight.json
+            build/dev/ci-test-context.json
+            build/dev/ctest-observed-uid
+            build/dev/Testing/Temporary/LastTest.log
+            build/dev/Testing/Temporary/LastTestsFailed.log
+            build/dev/lab-contracts.log
+            build/dev/lab-contracts.json
+            build/dev/cold-family-contracts.log
+            build/dev/cold-family-contracts.json
+            build/dev/cold-family-unit/**/*.json
+            build/dev/build-identity/build-info.json
+          if-no-files-found: warn
+          retention-days: 30
       - name: Build without test dependencies
         run: |
           cmake --preset release -DBUILD_TESTING=OFF
@@ -45,6 +173,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Enable long Git paths for Windows dependencies
+        if: runner.os == 'Windows'
+        shell: bash
+        run: git config --global core.longpaths true
       - if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
       - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
@@ -67,5 +201,20 @@ jobs:
       - name: Compile shared application
         shell: bash
         run: |
-          cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$PWD/build/sdk;$QT_ROOT_DIR"
+          sdk_prefix="$PWD/build/sdk"
+          qt_prefix="$QT_ROOT_DIR"
+          if [ "$RUNNER_OS" = 'Windows' ]; then
+            sdk_prefix="$(cygpath -m "$sdk_prefix")"
+            qt_prefix="$(cygpath -m "$qt_prefix")"
+            export MSYS2_ARG_CONV_EXCL='-DCMAKE_PREFIX_PATH='
+          fi
+          cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$sdk_prefix;$qt_prefix"
           cmake --build --preset release
+      - name: Preserve compiled build identity
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-identity-${{ matrix.os }}
+          path: build/release/build-identity/build-info.json
+          if-no-files-found: warn
+          retention-days: 30

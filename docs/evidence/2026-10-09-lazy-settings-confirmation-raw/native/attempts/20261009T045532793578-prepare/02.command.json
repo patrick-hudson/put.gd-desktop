@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "git",
+    "bundle",
+    "create",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/source.bundle",
+    "HEAD"
+  ],
+  "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:55:33.349167+00:00"
+}

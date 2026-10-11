@@ -1,0 +1,33 @@
+import pathlib,json,hashlib,subprocess
+p=pathlib.Path.cwd();s=json.loads((p/'source.json').read_text());old=json.loads((p/'previous-source.json').read_text());src=pathlib.Path(s['frozenCandidate']['guestSourceCache'])
+def digest(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+def git(*args): return subprocess.check_output(['git','-C',str(src),*args],text=True).strip()
+def run(*args): subprocess.run(['git','-C',str(src),*args],check=True,stdout=subprocess.DEVNULL)
+def verify(files):
+ for name,item in files.items():
+  f=src/name
+  if item['type']=='file': assert f.is_file() and not f.is_symlink() and digest(f)==item['sha256'] and f.stat().st_mode&0o777==item['mode'],name
+  else: assert f.is_symlink() and str(f.readlink())==item['target'],name
+assert src==pathlib.Path('/home/lab/putgd-ui-refinement-lazy-exp001-native/source') and src.is_dir()
+assert digest(p/'source.bundle')==s['frozenCandidate']['bundleSha256']
+assert digest(p/'source.tar')==s['archiveSha256']
+assert digest(p/'candidate.patch')==old['candidate']['patchSha256']==s['frozenCandidate']['reviewedPatchSha256']
+assert git('rev-parse','HEAD')==old['commit']
+assert sorted(git('diff','--name-only','HEAD').splitlines())==sorted(s['frozenCandidate']['files'])
+assert git('diff','--cached','--name-only')==''
+verify(old['files'])
+before={name:digest(src/name) for name in s['frozenCandidate']['files']}
+assert before==s['frozenCandidate']['files']
+assert hashlib.sha256(subprocess.check_output(['git','-C',str(src),'diff','--binary','HEAD','--',*before])).hexdigest()==old['candidate']['patchSha256']
+run('apply','--reverse','--check',str(p/'candidate.patch'))
+run('apply','--reverse',str(p/'candidate.patch'))
+assert git('status','--porcelain','--untracked-files=normal')==''
+run('fetch',str(p/'source.bundle'),'HEAD')
+run('checkout','--detach',s['commit'])
+assert git('rev-parse','HEAD')==s['commit'] and git('rev-parse','HEAD^')==old['commit']
+assert git('rev-parse','HEAD^{tree}')==s['tree'] and int(git('rev-list','--count','HEAD'))==s['commitCount']
+assert git('status','--porcelain','--untracked-files=normal')==''
+verify(s['files'])
+after={name:digest(src/name) for name in s['frozenCandidate']['files']}
+assert before==after
+print(json.dumps({'verified':True,'sourceCommit':s['commit'],'sourceFilesVerified':len(s['files']),'beforeOwnedHashes':before,'afterOwnedHashes':after,'clean':True,'cache':str(src)}))

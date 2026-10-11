@@ -1,0 +1,38 @@
+[1/216] Automatic MOC and UIC for target putgd_s3_runtime
+[2/216] Building CXX object CMakeFiles/putgd_s3_runtime.dir/putgd_s3_runtime_autogen/mocs_compilation.cpp.o
+[3/216] Automatic MOC and UIC for target putgd_core
+[4/216] Building CXX object CMakeFiles/putgd_s3_runtime.dir/src/storage/s3/SdkRuntime.cpp.o
+[5/216] Building CXX object CMakeFiles/putgd_core.dir/putgd_core_autogen/mocs_compilation.cpp.o
+[6/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/SettingsService.cpp.o
+[7/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/Settings.cpp.o
+[8/216] Building CXX object CMakeFiles/putgd_core.dir/src/platform/Geometry.cpp.o
+[9/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/ClipboardPayload.cpp.o
+[10/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/ArtifactStore.cpp.o
+[11/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/LocalArchive.cpp.o
+[12/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageReceipt.cpp.o
+[13/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/UploadNaming.cpp.o
+[14/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/StorageProvider.cpp.o
+[15/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/Operation.cpp.o
+[16/216] Linking CXX static library libputgd_s3_runtime.a
+[17/216] Automatic MOC and UIC for target test_build_contract
+[18/216] Automatic MOC and UIC for target test_sdk_contract
+[19/216] Automatic MOC and UIC for target putgd-desktop-fixture
+[20/216] Building CXX object CMakeFiles/test_build_contract.dir/test_build_contract_autogen/mocs_compilation.cpp.o
+[21/216] Building CXX object CMakeFiles/putgd_core.dir/src/core/HistoryStore.cpp.o
+[22/216] Linking CXX static library libputgd_core.a
+[23/216] Automatic MOC and UIC for target putgd_credentials
+[24/216] Automatic MOC and UIC for target putgd_s3_module
+[25/216] Building CXX object CMakeFiles/putgd_credentials.dir/putgd_credentials_autogen/mocs_compilation.cpp.o
+[26/216] Building CXX object CMakeFiles/test_build_contract.dir/tests/unit/test_build_contract.cpp.o
+[27/216] Building CXX object CMakeFiles/putgd_s3_module.dir/putgd_s3_module_autogen/mocs_compilation.cpp.o
+[28/216] Building CXX object CMakeFiles/putgd_credentials.dir/src/secrets/CredentialStore.cpp.o
+[29/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Module.cpp.o
+[30/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3SdkContext.cpp.o
+[31/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/PublicUrl.cpp.o
+[32/216] Linking CXX static library libputgd_credentials.a
+[33/216] Automatic MOC and UIC for target putgd_app
+[34/216] Building CXX object CMakeFiles/putgd_app.dir/putgd_app_autogen/mocs_compilation.cpp.o
+[35/216] Building CXX object CMakeFiles/putgd_s3_module.dir/src/storage/s3/S3Driver.cpp.o
+[36/216] Linking CXX shared module libputgd-s3.so
+[37/216] Building CXX object CMakeFiles/putgd_app.dir/src/app/HistoryService.cpp.o
+ninja: build stopped: interrupted by user.

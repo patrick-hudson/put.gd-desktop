@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T01:28:40.665368+00:00",
+  "exitCode": 0,
+  "stdout": "User lab may run the following commands on putgd-ubuntu-lab:\n    (ALL : ALL) ALL\n    (root) NOPASSWD: /usr/bin/apt-get\n",
+  "stderr": ""
+}

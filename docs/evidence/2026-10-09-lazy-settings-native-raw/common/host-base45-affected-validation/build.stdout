@@ -1,0 +1,50 @@
+[1/52] cd /home/patrick/work/put.gd/work/view-startup-latency/exp001/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001 -DOUTPUT_DIR=/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/dev/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/patrick/work/put.gd/work/view-startup-latency/exp001/cmake/GenerateBuildInfo.cmake
+[2/52] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[3/52] Linking CXX static library libputgd_build_identity.a
+[4/52] Linking CXX shared module libputgd-s3.so
+[5/52] Linking CXX executable putgd-cli
+[6/52] Linking CXX executable test_kde_ownership
+[7/52] Linking CXX executable test_geometry
+[8/52] Linking CXX executable test_ui_endpoints
+[9/52] Linking CXX shared module libtest_s3_incompatible.so
+[10/52] Linking CXX shared module libtest_s3_wrong_build.so
+[11/52] Linking CXX shared module libtest_s3_wrong_transport.so
+[12/52] Linking CXX executable test_x11
+[13/52] Linking CXX executable test_payload
+[14/52] Linking CXX executable test_archive
+[15/52] Linking CXX executable test_upload_naming
+[16/52] Linking CXX executable test_history
+[17/52] Linking CXX executable test_operations
+[18/52] Linking CXX executable test_storage_contract
+[19/52] Linking CXX executable test_config_reload
+[20/52] Linking CXX executable test_gnome_bridge
+[21/52] Linking CXX executable test_kwin_transfer
+[22/52] Linking CXX executable test_settings
+[23/52] Linking CXX executable test_login_startup
+[24/52] Linking CXX executable test_keychain_backend
+[25/52] Linking CXX executable test_local_ipc
+[26/52] Linking CXX executable test_keychain
+[27/52] Linking CXX executable test_s3_delete
+[28/52] Linking CXX executable test_collision_policy
+[29/52] Linking CXX executable test_s3
+[30/52] Linking CXX executable test_public_url
+[31/52] Linking CXX executable test_gui_operations_view
+[32/52] Linking CXX executable test_gui_settings
+[33/52] Linking CXX executable test_ip_address
+[34/52] Linking CXX executable test_gui_history_view
+[35/52] Automatic MOC and UIC for target putgd_tray
+[36/51] Linking CXX executable test_s3_module
+[37/51] Linking CXX executable test_ui_process
+[38/51] Linking CXX executable test_gui_application
+[39/51] Linking CXX executable test_gui_version
+[40/51] Linking CXX executable putgd-ui
+[41/51] Linking CXX executable test_ui_split_services
+[42/51] Building CXX object CMakeFiles/putgd_tray.dir/src/ui/TrayController.cpp.o
+[43/51] Linking CXX static library libputgd_tray.a
+[44/51] Linking CXX executable test_ui_native_lifecycle
+[45/51] Automatic MOC and UIC for target test_gui_tray
+[46/50] Linking CXX executable putgd
+[47/50] Linking CXX executable test_version
+[48/50] Linking CXX executable test_cli
+[49/50] Building CXX object CMakeFiles/test_gui_tray.dir/tests/gui/test_tray.cpp.o
+[50/50] Linking CXX executable test_gui_tray

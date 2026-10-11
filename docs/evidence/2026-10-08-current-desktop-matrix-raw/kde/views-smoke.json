@@ -1,0 +1,110 @@
+{
+  "timestampUtc": "2026-10-08T20:47:51.162519+00:00",
+  "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+  "runningApp": {
+    "pid": 2958,
+    "startTicks": 81226,
+    "sha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1"
+  },
+  "actions": [
+    {
+      "cycle": 1,
+      "view": "settings",
+      "uiResponse": {
+        "shown": "settings"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-1-settings-open-head0.ppm",
+        "sha256": "9347d99e25235745255ff30723a3452203361876042eb449a7a343f30c36d69f"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-1-settings-closed-head0.ppm",
+        "sha256": "d011c8fbeb1922aef15a9c4460c5e729534f0303ec64a11d87d9ac2317ba05ae"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "uiResponse": {
+        "shown": "history"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-1-history-open-head0.ppm",
+        "sha256": "5d90a746bd97d8a0b67921094ee7650831623ad9e7cb9d81225dff5347cfb7f8"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-1-history-closed-head0.ppm",
+        "sha256": "d011c8fbeb1922aef15a9c4460c5e729534f0303ec64a11d87d9ac2317ba05ae"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "uiResponse": {
+        "shown": "activity"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-1-activity-open-head0.ppm",
+        "sha256": "f3f29b08398a83f70e133bc2cd8185355d5eb4a41ee6c9e6085a2cc392eae369"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-1-activity-closed-head0.ppm",
+        "sha256": "d011c8fbeb1922aef15a9c4460c5e729534f0303ec64a11d87d9ac2317ba05ae"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "settings",
+      "uiResponse": {
+        "shown": "settings"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-2-settings-open-head0.ppm",
+        "sha256": "d011c8fbeb1922aef15a9c4460c5e729534f0303ec64a11d87d9ac2317ba05ae"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-2-settings-closed-head0.ppm",
+        "sha256": "3ba09602bdbc0a4f16a1e174f2575be62c33a20029a622fb4606b748c23722ed"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "history",
+      "uiResponse": {
+        "shown": "history"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-2-history-open-head0.ppm",
+        "sha256": "3414b34b453c486f0d71596799b2376b3b3d84ba4c649c52cf465b9c07339345"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-2-history-closed-head0.ppm",
+        "sha256": "49378f38dae3c686fcdab517d7c23a5b8eccbd6dce0a54dca31854b06b4b9d46"
+      },
+      "residentIdentityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "activity",
+      "uiResponse": {
+        "shown": "activity"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-2-activity-open-head0.ppm",
+        "sha256": "c860fd86807987d03c034ec9a1980b4a4b7434549253658c8160d04895aee1cf"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/view-2-activity-closed-head0.ppm",
+        "sha256": "2a8c0cdc2e42f1ee0a787480614a9de24559b30ac01466a2c419ae85965c420d"
+      },
+      "residentIdentityUnchanged": true
+    }
+  ],
+  "automatedOk": true,
+  "visualReview": "First Settings activation was obscured by independent fixture, so the first Alt+F4 could close that fixture rather than Settings. No complete two-cycle acceptance claimed; repeat with fixture stopped and explicit title-bar focus.",
+  "acceptedAsFullViewSmoke": false
+}

@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "scope": "unscored fixed-label monotonic phase attribution; first point per phase; unchanged35 invocation workload",
+  "traceSha256": "6dabcd9d29e915bc04d2def25aeaec2276be0102dde6f2e2353ebf52a1735583",
+  "groups": 35,
+  "scoredWarmGroups": 30,
+  "spans": {
+    "acceptedWorker": {
+      "count": 30,
+      "medianMs": 8.153447,
+      "p95Ms": 75.039338,
+      "maxMs": 76.526237
+    },
+    "acquiringWorker": {
+      "count": 30,
+      "medianMs": 4.9874125,
+      "p95Ms": 8.196013,
+      "maxMs": 10.772675
+    },
+    "acceptedDelivery": {
+      "count": 30,
+      "medianMs": 8.572836500000001,
+      "p95Ms": 75.390387,
+      "maxMs": 76.896967
+    },
+    "qtInit": {
+      "count": 30,
+      "medianMs": 13.868956,
+      "p95Ms": 21.87047,
+      "maxMs": 23.009873
+    },
+    "postQtAdapters": {
+      "count": 30,
+      "medianMs": 0.9589995,
+      "p95Ms": 1.391853,
+      "maxMs": 2.656768
+    },
+    "resolve": {
+      "count": 30,
+      "medianMs": 1.1149545,
+      "p95Ms": 1.852471,
+      "maxMs": 2.439747
+    },
+    "cursor": {
+      "count": 30,
+      "medianMs": 0.016625,
+      "p95Ms": 0.031264,
+      "maxMs": 0.042665
+    },
+    "nativeWindowCreate": {
+      "count": 30,
+      "medianMs": 0.962553,
+      "p95Ms": 1.629214,
+      "maxMs": 1.757662
+    },
+    "show": {
+      "count": 30,
+      "medianMs": 32.711094,
+      "p95Ms": 47.206128,
+      "maxMs": 53.965844
+    },
+    "managedExposeWait": {
+      "count": 30,
+      "medianMs": 16.568901,
+      "p95Ms": 29.0216,
+      "maxMs": 43.40021
+    },
+    "nativeInit": {
+      "count": 30,
+      "medianMs": 1.2925119999999999,
+      "p95Ms": 4.251774,
+      "maxMs": 4.93449
+    },
+    "hotkeyToQt": {
+      "count": 30,
+      "medianMs": 38.702890499999995,
+      "p95Ms": 104.878237,
+      "maxMs": 115.635624
+    },
+    "hotkeyToNativeMap": {
+      "count": 30,
+      "medianMs": 111.43645649999999,
+      "p95Ms": 173.987547,
+      "maxMs": 185.762565
+    }
+  }
+}

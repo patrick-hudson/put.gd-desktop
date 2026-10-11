@@ -1,0 +1,634 @@
+{
+  "status": "complete",
+  "verdict": "Not ready",
+  "scope": {
+    "mode": "standalone",
+    "base": "bcbe63f0d1e1ad00f36ac110fb596d0245869617",
+    "branch": "codex/ui-process-split",
+    "head_sha": "d790554536b7ec687f7c1428feded6fbfbab49b6",
+    "pr_url": null,
+    "files_changed": 92,
+    "diff": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/full.diff",
+    "diff_sha256": "9b9bec2a04a57f942354e2d0601009a5415d5d989be33d16af245a4413cfd5cd",
+    "source_hash_manifest": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/scope-hashes.json",
+    "frozen_source_root": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/peer-tree",
+    "untracked_excluded": [
+      "tests/performance/bench_ui_process.py"
+    ],
+    "identity_note": "The reviewed tree includes the committed U11 foundation at head_sha plus staged owned paths. The diff hash and source manifest identify this receipt; later caller fixes are excluded."
+  },
+  "intent": "Split Settings, History, Activity and About into an on-demand Qt helper that exits after its final view closes. Preserve the resident tray, hotkeys, clipboard, accepted operations, native dialogs/fonts, safe drafts, exact remote deletion, CLI/MCP compatibility and version agreement; measure total live-process memory rather than shifting counters.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "project-standards",
+    "testing",
+    "maintainability",
+    "agent-native",
+    "security",
+    "performance",
+    "api-contract",
+    "reliability",
+    "adversarial-claude"
+  ],
+  "findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/app/UiProcessController.cpp:106 rejects incompatible; :8-9 gives every error the same retry-from-tray message.",
+        "src/main.cpp:137-138 launches putgd-ui from the current installation; src/ui/main.cpp:33-34,41-42 enforces matching build manifests.",
+        "src/main.cpp:39-42,76 ignores ok:false from an existing resident and returns success.",
+        "tests/integration/test_ui_process.cpp:45-50 checks a fixture mismatch and later recovery, but not installed-build replacement, restart guidance or launcher status."
+      ],
+      "file": "src/app/UiProcessController.cpp",
+      "first_evidence": "src/app/UiProcessController.cpp:106: if(type==\"incompatible\"){fail(unavailable(\"ui_incompatible\"));return;}",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 106,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Keep strict build agreement. Give ui_incompatible explicit restart-required guidance; parse the ui.show response in activateResident and return a nonzero launcher status without starting a duplicate resident. Test build skew, the displayed recovery message and launcher status. Keep restart user-initiated to preserve accepted-operation lifetime.",
+      "title": "Version mismatch gives ineffective retry advice and a successful launcher exit",
+      "why_it_matters": "Replacing the installed helper while the old resident runs correctly fails the required build check, but the UI tells users to retry from the tray, which cannot recover. A second launcher ignores the structured failure and exits successfully. Explicit restart guidance and failure propagation are needed.",
+      "validation_status": "confirmed",
+      "category": "public-contract",
+      "validation_reason": "Replacing putgd-ui with a different build while the resident remains running reaches the newly introduced helper path in src/main.cpp:137 and strict rejection in src/ui/main.cpp:33-34, but src/app/UiProcessController.cpp:8-9,106 recommends retrying the same incompatible executable, src/ui/TrayController.cpp:77-78 displays that message, and src/main.cpp:39-42,76 returns success without inspecting the failure response; the split newly exposes this upgrade failure, and installed-upgrade incidence was not measured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 2,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/app/UiProcessController.cpp:15,19 permits ten seconds of startup followed by twenty seconds for activation; :90 starts activation timing only after readiness.",
+        "src/cli/main.cpp:22 and src/client/SessionClient.cpp:16,87-92,162-169 impose fifteen-second client deadlines.",
+        "src/app/LocalServer.cpp:84-87 replies only after activation; :53,65-66 drops disconnected reply sockets without cancelling activation.",
+        "src/app/UiProcessController.cpp:111-122 can process a later shown acknowledgement after the client has disconnected."
+      ],
+      "file": "src/app/UiProcessController.cpp",
+      "first_evidence": "src/app/UiProcessController.cpp:19 --  activationDeadline_.setSingleShot(true);activationDeadline_.setInterval(20000);",
+      "independent_reviewers": [
+        "api-contract"
+      ],
+      "line": 19,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "api-contract"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Keep the existing fifteen-second client compatibility limit. Give each ui.show request an end-to-end deadline below it, including startup and closing/relaunch, and return a structured UI timeout before transport expiry. Prevent success after expiration. Test delayed startup plus delayed acknowledgement and missing acknowledgement through production CLI/SessionClient.",
+      "title": "UI activation can outlast client deadlines and succeed after reported failure",
+      "why_it_matters": "A helper that stalls beyond fifteen seconds makes CLI and SessionClient disconnect before the twenty-second activation timeout returns ui_show_timeout. Cold startup can add ten seconds first. Clients receive a generic transport failure and the view may still appear later.",
+      "validation_status": "confirmed",
+      "category": "public-contract",
+      "validation_reason": "For a helper that becomes ready but stalls before acknowledging activation beyond fifteen seconds, src/app/UiProcessController.cpp:15-21,74,90 permits ten seconds of startup followed by twenty seconds for acknowledgement while the newly asynchronous src/app/LocalServer.cpp:84-87 withholds its response, so src/cli/main.cpp:22 and src/client/SessionClient.cpp:87-92,162-169 expire first; client disconnection only removes the reply socket under LocalServer.cpp:53,65-66 and does not cancel activation, allowing a later shown frame at UiProcessController.cpp:111-122, with stall incidence unmeasured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 3,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/ui/SettingsWindow.cpp:167,225 clears dirty/conflict before asynchronous Reload or Cancel completes; src/ui/UiSession.cpp:11-15,24-25 shows the deferred refresh.",
+        "src/ui/SettingsWindow.cpp:248 guards saves/setup acceptance only; :251 checkpoints current controls with dirty and revision fields.",
+        "src/ui/UiApplicationController.cpp:162-167,124-129 accepts that checkpoint and exits without awaiting those refreshes.",
+        "src/ui/SettingsWindow.cpp:259-270 restores dirty=false and refreshes clean controls only when revisions differ."
+      ],
+      "file": "src/ui/SettingsWindow.cpp",
+      "first_evidence": "src/ui/SettingsWindow.cpp:248 -- if(saving_||setupAccepting_)return {{\"stateError\",\"request_awaiting_acceptance\"}};",
+      "independent_reviewers": [
+        "correctness"
+      ],
+      "line": 248,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Track pending reload/discard transitions and reject checkpointing with request_awaiting_acceptance until the authoritative document has reached the controls. Preserve dirty state until success. Test an edited form with delayed Reload and Cancel replies, final close before the reply, and recreation against unchanged revisions; discarded values must not return as clean.",
+      "title": "Closing during Reload or Cancel can restore discarded edits as clean",
+      "why_it_matters": "Reload and Cancel clear dirty/conflict before their asynchronous refresh replaces the controls. Final close can checkpoint those old controls as clean and exit first. On reopen with unchanged configuration revisions, the discarded values return and are not refreshed.",
+      "validation_status": "confirmed",
+      "category": "concurrency",
+      "validation_reason": "If final close wins the race against Reload or Cancel with unchanged authoritative revisions, src/ui/SettingsWindow.cpp:167,225 has already cleared dirty while src/ui/UiSession.cpp:11-15,24-25 still awaits asynchronous refresh, the new saveViewState guard at SettingsWindow.cpp:248 omits both transitions and exports old controls as clean at :251, UiApplicationController.cpp:162-167,124-129 accepts that checkpoint and exits without draining them, and SettingsWindow.cpp:259-270 restores the old values without refreshing matching revisions; this ordering is reachable through those callers, but its runtime incidence was not measured.",
+      "protected_subject": "concurrency"
+    },
+    {
+      "#": 4,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/ui/main.cpp:16 constructs QApplication before StdioDevice at :21.",
+        "src/ui/StdioDevice.cpp:13,16,51 uses process STDOUT_FILENO for nonblocking control output.",
+        "src/app/UiProcessController.cpp:48-52 sends stdout to UiControl; src/app/UiControl.cpp:57-61 validates every line; UiProcessController.cpp:167-171 kills on protocol failure.",
+        "Caller production-helper reproduction with xcb, gtk3 and G_MESSAGES_DEBUG=all under dbus-run-session/xvfb-run failed normalCloseCheckpointsDirtyDraftAndRelaunchesCleanly with ui_protocol before opening. Startup/stdio source was reported unchanged; the whole later binary is not claimed identical to the frozen tree. No raw log or payload is included."
+      ],
+      "file": "src/ui/StdioDevice.cpp",
+      "first_evidence": "src/ui/StdioDevice.cpp:51: ssize_t result;do{result=::write(STDOUT_FILENO,data,size_t(count));}while(result<0&&errno==EINTR);",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 13,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Isolate control before QApplication: duplicate inherited control descriptors privately with CLOEXEC, redirect process stdout to stderr and use the private descriptors in StdioDevice, or supply a dedicated control descriptor. Test GTK/GLib debug startup and injected stdout before/after ready. Preserve strict frame validation.",
+      "title": "Native plugin stdout can corrupt control frames and prevent window startup",
+      "why_it_matters": "QApplication loads native plugins before stdout is isolated from the JSON control pipe. GTK/GLib debug output reaches that pipe, causing ui_protocol and helper termination before a view opens. The caller reproduced this with production helper startup/stdio sources reported unchanged from the frozen review.",
+      "category": "reliability",
+      "validation_status": "confirmed",
+      "validation_reason": "When a native plugin emits stdout diagnostics, newly added src/ui/main.cpp:16 constructs QApplication before transport setup and src/ui/StdioDevice.cpp:12-16,49-52 shares STDOUT_FILENO with that output, while src/app/UiProcessController.cpp:48-52 routes stdout into UiControl.cpp:57-61 and terminates the helper on failure at UiProcessController.cpp:167-171; the supplied production-helper reproduction reports ui_protocol with xcb, gtk3 and G_MESSAGES_DEBUG=all and corroborates this path, with relevant startup/stdio files reported unchanged but no claim that the whole later binary matches the frozen tree."
+    }
+  ],
+  "actionable_findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/app/UiProcessController.cpp:106 rejects incompatible; :8-9 gives every error the same retry-from-tray message.",
+        "src/main.cpp:137-138 launches putgd-ui from the current installation; src/ui/main.cpp:33-34,41-42 enforces matching build manifests.",
+        "src/main.cpp:39-42,76 ignores ok:false from an existing resident and returns success.",
+        "tests/integration/test_ui_process.cpp:45-50 checks a fixture mismatch and later recovery, but not installed-build replacement, restart guidance or launcher status."
+      ],
+      "file": "src/app/UiProcessController.cpp",
+      "first_evidence": "src/app/UiProcessController.cpp:106: if(type==\"incompatible\"){fail(unavailable(\"ui_incompatible\"));return;}",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 106,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Keep strict build agreement. Give ui_incompatible explicit restart-required guidance; parse the ui.show response in activateResident and return a nonzero launcher status without starting a duplicate resident. Test build skew, the displayed recovery message and launcher status. Keep restart user-initiated to preserve accepted-operation lifetime.",
+      "title": "Version mismatch gives ineffective retry advice and a successful launcher exit",
+      "why_it_matters": "Replacing the installed helper while the old resident runs correctly fails the required build check, but the UI tells users to retry from the tray, which cannot recover. A second launcher ignores the structured failure and exits successfully. Explicit restart guidance and failure propagation are needed.",
+      "validation_status": "confirmed",
+      "category": "public-contract",
+      "validation_reason": "Replacing putgd-ui with a different build while the resident remains running reaches the newly introduced helper path in src/main.cpp:137 and strict rejection in src/ui/main.cpp:33-34, but src/app/UiProcessController.cpp:8-9,106 recommends retrying the same incompatible executable, src/ui/TrayController.cpp:77-78 displays that message, and src/main.cpp:39-42,76 returns success without inspecting the failure response; the split newly exposes this upgrade failure, and installed-upgrade incidence was not measured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 2,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/app/UiProcessController.cpp:15,19 permits ten seconds of startup followed by twenty seconds for activation; :90 starts activation timing only after readiness.",
+        "src/cli/main.cpp:22 and src/client/SessionClient.cpp:16,87-92,162-169 impose fifteen-second client deadlines.",
+        "src/app/LocalServer.cpp:84-87 replies only after activation; :53,65-66 drops disconnected reply sockets without cancelling activation.",
+        "src/app/UiProcessController.cpp:111-122 can process a later shown acknowledgement after the client has disconnected."
+      ],
+      "file": "src/app/UiProcessController.cpp",
+      "first_evidence": "src/app/UiProcessController.cpp:19 --  activationDeadline_.setSingleShot(true);activationDeadline_.setInterval(20000);",
+      "independent_reviewers": [
+        "api-contract"
+      ],
+      "line": 19,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "api-contract"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Keep the existing fifteen-second client compatibility limit. Give each ui.show request an end-to-end deadline below it, including startup and closing/relaunch, and return a structured UI timeout before transport expiry. Prevent success after expiration. Test delayed startup plus delayed acknowledgement and missing acknowledgement through production CLI/SessionClient.",
+      "title": "UI activation can outlast client deadlines and succeed after reported failure",
+      "why_it_matters": "A helper that stalls beyond fifteen seconds makes CLI and SessionClient disconnect before the twenty-second activation timeout returns ui_show_timeout. Cold startup can add ten seconds first. Clients receive a generic transport failure and the view may still appear later.",
+      "validation_status": "confirmed",
+      "category": "public-contract",
+      "validation_reason": "For a helper that becomes ready but stalls before acknowledging activation beyond fifteen seconds, src/app/UiProcessController.cpp:15-21,74,90 permits ten seconds of startup followed by twenty seconds for acknowledgement while the newly asynchronous src/app/LocalServer.cpp:84-87 withholds its response, so src/cli/main.cpp:22 and src/client/SessionClient.cpp:87-92,162-169 expire first; client disconnection only removes the reply socket under LocalServer.cpp:53,65-66 and does not cancel activation, allowing a later shown frame at UiProcessController.cpp:111-122, with stall incidence unmeasured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 3,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/ui/SettingsWindow.cpp:167,225 clears dirty/conflict before asynchronous Reload or Cancel completes; src/ui/UiSession.cpp:11-15,24-25 shows the deferred refresh.",
+        "src/ui/SettingsWindow.cpp:248 guards saves/setup acceptance only; :251 checkpoints current controls with dirty and revision fields.",
+        "src/ui/UiApplicationController.cpp:162-167,124-129 accepts that checkpoint and exits without awaiting those refreshes.",
+        "src/ui/SettingsWindow.cpp:259-270 restores dirty=false and refreshes clean controls only when revisions differ."
+      ],
+      "file": "src/ui/SettingsWindow.cpp",
+      "first_evidence": "src/ui/SettingsWindow.cpp:248 -- if(saving_||setupAccepting_)return {{\"stateError\",\"request_awaiting_acceptance\"}};",
+      "independent_reviewers": [
+        "correctness"
+      ],
+      "line": 248,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Track pending reload/discard transitions and reject checkpointing with request_awaiting_acceptance until the authoritative document has reached the controls. Preserve dirty state until success. Test an edited form with delayed Reload and Cancel replies, final close before the reply, and recreation against unchanged revisions; discarded values must not return as clean.",
+      "title": "Closing during Reload or Cancel can restore discarded edits as clean",
+      "why_it_matters": "Reload and Cancel clear dirty/conflict before their asynchronous refresh replaces the controls. Final close can checkpoint those old controls as clean and exit first. On reopen with unchanged configuration revisions, the discarded values return and are not refreshed.",
+      "validation_status": "confirmed",
+      "category": "concurrency",
+      "validation_reason": "If final close wins the race against Reload or Cancel with unchanged authoritative revisions, src/ui/SettingsWindow.cpp:167,225 has already cleared dirty while src/ui/UiSession.cpp:11-15,24-25 still awaits asynchronous refresh, the new saveViewState guard at SettingsWindow.cpp:248 omits both transitions and exports old controls as clean at :251, UiApplicationController.cpp:162-167,124-129 accepts that checkpoint and exits without draining them, and SettingsWindow.cpp:259-270 restores the old values without refreshing matching revisions; this ordering is reachable through those callers, but its runtime incidence was not measured.",
+      "protected_subject": "concurrency"
+    },
+    {
+      "#": 4,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/ui/main.cpp:16 constructs QApplication before StdioDevice at :21.",
+        "src/ui/StdioDevice.cpp:13,16,51 uses process STDOUT_FILENO for nonblocking control output.",
+        "src/app/UiProcessController.cpp:48-52 sends stdout to UiControl; src/app/UiControl.cpp:57-61 validates every line; UiProcessController.cpp:167-171 kills on protocol failure.",
+        "Caller production-helper reproduction with xcb, gtk3 and G_MESSAGES_DEBUG=all under dbus-run-session/xvfb-run failed normalCloseCheckpointsDirtyDraftAndRelaunchesCleanly with ui_protocol before opening. Startup/stdio source was reported unchanged; the whole later binary is not claimed identical to the frozen tree. No raw log or payload is included."
+      ],
+      "file": "src/ui/StdioDevice.cpp",
+      "first_evidence": "src/ui/StdioDevice.cpp:51: ssize_t result;do{result=::write(STDOUT_FILENO,data,size_t(count));}while(result<0&&errno==EINTR);",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 13,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Isolate control before QApplication: duplicate inherited control descriptors privately with CLOEXEC, redirect process stdout to stderr and use the private descriptors in StdioDevice, or supply a dedicated control descriptor. Test GTK/GLib debug startup and injected stdout before/after ready. Preserve strict frame validation.",
+      "title": "Native plugin stdout can corrupt control frames and prevent window startup",
+      "why_it_matters": "QApplication loads native plugins before stdout is isolated from the JSON control pipe. GTK/GLib debug output reaches that pipe, causing ui_protocol and helper termination before a view opens. The caller reproduced this with production helper startup/stdio sources reported unchanged from the frozen review.",
+      "category": "reliability",
+      "validation_status": "confirmed",
+      "validation_reason": "When a native plugin emits stdout diagnostics, newly added src/ui/main.cpp:16 constructs QApplication before transport setup and src/ui/StdioDevice.cpp:12-16,49-52 shares STDOUT_FILENO with that output, while src/app/UiProcessController.cpp:48-52 routes stdout into UiControl.cpp:57-61 and terminates the helper on failure at UiProcessController.cpp:167-171; the supplied production-helper reproduction reports ui_protocol with xcb, gtk3 and G_MESSAGES_DEBUG=all and corroborates this path, with relevant startup/stdio files reported unchanged but no claim that the whole later binary matches the frozen tree."
+    }
+  ],
+  "triage_groups": [
+    {
+      "title": "UI activation errors",
+      "findings": [
+        1,
+        2,
+        4
+      ],
+      "kind": "apply-queue",
+      "context": "Version skew, slow activation and native plugin stdout can each prevent callers from obtaining a usable helper window.",
+      "preferred_resolution": "Isolate protocol descriptors before native plugin startup (#4), then provide restart guidance and launcher error propagation (#1), and align complete activation deadlines with clients (#2). Validate each trigger independently.",
+      "why": "These changes concern helper startup and activation outcomes while retaining strict private protocol validation and build agreement."
+    }
+  ],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/peer-tree/docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+    "plan_source": "explicit",
+    "implementation_scope": [
+      "U11"
+    ],
+    "requirements": [
+      {
+        "id": "R1",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R2",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R3",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R4",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R5",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R6",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R7",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R8",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R9",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R10",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R11",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "Settings, activity and history move into the helper; retained settings reload/Cancel state has finding #3."
+      },
+      {
+        "id": "R12",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R13",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "All three desktop adapter paths and helper-ownership guards are represented, but current-source graphical acceptance remains pending."
+      },
+      {
+        "id": "R14",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "All three desktop adapter paths and helper-ownership guards are represented, but current-source graphical acceptance remains pending."
+      },
+      {
+        "id": "R15",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "All three desktop adapter paths and helper-ownership guards are represented, but current-source graphical acceptance remains pending."
+      },
+      {
+        "id": "R16",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R17",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R18",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R19",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R20",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "Process/view-state/preview bounds are implemented; total live-process memory and reopen latency remain unmeasured."
+      },
+      {
+        "id": "R21",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "Existing production CLI transport is retained; new ui.show timeout alignment is finding #2 and second-launch error propagation is part of #1."
+      },
+      {
+        "id": "R22",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "MCP continues forwarding to the production CLI; a current separate MCP-suite execution receipt is still needed for final verification."
+      },
+      {
+        "id": "R23",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R24",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R25",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R26",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R27",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R28",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R29",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R30",
+        "status": "not addressed",
+        "scope": "prior-unit context"
+      },
+      {
+        "id": "R31",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R32",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R33",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R34",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "Shared settings and safe draft restoration are implemented; reload/Cancel checkpoint ordering is finding #3 and native visual/dialog acceptance remains pending."
+      },
+      {
+        "id": "R35",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "Shared settings and safe draft restoration are implemented; reload/Cancel checkpoint ordering is finding #3 and native visual/dialog acceptance remains pending."
+      },
+      {
+        "id": "R36",
+        "status": "met",
+        "scope": "U11"
+      },
+      {
+        "id": "R37",
+        "status": "partially addressed",
+        "scope": "U11",
+        "evidence": "Resident tray, shared engine, helper lifecycle and safe view-state architecture are present; findings #1-#4, final native AE17 and memory/reopen-latency evidence remain open."
+      }
+    ],
+    "implementation_units": [
+      {
+        "id": "U11",
+        "status": "partially addressed",
+        "evidence": "Architecture and headless integration are present. Findings #1-#4 are confirmed. Native AE17 on all three desktops, total-process memory/reopen measurements and complete production-helper teardown evidence remain pending."
+      }
+    ],
+    "unrequested_behavior_rules": [],
+    "scope_rationale": "The request explicitly reviews U11 before final native acceptance and U10 release work. These pending gates are recorded without treating intentionally out-of-scope earlier-unit work as missing implementation.",
+    "interpretation": "Statuses record corresponding work in the frozen U11 diff. Met does not establish native desktop or release acceptance. Prior-unit context is intentionally excluded.",
+    "extraction_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/plan-extraction.json",
+    "settled_decisions": "No settlement conflict was retained. Keep the resident tray, Qt 6 Widgets, dynamic distro Qt, immediate sharing, native desktop integrations, simple setup and the approved visual design. Strict helper/resident build agreement remains required."
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "A failed GNOME SetUiProcess(0) call leaves uiProcessError_ set while ready_ stays true (src/platform/gnome/GnomeAdapter.cpp:45,73-83,108,116). Window hotkeys then fail until the helper is opened again or Shell rediscovery succeeds. Tray-triggered capture failure opens Activity and can itself trigger successful re-registration (src/ui/TrayController.cpp:20-23); hotkey failures only log in src/main.cpp:107. This is a conditional recovery risk, not evidence that a transient clear failure occurred. Prefer retrying the clear while preserving fail-closed registration when a helper is live.",
+    "Setup status recovery after a transient inspect failure or eviction is incomplete: SettingsWindow::pollSetup stops polling but retains the first job (src/ui/SettingsWindow.cpp:279-282), while SetupService keeps only 64 completed jobs (src/app/SetupService.cpp:62-71). A saved ID evicted during helper absence can repeatedly return setup_not_found and delay later jobs until its entry is replaced or discarded. The failed job does re-enable its own destination-test button; the peer claim that the button necessarily stays disabled was not retained. Incidence was not measured.",
+    "The memory benefit of the split remains unmeasured. The resident retains Qt Widgets for its tray and capture; the checkpoint is capped at 8 MiB. Compare total resident-plus-helper RSS/PSS/private memory and reopen latency across cold idle, visible populated views, final close and post-capture/upload/history workloads. The 40 MiB figure remains a target."
+  ],
+  "testing_gaps": [
+    "U11/AE17 current-source graphical acceptance remains pending on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. Use visible VNC evidence for every tray action with the helper absent, hotkey and clipboard continuity, an accepted operation surviving final close, safe drafts/conflicts, native fonts/folder dialogs, focus races and exclusion of every helper view/modal from active-window capture. Offscreen or fixture tests cannot satisfy these compositor gates.",
+    "Production-helper final-close/reopen is not covered end to end: tests/integration/test_ui_process.cpp:37-43 uses ui_helper_fixture, tests/gui/test_ui_application.cpp uses an in-process ControlDevice, and tests/integration/test_ui_split_services.cpp:20-29 launches production putgd-ui but kills its first instance and explicitly shuts down the second. Add a real helper scenario that edits a nonsecret draft, closes its final view, observes PID zero, reopens Settings and verifies draft plus conflict revisions through the actual bootstrap and close handshake.",
+    "Child sanitizer teardown evidence is not established by the passing parent integration test. The supervisor drains child stderr at src/app/UiProcessController.cpp:53-55 and discards exit code/status at :175; stopping_ makes any child termination expected at :177-195. tests/integration/test_ui_split_services.cpp:29 asserts only the shutdown callback. A sanitizer diagnostic or nonzero child exit during shutdown can therefore be hidden from that parent result. Add a test-only, secret-safe way to assert the production helper exit status and collect sanitizer failure status; prove it with a synthetic failing child. No actual sanitizer defect is alleged by this coverage gap.",
+    "Final total-process memory and reopen-latency measurements with source/package/process identities remain pending under U11. Keep their native evidence distinct from the headless test receipts.",
+    "The separate optional MCP integration suite was not executed by these reviewers. Retain a current receipt for the production CLI-forwarding contracts when completing final split verification."
+  ],
+  "coverage": {
+    "suppressed_by_confidence": {
+      "50": 1
+    },
+    "first_evidence_backfilled": 0,
+    "quote_gate_demotions": 0,
+    "malformed_findings": 0,
+    "malformed_returns": 0,
+    "mode_aware_demotions": 1,
+    "semantic_merges": 0,
+    "settlement_suppressions": 0,
+    "shortcut_skipped": 0,
+    "validation_selected": 4,
+    "validator_status": "complete",
+    "source_hashes_verified": 92,
+    "depth": "full",
+    "validation": {
+      "batch_outcome": "verdicts",
+      "selected": 4,
+      "confirmed": 4,
+      "rejected": 0,
+      "unresolved": 0,
+      "malformed": 0,
+      "failed": 0,
+      "shortcut_skipped": 0,
+      "bound_exceeded": false,
+      "protected_subject_reclassifications": [],
+      "degraded_blockers": [],
+      "reason": "All four selected findings were confirmed in one bounded batch. No finding qualified for the quote-anchored cross-model shortcut. Findings #1-#3 have unmeasured incidence; #4 has a caller reproduction with the relevant frozen startup/stdio sources reported unchanged."
+    },
+    "cross_model": {
+      "selected": true,
+      "target": "claude",
+      "route": "claude",
+      "preference_source": "instructions",
+      "outcome": "folded",
+      "artifact": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/adversarial-claude.json",
+      "coverage": "Independent adversarial pass via fixed Claude route requested claude-opus-5-5 at high; receipt_supported=true, model_actual=claude-opus-5-5, effort_actual=unverified, independence_verified=true. Reviewed exact code/test/docs mirror with 19 raw docs/evidence receipts excluded; no credentials or private payloads copied."
+    },
+    "reviewer_selection": {
+      "correctness": "Always-on behavioral correctness",
+      "project-standards": "AGENTS.md governs provider boundaries, real desktop proof and toolchain",
+      "testing": "New IPC, lifecycle, tray and compositor tests",
+      "maintainability": "Structural process split with new client/controller/state boundaries",
+      "agent-native": "CLI/MCP-facing local commands and diagnostic ownership",
+      "security": "Secret-bearing setup commands, private transport and safe draft filtering",
+      "performance": "UI process eviction, bounded retained state and previews",
+      "api-contract": "Existing CLI local command consumers and version agreement",
+      "reliability": "Child failure, timeouts, async setup and shutdown"
+    },
+    "standards": {
+      "criteria": [
+        {
+          "path": "AGENTS.md",
+          "governs_all_paths_in": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904/files.txt"
+        }
+      ],
+      "fallback_named": true,
+      "not_run_reason": null
+    },
+    "compound_packs": {
+      "roots": [],
+      "errors": [],
+      "warnings": []
+    },
+    "failed_reviewers": [],
+    "timed_out_reviewers": [],
+    "severity_counts": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 4,
+      "P3": 0
+    },
+    "apply": "Skipped: agent report-only; no source, index, build cache or commit edits.",
+    "notes": [
+      "Full depth: 1424 executable non-test changed lines, 4421 total changed lines and 92 tracked files. AGENTS.md supplies standards fallback; no CODING_STANDARDS.md applies.",
+      "External peer reviewed a faithful 73-file code/test/docs mirror; 19 docs/evidence receipts/logs were omitted. Local reviewers covered the full tracked scope. Independent adversarial pass via fixed Claude route requested claude-opus-5-5 at high; receipt_supported=true, model_actual=claude-opus-5-5, effort_actual=unverified, independence_verified=true. Reviewed exact code/test/docs mirror with 19 raw docs/evidence receipts excluded; no credentials or private payloads copied.",
+      "All 92 frozen source hashes and full.diff SHA-256 were verified again for this report. Original worktree source was not read. The original branch/head identity is retained.",
+      "No local reviewer failed. No PR comments, migrations, matching learnings corpus or specialized web/iOS runtime applied; those lenses were not selected.",
+      "Root reported Dev 40/40 and ASan 13/13 while source was frozen. The thread suite initially timed out GUI Settings at 60 seconds; the unchanged binary subsequently passed 34/34 in 61.853 seconds under a bounded 180-second run. Final CTest timeout adjustment/rerun remains pending in this receipt.",
+      "The report leaf ran no tests. Parent-suite passes do not establish child sanitizer teardown where stderr/status are masked, native compositor acceptance or total-process memory savings.",
+      "No settlement preference was suppressed. The retained tray, dynamic distro Qt and strict build agreement remain required. One confidence-50 GNOME concern was demoted to a conditional residual risk.",
+      "The stdout/plugin candidate reached confidence 75 after the caller GTK/GLib debug reproduction established its trigger. Startup/stdio source was reported unchanged; no whole-binary identity or additional independent reviewer was inferred.",
+      "All four selected findings were confirmed in one bounded validator batch. No quote-anchored cross-model shortcut applied; validation changed no severity, confidence or action route.",
+      "The untracked tests/performance/bench_ui_process.py, ignored work and separate memory-harness-addendum.json are outside this formal review. Later caller fixes and checkpoint backpressure work remain outside the frozen receipt; no finding is marked fixed.",
+      "Reverse plan check found no additional unrequested product behavior rule. Resource bounds, in-memory session view state, strict mismatch rejection and explicit Quit implement U11.",
+      "U11 native AE17 and total-process memory/reopen measurements remain pending. Earlier units are intentional context and U10 final release gates remain separate."
+    ],
+    "peer_fold_in": {
+      "outcome": "folded",
+      "primary_candidates": 2,
+      "suppressed_compact_candidates": 1,
+      "evidence_basis": "Independent Claude artifact plus local frozen-source verification; caller GTK debug reproduction corroborates stdout failure but is not a second reviewer identity. No cross-model validator shortcut applies."
+    }
+  },
+  "verdict_reason": "The frozen U11 diff has four confirmed P2 defects and still lacks required native AE17 and total-process memory/reopen evidence. Fix stdout isolation (#4), version-skew recovery and launcher failure propagation (#1), activation deadlines (#2), and reload/Cancel checkpoint ordering (#3), then verify the updated code. Earlier implementation units are intentional context; U10 final release gates remain separate. This receipt does not approve later caller fixes or establish U11 completion.",
+  "fix_order": [
+    4,
+    1,
+    2,
+    3
+  ],
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-191441-7c998904",
+  "run_id": "20261008-191441-7c998904"
+}

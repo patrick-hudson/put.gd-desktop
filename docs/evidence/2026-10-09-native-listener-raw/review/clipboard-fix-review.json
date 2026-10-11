@@ -1,0 +1,40 @@
+{
+  "reviewer": "audit_payload_memory",
+  "mode": "independent bounded delta inspection, not full new peer round",
+  "parent_checkpoint": "b6e987ca9097ac6ebdd82101acac5aea664d1071",
+  "reviewed_at": "2026-10-09T08:04:54.336783+00:00",
+  "reviewed_files": {
+    "src/platform/x11/X11Clipboard.cpp": "5c9959e1debe8703cf95ece53a16929fd60c0a350ffcfa809eeb5f5681733255",
+    "src/platform/x11/X11Clipboard.h": "4b70c69b258c97a0ca5999fd693701129028fcdfb0e892cb8f46930a18bb456a",
+    "tests/integration/test_x11_core_clipboard.cpp": "41aa7e31bbf5350d57008a70f71a5e930042adfe68d62412de68a9c358ad30ea",
+    "docs/native-listener.md": "ce30518d4e08645c5e3f2583de556dd28584a6635e3b9c0db4ea461ccbd451f5"
+  },
+  "diff_sha256": "908cb3567d7dc769d04e1b4878f133f103cdc51ed1e0b0746d09d7da03646c51",
+  "findings": [],
+  "resolved_findings": [
+    {
+      "id": 1,
+      "status": "source-resolved",
+      "why": "Entire synchronous QTemporaryFile write/flush removed. Native copy keeps the existing image QByteArray shared, without detaching or image decoding, and commits selection synchronously after revision check; no asynchronous invocation publication gap added.",
+      "evidence": [
+        "X11Clipboard.cpp:168 bytes=payload.encodedImage uses implicit sharing;181 moves byte-array lease into OwnedContent.",
+        "X11Clipboard.cpp:207\u2013209 small property uses const existing data.",
+        "X11Clipboard.cpp:242\u2013246 INCR creates at most64KiB .mid chunk and release follows zero-length final property.",
+        "X11Clipboard.cpp:82 SelectionClear resets current ownership;83 DestroyNotify removes requestor transfers;232\u2013237 normal removal;249\u2013251 deadline removal; destructor34 clears transfer/current versions.",
+        "test_x11_core_clipboard.cpp:109\u2013128 checks encoded storage sharing and release after completed INCR, ownership replacement, SelectionClear and destruction."
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Native clipboard output legitimately retains encoded heap data until ownership ends; at most16 active INCR streams plus current ownership can pin17 distinct accepted encoded versions. This is count/accepted-size bounded, not approximately40MiB in all local-image workloads, and must be included in payload memory measurements.",
+    "Text/URI encoding remains synchronous as before; removal of disk I/O does not establish event-loop latency for maximal configured text.",
+    "No build, test execution, live paste, desktop, RSS or latency measurement performed by this reviewer. Parent is running normal verification separately.",
+    "Source resolution does not establish RSS returned to the OS; QByteArray lease release and allocator residency are distinct."
+  ],
+  "recommended_acceptance": [
+    "Real Cinnamon local-only large synthetic PNG copy/paste into independent client, then ownership replacement and current/transfer release checks.",
+    "Retain sixteen independently stalled transfers across distinct versions, verify memory follows bytes/count bound, then completion, peer destruction and idle/absolute expiry return all obsolete byte-array references.",
+    "Normal small uploaded URL output should not retain full PNG after upload; score cold/closed idle separately from intentional local-image owner."
+  ],
+  "mutation": "Only review artifacts written; no credentials/config/user payload/history accessed."
+}

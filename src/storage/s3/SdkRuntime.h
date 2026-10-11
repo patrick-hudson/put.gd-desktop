@@ -3,11 +3,17 @@
 #include <memory>
 
 namespace putgd {
-// Construct once before providers; destroy after all requests and providers drain.
+// An adapter-private owner; destroy after all clients and SDK objects drain.
+// Immediate owners stay on their constructing thread (the production module worker).
+// Standalone deferred owners lazily retain one SDK init/shutdown thread.
 class SdkRuntime final {
 public:
-    SdkRuntime();
+    enum class Initialization { Immediate, Deferred };
+    explicit SdkRuntime(Initialization initialization = Initialization::Immediate);
+    // An owning runtime must remain alive until every SDK object is destroyed.
+    static void ensureInitialized();
     ~SdkRuntime();
+    static bool safeDeleteTransport();
     SdkRuntime(const SdkRuntime&) = delete;
     SdkRuntime& operator=(const SdkRuntime&) = delete;
 private:

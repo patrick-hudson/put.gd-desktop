@@ -1,0 +1,30 @@
+{
+  "scope": "Official Qt6.10.2 sources inspected locally; vendor source remains outside this evidence bundle. Distro patches were not audited.",
+  "files": [
+    {
+      "localPath": "work/memory-next/gnome/qt6102-source/manifest.json",
+      "bytes": 1430,
+      "sha256": "3c51f917855ff2cc455ce679b6de66de51a9e56679391d900e9aaf984e9dae7e"
+    },
+    {
+      "localPath": "work/memory-next/gnome/qt6102-source/qbackingstore.cpp",
+      "bytes": 12149,
+      "sha256": "e19aa53551e7ae85fe03e45eeaea51ee41429a32eff46ab5c246a1d543411a6d"
+    },
+    {
+      "localPath": "work/memory-next/gnome/qt6102-source/qwaylandshmbackingstore.cpp",
+      "bytes": 18338,
+      "sha256": "9b8714f6036042343a3f7604699f4cb6f41061f0cde6e07b31477676faef5a56"
+    },
+    {
+      "localPath": "work/memory-next/gnome/qt6102-source/qwidget.cpp",
+      "bytes": 462754,
+      "sha256": "8cd5454ab536aa2c07872194654b830a994a41af5df4bf7d1b232fd6298bd342"
+    },
+    {
+      "localPath": "work/memory-next/gnome/qt6102-source/qwidgetwindow.cpp",
+      "bytes": 47078,
+      "sha256": "386cc3115e561dffb3678442e37de4a69ba60eb3d14de67ed2810e0bda60533c"
+    }
+  ]
+}

@@ -1,0 +1,338 @@
+{
+  "status": "complete",
+  "scope": "Read-only follow-up validation of three-path disconnect fix against original frozen IPC packet; original review.json unchanged",
+  "original_receipt": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/review.json",
+  "delta_sha256": "5bf22509a569e9e72abe3a81bf03e677673a0aa4ba0d64d4a4c47480ae8eff38",
+  "paths": [
+    "src/app/LocalIpc.cpp",
+    "src/app/LocalIpc.h",
+    "tests/integration/test_local_ipc.cpp"
+  ],
+  "manifest_verified_paths": 11,
+  "after_hashes": {
+    "src/app/LocalIpc.cpp": "65917736dd9dc30a8cfdce75f0e81dba39931c9d3fff7c31f587cee7ba2f41bb",
+    "src/app/LocalIpc.h": "8c63ad8aa72ecccb970f5c17ed1667e2a10bf4f3266e99be6badf3c8c005e36b",
+    "tests/integration/test_local_ipc.cpp": "85e4046f8be901be1d3da7dd5b7243b8ef8231a72153faaca198094798b01969"
+  },
+  "findings": [],
+  "source_assessment": [
+    "Native stopReading now marks requestHandled and keeps the read notifier active. Ready events route to discardInput instead of another readyRead delivery, so a client EOF during deferred reply reaches existing idempotent State::close and LocalServer disconnected removal. The late response sees fd<0 and does not emit a duplicate disconnect.",
+    "discardInput retains no trailing request bytes: a stack16KiB buffer drains at most64KiB per readiness callback, then yields to the event loop. EINTR is retried; EAGAIN returns; EOF/error disables notifiers, closes FD, clears pending output and emits disconnected once. No polling timer, persistent trailing-input buffer, additional helper or unbounded heap allocation is introduced.",
+    "sendAndClose still disables reads before output drainage, so the existing nonblocking sent-offset/write-notifier response path is unchanged. Immediate synchronous final-data SHUT_WR response remains represented by the existing halfClosedRequestReceivesReply test.",
+    "For deferred responses, SHUT_WR now reaches EOF and closes the connection before a later response. Supplied Qt6.4.2 GLib and Unix differential probes show original QLocalSocket and fixed native both emit disconnected in this situation. Async write-half-close reply preservation is not an established baseline contract; the original receipt soft recommendation must not be treated as a new required capability.",
+    "Non-Linux Qt transport implementation is unchanged. The new committed regression drives real LocalIpc, stops request delivery, sends128KiB trailing input across the64KiB drain bound, aborts before supplying any reply, requires disconnected, then verifies no duplicate disconnect on late send. Existing LocalServer clients_.remove on that signal is unchanged."
+  ],
+  "prior_concern_resolution": {
+    "pending_reply_disconnect": "Source fix addresses the exact retained-notifier concern; inspected author red/green evidence covers the transport signal. No independently executed64-client saturation measurement is claimed.",
+    "async_SHUT_WR": "Supplied baseline differential refutes treating async SHUT_WR reply preservation as an original Qt compatibility requirement. It remains a baseline behavior observation, not a newly required feature."
+  },
+  "proof": [
+    {
+      "source": "/tmp/putgd-ipc-disconnect-regression-red.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-disconnect-regression-red.xml",
+      "sha256": "552c0bbfc581f46cfa9cf00bed1defc05ec8d721ce05302181cb7dc099e3a679",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "3",
+      "failures": "1",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "handledRequestObservesDisconnectBeforeReply",
+          "failed": true,
+          "failure": "Compared values are not the same"
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-disconnect-regression-green.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-disconnect-regression-green.xml",
+      "sha256": "9c6444274bd9a1fdf932ec99ee20a3f7412e63ae4ad22a2518b73bdc73470b03",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "3",
+      "failures": "0",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "handledRequestObservesDisconnectBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-disconnect-regression-unix-green.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-disconnect-regression-unix-green.xml",
+      "sha256": "eb2686f3a6963079d8ca590a9975323816b4eabfba8a5470ead892449a789070",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "3",
+      "failures": "0",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "handledRequestObservesDisconnectBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-abort-fixed-green.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-abort-fixed-green.xml",
+      "sha256": "62aea1d25232fd78f4f525fdc37ed678eb4fe23991d01f8009e760c5be25a313",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "4",
+      "failures": "0",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "originalQtObservesAbortBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "nativeObservesAbortBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-abort-fixed-unix-green.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-abort-fixed-unix-green.xml",
+      "sha256": "c949d3268a0528133120654ad9c511dbb71f039eb5b0775c8b75a912a8323f71",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "4",
+      "failures": "0",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "originalQtObservesAbortBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "nativeObservesAbortBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-half-close-compatibility.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-half-close-compatibility.xml",
+      "sha256": "0348d27b24d21294727db01dc3c82ae4a6c78892062cd2029006894a144d5256",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "4",
+      "failures": "0",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "originalQtObservesHalfCloseBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "nativeObservesHalfCloseBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-half-close-unix-compatibility.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-half-close-unix-compatibility.xml",
+      "sha256": "1b222238b2e204244d5393ae60bdfe6a6e3509fc1de5f0208d8df72af9088fd3",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "4",
+      "failures": "0",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "originalQtObservesHalfCloseBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "nativeObservesHalfCloseBeforeReply",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-abort-unix-green.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-abort-unix-green.xml",
+      "sha256": "da626e55a81ca2dcc43f0174ae2fa04449837ff7e6bee6d792a3159f8644dc72",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "4",
+      "failures": "2",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "originalQtObservesAbortBeforeReply",
+          "failed": true,
+          "failure": "'server.listen(d.filePath(\"session\"))' returned FALSE. ()"
+        },
+        {
+          "name": "nativeObservesAbortBeforeReply",
+          "failed": true,
+          "failure": "'server.listen(d.filePath(\"session\"))' returned FALSE. ()"
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    },
+    {
+      "source": "/tmp/putgd-ipc-abort-green.xml",
+      "saved": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta/supplied-evidence/putgd-ipc-abort-green.xml",
+      "sha256": "da626e55a81ca2dcc43f0174ae2fa04449837ff7e6bee6d792a3159f8644dc72",
+      "properties": {
+        "QTestVersion": "6.4.2",
+        "QtVersion": "6.4.2",
+        "QtBuild": "Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0)"
+      },
+      "tests": "4",
+      "failures": "2",
+      "cases": [
+        {
+          "name": "initTestCase",
+          "failed": false,
+          "failure": null
+        },
+        {
+          "name": "originalQtObservesAbortBeforeReply",
+          "failed": true,
+          "failure": "'server.listen(d.filePath(\"session\"))' returned FALSE. ()"
+        },
+        {
+          "name": "nativeObservesAbortBeforeReply",
+          "failed": true,
+          "failure": "'server.listen(d.filePath(\"session\"))' returned FALSE. ()"
+        },
+        {
+          "name": "cleanupTestCase",
+          "failed": false,
+          "failure": null
+        }
+      ],
+      "acceptance_kind": "author-run synthetic transport evidence, inspected not independently executed by review"
+    }
+  ],
+  "root_reported_checks": "Dev28/28, Release4/4, ASan4/4, TSan4/4 terminal; reported by root, not run or independently certified by this review.",
+  "limitations": [
+    "Reused non-author review context; no fresh independence or new external peer job. This is bounded post-review source validation, not a new full ce-code-review invocation.",
+    "No builds/tests/runtime/UI/VM/storage/source/index mutations by review. All original11 hashes and exact3path patch were checked; only review artifacts were written.",
+    "Root reports the two earlier green-named abort probes were sandbox-blocked listener failures; saved XML confirms two listener assertion failures in each. They remain preserved failures and are excluded from green proof. Only later fixed-green/regression-green artifacts and both half-close compatibility outputs support supplied results.",
+    "Physical memory/CPU, native fonts/dialogs and full product/graphical acceptance are not certified.40MiB target remains open. Fixed binary must be measured separately from original45.625MiB result."
+  ]
+}

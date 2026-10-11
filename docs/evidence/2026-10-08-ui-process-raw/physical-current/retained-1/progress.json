@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T02:00:55.764412+00:00",
+  "command": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+    "--mode",
+    "retained",
+    "--app",
+    "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd",
+    "--cli",
+    "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd-cli",
+    "--source-revision",
+    "bcbe63f0d1e1ad00f36ac110fb596d0245869617",
+    "--source-archive",
+    "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/source.tar",
+    "--fixture",
+    "/tmp/putgd-startup-reclaim-exp001",
+    "--output",
+    "/home/patrick/work/put.gd/work/u11/memory/retained-1",
+    "--views",
+    "settings",
+    "history",
+    "activity",
+    "--cycles",
+    "3",
+    "--warmup-seconds",
+    "5",
+    "--visible-seconds",
+    "2",
+    "--quiet-seconds",
+    "30",
+    "--interval",
+    "5",
+    "--acceptance-receipt",
+    "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/cinnamon/receipt.json"
+  ],
+  "workingDirectory": "/home/patrick/work/put.gd",
+  "mode": "retained",
+  "scope": "isolated empty-view lifecycle",
+  "parameters": {
+    "mode": "retained",
+    "app": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd",
+    "cli": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd-cli",
+    "helper": null,
+    "source_revision": "bcbe63f0d1e1ad00f36ac110fb596d0245869617",
+    "source_archive": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/source.tar",
+    "output": "/home/patrick/work/put.gd/work/u11/memory/retained-1",
+    "allow_dirty": false,
+    "acceptance_receipt": [
+      "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/cinnamon/receipt.json"
+    ],
+    "pid": null,
+    "start_ticks": null,
+    "socket": null,
+    "label": "existing-process",
+    "seconds": 0,
+    "interval": 5.0,
+    "fixture": "/tmp/putgd-startup-reclaim-exp001",
+    "cycles": 3,
+    "views": [
+      "settings",
+      "history",
+      "activity"
+    ],
+    "warmup_seconds": 5.0,
+    "visible_seconds": 2.0,
+    "quiet_seconds": 30.0,
+    "timeout": 20
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceRevision": "bcbe63f0d1e1ad00f36ac110fb596d0245869617",
+  "binaries": {
+    "app": {
+      "path": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd",
+      "sha256": "e23fc1f7c81bf3de38a4d0e70e7718962cd4b135ae94793dfe98bcf17d3aae97",
+      "version": "0.1.1-dev.37+gbcbe63f0d1e1"
+    },
+    "cli": {
+      "path": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd-cli",
+      "sha256": "5abf7f05a78e257f4c7d9d6b6609fcfc2303d05978707068f7545d4a05f96363",
+      "version": "0.1.1-dev.37+gbcbe63f0d1e1"
+    }
+  },
+  "sampleCount": 42,
+  "sampleFile": "samples.jsonl",
+  "samples": [
+    {
+      "label": "cycle-3-closed-6",
+      "elapsedSeconds": 118.35071804298786,
+      "totals": {
+        "rssBytes": 68157440,
+        "pssBytes": 42273792,
+        "privateBytes": 39325696
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.01112562499474734
+    }
+  ],
+  "events": [
+    {
+      "elapsedSeconds": 6.895926931989379,
+      "kind": "view-shown",
+      "cycle": 1,
+      "view": "settings",
+      "acknowledgementMilliseconds": 155.4339139838703,
+      "mappedReadyMilliseconds": 671.0694009670988,
+      "mappedOwnedWindows": [
+        "0x6200006"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 9.25542293197941,
+      "kind": "view-shown",
+      "cycle": 1,
+      "view": "history",
+      "acknowledgementMilliseconds": 32.326485961675644,
+      "mappedReadyMilliseconds": 248.38443094631657,
+      "mappedOwnedWindows": [
+        "0x6200006",
+        "0x6200011"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 11.673495099006686,
+      "kind": "view-shown",
+      "cycle": 1,
+      "view": "activity",
+      "acknowledgementMilliseconds": 81.7964649759233,
+      "mappedReadyMilliseconds": 319.5526189520024,
+      "mappedOwnedWindows": [
+        "0x6200006",
+        "0x6200011",
+        "0x6200017"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 14.198974947968964,
+      "kind": "all-views-closed",
+      "cycle": 1,
+      "closeMilliseconds": 150.16547695267946,
+      "helperAbsent": true,
+      "helperExitRequired": false,
+      "residentAlive": true,
+      "closeMethod": "EWMH _NET_CLOSE_WINDOW through wmctrl; no process signal"
+    },
+    {
+      "elapsedSeconds": 44.37167322897585,
+      "kind": "view-shown",
+      "cycle": 2,
+      "view": "settings",
+      "acknowledgementMilliseconds": 17.87056401371956,
+      "mappedReadyMilliseconds": 89.89604696398601,
+      "mappedOwnedWindows": [
+        "0x620001d"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 46.556889681960456,
+      "kind": "view-shown",
+      "cycle": 2,
+      "view": "history",
+      "acknowledgementMilliseconds": 17.762888979632407,
+      "mappedReadyMilliseconds": 96.37176699470729,
+      "mappedOwnedWindows": [
+        "0x620001d",
+        "0x6200023"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 48.735495164000895,
+      "kind": "view-shown",
+      "cycle": 2,
+      "view": "activity",
+      "acknowledgementMilliseconds": 14.403790992219001,
+      "mappedReadyMilliseconds": 90.90020996518433,
+      "mappedOwnedWindows": [
+        "0x620001d",
+        "0x6200023",
+        "0x6200029"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 51.183225107961334,
+      "kind": "all-views-closed",
+      "cycle": 2,
+      "closeMilliseconds": 131.19043101323768,
+      "helperAbsent": true,
+      "helperExitRequired": false,
+      "residentAlive": true,
+      "closeMethod": "EWMH _NET_CLOSE_WINDOW through wmctrl; no process signal"
+    },
+    {
+      "elapsedSeconds": 81.3751021939679,
+      "kind": "view-shown",
+      "cycle": 3,
+      "view": "settings",
+      "acknowledgementMilliseconds": 19.420241995248944,
+      "mappedReadyMilliseconds": 105.75146501651034,
+      "mappedOwnedWindows": [
+        "0x620002f"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 83.57285102497553,
+      "kind": "view-shown",
+      "cycle": 3,
+      "view": "history",
+      "acknowledgementMilliseconds": 16.747166984714568,
+      "mappedReadyMilliseconds": 111.05269996915013,
+      "mappedOwnedWindows": [
+        "0x620002f",
+        "0x6200035"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 85.75141324097058,
+      "kind": "view-shown",
+      "cycle": 3,
+      "view": "activity",
+      "acknowledgementMilliseconds": 16.027210978791118,
+      "mappedReadyMilliseconds": 98.33896299824119,
+      "mappedOwnedWindows": [
+        "0x620002f",
+        "0x6200035",
+        "0x620003b"
+      ],
+      "acknowledgementIsShown": false,
+      "ui": null
+    },
+    {
+      "elapsedSeconds": 88.24491169699468,
+      "kind": "all-views-closed",
+      "cycle": 3,
+      "closeMilliseconds": 134.23857296584174,
+      "helperAbsent": true,
+      "helperExitRequired": false,
+      "residentAlive": true,
+      "closeMethod": "EWMH _NET_CLOSE_WINDOW through wmctrl; no process signal"
+    }
+  ],
+  "status": "starting",
+  "passed": false,
+  "acceptanceReceipts": [
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/cinnamon/receipt.json",
+      "sha256": "04c87594a3d7bd905e73217b153970b05bfc7de5a00414d9d4166f6e86174cec"
+    }
+  ],
+  "limitations": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "environment": {
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "desktop": "X-Cinnamon",
+    "session": "x11",
+    "packages": [
+      "cinnamon 6.6.4+zena",
+      "gnome-shell ",
+      "libc6 2.39-0ubuntu8.9",
+      "libc6 2.39-0ubuntu8.9",
+      "libqt6core6 ",
+      "libqt6core6t64 6.4.2+dfsg-21.1build5",
+      "libqt6widgets6 ",
+      "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+      "muffin 6.6.1+zena"
+    ],
+    "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "logicalCpus": 16,
+    "virtualization": "none"
+  },
+  "sourceArchive": {
+    "path": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/source.tar",
+    "sha256": "94a72afd09a3fa306fae7691b690bf5673e823bd757602e81872964fef2d2939"
+  },
+  "fixture": {
+    "fixtureName": "putgd-startup-reclaim-exp001",
+    "resultsSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+    "configSha256": "3df279b24e87a3587cffc3b63c8169f8fd15e435c67e4236ddcb2394d9f3afeb",
+    "idleAppSha256": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+    "idlePeakSampledRssBytes": 47149056
+  },
+  "dependencies": {
+    "bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe"
+  },
+  "residentIdentity": {
+    "pid": 2551576,
+    "startTicks": 28438835,
+    "uid": 1000,
+    "executable": "/home/patrick/work/put.gd/work/memory-surfaces/integrated-current/host/source/build/release/putgd",
+    "device": 66306,
+    "inode": 27922142
+  },
+  "residentBuild": {
+    "baseVersion": "0.1.1",
+    "commitCount": 37,
+    "dirty": null,
+    "gitCommit": "bcbe63f0d1e1ad00f36ac110fb596d0245869617",
+    "gitTree": "5f624b9d3aaa5f98793e021121a3d64926de93af",
+    "packageVersion": "0.1.1~dev.37+gbcbe63f0d1e1",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.37+gbcbe63f0d1e1"
+  },
+  "progressIncludesLatestSampleOnly": true
+}

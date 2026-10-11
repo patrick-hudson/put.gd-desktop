@@ -1,0 +1,400 @@
+{
+  "timestampUtc": "2026-10-08T23:00:31.031695+00:00",
+  "files": [
+    {
+      "path": "work/memory-surfaces/gnome/collect-extra-memory.py",
+      "bytes": 3144,
+      "sha256": "da53710c77ff83d1076a0511ca6bd2adc7b2cec910d63fc82fb3175d3cb3434b"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-native-before-geometry-control.json",
+      "bytes": 9731,
+      "sha256": "a194bef1758deea1c512dd810629fdfeec6b93870337b599ea078fe151e6bfcd"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-native-control.py",
+      "bytes": 1730,
+      "sha256": "02569920ef4a362baa5231185285ac2b1b40cba94fab3e67e70f3724dca6c3b6"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-native.json",
+      "bytes": 10064,
+      "sha256": "3d87c2abbb9f323c2ff9b3b10f1ab9a911da8f1a1e5aee5ceab716ffafeba4ec"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/actions.jsonl",
+      "bytes": 19423,
+      "sha256": "6cb44a2617fd8b3e308d6bc0e0b9c0bc070481f8d0c7be46ce5c2373f79ccd0d"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/add-s3-unsaved-draft.png",
+      "bytes": 71003,
+      "sha256": "34226e942f970dfc4b7dde281a72b897fcb6654ed4357d3fbd519ff936d7032d"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/advanced-open.png",
+      "bytes": 87044,
+      "sha256": "9074cc20e59a6684ffe3de9874c186da3cbe4f614ecd9e01b08f0986aaf17092"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/after-local-draft-cancel.png",
+      "bytes": 96519,
+      "sha256": "b6a323a7cfc40cc15f1d4f24c88ff0b11d7933f77ff510405d7a81c69b2db2db"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/capture-folders-visible.png",
+      "bytes": 96320,
+      "sha256": "f43e5979fbde2cab9dc40d1ede859630acc8f937e84efc47b82074fcf764ab48"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/capture-settings.png",
+      "bytes": 90618,
+      "sha256": "9706cef5e01aef74ede3ae82d47b63e85e2c4a135469cf6306056b1de455a4a1"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/destination-draft-cancel.png",
+      "bytes": 853059,
+      "sha256": "7f717ee4c6983c3027cb4713e26e592d281081957387087dbec0a5f23e06afa1"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/extra-ui-finished.png",
+      "bytes": 853065,
+      "sha256": "3a10abb7ef02d3ff6c2f262635736db92571273374ea299ea2ea0dc955de0b0f"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/final-state.json",
+      "bytes": 481,
+      "sha256": "db13619b14542b47ec1c8b0548e2e920d472bd40674eb681d61267af2082ebfa"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/history-image-reselected.png",
+      "bytes": 316136,
+      "sha256": "2ea1992f58c4372e0e9f22d5ba3dba4e4f7c4c54961c5dca343b7be81def28b4"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/history-image-selected.png",
+      "bytes": 315911,
+      "sha256": "486d3b47d42df9b12b67555f013397939a7edefae446b510675572fcf19dca20"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/history-initial.png",
+      "bytes": 315741,
+      "sha256": "0c49510611e19ccc632d6128774f1851e74799d148ab7985c31e58dce96e7255"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/history-preview-hidden.png",
+      "bytes": 852856,
+      "sha256": "982d9faa9b22935190e0d563b80cd093030cfa193f0e2503e82d1e8567f384a7"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/history-preview-reopened.png",
+      "bytes": 313410,
+      "sha256": "9277b90e3c38f545e48ccddda7631b2937aed906dbd975fc3b34b4e3a717ced8"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/history-text-selected.png",
+      "bytes": 326973,
+      "sha256": "bdf625767f51d70cfb6c42844d08b84a64e96678c77acf5cc41f164567ea1894"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/local-draft-cancel.png",
+      "bytes": 852954,
+      "sha256": "aef0a5d1d42276d549835a38556e38744e8bce1751d85e34c95e9e506953a59a"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/local-draft-entered.png",
+      "bytes": 95944,
+      "sha256": "0494b8948ee34a45ed9ff0205939141e57710792fd1ad04d70983e89d2e71894"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/local-draft-focus.png",
+      "bytes": 96373,
+      "sha256": "ba890d53f11fc9a5bbd8bf320e36e70ed3cc84177148858251f0e64a6bd8d919"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/local-draft-hidden.png",
+      "bytes": 853059,
+      "sha256": "7f717ee4c6983c3027cb4713e26e592d281081957387087dbec0a5f23e06afa1"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/local-draft-reopened.png",
+      "bytes": 95845,
+      "sha256": "b78ab653ac8298c243b6ed732df54a168ed4dcf346b19fe0cf08bc7254b3b7e5"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/local-draft-select.png",
+      "bytes": 96353,
+      "sha256": "b1c8e8edb796d916b9b8ab3c9ee6e326de93176e1d6fb6a398d82bccd69157f6"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/maximized-closed.png",
+      "bytes": 852848,
+      "sha256": "5f68c6d27ad96cc2c0baf658a5c67b67173f60d04eb7d87cdbfd5109f6e03960"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/maximized-reopened.png",
+      "bytes": 70786,
+      "sha256": "81664b782c0e581b45588672b05076d15a52223ac8394fcf21ab8b2ef625056a"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/minimized-dock-restore.png",
+      "bytes": 72135,
+      "sha256": "33909921b9ae05524824e9efce5cf771f62e169aa5f6a765e24279662b790a13"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/modal-parent-show-request.png",
+      "bytes": 44874,
+      "sha256": "c8516b869e063668bae5cf68aadbcb53e2755cb3d67eccc75ecefa8f6d62bedd"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/native-dialog-altf4.png",
+      "bytes": 96294,
+      "sha256": "e559354c2e3b49e89539cd179608643048257b5773f0441c30f3706990920c97"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/native-dialog-libraries.json",
+      "bytes": 211,
+      "sha256": "6d2a3f425dc7b541b7b52dd32bddd0bcea18d11574f74580c7a22a5cb5087650"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/native-folder-dialog-cancel.png",
+      "bytes": 96385,
+      "sha256": "6a9fd6719565572a465424d2c03c50e6d95292519644deb1adf750f73896a46e"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/native-folder-dialog-open.png",
+      "bytes": 44874,
+      "sha256": "c8516b869e063668bae5cf68aadbcb53e2755cb3d67eccc75ecefa8f6d62bedd"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/native-folder-dialog-reopened.png",
+      "bytes": 44784,
+      "sha256": "70095156e9746b5e3281e7ef80f23412b904f48d76b139eb578d4c8647e5fb15"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/native-parent-closed.png",
+      "bytes": 852954,
+      "sha256": "aef0a5d1d42276d549835a38556e38744e8bce1751d85e34c95e9e506953a59a"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/native-parent-reopened.png",
+      "bytes": 96295,
+      "sha256": "e20fd92146ca7a4fd3674cca4ecadf560ffda09f8041ecb8166d4a8a9f3a4447"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/post-extra-memory.json",
+      "bytes": 1525,
+      "sha256": "4872c1c2475946b428c942dd2dc8b2fca3fc465feeb03913dc9b4c25f4fd0902"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/region-popup-after-recreation.png",
+      "bytes": 72604,
+      "sha256": "5439dc9a48a71221bec40b87ef8c17578ba3f0a664f67e1f4534a41c257733ab"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/region-popup-cancel.png",
+      "bytes": 71029,
+      "sha256": "c8b771a13d8591a3edf40b1e8c0693db8f446881299a931d521574f7070e139c"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/region-popup-enabled.png",
+      "bytes": 71008,
+      "sha256": "f0406f9c1e1666af7b520827bf0b53858bd04abc3ebba29353c63d24758d5cdd"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/region-popup-observed-position.png",
+      "bytes": 79580,
+      "sha256": "22eec1f12e4460863b717e5b97953fd67eba7b576b56fd317637537d6fae5b32"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/session-and-bindings.json",
+      "bytes": 144,
+      "sha256": "5d2114ca2b826f8663347cd89b22f1e6c80a779b28b2671131f1735902edeb2d"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-after-draft-cancel.png",
+      "bytes": 71055,
+      "sha256": "cc1c324f3b2a2db2d1ce84e5c451e06ddeb64dfdee36943ed2a1ddcf283fdc00"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-after.json",
+      "bytes": 572,
+      "sha256": "195443e95a994c24e4d974d83be225fe764ccc8a3cf55d17706a4c9b4a66f2f5"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-before.json",
+      "bytes": 572,
+      "sha256": "195443e95a994c24e4d974d83be225fe764ccc8a3cf55d17706a4c9b4a66f2f5"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-finished.png",
+      "bytes": 852856,
+      "sha256": "982d9faa9b22935190e0d563b80cd093030cfa193f0e2503e82d1e8567f384a7"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-initial.png",
+      "bytes": 264062,
+      "sha256": "d6e0574193b8d0dbb801aeb18f60174ef06f44c3b3c47b909a2af837df040fb8"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-maximized.png",
+      "bytes": 70786,
+      "sha256": "81664b782c0e581b45588672b05076d15a52223ac8394fcf21ab8b2ef625056a"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-minimized.png",
+      "bytes": 854890,
+      "sha256": "e324dceba6086a3e5b197b2a80683e908d79616481455503d98d25d89bd06fd9"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-normal-restored.png",
+      "bytes": 74146,
+      "sha256": "a099089873a0afb765eff70833c0c34b1e72935604d883559c6579dd62578fa0"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-normal.png",
+      "bytes": 824153,
+      "sha256": "7692d55a96d1ca5363dacbd8f8cb6bea6bc2afbb8405abbfba0eb021153e46f8"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/extra-ui-checks/settings-restored.png",
+      "bytes": 824153,
+      "sha256": "7692d55a96d1ca5363dacbd8f8cb6bea6bc2afbb8405abbfba0eb021153e46f8"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/CMakeLists.txt",
+      "bytes": 314,
+      "sha256": "e119187ef59a9056f93a4381722ebc3cc3d550845f6e85ad6cfa7b88445ae953"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/RetainedWindow.h",
+      "bytes": 2049,
+      "sha256": "1df97f83fb32f6954b11895f17062fd10ffe923d2cc810566fff4297f409eb05"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/build-receipt.json",
+      "bytes": 437,
+      "sha256": "9a74c0b6125253378c31f730e4e5ef3638ffde2988d91418aa3b447ffb1e4748"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/build.log",
+      "bytes": 2807,
+      "sha256": "01dd5478561df806e03ddc0de4030d8930e3dbf6e1952e6c673f3b096cd4db10"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/conclusion.json",
+      "bytes": 2423,
+      "sha256": "49431d8b61f875cdfa3e49e4d1a3766bb4b07a150a53d2314361033e853d183d"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/configure.log",
+      "bytes": 739,
+      "sha256": "af65476b8727d37d9b38d7a06cff1291cccd1ec1c9909a617e83cac7ee7cc407"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/native-comparison.png",
+      "bytes": 414949,
+      "sha256": "25465c590990a4d6c29bb277224f8a239d821e20d4d045663934c4c564bea09f"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/plain/application.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/plain/closed.png",
+      "bytes": 853074,
+      "sha256": "7136c9108733d7257629d79489081e988c4fc3bc140ca851838af3aff969e694"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/plain/maximized-before-close.png",
+      "bytes": 34873,
+      "sha256": "aa28f374683fdf6bf1b9d7140b5934be106465add5b01c919db1685aaad04ceb"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/plain/normal-before.png",
+      "bytes": 559953,
+      "sha256": "f51d832b9bfd26ae240fe52dd4ff78dcd4920f502937401fc71bb5d2fe7db8d5"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/plain/normal-restored.png",
+      "bytes": 36748,
+      "sha256": "6e95f8884e3080f286cf86b2b2a5b2974e54952ca1b2d1e88bbf7106eef86769"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/plain/reopened-maximized.png",
+      "bytes": 34873,
+      "sha256": "aa28f374683fdf6bf1b9d7140b5934be106465add5b01c919db1685aaad04ceb"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/plain/stages.json",
+      "bytes": 4900,
+      "sha256": "fbe6811ae04435ce68b1d6cb14c752b7cfd7497aaf0c1c04ce32e97052db74c5"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/probe.cpp",
+      "bytes": 2018,
+      "sha256": "a1882c8926728d71cc364ad8e308a141e8905760b7b95fb5749528d43f71fed2"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/results.json",
+      "bytes": 11917,
+      "sha256": "60dfb6c34e7d62881314836a63d36e70e164e8d51a8978851518674d6dd67f1b"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/retained/application.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/retained/closed.png",
+      "bytes": 853074,
+      "sha256": "7136c9108733d7257629d79489081e988c4fc3bc140ca851838af3aff969e694"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/retained/maximized-before-close.png",
+      "bytes": 35155,
+      "sha256": "79b6f7c42c275fc634bd54e494ff6fabc7f937a28078b4b9c7fa50d7deaf9f5a"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/retained/normal-before.png",
+      "bytes": 560346,
+      "sha256": "79a2612248e77a6a07da35ab3e9a1811034c47646607de3ad0955fc74fcbd8cc"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/retained/normal-restored.png",
+      "bytes": 37036,
+      "sha256": "982766b408937fd0c58530ac539bcc1b0537b83735fd5b0a487407122c2f8043"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/retained/reopened-maximized.png",
+      "bytes": 35155,
+      "sha256": "79b6f7c42c275fc634bd54e494ff6fabc7f937a28078b4b9c7fa50d7deaf9f5a"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/retained/stages.json",
+      "bytes": 4823,
+      "sha256": "75e3ebc1539754a32f1e81cbf1ab5500d30674130bdbf8f2f5ef7f37df587f90"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/runner.log",
+      "bytes": 3787,
+      "sha256": "8cf960f7417ec494f8319ae221b4390b52713f494db89aadd35c59d7ab5f646d"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/source-receipt.json",
+      "bytes": 515,
+      "sha256": "c70d265fdb0c7644bdcea474e228d376e6f086af46e38b5b67c0c3fd1eb5e651"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/run-geometry-probe.py",
+      "bytes": 1920,
+      "sha256": "8f5b208365e6ecd0017d54aedf83c3b61adfb8f956694a14310362ed2b41f7cb"
+    },
+    {
+      "path": "work/memory-surfaces/gnome/geometry-probe/helper-exit.json",
+      "bytes": 263,
+      "sha256": "2fc96040ed7722d2b4672d8ccdb803cc16fb0a350c9f753dba5f07c637fd3b18"
+    }
+  ]
+}

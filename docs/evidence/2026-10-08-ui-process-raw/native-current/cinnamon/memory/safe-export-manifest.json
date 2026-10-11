@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "desktop": "cinnamon",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "allowlistOnly": true,
+  "privacy": "No payloads, clipboard contents, credentials, private-key bytes, profile/configuration contents or user screenshot data. Guard exports are IDs/states/count/UI only. The sole user-generated region payload was never read/hashed/exported.",
+  "files": [
+    {
+      "path": "work/u11/native/cinnamon/memory/results.json",
+      "bytes": 15036,
+      "sha256": "ad0f84a14db311caafcabe9d90a066b180bd3b76210a1a421d6981097e750711"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/progress.json",
+      "bytes": 5126,
+      "sha256": "e76df3925571156a3e3090098a0607fe64be2017bd3b98ddeede9b5feb856f84"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/samples.jsonl",
+      "bytes": 16338,
+      "sha256": "caffdd9de2f46c155163b0b16854ad6b2da5a5ec201c0f7a00e85b484dd5c0d1"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/footprint.json",
+      "bytes": 18546,
+      "sha256": "04548c6b3a38366d78abef88cdafb4dadf9d44c6885be67efa962b7008e1d012"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/footprint-command.json",
+      "bytes": 468,
+      "sha256": "e4f5432ed336c58563f86fa04a75cc46bd8fe379a3cefea9e518afacfcdb57c1"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/observer.log",
+      "bytes": 7613,
+      "sha256": "15fe31d14a98856c16dbb74aa093cebfb1dbf4f0ef08d9c0a555933d2d4ff68c"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/unit-receipt.json",
+      "bytes": 2656,
+      "sha256": "42e6d25ad270a9e4b3a7009433363dba9d2f9e4ad83d000bbba01ba42bb1739f"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/quiet-guard.json",
+      "bytes": 135526,
+      "sha256": "dc1933de138320447dc367ec2d3e20e252cedc75cf7c5a1a65cc55d431ef7e10"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/quiet-guards.jsonl",
+      "bytes": 84524,
+      "sha256": "0e8ea2ecc59f58ef92cf83b474edab9f076c9a351492d0c4ab942b7f54754058"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/observer.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/launcher.json",
+      "bytes": 834,
+      "sha256": "d3d910743e9dcd0fb0327a036432b58218055355efc25e9cc15cdc3116267fab"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/launcher.log",
+      "bytes": 190,
+      "sha256": "c8472d2b64b59bff5e9c94bc152e359a53aa122d40d8f758be7985a3ed7f6803"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/launcher-exit.json",
+      "bytes": 59,
+      "sha256": "e33e49fb3626300b3dd9eaed665dcb5e55a690aa74179c871032fdf35c6182b2"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/restored-preflight.json",
+      "bytes": 7076,
+      "sha256": "9fbcbbd1306852adacd5f4a3e6bb8294a11b028c0115faa8c4bfc15b0a456843"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/console-before-converted.png",
+      "bytes": 399433,
+      "sha256": "d76c322378eb2c770641e51c1c717c56991f09b7fc8fe87a8e6d3797f12bbb1a"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/console-restored.png",
+      "bytes": 312500,
+      "sha256": "867ebf18091a9f1dfc5a4d97b8c23419b63933e9153b2fb62b981b30b1c0d263"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/memory-guard-v2.py",
+      "bytes": 6769,
+      "sha256": "c1e8de16e48152eebcf5816b6d2d99e8feddd8a99f8ec68ddc1280134544239f"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/run-three.py",
+      "bytes": 1621,
+      "sha256": "ca4b44de0846f5bba7ee9dbfc78393beaf1003d41343ac18889b34c0cf014e2e"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/collect.py",
+      "bytes": 2072,
+      "sha256": "6f04b690490c3c1565dfaf417e56e269fffdbb561a227be034ee41476c36134e"
+    },
+    {
+      "path": "work/u11/native/cinnamon/quiet-memory-preflight/three-launcher.log",
+      "bytes": 131,
+      "sha256": "85f2a4b134e712a858aa1a34c2470e5cc94c74e127c1e6f07640d6d2d223871c"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory-prepared.json",
+      "bytes": 3446,
+      "sha256": "8f704409d9a663549d02b6d9d3d13d073070d09934ff5902d961fab8e5e51519"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T04:47:13.634429+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-settled.png",
+  "sha256": "1ca9f3ab6a4ee841925546591ee28f2b92716dbab9622a694f3d0481c1a0198e",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-lazy-exp001-native-settings-empty-wide-settled-head0.ppm",
+    "sha256": "4ed9fa7d6ead17d8f0b084fd70eb51caa819ed996dd37417102558e0bf5afd2a"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5934,
+  "visualReview": "pending"
+}

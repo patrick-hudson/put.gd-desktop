@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "question": "Would switching to cstdint, minimum integer widths or member alignment materially reduce this application memory?",
+  "conclusion": "No production integer-width change selected. Fixed-width aliases of the same size do not save storage. Dense measured populations and avoidable padding can justify specific changes, but the current cold workload has zero operations/history rows and no measured large app numeric population.",
+  "probe": "../../tools/diagnostics/layout/README.md",
+  "rawDirectory": "2026-10-08-layout-inspection-raw",
+  "rawManifest": "2026-10-08-layout-inspection-raw/manifest.json",
+  "environment": {
+    "bits_per_byte": 8,
+    "build_type": "Release",
+    "compiler_id": "GNU",
+    "compiler_version": "13.3.0",
+    "cplusplus": 202002,
+    "pointer_size_bytes": 8,
+    "pointer_width_bits": 64,
+    "qt_compile_version": "6.4.2",
+    "qt_runtime_version": "6.4.2"
+  },
+  "observations": {
+    "intAndQint32AndStdInt32Bytes": 4,
+    "qint64AndStdInt64Bytes": 8,
+    "stdIntFast32Bytes": 8,
+    "syntheticNarrowingStrideSavedBytes": 0,
+    "syntheticReorderingStrideSavedBytes": 8,
+    "resourceLimitsInlineBytes": 72,
+    "defaultFileLimitBytes": 2147483648,
+    "signed32Maximum": 2147483647
+  },
+  "verification": {
+    "workerConfigureBuildRun": "all exit0, normal standalone CMake/Ninja, existing dynamic Qt6.4.2",
+    "rootReplay": "same executable run independently; JSON matches the saved output exactly; no stderr; expected alias sizes and both synthetic layouts verified",
+    "sourceReview": "Root inspected all three diagnostic files, including correct standard-layout guards before offsetof, no application instantiation/IO, bounded JSON metadata and fail-fast reproduction commands. Root supplied design scope; implementation authored by reused audit worker. Not a fresh external review.",
+    "receipt": "2026-10-08-layout-inspection-raw/identity.json"
+  },
+  "limits": [
+    "sizeof includes inline padding but excludes pointed allocations, container capacity and live population counts.",
+    "Probe is metadata only; no RSS saving, production layout change, performance target or compositor acceptance is claimed.",
+    "Changing integer spelling is not guaranteed to preserve all overload/ABI distinctions even when widths match; this probe compares storage size, not type identity.",
+    "Preserve validated ranges, intermediate arithmetic, serialization/database and provider ABI; packing is not authorized by this investigation."
+  ],
+  "nextAction": "Prioritize measured heap/native drawing-buffer costs. Reconsider a specific layout only with object-count attribution, safe bounds, before/after stride and a frozen workload comparison.",
+  "primaryReferences": [
+    {
+      "title": "C++ draft cstdint synopsis",
+      "url": "https://eel.is/c++draft/cstdint.syn"
+    },
+    {
+      "title": "Qt integer type aliases",
+      "url": "https://doc.qt.io/qt-6/qttypes.html"
+    }
+  ]
+}

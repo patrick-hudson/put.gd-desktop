@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "--no-tests=error",
+    "-R",
+    "^x11_isolated$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/async-cancel-green.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:14:57.882872+00:00"
+}

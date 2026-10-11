@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:38:00.817811+00:00",
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "ui": {
+    "checkpointBytes": 2510,
+    "lastExit": {
+      "code": 0,
+      "generation": 6,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "source": "Activity Copy result of final synthetic clipboard-text tray case, followed by Activity and About helper exits",
+  "ok": true,
+  "fixtureGeometry": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 320
+  },
+  "keys": [
+    "ctrl",
+    "v"
+  ],
+  "comparison": {
+    "ok": true,
+    "expected": {
+      "text": "putgd synthetic clipboard text"
+    },
+    "actual": {
+      "formats": [
+        "text/plain",
+        "UTF8_STRING",
+        "application/x-putgd-result-ac775cadf4a049aea115abc0e9f7c54f"
+      ],
+      "schemaVersion": 1,
+      "text": "putgd synthetic clipboard text"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/u11-paste-after-helper-head0.ppm",
+    "sha256": "3c8a9a1f9650f8b2599699b722dab8f2930436e7671147bbb89adf9aa63742a0"
+  },
+  "uiAfter": {
+    "checkpointBytes": 2510,
+    "lastExit": {
+      "code": 0,
+      "generation": 6,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "finishedUtc": "2026-10-09T01:38:03.502995+00:00"
+}

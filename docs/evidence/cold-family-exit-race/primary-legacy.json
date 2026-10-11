@@ -1,0 +1,1039 @@
+{
+  "schemaVersion": 1,
+  "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+  "appSha256": "1b401a564e2143b0e7eed6615b20a9b80a911a34965115e7d671a51968bc5719",
+  "kernel": "6.14.0-37-generic",
+  "machine": "x86_64",
+  "desktop": "X-Cinnamon",
+  "session": "x11",
+  "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+  "warmupSeconds": 5,
+  "samples": [
+    {
+      "elapsedSeconds": 0.03460661001736298,
+      "cpuTicks": 0,
+      "rssBytes": 26095616
+    },
+    {
+      "elapsedSeconds": 30.049635869043414,
+      "cpuTicks": 1,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 60.062532310024835,
+      "cpuTicks": 1,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 90.07501904503442,
+      "cpuTicks": 1,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 120.08599956799299,
+      "cpuTicks": 1,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 150.09816956799477,
+      "cpuTicks": 2,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 180.10846481402405,
+      "cpuTicks": 2,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 210.11854749999475,
+      "cpuTicks": 2,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 240.12821348104626,
+      "cpuTicks": 2,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 270.1377361090272,
+      "cpuTicks": 2,
+      "rssBytes": 26034176
+    },
+    {
+      "elapsedSeconds": 300.14719235902885,
+      "cpuTicks": 2,
+      "rssBytes": 26034176
+    }
+  ],
+  "initialRssBytes": 26095616,
+  "initialFootprint": [
+    {
+      "mapping": "libQt6Core.so.6.4.2",
+      "rssBytes": 4055040,
+      "pssBytes": 4055040,
+      "privateBytes": 4055040
+    },
+    {
+      "mapping": "libQt6Gui.so.6.4.2",
+      "rssBytes": 3239936,
+      "pssBytes": 3239936,
+      "privateBytes": 3239936
+    },
+    {
+      "mapping": "libQt6Widgets.so.6.4.2",
+      "rssBytes": 1978368,
+      "pssBytes": 1978368,
+      "privateBytes": 1978368
+    },
+    {
+      "mapping": "libc.so.6",
+      "rssBytes": 1724416,
+      "pssBytes": 28672,
+      "privateBytes": 24576
+    },
+    {
+      "mapping": "putgd",
+      "rssBytes": 1716224,
+      "pssBytes": 1716224,
+      "privateBytes": 1716224
+    },
+    {
+      "mapping": "libstdc++.so.6.0.33",
+      "rssBytes": 1552384,
+      "pssBytes": 87040,
+      "privateBytes": 57344
+    },
+    {
+      "mapping": "libsqlite3.so.0.8.6",
+      "rssBytes": 1216512,
+      "pssBytes": 222208,
+      "privateBytes": 36864
+    },
+    {
+      "mapping": "libicui18n.so.74.2",
+      "rssBytes": 1183744,
+      "pssBytes": 1006592,
+      "privateBytes": 929792
+    },
+    {
+      "mapping": "[anonymous]",
+      "rssBytes": 860160,
+      "pssBytes": 860160,
+      "privateBytes": 860160
+    },
+    {
+      "mapping": "libglib-2.0.so.0.8000.0",
+      "rssBytes": 741376,
+      "pssBytes": 70656,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libQt6DBus.so.6.4.2",
+      "rssBytes": 712704,
+      "pssBytes": 712704,
+      "privateBytes": 712704
+    },
+    {
+      "mapping": "libicuuc.so.74.2",
+      "rssBytes": 573440,
+      "pssBytes": 248832,
+      "privateBytes": 81920
+    },
+    {
+      "mapping": "libGLdispatch.so.0.0.0",
+      "rssBytes": 516096,
+      "pssBytes": 385024,
+      "privateBytes": 352256
+    },
+    {
+      "mapping": "libm.so.6",
+      "rssBytes": 438272,
+      "pssBytes": 9216,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "[heap]",
+      "rssBytes": 372736,
+      "pssBytes": 372736,
+      "privateBytes": 372736
+    },
+    {
+      "mapping": "libgomp.so.1.0.0",
+      "rssBytes": 339968,
+      "pssBytes": 333824,
+      "privateBytes": 327680
+    },
+    {
+      "mapping": "libdbus-1.so.3.32.4",
+      "rssBytes": 319488,
+      "pssBytes": 10240,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libQt6Sql.so.6.4.2",
+      "rssBytes": 303104,
+      "pssBytes": 303104,
+      "privateBytes": 303104
+    },
+    {
+      "mapping": "ld-linux-x86-64.so.2",
+      "rssBytes": 237568,
+      "pssBytes": 16384,
+      "privateBytes": 16384
+    },
+    {
+      "mapping": "libsystemd.so.0.38.0",
+      "rssBytes": 204800,
+      "pssBytes": 50176,
+      "privateBytes": 49152
+    },
+    {
+      "mapping": "libX11.so.6.4.0",
+      "rssBytes": 204800,
+      "pssBytes": 21504,
+      "privateBytes": 20480
+    },
+    {
+      "mapping": "libxcb.so.1.1.0",
+      "rssBytes": 167936,
+      "pssBytes": 13312,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libgcrypt.so.20.4.3",
+      "rssBytes": 163840,
+      "pssBytes": 43008,
+      "privateBytes": 36864
+    },
+    {
+      "mapping": "libOpenGL.so.0.0.0",
+      "rssBytes": 155648,
+      "pssBytes": 155648,
+      "privateBytes": 155648
+    },
+    {
+      "mapping": "libgpg-error.so.0.34.0",
+      "rssBytes": 151552,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libfreetype.so.6.20.1",
+      "rssBytes": 151552,
+      "pssBytes": 32768,
+      "privateBytes": 32768
+    },
+    {
+      "mapping": "LC_CTYPE",
+      "rssBytes": 131072,
+      "pssBytes": 7168,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "libGLX.so.0.0.0",
+      "rssBytes": 122880,
+      "pssBytes": 91136,
+      "privateBytes": 90112
+    },
+    {
+      "mapping": "libharfbuzz.so.0.60830.0",
+      "rssBytes": 118784,
+      "pssBytes": 9216,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libqt6keychain.so.0.14.2",
+      "rssBytes": 114688,
+      "pssBytes": 114688,
+      "privateBytes": 114688
+    },
+    {
+      "mapping": "libfontconfig.so.1.12.1",
+      "rssBytes": 110592,
+      "pssBytes": 12288,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libgcc_s.so.1",
+      "rssBytes": 106496,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libxkbcommon.so.0.0.0",
+      "rssBytes": 98304,
+      "pssBytes": 19456,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libqsqlite.so",
+      "rssBytes": 94208,
+      "pssBytes": 94208,
+      "privateBytes": 94208
+    },
+    {
+      "mapping": "libexpat.so.1.9.1",
+      "rssBytes": 94208,
+      "pssBytes": 14336,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libpng16.so.16.43.0",
+      "rssBytes": 94208,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libgraphite2.so.3.2.1",
+      "rssBytes": 90112,
+      "pssBytes": 13312,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libzstd.so.1.5.5",
+      "rssBytes": 90112,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "liblzma.so.5.4.5",
+      "rssBytes": 86016,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "liblz4.so.1.9.4",
+      "rssBytes": 86016,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libpcre2-8.so.0.11.2",
+      "rssBytes": 81920,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libpcre2-16.so.0.11.2",
+      "rssBytes": 81920,
+      "pssBytes": 75776,
+      "privateBytes": 69632
+    },
+    {
+      "mapping": "libb2.so.1.0.4",
+      "rssBytes": 81920,
+      "pssBytes": 81920,
+      "privateBytes": 81920
+    },
+    {
+      "mapping": "libz.so.1.3",
+      "rssBytes": 81920,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbz2.so.1.0.4",
+      "rssBytes": 73728,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbsd.so.0.12.1",
+      "rssBytes": 73728,
+      "pssBytes": 13312,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libEGL.so.1.1.0",
+      "rssBytes": 73728,
+      "pssBytes": 20480,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "locale-archive",
+      "rssBytes": 65536,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "libdouble-conversion.so.3.1",
+      "rssBytes": 65536,
+      "pssBytes": 43008,
+      "privateBytes": 20480
+    },
+    {
+      "mapping": "libmd4c.so.0.4.8",
+      "rssBytes": 61440,
+      "pssBytes": 61440,
+      "privateBytes": 61440
+    },
+    {
+      "mapping": "libxcb-render.so.0.0.0",
+      "rssBytes": 61440,
+      "pssBytes": 20480,
+      "privateBytes": 20480
+    },
+    {
+      "mapping": "libwayland-client.so.0.22.0",
+      "rssBytes": 57344,
+      "pssBytes": 13312,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libxcb-randr.so.0.1.0",
+      "rssBytes": 57344,
+      "pssBytes": 28672,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libmd.so.0.1.0",
+      "rssBytes": 53248,
+      "pssBytes": 11264,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "[stack]",
+      "rssBytes": 49152,
+      "pssBytes": 49152,
+      "privateBytes": 49152
+    },
+    {
+      "mapping": "libcap.so.2.66",
+      "rssBytes": 45056,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbrotlidec.so.1.1.0",
+      "rssBytes": 45056,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libffi.so.8.1.4",
+      "rssBytes": 45056,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libxcb-xfixes.so.0.0.0",
+      "rssBytes": 40960,
+      "pssBytes": 22528,
+      "privateBytes": 16384
+    },
+    {
+      "mapping": "gconv-modules.cache",
+      "rssBytes": 28672,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "libXdmcp.so.6.0.0",
+      "rssBytes": 24576,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libXau.so.6.0.0",
+      "rssBytes": 24576,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libicudata.so.74.2",
+      "rssBytes": 16384,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbrotlicommon.so.1.1.0",
+      "rssBytes": 16384,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libxcb-keysyms.so.1.0.0",
+      "rssBytes": 16384,
+      "pssBytes": 16384,
+      "privateBytes": 16384
+    },
+    {
+      "mapping": "[vdso]",
+      "rssBytes": 8192,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_NUMERIC",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_TIME",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_COLLATE",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_MONETARY",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "SYS_LC_MESSAGES",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_PAPER",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_NAME",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_ADDRESS",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_TELEPHONE",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_MEASUREMENT",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_IDENTIFICATION",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "[vvar]",
+      "rssBytes": 0,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "[vvar_vclock]",
+      "rssBytes": 0,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "[vsyscall]",
+      "rssBytes": 0,
+      "pssBytes": 0,
+      "privateBytes": 0
+    }
+  ],
+  "elapsedSeconds": 300.14719235902885,
+  "idleCpuPercentOneCore": 0.00666339732942645,
+  "finalRssBytes": 26034176,
+  "peakSampledRssBytes": 26095616,
+  "finalFootprint": [
+    {
+      "mapping": "libQt6Core.so.6.4.2",
+      "rssBytes": 4055040,
+      "pssBytes": 4055040,
+      "privateBytes": 4055040
+    },
+    {
+      "mapping": "libQt6Gui.so.6.4.2",
+      "rssBytes": 3239936,
+      "pssBytes": 3239936,
+      "privateBytes": 3239936
+    },
+    {
+      "mapping": "libQt6Widgets.so.6.4.2",
+      "rssBytes": 1978368,
+      "pssBytes": 1978368,
+      "privateBytes": 1978368
+    },
+    {
+      "mapping": "libc.so.6",
+      "rssBytes": 1724416,
+      "pssBytes": 28672,
+      "privateBytes": 24576
+    },
+    {
+      "mapping": "putgd",
+      "rssBytes": 1716224,
+      "pssBytes": 1716224,
+      "privateBytes": 1716224
+    },
+    {
+      "mapping": "libstdc++.so.6.0.33",
+      "rssBytes": 1552384,
+      "pssBytes": 87040,
+      "privateBytes": 57344
+    },
+    {
+      "mapping": "libsqlite3.so.0.8.6",
+      "rssBytes": 1216512,
+      "pssBytes": 191488,
+      "privateBytes": 36864
+    },
+    {
+      "mapping": "libicui18n.so.74.2",
+      "rssBytes": 1183744,
+      "pssBytes": 1006592,
+      "privateBytes": 929792
+    },
+    {
+      "mapping": "[anonymous]",
+      "rssBytes": 798720,
+      "pssBytes": 798720,
+      "privateBytes": 798720
+    },
+    {
+      "mapping": "libglib-2.0.so.0.8000.0",
+      "rssBytes": 741376,
+      "pssBytes": 51200,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libQt6DBus.so.6.4.2",
+      "rssBytes": 712704,
+      "pssBytes": 712704,
+      "privateBytes": 712704
+    },
+    {
+      "mapping": "libicuuc.so.74.2",
+      "rssBytes": 573440,
+      "pssBytes": 197632,
+      "privateBytes": 81920
+    },
+    {
+      "mapping": "libGLdispatch.so.0.0.0",
+      "rssBytes": 516096,
+      "pssBytes": 261120,
+      "privateBytes": 118784
+    },
+    {
+      "mapping": "libm.so.6",
+      "rssBytes": 438272,
+      "pssBytes": 9216,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "[heap]",
+      "rssBytes": 372736,
+      "pssBytes": 372736,
+      "privateBytes": 372736
+    },
+    {
+      "mapping": "libgomp.so.1.0.0",
+      "rssBytes": 339968,
+      "pssBytes": 333824,
+      "privateBytes": 327680
+    },
+    {
+      "mapping": "libdbus-1.so.3.32.4",
+      "rssBytes": 319488,
+      "pssBytes": 10240,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libQt6Sql.so.6.4.2",
+      "rssBytes": 303104,
+      "pssBytes": 303104,
+      "privateBytes": 303104
+    },
+    {
+      "mapping": "ld-linux-x86-64.so.2",
+      "rssBytes": 237568,
+      "pssBytes": 16384,
+      "privateBytes": 16384
+    },
+    {
+      "mapping": "libsystemd.so.0.38.0",
+      "rssBytes": 204800,
+      "pssBytes": 49152,
+      "privateBytes": 49152
+    },
+    {
+      "mapping": "libX11.so.6.4.0",
+      "rssBytes": 204800,
+      "pssBytes": 20480,
+      "privateBytes": 20480
+    },
+    {
+      "mapping": "libxcb.so.1.1.0",
+      "rssBytes": 167936,
+      "pssBytes": 12288,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libgcrypt.so.20.4.3",
+      "rssBytes": 163840,
+      "pssBytes": 40960,
+      "privateBytes": 36864
+    },
+    {
+      "mapping": "libOpenGL.so.0.0.0",
+      "rssBytes": 155648,
+      "pssBytes": 155648,
+      "privateBytes": 155648
+    },
+    {
+      "mapping": "libgpg-error.so.0.34.0",
+      "rssBytes": 151552,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libfreetype.so.6.20.1",
+      "rssBytes": 151552,
+      "pssBytes": 32768,
+      "privateBytes": 32768
+    },
+    {
+      "mapping": "LC_CTYPE",
+      "rssBytes": 131072,
+      "pssBytes": 7168,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "libGLX.so.0.0.0",
+      "rssBytes": 122880,
+      "pssBytes": 49152,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libharfbuzz.so.0.60830.0",
+      "rssBytes": 118784,
+      "pssBytes": 9216,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libqt6keychain.so.0.14.2",
+      "rssBytes": 114688,
+      "pssBytes": 114688,
+      "privateBytes": 114688
+    },
+    {
+      "mapping": "libfontconfig.so.1.12.1",
+      "rssBytes": 110592,
+      "pssBytes": 12288,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libgcc_s.so.1",
+      "rssBytes": 106496,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libxkbcommon.so.0.0.0",
+      "rssBytes": 98304,
+      "pssBytes": 16384,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libqsqlite.so",
+      "rssBytes": 94208,
+      "pssBytes": 94208,
+      "privateBytes": 94208
+    },
+    {
+      "mapping": "libexpat.so.1.9.1",
+      "rssBytes": 94208,
+      "pssBytes": 13312,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libpng16.so.16.43.0",
+      "rssBytes": 94208,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libgraphite2.so.3.2.1",
+      "rssBytes": 90112,
+      "pssBytes": 13312,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libzstd.so.1.5.5",
+      "rssBytes": 90112,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "liblzma.so.5.4.5",
+      "rssBytes": 86016,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "liblz4.so.1.9.4",
+      "rssBytes": 86016,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libpcre2-8.so.0.11.2",
+      "rssBytes": 81920,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libpcre2-16.so.0.11.2",
+      "rssBytes": 81920,
+      "pssBytes": 75776,
+      "privateBytes": 69632
+    },
+    {
+      "mapping": "libb2.so.1.0.4",
+      "rssBytes": 81920,
+      "pssBytes": 81920,
+      "privateBytes": 81920
+    },
+    {
+      "mapping": "libz.so.1.3",
+      "rssBytes": 81920,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbz2.so.1.0.4",
+      "rssBytes": 73728,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbsd.so.0.12.1",
+      "rssBytes": 73728,
+      "pssBytes": 11264,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libEGL.so.1.1.0",
+      "rssBytes": 73728,
+      "pssBytes": 20480,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "locale-archive",
+      "rssBytes": 65536,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "libdouble-conversion.so.3.1",
+      "rssBytes": 65536,
+      "pssBytes": 43008,
+      "privateBytes": 20480
+    },
+    {
+      "mapping": "libmd4c.so.0.4.8",
+      "rssBytes": 61440,
+      "pssBytes": 61440,
+      "privateBytes": 61440
+    },
+    {
+      "mapping": "libxcb-render.so.0.0.0",
+      "rssBytes": 61440,
+      "pssBytes": 20480,
+      "privateBytes": 20480
+    },
+    {
+      "mapping": "libwayland-client.so.0.22.0",
+      "rssBytes": 57344,
+      "pssBytes": 13312,
+      "privateBytes": 12288
+    },
+    {
+      "mapping": "libxcb-randr.so.0.1.0",
+      "rssBytes": 57344,
+      "pssBytes": 24576,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libmd.so.0.1.0",
+      "rssBytes": 53248,
+      "pssBytes": 10240,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "[stack]",
+      "rssBytes": 49152,
+      "pssBytes": 49152,
+      "privateBytes": 49152
+    },
+    {
+      "mapping": "libcap.so.2.66",
+      "rssBytes": 45056,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbrotlidec.so.1.1.0",
+      "rssBytes": 45056,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libffi.so.8.1.4",
+      "rssBytes": 45056,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libxcb-xfixes.so.0.0.0",
+      "rssBytes": 40960,
+      "pssBytes": 18432,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "gconv-modules.cache",
+      "rssBytes": 28672,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "libXdmcp.so.6.0.0",
+      "rssBytes": 24576,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libXau.so.6.0.0",
+      "rssBytes": 24576,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libicudata.so.74.2",
+      "rssBytes": 16384,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libbrotlicommon.so.1.1.0",
+      "rssBytes": 16384,
+      "pssBytes": 8192,
+      "privateBytes": 8192
+    },
+    {
+      "mapping": "libxcb-keysyms.so.1.0.0",
+      "rssBytes": 16384,
+      "pssBytes": 16384,
+      "privateBytes": 16384
+    },
+    {
+      "mapping": "[vdso]",
+      "rssBytes": 8192,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_NUMERIC",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_TIME",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_COLLATE",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_MONETARY",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "SYS_LC_MESSAGES",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_PAPER",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_NAME",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_ADDRESS",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_TELEPHONE",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_MEASUREMENT",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "LC_IDENTIFICATION",
+      "rssBytes": 4096,
+      "pssBytes": 2048,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "[vvar]",
+      "rssBytes": 0,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "[vvar_vclock]",
+      "rssBytes": 0,
+      "pssBytes": 0,
+      "privateBytes": 0
+    },
+    {
+      "mapping": "[vsyscall]",
+      "rssBytes": 0,
+      "pssBytes": 0,
+      "privateBytes": 0
+    }
+  ],
+  "budgetPassed": true,
+  "acceptanceEstablished": false
+}

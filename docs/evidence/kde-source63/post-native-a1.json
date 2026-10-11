@@ -1,0 +1,63 @@
+{
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "sourceCount": 63,
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "guest": "kde",
+  "workload": "Populated local-native12/SVG3/tray/settings/nativefonts-folderdialog/Activity parent+item independentpaste/livebackground cancellation; remote S3 excluded",
+  "parameters": {
+    "warmupSeconds": 5,
+    "primarySeconds": 300,
+    "intervalSeconds": 5,
+    "requiredSamples": 61,
+    "maximumGapSeconds": 7.5,
+    "appLaunched": false,
+    "guiInput": false,
+    "clipboardAcquired": false
+  },
+  "system": {
+    "kernel": "7.0.0-38-generic",
+    "machine": "x86_64",
+    "logicalCpus": 2,
+    "clockTicksPerSecond": 100
+  },
+  "primaryStartedUtc": "2026-10-11T02:52:45.683249+00:00",
+  "finishedUtc": "2026-10-11T02:57:45.966129+00:00",
+  "resident": {
+    "pid": 149243,
+    "startTicks": 3225818,
+    "uid": 1000,
+    "executable": "/usr/bin/putgd",
+    "device": 64769,
+    "inode": 1312189,
+    "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed"
+  },
+  "evaluation": {
+    "postNativePeakRssBytes": 31510528,
+    "peakPssBytes": 7994368,
+    "peakPrivateBytes": 6193152,
+    "idleCpuPercentOneCore": 0.0533307800772606,
+    "measurementValid": 1,
+    "localNativePassed": 1,
+    "normalHelperExitPassed": 1,
+    "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "remoteHistoryProven": false,
+    "fullNativeParityAccepted": false,
+    "samples": 61,
+    "spanSeconds": 300.0143627530051,
+    "maximumGapSeconds": 5.054206200999033
+  },
+  "originalResultSha256": "986825b389a059a433764f7cb7edf7a6fa853dafdc372830b8ab993dd7e0fee8",
+  "originalSamplesSha256": "4b903f61e04303ceaf7a547d75242f09ce99f2e591bebe7caf966bb1d6c68570",
+  "trackedSamples": "docs/evidence/kde-source63/post-native-a1.samples.jsonl",
+  "originalSmapsSha256": "5a865837058231b2c9369e587e3611bdb1947267bd983ebb40cefb5723aeb50e",
+  "samplerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "observerSha256": "4e20ccb1028f8147e722413f366825b1c96977d34f215eea17eedfdaef21a275",
+  "firstRunOnly": true,
+  "twoPostNativeAndFreshColdConfirmationPending": true,
+  "keeperAccepted": false,
+  "currentSiblingRegressionsPending": true,
+  "remoteHistoryProven": false,
+  "fullNativeParityAccepted": false,
+  "secretPayloadConfigAndRawSmapsExported": false,
+  "cpuFormula": "(last.familyCpuTicks-first.familyCpuTicks)/clockTicksPerSecond/spanSeconds*100"
+}

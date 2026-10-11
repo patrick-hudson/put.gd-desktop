@@ -1,0 +1,34 @@
+{
+  "utc": "2026-10-09T04:48:48.495296+00:00",
+  "resident": {
+    "pid": 79451,
+    "startTicks": 1118766,
+    "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+  },
+  "ui": {
+    "checkpointBytes": 3853,
+    "lastExit": {
+      "code": 0,
+      "generation": 12,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "trayAvailable": true,
+  "activeOperations": 0,
+  "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+  "profiles": [
+    {
+      "id": "synthetic-ui-only",
+      "bucket": "synthetic-ui-only"
+    }
+  ],
+  "historyRetentionDays": null,
+  "actionOutputs": {
+    "clipboard": "local",
+    "desktop": "local",
+    "region": "local",
+    "window": "local"
+  }
+}

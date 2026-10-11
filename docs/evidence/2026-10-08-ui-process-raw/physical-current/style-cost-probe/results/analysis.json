@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 1,
+  "scope": "cost-location-only; no product saving achieved",
+  "status": "complete",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "binarySha256": "647118c7cc8ee04e18823a8c484b78bfc5138595367c2d45a9ec99bc7727475a",
+  "sampledStages": {
+    "qapplication-constructed": {
+      "mediansBytes": {
+        "full": {
+          "RssBytes": 41398272.0,
+          "PssBytes": 22463488.0,
+          "PrivateBytes": 20033536.0
+        },
+        "native": {
+          "RssBytes": 41650176.0,
+          "PssBytes": 22702080.0,
+          "PrivateBytes": 20273152.0
+        }
+      },
+      "fullMinusNativeBytes": {
+        "RssBytes": -251904.0,
+        "PssBytes": -238592.0,
+        "PrivateBytes": -239616.0
+      }
+    },
+    "style-applied-or-native": {
+      "mediansBytes": {
+        "full": {
+          "RssBytes": 41594880.0,
+          "PssBytes": 22660096.0,
+          "PrivateBytes": 20230144.0
+        },
+        "native": {
+          "RssBytes": 41650176.0,
+          "PssBytes": 22702080.0,
+          "PrivateBytes": 20273152.0
+        }
+      },
+      "fullMinusNativeBytes": {
+        "RssBytes": -55296.0,
+        "PssBytes": -41984.0,
+        "PrivateBytes": -43008.0
+      }
+    },
+    "brand-and-tray-created": {
+      "mediansBytes": {
+        "full": {
+          "RssBytes": 43986944.0,
+          "PssBytes": 24801792.0,
+          "PrivateBytes": 22366208.0
+        },
+        "native": {
+          "RssBytes": 43446272.0,
+          "PssBytes": 24210944.0,
+          "PrivateBytes": 21776384.0
+        }
+      },
+      "fullMinusNativeBytes": {
+        "RssBytes": 540672.0,
+        "PssBytes": 590848.0,
+        "PrivateBytes": 589824.0
+      }
+    },
+    "two-second-idle-cleanup": {
+      "mediansBytes": {
+        "full": {
+          "RssBytes": 43499520.0,
+          "PssBytes": 23968256.0,
+          "PrivateBytes": 21520384.0
+        },
+        "native": {
+          "RssBytes": 42872832.0,
+          "PssBytes": 23298048.0,
+          "PrivateBytes": 20850688.0
+        }
+      },
+      "fullMinusNativeBytes": {
+        "RssBytes": 626688.0,
+        "PssBytes": 670208.0,
+        "PrivateBytes": 669696.0
+      }
+    },
+    "quiet-settled": {
+      "mediansBytes": {
+        "full": {
+          "RssBytes": 43696128.0,
+          "PssBytes": 24164864.0,
+          "PrivateBytes": 21716992.0
+        },
+        "native": {
+          "RssBytes": 43036672.0,
+          "PssBytes": 23461888.0,
+          "PrivateBytes": 21014528.0
+        }
+      },
+      "fullMinusNativeBytes": {
+        "RssBytes": 659456.0,
+        "PssBytes": 702976.0,
+        "PrivateBytes": 702464.0
+      }
+    }
+  },
+  "perRunStageDeltas": [
+    {
+      "label": "1-full",
+      "deltas": [
+        {
+          "from": "qapplication-constructed",
+          "to": "style-applied-or-native",
+          "elapsedMs": 2,
+          "deltaBytes": {
+            "RssBytes": 196608,
+            "PssBytes": 196608,
+            "PrivateBytes": 196608
+          }
+        },
+        {
+          "from": "style-applied-or-native",
+          "to": "brand-and-tray-created",
+          "elapsedMs": 12,
+          "deltaBytes": {
+            "RssBytes": 2359296,
+            "PssBytes": 2102272,
+            "PrivateBytes": 2097152
+          }
+        },
+        {
+          "from": "brand-and-tray-created",
+          "to": "two-second-idle-cleanup",
+          "elapsedMs": 2092,
+          "deltaBytes": {
+            "RssBytes": -491520,
+            "PssBytes": -839680,
+            "PrivateBytes": -851968
+          }
+        },
+        {
+          "from": "two-second-idle-cleanup",
+          "to": "quiet-settled",
+          "elapsedMs": 3003,
+          "deltaBytes": {
+            "RssBytes": 196608,
+            "PssBytes": 196608,
+            "PrivateBytes": 196608
+          }
+        }
+      ],
+      "elapsedMsByStage": {
+        "qapplication-constructed": 64,
+        "style-applied-or-native": 66,
+        "brand-and-tray-created": 78,
+        "two-second-idle-cleanup": 2170,
+        "quiet-settled": 5173
+      }
+    },
+    {
+      "label": "2-native",
+      "deltas": [
+        {
+          "from": "qapplication-constructed",
+          "to": "style-applied-or-native",
+          "elapsedMs": 3,
+          "deltaBytes": {
+            "RssBytes": 0,
+            "PssBytes": 0,
+            "PrivateBytes": 0
+          }
+        },
+        {
+          "from": "style-applied-or-native",
+          "to": "brand-and-tray-created",
+          "elapsedMs": 10,
+          "deltaBytes": {
+            "RssBytes": 1830912,
+            "PssBytes": 1513472,
+            "PrivateBytes": 1507328
+          }
+        },
+        {
+          "from": "brand-and-tray-created",
+          "to": "two-second-idle-cleanup",
+          "elapsedMs": 1917,
+          "deltaBytes": {
+            "RssBytes": -573440,
+            "PssBytes": -916480,
+            "PrivateBytes": -929792
+          }
+        },
+        {
+          "from": "two-second-idle-cleanup",
+          "to": "quiet-settled",
+          "elapsedMs": 3003,
+          "deltaBytes": {
+            "RssBytes": 163840,
+            "PssBytes": 163840,
+            "PrivateBytes": 163840
+          }
+        }
+      ],
+      "elapsedMsByStage": {
+        "qapplication-constructed": 58,
+        "style-applied-or-native": 61,
+        "brand-and-tray-created": 71,
+        "two-second-idle-cleanup": 1988,
+        "quiet-settled": 4991
+      }
+    },
+    {
+      "label": "3-full",
+      "deltas": [
+        {
+          "from": "qapplication-constructed",
+          "to": "style-applied-or-native",
+          "elapsedMs": 2,
+          "deltaBytes": {
+            "RssBytes": 196608,
+            "PssBytes": 196608,
+            "PrivateBytes": 196608
+          }
+        },
+        {
+          "from": "style-applied-or-native",
+          "to": "brand-and-tray-created",
+          "elapsedMs": 11,
+          "deltaBytes": {
+            "RssBytes": 2424832,
+            "PssBytes": 2181120,
+            "PrivateBytes": 2174976
+          }
+        },
+        {
+          "from": "brand-and-tray-created",
+          "to": "two-second-idle-cleanup",
+          "elapsedMs": 2103,
+          "deltaBytes": {
+            "RssBytes": -483328,
+            "PssBytes": -827392,
+            "PrivateBytes": -839680
+          }
+        },
+        {
+          "from": "two-second-idle-cleanup",
+          "to": "quiet-settled",
+          "elapsedMs": 2653,
+          "deltaBytes": {
+            "RssBytes": 196608,
+            "PssBytes": 196608,
+            "PrivateBytes": 196608
+          }
+        }
+      ],
+      "elapsedMsByStage": {
+        "qapplication-constructed": 62,
+        "style-applied-or-native": 64,
+        "brand-and-tray-created": 75,
+        "two-second-idle-cleanup": 2178,
+        "quiet-settled": 4831
+      }
+    },
+    {
+      "label": "4-native",
+      "deltas": [
+        {
+          "from": "qapplication-constructed",
+          "to": "style-applied-or-native",
+          "elapsedMs": 2,
+          "deltaBytes": {
+            "RssBytes": 0,
+            "PssBytes": 0,
+            "PrivateBytes": 0
+          }
+        },
+        {
+          "from": "style-applied-or-native",
+          "to": "brand-and-tray-created",
+          "elapsedMs": 8,
+          "deltaBytes": {
+            "RssBytes": 1761280,
+            "PssBytes": 1504256,
+            "PrivateBytes": 1499136
+          }
+        },
+        {
+          "from": "brand-and-tray-created",
+          "to": "two-second-idle-cleanup",
+          "elapsedMs": 2010,
+          "deltaBytes": {
+            "RssBytes": -573440,
+            "PssBytes": -909312,
+            "PrivateBytes": -921600
+          }
+        },
+        {
+          "from": "two-second-idle-cleanup",
+          "to": "quiet-settled",
+          "elapsedMs": 2748,
+          "deltaBytes": {
+            "RssBytes": 163840,
+            "PssBytes": 163840,
+            "PrivateBytes": 163840
+          }
+        }
+      ],
+      "elapsedMsByStage": {
+        "qapplication-constructed": 61,
+        "style-applied-or-native": 63,
+        "brand-and-tray-created": 71,
+        "two-second-idle-cleanup": 2081,
+        "quiet-settled": 4829
+      }
+    }
+  ],
+  "limitations": [
+    "Not a product process or production operation workload; no product savings established.",
+    "Two runs per mode with visible temporary tray, no menu opened and no actions connected. Native menus differ from production styling and need parity before any adoption.",
+    "Native QApplication/GTK font and platform integration remains present in both modes; no font or dialog override.",
+    "QTimer uses default coarse timing; actual elapsed milliseconds per stage are preserved.",
+    "Memory/JSON instrumentation allocates between stages. The final dependency path enumeration precedes the quiet sample and contributes to its observed memory.",
+    "PSS depends on external shared-page ownership; RSS includes shared memory.",
+    "Short five-second settled stage is not the product 300-second cold-idle budget."
+  ],
+  "decisionEvidence": "The settled median full-minus-native RSS is under1MiB and immediate full styling growth is0.1875MiB in both runs. This probe does not justify a4.39MiB product saving or a40MiB target claim."
+}

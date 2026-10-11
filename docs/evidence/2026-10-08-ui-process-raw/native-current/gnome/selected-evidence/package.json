@@ -1,0 +1,11 @@
+{
+  "sha256": "fe7d6a24d27e6e9f202e8e2a64d133fe3ebc88a8675b4ab10e7cfcba3ef9af71",
+  "filename": "putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd-ui": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+    "/usr/bin/putgd-cli": "f979812e68ffd8fa039dd0322b2056e8d0e771de33f1f9562c6bec7b4ca55549",
+    "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+  }
+}

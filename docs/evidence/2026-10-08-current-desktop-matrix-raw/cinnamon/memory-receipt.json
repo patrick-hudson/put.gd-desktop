@@ -1,0 +1,21 @@
+{
+  "exitCode": 0,
+  "startedUtc": "2026-10-08T20:53:54.797245+00:00",
+  "finishedUtc": "2026-10-08T20:56:00.504524+00:00",
+  "command": [
+    "python3",
+    "-",
+    "--pid",
+    "2406",
+    "--start-ticks",
+    "17322",
+    "--sha256",
+    "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f",
+    "--seconds",
+    "120",
+    "--interval",
+    "5"
+  ],
+  "resultSha256": "1340e334f450da7c5e9a955f41ba6d9242da68a6264737126567a08cafad78aa",
+  "identityUnchanged": true
+}

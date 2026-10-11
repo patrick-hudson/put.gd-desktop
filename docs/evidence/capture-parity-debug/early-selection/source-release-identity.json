@@ -1,0 +1,25 @@
+{
+  "binaries": {
+    "putgd": {
+      "sha256": "5e0f92af2d846d3747eceba5663949eb29e90e6aff7a1788cfe487828f47b34b",
+      "version": "putgd 0.1.1-dev.49+g676f6e6d6e0b.dirty"
+    },
+    "putgd-cli": {
+      "sha256": "8b0b9fe4afa37bf063ea6f45a6ea86403f95f0625ea740d3740fffe292d14838",
+      "version": "putgd-cli 0.1.1-dev.49+g676f6e6d6e0b.dirty"
+    },
+    "putgd-ui": {
+      "sha256": "b9e29a15f8c4181d3a80e92d2af5fb263b31d1c3f309632f1fea4a1d3fefbf63",
+      "version": "putgd-ui 0.1.1-dev.49+g676f6e6d6e0b.dirty"
+    },
+    "putgd-capture": {
+      "sha256": "0dc6c2fc8873b7ce6b13e67f8595a4b22f115836c6924c929ec685159a7d5c87",
+      "version": "putgd-capture 0.1.1-dev.49+g676f6e6d6e0b.dirty"
+    },
+    "putgd-bench-capture": {
+      "sha256": "67f00c7b680bd0e32d8230624610b19c182662de96db00ee429c133a9f4d0f3f"
+    }
+  },
+  "dirty": true,
+  "sourceSnapshot": "source-release-snapshot.json"
+}

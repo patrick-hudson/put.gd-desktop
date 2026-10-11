@@ -1,0 +1,11 @@
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev
+    Start  2: ui_endpoints_integration
+1/3 Test  #2: ui_endpoints_integration .........   Passed    0.40 sec
+    Start 10: keychain_integration
+2/3 Test #10: keychain_integration .............   Passed    0.13 sec
+    Start 33: local_ipc_contract
+3/3 Test #33: local_ipc_contract ...............   Passed   13.24 sec
+
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =  13.84 sec

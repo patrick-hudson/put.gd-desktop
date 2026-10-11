@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="2"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="17"
+	timestamp="2026-10-08T18:37:11"
+	>
+	<testcase name="session_client_integration" classname="session_client_integration" time="16.9592" status="run">
+		<properties/>
+		<system-out>********* Start testing of SessionClientContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SessionClientContract::initTestCase()
+PASS   : SessionClientContract::fragmentedReplyKeepsEventLoopResponsive()
+PASS   : SessionClientContract::errorReplyPreservesResidentDetails()
+PASS   : SessionClientContract::invalidReply(malformed-json)
+PASS   : SessionClientContract::invalidReply(array)
+PASS   : SessionClientContract::invalidReply(wrong-schema)
+PASS   : SessionClientContract::invalidReply(string-schema)
+PASS   : SessionClientContract::invalidReply(wrong-id)
+PASS   : SessionClientContract::invalidReply(numeric-id)
+PASS   : SessionClientContract::invalidReply(missing-ok)
+PASS   : SessionClientContract::invalidReply(numeric-ok)
+PASS   : SessionClientContract::invalidReply(array-result)
+PASS   : SessionClientContract::invalidReply(missing-result)
+PASS   : SessionClientContract::invalidReply(missing-error)
+PA...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="cli_integration" classname="cli_integration" time="1.02198" status="run">
+		<properties/>
+		<system-out>********* Start testing of CliContract *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : CliContract::initTestCase()
+PASS   : CliContract::launcherActivationUsesValidatedResidentUiRequest()
+PASS   : CliContract::backgroundLaunchDoesNotRaiseExistingResident()
+PASS   : CliContract::realClientAndMalformedProtocol()
+PASS   : CliContract::settingsTransportAndRedactedDiagnostics()
+PASS   : CliContract::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 979ms
+********* Finished testing of CliContract *********
+</system-out>
+	</testcase>
+</testsuite>

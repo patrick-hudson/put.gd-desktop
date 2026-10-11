@@ -1,0 +1,182 @@
+{
+  "resident": {
+    "pid": 58975,
+    "startTicks": 2551462,
+    "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+  },
+  "smapsRollupRaw": "55f6072f1000-7ffd5cde3000 ---p 00000000 00:00 0                          [rollup]\nRss:               56476 kB\nPss:               35803 kB\nPss_Dirty:         17332 kB\nPss_Anon:          17332 kB\nPss_File:          18471 kB\nPss_Shmem:             0 kB\nShared_Clean:      22056 kB\nShared_Dirty:          0 kB\nPrivate_Clean:     17088 kB\nPrivate_Dirty:     17332 kB\nReferenced:        56476 kB\nAnonymous:         17332 kB\nKSM:                   0 kB\nLazyFree:              0 kB\nAnonHugePages:         0 kB\nShmemPmdMapped:        0 kB\nFilePmdMapped:         0 kB\nShared_Hugetlb:        0 kB\nPrivate_Hugetlb:       0 kB\nSwap:                  0 kB\nSwapPss:               0 kB\nLocked:                0 kB\n",
+  "smapsFields": {
+    "Rss": {
+      "value": 56476,
+      "unit": "kB"
+    },
+    "Pss": {
+      "value": 35803,
+      "unit": "kB"
+    },
+    "Pss_Dirty": {
+      "value": 17332,
+      "unit": "kB"
+    },
+    "Pss_Anon": {
+      "value": 17332,
+      "unit": "kB"
+    },
+    "Pss_File": {
+      "value": 18471,
+      "unit": "kB"
+    },
+    "Pss_Shmem": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Shared_Clean": {
+      "value": 22056,
+      "unit": "kB"
+    },
+    "Shared_Dirty": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Private_Clean": {
+      "value": 17088,
+      "unit": "kB"
+    },
+    "Private_Dirty": {
+      "value": 17332,
+      "unit": "kB"
+    },
+    "Referenced": {
+      "value": 56476,
+      "unit": "kB"
+    },
+    "Anonymous": {
+      "value": 17332,
+      "unit": "kB"
+    },
+    "KSM": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "LazyFree": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "AnonHugePages": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "ShmemPmdMapped": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "FilePmdMapped": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Shared_Hugetlb": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Private_Hugetlb": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Swap": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "SwapPss": {
+      "value": 0,
+      "unit": "kB"
+    },
+    "Locked": {
+      "value": 0,
+      "unit": "kB"
+    }
+  },
+  "privateKiB": 34420,
+  "compiledVersion": "putgd 0.1.1-dev.43+gf56dc72de4fe",
+  "allOperationIdStates": [
+    {
+      "id": "06e4f35a-b4b2-4418-adbc-024ffe1b8d73",
+      "state": "completed"
+    },
+    {
+      "id": "5ac337f5-1e9c-4327-bc1c-6766b006daf0",
+      "state": "completed"
+    },
+    {
+      "id": "b7160913-3cf0-4567-9855-1f81aff9d82e",
+      "state": "completed"
+    },
+    {
+      "id": "186430a3-c843-4d16-a492-23f613f004f3",
+      "state": "completed"
+    },
+    {
+      "id": "dd7c69ce-708a-4c4d-88b1-d85abf4738c4",
+      "state": "completed"
+    },
+    {
+      "id": "5ed52c1d-5e0b-4cce-aa21-1842f01616cf",
+      "state": "completed"
+    },
+    {
+      "id": "13d7dde0-1ec6-45ee-8d94-b5d3967178dd",
+      "state": "cancelled"
+    },
+    {
+      "id": "ba912552-85c0-44a3-a8c7-a790cff42e58",
+      "state": "cancelled"
+    },
+    {
+      "id": "04ace351-72be-4c8c-ba23-a37f5227646c",
+      "state": "cancelled"
+    },
+    {
+      "id": "8deb495a-9643-410d-aadb-c2df8c0623e2",
+      "state": "completed"
+    },
+    {
+      "id": "f8238f16-91a2-4c8e-a150-ee07c746f87e",
+      "state": "completed"
+    },
+    {
+      "id": "1bc9d050-1286-46be-b7ff-f6da47e61a36",
+      "state": "completed"
+    },
+    {
+      "id": "59d833a4-5b97-483e-86fa-044e1c96bd86",
+      "state": "completed"
+    },
+    {
+      "id": "ebf64876-9bfa-47b3-95c4-b728fd89f3b8",
+      "state": "completed"
+    },
+    {
+      "id": "2bb67774-c434-4451-962f-4937229f5b1e",
+      "state": "completed"
+    },
+    {
+      "id": "9f43c81b-9086-49db-90a5-f11bec723996",
+      "state": "completed"
+    }
+  ],
+  "utc": "2026-10-09T04:08:16.897506+00:00",
+  "scope": "Single post-suite resident attribution snapshot; no quiet/cold/performance-budget claim.",
+  "helperAfter": {
+    "checkpointBytes": 3961,
+    "lastExit": {
+      "code": 0,
+      "generation": 7,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "operationCounts": {
+    "completed": 13,
+    "cancelled": 3
+  }
+}

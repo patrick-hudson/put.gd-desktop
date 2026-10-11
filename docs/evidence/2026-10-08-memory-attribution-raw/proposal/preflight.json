@@ -1,0 +1,42 @@
+{
+  "specSha256": "994a2fedbd409cb6da1c9af0813da8dd00c6251c3a1b67145492c7cafd7c995f",
+  "nameValid": true,
+  "metricType": "hard",
+  "gates": [
+    {
+      "name": "passed",
+      "check": "== 1"
+    },
+    {
+      "name": "allThreeViewsReopened",
+      "check": "== 1"
+    },
+    {
+      "name": "operationCount",
+      "check": "== 0"
+    }
+  ],
+  "repeatCount": 2,
+  "comparison": "absolute saving >1048576bytes",
+  "serialPhysicalRequired": true,
+  "dollarCap": "No separate cap on ordinary model usage; no paid infrastructure or new dependencies",
+  "scopeClean": true,
+  "harnessPreparation": "Adapter is new ignored measurement scaffolding, frozen by hash before baseline; existing benchmark scripts unchanged",
+  "adapterSha256": "8f51d0fb328bdeccc9797ff8214f4b12d3e491d93a6094e3f1a62e875a013d5d",
+  "worktreeBudget": {
+    "actualCount": 9,
+    "bundledCounter": 0,
+    "projectedCount": 10,
+    "maximum": 12,
+    "reuseParent": "/home/patrick/.codex/worktrees/resident-memory/put.gd"
+  },
+  "parallelProbe": {
+    "mode": "parallel",
+    "blockers": [],
+    "warning": "bundled grep regex warning",
+    "effectiveMode": "serial",
+    "reason": "Exclusive physical Cinnamon measurement; only read-only attribution work in parallel"
+  },
+  "priorLearnings": "docs/solutions absent; source and durable memory evidence read directly",
+  "phase": "baseline measurement in progress; experiment approval pending"
+}

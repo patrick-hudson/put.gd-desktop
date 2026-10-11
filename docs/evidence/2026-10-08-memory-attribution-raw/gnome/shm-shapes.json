@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T21:26:11.119830+00:00",
+  "pid": 2775,
+  "startTicks": 4592,
+  "executableSha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3",
+  "scope": "Read-only shared mapping shape; only approved standard memfd labels retained, no mapped addresses/content/raw inode IDs",
+  "mappings": [
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-1",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1667072,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 2883584,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 225280
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-2",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1554432,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 3108864,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 0
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-3",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1554432,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 3108864,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 0
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-4",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 2027520,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 2162688,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 946176
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-5",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1554432,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 3108864,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 0
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-6",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1554432,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 3108864,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 0
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-7",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1554432,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 3108864,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 0
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-8",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1554432,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 3108864,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 0
+    },
+    {
+      "name": "memfd:wayland-shm",
+      "backingGroup": "backing-9",
+      "mappedBytes": 3108864,
+      "permissions": "rw-s",
+      "RssBytes": 3108864,
+      "PssBytes": 1554432,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 3108864,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 0
+    },
+    {
+      "name": "memfd:other",
+      "backingGroup": "backing-10",
+      "mappedBytes": 2359296,
+      "permissions": "rw-s",
+      "RssBytes": 253952,
+      "PssBytes": 253952,
+      "Shared_CleanBytes": 0,
+      "Shared_DirtyBytes": 0,
+      "Private_CleanBytes": 0,
+      "Private_DirtyBytes": 253952
+    }
+  ],
+  "openMemfdCounts": {
+    "memfd:other": 1
+  },
+  "backingGroupCount": 10
+}

@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:34:30.817911+00:00",
+  "commands": [
+    {
+      "argv": [
+        "cmake",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "cmake version 4.2.3\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "ninja",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "1.13.2\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "c++",
+        "--version"
+      ],
+      "exitCode": 0,
+      "stdout": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0\nCopyright (C) 2025 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "pkg-config",
+        "--modversion",
+        "Qt6Core",
+        "Qt6Widgets",
+        "Qt6Sql",
+        "qt6keychain"
+      ],
+      "exitCode": 1,
+      "stdout": "",
+      "stderr": "Package qt6keychain was not found in the pkg-config search path.\nPerhaps you should add the directory containing `qt6keychain.pc'\nto the PKG_CONFIG_PATH environment variable\nPackage 'qt6keychain' not found\n"
+    },
+    {
+      "argv": [
+        "dpkg-query",
+        "-W",
+        "-f=${Package} ${Version}\n",
+        "gnome-shell",
+        "mutter-common",
+        "gjs",
+        "libqt6core6t64",
+        "qt6-wayland"
+      ],
+      "exitCode": 0,
+      "stdout": "gjs 1.88.0-1\ngnome-shell 50.1-0ubuntu1.2\nlibqt6core6t64 6.10.2+dfsg-7\nmutter-common 50.1-0ubuntu2.2\nqt6-wayland 6.10.2-4\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-C",
+        "/home/lab/putgd-native/build/dependencies/aws-sdk-cpp",
+        "status",
+        "--porcelain"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "sourceHashes": {
+    "/home/lab/putgd-current-a3d70dc/CMakePresets.json": "e2465d3f3331c19d3077245169cf1d6e8a7637432d8f197a33a61dd24f3859ed",
+    "/home/lab/putgd-current-a3d70dc/CMakeLists.txt": "db29858a9ba57a554f1c24272fd52be3dca5eb36eb59fdce23fef586ccf3bd9f",
+    "/home/lab/putgd-current-a3d70dc/cmake/dependency-lock.json": "c6c41e15a56e4f801c1225966b7b6c309eee54745bfa1788a066378a36621333",
+    "/home/lab/putgd-current-a3d70dc-build.sh": "b3a7d20cdbd0176e8d1362118bb38dd6aebe3fb569dfa761ae701901f32c2b28"
+  }
+}

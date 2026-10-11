@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "url": "https://raw.githubusercontent.com/sqlite/sqlite/version-3.45.1/src/os_unix.c",
+  "readableLink": "https://github.com/sqlite/sqlite/blob/version-3.45.1/src/os_unix.c#L1683-L1696",
+  "sourceTag": "version-3.45.1",
+  "verifiedLines": [
+    1683,
+    1696,
+    1736,
+    1738,
+    1770,
+    1773
+  ],
+  "claim": "The default Unix VFS checks shared in-process inode lock state and can return SQLITE_BUSY before issuing an OS lock call. An exclusive lock can also fail when another same-process handle holds a shared lock.",
+  "limits": "Pinned upstream source verification only. Does not prove the application reached that branch, identify the blocked statement, or establish a retry/backoff schedule."
+}

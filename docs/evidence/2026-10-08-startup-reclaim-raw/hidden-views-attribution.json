@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "scope": "Read-only attribution and proposed next test; no new experiment authorization, implementation, execution, or savings claim.",
+  "measurement": {
+    "source": "/tmp/putgd-startup-reclaim-views/results.json",
+    "sha256": "a2d624586fc7447af949882761a907286c673e474b0c64e59cefc2d2b027c59d",
+    "author": "root-run physical Cinnamon X11 diagnostic; inspected saved output only",
+    "appSha256": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+    "operationCount": 0,
+    "coldRssBytes": 47255552,
+    "hiddenRssBytes": 77410304,
+    "rssIncreaseBytes": 30154752,
+    "coldHeapRssBytes": 3014656,
+    "hiddenHeapRssBytes": 15450112,
+    "heapRssIncreaseBytes": 12435456,
+    "hiddenXorgShmRssBytes": 8404992,
+    "hiddenXorgShmPssBytes": 4202496,
+    "hiddenXorgShmPrivateBytes": 0
+  },
+  "attribution": [
+    {
+      "claim": "The app deliberately retains each lazily constructed QWidget and its child graph after close/hide; drafts, selections, model state and live signal connections survive. Actual widget deletion occurs at owner teardown. Settings Cancel is a separate intentional discard path.",
+      "support": [
+        "intentional_retention",
+        "activation_reuses_widgets",
+        "settings_explicit_cancel_discards"
+      ],
+      "confidence": "source-confirmed"
+    },
+    {
+      "claim": "Close already destroys the native QWindow platform surface. Its PlatformSurface event uses QWidget::destroy(false,false), retaining top-level backing-store ownership. Hide similarly unmaps without freeing the store. Reopening reuses that store. Changing native XIDs in the receipt agrees with this lifecycle. Calling only windowHandle()->destroy() would repeat an existing step.",
+      "support": [
+        "accepted_native_close_destroys_qwindow",
+        "qwindow_destruction_calls_widget_destroy_false_false"
+      ],
+      "confidence": "source-confirmed lifecycle; no new execution"
+    },
+    {
+      "claim": "All three views start at 1000x700. Three 32-bit raster buffers, each page-rounded to 2801664 bytes, total exactly 8404992 bytes, matching the observed memfd:xorg RSS. Qt Xcb obtains its shared segment from Xorg, mmaps it, and holds it with the backing-store image. This strongly attributes the retained mapping to these three raster stores, although no per-object addresses or runtime sizes were measured.",
+      "calculation": "3 * ceil(1000 * 700 * 4 / 4096) * 4096 = 8404992",
+      "confidence": "strong source-and-size inference; not object-level runtime proof"
+    },
+    {
+      "claim": "The empty diagnostic has zero operations. History already cancels pending preview work and clears its pixmap on hide, so a retained user thumbnail is not an explanation for this empty-view mapping.",
+      "support": [
+        "history_already_drops_thumbnail"
+      ],
+      "confidence": "source plus saved empty-workload evidence"
+    },
+    {
+      "claim": "The +12435456-byte heap RSS is an arena mapping footprint, not a live-allocation counter. Retained widget/text/layout/style state is live; freed arena pages and fragmentation may also contribute. The saved result cannot partition them. malloc_trim cannot release live raster stores or widget state. Native font and clean code mappings account for much of the remaining increase and should stay.",
+      "confidence": "heap live/free split unresolved"
+    }
+  ],
+  "preferredNextTest": {
+    "operation": "From each existing top-level QWidget subclass, defer the documented protected QWidget::destroy(true,true) until the close/hide event stack has returned; recheck that the same widget is still explicitly hidden and alive before releasing native resources.",
+    "why": "Small resource-lifecycle change with no draft serialization, child-widget deletion, or new allocator policy. Qt6.4.2 deleteTLSysExtra clears the repaint manager, deletes QBackingStore (which deletes the Xcb image/SHM/pixmap), then destroys the QWidgetWindow. Logical widgets and their settings/history/activity state remain. Normal show creates a new native window/backing store and invalidates the full view for repaint.",
+    "support": [
+      "documented_widget_resource_release",
+      "widget_destroy_true_deletes_system_extra",
+      "system_extra_deletes_backing_store_before_window",
+      "xcb_image_destructor_releases_shm_and_pixmap",
+      "xcb_shm_detach_and_munmap",
+      "show_recreates_widget_resources",
+      "show_invalidates_and_schedules_repaint",
+      "qt_create_destroy_recreate_source_test"
+    ],
+    "timing": "Use a QObject-context deferred callback or equivalent lifetime guard; do not destroy the QWidgetWindow synchronously inside its current close/hide dispatch. Skip if reopened before the callback. A minimize-generated spontaneous hide leaves isVisible true and must not release the minimized view.",
+    "preservationChecks": [
+      "WM close and explicit hide both preserve unsaved synthetic settings draft/conflict state, selected section/profile, geometry and controls; explicit Cancel continues its existing discard behavior.",
+      "History selected rows/filter/scroll and active deletion-cancel control survive; preview remains cleared while hidden and reloads on show. Activity selection and result actions still work.",
+      "Rapid hide/show, repeated three-view cycles, minimize/restore, shutdown with queued release, and native file/help dialogs produce complete repaint without stale pointers, warnings or changed fonts/theme.",
+      "Existing GUI source tests already cover preview release/reload and active deletion cancellation across hide/show; add focused resource-release coverage only if a new experiment is authorized."
+    ],
+    "measurementProposal": "Root alone repeats the existing physical three-view observer on a separately authorized candidate. Compare memfd:xorg RSS/PSS, total RSS/PSS/private, first reopen latency and complete next-show paint. Observe backingStore/windowHandle null after deferred QWidget release and fresh nonzero size after show using a bounded synthetic diagnostic. If heap remains large, separately record allocated versus free arena bytes before/after release to locate live widget costs; do not infer them from heap RSS. Keep any allocator policy unchanged in the first probe.",
+    "expectedDirection": "Source predicts release of these live raster mappings while hidden; actual savings and reopen cost remain unmeasured. This addresses post-view retention and should not change the never-opened cold baseline."
+  },
+  "alternative": {
+    "operation": "Public QWidget::backingStore()->resize(QSize(0,0)) while explicitly hidden, followed by guaranteed full invalidation on next show.",
+    "support": [
+      "public_backingstore_accessor",
+      "public_surface_resize_documentation",
+      "xcb_zero_size_release",
+      "xcb_resize_may_recreate_native_window",
+      "repaint_manager_restores_surface_size_and_full_damage"
+    ],
+    "tradeoff": "Narrower pixel-buffer intervention, but QXcbBackingStore::resize may recreate a hidden native QWindow if close already destroyed it. QWidget-owned backing-store mutation requires native repaint/resize testing. The public API documents resizing, not a cross-platform memory-release guarantee. Use explicit zero dimensions, not default invalid QSize().",
+    "status": "source-supported Xcb path, product behavior unverified; second-choice probe"
+  },
+  "limits": [
+    "No product/test/build/probe/process/UI/VM execution performed; only read-only shell source/JSON inspection and this artifact write.",
+    "Local Qt source is Qt6.4.2; receipt uses distro Qt6.4.2+dfsg-21.1build5. Source establishes available APIs and expected Xcb behavior, not exact patched-runtime or compositor acceptance.",
+    "SHM RSS is shared with Xorg: 8404992 RSS versus 4202496 PSS and zero private in this receipt. A future release must consider Xorg/compositor total memory and server pixmaps; summed RSS can double-count shared pages. No helper process is proposed.",
+    "No destruction of logical widgets, native-font/dialog/theme removal, new allocator policy, experiment authorization, measured improvement or 40MiB attainment is claimed."
+  ],
+  "evidence": {
+    "intentional_retention": {
+      "path": "/home/patrick/work/put.gd/src/main.cpp",
+      "line": 129
+    },
+    "activation_reuses_widgets": {
+      "path": "/home/patrick/work/put.gd/src/ui/TrayController.cpp",
+      "line": 16
+    },
+    "history_already_drops_thumbnail": {
+      "path": "/home/patrick/work/put.gd/src/ui/HistoryWindow.cpp",
+      "line": 79
+    },
+    "settings_explicit_cancel_discards": {
+      "path": "/home/patrick/work/put.gd/src/ui/SettingsWindow.cpp",
+      "line": 214
+    },
+    "close_only_hides_unless_delete_on_close": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp",
+      "line": 8425
+    },
+    "accepted_native_close_destroys_qwindow": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/gui/kernel/qwindow.cpp",
+      "line": 2452
+    },
+    "qwindow_destruction_calls_widget_destroy_false_false": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp",
+      "line": 8822
+    },
+    "documented_widget_resource_release": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp",
+      "line": 12290
+    },
+    "widget_destroy_true_deletes_system_extra": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp",
+      "line": 12303
+    },
+    "system_extra_deletes_backing_store_before_window": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp",
+      "line": 1683
+    },
+    "xcb_image_destructor_releases_shm_and_pixmap": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/plugins/platforms/xcb/qxcbbackingstore.cpp",
+      "line": 240
+    },
+    "xcb_shm_detach_and_munmap": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/plugins/platforms/xcb/qxcbbackingstore.cpp",
+      "line": 410
+    },
+    "show_recreates_widget_resources": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp",
+      "line": 8235
+    },
+    "show_invalidates_and_schedules_repaint": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp",
+      "line": 8016
+    },
+    "qt_create_destroy_recreate_source_test": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/tests/auto/widgets/kernel/qwidget/tst_qwidget.cpp",
+      "line": 4829
+    },
+    "public_backingstore_accessor": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.h",
+      "line": 639
+    },
+    "public_surface_resize_documentation": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/gui/painting/qbackingstore.cpp",
+      "line": 225
+    },
+    "xcb_zero_size_release": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/plugins/platforms/xcb/qxcbbackingstore.cpp",
+      "line": 198
+    },
+    "xcb_resize_may_recreate_native_window": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/plugins/platforms/xcb/qxcbbackingstore.cpp",
+      "line": 892
+    },
+    "repaint_manager_restores_surface_size_and_full_damage": {
+      "path": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidgetrepaintmanager.cpp",
+      "line": 703
+    }
+  },
+  "inspectedSourceSha256": {
+    "/home/patrick/work/put.gd/src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+    "/home/patrick/work/put.gd/src/ui/SettingsWindow.cpp": "e3ec25afedc8dd03d55ce60272a4d3bff191a7e77c9eea8021ff57b8df02f61a",
+    "/home/patrick/work/put.gd/src/ui/SettingsWindow.h": "36310c14855524ffdb980d1fbb3cb156764910fbde3daa82443bd8d408810580",
+    "/home/patrick/work/put.gd/src/ui/HistoryWindow.cpp": "bd4621c2d2afb029631e90cfc7f74ada2c73f7305f3e10ccde555560d27815b6",
+    "/home/patrick/work/put.gd/src/ui/HistoryWindow.h": "bb917bc4ba3e8ef5b0855668733e22d727619516fd5ccc6a35fc689be4214dfb",
+    "/home/patrick/work/put.gd/src/ui/RecentOperations.cpp": "cde66faed58c82bc6e4862af1b363ba1b0c58aaf8125ec521045d714b88e0c3e",
+    "/home/patrick/work/put.gd/src/ui/RecentOperations.h": "c1de3380f8b3c102efb3792d0c0dd8f06868f39ac81b436b78edf565f4f6c7ab",
+    "/home/patrick/work/put.gd/src/ui/TrayController.cpp": "f931d1061e173ec193131cd0eee00d2afa8ba5bce7c0f40279a8d917b28340eb",
+    "/home/patrick/work/put.gd/tests/performance/bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.cpp": "7faa2e92e027638a3aed043d9c012f309faab5921205563ca4c1b57860dc01e9",
+    "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidget.h": "9119dbe460e02828a2d4dd1cf938d3124a303f27166a992bd006fba63df9e349",
+    "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/kernel/qwidgetrepaintmanager.cpp": "898bc27624490a0df8b34a16aa996f2f3b57a812055caa31ee72321121487414",
+    "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/gui/kernel/qwindow.cpp": "b9e3970d833dd620f20d967feb1a4d7dd28967131f42a6a7e6cd5c6dd5bb2b7e",
+    "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/gui/painting/qbackingstore.cpp": "df0e0e7a4dc8c3b325b0e48909f42044cbe404b6ea1fc45861e3d2c28dd659d4",
+    "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/plugins/platforms/xcb/qxcbbackingstore.cpp": "b29f0e52c9956d415d89791f0fd07635e29218d6dada1df5ee04eb1321e17a6e",
+    "/home/patrick/work/put.gd/work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/tests/auto/widgets/kernel/qwidget/tst_qwidget.cpp": "1f70fd7b1b061759bc3f1919b6b8ddcb1f0d000be8df14a15eab5b9bccae3a40"
+  }
+}

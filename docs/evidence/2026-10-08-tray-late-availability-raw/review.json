@@ -1,0 +1,106 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "scope": {
+    "base": "HEAD (owned-path dirty diff)",
+    "branch": "feat/qt-linux-sharing",
+    "head_sha": "86301db2620a204854c08fb3f2d50f71d22112c4",
+    "pr_url": null,
+    "files_changed": 2,
+    "files": [
+      "src/ui/TrayController.cpp",
+      "tests/gui/test_tray.cpp"
+    ],
+    "diff_sha256": "94d7f5e121122782a3706f3710586f2a13d404a193af89c6952ab98489b484c9"
+  },
+  "intent": "Preserve tray visibility intent while the desktop tray is unavailable at startup, allowing Qt to register the resident icon when integration becomes available later. Preserve existing menu activation, notification availability checks, and teardown.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "adversarial-claude"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan": "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+    "plan_source": "inferred",
+    "scope": [
+      "R37 persistent resident tray",
+      "U5 missing-tray reachability",
+      "U11 resident tray lifetime"
+    ],
+    "scoped_requirements_met": true,
+    "unrequested_behavior_rules": [],
+    "notes": "Narrow fix conforms to tray lifetime intent. Whole-plan completeness and broader acceptance backlog were not re-audited."
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "Qt 6.4.2 generic/GNOME theme can cache absent D-Bus host availability and create no QDBusTrayIcon on Wayland; actual supported GNOME guest uses Qt 6.10.2 and follows a different path.",
+    "Official upstream Qt 6.10.2 source was checked; Ubuntu downstream patches were not independently reconciled."
+  ],
+  "testing_gaps": [
+    "Post-change GNOME compositor registration and visible rendering remain pending. Offscreen isVisible proves intent only."
+  ],
+  "coverage": {
+    "depth": "focused",
+    "scope_mode": "local owned-path snapshot",
+    "deterministic_signals": {
+      "changed_lines": 5,
+      "exec_nontest_lines": 3,
+      "size_band": "small",
+      "hard_block_full": false
+    },
+    "criteria_files": [
+      "AGENTS.md"
+    ],
+    "instruction_file_fallback": true,
+    "declared_compound_packs_applied": false,
+    "excluded_dirty_paths": [
+      "AGENTS.md",
+      "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+      "docs/testing-view-startup.md",
+      "docs/vm-lab.md",
+      "docs/windows-vm-lab.md"
+    ],
+    "excluded_untracked_paths": [
+      "docs/evidence/2026-10-08-view-startup-attribution-raw/",
+      "docs/evidence/2026-10-08-view-startup-attribution.json",
+      "tools/qemu-grid/"
+    ],
+    "review_actions": "Source inspection, diff check, caller before/after logs and JUnit inspection, official tagged Qt source validation, guarded read-only guest plugin maps. No product edits, commits, build/test execution, native graphical interaction, or timing performed.",
+    "reviewed_test_evidence": [
+      "work/tray-late-availability/before.log",
+      "work/tray-late-availability/before.xml",
+      "work/tray-late-availability/after.log",
+      "work/tray-late-availability/after.xml"
+    ],
+    "adversarial": "Independent Anthropic review completed; two candidates checked and rejected as GNOME deployment defects by exact Qt 6.10.2 source plus guarded plugin mappings. Native acceptance remains open.",
+    "cross_model_route": "claude",
+    "model_requested": "claude-opus-5-5",
+    "effort_requested": "high",
+    "receipt_supported": true,
+    "model_actual": "claude-opus-5-5",
+    "effort_actual": "unverified",
+    "independence_verified": true,
+    "other_reviewer_agents_dispatched": false,
+    "validator_ran": false,
+    "not_assessed": [
+      "learnings",
+      "agent-native gaps",
+      "deployment notes",
+      "whole-plan acceptance"
+    ],
+    "source_citations": [
+      "[Qt 6.4.2 visibility implementation](https://raw.githubusercontent.com/qt/qtbase/v6.4.2/src/widgets/util/qsystemtrayicon.cpp)",
+      "[Qt 6.10.2 Unix tray selection](https://raw.githubusercontent.com/qt/qtbase/v6.10.2/src/gui/platform/unix/qgenericunixtheme.cpp)",
+      "[Qt 6.10.2 GNOME tray factory](https://raw.githubusercontent.com/qt/qtbase/v6.10.2/src/gui/platform/unix/qgnometheme.cpp)",
+      "[Qt 6.10.2 GTK3 theme inheritance](https://raw.githubusercontent.com/qt/qtbase/v6.10.2/src/plugins/platformthemes/gtk3/qgtk3theme.h)"
+    ]
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-230920-6b51dab7",
+  "run_id": "20261008-230920-6b51dab7"
+}

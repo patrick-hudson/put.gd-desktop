@@ -1,0 +1,122 @@
+{
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "ok": true,
+  "requestId": "69958c7f-bc35-4415-bc80-420ddd59378c",
+  "result": {
+    "activeOperations": 0,
+    "backend": "Qt",
+    "capabilities": {
+      "providers": {
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "source": {
+        "adapter": "kde-wayland",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "error": "",
+            "interface": "org.kde.KWin.ScreenShot2",
+            "interface_version": 5,
+            "mode": "compositor-native",
+            "permission": "restricted-desktop-entry",
+            "permission_entry_matches_executable": true,
+            "permission_rejected": false
+          },
+          "region": {
+            "available": true,
+            "error": "",
+            "interface": "org.kde.KWin.ScreenShot2",
+            "interface_version": 5,
+            "mode": "compositor-native",
+            "permission": "restricted-desktop-entry",
+            "permission_entry_matches_executable": true,
+            "permission_rejected": false
+          },
+          "window": {
+            "available": true,
+            "error": "",
+            "interface": "org.kde.KWin.ScreenShot2",
+            "interface_version": 5,
+            "mode": "compositor-native",
+            "permission": "restricted-desktop-entry",
+            "permission_entry_matches_executable": true,
+            "permission_rejected": false
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "error": "",
+          "import": "ext-data-control-v1",
+          "protocol_version": 1,
+          "result": "ext-data-control-v1-clipboard-only",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "memory": {
+      "allocatorReclamationCount": 10,
+      "allocatorReclamationPending": false,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 204
+    },
+    "qtVersion": "6.10.2",
+    "schemaVersion": 1
+  },
+  "schemaVersion": 1
+}

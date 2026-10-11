@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "finishedUtc": "2026-10-09T01:49:55.497920+00:00",
+  "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "tree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+  "commitCount": 41,
+  "version": "0.1.1-dev.41+g97ca3a521714",
+  "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+  "nativeFunctionalPassed": true,
+  "scope": "Named single-head GNOME50/Wayland source41 local-only U11 native lifecycle acceptance, distinct from full profile certification and remote storage acceptance.",
+  "package": {
+    "path": "/home/patrick/work/put.gd/work/u11/native/gnome/putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb",
+    "sha256": "fe7d6a24d27e6e9f202e8e2a64d133fe3ebc88a8675b4ab10e7cfcba3ef9af71"
+  },
+  "installed": {
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.41+g97ca3a521714",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+      "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+      "commitCount": 41,
+      "dirty": null,
+      "sourceProvenance": "supplied"
+    },
+    "versions": {
+      "/usr/bin/putgd": "putgd 0.1.1-dev.41+g97ca3a521714",
+      "/usr/bin/putgd-cli": "putgd-cli 0.1.1-dev.41+g97ca3a521714",
+      "/usr/bin/putgd-ui": "putgd-ui 0.1.1-dev.41+g97ca3a521714"
+    },
+    "binarySha256": {
+      "/usr/bin/putgd": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8",
+      "/usr/bin/putgd-cli": "f979812e68ffd8fa039dd0322b2056e8d0e771de33f1f9562c6bec7b4ca55549",
+      "/usr/bin/putgd-ui": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909"
+    },
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "extensionSha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+  },
+  "runningApp": {
+    "pid": 2848,
+    "startTicks": 3939,
+    "sha256": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8"
+  },
+  "DevTests": {
+    "passed": 40,
+    "total": 40,
+    "seconds": 201.63,
+    "JUnit": "dev.xml",
+    "inventory": "dev-test-inventory.json",
+    "notRegistered": "gnome_ui_ownership_contract: Node is absent on this VM; current-source host suite owns that JS contract."
+  },
+  "nativeMatrix": {
+    "passed": true,
+    "cases": 12,
+    "receipt": "matrix.json",
+    "firstCurrentSourceAttemptPassed": true
+  },
+  "tray": {
+    "renderedIcon": true,
+    "allFourActualMenuActionsPassed": true,
+    "receipt": "tray-actions/results.json",
+    "helperAbsentDuringActions": true,
+    "allFourActualViewsOpened": [
+      "Settings: ui/tray-settings-open.png",
+      "History: ui/history-tray-open.png",
+      "Activity: ui/continuity-activity-open.png",
+      "About: ui/about-tray-open.png"
+    ]
+  },
+  "uiLifecycle": {
+    "twoCyclesFourViews": true,
+    "normalHelperExitCount": 14,
+    "lastExit": {
+      "code": 0,
+      "generation": 14,
+      "status": "normal"
+    },
+    "receipt": "views/results.json",
+    "populatedImagePreview": "ui/history-image-preview.png",
+    "normalHelperCloseAfterPreview": "ui/populated-history-normal-close.png"
+  },
+  "clipboardSurvival": "clipboard-survival.json",
+  "draftConflictAndCancel": "draft-conflict.json",
+  "nativeFolderChooser": "ui/native-folder-dialog-open.png",
+  "ownWindowExclusion": "own-window-exclusion.json",
+  "ownModalExclusion": "own-modal-exclusion.json",
+  "acceptedWorkContinuity": {
+    "receipt": "continuity/receipt.json",
+    "operationId": "1ffaa1dc-f843-4eab-832a-8c35586eaec1",
+    "acceptedBeforeHelperClose": true,
+    "activeAfterHelperExit": true,
+    "postExitActiveObservations": 97,
+    "postExitActiveSpanSeconds": 13.283308304999991,
+    "largeFileBytes": 536870912,
+    "exactSavedHashAndSizeVerified": true
+  },
+  "finalOperationCounts": {
+    "completed": 14,
+    "failed": 2,
+    "cancelled": 3
+  },
+  "allOperationsTerminal": true,
+  "fixtureProcessesRemaining": false,
+  "uiProcessRemaining": false,
+  "configurationRestored": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+  "sessionReload": "session-reload.json",
+  "oldResidentStopped": "preserve-state.json",
+  "VncPort": 5936,
+  "newVmLaunched": false,
+  "goldenDiskModified": false,
+  "memorySampleRun": false,
+  "failedAttemptsRetained": [
+    "install-wrapper.log: sudo reboot refused; native GNOME Restart subsequently succeeded with changed boot ID",
+    "attempts/views-initial-focus-001/results.json: UI shown was not keyboard focus; Alt+F4 closed the GTK fixture; witnessed focus correction recorded",
+    "continuity/preflight-correction.json: menu remained open, no sharing action had been invoked",
+    "own-window-exclusion.json: initial driver incorrectly expected synchronous rejection; the accepted operation correctly ended failed/capture_target with no items"
+  ],
+  "limitations": [
+    "Historical intermittent GNOME region-readiness failure remains unresolved. These current-source first-attempt passes do not prove that fixed selector delay is deterministic.",
+    "GNOME does not guarantee keyboard focus on every ui.show. About opened from tray over the GTK fixture also required an explicit title click before normal Close; see ui/about-focus-confirmed.png.",
+    "No S3 upload/public-URL/remote-delete test in this unit; those remain separate acceptance gates.",
+    "No multi-monitor/fractional-scale/rotation, full desktop profile certification or native helper-crash injection in this unit.",
+    "No RSS/PSS/private or 40MiB claim in this native receipt. Prepared sampler waits for root quiet-phase authorization."
+  ],
+  "replay": [
+    "build.py",
+    "install.py (already-stopped baseline guard)",
+    "stop-old.py",
+    "README.md session recovery note",
+    "run-matrix.py",
+    "views-smoke.py",
+    "interact.py with ui/actions.jsonl",
+    "tray-actions.py",
+    "continuity-prepare.py",
+    "continuity-run.py",
+    "sample-memory.py (not run)"
+  ]
+}

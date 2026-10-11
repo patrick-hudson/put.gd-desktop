@@ -1,0 +1,109 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "scope": {
+    "base": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+    "branch": "feat/qt-linux-sharing",
+    "head_sha": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+    "pr_url": null,
+    "files_changed": 2,
+    "files": [
+      "CMakeLists.txt",
+      "tests/desktop/test_gnome_ownership.mjs"
+    ],
+    "scope_mode": "base: working tree; tightly named two-file diff"
+  },
+  "intent": "Replace the Node vm/assert/fs GNOME ownership fixture with GJS and Gio file loading, preserving all five ownership assertions. Select the mock contract only when the existing native GJS runtime is found, without new runtime dependencies; product extension and graphical acceptance remain outside this change.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "adversarial-claude"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan": "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+    "plan_source": "inferred",
+    "status": "complete within the two-file fixture correction",
+    "requirements_checked": [
+      "R2 focused external target control",
+      "R24 reproducible native-runtime testing",
+      "R37/U11 resident/helper ownership control"
+    ],
+    "implementation_units_context": [
+      "U7",
+      "U11"
+    ],
+    "unaddressed_in_scope": [],
+    "unrequested_behavior_rules": [],
+    "note": "No product, implementation-unit completion or graphical desktop acceptance claim is made by this test-harness-only correction."
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "This mocked ownership fixture proves extension control and frozen-target behavior only; real GNOME Shell graphical acceptance remains separate."
+  ],
+  "testing_gaps": [],
+  "coverage": {
+    "depth": "focused",
+    "correctness": "Fixture module/eval lexical mocks, assertion helper behavior, preservation of all five assertion bodies, source/path loading, Linux-only CMake selection and timeout reviewed.",
+    "criteria_files": [
+      "AGENTS.md"
+    ],
+    "criteria_source": "instruction-file fallback; no governing CODING_STANDARDS.md or CLAUDE.md found",
+    "independent_review": {
+      "cross_model_route": "claude",
+      "model_requested": "claude-opus-5-5",
+      "effort_requested": "high",
+      "receipt_supported": true,
+      "model_actual": "claude-opus-5-5",
+      "effort_actual": "unverified",
+      "independence_verified": true
+    },
+    "peer_candidates": {
+      "produced": 2,
+      "retained": 0,
+      "dispositions": [
+        "Async-module false-green hypothesis rejected after actual supported-GJS negative controls.",
+        "Missing-runtime omission is an explicit intended optional native-lab coverage choice."
+      ]
+    },
+    "validation": [
+      "Saved existing-GJS 1.88 fixture run has exit 0 and all five PASS lines; every cited source and raw artifact SHA-256 matches.",
+      "All five assertion bodies are byte-identical to the base after console.log-to-print output normalization.",
+      "Fresh existing-GJS 1.88 negative control throws after await and exits 1; unresolved await times out after 5 seconds, covered by CTest TIMEOUT 30.",
+      "Saved host cmake --preset dev configure succeeds, reports native-lab GJS scope and has no Node dependency warning."
+    ],
+    "no_local_fixture_rerun": "Host has no GJS; native GJS evidence was inspected and source identity verified.",
+    "no_other_reviewers_or_validator": true,
+    "not_assessed": [
+      "learnings",
+      "agent-native gaps",
+      "deployment notes",
+      "full product requirements and unrelated implementation units",
+      "graphical desktop acceptance"
+    ],
+    "compound_packs": "none declared; not applied on focused path",
+    "excluded_untracked": [
+      "All untracked evidence files (used only as validation inputs), docs/testing-view-startup.md and tools/qemu-grid/* excluded from reviewed diff."
+    ],
+    "excluded_modified": [
+      "AGENTS.md (criteria only)",
+      "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md (requirements context only)",
+      "docs/verification.md",
+      "docs/vm-lab.md",
+      "docs/windows-vm-lab.md"
+    ],
+    "scope_facts": "Exact helper counts obtained from sparse original-base scratch snapshot with only the two named working-tree changes."
+  },
+  "reviewed_source_hashes": {
+    "CMakeLists.txt": "816680544efe9826df5990185c671cba856ad9723cd122e63133339f7ad9e64d",
+    "tests/desktop/test_gnome_ownership.mjs": "a98d0b74afbdb9eb0a561d9f68ecd31c23372b92084de29d59bc30a8cf298be3",
+    "integrations/gnome/extension.js": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-221648-9f13c22e",
+  "run_id": "20261008-221648-9f13c22e"
+}

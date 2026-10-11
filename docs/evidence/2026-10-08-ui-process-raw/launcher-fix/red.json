@@ -1,0 +1,9 @@
+{
+  "case": "actual second launch receives ui_incompatible",
+  "expectedExit": 1,
+  "actualExit": 0,
+  "bugReproduced": true,
+  "stdoutEmpty": true,
+  "rawReplyLogged": false,
+  "binary": "/home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev/putgd"
+}

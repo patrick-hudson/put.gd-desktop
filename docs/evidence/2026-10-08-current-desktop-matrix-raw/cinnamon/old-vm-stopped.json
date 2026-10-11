@@ -1,0 +1,11 @@
+{
+  "status": "stopped",
+  "evidence": "work/lab-runs/fresh-cinnamon-u9-20261008",
+  "timestampUtc": "2026-10-08T20:40:26.108604+00:00",
+  "hostPid": 1794904,
+  "hostProcessExists": false,
+  "precedingAction": "QMP system_powerdown did not exit within observation; explicit owned-VM QMP quit used",
+  "pidObservationLimit": "Default sandbox /proc hides host QEMU PIDs; termination verified in escalated host namespace",
+  "diskPreserved": true,
+  "baseUnmodified": true
+}

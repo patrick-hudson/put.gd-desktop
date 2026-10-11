@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "bash",
+    "/home/patrick/.codex/plugins/cache/compound-engineering-plugin/compound-engineering/3.30.4/skills/ce-optimize/scripts/measure.sh",
+    "/usr/bin/python3 /home/patrick/work/put.gd/work/view-startup-latency/evaluate.py --result /home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json --result /home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+    "30",
+    "/home/patrick/work/put.gd"
+  ],
+  "exitCode": 0
+}

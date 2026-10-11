@@ -1,0 +1,198 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "candidateSourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "sourceArchiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+  "scope": "Candidate post-functional native VM observation; separate from cold physical target",
+  "startedUtc": "2026-10-08T22:37:43.103282+00:00",
+  "parameters": {
+    "durationSeconds": 120,
+    "intervalSeconds": 5,
+    "warmupSeconds": 5
+  },
+  "guestScriptSha256": "725dd5d4a34ffbf74db161e3d08286d7990f0d5569fa50aab293c354b5f42f73",
+  "labRunnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "runs": {
+    "cinnamon": {
+      "run": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc",
+      "profile": "cinnamon-x11",
+      "vncPort": 5938,
+      "hostQemuPid": 2205651,
+      "runningApp": {
+        "pid": 17990,
+        "startTicks": 657928,
+        "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+      },
+      "package": {
+        "sha256": "8449d4ea08a5175c4c685f81c04b65e09be102563aba65d21fbc653d94ed5a7a",
+        "filename": "putgd_0.1.0_amd64.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+          "/usr/bin/putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+        }
+      },
+      "functionalTestIds": [
+        "cf50e7f654c743b1a549ad0179c9143b",
+        "8991f4084ba6482a904d990cfaa1bdfa",
+        "92ee8abe03b441538a73e555c24b7517",
+        "6c1abbc9b3bb48fb8337183c6fa96f6f",
+        "8a44c519f98343558bbef2ba5622be4c",
+        "b38810f02bcb4388879bf0b344ac33d2",
+        "1541b2ceb99e4102bc15ef392a687d4b",
+        "96a0dfd9c9f943e4ab09fc608e491235",
+        "47c88c2e82fb4e0896b4301db992bb68",
+        "76faf7d7ff404ab6ac6e08702322e42a",
+        "63e4ba3fa3d840cdabb5f69c5e2ab3ae",
+        "4c1a04bbc4354eb18e12d0325357ddce"
+      ],
+      "operationCount": 12,
+      "vcpus": 2,
+      "vmMemoryMiB": 6144,
+      "status": "ready",
+      "measurement": {
+        "exitCode": 0,
+        "startedUtc": "2026-10-08T22:37:45.447424+00:00",
+        "finishedUtc": "2026-10-08T22:39:51.207028+00:00",
+        "command": [
+          "python3",
+          "-",
+          "--pid",
+          "17990",
+          "--start-ticks",
+          "657928",
+          "--sha256",
+          "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09",
+          "--seconds",
+          "120",
+          "--interval",
+          "5"
+        ],
+        "resultSha256": "e3ff40bb0e4e63cbe8e69b4a289c0ba78693e182f606ea462ecb3fbf49e6dc09",
+        "identityUnchanged": true
+      }
+    },
+    "gnome": {
+      "run": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc",
+      "profile": "gnome-wayland",
+      "vncPort": 5936,
+      "hostQemuPid": 2215650,
+      "runningApp": {
+        "pid": 31221,
+        "startTicks": 617110,
+        "sha256": "514a33cd6eda3b155f2fd7067280f614e6d9443a75f3c59dd9e217a6c07c1dd4"
+      },
+      "package": {
+        "sha256": "52f5d71568018d67e6b9b3315f647b814add400482d05246a00e5304cce17e95",
+        "filename": "putgd_0.1.0_amd64.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "514a33cd6eda3b155f2fd7067280f614e6d9443a75f3c59dd9e217a6c07c1dd4",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-cli": "41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85",
+          "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+        }
+      },
+      "functionalTestIds": [
+        "533f910ee9e14197abc7fdb94c38b9bb",
+        "d85c1ee7aaaf4b9ea501c7384d32566a",
+        "0b0fdc0544f2401ba9d440951f1c2cff",
+        "5d5f01b51c304b59b578e1d17ca97eb6",
+        "cd5a73aff9cd466b91d2f8174709459a",
+        "81722e3bb5c24d6eb2b3f4fccdbb3a2e",
+        "72426567e4774af18d1e853fc465b8fd",
+        "93af2dcdc0ed43799a28a09db29e1433",
+        "eec77c67a57b491bbd90bfe39b2c1fe8",
+        "1c0b2b71dae043b595bbf0d111de7148",
+        "c4312ee9cdc242668380b94a75dd9e42",
+        "b82179a88ffb4d04960616bf145e776e"
+      ],
+      "operationCount": 13,
+      "vcpus": 2,
+      "vmMemoryMiB": 6144,
+      "status": "ready",
+      "measurement": {
+        "exitCode": 0,
+        "startedUtc": "2026-10-08T22:37:45.447964+00:00",
+        "finishedUtc": "2026-10-08T22:39:51.288294+00:00",
+        "command": [
+          "python3",
+          "-",
+          "--pid",
+          "31221",
+          "--start-ticks",
+          "617110",
+          "--sha256",
+          "514a33cd6eda3b155f2fd7067280f614e6d9443a75f3c59dd9e217a6c07c1dd4",
+          "--seconds",
+          "120",
+          "--interval",
+          "5"
+        ],
+        "resultSha256": "ecff849cab79735dfae29b19881b0b7409849ce801acb7f9cef34e9100cf65a9",
+        "identityUnchanged": true
+      }
+    },
+    "kde": {
+      "run": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc",
+      "profile": "kde-wayland",
+      "vncPort": 5934,
+      "hostQemuPid": 2204498,
+      "runningApp": {
+        "pid": 58990,
+        "startTicks": 731554,
+        "sha256": "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426"
+      },
+      "package": {
+        "sha256": "c116e1a1bd2785cafb5b6d85967da8717227615030d813eff50d6f061db5319e",
+        "filename": "candidate.deb",
+        "installedBinarySha256": {
+          "/usr/bin/putgd": "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426",
+          "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+          "/usr/bin/putgd-cli": "41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85",
+          "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+        }
+      },
+      "functionalTestIds": [
+        "9e5398617c774fd5b6df66d1403e1853",
+        "d09ec4b59413444a9b39f4b1c93412d7",
+        "d6018df35aef4f8d90cce47b061bfe0a",
+        "0b8cd97105454b5d8fe60d1770e514c1",
+        "d9f8762c7b60478999e21ae0e7372224",
+        "be451edd8bfb4fdea1c7ae8db38ee77a",
+        "ed380918a9914c00ac96068effb1657a",
+        "017e3fbf951346e8aa34b402b3740195",
+        "b8cfe09c74804f73bd0a37357b485e60",
+        "b821823babe54a219d56c82010ed7dde",
+        "fda30e2656114c3789643b2bb7eb63a7",
+        "50b779d5741b428db6251869a737f6a2"
+      ],
+      "operationCount": 12,
+      "vcpus": 2,
+      "vmMemoryMiB": 6144,
+      "status": "ready",
+      "measurement": {
+        "exitCode": 0,
+        "startedUtc": "2026-10-08T22:37:45.448315+00:00",
+        "finishedUtc": "2026-10-08T22:39:51.379590+00:00",
+        "command": [
+          "python3",
+          "-",
+          "--pid",
+          "58990",
+          "--start-ticks",
+          "731554",
+          "--sha256",
+          "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426",
+          "--seconds",
+          "120",
+          "--interval",
+          "5"
+        ],
+        "resultSha256": "03817f3fa78d8a41a51bc612e4c4d1a4815466ab2d96bc33e1446612fcf29176",
+        "identityUnchanged": true
+      }
+    }
+  },
+  "finishedUtc": "2026-10-08T22:39:51.379985+00:00"
+}

@@ -1,0 +1,264 @@
+{
+  "identity": {
+    "pid": 2848,
+    "startTicks": 3939,
+    "sha256": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 41,
+    "dirty": null,
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.41+g97ca3a521714"
+  },
+  "diagnostics": {
+    "activeOperations": 0,
+    "backend": "Qt",
+    "build": {
+      "baseVersion": "0.1.1",
+      "commitCount": 41,
+      "dirty": null,
+      "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+      "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+      "schemaVersion": 1,
+      "sourceProvenance": "supplied",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "capabilities": {
+      "providers": {
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "source": {
+        "adapter": "gnome-wayland",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "consent": "one-time-extension-setup",
+            "mode": "compositor-native"
+          },
+          "region": {
+            "available": true,
+            "consent": "one-time-extension-setup",
+            "mode": "compositor-native"
+          },
+          "window": {
+            "available": true,
+            "consent": "one-time-extension-setup",
+            "mode": "compositor-native"
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "import": "bounded-mutter-selection",
+          "result": "st-clipboard-only",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "helper": {
+          "available": true,
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "extensionVersion": 1,
+          "protocol": 1,
+          "shellMajor": 50,
+          "uuid": "putgd@put.gd"
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "loginStartup": {
+      "applied": true,
+      "enabled": false
+    },
+    "memory": {
+      "allocatorReclamationCount": 17,
+      "allocatorReclamationPending": false,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 258
+    },
+    "qtVersion": "6.10.2",
+    "schemaVersion": 1,
+    "shortcuts": {
+      "available": true,
+      "bindings": {
+        "clipboard": {
+          "actual": "Ctrl+Shift+4",
+          "bound": true,
+          "requested": "Ctrl+Shift+4"
+        },
+        "desktop": {
+          "actual": "Ctrl+Shift+3",
+          "bound": true,
+          "requested": "Ctrl+Shift+3"
+        },
+        "region": {
+          "actual": "Ctrl+Shift+1",
+          "bound": true,
+          "requested": "Ctrl+Shift+1"
+        },
+        "window": {
+          "actual": "Ctrl+Shift+2",
+          "bound": true,
+          "requested": "Ctrl+Shift+2"
+        }
+      }
+    },
+    "trayAvailable": true,
+    "ui": {
+      "checkpointBytes": 2485,
+      "lastExit": {
+        "code": 0,
+        "generation": 14,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    }
+  },
+  "operations": [
+    {
+      "id": "1ffaa1dc-f843-4eab-832a-8c35586eaec1",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "7baccf87-83bf-4109-8ee9-334cb0b975a4",
+      "state": "failed",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "ee4c5d09-5ae7-4ac6-9f17-2fa0b56f11f4",
+      "state": "failed",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "7b94266f-d13e-4b9a-8172-1ff0b7366a40",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "296c32b6-9cc2-4137-a19a-1562968696bb",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "aa83def5-6d90-4b7e-aff8-5fe533dfc43f",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "6ba0d689-0a3e-410b-8139-20a37dc92933",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "b74f90f0-5b3a-41f8-98b0-d44eadf7b896",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "0d5d4494-a037-4bb4-b138-202b194c1f08",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "0fcc6a3a-1d30-425f-9438-66dbe2c7256f",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "2b10ad5e-1de6-4e08-87c5-64b0e5029f35",
+      "state": "cancelled",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "c129d9eb-aeb8-4c20-98a3-2dd0e462c1ee",
+      "state": "cancelled",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "8212d658-a88d-41e2-8746-44cace624343",
+      "state": "cancelled",
+      "copyStatus": "no_result"
+    },
+    {
+      "id": "b1bbf22f-2c2f-471a-b03b-abd04400e82f",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "c3f7d218-14c4-4826-b145-66483f516a36",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "b695ab2b-c318-4cbc-a432-6511ad7e0bf0",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "def6a150-0189-4217-89ea-fb93f651982b",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "2fe35f92-f522-431a-9f70-76336bdf6a60",
+      "state": "completed",
+      "copyStatus": "copied"
+    },
+    {
+      "id": "781f6fb2-bbff-4863-8876-42449cc83c21",
+      "state": "completed",
+      "copyStatus": "copied"
+    }
+  ],
+  "sessionBefore": "User=1000\nName=lab\nType=wayland\nLockedHint=yes\n",
+  "sessionAfter": "User=1000\nName=lab\nType=wayland\nLockedHint=no\n",
+  "restoreAction": "loginctl unlock-session and visible QMP Escape"
+}

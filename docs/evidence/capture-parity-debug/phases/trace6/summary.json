@@ -1,0 +1,121 @@
+{
+  "native-layout": {
+    "n": 175,
+    "medianMs": 0.639521,
+    "p95Ms": 2.020426,
+    "minMs": 0.238322,
+    "maxMs": 5.980535
+  },
+  "prepare": {
+    "n": 35,
+    "medianMs": 1.515315,
+    "p95Ms": 3.496376,
+    "minMs": 0.620689,
+    "maxMs": 3.695105
+  },
+  "accepted-worker": {
+    "n": 35,
+    "medianMs": 7.567706,
+    "p95Ms": 62.634591,
+    "minMs": 2.578831,
+    "maxMs": 74.346905
+  },
+  "acquiring-worker": {
+    "n": 35,
+    "medianMs": 4.003289,
+    "p95Ms": 7.821011,
+    "minMs": 2.122077,
+    "maxMs": 8.852559
+  },
+  "surface-create": {
+    "n": 105,
+    "medianMs": 0.040185,
+    "p95Ms": 0.090393,
+    "minMs": 0.014627,
+    "maxMs": 0.153808
+  },
+  "surface-polish": {
+    "n": 105,
+    "medianMs": 0.011895,
+    "p95Ms": 0.033213,
+    "minMs": 0.006328,
+    "maxMs": 0.050033
+  },
+  "surface-native-create": {
+    "n": 105,
+    "medianMs": 1.013613,
+    "p95Ms": 1.689012,
+    "minMs": 0.473156,
+    "maxMs": 2.768156
+  },
+  "surface-show": {
+    "n": 105,
+    "medianMs": 6.304556,
+    "p95Ms": 16.779734,
+    "minMs": 0.409554,
+    "maxMs": 26.567923
+  },
+  "surface-raise": {
+    "n": 105,
+    "medianMs": 0.009651,
+    "p95Ms": 0.028098,
+    "minMs": 0.004847,
+    "maxMs": 0.04197
+  },
+  "overlay-start": {
+    "n": 35,
+    "medianMs": 23.002787,
+    "p95Ms": 51.262314,
+    "minMs": 5.459874,
+    "maxMs": 58.319484
+  },
+  "child-main -> app-before": {
+    "n": 35,
+    "medianMs": 0.059937,
+    "p95Ms": 0.129895,
+    "minMs": 0.02214,
+    "maxMs": 0.158259
+  },
+  "app-before -> app-after": {
+    "n": 35,
+    "medianMs": 13.354338,
+    "p95Ms": 24.770917,
+    "minMs": 7.985972,
+    "maxMs": 31.812837
+  },
+  "adapters-before -> adapters-after": {
+    "n": 35,
+    "medianMs": 0.870332,
+    "p95Ms": 1.832224,
+    "minMs": 0.52233,
+    "maxMs": 2.260913
+  },
+  "app-after -> resolve-before": {
+    "n": 35,
+    "medianMs": 3.359178,
+    "p95Ms": 6.185111,
+    "minMs": 2.451098,
+    "maxMs": 8.602724
+  },
+  "resolve-before -> resolve-after": {
+    "n": 35,
+    "medianMs": 1.316465,
+    "p95Ms": 4.627498,
+    "minMs": 0.885287,
+    "maxMs": 6.58123
+  },
+  "resolve-after -> acquire-frozen": {
+    "n": 35,
+    "medianMs": 0.035998,
+    "p95Ms": 0.07666,
+    "minMs": 0.025156,
+    "maxMs": 0.105613
+  },
+  "acquire-frozen -> surface-first-paint": {
+    "n": 35,
+    "medianMs": 34.286421,
+    "p95Ms": 66.141705,
+    "minMs": 11.490011,
+    "maxMs": 72.767924
+  }
+}

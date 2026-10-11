@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "tests/desktop/test_lab.py"
+  ],
+  "exitCode": 0,
+  "timestampUtc": "2026-10-08T20:41:51.006431+00:00",
+  "redEvidence": "Two new identity tests run before implementation failed with AttributeError: verify_running_app missing; observed in tool output. No saved raw red log.",
+  "functionalRed": "Cinnamon GTK X11 clipboard-text failed: independent fixture obscured; QMP witness located full GTK pattern at319,134 versus stale Qt120,152. Existing locator returned exact GTK pattern before condition fix.",
+  "scope": "Host protocol only; real graphical tests recorded separately"
+}

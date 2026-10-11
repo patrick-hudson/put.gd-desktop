@@ -1,0 +1,29 @@
+{
+  "expectedHEAD": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-memory-continuation-exp-001",
+  "ownedSourceSha256": "805e449b0be798bd43e94d6fdef56612b79efde7574afcd67a6b9a31a6a77827",
+  "algorithm": "SHA256 of sorted relative-path:SHA256 map encoded as compact JSON, no trailing newline",
+  "files": {
+    "CMakeLists.txt": "311f43f294e7d346da961151ee51434e1febf6f7bdd8402c55357719e8255dc9",
+    "packaging/linux/CMakeLists.txt": "409ad34e4c3caa1f02b07a8bec32397afcbce7f386789ec175f7c95f5be354dd",
+    "src/main.cpp": "f2d21ba631eb98e20deef0adef53765d528835846ace67664229ca71d279db39",
+    "src/storage/s3/S3Driver.cpp": "4354b6d4a3ec11dc4542a984bfc7c8af9a8725c69cc1340d423cf1774f732ae7",
+    "src/storage/s3/S3Driver.h": "188d9fd28552a71c81c8a965b3a77a2eac5d00edf689513f4f657bdd576a2e86",
+    "src/storage/s3/S3Module.cpp": "68012430e1857788c009bbe30cec446755bade78c96ffee63dc0e751fe38fe22",
+    "src/storage/s3/S3Module.h": "87558a1e9d21404fae0b47ee2547d279e89d35d9f267cdd035d8e42039ab2cba",
+    "src/storage/s3/S3Provider.cpp": "f84b494d9b16d16d5e92ce8211370d2e5650ef9f3bb45dd1c56e6566948cfca9",
+    "src/storage/s3/S3SdkContext.cpp": "166adb781bcb8ddbe92a31591c594d29388eaf35ce97910f374407bd466759d5",
+    "src/storage/s3/S3SdkContext.h": "63d3095c755b28cf580bd952e7d8b240cc903b4479361d789851ab94e4e6ed66",
+    "src/storage/s3/SdkRuntime.cpp": "1d74ff1f21be361b20ae9c819da30cc2a30af31950190ad567ca7e568b444929",
+    "src/storage/s3/SdkRuntime.h": "ab95fd67b71853fd60636de6f9a402a877aab358f44821312529b139af86e3a4",
+    "tests/fixtures/S3Fixture.h": "239a6819a1d2d3d2778c955c9ad76959e319e254390fc3579b0ba9973b13f211",
+    "tests/integration/test_s3_module.cpp": "66d6aad9f4db986a01a5883adf77e3042e0c4f49f1820373556321d4328624e0"
+  },
+  "previousOwnedSourceSha256": "bee9b3021dab5aa5d96d1321543d3bda2802ec6f15a0e41ec44c65a2bd6cccdc",
+  "reviewFixPaths": [
+    "CMakeLists.txt",
+    "src/storage/s3/S3Module.cpp",
+    "tests/integration/test_s3_module.cpp"
+  ],
+  "reviewSha256": "379bcef4369db2bcb268799bd06bf698a43ca62a53437cffd7a12412474c2aef"
+}

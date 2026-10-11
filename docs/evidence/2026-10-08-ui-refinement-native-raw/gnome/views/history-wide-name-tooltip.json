@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:50:10.733590+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/history-wide-name-tooltip.png",
+  "sha256": "09759e73b1f78778e67bf5f5a6c1e2f60804cd53b71b56e93260f0f45c094aa4",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-history-wide-name-tooltip-head0.ppm",
+    "sha256": "7056c6b9d0db5d0c10d2ee8e716551e5382614a10b4335720c398ffe266d8ee9"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5936,
+  "visualReview": "pending"
+}

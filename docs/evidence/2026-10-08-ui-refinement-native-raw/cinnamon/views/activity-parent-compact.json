@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:57:15.585060+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/cinnamon/views/activity-parent-compact.png",
+  "sha256": "89c2c29eeb55a516a07685d0891dca4dae1984b5b182bf52674fb8cd906020b7",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-source43-attempt1-activity-parent-compact-head0.ppm",
+    "sha256": "d92309fc4711c3808af85b380b290a7c0769ce53244f46c0646868980da3951c"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5938,
+  "visualReview": "pending"
+}

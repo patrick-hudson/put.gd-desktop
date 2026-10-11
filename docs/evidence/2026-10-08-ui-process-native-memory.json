@@ -1,0 +1,704 @@
+{
+  "schemaVersion": 1,
+  "updatedUtc": "2026-10-09T02:09:49.830802+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "sourceTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+  "sourceArchiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+  "testedVersion": "0.1.1-dev.41+g97ca3a521714",
+  "status": "native subsets and physical/VM measurements complete; split retained for measured post-view benefit",
+  "nativeScope": "Current-source graphical capture/tray/clipboard/drafts/conflicts/native-dialogs/own-window-modal exclusion/normal UI close plus real local 512MiB continuity on three existing VM overlays; not full AE17 or S3 acceptance",
+  "desktops": {
+    "cinnamon": {
+      "nativeReceipt": {
+        "path": "docs/evidence/2026-10-08-ui-process-raw/native-current/cinnamon/receipt.json",
+        "sha256": "b210ca25dd320ccccc275ec50b74388eac680beac3e751bd98e6ae2bbfd6e5d0"
+      },
+      "memoryReceipt": {
+        "path": "docs/evidence/2026-10-08-ui-process-raw/native-current/cinnamon/memory/memory/unit-receipt.json",
+        "sha256": "42e6d25ad270a9e4b3a7009433363dba9d2f9e4ad83d000bbba01ba42bb1739f"
+      },
+      "memory": {
+        "schemaVersion": 1,
+        "createdUtc": "2026-10-09T01:56:42.991433+00:00",
+        "status": "valid-timed-observation",
+        "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+        "sourceTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+        "sourceArchiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+        "version": "0.1.1-dev.41+g97ca3a521714",
+        "residentIdentity": {
+          "pid": 38189,
+          "startTicks": 1681006,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 64771,
+          "inode": 1195873
+        },
+        "binarySha256": {
+          "app": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef",
+          "cli": "fe68622526ff25a3867e3d32078b0cc332e4ae53f3f5c8e28770275def7c37b2",
+          "helper": "e5cb88d8d6f022adea2b4d8c7189e2affff680a736b8432b95341dc92313b1c2"
+        },
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+        "commandSha256": "488ce1c47acb38b4b2747d2e732fc1ff6670d524546839bc493adf5ca450339c",
+        "sampleCount": 25,
+        "firstToLastSampleSeconds": 120.00031173000025,
+        "configuredSeconds": 120,
+        "configuredIntervalSeconds": 5,
+        "totalFinalBytes": {
+          "rssBytes": 60452864,
+          "pssBytes": 39129088,
+          "privateBytes": 37654528
+        },
+        "totalPeakSampledBytes": {
+          "rssBytes": 60452864,
+          "pssBytes": 39129088,
+          "privateBytes": 37654528
+        },
+        "totalFinalMiB": {
+          "rssBytes": 57.652,
+          "pssBytes": 37.316,
+          "privateBytes": 35.91
+        },
+        "operationCount": 23,
+        "operationAndUiGuardsUnchanged": true,
+        "guardPollCount": 26,
+        "uiLifecycle": {
+          "checkpointBytes": 2522,
+          "lastExit": {
+            "code": 0,
+            "generation": 22,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "allObservedFamiliesResidentOnly": true,
+        "helperAbsentThroughout": true,
+        "processesStopped": false,
+        "scope": "Quiet VM post-native plus 512MiB local acquisition/normal helper exit; Cinnamon additionally includes user-confirmed manual region (metadata only). Not a matched empty-view comparison or physical cold40MiB/idle CPU acceptance.",
+        "postIntervalMappingAttribution": "footprint.json; unchanged existing bench_idle.footprint, basenames only",
+        "limits": [
+          "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+          "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+          "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+          "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+        ],
+        "driverIncident": null
+      },
+      "nativeSubsetPassed": true
+    },
+    "gnome": {
+      "nativeReceipt": {
+        "path": "docs/evidence/2026-10-08-ui-process-raw/native-current/gnome/receipt.json",
+        "sha256": "36682ace9beb525103521ee7c71977844588886841e0ef7e46134198e2d8cb78"
+      },
+      "memoryReceipt": {
+        "path": "docs/evidence/2026-10-08-ui-process-raw/native-current/gnome/memory/memory/unit-receipt.json",
+        "sha256": "0cedb447e5d5d070e8a5e837a2208512d19b653d61fb932c32d1e692b337ad55"
+      },
+      "memory": {
+        "schemaVersion": 1,
+        "createdUtc": "2026-10-09T01:56:43.009766+00:00",
+        "status": "valid-timed-observation-with-preserved-post-measurement-driver-error",
+        "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+        "sourceTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+        "sourceArchiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+        "version": "0.1.1-dev.41+g97ca3a521714",
+        "residentIdentity": {
+          "pid": 2848,
+          "startTicks": 3939,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 64770,
+          "inode": 1060325
+        },
+        "binarySha256": {
+          "app": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8",
+          "cli": "f979812e68ffd8fa039dd0322b2056e8d0e771de33f1f9562c6bec7b4ca55549",
+          "helper": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909"
+        },
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+        "commandSha256": "971d4ada5e29d8d4be2afb661ca9cd960945726ddb358ed72d3971314848f19a",
+        "sampleCount": 25,
+        "firstToLastSampleSeconds": 120.00019943000007,
+        "configuredSeconds": 120,
+        "configuredIntervalSeconds": 5,
+        "totalFinalBytes": {
+          "rssBytes": 68489216,
+          "pssBytes": 40652800,
+          "privateBytes": 36933632
+        },
+        "totalPeakSampledBytes": {
+          "rssBytes": 68489216,
+          "pssBytes": 40652800,
+          "privateBytes": 36933632
+        },
+        "totalFinalMiB": {
+          "rssBytes": 65.316,
+          "pssBytes": 38.77,
+          "privateBytes": 35.223
+        },
+        "operationCount": 19,
+        "operationAndUiGuardsUnchanged": true,
+        "guardPollCount": 26,
+        "uiLifecycle": {
+          "checkpointBytes": 2485,
+          "lastExit": {
+            "code": 0,
+            "generation": 14,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "allObservedFamiliesResidentOnly": true,
+        "helperAbsentThroughout": true,
+        "processesStopped": false,
+        "scope": "Quiet VM post-native plus 512MiB local acquisition/normal helper exit; Cinnamon additionally includes user-confirmed manual region (metadata only). Not a matched empty-view comparison or physical cold40MiB/idle CPU acceptance.",
+        "postIntervalMappingAttribution": "footprint.json; unchanged existing bench_idle.footprint, basenames only",
+        "limits": [
+          "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+          "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+          "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+          "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+        ],
+        "driverIncident": {
+          "launcherExitCode": 1,
+          "error": "AttributeError: Popen has no check_returncode",
+          "occurredAfterSamplerExit0AndResultCollection": true,
+          "timedSampleRerun": false,
+          "recovery": "Separate bounded post-interval mapping attribution only; original launcher error retained"
+        }
+      },
+      "nativeSubsetPassed": true
+    },
+    "kde": {
+      "nativeReceipt": {
+        "path": "docs/evidence/2026-10-08-ui-process-raw/native-current/kde/receipt.json",
+        "sha256": "c9bc36a9f77aefd05f09622f42dc9211c7083c1a6d91237f94f7cd017f7977f1"
+      },
+      "memoryReceipt": {
+        "path": "docs/evidence/2026-10-08-ui-process-raw/native-current/kde/memory/memory/unit-receipt.json",
+        "sha256": "57494e42baf5fad27f18d1d2b2eaa1d8e9bba8085075969dbe12d24f0fd0d0b8"
+      },
+      "memory": {
+        "schemaVersion": 1,
+        "createdUtc": "2026-10-09T01:56:43.017193+00:00",
+        "status": "valid-timed-observation",
+        "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+        "sourceTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+        "sourceArchiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+        "version": "0.1.1-dev.41+g97ca3a521714",
+        "residentIdentity": {
+          "pid": 105866,
+          "startTicks": 1779397,
+          "uid": 1000,
+          "executable": "/usr/bin/putgd",
+          "device": 64769,
+          "inode": 1313440
+        },
+        "binarySha256": {
+          "app": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c",
+          "cli": "f979812e68ffd8fa039dd0322b2056e8d0e771de33f1f9562c6bec7b4ca55549",
+          "helper": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909"
+        },
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+        "commandSha256": "4b1ab3dbae108b8aa73fa9ef01d220c54f1765f43f70a4bf5e921e8c81baaeb1",
+        "sampleCount": 25,
+        "firstToLastSampleSeconds": 120.00015368499953,
+        "configuredSeconds": 120,
+        "configuredIntervalSeconds": 5,
+        "totalFinalBytes": {
+          "rssBytes": 152563712,
+          "pssBytes": 47365120,
+          "privateBytes": 34349056
+        },
+        "totalPeakSampledBytes": {
+          "rssBytes": 152563712,
+          "pssBytes": 47365120,
+          "privateBytes": 34349056
+        },
+        "totalFinalMiB": {
+          "rssBytes": 145.496,
+          "pssBytes": 45.171,
+          "privateBytes": 32.758
+        },
+        "operationCount": 19,
+        "operationAndUiGuardsUnchanged": true,
+        "guardPollCount": 26,
+        "uiLifecycle": {
+          "checkpointBytes": 2510,
+          "lastExit": {
+            "code": 0,
+            "generation": 10,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "allObservedFamiliesResidentOnly": true,
+        "helperAbsentThroughout": true,
+        "processesStopped": false,
+        "scope": "Quiet VM post-native plus 512MiB local acquisition/normal helper exit; Cinnamon additionally includes user-confirmed manual region (metadata only). Not a matched empty-view comparison or physical cold40MiB/idle CPU acceptance.",
+        "postIntervalMappingAttribution": "footprint.json; unchanged existing bench_idle.footprint, basenames only",
+        "limits": [
+          "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+          "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+          "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+          "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+        ],
+        "driverIncident": null
+      },
+      "nativeSubsetPassed": true
+    }
+  },
+  "physical": {
+    "cold": {
+      "resultsPath": "docs/evidence/2026-10-08-ui-process-raw/physical-current/cold-1/results.json",
+      "sha256": "e5718271bf8e14ad0ac9e3edb1c3d4f03bc95e393ba53dc6d578dce94330085b",
+      "coldAcceptance": {
+        "elapsedSeconds": 300.604989828018,
+        "peakSampledTotalRssBytes": 46546944,
+        "totalCpuPercentOneCore": 0.009979874258628769,
+        "operationCount": 0,
+        "mappedOwnedWindowObserved": false,
+        "helperObserved": false,
+        "legacyIdleBudgetPassed": true,
+        "target40MiBPassed": false,
+        "measurementControls": "All observed family members and mapped-window ownership checked once per second; full records every five seconds. More observation than historical resident-only idle harness; CPU comparisons require this same workload."
+      },
+      "summary": {
+        "finalTotals": {
+          "rssBytes": 46546944,
+          "pssBytes": 25986048,
+          "privateBytes": 23371776
+        },
+        "peakSampledTotals": {
+          "rssBytes": 46546944,
+          "pssBytes": 25987072,
+          "privateBytes": 23371776
+        },
+        "finalTotalRssAtOrBelow40MiB": false,
+        "coldIdleBudgetEstablished": true,
+        "cold40MiBTargetEstablished": false,
+        "renderedTrayAcceptanceEstablished": false,
+        "peakOpenTotals": null,
+        "finalClosedTotals": null,
+        "medianActivationAcknowledgementMilliseconds": null
+      }
+    },
+    "matched": {
+      "comparisonPath": "docs/evidence/2026-10-08-ui-process-raw/physical-current/comparison.json",
+      "sha256": "182acc4ed0e58391b4d9adf895bc59ea6e41076e7361f24adbb166a5b83b04b7",
+      "comparison": {
+        "schemaVersion": 1,
+        "protocolSha256": "f74742e36cc01262e52f1c5b47f60cb2941cc23383b27e53c6e74a843cf481af",
+        "scope": "Matched empty three-view physical Cinnamon workload, two runs per build, all observed processes counted",
+        "builds": {
+          "retained": {
+            "runs": [
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/retained-1/results.json",
+                "sha256": "5b4d1e41dfc24c4b61e5f7625a45f82fdc931386d88f5dd12630083fe4355c62",
+                "summary": {
+                  "finalTotals": {
+                    "rssBytes": 68157440,
+                    "pssBytes": 42273792,
+                    "privateBytes": 39325696
+                  },
+                  "peakSampledTotals": {
+                    "rssBytes": 76562432,
+                    "pssBytes": 46476288,
+                    "privateBytes": 39325696
+                  },
+                  "finalTotalRssAtOrBelow40MiB": false,
+                  "coldIdleBudgetEstablished": false,
+                  "cold40MiBTargetEstablished": false,
+                  "renderedTrayAcceptanceEstablished": false,
+                  "peakOpenTotals": {
+                    "rssBytes": 76562432,
+                    "pssBytes": 46476288,
+                    "privateBytes": 39325696
+                  },
+                  "finalClosedTotals": {
+                    "rssBytes": 68157440,
+                    "pssBytes": 42273792,
+                    "privateBytes": 39325696
+                  },
+                  "medianActivationAcknowledgementMilliseconds": 17.87056401371956
+                },
+                "mappedReadyMilliseconds": [
+                  671.0694009670988,
+                  248.38443094631657,
+                  319.5526189520024,
+                  89.89604696398601,
+                  96.37176699470729,
+                  90.90020996518433,
+                  105.75146501651034,
+                  111.05269996915013,
+                  98.33896299824119
+                ]
+              },
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/retained-2/results.json",
+                "sha256": "84460ba2580b4b9d7452023dabe4bdff80d656fc07be4b7c4ae22a8aace02dc1",
+                "summary": {
+                  "finalTotals": {
+                    "rssBytes": 68341760,
+                    "pssBytes": 42448896,
+                    "privateBytes": 39497728
+                  },
+                  "peakSampledTotals": {
+                    "rssBytes": 76746752,
+                    "pssBytes": 46650368,
+                    "privateBytes": 39497728
+                  },
+                  "finalTotalRssAtOrBelow40MiB": false,
+                  "coldIdleBudgetEstablished": false,
+                  "cold40MiBTargetEstablished": false,
+                  "renderedTrayAcceptanceEstablished": false,
+                  "peakOpenTotals": {
+                    "rssBytes": 76746752,
+                    "pssBytes": 46650368,
+                    "privateBytes": 39497728
+                  },
+                  "finalClosedTotals": {
+                    "rssBytes": 68341760,
+                    "pssBytes": 42448896,
+                    "privateBytes": 39497728
+                  },
+                  "medianActivationAcknowledgementMilliseconds": 19.375328964088112
+                },
+                "mappedReadyMilliseconds": [
+                  193.21765197673813,
+                  100.5021000164561,
+                  108.24089701054618,
+                  101.71471495414153,
+                  91.08105802442878,
+                  107.0193030172959,
+                  100.1244549988769,
+                  92.50837203580886,
+                  127.06061598146334
+                ]
+              }
+            ],
+            "medianFinalClosedTotals": {
+              "rssBytes": 68249600.0,
+              "pssBytes": 42361344.0,
+              "privateBytes": 39411712.0
+            },
+            "maximumSampledOpenTotals": {
+              "rssBytes": 76746752,
+              "pssBytes": 46650368,
+              "privateBytes": 39497728
+            },
+            "medianMappedReadyMilliseconds": 103.73308998532593,
+            "maximumMappedReadyMilliseconds": 671.0694009670988
+          },
+          "split": {
+            "runs": [
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+                "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d",
+                "summary": {
+                  "finalTotals": {
+                    "rssBytes": 47243264,
+                    "pssBytes": 26640384,
+                    "privateBytes": 24002560
+                  },
+                  "peakSampledTotals": {
+                    "rssBytes": 126582784,
+                    "pssBytes": 57610240,
+                    "privateBytes": 33828864
+                  },
+                  "finalTotalRssAtOrBelow40MiB": false,
+                  "coldIdleBudgetEstablished": false,
+                  "cold40MiBTargetEstablished": false,
+                  "renderedTrayAcceptanceEstablished": false,
+                  "peakOpenTotals": {
+                    "rssBytes": 126582784,
+                    "pssBytes": 57610240,
+                    "privateBytes": 33828864
+                  },
+                  "finalClosedTotals": {
+                    "rssBytes": 47243264,
+                    "pssBytes": 26640384,
+                    "privateBytes": 24002560
+                  },
+                  "medianActivationAcknowledgementMilliseconds": 28.451752034015954
+                },
+                "mappedReadyMilliseconds": [
+                  410.44171096291393,
+                  147.5395510205999,
+                  133.3336930256337,
+                  329.63122898945585,
+                  138.06506799301133,
+                  115.05541898077354,
+                  335.72212496073917,
+                  138.37266602786258,
+                  678.4580439561978
+                ]
+              },
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+                "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17",
+                "summary": {
+                  "finalTotals": {
+                    "rssBytes": 47214592,
+                    "pssBytes": 26632192,
+                    "privateBytes": 23994368
+                  },
+                  "peakSampledTotals": {
+                    "rssBytes": 126705664,
+                    "pssBytes": 57680896,
+                    "privateBytes": 33865728
+                  },
+                  "finalTotalRssAtOrBelow40MiB": false,
+                  "coldIdleBudgetEstablished": false,
+                  "cold40MiBTargetEstablished": false,
+                  "renderedTrayAcceptanceEstablished": false,
+                  "peakOpenTotals": {
+                    "rssBytes": 126705664,
+                    "pssBytes": 57680896,
+                    "privateBytes": 33865728
+                  },
+                  "finalClosedTotals": {
+                    "rssBytes": 47214592,
+                    "pssBytes": 26632192,
+                    "privateBytes": 23994368
+                  },
+                  "medianActivationAcknowledgementMilliseconds": 31.166214030236006
+                },
+                "mappedReadyMilliseconds": [
+                  348.5825369716622,
+                  143.3031729538925,
+                  153.14543299609795,
+                  393.30363704357296,
+                  173.48275997210294,
+                  142.4744389951229,
+                  325.35388303222135,
+                  162.93171199504286,
+                  150.1464020111598
+                ]
+              }
+            ],
+            "medianFinalClosedTotals": {
+              "rssBytes": 47228928.0,
+              "pssBytes": 26636288.0,
+              "privateBytes": 23998464.0
+            },
+            "maximumSampledOpenTotals": {
+              "rssBytes": 126705664,
+              "pssBytes": 57680896,
+              "privateBytes": 33865728
+            },
+            "medianMappedReadyMilliseconds": 158.0385724955704,
+            "maximumMappedReadyMilliseconds": 678.4580439561978
+          }
+        },
+        "closedSavingBytes": {
+          "rssBytes": 21020672.0,
+          "pssBytes": 15725056.0,
+          "privateBytes": 15413248.0
+        },
+        "limits": [
+          "Empty-view workload does not establish populated history or post-S3 memory.",
+          "RSS sums count shared pages more than once; PSS/private reported alongside.",
+          "VM outcomes are separate from physical cold idle target."
+        ],
+        "cold40MiBTargetEstablished": false
+      },
+      "latencyPath": "docs/evidence/2026-10-08-ui-process-raw/physical-current/latency-breakdown.json",
+      "latencySha256": "e78e86c058eb6db3e83460605709b2232de7886d33dcf900ede6ce2066f09900",
+      "latency": {
+        "schemaVersion": 1,
+        "scope": "Post-measurement analysis of saved events only; no workload changes or app interaction",
+        "limits": [
+          "Mapped-window readiness includes observer/CLI overhead and does not prove completed pixel painting.",
+          "Small sample counts; no p95 performance certification.",
+          "Retained and split acknowledgements have different semantics; mapped readiness is the common condition."
+        ],
+        "builds": {
+          "retained": {
+            "inputs": [
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/retained-1/results.json",
+                "sha256": "5b4d1e41dfc24c4b61e5f7625a45f82fdc931386d88f5dd12630083fe4355c62"
+              },
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/retained-2/results.json",
+                "sha256": "84460ba2580b4b9d7452023dabe4bdff80d656fc07be4b7c4ae22a8aace02dc1"
+              }
+            ],
+            "groups": {
+              "initialSettings": {
+                "count": 2,
+                "milliseconds": [
+                  671.0694009670988,
+                  193.21765197673813
+                ],
+                "medianMilliseconds": 432.14352647191845,
+                "maximumMilliseconds": 671.0694009670988
+              },
+              "reopenedSettings": {
+                "count": 4,
+                "milliseconds": [
+                  89.89604696398601,
+                  105.75146501651034,
+                  101.71471495414153,
+                  100.1244549988769
+                ],
+                "medianMilliseconds": 100.91958497650921,
+                "maximumMilliseconds": 105.75146501651034
+              },
+              "additionalViews": {
+                "count": 12,
+                "milliseconds": [
+                  248.38443094631657,
+                  319.5526189520024,
+                  96.37176699470729,
+                  90.90020996518433,
+                  111.05269996915013,
+                  98.33896299824119,
+                  100.5021000164561,
+                  108.24089701054618,
+                  91.08105802442878,
+                  107.0193030172959,
+                  92.50837203580886,
+                  127.06061598146334
+                ],
+                "medianMilliseconds": 103.760701516876,
+                "maximumMilliseconds": 319.5526189520024
+              },
+              "allViewsClosed": {
+                "count": 6,
+                "milliseconds": [
+                  150.16547695267946,
+                  131.19043101323768,
+                  134.23857296584174,
+                  112.30971699114889,
+                  108.35644498001784,
+                  116.43458198523149
+                ],
+                "medianMilliseconds": 123.81250649923459,
+                "maximumMilliseconds": 150.16547695267946
+              }
+            }
+          },
+          "split": {
+            "inputs": [
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+                "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+              },
+              {
+                "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+                "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+              }
+            ],
+            "groups": {
+              "initialSettings": {
+                "count": 2,
+                "milliseconds": [
+                  410.44171096291393,
+                  348.5825369716622
+                ],
+                "medianMilliseconds": 379.51212396728806,
+                "maximumMilliseconds": 410.44171096291393
+              },
+              "reopenedSettings": {
+                "count": 4,
+                "milliseconds": [
+                  329.63122898945585,
+                  335.72212496073917,
+                  393.30363704357296,
+                  325.35388303222135
+                ],
+                "medianMilliseconds": 332.6766769750975,
+                "maximumMilliseconds": 393.30363704357296
+              },
+              "additionalViews": {
+                "count": 12,
+                "milliseconds": [
+                  147.5395510205999,
+                  133.3336930256337,
+                  138.06506799301133,
+                  115.05541898077354,
+                  138.37266602786258,
+                  678.4580439561978,
+                  143.3031729538925,
+                  153.14543299609795,
+                  173.48275997210294,
+                  142.4744389951229,
+                  162.93171199504286,
+                  150.1464020111598
+                ],
+                "medianMilliseconds": 145.4213619872462,
+                "maximumMilliseconds": 678.4580439561978
+              },
+              "allViewsClosed": {
+                "count": 6,
+                "milliseconds": [
+                  218.76715699909255,
+                  140.14218997908756,
+                  131.79397903149948,
+                  162.30227198684588,
+                  207.81127800000831,
+                  205.02002100693062
+                ],
+                "medianMilliseconds": 183.66114649688825,
+                "maximumMilliseconds": 218.76715699909255
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "privacy": "Explicit allowlists only. No credentials, private keys, synthetic payload bytes or user manual capture pixels exported.",
+  "remainingGates": [
+    "Physical cold40MiB target remains unmet (44.390625MiB); populated-history/post-S3/repeated-capture plateaus remain separate workloads",
+    "Real S3 publication/public-link/precise remote deletion and slow remote-work continuity",
+    "Native helper crash/version mismatch/typed credential lifetime acceptance beyond isolated contract tests",
+    "Deterministic historical GNOME selector readiness and activation-focus concerns",
+    "Mixed-display/scaling/rotation, full release/package lifecycle and fresh-agent walkthrough"
+  ],
+  "decision": {
+    "retainSplit": true,
+    "reason": "Matched closed-family median RSS falls20.047MiB (30.80%), PSS14.997MiB (37.12%) and private14.699MiB (39.11%); helper actually exits and tray/local-work continuity passed on three desktops",
+    "tradeoffs": "Maximum sampled open-family RSS120.836 versus73.191MiB; PSS55.009 versus44.489MiB; repeated Settings mapped-readiness median332.677 versus100.920ms, four reopens per build, not painting/p95 certification",
+    "coldTarget40MiBMet": false,
+    "nextLocatingWork": "Resident-style probe completed without a product change; staged KDE graphics-load and same-desktop repeated-capture lifetime probes remain ranked, no savings forecast"
+  },
+  "styleCostAttribution": {
+    "analysisPath": "docs/evidence/2026-10-08-ui-process-raw/physical-current/style-cost-probe/results/analysis.json",
+    "analysisSha256": "d1e85baccb15a0ebfda2728fffa5434ca57a500d68d0553d90d7b08d5e9f27d1",
+    "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "binarySha256": "647118c7cc8ee04e18823a8c484b78bfc5138595367c2d45a9ec99bc7727475a",
+    "settledFullMinusNativeBytes": {
+      "RssBytes": 659456.0,
+      "PssBytes": 702976.0,
+      "PrivateBytes": 702464.0
+    },
+    "immediateFullStyleGrowthBytes": 196608,
+    "decision": "Do not change product styling: locating probe shows under1MiB settled difference, no measured product saving; retain custom visuals and native fonts/dialogs",
+    "limitations": [
+      "Not a product process or production operation workload; no product savings established.",
+      "Two runs per mode with visible temporary tray, no menu opened and no actions connected. Native menus differ from production styling and need parity before any adoption.",
+      "Native QApplication/GTK font and platform integration remains present in both modes; no font or dialog override.",
+      "QTimer uses default coarse timing; actual elapsed milliseconds per stage are preserved.",
+      "Memory/JSON instrumentation allocates between stages. The final dependency path enumeration precedes the quiet sample and contributes to its observed memory.",
+      "PSS depends on external shared-page ownership; RSS includes shared memory.",
+      "Short five-second settled stage is not the product 300-second cold-idle budget."
+    ]
+  },
+  "rawArtifactManifest": {
+    "path": "docs/evidence/2026-10-08-ui-process-raw/current-export-manifest.json",
+    "sha256": "d1555d24648832b621f44d3b1e0b55a7c2c8bcc13296caff3d9d9c07c266c002",
+    "fileCount": 804
+  },
+  "exportValidation": {
+    "path": "docs/evidence/2026-10-08-ui-process-raw/current-export-validation.json",
+    "sha256": "41189ec42916813d78c90ccf6b7e726f9c3cb444616796165ae63cfbf6509e6d"
+  }
+}

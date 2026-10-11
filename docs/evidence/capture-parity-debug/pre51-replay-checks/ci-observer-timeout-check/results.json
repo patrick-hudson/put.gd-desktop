@@ -1,0 +1,20 @@
+{
+  "authoredStepCodeSha256": "80644164de854f8baadf3e7f2a58d56687534d866efbc2095bbb84fd0557249a",
+  "injectedDeadlineSeconds": 0.3,
+  "exitCode": 124,
+  "passed": false,
+  "scope": "forced synthetic CI timeout cleanup only; no application/display/VM/physical acceptance",
+  "owned": {
+    "command": [
+      "python3",
+      "tests/performance/test_observe_cold_family.py"
+    ],
+    "exitCode": 124,
+    "timeoutSeconds": 45,
+    "failureType": "TimeoutError",
+    "cleanupErrorType": null,
+    "observedOwnedGenerations": 2,
+    "knownOwnedCleanupComplete": true,
+    "scope": "Synthetic Linux process/observer contracts only; no application or physical memory acceptance"
+  }
+}

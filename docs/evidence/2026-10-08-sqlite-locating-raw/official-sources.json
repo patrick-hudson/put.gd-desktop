@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "consultedDate": "2026-10-08",
+  "authority": "Official SQLite links; no copied full pages",
+  "sources": [
+    {
+      "title": "Rollback locks",
+      "url": "https://www.sqlite.org/lockingv3.html",
+      "use": "PENDING/EXCLUSIVE locking relevant to reader/commit overlap."
+    },
+    {
+      "title": "Prepared statement reuse",
+      "url": "https://www.sqlite.org/cintro.html",
+      "use": "Resetting/rebinding allows bounded statement reuse."
+    },
+    {
+      "title": "Reset semantics",
+      "url": "https://www.sqlite.org/c3ref/reset.html",
+      "use": "Return codes and bindings must be handled correctly."
+    },
+    {
+      "title": "Cache/shrink/sync PRAGMAs",
+      "url": "https://www.sqlite.org/pragma.html",
+      "use": "Connection-local demand-allocated cache cap, shrink and FULL sync."
+    },
+    {
+      "title": "Connection memory release",
+      "url": "https://www.sqlite.org/c3ref/db_release_memory.html",
+      "use": "Does not require the optional memory-management compile flag."
+    },
+    {
+      "title": "Global memory release",
+      "url": "https://www.sqlite.org/c3ref/release_memory.html",
+      "use": "No-op without SQLITE_ENABLE_MEMORY_MANAGEMENT."
+    },
+    {
+      "title": "Memory design",
+      "url": "https://www.sqlite.org/malloc.html",
+      "use": "Lookaside/cache/allocator tradeoffs; RSS differs from direct allocation accounting."
+    },
+    {
+      "title": "WAL behavior and reset correction",
+      "url": "https://www.sqlite.org/wal.html",
+      "use": "Conditional future option only: sidecars, checkpoint/close costs, one writer, documented reset-race fix. No WAL run."
+    }
+  ]
+}

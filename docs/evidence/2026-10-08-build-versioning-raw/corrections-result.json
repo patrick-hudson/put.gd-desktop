@@ -1,0 +1,115 @@
+{
+  "status": "complete",
+  "plan_path": "work/versioning/unit.md",
+  "changed_files": [
+    ".github/workflows/build.yml",
+    "cmake/InstallPackageSnapshot.cmake",
+    "docs/versioning.md",
+    "packaging/linux/CMakeLists.txt",
+    "src/ui/TrayController.cpp",
+    "src/ui/TrayController.h",
+    "tests/cmake/version_contract.cmake",
+    "tests/gui/test_version.cpp"
+  ],
+  "u_ids_attempted": [],
+  "u_ids_completed": [],
+  "verification_results": {
+    "red-build": 0,
+    "red-tests": 8,
+    "green-configure": 0,
+    "green-build": 0,
+    "green-tests": 0,
+    "green-test-count": 2,
+    "git-diff-check": 0
+  },
+  "verification_evidence": [
+    {
+      "unit": "Modeless About lifecycle",
+      "behavior_changed": true,
+      "existing_tests_inspected": [
+        "tests/gui/test_version.cpp"
+      ],
+      "tests_added_or_changed": [
+        "tests/gui/test_version.cpp"
+      ],
+      "tests_used_unchanged": [],
+      "red": "Existing exec entered the guarded modal event loop; assertion !enteredModalLoop failed before TrayController was edited.",
+      "green": "gui_version passes on dynamically linked distro Qt 6.4.2; asserts modeless visible About, same dialog reused, compiled version+manifest, close deletion, new opening, tray teardown deletion, and no other views/source operations.",
+      "commands": "red-build.json, red-tests.json, green-build.json, green-tests.json",
+      "exception_reason": "Native compositor input acceptance belongs to root; offscreen evidence is widget behavior only."
+    },
+    {
+      "unit": "Package source snapshots and commit-only binary refresh",
+      "behavior_changed": true,
+      "existing_tests_inspected": [
+        "tests/cmake/version_contract.cmake",
+        "packaging/linux/CMakeLists.txt",
+        "cmake/BuildVersion.cmake",
+        "cmake/CheckBuildIdentity.cmake.in"
+      ],
+      "tests_added_or_changed": [
+        "tests/cmake/version_contract.cmake"
+      ],
+      "tests_used_unchanged": [
+        "mixed binary/stale configure rejection",
+        "archive provenance",
+        "Debian package metadata"
+      ],
+      "red": "Fixture using the same direct install(FILES) pattern as existing production packaged the changed runtime asset under old identity and failed asset comparison. Production source proof and hashes saved before edit.",
+      "green": "version_contract passes using shared production InstallPackageSnapshot.cmake. Both fixture executables --version and --manifest checked immediately after empty-commit rebuild; old TGZ and direct install retain old runtime asset; configure-only installation and mixed binaries fail; rebuild installs new asset; asset-only normal rebuild refreshes snapshots without manual configure. Existing archive and Debian checks pass.",
+      "commands": "red-tests.json, green-build.json, green-tests.json",
+      "exception_reason": null
+    },
+    {
+      "unit": "CI provenance and documentation",
+      "behavior_changed": false,
+      "existing_tests_inspected": [
+        ".github/workflows/build.yml"
+      ],
+      "tests_added_or_changed": [],
+      "tests_used_unchanged": [],
+      "red": null,
+      "green": "Inspected final workflow diff: both checkouts full-history, Linux dev manifest joins reports, portable release manifest saved, existing action pins and permissions unchanged. Updated documentation describes finished behavior. git diff --check passes.",
+      "commands": "git diff --check -- <owned paths>",
+      "exception_reason": "Configuration/documentation change: no hosted CI run; no new runtime test necessary."
+    }
+  ],
+  "implementation_engine_binding": null,
+  "requested_route": "native Codex worker",
+  "actual_route": "native Codex worker",
+  "requested_model": null,
+  "actual_model": "unverified",
+  "requested_effort": null,
+  "fallback_reason": null,
+  "run_id": null,
+  "source_kind": "prompt with bounded unit packet",
+  "source_digest": "97955f727b6b453867e95459240a7fc330088292d4e2100efafe0a1a9d717284",
+  "unit_receipts": [
+    {
+      "unit": "versioning review corrections",
+      "route": "native",
+      "model": "unverified",
+      "detached_process": null,
+      "integration": "canonical owned files updated; caller owns integration",
+      "verification": "focused red/green complete",
+      "canonical_commit": "none; worker did not stage or commit",
+      "cleanup": "fixture/evidence retained under ignored work/ and build/"
+    }
+  ],
+  "plan_checkpoint": null,
+  "blockers": [],
+  "recovery_path": null,
+  "settled_decision_conflicts": [],
+  "behavior_change": true,
+  "standalone_shipping_skipped": true,
+  "considered_not_built": [
+    "Blanket rejection of a changed Git HEAD: conflicts with required packaging of old compiled snapshots.",
+    "Retained hidden About dialog: conflicts with lifecycle/memory requirement; released on close instead.",
+    "SDK runtime rebundling changes or new release automation: outside the confirmed source-asset defect and assigned scope."
+  ],
+  "limitations": [
+    "Root still owns authoritative full build/test and real compositor acceptance.",
+    "Hosted CI has not been run.",
+    "Snapshot regression starts from a minimal synthetic package fixture; green uses the same helper as production, while production configuration generated all asset/license snapshots."
+  ]
+}

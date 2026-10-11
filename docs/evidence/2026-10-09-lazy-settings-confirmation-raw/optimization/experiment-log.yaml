@@ -1,0 +1,1419 @@
+{
+  "spec": "view-startup-latency",
+  "run_id": "2026-10-08-view-startup-latency",
+  "started_at": "2026-10-08",
+  "baseline": {
+    "metrics": {
+      "settingsReopenMilliseconds": 332.6766769750975,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1
+    },
+    "gates": {
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896
+    },
+    "identity": {
+      "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+      "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+          "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+          "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+        }
+      ],
+      "samples": [
+        329.63122898945585,
+        335.72212496073917,
+        393.30363704357296,
+        325.35388303222135
+      ],
+      "currentHeadAtIntake": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+      "reuseReason": "Recent native baseline is reused. The following evidence-only commit changes no runtime, build, schema, platform or performance-harness path. Existing measured binaries retain their original identity; no relabelled build."
+    },
+    "diagnostics": {
+      "sampleCount": 4,
+      "p95Certified": false
+    }
+  },
+  "experiments": [
+    {
+      "iteration": 1,
+      "description": "Construct advanced Settings pages on demand",
+      "category": "architecture",
+      "kind": "standalone",
+      "outcome": "inconclusive",
+      "measurements": [
+        {
+          "label": "reference-1",
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+          "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+          "exitCode": 0
+        },
+        {
+          "label": "candidate-1",
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/results.json",
+          "sha256": "a97106e45e6d783f916816be878178ecf7614ee6146e396f7ff1c0d4854054e5",
+          "exitCode": 0
+        },
+        {
+          "label": "reference-2",
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+          "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+          "exitCode": 0
+        },
+        {
+          "label": "candidate-2",
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2/results.json",
+          "sha256": "862dbbb5dbe09c709e3e68f3116486832c0a1468069d4dc881f79dfb41478258",
+          "exitCode": 0
+        }
+      ],
+      "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+      "nativeGate": {
+        "path": "/home/patrick/work/put.gd/work/view-startup-latency/clean46-native-gate.json",
+        "sha256": "db29d4802fa2f42656c17c04c83af7fa803af40e12783f4075bf0bcfff14a0ab"
+      },
+      "resultMarker": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/work/lazy-confirmation/result.yaml",
+      "opportunity": {
+        "workload": "closed-view Settings reopen on physical Cinnamon",
+        "baseline": "CP-1 332.6767ms, source41, same frozen observer",
+        "evidence": "Two reopens: hidden Capture/Shortcuts/Preferences construction30.0\u201332.6ms plus disjoint show-phase exclusive Polish11.3\u201311.5ms. Located aggregate41.3\u201344.1ms; all Settings ctor45.1\u201350.2ms/show56.3\u201363.6ms. Native QApplication and observer stay unchanged.",
+        "expected_benefit": "Unknown net mapped benefit; located gross removable work about41\u201344ms, near40ms threshold, before lazy-state overhead; untracked hidden layout work might add saving. One bounded variant is justified, but likely borderline and ~200ms target not implied.",
+        "confidence": "High observed cost placement; low confidence net gain exceeds40ms",
+        "cost_and_risk": "One focused lazy-page variant; no dependencies; full draft/raw-number/profile semantics and targeted tests required. No cheaper available locating measurement changes which pages are chosen."
+      },
+      "opportunityProvenance": "Copied verbatim from pre-dispatch CP-2 backlog; no result-derived estimate",
+      "metrics": {
+        "settingsReopenMilliseconds": 295.43196596205235,
+        "closedRssBytes": 47794176.0,
+        "closedPssBytes": 27090432.0,
+        "peakOpenPssBytes": 53140480,
+        "functionalPassed": 1,
+        "normalHelperExitPassed": 1,
+        "reopenSamples": [
+          266.50156400864944,
+          286.1989389639348,
+          322.0225799595937,
+          304.6649929601699
+        ],
+        "inputs": [
+          {
+            "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/results.json",
+            "sha256": "a97106e45e6d783f916816be878178ecf7614ee6146e396f7ff1c0d4854054e5",
+            "binaries": {
+              "app": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+                "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+                "version": "0.1.1-dev.46+g6f6372e79d8b"
+              },
+              "cli": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+                "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+                "version": "0.1.1-dev.46+g6f6372e79d8b"
+              },
+              "helper": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+                "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+                "version": "0.1.1-dev.46+g6f6372e79d8b"
+              }
+            },
+            "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+          },
+          {
+            "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2/results.json",
+            "sha256": "862dbbb5dbe09c709e3e68f3116486832c0a1468069d4dc881f79dfb41478258",
+            "binaries": {
+              "app": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+                "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+                "version": "0.1.1-dev.46+g6f6372e79d8b"
+              },
+              "cli": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+                "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+                "version": "0.1.1-dev.46+g6f6372e79d8b"
+              },
+              "helper": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+                "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+                "version": "0.1.1-dev.46+g6f6372e79d8b"
+              }
+            },
+            "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+          }
+        ],
+        "limits": [
+          "Mapped readiness includes observer overhead; no p95 or paint certification.",
+          "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+        ]
+      },
+      "matchedReferenceMetrics": {
+        "settingsReopenMilliseconds": 332.5024600198958,
+        "closedRssBytes": 47814656.0,
+        "closedPssBytes": 27087360.0,
+        "peakOpenPssBytes": 58215424,
+        "functionalPassed": 1,
+        "normalHelperExitPassed": 1,
+        "reopenSamples": [
+          339.5424230257049,
+          325.4624970140867,
+          344.9719980126247,
+          284.36045098351315
+        ],
+        "inputs": [
+          {
+            "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+            "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+            "binaries": {
+              "app": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+                "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+                "version": "0.1.1-dev.45+g9d142919e5e6"
+              },
+              "cli": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+                "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+                "version": "0.1.1-dev.45+g9d142919e5e6"
+              },
+              "helper": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+                "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+                "version": "0.1.1-dev.45+g9d142919e5e6"
+              }
+            },
+            "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+          },
+          {
+            "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+            "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+            "binaries": {
+              "app": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+                "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+                "version": "0.1.1-dev.45+g9d142919e5e6"
+              },
+              "cli": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+                "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+                "version": "0.1.1-dev.45+g9d142919e5e6"
+              },
+              "helper": {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+                "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+                "version": "0.1.1-dev.45+g9d142919e5e6"
+              }
+            },
+            "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+          }
+        ],
+        "limits": [
+          "Mapped readiness includes observer overhead; no p95 or paint certification.",
+          "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+        ]
+      },
+      "comparisons": [
+        {
+          "pairing": "original-source41",
+          "baseline": {
+            "metrics": {
+              "settingsReopenMilliseconds": 332.6766769750975,
+              "closedRssBytes": 47228928.0,
+              "closedPssBytes": 26636288.0,
+              "peakOpenPssBytes": 57680896,
+              "functionalPassed": 1,
+              "normalHelperExitPassed": 1
+            },
+            "gates": {
+              "functionalPassed": 1,
+              "normalHelperExitPassed": 1,
+              "closedRssBytes": 47228928.0,
+              "closedPssBytes": 26636288.0,
+              "peakOpenPssBytes": 57680896
+            },
+            "identity": {
+              "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+              "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+              "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+              "inputs": [
+                {
+                  "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+                  "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+                },
+                {
+                  "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+                  "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+                }
+              ],
+              "samples": [
+                329.63122898945585,
+                335.72212496073917,
+                393.30363704357296,
+                325.35388303222135
+              ],
+              "currentHeadAtIntake": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+              "reuseReason": "Recent native baseline is reused. The following evidence-only commit changes no runtime, build, schema, platform or performance-harness path. Existing measured binaries retain their original identity; no relabelled build."
+            },
+            "diagnostics": {
+              "sampleCount": 4,
+              "p95Certified": false
+            }
+          },
+          "candidate": {
+            "settingsReopenMilliseconds": 295.43196596205235,
+            "closedRssBytes": 47794176.0,
+            "closedPssBytes": 27090432.0,
+            "peakOpenPssBytes": 53140480,
+            "functionalPassed": 1,
+            "normalHelperExitPassed": 1,
+            "reopenSamples": [
+              266.50156400864944,
+              286.1989389639348,
+              322.0225799595937,
+              304.6649929601699
+            ],
+            "inputs": [
+              {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/results.json",
+                "sha256": "a97106e45e6d783f916816be878178ecf7614ee6146e396f7ff1c0d4854054e5",
+                "binaries": {
+                  "app": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+                    "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "cli": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+                    "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "helper": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+                    "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  }
+                },
+                "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+              },
+              {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2/results.json",
+                "sha256": "862dbbb5dbe09c709e3e68f3116486832c0a1468069d4dc881f79dfb41478258",
+                "binaries": {
+                  "app": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+                    "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "cli": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+                    "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "helper": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+                    "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  }
+                },
+                "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+              }
+            ],
+            "limits": [
+              "Mapped readiness includes observer overhead; no p95 or paint certification.",
+              "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+            ]
+          },
+          "decision": {
+            "decision": "inconclusive",
+            "eligible": false,
+            "next_measurement": "none",
+            "target_reached": false,
+            "improved_objectives": [],
+            "violated_objectives": [],
+            "comparisons": {
+              "settingsReopenMilliseconds": {
+                "verdict": "inconclusive",
+                "delta": 37.24471101304516,
+                "relative": 0.11195468029708952,
+                "violated": false
+              }
+            },
+            "primary_delta": 37.24471101304516,
+            "rank_score": 0.11195468029708952,
+            "reason": "delta inside the comparison threshold"
+          },
+          "source46Candidate": "6f6372e79d8bd81346924aacec7eac842db98725",
+          "classification": "Original contract versus current candidate"
+        },
+        {
+          "pairing": "matched-source45",
+          "baseline": {
+            "metrics": {
+              "settingsReopenMilliseconds": 332.5024600198958,
+              "closedRssBytes": 47814656.0,
+              "closedPssBytes": 27087360.0,
+              "peakOpenPssBytes": 58215424,
+              "functionalPassed": 1,
+              "normalHelperExitPassed": 1,
+              "reopenSamples": [
+                339.5424230257049,
+                325.4624970140867,
+                344.9719980126247,
+                284.36045098351315
+              ],
+              "inputs": [
+                {
+                  "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+                  "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+                  "binaries": {
+                    "app": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+                      "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "cli": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+                      "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "helper": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+                      "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    }
+                  },
+                  "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+                },
+                {
+                  "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+                  "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+                  "binaries": {
+                    "app": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+                      "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "cli": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+                      "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "helper": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+                      "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    }
+                  },
+                  "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+                }
+              ],
+              "limits": [
+                "Mapped readiness includes observer overhead; no p95 or paint certification.",
+                "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+              ]
+            },
+            "gates": {
+              "settingsReopenMilliseconds": 332.5024600198958,
+              "closedRssBytes": 47814656.0,
+              "closedPssBytes": 27087360.0,
+              "peakOpenPssBytes": 58215424,
+              "functionalPassed": 1,
+              "normalHelperExitPassed": 1,
+              "reopenSamples": [
+                339.5424230257049,
+                325.4624970140867,
+                344.9719980126247,
+                284.36045098351315
+              ],
+              "inputs": [
+                {
+                  "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+                  "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+                  "binaries": {
+                    "app": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+                      "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "cli": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+                      "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "helper": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+                      "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    }
+                  },
+                  "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+                },
+                {
+                  "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+                  "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+                  "binaries": {
+                    "app": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+                      "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "cli": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+                      "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    },
+                    "helper": {
+                      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+                      "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+                      "version": "0.1.1-dev.45+g9d142919e5e6"
+                    }
+                  },
+                  "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+                }
+              ],
+              "limits": [
+                "Mapped readiness includes observer overhead; no p95 or paint certification.",
+                "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+              ]
+            }
+          },
+          "candidate": {
+            "settingsReopenMilliseconds": 295.43196596205235,
+            "closedRssBytes": 47794176.0,
+            "closedPssBytes": 27090432.0,
+            "peakOpenPssBytes": 53140480,
+            "functionalPassed": 1,
+            "normalHelperExitPassed": 1,
+            "reopenSamples": [
+              266.50156400864944,
+              286.1989389639348,
+              322.0225799595937,
+              304.6649929601699
+            ],
+            "inputs": [
+              {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/results.json",
+                "sha256": "a97106e45e6d783f916816be878178ecf7614ee6146e396f7ff1c0d4854054e5",
+                "binaries": {
+                  "app": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+                    "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "cli": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+                    "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "helper": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+                    "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  }
+                },
+                "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+              },
+              {
+                "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2/results.json",
+                "sha256": "862dbbb5dbe09c709e3e68f3116486832c0a1468069d4dc881f79dfb41478258",
+                "binaries": {
+                  "app": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+                    "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "cli": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+                    "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  },
+                  "helper": {
+                    "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+                    "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+                    "version": "0.1.1-dev.46+g6f6372e79d8b"
+                  }
+                },
+                "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+              }
+            ],
+            "limits": [
+              "Mapped readiness includes observer overhead; no p95 or paint certification.",
+              "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+            ]
+          },
+          "decision": {
+            "decision": "inconclusive",
+            "eligible": false,
+            "next_measurement": "none",
+            "target_reached": false,
+            "improved_objectives": [],
+            "violated_objectives": [],
+            "comparisons": {
+              "settingsReopenMilliseconds": {
+                "verdict": "inconclusive",
+                "delta": 37.07049405784346,
+                "relative": 0.11148938283231134,
+                "violated": false
+              }
+            },
+            "primary_delta": 37.07049405784346,
+            "rank_score": 0.11148938283231134,
+            "reason": "delta inside the comparison threshold"
+          },
+          "source46Candidate": "6f6372e79d8bd81346924aacec7eac842db98725",
+          "classification": "Matched incremental lazy-page contribution; independent UI/tray changes excluded"
+        }
+      ],
+      "integration": "Not selected for the product branch; experimental checkpoint and referenced worktree preserved",
+      "gateEvaluation": {
+        "functionalPassed": true,
+        "normalHelperExitPassed": true,
+        "closedRssPassed": true,
+        "closedPssPassed": true,
+        "peakOpenPssPassed": true,
+        "nativeCinnamonGnomeKdePassed": true,
+        "minimumConfirmedSavingPassed": false
+      }
+    }
+  ],
+  "best": {
+    "iteration": 0,
+    "metrics": {
+      "settingsReopenMilliseconds": 332.6766769750975,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1
+    }
+  },
+  "hypothesis_backlog": [
+    {
+      "description": "Construct advanced Settings pages on demand while preserving canonical draft and lazy-page state",
+      "category": "architecture",
+      "priority": "high",
+      "dep_status": "approved",
+      "required_deps": [],
+      "runnable": false,
+      "opportunity": {
+        "workload": "closed-view Settings reopen on physical Cinnamon",
+        "baseline": "CP-1 332.6767ms, source41, same frozen observer",
+        "evidence": "Two reopens: hidden Capture/Shortcuts/Preferences construction30.0\u201332.6ms plus disjoint show-phase exclusive Polish11.3\u201311.5ms. Located aggregate41.3\u201344.1ms; all Settings ctor45.1\u201350.2ms/show56.3\u201363.6ms. Native QApplication and observer stay unchanged.",
+        "expected_benefit": "Unknown net mapped benefit; located gross removable work about41\u201344ms, near40ms threshold, before lazy-state overhead; untracked hidden layout work might add saving. One bounded variant is justified, but likely borderline and ~200ms target not implied.",
+        "confidence": "High observed cost placement; low confidence net gain exceeds40ms",
+        "cost_and_risk": "One focused lazy-page variant; no dependencies; full draft/raw-number/profile semantics and targeted tests required. No cheaper available locating measurement changes which pages are chosen."
+      },
+      "decision": "Completed exp001, inconclusive: 37.07ms matched gain is below >40ms keep rule; do not integrate"
+    },
+    {
+      "description": "Coalesce ready/activate or remove the initial snapshot round trip",
+      "category": "architecture",
+      "priority": "low",
+      "dep_status": "approved",
+      "required_deps": [],
+      "runnable": false,
+      "decision": "skip: cannot exceed40ms keep threshold and adds protocol risk",
+      "opportunity": {
+        "workload": "same Settings reopen",
+        "baseline": "CP-1 332.6767ms",
+        "evidence": "Bootstrap2.0\u20132.6ms, snapshot2.8\u20133.2ms, validation/controller/activation under0.4ms combined.",
+        "expected_benefit": "upper bound about7ms even if all eliminated, below40ms threshold",
+        "confidence": "high for observed two reopens; instrumentation overhead acknowledged",
+        "cost_and_risk": "Private bootstrap/epoch/build validation and concurrent activation risks; no dependencies"
+      }
+    }
+  ],
+  "phase": "CP-4; approved startup run stopped, no keep; CP-5 awaits post-completion choice",
+  "approval": {
+    "timestampUtc": "2026-10-09T02:52:41.383568+00:00",
+    "scope": "333ms baseline, ~200ms target; <=3 variants/2h; no dependencies; native Cinnamon fonts/dialogs/tray/helper exit; >40ms keep; memory gates",
+    "userReply": "Proceed with startup experiments (Recommended)"
+  },
+  "locating_measurements": [
+    {
+      "kind": "diagnostic stage attribution",
+      "classification": "BASE41 + diagnostic overlay attribution only; no product saving or native certification",
+      "path": "work/view-startup-latency/probe/run-1/stage-attribution.json",
+      "sha256": "cf74d08d54956097e741631dd094655ec341eebb14139768276354035343bb08",
+      "sourceProvenance": "work/view-startup-latency/probe/source-provenance.json",
+      "settingsReopens": [
+        {
+          "cycle": 1,
+          "workloadKind": "cold first open",
+          "helperPid": 2614935,
+          "stageMilliseconds": {
+            "nativeQApplication": 72.685331,
+            "styleAndBranding": 0.340261,
+            "controlSetupAndBootstrap": 2.322752,
+            "snapshotRequestReply": 3.30671,
+            "snapshotValidation": 0.022024,
+            "controllerAndReadySend": 0.039837,
+            "readyToActivation": 0.12143,
+            "settingsConstructor": 55.067802,
+            "restoreAndShowPreparation": 0.026931,
+            "showCall": 144.386015,
+            "raiseActivateAndShownSend": 0.039495,
+            "mainToShownSent": 278.462219,
+            "launchToMain": 19.840927,
+            "launchToProcessStarted": 0.881205
+          },
+          "cliShownAcknowledgementMilliseconds": 325.2194669912569,
+          "independentlyObservedMappedMilliseconds": 475.654145993758,
+          "mappedAfterCliOverheadMilliseconds": 150.43467900250107,
+          "missingStages": []
+        },
+        {
+          "cycle": 2,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2616664,
+          "stageMilliseconds": {
+            "nativeQApplication": 59.185051,
+            "styleAndBranding": 0.326667,
+            "controlSetupAndBootstrap": 2.039388,
+            "snapshotRequestReply": 2.827644,
+            "snapshotValidation": 0.013795,
+            "controllerAndReadySend": 0.027577,
+            "readyToActivation": 0.111447,
+            "settingsConstructor": 65.386591,
+            "restoreAndShowPreparation": 0.602462,
+            "showCall": 63.739548,
+            "raiseActivateAndShownSend": 0.026732,
+            "mainToShownSent": 194.353501,
+            "launchToMain": 13.542321,
+            "launchToProcessStarted": 0.266165
+          },
+          "cliShownAcknowledgementMilliseconds": 221.96271503344178,
+          "independentlyObservedMappedMilliseconds": 362.28689400013536,
+          "mappedAfterCliOverheadMilliseconds": 140.32417896669358,
+          "missingStages": []
+        },
+        {
+          "cycle": 3,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2617766,
+          "stageMilliseconds": {
+            "nativeQApplication": 56.233429,
+            "styleAndBranding": 0.341352,
+            "controlSetupAndBootstrap": 2.561084,
+            "snapshotRequestReply": 3.203332,
+            "snapshotValidation": 0.021123,
+            "controllerAndReadySend": 0.035186,
+            "readyToActivation": 0.17415,
+            "settingsConstructor": 44.675205,
+            "restoreAndShowPreparation": 0.37568,
+            "showCall": 71.543109,
+            "raiseActivateAndShownSend": 0.068877,
+            "mainToShownSent": 179.305654,
+            "launchToMain": 12.304866,
+            "launchToProcessStarted": 0.387659
+          },
+          "cliShownAcknowledgementMilliseconds": 206.41974499449134,
+          "independentlyObservedMappedMilliseconds": 314.9338740040548,
+          "mappedAfterCliOverheadMilliseconds": 108.51412900956348,
+          "missingStages": []
+        }
+      ],
+      "limitations": [
+        "stderr instrumentation adds overhead",
+        "control.send return records queued frames rather than resident receipt",
+        "QWidget show return and CLI shown acknowledgement do not prove mapped or painted pixels",
+        "mapped observer includes process/window/diagnostic inspection overhead",
+        "not p95 or populated-history/post-upload memory evidence"
+      ]
+    },
+    {
+      "kind": "hidden-page constructor and exclusive Polish attribution",
+      "path": "work/view-startup-latency/hidden-page-probe/run-1/stage-attribution.json",
+      "sha256": "9acd136bb9f10907155674088c6fc76739a07e5581d00238c0e27c316e518efa",
+      "sourceProvenance": "work/view-startup-latency/hidden-page-probe/source-provenance.json",
+      "classification": "BASE41 + diagnostic overlay attribution only; no product saving or native certification",
+      "settingsReopens": [
+        {
+          "cycle": 1,
+          "workloadKind": "cold first open",
+          "helperPid": 2644904,
+          "stageMilliseconds": {
+            "nativeQApplication": 68.805536,
+            "styleAndBranding": 0.315648,
+            "controlSetupAndBootstrap": 1.964101,
+            "snapshotRequestReply": 3.087968,
+            "snapshotValidation": 0.024966,
+            "controllerAndReadySend": 0.05107,
+            "readyToActivation": 0.136365,
+            "settingsConstructor": 46.481953,
+            "restoreAndShowPreparation": 0.05544,
+            "showCall": 69.030499,
+            "raiseActivateAndShownSend": 0.072429,
+            "mainToShownSent": 190.131453,
+            "constructPreferences": 3.199944,
+            "constructDestinations": 12.561219,
+            "constructShortcuts": 3.627739,
+            "constructCapture": 23.226401,
+            "settingsWiring": 0.80352,
+            "settingsRefresh": 1.398429,
+            "launchToMain": 18.709026,
+            "launchToProcessStarted": 0.671951
+          },
+          "constructorAccounting": {
+            "measuredSectionMilliseconds": 44.817251999999996,
+            "unassignedShellAndTraceMilliseconds": 1.6647010000000009,
+            "completeSections": true
+          },
+          "polishAttribution": {
+            "intervals": {
+              "constructor": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.650193,
+                    "eventCount": 28
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.681287,
+                    "eventCount": 21
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.285118,
+                    "eventCount": 31
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.030007,
+                    "eventCount": 1
+                  }
+                },
+                "exclusiveTotalMilliseconds": 2.646605,
+                "eventCount": 81
+              },
+              "restoreAndShowPreparation": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "showCall": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 6.379471,
+                    "eventCount": 138
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 4.754796,
+                    "eventCount": 109
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 3.003259,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.824395,
+                    "eventCount": 19
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.717132,
+                    "eventCount": 41
+                  }
+                },
+                "exclusiveTotalMilliseconds": 16.679053,
+                "eventCount": 377
+              },
+              "raiseActivateAndShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "constructorThroughShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 7.029664,
+                    "eventCount": 166
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.436083,
+                    "eventCount": 130
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 3.003259,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 2.109513,
+                    "eventCount": 50
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.747139,
+                    "eventCount": 42
+                  }
+                },
+                "exclusiveTotalMilliseconds": 19.325658,
+                "eventCount": 458
+              }
+            },
+            "missingSnapshots": [],
+            "invalidCounterIntervals": []
+          },
+          "cliShownAcknowledgementMilliseconds": 255.1838089711964,
+          "independentlyObservedMappedMilliseconds": 394.1643809666857,
+          "mappedAfterCliOverheadMilliseconds": 138.9805719954893,
+          "missingStages": []
+        },
+        {
+          "cycle": 2,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2645815,
+          "stageMilliseconds": {
+            "nativeQApplication": 63.205722,
+            "styleAndBranding": 0.36086,
+            "controlSetupAndBootstrap": 2.672978,
+            "snapshotRequestReply": 3.084047,
+            "snapshotValidation": 0.040009,
+            "controllerAndReadySend": 0.06605,
+            "readyToActivation": 0.303863,
+            "settingsConstructor": 50.152278,
+            "restoreAndShowPreparation": 0.730833,
+            "showCall": 63.562394,
+            "raiseActivateAndShownSend": 0.045063,
+            "mainToShownSent": 184.329567,
+            "constructPreferences": 3.327507,
+            "constructDestinations": 12.619558,
+            "constructShortcuts": 3.453014,
+            "constructCapture": 25.855617,
+            "settingsWiring": 1.27458,
+            "settingsRefresh": 1.802714,
+            "launchToMain": 20.273704,
+            "launchToProcessStarted": 7.819085
+          },
+          "constructorAccounting": {
+            "measuredSectionMilliseconds": 48.332989999999995,
+            "unassignedShellAndTraceMilliseconds": 1.8192880000000073,
+            "completeSections": true
+          },
+          "polishAttribution": {
+            "intervals": {
+              "constructor": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.667113,
+                    "eventCount": 28
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.727667,
+                    "eventCount": 21
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.440559,
+                    "eventCount": 31
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.031179,
+                    "eventCount": 1
+                  }
+                },
+                "exclusiveTotalMilliseconds": 2.8665179999999997,
+                "eventCount": 81
+              },
+              "restoreAndShowPreparation": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "showCall": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 6.919666,
+                    "eventCount": 138
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 4.95154,
+                    "eventCount": 109
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.97086,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.001959,
+                    "eventCount": 19
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.586026,
+                    "eventCount": 41
+                  }
+                },
+                "exclusiveTotalMilliseconds": 17.430051,
+                "eventCount": 377
+              },
+              "raiseActivateAndShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "constructorThroughShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 7.586779,
+                    "eventCount": 166
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.679207,
+                    "eventCount": 130
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.97086,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 2.442518,
+                    "eventCount": 50
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.617205,
+                    "eventCount": 42
+                  }
+                },
+                "exclusiveTotalMilliseconds": 20.296569,
+                "eventCount": 458
+              }
+            },
+            "missingSnapshots": [],
+            "invalidCounterIntervals": []
+          },
+          "cliShownAcknowledgementMilliseconds": 222.76878700358793,
+          "independentlyObservedMappedMilliseconds": 347.04432100988925,
+          "mappedAfterCliOverheadMilliseconds": 124.27553400630131,
+          "missingStages": []
+        },
+        {
+          "cycle": 3,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2646710,
+          "stageMilliseconds": {
+            "nativeQApplication": 57.923973,
+            "styleAndBranding": 0.321633,
+            "controlSetupAndBootstrap": 2.428678,
+            "snapshotRequestReply": 3.05082,
+            "snapshotValidation": 0.012944,
+            "controllerAndReadySend": 0.048479,
+            "readyToActivation": 0.153741,
+            "settingsConstructor": 45.067549,
+            "restoreAndShowPreparation": 0.598884,
+            "showCall": 56.344222,
+            "raiseActivateAndShownSend": 0.02371,
+            "mainToShownSent": 166.097457,
+            "constructPreferences": 3.163184,
+            "constructDestinations": 11.386595,
+            "constructShortcuts": 3.024884,
+            "constructCapture": 23.842468,
+            "settingsWiring": 0.738683,
+            "settingsRefresh": 1.080791,
+            "launchToMain": 12.305382,
+            "launchToProcessStarted": 0.32945
+          },
+          "constructorAccounting": {
+            "measuredSectionMilliseconds": 43.236605,
+            "unassignedShellAndTraceMilliseconds": 1.8309440000000023,
+            "completeSections": true
+          },
+          "polishAttribution": {
+            "intervals": {
+              "constructor": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.663675,
+                    "eventCount": 28
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.568671,
+                    "eventCount": 21
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.277119,
+                    "eventCount": 31
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.032941,
+                    "eventCount": 1
+                  }
+                },
+                "exclusiveTotalMilliseconds": 2.5424059999999997,
+                "eventCount": 81
+              },
+              "restoreAndShowPreparation": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "showCall": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 6.710982,
+                    "eventCount": 138
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.184114,
+                    "eventCount": 109
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.974838,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.760732,
+                    "eventCount": 19
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.610074,
+                    "eventCount": 41
+                  }
+                },
+                "exclusiveTotalMilliseconds": 17.24074,
+                "eventCount": 377
+              },
+              "raiseActivateAndShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "constructorThroughShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 7.374657,
+                    "eventCount": 166
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.752785,
+                    "eventCount": 130
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.974838,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 2.037851,
+                    "eventCount": 50
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.643015,
+                    "eventCount": 42
+                  }
+                },
+                "exclusiveTotalMilliseconds": 19.783146,
+                "eventCount": 458
+              }
+            },
+            "missingSnapshots": [],
+            "invalidCounterIntervals": []
+          },
+          "cliShownAcknowledgementMilliseconds": 193.58806795207784,
+          "independentlyObservedMappedMilliseconds": 317.53956800093874,
+          "mappedAfterCliOverheadMilliseconds": 123.95150004886091,
+          "missingStages": []
+        }
+      ],
+      "limitations": [
+        "Polish timings measure exclusive QApplication::notify dispatch only, excluding nested Polish dispatch; other Qt style/layout/font work is outside this attribution",
+        "Page ancestry is sampled at dispatch time; pre-reparenting work can be shell or untracked",
+        "Polish totals are subsets of constructor/show wall time and must not be added to them",
+        "Constructor shell remainder includes fixed trace overhead and setup; wiring interval includes visibility/footer setup",
+        "stderr instrumentation adds overhead",
+        "control.send return records queued frames rather than resident receipt",
+        "QWidget show return and CLI shown acknowledgement do not prove mapped or painted pixels",
+        "mapped observer includes process/window/diagnostic inspection overhead",
+        "not p95 or populated-history/post-upload memory evidence"
+      ]
+    }
+  ],
+  "independent_changes": [
+    {
+      "commit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+      "commitCount": 43,
+      "scope": "UI refinement,8 product/test paths",
+      "nativeStatus": "source43 frozen allthree dev builds passed; release/native replay in progress",
+      "performanceStatus": "not scored as startup optimization"
+    },
+    {
+      "commit": "86301db2620a204854c08fb3f2d50f71d22112c4",
+      "commitCount": 44,
+      "scope": "NativeGJS ownership fixture and documentation; product runtime/extension sourceunchanged from43",
+      "checks": "ExistingGJS5assertions+failure/pending controls; completedreview0findings",
+      "comparisonRule": "Do not relabel source43 binaries after test/doccommit44. Futurecandidate patch/identities separate."
+    },
+    {
+      "commit": "9d142919e5e6365227a4424212380e92f85285fe",
+      "commitCount": 45,
+      "scope": "Reviewed late tray visibility correction plus regression test",
+      "review": "/tmp/compound-engineering-1000/ce-code-review/20261008-230920-6b51dab7",
+      "status": "Committed two explicit owned paths; current candidate advanced to45 without changing its four settings hashes.",
+      "performanceAttribution": "Not attributed to lazy Settings optimization; clean45 matched reference built separately."
+    }
+  ],
+  "phase3_started_at": "2026-10-09T03:36:16.003283+00:00",
+  "current_validation": {
+    "timestampUtc": "2026-10-09T04:06:53Z",
+    "candidate": "exp001 base44 dirty four-path lazy Settings",
+    "fullDevTests": {
+      "passed": 40,
+      "total": 40,
+      "seconds": 216.84,
+      "raw": "work/view-startup-latency/exp001/work/lazy-validation/full-dev-tests.log"
+    },
+    "review": {
+      "status": "complete",
+      "verdict": "Ready with fixes",
+      "artifact": "/tmp/compound-engineering-1000/ce-code-review/lazy-exp001-20261009",
+      "findings": [
+        {
+          "id": 1,
+          "severity": "P2",
+          "issue": "Lazy page controls follow footer in keyboard focus order",
+          "resolution": "Proof-first correction underway; no timing or keep decision yet."
+        }
+      ]
+    },
+    "source43Native": {
+      "cinnamon": "12/12 capture/clipboard and bounded view checks passed; source43 tray rendered",
+      "gnome": "12/12 plus bounded views passed; startup while locked exposed missing rendered tray gate",
+      "kde": "Full12/12 repeat passed after preserved clipboard_changed failure; bounded UI ongoing, Add destination disappearance on resize retained"
+    },
+    "independentTrayFix": "Two-path known fix plus red/green test, independent review pending; outside optimization scope and not an optimization gain.",
+    "finding1Resolution": {
+      "status": "applied",
+      "sixKeyboardRows": "Failedbefore/passedafteractualTabShiftTab",
+      "focusedTests": "4/4 +splitservices1/1passed",
+      "artifacts": "work/view-startup-latency/exp001/work/lazy-tab-validation",
+      "base45Rebase": "Four candidate paths byte-identical before/after independenttray base advancement.",
+      "nativeCandidate": "Freshcohortbuilding/testing standardpresets and verifiedGitbundle+fourpathpatch; existingoldresidentsguardstopped/profilespreserved."
+    }
+  },
+  "candidate_freeze_gate": {
+    "reason": "The frozen production family workload explicitly permits dirty builds only for diagnostics; an uncommitted overlay will not be scored as a frozen-source comparison.",
+    "next": "After current native correctness passes, create an isolated experimental checkpoint commit of only the four candidate paths, rebuild its real clean version, retain separately dated current-byte native smoke receipts, then take the two serial runs.",
+    "notAKeep": "This experimental snapshot does not establish optimization acceptance or merge the candidate into the main branch. Keep/revert remains the measured decision.",
+    "candidateNow": "Base45 plus patch e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086, dirty identity.",
+    "cinnamonFirstRegionFailure": {
+      "operationId": "0447224a-d5ae-44f8-b944-36f2ab62949f",
+      "result": "acquiring after90sec; Escape cancelled; no successful region claim",
+      "artifact": "work/lab-runs/ui43-cinnamon-20261009T042304792474-1/results.json",
+      "next": "Controlled selector/drag-readiness diagnostic, not blind retry or discarded failure."
+    }
+  },
+  "native_candidate_progress": {
+    "utc": "2026-10-09T04:45:11.578140+00:00",
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+    "cinnamon": {
+      "matrixCasesPassed": 12,
+      "receipt": "work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/full-matrix-followup-review.json",
+      "boundedUiReceipt": "work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/visual-review.json",
+      "firstFailurePreserved": true
+    },
+    "gnome": "matrix12 passed and actual post-unlock tray registration; agent finishing UI receipt",
+    "kde": "unlocked visibly; agent running matrix and UI",
+    "timing": "Not started; clean experimental checkpoint required by frozen harness. Dirty native checks are correctness-only."
+  },
+  "experimental_checkpoint": {
+    "utc": "2026-10-09T04:54:35.435200+00:00",
+    "commit": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "commitCount": 46,
+    "version": "0.1.1-dev.46+g6f6372e79d8b",
+    "clean": true,
+    "fourPathBytesUnchanged": true,
+    "scope": "Isolated measurement identity only; candidate not integrated or kept. Main branch remains45.",
+    "review": "Completed independent review; P2 page-before-footer traversal fixed with red6/green6 and focusedtests; full40/41 and native12cases allthree earlierdirtycohort. Clean46 rebuild/native smoke pending."
+  },
+  "clean46_native_progress": {
+    "utc": "2026-10-09T05:02:21.266196+00:00",
+    "commit": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "cohort": "work/ui-refinement/native-replay/frozen-exp001-source46",
+    "fullSourceByteEquivalence": 2202,
+    "allThreeOldResidentsStoppedAndProfilesPreserved": true,
+    "standardCachedBuilds": "Host/GNOME/KDE dev+release+CPack completed,5relevantCTests passed each, Git provenance/dirtyfalse",
+    "native": "Three fresh exact46 matrices and boundedview/tray/lifecycle checks running; .dirty45 correctness remains separate",
+    "cinnamonLockPreconditions": "Firstconfigure+matrix aborted before cases due locked session; inspected visiblemask, rootusedprotectedbootstraplogin, SetupCancel helper0 confirmed; freshattempt explicitlyauthorized",
+    "performance": "Not started; waitingnative46 receipts and quiet gate"
+  },
+  "matched_reference_measurements": [
+    {
+      "label": "reference-1",
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+      "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+      "exitCode": 0
+    },
+    {
+      "label": "reference-2",
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+      "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+      "exitCode": 0
+    }
+  ],
+  "measurementSetupFailure": {
+    "originalRun": "work/view-startup-latency/confirmation-46-20261009/execution.json",
+    "error": "resident_exited_before_readiness; resident session_unavailable",
+    "cause": "Harness output directory makes Unix socket path exceed native sun_path capacity",
+    "originalSocketPathBytes": 115,
+    "maximumPathBytes": 107,
+    "retrySocketPathBytes": 94,
+    "correction": "Repeat unchanged frozen harness in new shorter c46 output directory; failed attempt preserved; no samples accepted"
+  },
+  "batchSummary": {
+    "utc": "2026-10-09T05:25:19.592321+00:00",
+    "phase": "CP-4 written and verified; wrap-up pending user choice",
+    "stoppingReason": "No runnable hypothesis remains in the approved scope: lazy variant measured; protocol coalescing has <7ms located upper bound",
+    "outcomes": {
+      "kept": 0,
+      "inconclusive": 1,
+      "notSelectedHypotheses": 1,
+      "failedMeasurementSetupAttempts": 1
+    },
+    "productBaselineRetained": "9d142919e5e6365227a4424212380e92f85285fe",
+    "experimentalCheckpointPreserved": "6f6372e79d8bd81346924aacec7eac842db98725",
+    "targetReached": false,
+    "phase3StartedUtc": "2026-10-09T03:36:16.003283+00:00",
+    "phase3CompletedUtc": "2026-10-09T05:25:19.592348+00:00",
+    "cost": "No separate dollar cap or paid infrastructure; ordinary model usage unpriced, actual cost unavailable"
+  }
+}

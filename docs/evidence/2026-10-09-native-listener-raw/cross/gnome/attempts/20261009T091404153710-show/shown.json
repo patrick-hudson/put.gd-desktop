@@ -1,0 +1,29 @@
+{
+  "utc": "2026-10-09T09:14:09.999988+00:00",
+  "view": "activity",
+  "reply": {
+    "shown": "activity"
+  },
+  "helper": {
+    "pid": 162112,
+    "startTicks": 2778135,
+    "parentPid": 144260,
+    "sha256": "d9ad6e3b8773b24bfa1828248e5345e2f40db620fb5202f48ed0a9e7e985dabc"
+  },
+  "trigger": "production CLI ui.show; native visible window",
+  "witness": {
+    "utc": "2026-10-09T09:14:10.122326+00:00",
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-activity.png",
+    "sha256": "f6d3711ddbe0c23bd471a85db9320e54e3eb801645c331acfa4d4bf1040b8ca5",
+    "nativeQmp": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-nativecore-exp001-c49-cross-native-activity-head0.ppm",
+      "sha256": "3f63e4d5d05dacb87a617665ccb598993654a2bc6af7cb1a2e6b7d8867cb0441"
+    },
+    "desktopPixels": [
+      1280,
+      800
+    ],
+    "vncPort": 5936,
+    "visualReview": "pending"
+  }
+}

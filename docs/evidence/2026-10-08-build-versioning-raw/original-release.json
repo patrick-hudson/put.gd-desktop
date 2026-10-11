@@ -1,0 +1,22 @@
+{
+  "timestampUtc": "2026-10-08T22:36:20.377260+00:00",
+  "build": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.33+g0862bdade829.dirty",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.33+g0862bdade829.dirty",
+    "gitCommit": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+    "gitTree": "e69663d7e856c62416a18a5b1de14094b271272b",
+    "commitCount": 33,
+    "dirty": true,
+    "sourceProvenance": "git"
+  },
+  "package": "/home/patrick/work/put.gd/work/versioning/release/packages/putgd_0.1.1~dev.33+g0862bdade829.dirty_amd64.deb",
+  "packageSha256": "8b3e63be8313999a4dc5b9fe0b0b9c6a109071767ddb1912d3f5e44a5f7223fb",
+  "installedBinarySha256": {
+    "putgd": "bb0485c9694957d3efef6c5bb8f3c0c908ac4ee8e97bd0a017a19d77e9e9c2c8",
+    "putgd-cli": "58393c423bc9b574c515722e2bc624156ab56e3e37c6e67415c2bd9e5bbfecff"
+  },
+  "installedManifestMatches": true,
+  "scope": "Canonical versioning plus separate X11 fix, before retained-view memory integration"
+}

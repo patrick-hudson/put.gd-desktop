@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Prevent Unix socket path setup failures before launching isolated test apps; agents own protected visible-console lab unlocking",
+  "tool": "tools/diagnostics/check_socket_paths.py",
+  "toolSha256": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55",
+  "validation": {
+    "schemaVersion": 1,
+    "checks": [
+      {
+        "command": [
+          "python3",
+          "tools/diagnostics/check_socket_paths.py",
+          "--ui-output",
+          "work/view-startup-latency/confirmation-46-20261009/reference-1"
+        ],
+        "exitCode": 2,
+        "result": {
+          "schemaVersion": 1,
+          "passed": false,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/confirmation-46-20261009/reference-1/runtime/putgd/session.sock",
+              "utf8Bytes": 115,
+              "passed": false
+            }
+          ]
+        }
+      },
+      {
+        "command": [
+          "python3",
+          "tools/diagnostics/check_socket_paths.py",
+          "--ui-output",
+          "work/view-startup-latency/c46/reference-1",
+          "work/view-startup-latency/c46/candidate-1"
+        ],
+        "exitCode": 0,
+        "result": {
+          "schemaVersion": 1,
+          "passed": true,
+          "limitBytesExcludingNul": 107,
+          "paths": [
+            {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/runtime/putgd/session.sock",
+              "utf8Bytes": 94,
+              "passed": true
+            },
+            {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/runtime/putgd/session.sock",
+              "utf8Bytes": 94,
+              "passed": true
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Path length check only; app ownership/permissions remain required",
+    "No application or guest started by the checker",
+    "No login credentials read or included"
+  ]
+}

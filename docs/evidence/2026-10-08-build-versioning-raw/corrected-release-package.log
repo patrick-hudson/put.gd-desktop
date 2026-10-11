@@ -1,0 +1,6 @@
+CPack: Create package using DEB
+CPack: Install projects
+CPack: - Install project: putgd []
+CPack: Create package
+CPackDeb: - Generating dependency list
+CPack: - package: /home/patrick/work/put.gd/work/versioning/release-corrected/packages/putgd_0.1.1~dev.33+g0862bdade829.dirty_amd64.deb generated.

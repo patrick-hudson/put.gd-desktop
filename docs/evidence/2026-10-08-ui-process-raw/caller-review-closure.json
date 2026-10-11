@@ -1,0 +1,59 @@
+{
+  "reviewRun": "20261008-191441-7c998904",
+  "reviewStatus": "complete",
+  "reviewVerdictAtFrozenDiff": "Not ready",
+  "callerFindings": [
+    {
+      "id": 1,
+      "status": "fixed and verified",
+      "change": "Strict mismatch rejection now gives restart guidance; connected launcher failures return nonzero without starting another resident.",
+      "evidence": "launcher-fix/red.json; final/dev.xml cli_integration; final/asan.xml; final/tsan.xml"
+    },
+    {
+      "id": 2,
+      "status": "fixed and verified",
+      "change": "An end-to-end 12-second activation deadline starts before helper startup, below the public 15-second client deadline.",
+      "evidence": "final/dev.xml ui_process_integration; final/asan.xml; final/tsan.xml"
+    },
+    {
+      "id": 3,
+      "status": "fixed and verified",
+      "change": "Reload and Cancel retain dirty controls and reject checkpointing until authoritative refresh finishes; failure preserves the draft.",
+      "evidence": "integrated/reset-red.log; final/dev.xml gui_settings; final/asan.xml; final/tsan.xml"
+    },
+    {
+      "id": 4,
+      "status": "fixed and verified",
+      "change": "Private CLOEXEC control descriptors are duplicated before QApplication; plugin stdout goes to stderr. Actual GTK debug reproduction now passes.",
+      "evidence": "native-lifecycle/gtk-debug-probe.log; native-lifecycle/gtk-debug-fixed.log; final/dev.xml ui_control_integration; final/asan.xml; final/tsan.xml"
+    }
+  ],
+  "additionalCorrections": [
+    "Bounded checkpoint backpressure waits for prior acknowledgement before final close.",
+    "Production-helper integration asserts normal zero exit across four close/reopen generations with safe draft, clipboard and accepted-operation continuity.",
+    "Supervisor records bounded child exit status; nonzero close is not silently accepted.",
+    "Memory accounting retains escaped observed children and discovers their later descendants; 15 synthetic harness tests pass."
+  ],
+  "remainingWork": [
+    {
+      "item": "GNOME ownership-clear transient error recovery",
+      "status": "scheduled next bounded fix before native acceptance",
+      "reason": "Existing timer only rediscovers when not ready; a failed clear can leave hotkey window capture disabled."
+    },
+    {
+      "item": "Setup inspect transient failure / completed-ID eviction recovery",
+      "status": "scheduled next bounded fix before native acceptance",
+      "reason": "Expired saved job ID can delay later results; no accepted mutation should be automatically replayed."
+    },
+    {
+      "item": "Current-source graphical AE17 and total-process memory / reopen latency",
+      "status": "pending",
+      "reason": "Headless and isolated X11 tests do not prove all three compositors or a memory saving."
+    },
+    {
+      "item": "GNOME region input readiness",
+      "status": "pending deterministic lab correction",
+      "reason": "Earlier native baseline required an unchanged retry; historical failure remains recorded."
+    }
+  ]
+}

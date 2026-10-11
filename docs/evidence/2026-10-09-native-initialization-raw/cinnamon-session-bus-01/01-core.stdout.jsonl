@@ -1,0 +1,3 @@
+{"schemaVersion":1,"applicationType":"QCoreApplication","stage":"constructed","elapsedMicroseconds":273,"idleSeconds":5,"sessionBusRequested":true,"qtCompileVersion":"6.4.2","qtRuntimeVersion":"6.4.2"}
+{"schemaVersion":1,"applicationType":"QCoreApplication","stage":"session-bus-connected","elapsedMicroseconds":1002530,"idleSeconds":5,"sessionBusRequested":true,"qtCompileVersion":"6.4.2","qtRuntimeVersion":"6.4.2"}
+{"schemaVersion":1,"applicationType":"QCoreApplication","stage":"idle-finished","elapsedMicroseconds":4892030,"idleSeconds":5,"sessionBusRequested":true,"qtCompileVersion":"6.4.2","qtRuntimeVersion":"6.4.2"}

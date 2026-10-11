@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-09T04:38:40.170636+00:00",
+  "source": "Existing owner-protected original lab bootstrap login file",
+  "method": "QMP keystrokes into a visually inspected masked console password field",
+  "passwordPrinted": false,
+  "passwordInArgvOrLogs": false,
+  "credentialTxtRead": false,
+  "vncPort": 5936
+}

@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "dpkg-deb",
+    "--extract",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/putgd_0.1.1~dev.45+g9d142919e5e6.dirty_amd64.deb",
+    "/tmp/putgd-ui-refinement-oi9klt2n"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:37:33.039858+00:00"
+}

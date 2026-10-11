@@ -1,0 +1,10 @@
+{
+  "command": [
+    "python3",
+    "tests/desktop/test_lab.py"
+  ],
+  "exitCode": 0,
+  "timestampUtc": "2026-10-08T20:51:47.396070+00:00",
+  "reviewFix": "Invalidate package receipt before a new install attempt. New regression failed before fix at both upload and binary-verification failures; receipt still existed. Observed tool output, not a saved raw red log.",
+  "scope": "Host protocol suite; graphical proof retained separately"
+}

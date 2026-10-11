@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="3"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="39"
+	timestamp="2026-10-08T22:02:28"
+	>
+	<testcase name="gui_settings" classname="gui_settings" time="19.1494" status="run">
+		<properties/>
+		<system-out>********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::simpleDestinationAndCredentialFieldsShareAlignment() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::simpleDestinationAndCredentialFieldsShareAlignment() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::simpleDestinationAndCredentialFieldsShareAlignment() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::simpleDestinationAndCredentialFieldsShareAlignment()
+QWARN  : SettingsGui::emptySavedDestinationsShowOnlyTheAddAction() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::emptySavedDestinationsShowOnlyTheAddAction() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::emptySavedDestinationsShowOnlyTheAddAction()
+QWARN  : SettingsGui::resettingDraftWaitsForTheResid...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="gui_operations_view" classname="gui_operations_view" time="1.86626" status="run">
+		<properties/>
+		<system-out>********* Start testing of OperationsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : OperationsGui::initTestCase()
+PASS   : OperationsGui::recreatedActivityPreservesSelectionAndExpansionById()
+PASS   : OperationsGui::uploadedResultCanRetryCopyWithoutAnotherUpload()
+QWARN  : OperationsGui::localOperationShowsIndependentItemAndCopyStates() This plugin does not support propagateSizeHints()
+PASS   : OperationsGui::localOperationShowsIndependentItemAndCopyStates()
+PASS   : OperationsGui::cleanupTestCase()
+Totals: 5 passed, 0 failed, 0 skipped, 0 blacklisted, 1677ms
+********* Finished testing of OperationsGui *********
+</system-out>
+	</testcase>
+	<testcase name="gui_history_view" classname="gui_history_view" time="18.6018" status="run">
+		<properties/>
+		<system-out>********* Start testing of HistoryGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : HistoryGui::initTestCase()
+QWARN  : HistoryGui::compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+QWARN  : HistoryGui::compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById() This plugin does not support propagateSizeHints()
+PASS   : HistoryGui::compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById()
+PASS   : HistoryGui::recreatedHistoryRestoresRawFiltersSelectionAndClearsVanishedIds()
+QWARN  : HistoryGui::restoringHistoryKeepsActiveDeletionCancellation() This plugin does ...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

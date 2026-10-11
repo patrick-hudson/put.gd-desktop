@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "dpkg-deb",
+    "--extract",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/putgd_0.1.1~dev.49+g676f6e6d6e0b_amd64.deb",
+    "/tmp/putgd-cross-package-zke18syr"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T09:06:56.428072+00:00"
+}

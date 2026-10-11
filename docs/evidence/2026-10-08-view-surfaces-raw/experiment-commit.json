@@ -1,0 +1,17 @@
+{
+  "timestampUtc": "2026-10-08T23:06:18.175974+00:00",
+  "commit": "427662c9bf9d4a425d672e27b085c16609b7d4f8",
+  "frozenSourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "mutable": [
+    "src/ui/HistoryWindow.cpp",
+    "src/ui/HistoryWindow.h",
+    "src/ui/RecentOperations.cpp",
+    "src/ui/RecentOperations.h",
+    "src/ui/RetainedWindow.h",
+    "src/ui/SettingsWindow.cpp",
+    "src/ui/SettingsWindow.h",
+    "tests/gui/test_history_view.cpp",
+    "tests/gui/test_operations_view.cpp",
+    "tests/gui/test_settings.cpp"
+  ]
+}

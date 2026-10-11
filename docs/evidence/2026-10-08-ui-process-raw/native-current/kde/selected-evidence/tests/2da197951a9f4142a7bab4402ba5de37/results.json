@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "testId": "2da197951a9f4142a7bab4402ba5de37",
+  "profile": "kde-wayland",
+  "scenario": "region-cancel-escape-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": [
+        "Ctrl+Shift+F12"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F12",
+      "state": "bound"
+    },
+    "desktop": {
+      "actual": [
+        "Ctrl+Shift+F11"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F11",
+      "state": "bound"
+    },
+    "region": {
+      "actual": [
+        "Ctrl+Shift+F9"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F9",
+      "state": "bound"
+    },
+    "window": {
+      "actual": [
+        "Ctrl+Shift+F10"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F10",
+      "state": "bound"
+    }
+  },
+  "independentPaintGeometry": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 320
+  },
+  "independentWindowFrame": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 420
+  },
+  "parameters": "parameters.json",
+  "operationId": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+  "operationState": "cancelled",
+  "copyStatus": "no_result",
+  "itemOutcomes": [],
+  "paste": {
+    "ok": true,
+    "expected": {
+      "text": "putgd synthetic clipboard text"
+    },
+    "actual": {
+      "formats": [
+        "text/plain",
+        "text/plain;charset=utf-8"
+      ],
+      "schemaVersion": 1,
+      "text": "putgd synthetic clipboard text"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+    "sha256": "520c16bc0dfe447cbb5abdf76d655791b9ab5e33987c9aa1dccee573c55cfdac"
+  },
+  "elapsedSeconds": 10.207074806967285,
+  "evidenceDirectory": "tests/2da197951a9f4142a7bab4402ba5de37"
+}

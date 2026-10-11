@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/identity",
+    "-p",
+    "22236",
+    "lab@127.0.0.1",
+    "cd /home/lab/putgd-ui-refinement-nativecore-exp001-c49-cross && python3 -"
+  ],
+  "cwd": null,
+  "stdinFile": "06.stdin",
+  "startedUtc": "2026-10-09T08:46:22.419237+00:00"
+}

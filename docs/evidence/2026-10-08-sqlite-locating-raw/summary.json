@@ -1,0 +1,1453 @@
+{
+  "schemaVersion": 1,
+  "runRoot": "/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea",
+  "runSession": 37398,
+  "runExitCode": 0,
+  "caseCount": 12,
+  "rawSamples": 420,
+  "scoredSamples": 360,
+  "order": [
+    [
+      1,
+      "reopen",
+      2000
+    ],
+    [
+      1,
+      "connection",
+      2000
+    ],
+    [
+      1,
+      "statements",
+      2000
+    ],
+    [
+      1,
+      "reopen",
+      512
+    ],
+    [
+      1,
+      "connection",
+      512
+    ],
+    [
+      1,
+      "statements",
+      512
+    ],
+    [
+      2,
+      "statements",
+      512
+    ],
+    [
+      2,
+      "connection",
+      512
+    ],
+    [
+      2,
+      "reopen",
+      512
+    ],
+    [
+      2,
+      "statements",
+      2000
+    ],
+    [
+      2,
+      "connection",
+      2000
+    ],
+    [
+      2,
+      "reopen",
+      2000
+    ]
+  ],
+  "allCasesValid": true,
+  "elapsedUtc": [
+    "2026-10-08T19:35:48.692034+00:00",
+    "2026-10-08T19:36:01.231151+00:00"
+  ],
+  "binarySha256": "d4419f7c36fee1b21fd6435f72ff1d36946ec4b86432880e7bcf0605c89051fb",
+  "sourceSha256": "2e6ebb66aaf667018027e5c87f411d952b8d748bea14a478b477d00ce1150c2a",
+  "cmakeSha256": "0e61c53f1baec41fe6cd047ef30c182fd5e546b0c35a58e54167a63fe9662ee2",
+  "sqliteIdentity": {
+    "version": "3.45.1",
+    "sourceId": "2024-01-30 16:01:20 e876e51a0ed5c5b3126f52e532044363a014bc594cfefa87ffb5b82257ccalt1",
+    "qtVersion": "6.4.2",
+    "compileOptions": [
+      "ATOMIC_INTRINSICS=1",
+      "COMPILER=gcc-13.3.0",
+      "DEFAULT_AUTOVACUUM",
+      "DEFAULT_CACHE_SIZE=-2000",
+      "DEFAULT_FILE_FORMAT=4",
+      "DEFAULT_JOURNAL_SIZE_LIMIT=-1",
+      "DEFAULT_MMAP_SIZE=0",
+      "DEFAULT_PAGE_SIZE=4096",
+      "DEFAULT_PCACHE_INITSZ=20",
+      "DEFAULT_RECURSIVE_TRIGGERS",
+      "DEFAULT_SECTOR_SIZE=4096",
+      "DEFAULT_SYNCHRONOUS=2",
+      "DEFAULT_WAL_AUTOCHECKPOINT=1000",
+      "DEFAULT_WAL_SYNCHRONOUS=2",
+      "DEFAULT_WORKER_THREADS=0",
+      "DIRECT_OVERFLOW_READ",
+      "ENABLE_COLUMN_METADATA",
+      "ENABLE_DBSTAT_VTAB",
+      "ENABLE_FTS3",
+      "ENABLE_FTS3_PARENTHESIS",
+      "ENABLE_FTS3_TOKENIZER",
+      "ENABLE_FTS4",
+      "ENABLE_FTS5",
+      "ENABLE_LOAD_EXTENSION",
+      "ENABLE_MATH_FUNCTIONS",
+      "ENABLE_PREUPDATE_HOOK",
+      "ENABLE_RTREE",
+      "ENABLE_SESSION",
+      "ENABLE_STMTVTAB",
+      "ENABLE_UNLOCK_NOTIFY",
+      "ENABLE_UPDATE_DELETE_LIMIT",
+      "HAVE_ISNAN",
+      "LIKE_DOESNT_MATCH_BLOBS",
+      "MALLOC_SOFT_LIMIT=1024",
+      "MAX_ATTACHED=10",
+      "MAX_COLUMN=2000",
+      "MAX_COMPOUND_SELECT=500",
+      "MAX_DEFAULT_PAGE_SIZE=32768",
+      "MAX_EXPR_DEPTH=1000",
+      "MAX_FUNCTION_ARG=127",
+      "MAX_LENGTH=1000000000",
+      "MAX_LIKE_PATTERN_LENGTH=50000",
+      "MAX_MMAP_SIZE=0x7fff0000",
+      "MAX_PAGE_COUNT=0xfffffffe",
+      "MAX_PAGE_SIZE=65536",
+      "MAX_SCHEMA_RETRY=25",
+      "MAX_SQL_LENGTH=1000000000",
+      "MAX_TRIGGER_DEPTH=1000",
+      "MAX_VARIABLE_NUMBER=250000",
+      "MAX_VDBE_OP=250000000",
+      "MAX_WORKER_THREADS=8",
+      "MUTEX_PTHREADS",
+      "SECURE_DELETE",
+      "SOUNDEX",
+      "SYSTEM_MALLOC",
+      "TEMP_STORE=1",
+      "THREADSAFE=1",
+      "USE_URI"
+    ]
+  },
+  "libraryIdentity": {
+    "/tmp/putgd-sqlite-latency-probe-build/sqlite-latency-probe": {
+      "sha256": "d4419f7c36fee1b21fd6435f72ff1d36946ec4b86432880e7bcf0605c89051fb",
+      "bytes": 108416
+    },
+    "/usr/lib/x86_64-linux-gnu/qt6/plugins/sqldrivers/libqsqlite.so": {
+      "sha256": "7f4623056100d8f6de584d63f512cb5937ea2be49b3421e0246f6cec85383252",
+      "bytes": 93000
+    },
+    "/usr/lib/x86_64-linux-gnu/libQt6Sql.so.6.4.2": {
+      "sha256": "438bbff10919e04733c2de4514df25e83195146840484a0116b407aed1c63c42",
+      "bytes": 302072
+    },
+    "/usr/lib/locale/C.utf8/LC_ADDRESS": {
+      "sha256": "26e2800affab801cb36d4ff9625a95c3abceeda2b6553a7aecd0cfcf34c98099",
+      "bytes": 127
+    },
+    "/usr/lib/x86_64-linux-gnu/gconv/gconv-modules.cache": {
+      "sha256": "52c227df9d53248238602c1ddaccd2c8ddc4cc6a61aa45d7c425af590b8806a5",
+      "bytes": 27028
+    },
+    "/usr/lib/locale/locale-archive": {
+      "sha256": "f26d61a395e4800cfc165f120af1de6341512b2a3e31c616001b19bc3902bb29",
+      "bytes": 5719296
+    },
+    "/usr/lib/locale/C.utf8/LC_IDENTIFICATION": {
+      "sha256": "38a1d8e5271c86f48910d9c684f64271955335736e71cec35eeac942f90eb091",
+      "bytes": 258
+    },
+    "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1": {
+      "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb",
+      "bytes": 183024
+    },
+    "/usr/lib/locale/C.utf8/LC_COLLATE": {
+      "sha256": "47a5f5359a8f324abc39d69a7f6241a2ac0e2fbbeae5b9c3a756e682b75d087b",
+      "bytes": 1406
+    },
+    "/usr/lib/locale/C.utf8/LC_CTYPE": {
+      "sha256": "59015993b1b671273461ef1167d7a9ad76dc090d521c91102e962217ed6b6dba",
+      "bytes": 360460
+    },
+    "/usr/lib/x86_64-linux-gnu/libQt6Core.so.6.4.2": {
+      "sha256": "9b34e2442ccf558196946a5e944c4e73e6fb5a6cd035c9845b778bbac9f1e390",
+      "bytes": 5275592
+    },
+    "/usr/lib/x86_64-linux-gnu/libc.so.6": {
+      "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf",
+      "bytes": 2129424
+    },
+    "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0.8000.0": {
+      "sha256": "96ef9163aee942bdc09e6f4a1acd2fd6b178c03af824c569741440d63ac9f4f4",
+      "bytes": 1343056
+    },
+    "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0.11.2": {
+      "sha256": "e00576d71d81d3ba0cfa4903c835a44a8723aac96f72f79ff75200b4cff9071b",
+      "bytes": 625344
+    },
+    "/usr/lib/x86_64-linux-gnu/libm.so.6": {
+      "sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0",
+      "bytes": 952616
+    },
+    "/usr/lib/x86_64-linux-gnu/libpcre2-16.so.0.11.2": {
+      "sha256": "4dfa8a4023270763b8ca1654dc4f59f835393b1ae78085a19369228f8109a671",
+      "bytes": 572064
+    },
+    "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33": {
+      "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11",
+      "bytes": 2592224
+    },
+    "/usr/lib/locale/C.utf8/LC_NUMERIC": {
+      "sha256": "f5976e6b3e6b24dfe03caad6a5b98d894d8110d8bd15507e690fd60fd3e04ab2",
+      "bytes": 50
+    },
+    "/usr/lib/locale/C.utf8/LC_TIME": {
+      "sha256": "0910b595d1d5d4e52cc0f415bbb1ff07c015d6860d34aae02505dd9973a63154",
+      "bytes": 3360
+    },
+    "/usr/lib/x86_64-linux-gnu/libb2.so.1.0.4": {
+      "sha256": "a7f147d23fbbf713bff170b906a0488e62e62bd6e92cdf50ad086e2d5bd09093",
+      "bytes": 121128
+    },
+    "/usr/lib/x86_64-linux-gnu/libicui18n.so.74.2": {
+      "sha256": "3550b194eb2cf2e6f798f033eb9ca279d498c21296b4a18790ce158d2023e47b",
+      "bytes": 3455304
+    },
+    "/usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0": {
+      "sha256": "135f3c8f006d2fe5e68e51281c7974cb991a03de3bfb3593d68d174dfcf854d1",
+      "bytes": 352304
+    },
+    "/usr/lib/locale/C.utf8/LC_MONETARY": {
+      "sha256": "bfd9e9975443b834582493fe9a8d7aefcd989376789c17470a1e548aee76fd55",
+      "bytes": 270
+    },
+    "/usr/lib/x86_64-linux-gnu/libz.so.1.3": {
+      "sha256": "86200da370f20476a2507e9097a789b5ef97269b4ca8d5e164ad82dab9d99892",
+      "bytes": 113000
+    },
+    "/usr/lib/x86_64-linux-gnu/libicudata.so.74.2": {
+      "sha256": "ddbb3718b8bd9cbd780e5ab08b4503c30a6c4fa0706ebe5d074ed6b596c1714e",
+      "bytes": 30795392
+    },
+    "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5": {
+      "sha256": "0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb",
+      "bytes": 755864
+    },
+    "/usr/lib/locale/C.utf8/LC_TELEPHONE": {
+      "sha256": "f4caf0d12844219b65ba42edc7ec2f5ac1b2fc36a3c88c28887457275daca1ee",
+      "bytes": 47
+    },
+    "/usr/lib/x86_64-linux-gnu/libicuuc.so.74.2": {
+      "sha256": "7560aadde38e5f4237a47a1ddd5891f9b36768a77a60faae30beee003ac01901",
+      "bytes": 2140336
+    },
+    "/usr/lib/x86_64-linux-gnu/libsqlite3.so.0.8.6": {
+      "sha256": "eac351cf84d688d1f9235e6165bd57555b31a491cd2f65e0dca67daa69036370",
+      "bytes": 1468440
+    },
+    "/usr/lib/locale/C.utf8/LC_MESSAGES/SYS_LC_MESSAGES": {
+      "sha256": "f9ad02f1d8eba721d4cbd50c365b5c681c39aec008f90bfc2be2dc80bfbaddcb",
+      "bytes": 48
+    },
+    "/usr/lib/x86_64-linux-gnu/libdouble-conversion.so.3.1": {
+      "sha256": "d1c9583dc7c1fce6f0a0701dd4356448425e45afe15c0946c23edeaf93d9397c",
+      "bytes": 79952
+    },
+    "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2": {
+      "sha256": "c20a2dc8917c755f02b94049356320fe1f62ac7d9f8994731f807d9df39302da",
+      "bytes": 236616
+    },
+    "/usr/lib/locale/C.utf8/LC_NAME": {
+      "sha256": "14507aad9f806112e464b9ca94c93b2e4d759ddc612b5f87922d7cac7170697d",
+      "bytes": 62
+    },
+    "/usr/lib/locale/C.utf8/LC_MEASUREMENT": {
+      "sha256": "bb14a6f2cbd5092a755e8f272079822d3e842620dd4542a8dfa1e5e72fc6115b",
+      "bytes": 23
+    },
+    "/usr/lib/locale/C.utf8/LC_PAPER": {
+      "sha256": "cde048b81e2a026517cc707c906aebbd50f5ee3957b6f0c1c04699dffcb7c015",
+      "bytes": 34
+    }
+  },
+  "firstScanGrowthKiBByCache": {
+    "2000": {
+      "count": 6,
+      "min": 2064,
+      "median": 2098.0,
+      "p95NearestRank": 2104,
+      "max": 2104
+    },
+    "512": {
+      "count": 6,
+      "min": 548,
+      "median": 552.0,
+      "p95NearestRank": 552,
+      "max": 552
+    }
+  },
+  "rows": [
+    {
+      "ordinal": 1,
+      "repeat": 1,
+      "mode": "reopen",
+      "cacheKiB": 2000,
+      "sourceResultSha256": "592aa6a197d33958f3b58db664adec98e4c5408e53e856f155f956c3ac868e6f",
+      "wallMs": {
+        "count": 30,
+        "min": 5.417894,
+        "median": 6.4081995,
+        "p95NearestRank": 268.261404,
+        "max": 347.370903
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.006355,
+          "median": 0.009152,
+          "p95NearestRank": 0.020123,
+          "max": 0.022034
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.00807,
+          "median": 0.0124065,
+          "p95NearestRank": 0.023592,
+          "max": 0.025221
+        },
+        "closeNs": {
+          "count": 30,
+          "min": 0.053415,
+          "median": 0.1055185,
+          "p95NearestRank": 0.239032,
+          "max": 0.258821
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.443651,
+          "median": 5.1910834999999995,
+          "p95NearestRank": 265.863718,
+          "max": 345.432564
+        },
+        "connectionSetupNs": {
+          "count": 30,
+          "min": 0.007868,
+          "median": 0.019553,
+          "p95NearestRank": 0.037475,
+          "max": 0.065385
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.162181,
+          "median": 0.2288465,
+          "p95NearestRank": 0.508382,
+          "max": 0.553184
+        },
+        "foreignKeysNs": {
+          "count": 30,
+          "min": 0.022518,
+          "median": 0.041538,
+          "p95NearestRank": 0.09464,
+          "max": 0.104942
+        },
+        "openNs": {
+          "count": 30,
+          "min": 0.096405,
+          "median": 0.1625615,
+          "p95NearestRank": 0.327994,
+          "max": 0.334953
+        },
+        "permissionsNs": {
+          "count": 30,
+          "min": 0.015319,
+          "median": 0.03485,
+          "p95NearestRank": 0.070247,
+          "max": 0.097601
+        },
+        "policyNs": {
+          "count": 30,
+          "min": 0.148438,
+          "median": 0.22728700000000002,
+          "p95NearestRank": 0.470038,
+          "max": 0.487908
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.045996,
+          "median": 0.06779650000000001,
+          "p95NearestRank": 0.134457,
+          "max": 0.170987
+        },
+        "userVersionNs": {
+          "count": 30,
+          "min": 0.052984,
+          "median": 0.0859405,
+          "p95NearestRank": 0.185581,
+          "max": 0.221297
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -2000,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 18056,
+        "rssAfterScanKiB": 14860,
+        "rssAfterShrinkKiB": 12840,
+        "rssBeforeKiB": 12796,
+        "scanAfterShrinkNs": 9292841,
+        "scanBeforeShrinkNs": 6137623,
+        "shrinkNs": 269708,
+        "firstScanRssGrowthKiB": 2064,
+        "shrinkRssDropKiB": 2020,
+        "rescanRssGrowthFromInitialKiB": 5260
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 182.034059,
+        "readerUserVersionMs": 229.409904,
+        "readerOpenMs": 0.055884,
+        "readerPermissionsMs": 0.010033,
+        "followingExecuteMs": 0.374802,
+        "writerCommitMs": 81.906821
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 2,
+      "repeat": 1,
+      "mode": "connection",
+      "cacheKiB": 2000,
+      "sourceResultSha256": "0ef4d23a68e64c1993ff3cdcc0071f65cfe41992b4781433364f9f5f535b252f",
+      "wallMs": {
+        "count": 30,
+        "min": 5.471399,
+        "median": 7.668887,
+        "p95NearestRank": 11.035434,
+        "max": 174.219601
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.016767,
+          "median": 0.062230499999999994,
+          "p95NearestRank": 0.093774,
+          "max": 0.136327
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.006581,
+          "median": 0.0258675,
+          "p95NearestRank": 0.041596,
+          "max": 0.05331
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 5.01124,
+          "median": 6.43788,
+          "p95NearestRank": 9.699661,
+          "max": 172.943295
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.163528,
+          "median": 0.5705305,
+          "p95NearestRank": 0.752134,
+          "max": 0.97288
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.055089,
+          "median": 0.2021385,
+          "p95NearestRank": 0.312481,
+          "max": 0.320947
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -2000,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 18016,
+        "rssAfterScanKiB": 14820,
+        "rssAfterShrinkKiB": 14820,
+        "rssBeforeKiB": 12728,
+        "scanAfterShrinkNs": 15987282,
+        "scanBeforeShrinkNs": 17008592,
+        "shrinkNs": 169503,
+        "firstScanRssGrowthKiB": 2092,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 5288
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 176.828811,
+        "readerUserVersionMs": 179.213288,
+        "readerOpenMs": 0.08328,
+        "readerPermissionsMs": 0.015053,
+        "followingExecuteMs": 0.272828,
+        "writerCommitMs": 76.647254
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 3,
+      "repeat": 1,
+      "mode": "statements",
+      "cacheKiB": 2000,
+      "sourceResultSha256": "eccb1faac88eb29952972392351b624c5fc1162f5dff7cc4be8861b14278b787",
+      "wallMs": {
+        "count": 30,
+        "min": 4.921658,
+        "median": 8.3662905,
+        "p95NearestRank": 94.603839,
+        "max": 262.324032
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.016051,
+          "median": 0.07287350000000001,
+          "p95NearestRank": 0.134256,
+          "max": 0.145435
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.005081,
+          "median": 0.024184999999999998,
+          "p95NearestRank": 0.036515,
+          "max": 0.050228
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.693661,
+          "median": 7.1883375,
+          "p95NearestRank": 93.933286,
+          "max": 261.419365
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.153937,
+          "median": 0.7216180000000001,
+          "p95NearestRank": 0.966716,
+          "max": 1.023399
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.0,
+          "median": 0.0,
+          "p95NearestRank": 0.0,
+          "max": 0.0
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -2000,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 18112,
+        "rssAfterScanKiB": 14920,
+        "rssAfterShrinkKiB": 14920,
+        "rssBeforeKiB": 12820,
+        "scanAfterShrinkNs": 7920603,
+        "scanBeforeShrinkNs": 6813219,
+        "shrinkNs": 93818,
+        "firstScanRssGrowthKiB": 2100,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 5292
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 115.476888,
+        "readerUserVersionMs": 129.10924,
+        "readerOpenMs": 0.10166,
+        "readerPermissionsMs": 0.017082,
+        "followingExecuteMs": 0.224594,
+        "writerCommitMs": 15.330826
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 4,
+      "repeat": 1,
+      "mode": "reopen",
+      "cacheKiB": 512,
+      "sourceResultSha256": "9ac3b3c9cb6490b841959e9dbdfa75dfbb5fb95d6c7c81692f149880fa2616e4",
+      "wallMs": {
+        "count": 30,
+        "min": 5.588645,
+        "median": 6.3183965,
+        "p95NearestRank": 9.268131,
+        "max": 9.75667
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.006875,
+          "median": 0.008625,
+          "p95NearestRank": 0.027769,
+          "max": 0.034537
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.007247,
+          "median": 0.010756,
+          "p95NearestRank": 0.035993,
+          "max": 0.04028
+        },
+        "closeNs": {
+          "count": 30,
+          "min": 0.048022,
+          "median": 0.107345,
+          "p95NearestRank": 0.253572,
+          "max": 0.256931
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.68558,
+          "median": 5.1645905,
+          "p95NearestRank": 8.032625,
+          "max": 8.988369
+        },
+        "connectionSetupNs": {
+          "count": 30,
+          "min": 0.007365,
+          "median": 0.0193155,
+          "p95NearestRank": 0.052174,
+          "max": 0.054647
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.146278,
+          "median": 0.227678,
+          "p95NearestRank": 0.475357,
+          "max": 0.59692
+        },
+        "foreignKeysNs": {
+          "count": 30,
+          "min": 0.020122,
+          "median": 0.042763999999999996,
+          "p95NearestRank": 0.115393,
+          "max": 0.128425
+        },
+        "openNs": {
+          "count": 30,
+          "min": 0.090522,
+          "median": 0.151988,
+          "p95NearestRank": 0.262736,
+          "max": 0.304371
+        },
+        "permissionsNs": {
+          "count": 30,
+          "min": 0.014246,
+          "median": 0.0317735,
+          "p95NearestRank": 0.093669,
+          "max": 0.100634
+        },
+        "policyNs": {
+          "count": 30,
+          "min": 0.156028,
+          "median": 0.220653,
+          "p95NearestRank": 0.406959,
+          "max": 0.485983
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.042224,
+          "median": 0.062414000000000004,
+          "p95NearestRank": 0.131655,
+          "max": 0.141439
+        },
+        "userVersionNs": {
+          "count": 30,
+          "min": 0.048094,
+          "median": 0.07714850000000001,
+          "p95NearestRank": 0.134678,
+          "max": 0.200214
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -512,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 13988,
+        "rssAfterScanKiB": 13368,
+        "rssAfterShrinkKiB": 13368,
+        "rssBeforeKiB": 12816,
+        "scanAfterShrinkNs": 6438029,
+        "scanBeforeShrinkNs": 4678940,
+        "shrinkNs": 23588,
+        "firstScanRssGrowthKiB": 552,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 1172
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 175.819782,
+        "readerUserVersionMs": 179.216779,
+        "readerOpenMs": 0.067359,
+        "readerPermissionsMs": 0.0094,
+        "followingExecuteMs": 0.37326,
+        "writerCommitMs": 75.671955
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 5,
+      "repeat": 1,
+      "mode": "connection",
+      "cacheKiB": 512,
+      "sourceResultSha256": "b5eb3c145bc0cb1449bf6d654d3ea607bf315b588b8be094486e277824a08969",
+      "wallMs": {
+        "count": 30,
+        "min": 4.893052,
+        "median": 6.4067865,
+        "p95NearestRank": 92.401086,
+        "max": 257.332915
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.014733,
+          "median": 0.049557500000000004,
+          "p95NearestRank": 0.129343,
+          "max": 0.141087
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.006518,
+          "median": 0.016338,
+          "p95NearestRank": 0.037713,
+          "max": 0.043176
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.554122,
+          "median": 5.660315000000001,
+          "p95NearestRank": 91.404969,
+          "max": 256.443869
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.150216,
+          "median": 0.366122,
+          "p95NearestRank": 0.895559,
+          "max": 0.920813
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.049997,
+          "median": 0.147212,
+          "p95NearestRank": 0.395976,
+          "max": 0.399088
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -512,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 13956,
+        "rssAfterScanKiB": 13336,
+        "rssAfterShrinkKiB": 13336,
+        "rssBeforeKiB": 12788,
+        "scanAfterShrinkNs": 15099841,
+        "scanBeforeShrinkNs": 23420306,
+        "shrinkNs": 124513,
+        "firstScanRssGrowthKiB": 548,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 1168
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 168.585362,
+        "readerUserVersionMs": 179.243809,
+        "readerOpenMs": 0.072711,
+        "readerPermissionsMs": 0.013866,
+        "followingExecuteMs": 0.432644,
+        "writerCommitMs": 68.381564
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 6,
+      "repeat": 1,
+      "mode": "statements",
+      "cacheKiB": 512,
+      "sourceResultSha256": "c07c69a7e72a1866add67dc708c2d89c6351a844a2ca7353fbcf89055be001cf",
+      "wallMs": {
+        "count": 30,
+        "min": 5.391089,
+        "median": 8.292064499999999,
+        "p95NearestRank": 178.170451,
+        "max": 181.196125
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.014788,
+          "median": 0.063741,
+          "p95NearestRank": 0.112042,
+          "max": 0.127751
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.004881,
+          "median": 0.019932,
+          "p95NearestRank": 0.035567,
+          "max": 0.041091
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.90669,
+          "median": 7.140443,
+          "p95NearestRank": 176.771038,
+          "max": 179.945454
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.142538,
+          "median": 0.571853,
+          "p95NearestRank": 0.922386,
+          "max": 1.018142
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.0,
+          "median": 0.0,
+          "p95NearestRank": 0.0,
+          "max": 0.0
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -512,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 13992,
+        "rssAfterScanKiB": 13376,
+        "rssAfterShrinkKiB": 13376,
+        "rssBeforeKiB": 12824,
+        "scanAfterShrinkNs": 6391271,
+        "scanBeforeShrinkNs": 5203419,
+        "shrinkNs": 41547,
+        "firstScanRssGrowthKiB": 552,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 1168
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 178.398845,
+        "readerUserVersionMs": 179.282816,
+        "readerOpenMs": 0.03375,
+        "readerPermissionsMs": 0.006436,
+        "followingExecuteMs": 0.316546,
+        "writerCommitMs": 78.251672
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 7,
+      "repeat": 2,
+      "mode": "statements",
+      "cacheKiB": 512,
+      "sourceResultSha256": "a118e481c716e6c17443a1e0d28051141f4b5d6f5da46a2d797cdc8329b27954",
+      "wallMs": {
+        "count": 30,
+        "min": 5.000873,
+        "median": 6.234055,
+        "p95NearestRank": 94.225128,
+        "max": 177.141448
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.015431,
+          "median": 0.035582,
+          "p95NearestRank": 0.098487,
+          "max": 0.09874
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.004685,
+          "median": 0.0131755,
+          "p95NearestRank": 0.032035,
+          "max": 0.035306
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.786755,
+          "median": 5.711622,
+          "p95NearestRank": 93.671256,
+          "max": 176.607612
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.144785,
+          "median": 0.336071,
+          "p95NearestRank": 0.619627,
+          "max": 0.664965
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.0,
+          "median": 0.0,
+          "p95NearestRank": 0.0,
+          "max": 0.0
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -512,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 13984,
+        "rssAfterScanKiB": 13368,
+        "rssAfterShrinkKiB": 13368,
+        "rssBeforeKiB": 12816,
+        "scanAfterShrinkNs": 6065273,
+        "scanBeforeShrinkNs": 5983291,
+        "shrinkNs": 169770,
+        "firstScanRssGrowthKiB": 552,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 1168
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 178.711845,
+        "readerUserVersionMs": 179.288985,
+        "readerOpenMs": 0.032683,
+        "readerPermissionsMs": 0.006818,
+        "followingExecuteMs": 0.372288,
+        "writerCommitMs": 78.60106
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 8,
+      "repeat": 2,
+      "mode": "connection",
+      "cacheKiB": 512,
+      "sourceResultSha256": "0d6386b5dcc7ad0b6b0dba6cae18036cc1eb7b82bea71aa7ed8f1f270ac2a063",
+      "wallMs": {
+        "count": 30,
+        "min": 4.619067,
+        "median": 7.794841,
+        "p95NearestRank": 96.061048,
+        "max": 267.335785
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.015281,
+          "median": 0.060537,
+          "p95NearestRank": 0.118754,
+          "max": 0.122427
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.006261,
+          "median": 0.0222755,
+          "p95NearestRank": 0.039667,
+          "max": 0.058996
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.299201,
+          "median": 6.7838475,
+          "p95NearestRank": 94.477402,
+          "max": 266.372468
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.17687,
+          "median": 0.4828865,
+          "p95NearestRank": 0.862957,
+          "max": 0.936626
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.054207,
+          "median": 0.18823499999999999,
+          "p95NearestRank": 0.336842,
+          "max": 0.344221
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -512,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 13972,
+        "rssAfterScanKiB": 13352,
+        "rssAfterShrinkKiB": 13352,
+        "rssBeforeKiB": 12804,
+        "scanAfterShrinkNs": 6237113,
+        "scanBeforeShrinkNs": 4547316,
+        "shrinkNs": 21717,
+        "firstScanRssGrowthKiB": 548,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 1168
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 176.363619,
+        "readerUserVersionMs": 179.062852,
+        "readerOpenMs": 0.045847,
+        "readerPermissionsMs": 0.008363,
+        "followingExecuteMs": 0.210547,
+        "writerCommitMs": 76.239753
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 9,
+      "repeat": 2,
+      "mode": "reopen",
+      "cacheKiB": 512,
+      "sourceResultSha256": "1149fa8e271b3e4cc9406866db55d6456c5c310693e64cb0409798abed300099",
+      "wallMs": {
+        "count": 30,
+        "min": 6.594888,
+        "median": 9.430602499999999,
+        "p95NearestRank": 97.74227,
+        "max": 348.561204
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.006699,
+          "median": 0.018342499999999998,
+          "p95NearestRank": 0.040418,
+          "max": 0.046154
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.00948,
+          "median": 0.024946,
+          "p95NearestRank": 0.043171,
+          "max": 0.04471
+        },
+        "closeNs": {
+          "count": 30,
+          "min": 0.094834,
+          "median": 0.1895365,
+          "p95NearestRank": 0.318951,
+          "max": 0.34304
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 5.526816,
+          "median": 6.7736155,
+          "p95NearestRank": 94.685167,
+          "max": 347.064852
+        },
+        "connectionSetupNs": {
+          "count": 30,
+          "min": 0.018565,
+          "median": 0.033803,
+          "p95NearestRank": 0.054877,
+          "max": 0.059041
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.186375,
+          "median": 0.5457015000000001,
+          "p95NearestRank": 0.869669,
+          "max": 1.008249
+        },
+        "foreignKeysNs": {
+          "count": 30,
+          "min": 0.036278,
+          "median": 0.079713,
+          "p95NearestRank": 0.136521,
+          "max": 0.178098
+        },
+        "openNs": {
+          "count": 30,
+          "min": 0.124968,
+          "median": 0.3119575,
+          "p95NearestRank": 0.587227,
+          "max": 0.68261
+        },
+        "permissionsNs": {
+          "count": 30,
+          "min": 0.027361,
+          "median": 0.057327,
+          "p95NearestRank": 0.106336,
+          "max": 0.132701
+        },
+        "policyNs": {
+          "count": 30,
+          "min": 0.182221,
+          "median": 0.498583,
+          "p95NearestRank": 0.937168,
+          "max": 1.003576
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.058981,
+          "median": 0.14579599999999998,
+          "p95NearestRank": 0.269747,
+          "max": 0.36794
+        },
+        "userVersionNs": {
+          "count": 30,
+          "min": 0.062881,
+          "median": 0.17235499999999998,
+          "p95NearestRank": 0.310738,
+          "max": 0.415065
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -512,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 14040,
+        "rssAfterScanKiB": 13420,
+        "rssAfterShrinkKiB": 13420,
+        "rssBeforeKiB": 12868,
+        "scanAfterShrinkNs": 4865197,
+        "scanBeforeShrinkNs": 6334575,
+        "shrinkNs": 47508,
+        "firstScanRssGrowthKiB": 552,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 1172
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 182.923655,
+        "readerUserVersionMs": 229.001535,
+        "readerOpenMs": 0.039679,
+        "readerPermissionsMs": 0.006914,
+        "followingExecuteMs": 0.264236,
+        "writerCommitMs": 82.805242
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 10,
+      "repeat": 2,
+      "mode": "statements",
+      "cacheKiB": 2000,
+      "sourceResultSha256": "0f9811e84ba58509d9b8865773c8b2de9c3eada51efa427cc779cb2ed56c4d6f",
+      "wallMs": {
+        "count": 30,
+        "min": 5.790466,
+        "median": 7.335630999999999,
+        "p95NearestRank": 174.883585,
+        "max": 178.917549
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.029918,
+          "median": 0.0671925,
+          "p95NearestRank": 0.104792,
+          "max": 0.113462
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.0092,
+          "median": 0.019105999999999998,
+          "p95NearestRank": 0.033013,
+          "max": 0.033315
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 5.395634,
+          "median": 6.5496925,
+          "p95NearestRank": 174.068078,
+          "max": 177.981212
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.26432,
+          "median": 0.5273909999999999,
+          "p95NearestRank": 0.896122,
+          "max": 0.922716
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.0,
+          "median": 0.0,
+          "p95NearestRank": 0.0,
+          "max": 0.0
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -2000,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 18072,
+        "rssAfterScanKiB": 14880,
+        "rssAfterShrinkKiB": 14880,
+        "rssBeforeKiB": 12780,
+        "scanAfterShrinkNs": 13339872,
+        "scanBeforeShrinkNs": 21595855,
+        "shrinkNs": 198251,
+        "firstScanRssGrowthKiB": 2100,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 5292
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 103.422499,
+        "readerUserVersionMs": 103.892243,
+        "readerOpenMs": 0.077745,
+        "readerPermissionsMs": 0.015493,
+        "followingExecuteMs": 0.3157,
+        "writerCommitMs": 3.284212
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 11,
+      "repeat": 2,
+      "mode": "connection",
+      "cacheKiB": 2000,
+      "sourceResultSha256": "980336bff1cbebb150281d0b3ed319ae734618058732be4f35522633576451c2",
+      "wallMs": {
+        "count": 30,
+        "min": 4.861512,
+        "median": 6.7907605,
+        "p95NearestRank": 9.170839,
+        "max": 9.278597
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.014416,
+          "median": 0.04056,
+          "p95NearestRank": 0.084652,
+          "max": 0.094632
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.006096,
+          "median": 0.0149645,
+          "p95NearestRank": 0.030774,
+          "max": 0.034286
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.560752,
+          "median": 6.051231,
+          "p95NearestRank": 8.547419,
+          "max": 8.603361
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.140524,
+          "median": 0.3617745,
+          "p95NearestRank": 0.823423,
+          "max": 0.825482
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.048142,
+          "median": 0.1272595,
+          "p95NearestRank": 0.297088,
+          "max": 0.300578
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -2000,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 18076,
+        "rssAfterScanKiB": 14880,
+        "rssAfterShrinkKiB": 14880,
+        "rssBeforeKiB": 12784,
+        "scanAfterShrinkNs": 5891811,
+        "scanBeforeShrinkNs": 6727510,
+        "shrinkNs": 95043,
+        "firstScanRssGrowthKiB": 2096,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 5292
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 179.225502,
+        "readerUserVersionMs": 229.16965,
+        "readerOpenMs": 0.048976,
+        "readerPermissionsMs": 0.008587,
+        "followingExecuteMs": 0.161766,
+        "writerCommitMs": 78.896684
+      },
+      "stderrBytes": 0,
+      "valid": true
+    },
+    {
+      "ordinal": 12,
+      "repeat": 2,
+      "mode": "reopen",
+      "cacheKiB": 2000,
+      "sourceResultSha256": "553182a06c3c474dd602d3f595769cb11df9854521b83290ea01bbad9cab6788",
+      "wallMs": {
+        "count": 30,
+        "min": 5.431773,
+        "median": 6.787211,
+        "p95NearestRank": 99.05958,
+        "max": 348.273102
+      },
+      "phaseSumMsPerThreeStateIteration": {
+        "beginNs": {
+          "count": 30,
+          "min": 0.006743,
+          "median": 0.008816000000000001,
+          "p95NearestRank": 0.04268,
+          "max": 0.113078
+        },
+        "bindNs": {
+          "count": 30,
+          "min": 0.007343,
+          "median": 0.0136275,
+          "p95NearestRank": 0.034952,
+          "max": 0.042963
+        },
+        "closeNs": {
+          "count": 30,
+          "min": 0.044871,
+          "median": 0.134417,
+          "p95NearestRank": 0.33123,
+          "max": 0.336628
+        },
+        "commitNs": {
+          "count": 30,
+          "min": 4.656965,
+          "median": 5.558124,
+          "p95NearestRank": 97.111909,
+          "max": 346.660739
+        },
+        "connectionSetupNs": {
+          "count": 30,
+          "min": 0.007809,
+          "median": 0.0242455,
+          "p95NearestRank": 0.07578,
+          "max": 0.094494
+        },
+        "executeNs": {
+          "count": 30,
+          "min": 0.150742,
+          "median": 0.2255635,
+          "p95NearestRank": 0.650241,
+          "max": 0.922469
+        },
+        "foreignKeysNs": {
+          "count": 30,
+          "min": 0.01953,
+          "median": 0.044726,
+          "p95NearestRank": 0.112701,
+          "max": 0.125701
+        },
+        "openNs": {
+          "count": 30,
+          "min": 0.09069,
+          "median": 0.1751635,
+          "p95NearestRank": 0.402721,
+          "max": 0.531754
+        },
+        "permissionsNs": {
+          "count": 30,
+          "min": 0.014399,
+          "median": 0.031856,
+          "p95NearestRank": 0.098936,
+          "max": 0.126724
+        },
+        "policyNs": {
+          "count": 30,
+          "min": 0.143681,
+          "median": 0.2337815,
+          "p95NearestRank": 0.620229,
+          "max": 0.973577
+        },
+        "prepareNs": {
+          "count": 30,
+          "min": 0.042623,
+          "median": 0.0755895,
+          "p95NearestRank": 0.196006,
+          "max": 0.272657
+        },
+        "userVersionNs": {
+          "count": 30,
+          "min": 0.047631,
+          "median": 0.0919535,
+          "p95NearestRank": 0.213787,
+          "max": 0.674221
+        }
+      },
+      "memory": {
+        "cacheKiBSetting": -2000,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 18168,
+        "rssAfterScanKiB": 14972,
+        "rssAfterShrinkKiB": 14972,
+        "rssBeforeKiB": 12868,
+        "scanAfterShrinkNs": 7148678,
+        "scanBeforeShrinkNs": 4918346,
+        "shrinkNs": 140092,
+        "firstScanRssGrowthKiB": 2104,
+        "shrinkRssDropKiB": 0,
+        "rescanRssGrowthFromInitialKiB": 5300
+      },
+      "controlledLock": {
+        "injectedHoldMs": 100,
+        "writerHeldThroughCommitMs": 178.263514,
+        "readerUserVersionMs": 179.407492,
+        "readerOpenMs": 0.04473,
+        "readerPermissionsMs": 0.007948,
+        "followingExecuteMs": 0.272302,
+        "writerCommitMs": 78.124493
+      },
+      "stderrBytes": 0,
+      "valid": true
+    }
+  ],
+  "findings": [
+    "Commit is the dominant tail in these simplified rollback/FULL serial cases; retained connections/prepared statement reuse do not consistently improve whole iteration timing.",
+    "Reopen healthy setup is sub-millisecond across three states; prepare cost is sub-millisecond and disappears as an explicit prepare phase under bounded statement reuse.",
+    "The controlled exclusive writer reproduces a user_version wait while open/chmod stay short. It is injected lock overlap, not the observed product fsync stall.",
+    "The 512 KiB cap lowers normalized first-scan RSS in both repeats; product paginated-history memory/latency remains unmeasured.",
+    "shrink_memory reduced RSS in one of twelve cases, and not in eleven; RSS is not SQLite allocation accounting. No allocator trim tested."
+  ],
+  "limits": [
+    "No product, compositor, clipboard, user history/config/data, WAL or physical idle gate exercised; no 150 ms or 40 MiB acceptance claim.",
+    "Thirty scored iterations and two reversed-order repeats are locating evidence with filesystem tails, not a selected product winner.",
+    "QSqlQuery scan/result allocations and glibc retention can influence process RSS; sqlite3_db_status was not measured.",
+    "The prepared source reused reader beginNs for the following write begin duration; controlled-lock absolute reader-start timestamp is unavailable. Individual phase durations and writer start/commit/release remain usable; source was not changed or rerun.",
+    "SQLite compile options do not list ENABLE_MEMORY_MANAGEMENT; optional global sqlite3_release_memory would therefore not be a supported plan. shrink_memory connection-local API remains available.",
+    "Fresh same-mode connection does not by itself remove a competing writer; subsequent product accepted/acquiring writes can still wait."
+  ],
+  "identityUnchanged": true,
+  "runtimeQuiet": true
+}

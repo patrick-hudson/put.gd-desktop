@@ -1,0 +1,64 @@
+{
+  "timestampUtc": "2026-10-08T20:16:12.650629+00:00",
+  "scope": "Read-only localhost display-wall source/API response; no VNC frames or guest inputs",
+  "responses": [
+    {
+      "endpoint": "/api/machines",
+      "status": 200,
+      "contentType": "application/json",
+      "cacheControl": "no-store",
+      "bytes": 256,
+      "sha256": "712c3c240580d9e7399897945a5dec73c014aa5772f0d59c074ff06451054b85",
+      "fieldSets": [
+        [
+          "available",
+          "id",
+          "name",
+          "pid"
+        ],
+        [
+          "available",
+          "id",
+          "name",
+          "pid"
+        ],
+        [
+          "available",
+          "id",
+          "name",
+          "pid"
+        ]
+      ],
+      "machines": [
+        {
+          "id": "7998af592fdfe28a268d",
+          "pid": 1673704,
+          "name": "gnome-001",
+          "available": true
+        },
+        {
+          "id": "677c7619ce0c99c32049",
+          "pid": 1691093,
+          "name": "kde-001",
+          "available": true
+        },
+        {
+          "id": "fd9bdecde74b6f8e2a26",
+          "pid": 1794904,
+          "name": "fresh-cinnamon-u9-20261008",
+          "available": true
+        }
+      ]
+    },
+    {
+      "endpoint": "/",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "cacheControl": "no-store",
+      "bytes": 8465,
+      "sha256": "4801926aa0a9b94ea60952f7845756275972fd25c6f45e00aa0376b7f3f06afe",
+      "matchesWorkingTreeIndex": true,
+      "memoryTermsPresent": []
+    }
+  ]
+}

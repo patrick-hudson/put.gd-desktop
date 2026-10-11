@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "testId": "1ef01cabb1e04609b09ed4016249f1c9",
+  "profile": "kde-wayland",
+  "scenario": "clipboard-text-independent-paste",
+  "ok": false,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 2958,
+    "startTicks": 81226,
+    "sha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "gtk",
+  "error": "Independent GTK clipboard client readiness timeout",
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+    "sha256": "dd6646c28d40cc01383c91cd663ba54903cb5fdbd41c0e306db21a2d8c8c1d9b"
+  },
+  "elapsedSeconds": 91.19796473102178,
+  "evidenceDirectory": "tests/1ef01cabb1e04609b09ed4016249f1c9"
+}

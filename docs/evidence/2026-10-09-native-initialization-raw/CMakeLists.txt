@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.24)
+project(putgd_native_init_locator LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Core Gui Widgets DBus)
+
+foreach(component Core Gui Widgets DBus)
+  get_target_property(qt_library_type Qt6::${component} TYPE)
+  if(qt_library_type STREQUAL "STATIC_LIBRARY")
+    message(FATAL_ERROR "This locator requires dynamically linked distro Qt")
+  endif()
+endforeach()
+
+foreach(kind core gui widgets)
+  add_executable(init-${kind} locator.cpp)
+  target_compile_definitions(init-${kind} PRIVATE LOCATOR_${kind}=1)
+  target_link_libraries(init-${kind} PRIVATE Qt6::Core Qt6::DBus)
+endforeach()
+target_link_libraries(init-gui PRIVATE Qt6::Gui)
+target_link_libraries(init-widgets PRIVATE Qt6::Widgets)

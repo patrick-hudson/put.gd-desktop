@@ -1,0 +1,158 @@
+{
+  "status": "complete",
+  "purpose": "Metadata-only inline-layout attribution; no production type change",
+  "recorded_at_utc": "2026-10-08T20:15:51.083010+00:00",
+  "cwd": "/home/patrick/work/put.gd",
+  "run_directory": "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf",
+  "platform": {
+    "system": "Linux",
+    "release": "6.14.0-37-generic",
+    "machine": "x86_64"
+  },
+  "environment": {
+    "bits_per_byte": 8,
+    "build_type": "Release",
+    "compiler_id": "GNU",
+    "compiler_version": "13.3.0",
+    "cplusplus": 202002,
+    "pointer_size_bytes": 8,
+    "pointer_width_bits": 64,
+    "qt_compile_version": "6.4.2",
+    "qt_runtime_version": "6.4.2"
+  },
+  "cmake_version": "cmake version 3.28.3",
+  "ninja_version": "1.11.1",
+  "commands": {
+    "cwd": "/home/patrick/work/put.gd",
+    "run_directory": "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf",
+    "commands": [
+      [
+        "cmake",
+        "-S",
+        "/home/patrick/work/put.gd/tools/diagnostics/layout",
+        "-B",
+        "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf/build",
+        "-G",
+        "Ninja",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+      ],
+      [
+        "cmake",
+        "--build",
+        "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf/build"
+      ],
+      [
+        "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf/build/putgd-layout-inspect"
+      ]
+    ],
+    "completed": [
+      {
+        "step": 0,
+        "exit_code": 0,
+        "log": "configure.log"
+      },
+      {
+        "step": 1,
+        "exit_code": 0,
+        "log": "build.log"
+      },
+      {
+        "step": 2,
+        "exit_code": 0,
+        "log": "layout.json"
+      }
+    ]
+  },
+  "compiled_command": [
+    {
+      "directory": "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf/build",
+      "command": "/usr/bin/c++ -DLAYOUT_BUILD_TYPE=\\\"Release\\\" -DLAYOUT_COMPILER_ID=\\\"GNU\\\" -DLAYOUT_COMPILER_VERSION=\\\"13.3.0\\\" -DQT_CORE_LIB -DQT_GUI_LIB -DQT_NO_DEBUG -DQT_SQL_LIB -I/home/patrick/work/put.gd/tools/diagnostics/layout/../../../src -isystem /usr/include/x86_64-linux-gnu/qt6/QtCore -isystem /usr/include/x86_64-linux-gnu/qt6 -isystem /usr/lib/x86_64-linux-gnu/qt6/mkspecs/linux-g++ -isystem /usr/include/x86_64-linux-gnu/qt6/QtGui -isystem /usr/include/x86_64-linux-gnu/qt6/QtSql -O3 -DNDEBUG -std=c++20 -fPIC -o CMakeFiles/putgd-layout-inspect.dir/main.cpp.o -c /home/patrick/work/put.gd/tools/diagnostics/layout/main.cpp",
+      "file": "/home/patrick/work/put.gd/tools/diagnostics/layout/main.cpp",
+      "output": "CMakeFiles/putgd-layout-inspect.dir/main.cpp.o"
+    }
+  ],
+  "source_sha256": {
+    "tools/diagnostics/layout/CMakeLists.txt": "90b6e476d3afd38a35b175af8b55e30fbf6280a479d527e7056a9edea5f00a0d",
+    "tools/diagnostics/layout/main.cpp": "b3406565ae77e35aac8c2b3e4325b8f8d613fe6360f6c31fa7928c0d4edf5107",
+    "tools/diagnostics/layout/README.md": "19930ae0428a8a0c96952edca9655819ce71ad11eb9fbaabf12d56bfafef478f"
+  },
+  "consumed_project_header_sha256": {
+    "src/app/HistoryService.h": "2e2567a2b1511fcf25a1227eb70585ca69242e464a6c8bc974ad3eb2b9cc1551",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "src/core/ArtifactStore.h": "ccb497daee158918a799b3bd60a246140a59b567ec28b544ff445df9ff0171be",
+    "src/core/ClipboardPayload.h": "4a9be16b0e0c17ef5381a0ef34b92e821e6e4c3d4d4b4a69e4b1b80fbd74933c",
+    "src/core/Error.h": "727946fe8beda6afc7d74321974759b90ec473864067e8dec0a4f3d3497ec7d1",
+    "src/core/HistoryStore.h": "d96b5af9cbee2d7ada902ee769cd68ff17ccc80576a6432d67ecce861e515a19",
+    "src/core/LocalArchive.h": "44bd515efe312b4ba50f733c54bce72145fabef023c0461b032fe50c70061456",
+    "src/core/Operation.h": "6067ed686443ef821ae95ba047cdd2d63c14e374153a39942719649aadb350b6",
+    "src/core/Settings.h": "87cbfc60cd866eb3bec0b64eb1fd362d2b97e043fca2ee32ab6659b66f5b77cd",
+    "src/core/SettingsService.h": "4b175b651bd989d697176c0856248f7a98c5c2daa2f101cba69a67f54843ba1f",
+    "src/core/StorageProvider.h": "6527941f6905e95a2b2b7fde816d311d04f62477a8617577735eff1b4719de39",
+    "src/core/StorageReceipt.h": "7cf1fb44fa6883ce564621e4da0e2008d033b628bd7f70cafdb4e0fc09b730f8",
+    "src/ui/HistoryModel.h": "be8ee59b3929a7ff817ecc8e5c41de23efd151bcaf39a8da15296e37f6e63e55"
+  },
+  "consumed_project_header_count": 13,
+  "artifact_sha256": {
+    "layout.json": "f3c0ca21d8def63f49f2e3eed14ce870bd8f6bc0df202c700793937a4684b474",
+    "build/putgd-layout-inspect": "06c682cfe2d7cabdd96c3df9be2bb50a4c75990ecae63c1d5d1f7f67a5d72a34",
+    "configure.log": "b93e2be1ebebb8d314031e1fb67addbbb18aafcdf9db886bd49ebe8316a16309",
+    "build.log": "60508ca3942b76b5bf2fa4f80b644b73f49a3d7426a0dd8907b12beca3513416",
+    "run.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "commands.json": "c26063daf69bd2b34bcbc04d885f03c6fc8d310fce6f368dc99e689bdd87b148",
+    "compiler-dependencies.txt": "18a44da9a1136c11fb55c0aff7538bde9d19706390d645679bf5685b3607b2be",
+    "dependency-current.log": "bbf260917ce8ee350525af35961e93ffea655907934153f7344b95e4aa8809fe",
+    "elf-dynamic.txt": "f443421ddd83669fb3d5ec6ed9cd39bcdbdc02c9ae9c8288032d938ba2e11bfa",
+    "build/compile_commands.json": "1d34cc8c28e99e56612d9eaeeb50062114fef884930db56ca838e05457704202",
+    "build/CMakeCache.txt": "0f789ef16afabe55014c6ab711b28d4ba08e1df9200c1aab1d57d1f7118f398e"
+  },
+  "dynamic_elf_needed": [
+    "libQt6Core.so.6",
+    "libstdc++.so.6",
+    "libgcc_s.so.1",
+    "libc.so.6"
+  ],
+  "validation": {
+    "configure_build_run_exit_codes": [
+      0,
+      0,
+      0
+    ],
+    "parseable_json": true,
+    "required_types_present": true,
+    "sizes_alignments_and_safe_offsets_valid": true,
+    "no_pending_dependency_rebuild": true,
+    "empty_probe_stderr": true,
+    "dynamic_qt_core": true
+  },
+  "measured_inline_sizes_bytes": {
+    "int": 4,
+    "std::int16_t": 2,
+    "std::int32_t": 4,
+    "qint32": 4,
+    "std::int64_t": 8,
+    "qint64": 8,
+    "std::int_least32_t": 4,
+    "std::int_fast32_t": 8,
+    "QString": 24,
+    "QJsonObject": 8,
+    "putgd::ResourceLimits": 72,
+    "putgd::Settings": 304,
+    "putgd::Operation": 640,
+    "putgd::OperationItem": 680,
+    "putgd::Artifact": 192,
+    "putgd::HistoryQuery": 224,
+    "putgd::HistoryModel": 280
+  },
+  "synthetic_stride_saved_bytes": {
+    "narrowing": 0,
+    "reordering": 8
+  },
+  "limits": [
+    "No QApplication/QCoreApplication, app services, models or payloads constructed.",
+    "No configuration/history/clipboard/network/user data read.",
+    "No live object counts, RSS or workload result measured; sizeof excludes pointed allocations.",
+    "No application source/root CMake/performance harness changed; no production narrowing.",
+    "Primary documentation links describe established integer definitions/aliases, not newly available Qt APIs."
+  ]
+}

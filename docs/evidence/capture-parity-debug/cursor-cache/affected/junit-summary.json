@@ -1,0 +1,157 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "5859d2671afcf83e483fbac4ef75cd20a307c446e19b3638e00b6fb2db30a766",
+  "sourceBytes": 4610,
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "4",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "3",
+    "timestamp": "2026-10-09T12:26:05"
+  },
+  "testcases": [
+    {
+      "name": "capture_control_integration",
+      "classname": "capture_control_integration",
+      "time": "0.00764068",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_process_integration",
+      "classname": "capture_process_integration",
+      "time": "2.28222",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "native_region_overlay",
+      "classname": "native_region_overlay",
+      "time": "0.632448",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "0.718079",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "stdoutOmitted": "Cursor image/hash expected/actual values and arbitrary suite stdout deliberately excluded.",
+  "qtTestFunctionOutcomes": [
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::fragmentedFrameAndSequence()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::stoppingInsideDeliveryDiscardsFollowingBufferedCommand()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::excessiveFrameStopsBeforeDelivery()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::unknownTypesCannotBecomeCommands()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::validSnapshotRejectsMalformedOrDuplicateIdentity()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::genuinePngValidatedOnlyAfterNormalChildExit()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::preparedHelperStaysIdleUntilBegin()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::preparedLimitsRemainTheDecodeBound()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::abandonedPreparationCancelsWithoutBegin()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::lastPreparationCanDieOnJournalWorker()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::earlyFailureIsRetainedUntilBegin()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::cancelledPreparationNeverRestartsWhenBeginArrives()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::prebeginResultIsRejectedAndFailureRemembered()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::duplicateBeginDoesNotDisturbValidAcquisition()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::discardAfterBeginCannotCancelActiveCapture()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::staleAbandonCannotCancelNewGene..."
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cachedCursorSurvivesSourceClient..."
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin-with-cursor-seed)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(reject-foreign-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::cleanupTestCase()"
+    }
+  ]
+}

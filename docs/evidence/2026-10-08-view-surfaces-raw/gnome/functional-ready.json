@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T22:33:46.387979+00:00",
+  "scope": "Matched candidate workload complete; parent owns coordinated sampler; no extra GUI checks yet",
+  "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "uncommittedSourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+  "runningApp": {
+    "pid": 31221,
+    "startTicks": 617110,
+    "sha256": "514a33cd6eda3b155f2fd7067280f614e6d9443a75f3c59dd9e217a6c07c1dd4"
+  },
+  "operationCount": 13,
+  "operationIds": [
+    "698773f9-8d37-442b-8a5c-01a33d93287c",
+    "7652816b-05a0-465b-b419-5c62550b3de9",
+    "4c1a0211-3c58-4d46-a297-235e53539d59",
+    "fa899755-b332-45d9-9145-4226021eab6e",
+    "9c3d0733-ac57-4372-91fe-28b5cd554fde",
+    "77364d82-aa32-4693-a105-d073f8c62eda",
+    "ae8d70f7-685f-4aab-b313-b0157189263b",
+    "8baa0106-af72-4dae-8187-94e93e9ba61d",
+    "32e44edc-d6b4-4d0f-bea3-113714d7b2fd",
+    "72427c14-d386-42bc-a74f-1d9ed7b468f1",
+    "25c6ecfa-0fac-4cb3-b29d-cd926eeaec51",
+    "ecc497c1-ec96-45a1-be9b-46a65adeab3f",
+    "1f84957a-bedd-4bf1-938f-0153abaa4e60"
+  ],
+  "fixtureCleanup": {
+    "stopped": [
+      {
+        "pid": 44777,
+        "startTicks": 633493,
+        "kind": "qt",
+        "output": "/home/lab/putgd-lab/live-region"
+      }
+    ]
+  },
+  "finalWitness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/candidate-001b-functional-ready-head0.ppm",
+    "sha256": "8f7916d1612981f9738e4776f934ef96df42f2737064884d6c8014154c4ac156"
+  },
+  "diagnosticsCollection": {
+    "status": "collected",
+    "evidence": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc"
+  },
+  "vncPort": 5936,
+  "readyForParentSampler": true
+}

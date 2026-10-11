@@ -1,0 +1,1662 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/tmp/pg53-vex1/samples.jsonl",
+    "sha256": "b78ccacd6b5b5dd8af073e07187e79315e7333045faf49262bb142f03e06bca6"
+  },
+  "data": {
+    "samples": [
+      {
+        "elapsedSeconds": 0.9002118550124578,
+        "sampleSeconds": 0.010925023991148919,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "startup-warmup-0",
+        "totals": {
+          "rssBytes": 26169344,
+          "pssBytes": 16730112,
+          "privateBytes": 15974400
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26169344,
+            "pssBytes": 16730112,
+            "privateBytes": 15974400,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 1,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 5.901880982040893,
+        "sampleSeconds": 0.011442627001088113,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "startup-warmup-1",
+        "totals": {
+          "rssBytes": 26161152,
+          "pssBytes": 16721920,
+          "privateBytes": 15966208
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26161152,
+            "pssBytes": 16721920,
+            "privateBytes": 15966208,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 1,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 5.91392431705026,
+        "sampleSeconds": 0.009963369986508042,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cold-closed-after-warmup",
+        "totals": {
+          "rssBytes": 26161152,
+          "pssBytes": 16721920,
+          "privateBytes": 15966208
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26161152,
+            "pssBytes": 16721920,
+            "privateBytes": 15966208,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 1,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 6.590281611017417,
+        "sampleSeconds": 0.021020454994868487,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-settings-open-0",
+        "totals": {
+          "rssBytes": 97837056,
+          "pssBytes": 47938560,
+          "privateBytes": 32493568
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26214400,
+            "pssBytes": 11230208,
+            "privateBytes": 5185536,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569095,
+            "startTicks": 35928259,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 71622656,
+            "pssBytes": 36708352,
+            "privateBytes": 27308032,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 21,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 8.492348854022566,
+        "sampleSeconds": 0.01613683096366003,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-settings-open-1",
+        "totals": {
+          "rssBytes": 97841152,
+          "pssBytes": 47942656,
+          "privateBytes": 32497664
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26214400,
+            "pssBytes": 11230208,
+            "privateBytes": 5185536,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569095,
+            "startTicks": 35928259,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 71626752,
+            "pssBytes": 36712448,
+            "privateBytes": 27312128,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 21,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 8.809879517008085,
+        "sampleSeconds": 0.01637852203566581,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-history-open-0",
+        "totals": {
+          "rssBytes": 102158336,
+          "pssBytes": 50859008,
+          "privateBytes": 34013184
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26288128,
+            "pssBytes": 11303936,
+            "privateBytes": 5259264,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569095,
+            "startTicks": 35928259,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 75870208,
+            "pssBytes": 39555072,
+            "privateBytes": 28753920,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 24,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 10.818737729045097,
+        "sampleSeconds": 0.015526884002611041,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-history-open-1",
+        "totals": {
+          "rssBytes": 102166528,
+          "pssBytes": 50867200,
+          "privateBytes": 34021376
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26292224,
+            "pssBytes": 11308032,
+            "privateBytes": 5263360,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569095,
+            "startTicks": 35928259,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 75874304,
+            "pssBytes": 39559168,
+            "privateBytes": 28758016,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 24,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 11.183292797009926,
+        "sampleSeconds": 0.024886595958378166,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-activity-open-0",
+        "totals": {
+          "rssBytes": 105566208,
+          "pssBytes": 52866048,
+          "privateBytes": 34619392
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26312704,
+            "pssBytes": 11328512,
+            "privateBytes": 5283840,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569095,
+            "startTicks": 35928259,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 79253504,
+            "pssBytes": 41537536,
+            "privateBytes": 29335552,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 25,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 13.162822876998689,
+        "sampleSeconds": 0.018531847978010774,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-activity-open-1",
+        "totals": {
+          "rssBytes": 105566208,
+          "pssBytes": 52866048,
+          "privateBytes": 34619392
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26312704,
+            "pssBytes": 11328512,
+            "privateBytes": 5283840,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569095,
+            "startTicks": 35928259,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 79253504,
+            "pssBytes": 41537536,
+            "privateBytes": 29335552,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 25,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 13.848391477018595,
+        "sampleSeconds": 0.010843818017747253,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-closed-0",
+        "totals": {
+          "rssBytes": 26312704,
+          "pssBytes": 16873472,
+          "privateBytes": 16117760
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26312704,
+            "pssBytes": 16873472,
+            "privateBytes": 16117760,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 19.021814736013766,
+        "sampleSeconds": 0.028085697966162115,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-closed-1",
+        "totals": {
+          "rssBytes": 26312704,
+          "pssBytes": 16873472,
+          "privateBytes": 16117760
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26312704,
+            "pssBytes": 16873472,
+            "privateBytes": 16117760,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 24.118615713028703,
+        "sampleSeconds": 0.011493502999655902,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-closed-2",
+        "totals": {
+          "rssBytes": 26312704,
+          "pssBytes": 16873472,
+          "privateBytes": 16117760
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26312704,
+            "pssBytes": 16873472,
+            "privateBytes": 16117760,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 29.210440418042708,
+        "sampleSeconds": 0.013613874965813011,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-closed-3",
+        "totals": {
+          "rssBytes": 26312704,
+          "pssBytes": 16907264,
+          "privateBytes": 16117760
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26312704,
+            "pssBytes": 16907264,
+            "privateBytes": 16117760,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 7,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 34.30077264801366,
+        "sampleSeconds": 0.010568628960754722,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-closed-4",
+        "totals": {
+          "rssBytes": 26284032,
+          "pssBytes": 16879616,
+          "privateBytes": 16089088
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26284032,
+            "pssBytes": 16879616,
+            "privateBytes": 16089088,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 2,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 39.387352674035355,
+        "sampleSeconds": 0.011638291005510837,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-closed-5",
+        "totals": {
+          "rssBytes": 26284032,
+          "pssBytes": 16879616,
+          "privateBytes": 16089088
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26284032,
+            "pssBytes": 16879616,
+            "privateBytes": 16089088,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 3,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 43.84265130199492,
+        "sampleSeconds": 0.011620533012319356,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-1-closed-6",
+        "totals": {
+          "rssBytes": 26284032,
+          "pssBytes": 16879616,
+          "privateBytes": 16089088
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26284032,
+            "pssBytes": 16879616,
+            "privateBytes": 16089088,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 3,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 44.35915899800602,
+        "sampleSeconds": 0.018008926010224968,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-settings-open-0",
+        "totals": {
+          "rssBytes": 98062336,
+          "pssBytes": 48198656,
+          "privateBytes": 32612352
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26300416,
+            "pssBytes": 11303936,
+            "privateBytes": 5206016,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569988,
+            "startTicks": 35932048,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 71761920,
+            "pssBytes": 36894720,
+            "privateBytes": 27406336,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 20,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 46.36742041504476,
+        "sampleSeconds": 0.016729180002585053,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-settings-open-1",
+        "totals": {
+          "rssBytes": 98062336,
+          "pssBytes": 48198656,
+          "privateBytes": 32612352
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26300416,
+            "pssBytes": 11303936,
+            "privateBytes": 5206016,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569988,
+            "startTicks": 35932048,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 71761920,
+            "pssBytes": 36894720,
+            "privateBytes": 27406336,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 20,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 46.6772889100248,
+        "sampleSeconds": 0.01684255397412926,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-history-open-0",
+        "totals": {
+          "rssBytes": 102498304,
+          "pssBytes": 51233792,
+          "privateBytes": 34246656
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26472448,
+            "pssBytes": 11475968,
+            "privateBytes": 5378048,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569988,
+            "startTicks": 35932048,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 76025856,
+            "pssBytes": 39757824,
+            "privateBytes": 28868608,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 22,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 48.6732260780409,
+        "sampleSeconds": 0.01863298995885998,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-history-open-1",
+        "totals": {
+          "rssBytes": 102506496,
+          "pssBytes": 51241984,
+          "privateBytes": 34254848
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26472448,
+            "pssBytes": 11475968,
+            "privateBytes": 5378048,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569988,
+            "startTicks": 35932048,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 76034048,
+            "pssBytes": 39766016,
+            "privateBytes": 28876800,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 22,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 48.99311245401623,
+        "sampleSeconds": 0.015726987970992923,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-activity-open-0",
+        "totals": {
+          "rssBytes": 105959424,
+          "pssBytes": 53294080,
+          "privateBytes": 34906112
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26566656,
+            "pssBytes": 11570176,
+            "privateBytes": 5472256,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569988,
+            "startTicks": 35932048,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 79392768,
+            "pssBytes": 41723904,
+            "privateBytes": 29433856,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 24,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 50.995939129032195,
+        "sampleSeconds": 0.01937709702178836,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-activity-open-1",
+        "totals": {
+          "rssBytes": 105959424,
+          "pssBytes": 53294080,
+          "privateBytes": 34906112
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26566656,
+            "pssBytes": 11570176,
+            "privateBytes": 5472256,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3569988,
+            "startTicks": 35932048,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 79392768,
+            "pssBytes": 41723904,
+            "privateBytes": 29433856,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 24,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 51.72818664100487,
+        "sampleSeconds": 0.013830553973093629,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-closed-0",
+        "totals": {
+          "rssBytes": 26574848,
+          "pssBytes": 17170432,
+          "privateBytes": 16379904
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26574848,
+            "pssBytes": 17170432,
+            "privateBytes": 16379904,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 56.81194324902026,
+        "sampleSeconds": 0.010387727001216263,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-closed-1",
+        "totals": {
+          "rssBytes": 26574848,
+          "pssBytes": 17170432,
+          "privateBytes": 16379904
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26574848,
+            "pssBytes": 17170432,
+            "privateBytes": 16379904,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 61.92979802802438,
+        "sampleSeconds": 0.015816318977158517,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-closed-2",
+        "totals": {
+          "rssBytes": 26574848,
+          "pssBytes": 17170432,
+          "privateBytes": 16379904
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26574848,
+            "pssBytes": 17170432,
+            "privateBytes": 16379904,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 4,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 67.02388518903172,
+        "sampleSeconds": 0.010886964970268309,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-closed-3",
+        "totals": {
+          "rssBytes": 26574848,
+          "pssBytes": 17170432,
+          "privateBytes": 16379904
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26574848,
+            "pssBytes": 17170432,
+            "privateBytes": 16379904,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 72.11512817599578,
+        "sampleSeconds": 0.010562337003648281,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-closed-4",
+        "totals": {
+          "rssBytes": 26574848,
+          "pssBytes": 17170432,
+          "privateBytes": 16379904
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26574848,
+            "pssBytes": 17170432,
+            "privateBytes": 16379904,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 77.19954316900112,
+        "sampleSeconds": 0.018067674012854695,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-closed-5",
+        "totals": {
+          "rssBytes": 26574848,
+          "pssBytes": 17170432,
+          "privateBytes": 16379904
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26574848,
+            "pssBytes": 17170432,
+            "privateBytes": 16379904,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 81.72613320802338,
+        "sampleSeconds": 0.01144151296466589,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-2-closed-6",
+        "totals": {
+          "rssBytes": 26574848,
+          "pssBytes": 17170432,
+          "privateBytes": 16379904
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26574848,
+            "pssBytes": 17170432,
+            "privateBytes": 16379904,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 82.20991327305092,
+        "sampleSeconds": 0.01925474003655836,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-settings-open-0",
+        "totals": {
+          "rssBytes": 98275328,
+          "pssBytes": 48285696,
+          "privateBytes": 32718848
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26583040,
+            "pssBytes": 11586560,
+            "privateBytes": 5488640,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3570911,
+            "startTicks": 35935836,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 71692288,
+            "pssBytes": 36699136,
+            "privateBytes": 27230208,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 18,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 84.21293450100347,
+        "sampleSeconds": 0.017856877006124705,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-settings-open-1",
+        "totals": {
+          "rssBytes": 98275328,
+          "pssBytes": 48285696,
+          "privateBytes": 32718848
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26583040,
+            "pssBytes": 11586560,
+            "privateBytes": 5488640,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3570911,
+            "startTicks": 35935836,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 71692288,
+            "pssBytes": 36699136,
+            "privateBytes": 27230208,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 18,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 84.5257142240298,
+        "sampleSeconds": 0.017297144047915936,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-history-open-0",
+        "totals": {
+          "rssBytes": 102531072,
+          "pssBytes": 51140608,
+          "privateBytes": 34172928
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26583040,
+            "pssBytes": 11586560,
+            "privateBytes": 5488640,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3570911,
+            "startTicks": 35935836,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 75948032,
+            "pssBytes": 39554048,
+            "privateBytes": 28684288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 20,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 86.50902169803157,
+        "sampleSeconds": 0.01617964601609856,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-history-open-1",
+        "totals": {
+          "rssBytes": 102539264,
+          "pssBytes": 51148800,
+          "privateBytes": 34181120
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26583040,
+            "pssBytes": 11586560,
+            "privateBytes": 5488640,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3570911,
+            "startTicks": 35935836,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 75956224,
+            "pssBytes": 39562240,
+            "privateBytes": 28692480,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 20,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 86.81288150604814,
+        "sampleSeconds": 0.016979876963887364,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-activity-open-0",
+        "totals": {
+          "rssBytes": 105910272,
+          "pssBytes": 53118976,
+          "privateBytes": 34750464
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 11594752,
+            "privateBytes": 5496832,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3570911,
+            "startTicks": 35935836,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 79319040,
+            "pssBytes": 41524224,
+            "privateBytes": 29253632,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 21,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 88.81899368902668,
+        "sampleSeconds": 0.016596494999248534,
+        "processCount": 2,
+        "uiProcessCount": 1,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-activity-open-1",
+        "totals": {
+          "rssBytes": 105910272,
+          "pssBytes": 53118976,
+          "privateBytes": 34750464
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 11594752,
+            "privateBytes": 5496832,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 5,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          },
+          {
+            "pid": 3570911,
+            "startTicks": 35935836,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082803,
+            "rssBytes": 79319040,
+            "pssBytes": 41524224,
+            "privateBytes": 29253632,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 21,
+            "threads": 6,
+            "sha256": "0f77d801f1c3857369ef761df552f40476bcc22352a84500ab5581374aefde2a",
+            "role": "ui",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 89.48891083803028,
+        "sampleSeconds": 0.012008272984530777,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-closed-0",
+        "totals": {
+          "rssBytes": 26591232,
+          "pssBytes": 17186816,
+          "privateBytes": 16396288
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 17186816,
+            "privateBytes": 16396288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 6,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 94.57693695503986,
+        "sampleSeconds": 0.010434332012664527,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-closed-1",
+        "totals": {
+          "rssBytes": 26591232,
+          "pssBytes": 17186816,
+          "privateBytes": 16396288
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 17186816,
+            "privateBytes": 16396288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 6,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 99.66387374099577,
+        "sampleSeconds": 0.009359417017549276,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-closed-2",
+        "totals": {
+          "rssBytes": 26591232,
+          "pssBytes": 17186816,
+          "privateBytes": 16396288
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 17186816,
+            "privateBytes": 16396288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 6,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 104.75047657202231,
+        "sampleSeconds": 0.010960753017570823,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-closed-3",
+        "totals": {
+          "rssBytes": 26591232,
+          "pssBytes": 17186816,
+          "privateBytes": 16396288
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 17186816,
+            "privateBytes": 16396288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 6,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 109.838048086036,
+        "sampleSeconds": 0.010756928997579962,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-closed-4",
+        "totals": {
+          "rssBytes": 26591232,
+          "pssBytes": 17186816,
+          "privateBytes": 16396288
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 17186816,
+            "privateBytes": 16396288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 6,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 114.92507198802195,
+        "sampleSeconds": 0.011769297998398542,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-closed-5",
+        "totals": {
+          "rssBytes": 26591232,
+          "pssBytes": 17186816,
+          "privateBytes": 16396288
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 17186816,
+            "privateBytes": 16396288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 6,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      },
+      {
+        "elapsedSeconds": 119.49134574399795,
+        "sampleSeconds": 0.010864590003620833,
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0,
+        "label": "cycle-3-closed-6",
+        "totals": {
+          "rssBytes": 26591232,
+          "pssBytes": 17186816,
+          "privateBytes": 16396288
+        },
+        "processes": [
+          {
+            "pid": 3568977,
+            "startTicks": 35927717,
+            "uid": 1000,
+            "device": 66306,
+            "inode": 28082856,
+            "rssBytes": 26591232,
+            "pssBytes": 17186816,
+            "privateBytes": 16396288,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 6,
+            "threads": 3,
+            "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+            "role": "resident",
+            "inResidentTree": true
+          }
+        ]
+      }
+    ]
+  }
+}

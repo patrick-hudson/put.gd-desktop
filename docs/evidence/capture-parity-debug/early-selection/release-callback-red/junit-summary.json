@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "288d7da02b30531d3fa2bf4f09dff827b49fad196b4d72cfd080a430d2a51978",
+  "sourceBytes": 1310,
+  "scope": "Expected failures when acquisition or release callbacks destroy the controller before source-release notification.",
+  "suite": {
+    "name": "CaptureProcessTests",
+    "timestamp": "2026-10-09T14:28:38",
+    "hostname": "patrick-Precision-5540",
+    "tests": "4",
+    "failures": "2",
+    "errors": "0",
+    "skipped": "0",
+    "time": "0.291"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "sourceReleasePrecedesCallbacksThatDestroyController(delete-in-acquisition)",
+      "classname": "CaptureProcessTests",
+      "time": "0.052",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (releases): 0\n   Expected (1)       : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "sourceReleasePrecedesCallbacksThatDestroyController(delete-in-release)",
+      "classname": "CaptureProcessTests",
+      "time": "0.239",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (releases): 0\n   Expected (1)       : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, raw logs, configuration, databases, credentials and payload bytes"
+}

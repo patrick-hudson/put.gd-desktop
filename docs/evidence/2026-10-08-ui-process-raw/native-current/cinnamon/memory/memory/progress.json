@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:53:13.827437+00:00",
+  "command": [
+    "/usr/bin/python3",
+    "/home/lab/putgd-lab/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--pid",
+    "38189",
+    "--start-ticks",
+    "1681006",
+    "--app",
+    "/usr/bin/putgd",
+    "--helper",
+    "/usr/bin/putgd-ui",
+    "--cli",
+    "/usr/bin/putgd-cli",
+    "--socket",
+    "/run/user/1000/putgd/session.sock",
+    "--source-revision",
+    "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "--output",
+    "/home/lab/putgd-lab/u11-memory-post-native-97ca3a5",
+    "--label",
+    "post-native-actions-and-512MiB-local-copy-and-user-manual-region",
+    "--seconds",
+    "120",
+    "--interval",
+    "5",
+    "--acceptance-receipt",
+    "/home/lab/putgd-lab/u11-native-acceptance.json"
+  ],
+  "workingDirectory": "/home/lab",
+  "mode": "split",
+  "scope": "existing-process observation",
+  "parameters": {
+    "mode": "split",
+    "app": "/usr/bin/putgd",
+    "cli": "/usr/bin/putgd-cli",
+    "helper": "/usr/bin/putgd-ui",
+    "source_revision": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "source_archive": null,
+    "output": "/home/lab/putgd-lab/u11-memory-post-native-97ca3a5",
+    "allow_dirty": false,
+    "acceptance_receipt": [
+      "/home/lab/putgd-lab/u11-native-acceptance.json"
+    ],
+    "pid": 38189,
+    "start_ticks": 1681006,
+    "socket": "/run/user/1000/putgd/session.sock",
+    "label": "post-native-actions-and-512MiB-local-copy-and-user-manual-region",
+    "seconds": 120.0,
+    "interval": 5.0,
+    "fixture": null,
+    "cycles": 3,
+    "views": [
+      "settings",
+      "history",
+      "activity",
+      "about"
+    ],
+    "warmup_seconds": 5,
+    "visible_seconds": 2,
+    "quiet_seconds": 30,
+    "timeout": 20
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceRevision": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "binaries": {
+    "app": {
+      "path": "/usr/bin/putgd",
+      "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "cli": {
+      "path": "/usr/bin/putgd-cli",
+      "sha256": "fe68622526ff25a3867e3d32078b0cc332e4ae53f3f5c8e28770275def7c37b2",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "helper": {
+      "path": "/usr/bin/putgd-ui",
+      "sha256": "e5cb88d8d6f022adea2b4d8c7189e2affff680a736b8432b95341dc92313b1c2",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    }
+  },
+  "sampleCount": 25,
+  "sampleFile": "samples.jsonl",
+  "samples": [
+    {
+      "label": "post-native-actions-and-512MiB-local-copy-and-user-manual-region-24",
+      "elapsedSeconds": 120.18868923100308,
+      "totals": {
+        "rssBytes": 60452864,
+        "pssBytes": 39129088,
+        "privateBytes": 37654528
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03601946699927794
+    }
+  ],
+  "events": [
+    {
+      "elapsedSeconds": 0.18749068300166982,
+      "kind": "diagnostics-identity-checked",
+      "ui": {
+        "checkpointBytes": 2522,
+        "lastExit": {
+          "code": 0,
+          "generation": 22,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "trayAvailable": true
+    }
+  ],
+  "status": "starting",
+  "passed": false,
+  "acceptanceReceipts": [
+    {
+      "path": "/home/lab/putgd-lab/u11-native-acceptance.json",
+      "sha256": "b210ca25dd320ccccc275ec50b74388eac680beac3e751bd98e6ae2bbfd6e5d0"
+    }
+  ],
+  "limitations": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "environment": {
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "desktop": "",
+    "session": "tty",
+    "packages": [
+      "cinnamon 6.6.4+zena",
+      "gnome-shell ",
+      "libc6 2.39-0ubuntu8.6",
+      "libqt6core6 ",
+      "libqt6core6t64 6.4.2+dfsg-21.1build5",
+      "libqt6widgets6 ",
+      "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+      "muffin 6.6.1+zena"
+    ],
+    "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "logicalCpus": 2,
+    "virtualization": "kvm"
+  },
+  "residentIdentity": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "uid": 1000,
+    "executable": "/usr/bin/putgd",
+    "device": 64771,
+    "inode": 1195873
+  },
+  "residentBuild": {
+    "baseVersion": "0.1.1",
+    "commitCount": 41,
+    "dirty": null,
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.41+g97ca3a521714"
+  },
+  "progressIncludesLatestSampleOnly": true
+}

@@ -1,0 +1,261 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "aggregate-command.json",
+      "sha256": "aa17f4c956a0771b8242b5277c080e91d70d8203e1e47ae63f4cf5e04326e750",
+      "bytes": 805
+    },
+    {
+      "path": "baseline-physical-1.json",
+      "sha256": "107a766f97ee1605ec3ca948a7fa16ee50f60cb2953c379f8333a5354e2019d6",
+      "bytes": 320711
+    },
+    {
+      "path": "baseline-physical-2.json",
+      "sha256": "99d93a595aefd88c3b485413c4ddb93e8bd7d9a0ca1acab86f38b0d49ec7948b",
+      "bytes": 320609
+    },
+    {
+      "path": "candidate-001b.json",
+      "sha256": "6b27a9cc22fe2961783ec68c79c54fc35f09c7817c9ea199dede9ca63282e6eb",
+      "bytes": 1759
+    },
+    {
+      "path": "cinnamon/memory-sample.json",
+      "sha256": "e3ff40bb0e4e63cbe8e69b4a289c0ba78693e182f606ea462ecb3fbf49e6dc09",
+      "bytes": 8188
+    },
+    {
+      "path": "cinnamon-001b/extra-native.json",
+      "sha256": "718025a527515eb89fa1ad2e043f753d7d3ce037e992d253f320b0af156f7abf",
+      "bytes": 26383
+    },
+    {
+      "path": "cinnamon-001b/extras/states.json",
+      "sha256": "e0769b371757d7e3f7be561c5632ad05a34d35979548ed5c0a58b0796561535d",
+      "bytes": 7479
+    },
+    {
+      "path": "cinnamon-001b/install.json",
+      "sha256": "df710c8862324e1faae4092767b75bb43fa1c36f3d51e736933bf79e11da04ca",
+      "bytes": 28
+    },
+    {
+      "path": "cinnamon-001b/view-smoke.json",
+      "sha256": "8bd46359620580396a3b4e5a073065b68fb18eae5a2425e5e8292a704f164bcc",
+      "bytes": 3067
+    },
+    {
+      "path": "cinnamon-001b/visual-review.json",
+      "sha256": "a4103bc127bd43dfc9d369ac5f354dacee5ab4da3cb6c64e60f2eb479a054f97",
+      "bytes": 540
+    },
+    {
+      "path": "cold-300s/results.json",
+      "sha256": "f3e89d043df247d713d4a18164fc6e33eca8cc75fef3226379ee2f27a1c0d484",
+      "bytes": 39020
+    },
+    {
+      "path": "cold-initial-attribution.json",
+      "sha256": "fbcbd33b9cba80343db35ffafeeb047a5359cc810d1efc18113a7790098eedaf",
+      "bytes": 18963
+    },
+    {
+      "path": "decision-payload.json",
+      "sha256": "36a411a73e42c74a1acb40e6bd68aaaae97a09092da130cfab0b4b1659a3492d",
+      "bytes": 13289
+    },
+    {
+      "path": "decision.json",
+      "sha256": "0d4503fa3dfb9c18df3dca2d8f378b33e052e9539e1f69afb99f60d97184e3a0",
+      "bytes": 961
+    },
+    {
+      "path": "experiment-commit.json",
+      "sha256": "039c5427b303c29ab54ccc5f7ab02de531da968cc957f122cbe9845952b61d20",
+      "bytes": 539
+    },
+    {
+      "path": "experiment-log.json",
+      "sha256": "0c4195b638dcf943250ec9a9e07a3f5744362285ec7092280060addff54da29c",
+      "bytes": 28303
+    },
+    {
+      "path": "gnome/candidate-001b/verification-summary.json",
+      "sha256": "e09fffcf2d10881ca8664f7b8ee5b7165fe4ea911cf4db1ed60f57ef756a1711",
+      "bytes": 2571
+    },
+    {
+      "path": "gnome/extra-native-manifest.json",
+      "sha256": "20beebb4e791565833e2c3b02987b1d0e547bd97fc1d3fb3f5c201fc3dcbe14a",
+      "bytes": 15888
+    },
+    {
+      "path": "gnome/extra-native.json",
+      "sha256": "3d87c2abbb9f323c2ff9b3b10f1ab9a911da8f1a1e5aee5ceab716ffafeba4ec",
+      "bytes": 10064
+    },
+    {
+      "path": "gnome/functional-ready.json",
+      "sha256": "c1c3c79176222377cceadf8e1f74c2a588d57c088d48ab5e4e5dff31d5fc2083",
+      "bytes": 1783
+    },
+    {
+      "path": "gnome/geometry-probe/conclusion.json",
+      "sha256": "49431d8b61f875cdfa3e49e4d1a3766bb4b07a150a53d2314361033e853d183d",
+      "bytes": 2423
+    },
+    {
+      "path": "gnome/memory-sample.json",
+      "sha256": "ecff849cab79735dfae29b19881b0b7409849ce801acb7f9cef34e9100cf65a9",
+      "bytes": 8260
+    },
+    {
+      "path": "host-checks-001b.json",
+      "sha256": "0e2b9a9d4dae42df16a5b8287a205683374ff1a70eaf71c6a6b7ec008c21a28b",
+      "bytes": 3499
+    },
+    {
+      "path": "host-checks.json",
+      "sha256": "7d1579bab48d76ab9f67e9baa471b533120688b80d094f2e97e5878678864245",
+      "bytes": 1101
+    },
+    {
+      "path": "integration/build.log",
+      "sha256": "37abf15a0f60cbadfc1ceb658d7c86a9257071f6fd2bb9dded9d6d89d9d2eb74",
+      "bytes": 1841
+    },
+    {
+      "path": "integration/gui.log",
+      "sha256": "9a9e881779ee87a053f2512b61785c4225b4f174596e06119a5b33e08db12c11",
+      "bytes": 528
+    },
+    {
+      "path": "integration/gui.xml",
+      "sha256": "87c8c4e4ed163c43e21c333e4d7a1f0c5400c14c9086a83c51e916e9fae84928",
+      "bytes": 4929
+    },
+    {
+      "path": "integration/receipt.json",
+      "sha256": "0088b2c530962a66787a903661d135dd94868275abbfd611f7d8b045fa8574d0",
+      "bytes": 702
+    },
+    {
+      "path": "kde/attempts/candidate-001b/extra-native.json",
+      "sha256": "b7f932a375d77d5b9ac81b23f7bb868c58823b13abfc97fea0dba5a55e2af6eb",
+      "bytes": 10143
+    },
+    {
+      "path": "kde/attempts/candidate-001b/extra-views-locked-attempt.json",
+      "sha256": "d55d209fc08d9c34ae65172ecd071154f2a2e2dba0e128e9456895494f1a5cd3",
+      "bytes": 5868
+    },
+    {
+      "path": "kde/attempts/candidate-001b/extra-views.json",
+      "sha256": "2e680c3cdfdebcbf2b45530e3acd178f5a8abd0c18a3a60fa26771caf5f6e8cb",
+      "bytes": 4088
+    },
+    {
+      "path": "kde/attempts/candidate-001b/ready-for-parent-sampler.json",
+      "sha256": "09c6ca6078b2b23f9b858347855bbcd5888194e69669d0f9671e06349d7e33ef",
+      "bytes": 3222
+    },
+    {
+      "path": "kde/attempts/candidate-001b/verified-extra-cycle-memory-sample.json",
+      "sha256": "c81cd2f0efb9d94a89e3a512e126dbd92129a1cf20d99e1daebfd97c2d00c308",
+      "bytes": 6585
+    },
+    {
+      "path": "kde/attempts/candidate-001b/verified-extra-cycle.json",
+      "sha256": "ebf110eece5361ecafe93b07826dec57a313131b6055066456e91d7114e09333",
+      "bytes": 1211
+    },
+    {
+      "path": "kde/final-extra-manifest.json",
+      "sha256": "4870a67f6e1db244cdb785ccfb672d0da56b8ef513f9a0efa556fad9d4774c08",
+      "bytes": 19985
+    },
+    {
+      "path": "kde/memory-sample.json",
+      "sha256": "03817f3fa78d8a41a51bc612e4c4d1a4815466ab2d96bc33e1446612fcf29176",
+      "bytes": 8236
+    },
+    {
+      "path": "measure-views.py",
+      "sha256": "8f51d0fb328bdeccc9797ff8214f4b12d3e491d93a6094e3f1a62e875a013d5d",
+      "bytes": 1698
+    },
+    {
+      "path": "memory-wave.json",
+      "sha256": "ab069c9bc276a044257ddba852abff3626e444bb19b4c6ed2e48898e0826d9ed",
+      "bytes": 7525
+    },
+    {
+      "path": "physical-1/metrics.json",
+      "sha256": "8280c31ccf1b8dab6d42e411e3f93c9a657c1326ea0c5e3eaafa419166da9a3c",
+      "bytes": 205
+    },
+    {
+      "path": "physical-1/results.json",
+      "sha256": "3e1111da1a982ad22480159baf2229406e4842c86cecb80ee6abdd08ee27a715",
+      "bytes": 319912
+    },
+    {
+      "path": "physical-2/metrics.json",
+      "sha256": "a0269b073480483cb3e40d583696a8b9d733e94f342c47caa2267a688171da7f",
+      "bytes": 205
+    },
+    {
+      "path": "physical-2/results.json",
+      "sha256": "434ea23582c39f744f448c9d376c1e75f056f38d930da67c660c759e3dda5ea0",
+      "bytes": 320350
+    },
+    {
+      "path": "quiet-measurements.py",
+      "sha256": "9125d6b9e6efc16aab80b5e18399d63a8772907234fe62622e70b5766e3b9b9d",
+      "bytes": 3458
+    },
+    {
+      "path": "quiet-run.json",
+      "sha256": "d8a2aa3efecb93627062a30d3a7c2da4ff90206fa1a748609cb6b827c3205792",
+      "bytes": 2968
+    },
+    {
+      "path": "review/review.json",
+      "sha256": "e70e67c832cb285d32560da883b6faa0cc582b482b9da57be1494615511fed88",
+      "bytes": 8962
+    },
+    {
+      "path": "sample-wave.py",
+      "sha256": "b34cd97c1aba6539faa4239150ed565e20a27a3b178eabf09f1a8245f29c34df",
+      "bytes": 3383
+    },
+    {
+      "path": "score-surfaces.py",
+      "sha256": "68efb51ee9742df94ff0aa7765b28767fc4247265a729205884ea3b7689eca3c",
+      "bytes": 2383
+    },
+    {
+      "path": "spec.yaml",
+      "sha256": "0b8b16b18e8ae36061f02ba199d4f62b0959a787e438248bbdce84928f3297db",
+      "bytes": 10814
+    },
+    {
+      "path": "state-probe/green-gui.xml",
+      "sha256": "86bc96736c62d58c02d9b1881e9f0d2b27affb9d895d5a0e9f8f23d632156c43",
+      "bytes": 3672
+    },
+    {
+      "path": "state-probe/red-state.xml",
+      "sha256": "a4f1cf015e614ca2f4bd288e974087f8abeabfe7a67903d4505b103182fa3e3e",
+      "bytes": 1093
+    },
+    {
+      "path": "strategy-digest.md",
+      "sha256": "5c0594b1949d50d5f1b1b04074cef387fa01494feee3386e38c40687d0336a9a",
+      "bytes": 1208
+    }
+  ],
+  "scope": "Frozen candidate comparisons and correctness receipts; original work paths remain inside receipts. No credentials, installer media, binaries or payload files included."
+}

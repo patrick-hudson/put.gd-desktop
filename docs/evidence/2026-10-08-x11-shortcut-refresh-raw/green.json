@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "dbus-run-session",
+    "--",
+    "xvfb-run",
+    "-a",
+    "env",
+    "QT_QPA_PLATFORM=xcb",
+    "build/dev/test_x11",
+    "mappingRefreshKeepsUnchangedChordGrabbed",
+    "mappingConflictReleasesRejectedGrabsAndPreservesOtherActions",
+    "keyboardMappingChangeRebindsActualCodes",
+    "nativeKeyActivationWithLocks",
+    "conflictsAreReported",
+    "heldGlobalChordHandsKeyboardToSelector",
+    "-o",
+    "work/memory-surfaces/x11-grab-fix/green.xml,junitxml",
+    "-o",
+    "-,txt"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 0.4436211779830046
+}

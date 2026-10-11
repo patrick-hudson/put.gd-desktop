@@ -1,0 +1,77 @@
+{
+  "baseRevision": "1fdfff0a71c98e82d7f0e7f17e326f1a2a8a7197",
+  "files": {
+    "CMakeLists.txt": "db29858a9ba57a554f1c24272fd52be3dca5eb36eb59fdce23fef586ccf3bd9f",
+    "integrations/gnome/extension.js": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+    "src/app/LocalIpc.cpp": "65917736dd9dc30a8cfdce75f0e81dba39931c9d3fff7c31f587cee7ba2f41bb",
+    "src/app/LocalIpc.h": "8c63ad8aa72ecccb970f5c17ed1667e2a10bf4f3266e99be6badf3c8c005e36b",
+    "src/app/LocalServer.cpp": "975e85a5a6146ba658369480e06070ef1794f00e12a17737ff15b60093a536e4",
+    "src/app/LocalServer.h": "4d8a6edd559ef19e7825a6e0163085ec88545994ec1aead91d9cbc2caf054a22",
+    "src/app/OperationService.cpp": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+    "src/platform/kde/KdeRegionOverlay.cpp": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+    "src/platform/kde/KdeRegionOverlay.h": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+    "src/platform/kde/KdeSourceAdapter.cpp": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+    "src/platform/kde/KdeSourceAdapter.h": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+    "src/platform/x11/CinnamonRegionCapture.cpp": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+    "src/platform/x11/CinnamonRegionCapture.h": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+    "src/platform/x11/X11Capture.cpp": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+    "src/platform/x11/X11Capture.h": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+    "src/platform/x11/X11SourceAdapter.cpp": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+    "src/platform/x11/X11SourceAdapter.h": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+    "src/storage/s3/IpAddress.cpp": "84466c749bac34f239e2460ddde9bbf8b3e51703db2c3064282ff7b426d7da41",
+    "src/storage/s3/IpAddress.h": "153e9c8aba1d56ed6e019f7e09c92377cbbf406a0aaf032e58323d20bada7d5d",
+    "src/storage/s3/S3Provider.cpp": "2dfaeeef97a0e95a3ca8cf9ab0ca997c2f9b1a97459fe295e36c260eef9f182c",
+    "src/ui/RegionOverlay.cpp": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1",
+    "tests/desktop/x11/test_x11.cpp": "94b306b20004b94ba9bcf9d350415d373900de9a78c65590010dae84e0164756",
+    "tests/fixtures/desktop_fixture.cpp": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+    "tests/integration/test_local_ipc.cpp": "85e4046f8be901be1d3da7dd5b7243b8ef8231a72153faaca198094798b01969",
+    "tests/performance/bench_capture.cpp": "6ee9b45beccc05016de5d91e39c833d16a1cd6b4d80421e4c34e6658638e25bd",
+    "tests/performance/bench_payload_lab.py": "cfc787158a23685f44cc9ff69abe6b8461c09af179c2fbf53a5365cf6e4f3b93",
+    "tests/performance/bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/run_capture.py": "28b1a035fac1756ba53db7816dd5c61a77b2c969c7659965eec0e92c706acaa7",
+    "tests/unit/test_ip_address.cpp": "186a50904e03f19deb27755d212bae9e9f5526bce44c9af7291a35875bcabc89",
+    "tests/unit/test_operations.cpp": "cffaa33273194981a9d52361a06cce20af42d8783a29b5807ebf661c1a47f2fb"
+  },
+  "binaries": {
+    "putgd": "4810b2413b1a8f8705fc127d884f32beb1f58057a3c67461b619289c2dbc3725",
+    "putgd-cli": "3893d7cbb79d958ee0e2330708ab34b1244af61b398ef5a833aa4ac6b67e256f",
+    "libputgd-s3.so": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762"
+  },
+  "buildCommands": [
+    [
+      "cmake",
+      "--preset",
+      "dev"
+    ],
+    [
+      "cmake",
+      "--build",
+      "--preset",
+      "dev"
+    ],
+    [
+      "cmake",
+      "--preset",
+      "release"
+    ],
+    [
+      "cmake",
+      "--build",
+      "--preset",
+      "release",
+      "--target",
+      "putgd",
+      "putgd-cli",
+      "test_local_ipc",
+      "test_ip_address",
+      "test_cli",
+      "test_s3_module",
+      "putgd-bench-capture",
+      "putgd-desktop-fixture"
+    ]
+  ],
+  "scope": "Combined IPC, SDK module, live-selection and idle image cleanup; no unrelated user files included"
+}

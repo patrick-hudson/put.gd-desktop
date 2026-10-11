@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-08T22:53:43.388782+00:00",
+  "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+  "candidateCommitted": false,
+  "runningApp": {
+    "pid": 58990,
+    "startTicks": 731554,
+    "sha256": "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426"
+  },
+  "runnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "ok": true,
+  "actions": [
+    {
+      "cycle": 1,
+      "view": "settings",
+      "uiResponse": {
+        "shown": "settings"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-1-settings-open-head0.ppm",
+        "sha256": "8226bf728170c99b26952c269e54fc4508a49238886e7a2e76fec138af1fe554"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-1-settings-closed-head0.ppm",
+        "sha256": "8226bf728170c99b26952c269e54fc4508a49238886e7a2e76fec138af1fe554"
+      },
+      "observedRequestToWitnessSeconds": 1.4598112250096165,
+      "latencyLimit": "Includes fixed sleeps/SSH/QMP; not render-latency proof",
+      "identityUnchanged": true
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "uiResponse": {
+        "shown": "history"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-1-history-open-head0.ppm",
+        "sha256": "8226bf728170c99b26952c269e54fc4508a49238886e7a2e76fec138af1fe554"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-1-history-closed-head0.ppm",
+        "sha256": "8226bf728170c99b26952c269e54fc4508a49238886e7a2e76fec138af1fe554"
+      },
+      "observedRequestToWitnessSeconds": 1.4067189740017056,
+      "latencyLimit": "Includes fixed sleeps/SSH/QMP; not render-latency proof",
+      "identityUnchanged": true
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "uiResponse": {
+        "shown": "activity"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-1-activity-open-head0.ppm",
+        "sha256": "8226bf728170c99b26952c269e54fc4508a49238886e7a2e76fec138af1fe554"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-1-activity-closed-head0.ppm",
+        "sha256": "dac647c8bf5897d0e84d0e20dca7798f2c7ee29c53e117bc3c6388ea51bffc28"
+      },
+      "observedRequestToWitnessSeconds": 1.4149805500055663,
+      "latencyLimit": "Includes fixed sleeps/SSH/QMP; not render-latency proof",
+      "identityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "settings",
+      "uiResponse": {
+        "shown": "settings"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-2-settings-open-head0.ppm",
+        "sha256": "dac647c8bf5897d0e84d0e20dca7798f2c7ee29c53e117bc3c6388ea51bffc28"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-2-settings-closed-head0.ppm",
+        "sha256": "dac647c8bf5897d0e84d0e20dca7798f2c7ee29c53e117bc3c6388ea51bffc28"
+      },
+      "observedRequestToWitnessSeconds": 1.407018658996094,
+      "latencyLimit": "Includes fixed sleeps/SSH/QMP; not render-latency proof",
+      "identityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "history",
+      "uiResponse": {
+        "shown": "history"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-2-history-open-head0.ppm",
+        "sha256": "8226bf728170c99b26952c269e54fc4508a49238886e7a2e76fec138af1fe554"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-2-history-closed-head0.ppm",
+        "sha256": "dac647c8bf5897d0e84d0e20dca7798f2c7ee29c53e117bc3c6388ea51bffc28"
+      },
+      "observedRequestToWitnessSeconds": 1.4222138289478607,
+      "latencyLimit": "Includes fixed sleeps/SSH/QMP; not render-latency proof",
+      "identityUnchanged": true
+    },
+    {
+      "cycle": 2,
+      "view": "activity",
+      "uiResponse": {
+        "shown": "activity"
+      },
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-2-activity-open-head0.ppm",
+        "sha256": "86a7e5bfa197f50dcc031aa1d7bdcb1bbf40012ba90c92638c5ce843e23fcac6"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/surfaces-candidate-001b-extra-views-2-activity-closed-head0.ppm",
+        "sha256": "eefd9a31039ab3fb1e064a95220c816652aaeea75cd8e979bbb33baade24fd64"
+      },
+      "observedRequestToWitnessSeconds": 1.9867632849491201,
+      "latencyLimit": "Includes fixed sleeps/SSH/QMP; not render-latency proof",
+      "identityUnchanged": true
+    }
+  ],
+  "operationCount": 12,
+  "visualReview": "Required: inspect all six open and closed witnesses before accepting paint/reopen or requesting root coordinated sample.",
+  "noExtraStressBeforeMatchedSample": false,
+  "matchedSample": "/home/patrick/work/put.gd/work/memory-surfaces/kde/memory-sample.json",
+  "finishedUtc": "2026-10-08T22:54:00.695126+00:00",
+  "acceptedGraphicalEvidence": false,
+  "visualFailure": "All captured windows were obscured by session lock; Alt+F4 did not close application windows. No repeated-surface lifetime or memory conclusion. Raw activation attempt retained."
+}

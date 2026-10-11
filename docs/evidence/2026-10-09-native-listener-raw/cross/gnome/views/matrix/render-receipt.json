@@ -1,0 +1,98 @@
+[
+  {
+    "client": "qt",
+    "scenario": "region",
+    "sourceSha256": "6046782a25d15d8f3c20108c86ae2c1c25c1851c7aea968d343a0cbc8f3791c5",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region.png",
+    "pngSha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "window",
+    "sourceSha256": "6046782a25d15d8f3c20108c86ae2c1c25c1851c7aea968d343a0cbc8f3791c5",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-window.png",
+    "pngSha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "desktop",
+    "sourceSha256": "6046782a25d15d8f3c20108c86ae2c1c25c1851c7aea968d343a0cbc8f3791c5",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-desktop.png",
+    "pngSha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "clipboard-text",
+    "sourceSha256": "11e290936a00f5efe52fda18d27778565d12a71055a1e1f33c993bf37bd7e795",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-text.png",
+    "pngSha256": "af50a907aebcd37d46a176047981dd2b6ff08f4319ce41a8d2bb132ffc5b6636",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "clipboard-image",
+    "sourceSha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-image.png",
+    "pngSha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "clipboard-files",
+    "sourceSha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-files.png",
+    "pngSha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "region-cancel-escape",
+    "sourceSha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-escape.png",
+    "pngSha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "region-cancel-right-click",
+    "sourceSha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-right-click.png",
+    "pngSha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "qt",
+    "scenario": "region-cancel-zero-area",
+    "sourceSha256": "91231cc305a35db8605dad1adf2044b93bf01c205576f4893c970e171b5f1d41",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-zero-area.png",
+    "pngSha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "gtk",
+    "scenario": "clipboard-text",
+    "sourceSha256": "a5d99f731fbde9eb695bc3cac379ad2e95decd329280587b774efa8688789d7a",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-text.png",
+    "pngSha256": "2b78ddf77d38f85e85f912a39caf18425a44ef0076f9af136155d7761c7482f1",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "gtk",
+    "scenario": "clipboard-image",
+    "sourceSha256": "19fe16917942b58d07af68ee43b783bcf374c6c5926caa2ada66ccb8fe184f95",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-image.png",
+    "pngSha256": "52a54463c2e230c368342c4a7f243c6bba0b4bef920fac30943822e24d673c44",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  },
+  {
+    "client": "gtk",
+    "scenario": "clipboard-files",
+    "sourceSha256": "19fe16917942b58d07af68ee43b783bcf374c6c5926caa2ada66ccb8fe184f95",
+    "png": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-files.png",
+    "pngSha256": "52a54463c2e230c368342c4a7f243c6bba0b4bef920fac30943822e24d673c44",
+    "method": "Lossless PPM-to-PNG rendering of retained native QMP witness only"
+  }
+]

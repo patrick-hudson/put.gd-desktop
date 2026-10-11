@@ -1,0 +1,122 @@
+{
+  "timestampUtc": "2026-10-09T01:16:14.258833+00:00",
+  "results": [
+    {
+      "view": "settings",
+      "openWitness": "/home/patrick/work/put.gd/work/u11/native/cinnamon/tray-view-settings-open.png",
+      "windows": [
+        {
+          "id": "0x04800006",
+          "desktop": 0,
+          "pid": 47939,
+          "x": 60,
+          "y": 72,
+          "width": 1000,
+          "height": 700,
+          "title": "put.gd \u2014 Settings"
+        }
+      ],
+      "close": {
+        "helperPid": 47939,
+        "diagnostics": {
+          "checkpointBytes": 1936,
+          "lastExit": {
+            "code": 0,
+            "generation": 2,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        }
+      }
+    },
+    {
+      "view": "history",
+      "openWitness": "/home/patrick/work/put.gd/work/u11/native/cinnamon/tray-view-history-open.png",
+      "windows": [
+        {
+          "id": "0x04800006",
+          "desktop": 0,
+          "pid": 48240,
+          "x": 60,
+          "y": 72,
+          "width": 1000,
+          "height": 700,
+          "title": "put.gd \u2014 History"
+        }
+      ],
+      "close": {
+        "helperPid": 48240,
+        "diagnostics": {
+          "checkpointBytes": 2357,
+          "lastExit": {
+            "code": 0,
+            "generation": 3,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        }
+      }
+    },
+    {
+      "view": "activity",
+      "openWitness": "/home/patrick/work/put.gd/work/u11/native/cinnamon/tray-view-activity-open.png",
+      "windows": [
+        {
+          "id": "0x04800006",
+          "desktop": 0,
+          "pid": 48542,
+          "x": 60,
+          "y": 72,
+          "width": 1000,
+          "height": 700,
+          "title": "put.gd \u2014 Activity"
+        }
+      ],
+      "close": {
+        "helperPid": 48542,
+        "diagnostics": {
+          "checkpointBytes": 2451,
+          "lastExit": {
+            "code": 0,
+            "generation": 4,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        }
+      }
+    },
+    {
+      "view": "about",
+      "openWitness": "/home/patrick/work/put.gd/work/u11/native/cinnamon/tray-view-about-open.png",
+      "windows": [
+        {
+          "id": "0x04800006",
+          "desktop": 0,
+          "pid": 48844,
+          "x": 480,
+          "y": 319,
+          "width": 302,
+          "height": 108,
+          "title": "About put.gd"
+        }
+      ],
+      "close": {
+        "helperPid": 48844,
+        "diagnostics": {
+          "checkpointBytes": 2451,
+          "lastExit": {
+            "code": 0,
+            "generation": 5,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        }
+      }
+    }
+  ],
+  "visualReview": "pending"
+}

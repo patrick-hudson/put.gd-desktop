@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "dpkg-deb",
+    "--extract",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/putgd_0.1.1~dev.46+g6f6372e79d8b_amd64.deb",
+    "/tmp/putgd-ui-refinement-lftmap27"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:58:28.602796+00:00"
+}

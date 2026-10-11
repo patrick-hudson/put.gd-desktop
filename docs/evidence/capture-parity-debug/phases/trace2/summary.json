@@ -1,0 +1,86 @@
+{
+  "native-layout": {
+    "n": 175,
+    "medianMs": 0.438154,
+    "p95Ms": 1.009809,
+    "minMs": 0.236441,
+    "maxMs": 2.220013
+  },
+  "prepare": {
+    "n": 35,
+    "medianMs": 0.828492,
+    "p95Ms": 1.588425,
+    "minMs": 0.633448,
+    "maxMs": 1.728632
+  },
+  "accepted-worker": {
+    "n": 35,
+    "medianMs": 6.554664,
+    "p95Ms": 74.042312,
+    "minMs": 2.51797,
+    "maxMs": 77.532626
+  },
+  "acquiring-worker": {
+    "n": 35,
+    "medianMs": 3.341964,
+    "p95Ms": 7.641207,
+    "minMs": 2.16345,
+    "maxMs": 7.881699
+  },
+  "overlay-start": {
+    "n": 35,
+    "medianMs": 74.860835,
+    "p95Ms": 87.203495,
+    "minMs": 42.992263,
+    "maxMs": 96.15819
+  },
+  "child-main -> app-before": {
+    "n": 35,
+    "medianMs": 0.039334,
+    "p95Ms": 0.10277,
+    "minMs": 0.023201,
+    "maxMs": 0.109425
+  },
+  "app-before -> app-after": {
+    "n": 35,
+    "medianMs": 12.258946,
+    "p95Ms": 17.933932,
+    "minMs": 9.166453,
+    "maxMs": 23.866334
+  },
+  "adapters-before -> adapters-after": {
+    "n": 35,
+    "medianMs": 0.859581,
+    "p95Ms": 1.364688,
+    "minMs": 0.576887,
+    "maxMs": 2.082409
+  },
+  "app-after -> resolve-before": {
+    "n": 35,
+    "medianMs": 3.498142,
+    "p95Ms": 5.386908,
+    "minMs": 2.32757,
+    "maxMs": 5.531721
+  },
+  "resolve-before -> resolve-after": {
+    "n": 35,
+    "medianMs": 1.232442,
+    "p95Ms": 2.326867,
+    "minMs": 0.850301,
+    "maxMs": 2.365571
+  },
+  "resolve-after -> acquire-frozen": {
+    "n": 35,
+    "medianMs": 0.037509,
+    "p95Ms": 0.072036,
+    "minMs": 0.025151,
+    "maxMs": 0.157187
+  },
+  "acquire-frozen -> surface-first-paint": {
+    "n": 35,
+    "medianMs": 122.514562,
+    "p95Ms": 158.191936,
+    "minMs": 82.974079,
+    "maxMs": 162.205297
+  }
+}

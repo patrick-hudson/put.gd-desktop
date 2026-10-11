@@ -1,0 +1,1741 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T05:07:30.770276+00:00",
+  "compositor": "KDE Wayland",
+  "vncPort": 5934,
+  "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+  "sourceArchive": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/source.tar",
+  "sourceArchiveSha256": "0853b2b526e1b4e6a1d25b501a7b2c91ba86dbf86bb57272fee67a00e8bb690b",
+  "installed": {
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.46+g6f6372e79d8b",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.46+g6f6372e79d8b",
+      "gitCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+      "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+      "commitCount": 46,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "binarySha256": {
+      "/usr/bin/putgd": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea",
+      "/usr/bin/putgd-cli": "2d62399e4fe8856bf6c89a6727909252d5d318ed24f4c2dfd97336194c8be468",
+      "/usr/bin/putgd-ui": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+    },
+    "versions": {
+      "/usr/bin/putgd": "putgd 0.1.1-dev.46+g6f6372e79d8b",
+      "/usr/bin/putgd-cli": "putgd-cli 0.1.1-dev.46+g6f6372e79d8b",
+      "/usr/bin/putgd-ui": "putgd-ui 0.1.1-dev.46+g6f6372e79d8b"
+    },
+    "extensionSha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+  },
+  "startup": {
+    "utc": "2026-10-09T04:59:27.723096+00:00",
+    "resident": {
+      "pid": 244419,
+      "startTicks": 3049239,
+      "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+    },
+    "build": {
+      "baseVersion": "0.1.1",
+      "commitCount": 46,
+      "dirty": false,
+      "gitCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+      "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+      "packageVersion": "0.1.1~dev.46+g6f6372e79d8b",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "0.1.1-dev.46+g6f6372e79d8b"
+    },
+    "session": "visible native kde-wayland",
+    "vncPort": 5934
+  },
+  "overallOutcome": "passed bounded native clean46 correctness acceptance",
+  "nativeMatrix": {
+    "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/matrix.json",
+    "sha256": "eebb48af8413deb98f6faada56cfd38ba904f62860db379d170c878ef146eca8",
+    "caseCount": 12,
+    "cases": [
+      {
+        "client": "qt",
+        "scenario": "region",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "ceb47360a5c4472fbefa84035884bc89",
+          "profile": "kde-wayland",
+          "scenario": "region-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "839a6e58-5a34-444c-9ecd-81a1bfcf9719",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "application/x-putgd-result-5a378f633e1d4adda37757623fae9988",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 60,
+              "saved": true,
+              "width": 80
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-1/final-head0.ppm",
+            "sha256": "f21be6341d110cd46258de9e0dcc6c2baa6b0324b90b561994b5ec49bb75a1be"
+          },
+          "elapsedSeconds": 10.20951801299816,
+          "evidenceDirectory": "tests/ceb47360a5c4472fbefa84035884bc89"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-1"
+      },
+      {
+        "client": "qt",
+        "scenario": "window",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "545d97b2e40b4db3bab0b6dc8103a8d1",
+          "profile": "kde-wayland",
+          "scenario": "window-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320.0,
+            "y": 149.0,
+            "width": 640.0,
+            "height": 448.0,
+            "oracle": "pre-action KWin queryWindowInfo"
+          },
+          "parameters": "parameters.json",
+          "operationId": "68502f49-316c-4c6f-9adf-d2be13f46320",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 640,
+            "height": 448,
+            "sha256": "21989991f27f619d0d660b5dd5f79ef9aa789f9eb82da9afa256c30e21cdcde0"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "application/x-putgd-result-3512066f3c3f4266a36d5c9546265ba1",
+              "image/png",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 448,
+              "saved": true,
+              "width": 640
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 640,
+            "height": 448,
+            "sha256": "21989991f27f619d0d660b5dd5f79ef9aa789f9eb82da9afa256c30e21cdcde0"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-2/final-head0.ppm",
+            "sha256": "ee0aa55cb106dcc7b1d0110cb23d6278c8e511616b5d1edda40a3e190fbf491e"
+          },
+          "elapsedSeconds": 10.635088500974234,
+          "evidenceDirectory": "tests/545d97b2e40b4db3bab0b6dc8103a8d1"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-2"
+      },
+      {
+        "client": "qt",
+        "scenario": "desktop",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "e617cae2eb3643eea3fb2d05a384ae46",
+          "profile": "kde-wayland",
+          "scenario": "desktop-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "b2bf54cb-dac4-49aa-9123-9f84a1a6e083",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 1280,
+            "height": 800,
+            "sha256": "d559dd75cac270ef29fbc4ddb2994f36bceb52e886a7e6365403ac217b8926e9"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "application/x-putgd-result-baf935f3b9304d83b0f8f94eaa7ffe15",
+              "image/png",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 800,
+              "saved": true,
+              "width": 1280
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 1280,
+            "height": 800,
+            "sha256": "d559dd75cac270ef29fbc4ddb2994f36bceb52e886a7e6365403ac217b8926e9"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-3/final-head0.ppm",
+            "sha256": "ddd4df17a2877f8d352e300fb1139f09ed299b43366bdbc86cf781582d066341"
+          },
+          "elapsedSeconds": 9.856707339989953,
+          "evidenceDirectory": "tests/e617cae2eb3643eea3fb2d05a384ae46"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-3"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-text",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "785dfaa93cfd4765887757ae6f0babf5",
+          "profile": "kde-wayland",
+          "scenario": "clipboard-text-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "77d68a4a-2feb-497f-97cf-e038d82138cf",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "formats": [
+              "application/x-putgd-result-fb4f3cfd1adf4c2f9aad65088d68d312",
+              "text/plain",
+              "UTF8_STRING"
+            ],
+            "schemaVersion": 1,
+            "text": "putgd synthetic clipboard text"
+          },
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "application/x-putgd-result-fb4f3cfd1adf4c2f9aad65088d68d312",
+                "text/plain",
+                "UTF8_STRING"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-4/final-head0.ppm",
+            "sha256": "ddd4df17a2877f8d352e300fb1139f09ed299b43366bdbc86cf781582d066341"
+          },
+          "elapsedSeconds": 9.081102104042657,
+          "evidenceDirectory": "tests/785dfaa93cfd4765887757ae6f0babf5"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-4"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-image",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "6701dbdc484541a3914c55d1d5135c8b",
+          "profile": "kde-wayland",
+          "scenario": "clipboard-image-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "6fd52e61-7e30-4081-bbe9-9b2c8cee1e3c",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "application/x-putgd-result-3517d2c742fe47e1b7d47981c79c9c8b",
+              "image/png",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 64,
+              "saved": true,
+              "width": 96
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-5/final-head0.ppm",
+            "sha256": "7972f3b91d56401dee69585ed165dbf521f1cfd6b869941b962dc4ecbb3036f3"
+          },
+          "elapsedSeconds": 10.259088217047974,
+          "evidenceDirectory": "tests/6701dbdc484541a3914c55d1d5135c8b"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-5"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-files",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "dde360ebd1c44c649776717fe7502422",
+          "profile": "kde-wayland",
+          "scenario": "clipboard-files-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "a3737d47-0c91-4d6b-ae45-d97b256d517c",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            },
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "formats": [
+              "application/x-putgd-result-29de19e7f0da4725bea6d19c1d4db1f4",
+              "text/uri-list"
+            ],
+            "schemaVersion": 1,
+            "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\n",
+            "urls": [
+              "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+              "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+            ]
+          },
+          "paste": {
+            "ok": true
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-6/final-head0.ppm",
+            "sha256": "ddd4df17a2877f8d352e300fb1139f09ed299b43366bdbc86cf781582d066341"
+          },
+          "elapsedSeconds": 9.198785192973446,
+          "evidenceDirectory": "tests/dde360ebd1c44c649776717fe7502422"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-6"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-escape",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "ffd18145becb4ac594134da6480df277",
+          "profile": "kde-wayland",
+          "scenario": "region-cancel-escape-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "1c67cfa9-b342-41b4-a39b-1f68cd3f9eda",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain",
+                "text/plain;charset=utf-8"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-7/final-head0.ppm",
+            "sha256": "ddd4df17a2877f8d352e300fb1139f09ed299b43366bdbc86cf781582d066341"
+          },
+          "elapsedSeconds": 9.371622677019332,
+          "evidenceDirectory": "tests/ffd18145becb4ac594134da6480df277"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-7"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-right-click",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "a2fc3a8810564ec190acd5efc1cedb1e",
+          "profile": "kde-wayland",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "4959ffe6-84cb-496d-8573-cb49d8ffe8ed",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain",
+                "text/plain;charset=utf-8"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-8/final-head0.ppm",
+            "sha256": "ddd4df17a2877f8d352e300fb1139f09ed299b43366bdbc86cf781582d066341"
+          },
+          "elapsedSeconds": 9.198869407002348,
+          "evidenceDirectory": "tests/a2fc3a8810564ec190acd5efc1cedb1e"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-8"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-zero-area",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "5537b350b58d42e18d32359cd935a50a",
+          "profile": "kde-wayland",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "independentWindowFrame": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 420
+          },
+          "parameters": "parameters.json",
+          "operationId": "e32dc507-cd44-4abb-ac4e-db9e82f6fcde",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain",
+                "text/plain;charset=utf-8"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-9/final-head0.ppm",
+            "sha256": "00467e6972a611564735d01e8be879752a953401b3700837253174d157744003"
+          },
+          "elapsedSeconds": 9.183337194961496,
+          "evidenceDirectory": "tests/5537b350b58d42e18d32359cd935a50a"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-9"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-text",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "1c2e51be38604f1fb763535ebe635d6e",
+          "profile": "kde-wayland",
+          "scenario": "clipboard-text-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.22",
+            "displayBackend": "GdkWaylandDisplay"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "9dc8aedd-bbb6-4cef-9b3f-8642a98c8ff1",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/plain;charset=utf-8"
+            ],
+            "text": "putgd synthetic clipboard text"
+          },
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "schemaVersion": 1,
+              "client": "GTK",
+              "formats": [
+                "text/plain;charset=utf-8"
+              ],
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-10/final-head0.ppm",
+            "sha256": "f0215af75e9496d2f1b779676460c5401860a5fbd828852af70c8eee62846c59"
+          },
+          "elapsedSeconds": 11.886942597979214,
+          "evidenceDirectory": "tests/1c2e51be38604f1fb763535ebe635d6e"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-10"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-image",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "248eba2c712a4278becd206d9b075615",
+          "profile": "kde-wayland",
+          "scenario": "clipboard-image-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.22",
+            "displayBackend": "GdkWaylandDisplay"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "41a25257-9bfc-4e5c-a03a-b194943bb2b7",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "image/png"
+            ],
+            "image": {
+              "width": 96,
+              "height": 64,
+              "saved": true
+            }
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-11/final-head0.ppm",
+            "sha256": "f0215af75e9496d2f1b779676460c5401860a5fbd828852af70c8eee62846c59"
+          },
+          "elapsedSeconds": 12.404611414996907,
+          "evidenceDirectory": "tests/248eba2c712a4278becd206d9b075615"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-11"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-files",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "29603a50a2b64e8b923ccad7f3eaa85a",
+          "profile": "kde-wayland",
+          "scenario": "clipboard-files-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 244419,
+            "startTicks": 3049239,
+            "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.22",
+            "displayBackend": "GdkWaylandDisplay"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": [
+                "Ctrl+Shift+F12"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F12",
+              "state": "bound"
+            },
+            "desktop": {
+              "actual": [
+                "Ctrl+Shift+F11"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F11",
+              "state": "bound"
+            },
+            "region": {
+              "actual": [
+                "Ctrl+Shift+F9"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F9",
+              "state": "bound"
+            },
+            "window": {
+              "actual": [
+                "Ctrl+Shift+F10"
+              ],
+              "bound": true,
+              "requested": "Ctrl+Shift+F10",
+              "state": "bound"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 320,
+            "y": 177,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "631d4d60-a466-472b-88a0-81da7fafba08",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            },
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/uri-list"
+            ],
+            "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1-eaf97ab1-6847-4487-ba0e-81d52c0bf78f.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2-420f974d-867c-4b86-bce1-0bfd7b241b6d.txt\r\n",
+            "urls": [
+              "file:///home/lab/putgd-lab/archive/text/synthetic-1-eaf97ab1-6847-4487-ba0e-81d52c0bf78f.txt",
+              "file:///home/lab/putgd-lab/archive/text/synthetic-2-420f974d-867c-4b86-bce1-0bfd7b241b6d.txt"
+            ]
+          },
+          "paste": {
+            "ok": true
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-12/final-head0.ppm",
+            "sha256": "16274dfb93b8a6b1d387ce8a1021d91f494b3d00ed7d8fbb4ae9b18d5b2f0a45"
+          },
+          "elapsedSeconds": 11.677334317995701,
+          "evidenceDirectory": "tests/29603a50a2b64e8b923ccad7f3eaa85a"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-12"
+      }
+    ],
+    "contactSheet": {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/matrix-contact-sheet.png",
+      "sha256": "7ddb98faa7abaf5a06e4250e5aa822efd8d65476d1adc9773cb3cb41456bef64",
+      "review": "All 12 actual independent Qt/GTK witnesses inspected; captured/pasted artifacts and cancellation outcomes verified by original native runner"
+    }
+  },
+  "reviewedWitnesses": [
+    {
+      "label": "fresh-start",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/fresh-start.png",
+      "sha256": "4002100c21be85c3a593c2b257e481063f247836ea7a2fe3d29792283b33b39b",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "settings-empty-open",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/settings-empty-open.png",
+      "sha256": "1e36d6cff6734bec63bd4752069a2655be40a9c66b3d2fb106d7106b6c1d0e15",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "advanced-expanded",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/advanced-expanded.png",
+      "sha256": "b14b05f785ce8adf80ffabac606ebfb918da2d5fa07d2f7bbfa1e50a53fcac54",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "capture-navigation",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/capture-navigation.png",
+      "sha256": "c24def55501db52c759299899ce7fc9fece78912880d78b1f83398bb874228b4",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "capture-tab",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/capture-tab.png",
+      "sha256": "b0897cebce27483dd92064a885e4dbf40c009ad0a9e00d29baaace0c98c8b928",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "capture-shift-tab",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/capture-shift-tab.png",
+      "sha256": "c24def55501db52c759299899ce7fc9fece78912880d78b1f83398bb874228b4",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "shortcuts-navigation",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/shortcuts-navigation.png",
+      "sha256": "93fc93f02a2abfff173073acd125b4121b8101236ca652cafb6889a44e5c4dbd",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "shortcuts-tab",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/shortcuts-tab.png",
+      "sha256": "41db8dd5d1bbc130e99533127c2d2d2bf3a70c3b869311b13793e3d88b935080",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "shortcuts-shift-tab",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/shortcuts-shift-tab.png",
+      "sha256": "93fc93f02a2abfff173073acd125b4121b8101236ca652cafb6889a44e5c4dbd",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "preferences-navigation",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/preferences-navigation.png",
+      "sha256": "e1b1e743d5311b24dc88e5161769a8e9d4660de381c34257d5715603e3f952c9",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "preferences-tab",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/preferences-tab.png",
+      "sha256": "05b462d5262dd3b8652fc64053ee348056351577f60480801a9d6d34df03b3b0",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "preferences-shift-tab",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/preferences-shift-tab.png",
+      "sha256": "e1b1e743d5311b24dc88e5161769a8e9d4660de381c34257d5715603e3f952c9",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "history-open",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/history-open.png",
+      "sha256": "5ee8818b2fe33afb35651dfbc509f099669a1b393752733cfdf6621f71637f56",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "activity-open",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/activity-open.png",
+      "sha256": "c4df51c29c4110c1544c60f8e0b035af6f911b166439e0c3415cf27d8ff6e3c3",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "activity-normal-close",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/activity-normal-close.png",
+      "sha256": "fcd3cbbae43a242d9943b2c9269e7459401a70a9572d59641d57bc67015678f1",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "rendered-tray-tooltip",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/rendered-tray-tooltip.png",
+      "sha256": "2b9d6f51ba66e438f3bbe10ca5a316b018c62756a3b357cbc5c973e70854e8f8",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "settings-reopen",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/settings-reopen.png",
+      "sha256": "62f5112e809880a2c1b1af84583f546d6c557b3d478ef46b11b25117987815bc",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "reverse-check-preferences-arrow",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/reverse-check-preferences-arrow.png",
+      "sha256": "5f1a6cbac7afde29f0f59d0627554e55700e135a9830f7859cf5d0eca930a18b",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "reverse-check-shortcuts-arrow",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/reverse-check-shortcuts-arrow.png",
+      "sha256": "d08b1e3f5f3c58ae020442a5a41854eac8e2fa27c77db42c8da8e3a2aad8de68",
+      "review": "Actual pixels inspected by assigned agent"
+    },
+    {
+      "label": "reverse-check-capture-arrow",
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/reverse-check-capture-arrow.png",
+      "sha256": "d08b1e3f5f3c58ae020442a5a41854eac8e2fa27c77db42c8da8e3a2aad8de68",
+      "review": "Actual pixels inspected by assigned agent"
+    }
+  ],
+  "settings": {
+    "savedEmpty": "Prominent Add S3 destination, inactive cards hidden, footer reachable",
+    "lazyPages": "Capture, Shortcuts, Preferences visibly populated after expanding Advanced",
+    "tab": "Actual Tab moved from navigation to Capture Save locally, Shortcuts region help, Preferences notifications",
+    "shiftTab": "Actual Shift+Tab returned to navigation, confirmed by subsequent native Up/Down changing selected page for each of all three pages",
+    "reopen": "New helper restored Advanced and Preferences page synchronously",
+    "draftScope": "No editable draft was changed in this bounded clean46 run; earlier45dirty same-byte draft tests remain separate"
+  },
+  "views": {
+    "history": "Real matrix history (11 local saved entries) visible with aligned columns",
+    "activity": "Real matrix completed and cancelled operations visible; this wave did not repeat result-copy detail proof"
+  },
+  "normalCloses": [
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/attempts/20261009T050447530647-close/closed.json",
+      "sha256": "b85dc51e74d6ce6dd1b3cd8046833f6d86f069f81d5b97b3db792e8ab104d48d",
+      "result": {
+        "utc": "2026-10-09T05:04:50.236730+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 261103,
+          "startTicks": 3072659,
+          "parentPid": 244419,
+          "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+        },
+        "helperAfter": {
+          "checkpointBytes": 1887,
+          "lastExit": {
+            "code": 0,
+            "generation": 2,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 244419,
+          "startTicks": 3049239,
+          "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:04:50.321750+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/settings-normal-close.png",
+          "sha256": "ccd434428bdf44f50ca812d4eba9316093c0677ded73988e7a1e900549e5d01e",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-frozen-exp001-source46-settings-normal-close-head0.ppm",
+            "sha256": "ce1256fb6b60f2861c0c7a0d268e4b12980e2c35ddd89289bffcf5e7c38ddc81"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5934,
+          "visualReview": "pending"
+        }
+      }
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/attempts/20261009T050510184322-close/closed.json",
+      "sha256": "df1e9cb9ec0376a101c163a4d21d9834a61c7789c7778f6ce7392dd42b7e6b2b",
+      "result": {
+        "utc": "2026-10-09T05:05:13.168447+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 262718,
+          "startTicks": 3082544,
+          "parentPid": 244419,
+          "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+        },
+        "helperAfter": {
+          "checkpointBytes": 2307,
+          "lastExit": {
+            "code": 0,
+            "generation": 3,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 244419,
+          "startTicks": 3049239,
+          "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:05:13.290626+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/history-normal-close.png",
+          "sha256": "fcd3cbbae43a242d9943b2c9269e7459401a70a9572d59641d57bc67015678f1",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-frozen-exp001-source46-history-normal-close-head0.ppm",
+            "sha256": "e890d6ea505bd5dd1b8910f77617e0c82a97782f61c5d68d0e1373d94e1519db"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5934,
+          "visualReview": "pending"
+        }
+      }
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/attempts/20261009T050525927867-close/closed.json",
+      "sha256": "463227ea3e0f7ca10f1819b5f017d7d4921b53e067d60a2751372ad752f15e75",
+      "result": {
+        "utc": "2026-10-09T05:05:29.043348+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 263318,
+          "startTicks": 3084658,
+          "parentPid": 244419,
+          "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+        },
+        "helperAfter": {
+          "checkpointBytes": 2400,
+          "lastExit": {
+            "code": 0,
+            "generation": 4,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 244419,
+          "startTicks": 3049239,
+          "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:05:29.137347+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/activity-normal-close.png",
+          "sha256": "fcd3cbbae43a242d9943b2c9269e7459401a70a9572d59641d57bc67015678f1",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-frozen-exp001-source46-activity-normal-close-head0.ppm",
+            "sha256": "e890d6ea505bd5dd1b8910f77617e0c82a97782f61c5d68d0e1373d94e1519db"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5934,
+          "visualReview": "pending"
+        }
+      }
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/attempts/20261009T050701391381-close/closed.json",
+      "sha256": "17b238f218ad4ee4e9456d99123ea054e4d5779ca7ce8c7fb12f11c0cdb08c14",
+      "result": {
+        "utc": "2026-10-09T05:07:03.975815+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 264278,
+          "startTicks": 3090408,
+          "parentPid": 244419,
+          "sha256": "fae9c55be008a23b948a293cb104946b734dbf5fbada433b9aa839435b1ff7d0"
+        },
+        "helperAfter": {
+          "checkpointBytes": 2400,
+          "lastExit": {
+            "code": 0,
+            "generation": 5,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 244419,
+          "startTicks": 3049239,
+          "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:07:04.062070+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/views/settings-reopen-normal-close.png",
+          "sha256": "768580250ecf638cd11f8117d13b1f2e8d483e42cf075daeab2f9f5b233c2c44",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-frozen-exp001-source46-settings-reopen-normal-close-head0.ppm",
+            "sha256": "d4cc5d49101619cf88d37e5b2b8ae0e3988774fb0a4b453ce9b4a9faef81121a"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5934,
+          "visualReview": "pending"
+        }
+      }
+    }
+  ],
+  "finalObservation": {
+    "path": "work/ui-refinement/native-replay/frozen-exp001-source46/kde/attempts/20261009T050708909270-observe/observed.json",
+    "sha256": "3b995bb3ace4f8e5485583a327386bceb3ed5d0ffaa17a9f1c89e136b1471157",
+    "result": {
+      "utc": "2026-10-09T05:07:10.192330+00:00",
+      "resident": {
+        "pid": 244419,
+        "startTicks": 3049239,
+        "sha256": "5b453ce8f0edfce3265685a1b8fc29a19bc1df911e428843fd63e3347ce4d4ea"
+      },
+      "ui": {
+        "checkpointBytes": 2400,
+        "lastExit": {
+          "code": 0,
+          "generation": 5,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    }
+  },
+  "tray": "Actual rendered icon and put.gd Share and local capture tooltip inspected after helper exit",
+  "blockedGates": [],
+  "limits": [
+    "Single-head existing KDE overlay; local synthetic actions only; no cloud requests.",
+    "No new compact/resize sizing certification in this metadata freeze replay; earlier same-byte45 UI coverage remains separate.",
+    "No quiet memory or startup performance claim from native correctness wave."
+  ],
+  "failedAttempts": []
+}

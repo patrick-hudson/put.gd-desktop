@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "testId": "c9ff16b9a973495cbdddae69583de1e6",
+  "profile": "cinnamon-x11",
+  "scenario": "region-cancel-zero-area",
+  "files": {
+    "parameters.json": "ec787e8aec9f365601ab8ce6ff54b4091dcdfa040389ad9f25e67344902b2ca0",
+    "results.json": "d6a961067ae7c96477074580cee521cba00d6894a0676b0ba8e1d27673fb5d59",
+    "results.xml": "d3b7cd232bb115967ef8d9aa4331b9ec1af7ebd3227ca7dce45a8a59ed8a003b",
+    "ready.json": "acf992c16f60eaac02d54134904a62d2df0ec6ce66cfe415f41115bf35ffe68a",
+    "paste.json": "adfad37963d16d290b05762db709527596f2459dde215d385e128ecf78f15b3b",
+    "before-head0.ppm": "da2d876e1f52ba8b83fa78a4f3c7ce27d189aefc82e796ed702748e092bdd4fd",
+    "final-head0.ppm": "4ec529b32e2d4da70f8d99c9d66324ec4a471abaa20e160df972ae2871ab51e9",
+    "versions.json": "211689153a464185176f439e42de54c299f17ccdcc62b44e8ea89d9f3ff47f53",
+    "package.json": "6c5d70331a01264ff48f1644c85b23636256c8e544c6c2521c9cf6da2b9b2423",
+    "diagnostics.json": "dd24e398d646a5b64684bf55ce3ccdc01f5398db4fb6d6223fe092dd79c62f78"
+  }
+}

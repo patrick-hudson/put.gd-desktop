@@ -1,0 +1,16 @@
+{
+    "formats": [
+        "image/png",
+        "TARGETS",
+        "MULTIPLE",
+        "TIMESTAMP",
+        "SAVE_TARGETS",
+        "application/x-qt-image"
+    ],
+    "image": {
+        "height": 64,
+        "saved": true,
+        "width": 96
+    },
+    "schemaVersion": 1
+}

@@ -1,0 +1,65 @@
+{
+  "scope": "15-second locating comparison, not a performance gate; unchanged native GTK/fonts/dialogs, no capture/network",
+  "identity": {
+    "scope": "Temporary locating probe only; custom palette/stylesheet initialization, native GTK/theme remains unchanged; not a production switch or candidate",
+    "baseRevision": "cadd9ed7463ee51888ae0a2b0ddc4650e27157a5",
+    "originalMainSha256": "f2d21ba631eb98e20deef0adef53765d528835846ace67664229ca71d279db39",
+    "probeMainSha256": "16322219f5e5aa070a64ef84dfaacf50d144cbb9ef299b239bc099963ff09ac6",
+    "flag": "PUTGD_PROBE_NO_CUSTOM_STYLE",
+    "sourceRestored": true,
+    "binaries": {
+      "putgd": "2e0b492ee201c157f4bbb15c35eea73ee7f2808058605e7b9c120c131be613e9",
+      "putgd-cli": "d653b7c495bfe6bff54522a5490e1afb59475e573f7859506b88d22c64d3da47",
+      "libputgd-s3.so": "12f9cd023f2458a9c67d8878b6453cb5d551d521802d24bdcfb045552ba7fac6"
+    },
+    "buildPassed": true
+  },
+  "runs": [
+    {
+      "mode": "normal",
+      "raw": "/tmp/putgd-style-cold-normal/results.json",
+      "rawSha256": "2598f396d7360f019e28b295351bddbfa0004185b03d7e30f0f12fa8b169a871",
+      "exitCode": 1,
+      "expectedShortRunBudgetFailure": true,
+      "seconds": 15.076381051010685,
+      "peakSampledRssBytes": 54493184,
+      "finalRssBytes": 54493184,
+      "command": [
+        "python3",
+        "/home/patrick/work/put.gd/tests/performance/bench_idle.py",
+        "--app",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd",
+        "--cli",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd-cli",
+        "--output",
+        "/tmp/putgd-style-cold-normal",
+        "--seconds",
+        "15"
+      ],
+      "temporaryFlag": false
+    },
+    {
+      "mode": "without-custom-style",
+      "raw": "/tmp/putgd-style-cold-without-custom-style/results.json",
+      "rawSha256": "16dabf47035b37761c2aaffc83c319d9278aef3a07516ad64f547ef6eccf6838",
+      "exitCode": 1,
+      "expectedShortRunBudgetFailure": true,
+      "seconds": 15.039253376016859,
+      "peakSampledRssBytes": 53739520,
+      "finalRssBytes": 53739520,
+      "command": [
+        "python3",
+        "/home/patrick/work/put.gd/tests/performance/bench_idle.py",
+        "--app",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd",
+        "--cli",
+        "/home/patrick/.codex/worktrees/resident-memory/put.gd/build/release/putgd-cli",
+        "--output",
+        "/tmp/putgd-style-cold-without-custom-style",
+        "--seconds",
+        "15"
+      ],
+      "temporaryFlag": true
+    }
+  ]
+}

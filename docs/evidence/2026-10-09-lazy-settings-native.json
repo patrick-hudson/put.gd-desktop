@@ -1,0 +1,3209 @@
+{
+  "schemaVersion": 1,
+  "recordedUtc": "2026-10-09T04:56:56.868697+00:00",
+  "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "sourceTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+  "commitCount": 45,
+  "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+  "dirty": true,
+  "candidatePatchSha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+  "archiveSha256": "599944d11b564f79f81dd436a62bb83f29580b83c783dafecde60ccb852c1c73",
+  "bundleSha256": "60a47dc4950ec89deac830cf73186175536c326f1e090aa7412dc068a04c6218",
+  "nativeMatrix": {
+    "cinnamon": {
+      "passed": 12,
+      "total": 12
+    },
+    "gnome": {
+      "passed": 12,
+      "total": 12
+    },
+    "kde": {
+      "passed": 12,
+      "total": 12
+    }
+  },
+  "boundedVisualOutcomes": {
+    "cinnamon": {
+      "overall": "See individual case statuses in actual review receipt",
+      "caseStatuses": {
+        "initialSetupCancel": null,
+        "emptySavedBothSizes": null,
+        "emptyAddCancel": null,
+        "emptyResizeStress": null,
+        "configuredSimpleAdvanced": null,
+        "draftRetentionAndCancel": null,
+        "historyActivityLifecycle": null,
+        "matrix": "First Qt region timed out acquiring; remaining11 not run in first attempt",
+        "diagnosticRegion": null
+      },
+      "blockedGates": [],
+      "notEstablished": []
+    },
+    "gnome": {
+      "overall": "See individual case statuses in actual review receipt",
+      "caseStatuses": {
+        "setupCancel": "passed",
+        "settingsSavedEmpty": "passed",
+        "settingsConfigured": "passed",
+        "historyLifecycle": "passed",
+        "activityLifecycle": "passed",
+        "helperLifecycle": "passed",
+        "renderedTray": "passed"
+      },
+      "blockedGates": [],
+      "notEstablished": [
+        "Performance timing or memory budgets",
+        "Full U6/U9 desktop acceptance",
+        "New candidate History/Activity result-copy repetition (explicit bounded skip)"
+      ]
+    },
+    "kde": {
+      "overall": "Passed bounded native scope. No confirmed Settings Add continuity failure in current retained pixels; full compositor/U9 and physical performance certification outside scope.",
+      "caseStatuses": {
+        "nativeMatrix": null,
+        "emptySettings": null,
+        "configuredSettings": null,
+        "history": null,
+        "activity": null,
+        "closeTray": null
+      },
+      "blockedGates": [],
+      "notEstablished": []
+    }
+  },
+  "scope": "Bounded current45dirty native correctness only; exact installed identities and twelve synthetic cases per guest. No clean46, performance, remote-storage or full-profile claim.",
+  "priorFailure": "Original Cinnamon region timeout retained, cause unconfirmed. Controlled diagnostic and later root-reviewed complete12/12 repeat are separate receipts.",
+  "source43Gates": "Earlier GNOME locked-start tray and KDE Add-destination resize/exact700px gates remain in source43 evidence; this cohort records its own actual outcomes.",
+  "convertedFrames": [
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-1/final-head0.ppm",
+      "originalSha256": "acfcb51e341e4cb316b3132629ea4c244e9177799ec56eda5d521da0fd91470b",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/01-qt-region/final.png",
+      "sha256": "897e4e15e7f16c78251c1f34a8371d508758b4e071b421ef54f0a8c4c5e35379",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-2/final-head0.ppm",
+      "originalSha256": "acfcb51e341e4cb316b3132629ea4c244e9177799ec56eda5d521da0fd91470b",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/02-qt-window/final.png",
+      "sha256": "897e4e15e7f16c78251c1f34a8371d508758b4e071b421ef54f0a8c4c5e35379",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-3/final-head0.ppm",
+      "originalSha256": "acfcb51e341e4cb316b3132629ea4c244e9177799ec56eda5d521da0fd91470b",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/03-qt-desktop/final.png",
+      "sha256": "897e4e15e7f16c78251c1f34a8371d508758b4e071b421ef54f0a8c4c5e35379",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-4/final-head0.ppm",
+      "originalSha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/04-qt-clipboard-text/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-5/final-head0.ppm",
+      "originalSha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/05-qt-clipboard-image/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-6/final-head0.ppm",
+      "originalSha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/06-qt-clipboard-files/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-7/final-head0.ppm",
+      "originalSha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/07-qt-region-cancel-escape/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-8/final-head0.ppm",
+      "originalSha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/08-qt-region-cancel-right-click/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-9/final-head0.ppm",
+      "originalSha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/09-qt-region-cancel-zero-area/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-10/final-head0.ppm",
+      "originalSha256": "d973ba9abecd4d4eedf5ac1d90cdccb95907f7004248a8789bdcf35ea8a1012c",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/10-gtk-clipboard-text/final.png",
+      "sha256": "cc3070be42ecec473f976dddcfff8c80d4f05b8d285fbed5023aae7a8180c9b7",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-11/final-head0.ppm",
+      "originalSha256": "67d4b09bfb5154ebb53c33b3e8a6e8d7fecba3159e7ce370147dfa6ea5bc8cbf",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/11-gtk-clipboard-image/final.png",
+      "sha256": "94d78ed2316e4e1a7cd20fec597f9dfaec8ecb15d51ad312f0ce4642f670fd21",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-cinnamon-20261009T043733015306-12/final-head0.ppm",
+      "originalSha256": "67d4b09bfb5154ebb53c33b3e8a6e8d7fecba3159e7ce370147dfa6ea5bc8cbf",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/12-gtk-clipboard-files/final.png",
+      "sha256": "94d78ed2316e4e1a7cd20fec597f9dfaec8ecb15d51ad312f0ce4642f670fd21",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-1/final-head0.ppm",
+      "originalSha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/01-qt-region/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-2/final-head0.ppm",
+      "originalSha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/02-qt-window/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-3/final-head0.ppm",
+      "originalSha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/03-qt-desktop/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-4/final-head0.ppm",
+      "originalSha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/04-qt-clipboard-text/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-5/final-head0.ppm",
+      "originalSha256": "a256282df01f226d569229027521a22d7bc95b2ae2de0049f21fd84d4c381afd",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/05-qt-clipboard-image/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-6/final-head0.ppm",
+      "originalSha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/06-qt-clipboard-files/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-7/final-head0.ppm",
+      "originalSha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/07-qt-region-cancel-escape/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-8/final-head0.ppm",
+      "originalSha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/08-qt-region-cancel-right-click/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-9/final-head0.ppm",
+      "originalSha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/09-qt-region-cancel-zero-area/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-10/final-head0.ppm",
+      "originalSha256": "f5506e8430064194098ef1e481979fbe13db9783b7d927f38e9c28ccdba90023",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/10-gtk-clipboard-text/final.png",
+      "sha256": "aca51bcdb1ad9140a64773040da2bdec169bc4139e7aff46faff6e491b4f7607",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-11/final-head0.ppm",
+      "originalSha256": "f5506e8430064194098ef1e481979fbe13db9783b7d927f38e9c28ccdba90023",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/11-gtk-clipboard-image/final.png",
+      "sha256": "aca51bcdb1ad9140a64773040da2bdec169bc4139e7aff46faff6e491b4f7607",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-gnome-20261009T044003011361-12/final-head0.ppm",
+      "originalSha256": "fb7a9b9873b4f57d83d61801f370bf90be674c116289411c760ece28bbb266e3",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/12-gtk-clipboard-files/final.png",
+      "sha256": "91f3945537f422d9e2edbee2e5980799a905d39845ab848db88b285b064d1c80",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-1/final-head0.ppm",
+      "originalSha256": "0590cd75961dda073f9a491d09d981e4fb798ed92d75db7c942c306e2e77b36c",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/01-qt-region/final.png",
+      "sha256": "1db92b9228e45e6da4bd5a00b6169fea995023e8a3b3ffe2f5ee07b99ebef760",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-2/final-head0.ppm",
+      "originalSha256": "ab5b1135758245c7c2097184b99356a46849566b75976d605fdfba42e18d725a",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/02-qt-window/final.png",
+      "sha256": "540a0177a5d67c0677a87a6644c71f0aae78571f5ec1bb5c761099fd52a8300c",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-3/final-head0.ppm",
+      "originalSha256": "0590cd75961dda073f9a491d09d981e4fb798ed92d75db7c942c306e2e77b36c",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/03-qt-desktop/final.png",
+      "sha256": "1db92b9228e45e6da4bd5a00b6169fea995023e8a3b3ffe2f5ee07b99ebef760",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-4/final-head0.ppm",
+      "originalSha256": "ab5b1135758245c7c2097184b99356a46849566b75976d605fdfba42e18d725a",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/04-qt-clipboard-text/final.png",
+      "sha256": "540a0177a5d67c0677a87a6644c71f0aae78571f5ec1bb5c761099fd52a8300c",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-5/final-head0.ppm",
+      "originalSha256": "ab5b1135758245c7c2097184b99356a46849566b75976d605fdfba42e18d725a",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/05-qt-clipboard-image/final.png",
+      "sha256": "540a0177a5d67c0677a87a6644c71f0aae78571f5ec1bb5c761099fd52a8300c",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-6/final-head0.ppm",
+      "originalSha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/06-qt-clipboard-files/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-7/final-head0.ppm",
+      "originalSha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/07-qt-region-cancel-escape/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-8/final-head0.ppm",
+      "originalSha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/08-qt-region-cancel-right-click/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-9/final-head0.ppm",
+      "originalSha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/09-qt-region-cancel-zero-area/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-10/final-head0.ppm",
+      "originalSha256": "b73f5083164cf03219f47a543623f9349964307eead32339e1abd6b2c5f94c9e",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/10-gtk-clipboard-text/final.png",
+      "sha256": "6f54f450d436f3158d5dc6d3e05150aaa622e60b5566f1f2c6737c639244466e",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-11/final-head0.ppm",
+      "originalSha256": "416b2aefff1ebae15850ebbcfa907974a501a27e581995a084faa9876f68b63c",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/11-gtk-clipboard-image/final.png",
+      "sha256": "cd9a84e2342b88468732eb8c1d020b26315acd33ca08a5c5f666fa5473592853",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    },
+    {
+      "originalPath": "work/lab-runs/ui43-kde-20261009T044358217882-12/final-head0.ppm",
+      "originalSha256": "416b2aefff1ebae15850ebbcfa907974a501a27e581995a084faa9876f68b63c",
+      "exportPath": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/12-gtk-clipboard-files/final.png",
+      "sha256": "cd9a84e2342b88468732eb8c1d020b26315acd33ca08a5c5f666fa5473592853",
+      "conversion": "Lossless PNG, original dimensions; no resize or crop"
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/README.md",
+      "sha256": "8289e685c3fe8b56234231fb7a65f7244881c27b4531373427addb2b31c55fd7",
+      "bytes": 2908
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/console-unlock-receipt.json",
+      "sha256": "14476f0731a61efc7ab783d33789926ba211f2eeae53afb6eed36f820ede8b81",
+      "bytes": 318
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/controlled-region-diagnostic/drag.json",
+      "sha256": "08eea73bc58f2d6d8e010069c1f3e72124768ff0d9319aeba2809b5dadd92e2f",
+      "bytes": 860
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/controlled-region-diagnostic/replay.py",
+      "sha256": "bb9759d68a2799d3d69ada2410ee13483218f313b89ebdd8ac1b0fc7d28d666b",
+      "bytes": 2302
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/controlled-region-diagnostic/request.json",
+      "sha256": "d6999b177f7180d8e1ec424cdafd9aadaa7649a469b8f402fc60c9fe20cd3f36",
+      "bytes": 322
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/controlled-region-diagnostic/result.json",
+      "sha256": "d0b2e2e64eadc63419fbb17be290909b2061f049e66d27df737606e1eeab65cf",
+      "bytes": 5455
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/controlled-region-diagnostic/selector.json",
+      "sha256": "a5a37cf96757a920bed8a4c008cd62ff01cd9db0e0fc21bb6ca3f1d3bb8405e6",
+      "bytes": 10503
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/failures/20261009T042229807618-observe/failed.json",
+      "sha256": "785dfb452588e882ce485fe3337e4326e628d2ceea601469a09c50122ecebb39",
+      "bytes": 522
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/failures/20261009T042230143641-step/failed.json",
+      "sha256": "9a66c36f9beb090c6c7e9dfb2a9958c01e97a720d66a37942d6ae2fd0a64cd3e",
+      "bytes": 519
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/failures/20261009T042230452492-observe/failed.json",
+      "sha256": "30b40f5863f9b622818df648de4e440fbf289c80da92fcc175a04e833398c864",
+      "bytes": 522
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/failures/20261009T042230791580-configure/failed.json",
+      "sha256": "b32aa0349ca2d30b28bd330f48a042953ff64dd3a64f2c734c22e093d13f430a",
+      "bytes": 524
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/failures/20261009T042231120652-matrix/failed.json",
+      "sha256": "f18d1fbc37728c862bd9739f1502aae98f3205136b2b239d56bee51ddb397dfe",
+      "bytes": 521
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/failures/20261009T042304792474-matrix/failed.json",
+      "sha256": "9e514c7086f64d73305aec826c93d8c5f9215407a11c9cd31c1956fb8c6b947e",
+      "bytes": 408
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/full-matrix-followup-review.json",
+      "sha256": "146de3793d02b497ea029b1a6309fa59336acdbffc5a51d604f7184428ca9d37",
+      "bytes": 8121
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/01.command.json",
+      "sha256": "5573c60b6f589c14a5cb383d4cb6a72cfc2d299c1eb2af29a3a805b491b1959c",
+      "bytes": 540
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/01.result.json",
+      "sha256": "a40abcd51bdd1039e730150c495f684b389ab2e6a85207691fba9487a2399445",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/02.command.json",
+      "sha256": "565bcd5dc77fd625ab746a2b2853bda8dac6868fb2e0eca43db99df098943370",
+      "bytes": 540
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/02.result.json",
+      "sha256": "8939b2fc048d6bbd851c54bc0ffa72c2bb767e059f753edd1c4d779f81ec5607",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/03.command.json",
+      "sha256": "59ed304ebe2239656751ecf11c18cd4cdbe3dac2728a1a840192e5de570915fb",
+      "bytes": 329
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/03.result.json",
+      "sha256": "7ba48c422fd239be52b6c51b79a15b082726e562281a7bc3a25290a55a2b3862",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/04.command.json",
+      "sha256": "d262631c82f6eed7ebbbce4b217ee937a692ee9ffadcd1650f26799cc42ab6f9",
+      "bytes": 682
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/04.result.json",
+      "sha256": "1153f5bca76dab7c243f284fb3b2e9d91544457999738eee4daefbb04a331ae5",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/05.command.json",
+      "sha256": "3c5fee612c16add2368067f8f2cfb64067c5321a402a309daf87ca913ecbc9f9",
+      "bytes": 536
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/05.result.json",
+      "sha256": "e8bf327ec911b1ba7eebba52979a6a542c99f1c3beaa912ea8d10ae5677c6a39",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/06.command.json",
+      "sha256": "cd6a9ca7aa457cd1c679ba9e9a3769d2a41a411b94198b2e50fa7f5d455fafe4",
+      "bytes": 536
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/06.result.json",
+      "sha256": "2f6183ad2d61eb628da03096947a9f3a2ec07761c3f75ddc8bad232782d67e13",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/07.command.json",
+      "sha256": "4d0bf3ca7fbbc12d9e7b1e9caa5cc46dade545cf30bbecde2229d43767afb642",
+      "bytes": 540
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/07.result.json",
+      "sha256": "31618ef7965094424995cad70206c00a132ef07534ac2396b4ebf77745513d34",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/complete.json",
+      "sha256": "caad8c88351eef299e2d384c22c18c27ae243c1e8f1582e476052e1d80ef7f8e",
+      "bytes": 184
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T041917415600-install/request.json",
+      "sha256": "c29d6dedda8db8dba0fb87f66aeb0b5388033ca11bd37c244948691a58e50cdd",
+      "bytes": 404
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/01.command.json",
+      "sha256": "d9e56ec8f1541e084e7ab360ae97a58ef9a808e79c81b6e0fa4829b6ff6134b0",
+      "bytes": 540
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/01.result.json",
+      "sha256": "de7b46757b306e4df76d658fcc7adb6d6b6be2d5ee6d73ca1c27cac3fdae1f6c",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/02.command.json",
+      "sha256": "e97adeb2034b867631f7ca83f0d6255dd21717ef0945c7deea4eebbb9754eb65",
+      "bytes": 536
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/02.result.json",
+      "sha256": "85ee407e4edc27b3676e2199693f4b0ec533666a3ee2f4a966caeffff299dad2",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/03.command.json",
+      "sha256": "4a428262ee6eae7297898fec7313b7cb36639f90b0bd44900e2e96e52d627913",
+      "bytes": 536
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/03.result.json",
+      "sha256": "b76774003a6e35e3d05289a1e5e56b03bd8261e8e7eb76bdb6f5e1fec822a16d",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/04.command.json",
+      "sha256": "b05b3e03f3fa877f46a620eb62a399325b4a4761a2abf43172e64a8138763941",
+      "bytes": 536
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/04.result.json",
+      "sha256": "349b59a554772947b746665934d96dfec0e594cea3cdf00f54b3ee8a4852e6b1",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/05.command.json",
+      "sha256": "5ef4ba8210796996f010323f42de0d79615b08348a76bbda7af394fdec71eefc",
+      "bytes": 540
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/05.result.json",
+      "sha256": "f7a846cc65d6d196804b5f925efd0f9b7d70b5a754b569bfe0d76879f6b2b818",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/06.command.json",
+      "sha256": "18b51e2eaa2428d38c379854d495adaa87118e399289ea738dd196f8496f2f9d",
+      "bytes": 536
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/06.result.json",
+      "sha256": "63a19bfbf66b28afe243bb0b8da212bba257839a37e56b3c8c91d41750935c28",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/07.command.json",
+      "sha256": "b4bd1fc6b8d09fb36abf351a84a86f9f7e994965dcdcaf7983535c3a5a5c1c9a",
+      "bytes": 536
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/07.result.json",
+      "sha256": "dc0d4a5d48fba3d379378a873fa07efbdac617383cd4009d40b511fe4167f52a",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/complete.json",
+      "sha256": "02bccbb1e87679fae9424271350c482cc2ac6d2621898f816757902a3f92bf6b",
+      "bytes": 182
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/identity-attempts/20261009T042003818459-start/request.json",
+      "sha256": "62d0558799ea54bcefca6f539d411c1418a11bcb07cb3ea6c0c19f2d8054977a",
+      "bytes": 402
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/install.json",
+      "sha256": "3b14f94d824a1d6cbfec5a3196e521184dda5d8ffb5a4ef76973641154b68b1f",
+      "bytes": 2427
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/installed.json",
+      "sha256": "f4d1792d415a983b10d8397b650a51644c9516097ac54b80e549b6c31318fed1",
+      "bytes": 993
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/01-qt-region/final.png",
+      "sha256": "897e4e15e7f16c78251c1f34a8371d508758b4e071b421ef54f0a8c4c5e35379",
+      "bytes": 265550
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/01-qt-region/parameters.json",
+      "sha256": "b782b646ed119e1b32a567b6766bbd40b8375ee3d31cdc51dcdf3151ffb6937d",
+      "bytes": 3301
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/01-qt-region/results.json",
+      "sha256": "f56300ed6c1bd195d1fb05fe289972e49095517327658af931c736243a0a109f",
+      "bytes": 2233
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/01-qt-region/results.xml",
+      "sha256": "638cbd1247c253094504b02ea10f0cd786258755f47cad8b7479614574a65b83",
+      "bytes": 198
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/01-qt-region/test-events.jsonl",
+      "sha256": "a42bff11ebc2ef7ad8522743294770f4902bc3a65e77ffe53d98a7dc36d3b964",
+      "bytes": 606
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/01-qt-region/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/02-qt-window/final.png",
+      "sha256": "897e4e15e7f16c78251c1f34a8371d508758b4e071b421ef54f0a8c4c5e35379",
+      "bytes": 265550
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/02-qt-window/parameters.json",
+      "sha256": "a2ae81035e7f4e3d9ada36a085053b6dbc8bc9a70c2d52e8a8d253cd15185cae",
+      "bytes": 3183
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/02-qt-window/results.json",
+      "sha256": "c7723563f4d7b2e9de6a4cd6b7299573c6935742a277802d698ed5da0917f693",
+      "bytes": 2239
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/02-qt-window/results.xml",
+      "sha256": "434520bc50c92b6a6372e3b7f73f91ce0d846e1a07dc12f299c886193ad4b772",
+      "bytes": 198
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/02-qt-window/test-events.jsonl",
+      "sha256": "0b3ba9c077c8fbab9d31c251c25394ca0d4fdb4bb454fc39ce66a287a6bd9486",
+      "bytes": 606
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/02-qt-window/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/03-qt-desktop/final.png",
+      "sha256": "897e4e15e7f16c78251c1f34a8371d508758b4e071b421ef54f0a8c4c5e35379",
+      "bytes": 265550
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/03-qt-desktop/parameters.json",
+      "sha256": "374d826e6bae704943a8639075ba5f10cf1f1dae60f33ae54d06747e46fd21aa",
+      "bytes": 3188
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/03-qt-desktop/results.json",
+      "sha256": "fc3eadab8c2ef64ce8df3f10451e6dc49daadc27a36798da46f85eef8906172c",
+      "bytes": 2243
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/03-qt-desktop/results.xml",
+      "sha256": "a82cbab19dec97b6aab1d6c525a1f784db69a9a24573b22c4cc8b799ef8e29ed",
+      "bytes": 199
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/03-qt-desktop/test-events.jsonl",
+      "sha256": "5b0889468cff986817f3a193973e9a03d06b5b651fa4409dd43f8990c9a6124d",
+      "bytes": 608
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/03-qt-desktop/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/04-qt-clipboard-text/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "bytes": 265622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/04-qt-clipboard-text/parameters.json",
+      "sha256": "2e62e0a447a1c53020019f20848a65872da8d0fa637582debdb7ffc20cd3c0d5",
+      "bytes": 3059
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/04-qt-clipboard-text/results.json",
+      "sha256": "5bdfd4ee37632f1a5354fc8b135ef1474fdd149a9a2f1214400a0f7503e1de49",
+      "bytes": 2206
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/04-qt-clipboard-text/results.xml",
+      "sha256": "3fd59596b792f3b08c8f4b81f413ec4de6eba31ea78c7348ccb8c3e0155696fc",
+      "bytes": 206
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/04-qt-clipboard-text/test-events.jsonl",
+      "sha256": "f307839d97fadebff4be7712edaddf83854061483ca69b96f378f4f74c0d0490",
+      "bytes": 622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/04-qt-clipboard-text/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/05-qt-clipboard-image/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "bytes": 265622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/05-qt-clipboard-image/parameters.json",
+      "sha256": "05ae966601b9f68bb419065fb4bfdf0d16daa5c773c12d9f384653fc762019e1",
+      "bytes": 3199
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/05-qt-clipboard-image/results.json",
+      "sha256": "3df36d96f44ebf0314f1de026871f13f38517b44cc76391bbf54e261eba20722",
+      "bytes": 2242
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/05-qt-clipboard-image/results.xml",
+      "sha256": "ef9da0aca382ec635d743f4dedbfdbd7fe4c67d5a32240033eb463598e867cd2",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/05-qt-clipboard-image/test-events.jsonl",
+      "sha256": "b4a9ecabe7aa583c2e791035b3098760d78631a4d24e94f10b6d12d69e97acdf",
+      "bytes": 624
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/05-qt-clipboard-image/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/06-qt-clipboard-files/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "bytes": 265622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/06-qt-clipboard-files/parameters.json",
+      "sha256": "f7e3f93b6b507ff06fea2fc9e1603c7aae875d4f66372a7594c7c190e147ef4f",
+      "bytes": 3062
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/06-qt-clipboard-files/results.json",
+      "sha256": "f6bcfbe6c1ec6a6d34006a3b19d7ab477bc26f0ed651b817dc22ca4dd5a1c626",
+      "bytes": 2332
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/06-qt-clipboard-files/results.xml",
+      "sha256": "f52dd3568e80e06f0f7c6ca9fb81e1cc84625ac7bcafc41e59e04e6b3973f049",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/06-qt-clipboard-files/test-events.jsonl",
+      "sha256": "6c1b23acb378381b2d3ec2fef66c21e2c0716cbdc2cf4a62afdf0e88d3e766a8",
+      "bytes": 624
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/06-qt-clipboard-files/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/07-qt-region-cancel-escape/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "bytes": 265622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/07-qt-region-cancel-escape/parameters.json",
+      "sha256": "acd96cab715a1d14b08728e69ae5fade5258f0f136304179e39284c8ed79ccbe",
+      "bytes": 3003
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/07-qt-region-cancel-escape/results.json",
+      "sha256": "77ed42e18ba644f8278e7157b288f56214036dc9b104d5aad8faaac49772a090",
+      "bytes": 1710
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/07-qt-region-cancel-escape/results.xml",
+      "sha256": "064ee0b446e782a83dfd51aa1f9f74ffda59d529822b17b5af1571c1ad71292f",
+      "bytes": 212
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/07-qt-region-cancel-escape/test-events.jsonl",
+      "sha256": "fc370cb59dcf7f03ce7ff4a8c8f38b7396acb34ae4584b9b6aece2c9fecb00dc",
+      "bytes": 634
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/07-qt-region-cancel-escape/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/08-qt-region-cancel-right-click/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "bytes": 265622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/08-qt-region-cancel-right-click/parameters.json",
+      "sha256": "0973efdb1502d896ebe2b470642080943f7ebd17eb7d0f05442871e6bfa8de83",
+      "bytes": 3013
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/08-qt-region-cancel-right-click/results.json",
+      "sha256": "39b546aa48977bc2272ab5ef1bccee8c1d3d23e4a0f27060689396a547d5278e",
+      "bytes": 1716
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/08-qt-region-cancel-right-click/results.xml",
+      "sha256": "04b98b0853d12f19d11bd74f93293c0fae783fa357b7d17a9668b80cd366c1d1",
+      "bytes": 218
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/08-qt-region-cancel-right-click/test-events.jsonl",
+      "sha256": "297df8e02be32cf0568b4d7fd21a947cdf7a10ad682044ead5cd6c95cecc6181",
+      "bytes": 645
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/08-qt-region-cancel-right-click/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/09-qt-region-cancel-zero-area/final.png",
+      "sha256": "5c16870ecfc91240374970fd3d56c655e36924918111f111ca65cad70896dc3e",
+      "bytes": 265622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/09-qt-region-cancel-zero-area/parameters.json",
+      "sha256": "53b6c1f0d69055d92d20b9442134f494b129e8b9fe9e3ac6bd213ffca7b3faed",
+      "bytes": 3009
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/09-qt-region-cancel-zero-area/results.json",
+      "sha256": "f6654f2983245c0936abbc9d3530dba16c6c8272b3b23fbfad303a8d5e78bba8",
+      "bytes": 1713
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/09-qt-region-cancel-zero-area/results.xml",
+      "sha256": "84c5d6c961f5fab0b36d28e1e8518e5208e86436f5d7df8839cb5973a8999ca2",
+      "bytes": 215
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/09-qt-region-cancel-zero-area/test-events.jsonl",
+      "sha256": "4936d33aee2aacae1256d2215ad720563c31e1f0e94de3ecf55a6b2002105443",
+      "bytes": 640
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/09-qt-region-cancel-zero-area/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/10-gtk-clipboard-text/final.png",
+      "sha256": "cc3070be42ecec473f976dddcfff8c80d4f05b8d285fbed5023aae7a8180c9b7",
+      "bytes": 245814
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/10-gtk-clipboard-text/parameters.json",
+      "sha256": "5c4133792eeb19ace8f8feacbd14c6384db73beb3894b64b781127219faa8219",
+      "bytes": 3058
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/10-gtk-clipboard-text/results.json",
+      "sha256": "48a3fe92cb1c0a27b7921e06d867a488aa4ca817e382dd7ea89880cb835bee22",
+      "bytes": 2344
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/10-gtk-clipboard-text/results.xml",
+      "sha256": "cabc470dbb3ed56bbb366c847116b83f33cfe21343ed3808fd96893c6842aa1c",
+      "bytes": 206
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/10-gtk-clipboard-text/test-events.jsonl",
+      "sha256": "d3f03fa18a6fde954cd594093c84e5c2b7e56e156d05f24942bbe6deffaf8ef9",
+      "bytes": 623
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/10-gtk-clipboard-text/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/11-gtk-clipboard-image/final.png",
+      "sha256": "94d78ed2316e4e1a7cd20fec597f9dfaec8ecb15d51ad312f0ce4642f670fd21",
+      "bytes": 245801
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/11-gtk-clipboard-image/parameters.json",
+      "sha256": "f0a06bf4dc2312eadf6f93e48763faa9bd3324e1d9c73be4ca0054e89a0bdece",
+      "bytes": 3198
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/11-gtk-clipboard-image/results.json",
+      "sha256": "f428b9bbc5aa3e7984fe18bcf5848dbd4058f84bea5572cd96c5e358ecde0112",
+      "bytes": 2381
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/11-gtk-clipboard-image/results.xml",
+      "sha256": "bec7919e7a04d54b3f5911374fecba22dd3c1583f702283597caeb0fc4aca552",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/11-gtk-clipboard-image/test-events.jsonl",
+      "sha256": "87c762448521a8d65fd236ac0b84329094e85903b9badd7b0b43566508e23e50",
+      "bytes": 625
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/11-gtk-clipboard-image/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/12-gtk-clipboard-files/final.png",
+      "sha256": "94d78ed2316e4e1a7cd20fec597f9dfaec8ecb15d51ad312f0ce4642f670fd21",
+      "bytes": 245801
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/12-gtk-clipboard-files/parameters.json",
+      "sha256": "801271203146c81e56108afa888c4fa74d209baaf4e9bbb21a6da1dd387959d8",
+      "bytes": 3061
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/12-gtk-clipboard-files/results.json",
+      "sha256": "5f34c8e8616e77b30b1107cdc8e8d17b79259221c5cccf847c73f65be7467963",
+      "bytes": 2635
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/12-gtk-clipboard-files/results.xml",
+      "sha256": "e233a03cb2e00b68ce6304ff40e90f48ddd78649fb3754e552780b16dbd83cd9",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/12-gtk-clipboard-files/test-events.jsonl",
+      "sha256": "a53b89fe3b5643c9b95e0f46ca3a5b5490a1739efa055096d1a5451de53f05e2",
+      "bytes": 625
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix/12-gtk-clipboard-files/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix-contact-sheet.png",
+      "sha256": "63b87c597d2fbdf23f98153425ed9d5f93005eec305db4d2daf790c37cf44e48",
+      "bytes": 116337
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/matrix.json",
+      "sha256": "5525176d9efdd74b85a23ce7c35ed4efed927c834c0d0326fe43d205f36c790e",
+      "bytes": 34657
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/original-region-timeout/parameters.json",
+      "sha256": "3b9fad034f14b5b404ee88e88f2cc3723955a6498194e499c0e30989344dfe23",
+      "bytes": 2975
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/original-region-timeout/results.json",
+      "sha256": "e32829c5fe2c2bd12e2a8392a8d9fd00f3f1fd08fae93e24789b5a1c2a44f9fb",
+      "bytes": 1548
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/original-region-timeout/results.xml",
+      "sha256": "c76cc632469cb8115c3b1b8cef8531b8e77b90546e0a805d30d6c7c54eaf252a",
+      "bytes": 317
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/original-region-timeout/test-events.jsonl",
+      "sha256": "6d54e3dc25e0d623982c6c70f9de99bf742af075dae860bc493f9696210026cb",
+      "bytes": 693
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/original-region-timeout/versions.json",
+      "sha256": "e84e003067d460df55028d58368c21f2d5c79f74d6ae36193b8e407449422429",
+      "bytes": 450
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/start.json",
+      "sha256": "fdd782c29a2ff7e16f5dfaa1c58fe5763be43625fac16f85bf037a0142dea4d7",
+      "bytes": 629
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/activity-reopen-normal-closed.json",
+      "sha256": "c994b35f80017b3e9db8de4a8b38d9094f1d850d2c8ac138120999e45f7adf77",
+      "bytes": 616
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/activity-reopen-normal-closed.png",
+      "sha256": "8bd124d23c181cd99af44c93db4709a179de15b9467600913a7dcd234c4cccfa",
+      "bytes": 312375
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-postcancel-simple-proof.json",
+      "sha256": "8948fdb87767486ada24e025895bac3bb9c7a5ec4a206d8bb62aa032437c6bfb",
+      "bytes": 626
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-postcancel-simple-proof.png",
+      "sha256": "063eb775271744fac0faadc63a40198141abe77a83b6bda0af2a09c4d07c3333",
+      "bytes": 189421
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-advanced-first.json",
+      "sha256": "068b29ab7fcef29b6f99b14816cd406033272fb643e62e85c8bb3b8d2d8849d7",
+      "bytes": 618
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-advanced-first.png",
+      "sha256": "fb1a15537deec48106a698203a366c9e31489ee8008d9b912a26125b995915e6",
+      "bytes": 155569
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-capture-tab.json",
+      "sha256": "39b5088c4fa601cd6eb23b483156eb53b5a19437e32902dba25a2d5b6cc22faa",
+      "bytes": 612
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-capture-tab.png",
+      "sha256": "465eede9fe1be2004a07ac8b2bb18c5d28a2624a9ee2e301c346cbf547ca9ce6",
+      "bytes": 140066
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-preferences-tab.json",
+      "sha256": "26c872e0fa7ca9787279460ec08aca05a99f76218e6f824ac7074af3738fb828",
+      "bytes": 620
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-preferences-tab.png",
+      "sha256": "34f01eeaf0d4a249c463152212f3eb39c7d62a54a49cec70df6fef78d77fd14e",
+      "bytes": 144604
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-shortcuts-tab.json",
+      "sha256": "bf8783635d7141dc141eede79561c23a5b297f7701eea8a66e578ea05a761754",
+      "bytes": 616
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-shortcuts-tab.png",
+      "sha256": "7ed165e6f888f892da23512b6f397d743b3bfb6cc069a34e485a2de79656b53e",
+      "bytes": 157099
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-simple.json",
+      "sha256": "be72bbb152212d7557c4173b6567bd2b6c22c7c9fef16c108c1e9021959b6c2a",
+      "bytes": 602
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/configured-wide-simple.png",
+      "sha256": "a7ff0d000029ebd78b0ed66cc8cfcce05d39da5523d17d2b9d04876a935ee50c",
+      "bytes": 127078
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/diagnostic-selector-drag.json",
+      "sha256": "bda4057433d641afc01ba64866a2a552ad3d4ed7a66dd6c624909ba71d225f30",
+      "bytes": 606
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/diagnostic-selector-drag.png",
+      "sha256": "ce36f75af558eb162c4fd7caa4d2987dcf1aec864dd7d2e0196109b33cf7543d",
+      "bytes": 264651
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/empty-compact-add.json",
+      "sha256": "64782118555fdb491e4a8790638712e667dc028a04e7653955223bfaeef80e8a",
+      "bytes": 592
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/empty-compact-add.png",
+      "sha256": "f2cdefb892c14a9797fc15ab4eb952cfea58440acc58bba420b251416967aca0",
+      "bytes": 186173
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/empty-compact.json",
+      "sha256": "a6fed96dfa7304a15e2726997dc77feeafb458adcc34442bfd7bb722b89bf4d5",
+      "bytes": 584
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/empty-compact.png",
+      "sha256": "7c2c676ba6f072f4be0e9f988442fe779a3aa9130a095441a5f10f819fe002d0",
+      "bytes": 164314
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/empty-wide.json",
+      "sha256": "e48946e0e1fe534c306a4678e5fb302416c994d4838723b973ba31a3feba0094",
+      "bytes": 578
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/empty-wide.png",
+      "sha256": "0038057d96b7201504f8849f33f10520f38f8c111776389d0da3a4c3bdeb99e5",
+      "bytes": 102982
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/full-matrix-fixture-close.json",
+      "sha256": "ded5971bc200e1dd60dc89a98a20fe7e3209f629ceba4035ecab65e4b6659389",
+      "bytes": 608
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/full-matrix-fixture-close.png",
+      "sha256": "b4d3d14712fb8855a8106146586bc8a37e0565f8cf3941d704d66c8149e7588b",
+      "bytes": 312543
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/matrix-failure-current.json",
+      "sha256": "a2a9aa4da0761f5db6972f5b5746370b55d3f76e4915e845c62fbdc701d5347b",
+      "bytes": 602
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/views/matrix-failure-current.png",
+      "sha256": "0953e1df57281f35d229bae6674bd9d127e87397efe36569e4ea9a580cb3ee70",
+      "bytes": 264676
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/cinnamon/visual-review.json",
+      "sha256": "06b76b35736c1e56b92644f27fc69fd1f177171c8dcce94df0afaab60a32c8ec",
+      "bytes": 46165
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/base-source.json",
+      "sha256": "26e81b9dbc50ce26555f8e6fe78057d6ec019e048762fc74ffd345622db7e01f",
+      "bytes": 500982
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/candidate.patch",
+      "sha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+      "bytes": 117388
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/frozen-native-replay.py",
+      "sha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+      "bytes": 49400
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base44-full-validation/full-dev-build.log",
+      "sha256": "387b9cd6748600b20d867114ddba9a9554ccd88ca0b3afde35a72bddd40b86ca",
+      "bytes": 15672
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base44-full-validation/full-dev-commands.json",
+      "sha256": "609ad05eb22f44c242044897e8b02f356196dd179fab7d47feb19832b0a10ebf",
+      "bytes": 758
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base44-full-validation/full-dev-tests.log",
+      "sha256": "3f28488a83e9c1e4e1a83075cd4853f07f48c0e0be7d00bb0ec2d6781a9dba7c",
+      "bytes": 4532
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base44-full-validation/full-dev.xml",
+      "sha256": "73ee53f4888cb9fd009d8c15fecb249c55f103303c74dd04d0e1514418bc266f",
+      "bytes": 39021
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/build.result.json",
+      "sha256": "fc2eceaaf6bc276ab8f96a817cde333187352bbe23545dbd062818cd986978c3",
+      "bytes": 58
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/build.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/build.stdout",
+      "sha256": "51ea49172237e608372ce407bf58b879bdff4c8c6eaf92e3f06d6a409f935e03",
+      "bytes": 2932
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/commands.json",
+      "sha256": "3be5f3b18f6f849df27280678723c1585e62b0e7b8bbc26f35573a2aaf97e28a",
+      "bytes": 573
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/configure.result.json",
+      "sha256": "fca87ca2dbc187add060cb5187b2d8287cf564164a3195b1006f3f199a20dc93",
+      "bytes": 58
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/configure.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/configure.stdout",
+      "sha256": "fc7267594de4d8d560c139a9e2f34f2f04945d4c62a70fba679e3d54fe649b20",
+      "bytes": 996
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/run.py",
+      "sha256": "5e68cfae241df3f21416e48e8892bff682a1df1151417f4a793a6fd4c37edeea",
+      "bytes": 947
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/tests.result.json",
+      "sha256": "d0497e1bf16e1ba4cf7cf982f2a488c5fc679e9f3eb1bd766f98c9c1dc25ae00",
+      "bytes": 58
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/tests.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/tests.stdout",
+      "sha256": "e0b765dd0a3523e5fe9a5bed72c674f0dd1818e0d4096df72a7b0e0c79339f7c",
+      "bytes": 776
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-base45-affected-validation/tests.xml",
+      "sha256": "5fb5b35038341c0533cc6c06dbc917c5fea0d4b6a1f7b6f46b5eac8a53b74331",
+      "bytes": 7182
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/01.command.json",
+      "sha256": "67b5483f21231c9d9d58010f01d6b6a85e64de13e7079f5e0010ac32471079b9",
+      "bytes": 222
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/01.result.json",
+      "sha256": "92fbfb3710a54ea77fe053d35033fb594c8c07083ca51b903f530bd1800dc7d2",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/01.stdout",
+      "sha256": "842f1c96bc7ff327956a014870057240b951eaad43992ff93dcf762ddae6c09e",
+      "bytes": 1120
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/02.command.json",
+      "sha256": "ccd957972b8830e342328862ba8dcf35f3c7a0de531c51e62603563f9c2ff0c7",
+      "bytes": 361
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/02.result.json",
+      "sha256": "6c22496fc9746d3c178412c74037604ed3295337885329046f97f9fccde71920",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/02.stderr",
+      "sha256": "3fc29758c829f57feead72ebc4f23703637456b8dd50cb50264a91acde4bb1f3",
+      "bytes": 39
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/02.stdout",
+      "sha256": "3223042a3a944790dd154def804f7f8390b87faa71d6564005246026694ff46e",
+      "bytes": 283
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/complete.json",
+      "sha256": "4d7c3c1422004fcc71c0f11e81cb002f23a9870777f3a2a7369c097d521b7fd5",
+      "bytes": 187
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build-attempt/request.json",
+      "sha256": "b70e5f7deb86781dcafd3bdff88531cfd74f7a180a59356a5e39a2e4e26bce02",
+      "bytes": 376
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/host-release-build.json",
+      "sha256": "d0be6baac3ea2fd02a9b681d39605181ffe8bbfe680f74e261ec1b954e0e9c22",
+      "bytes": 855
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/metadata-erratum.json",
+      "sha256": "3e8dc6b9b1312d598b58f02b0d5b77143068742c81e68bf69284d3d143ac6b1e",
+      "bytes": 408
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/original-preparation-README.md",
+      "sha256": "522c432446b06b3ed566f5240583a7cbf313d25df4237e4492960cd726c3b0ae",
+      "bytes": 17902
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/prepared.json",
+      "sha256": "f92e7ecc8dcfb68d995c082da5a5e400d83cbed3b062dd32364fc80894c25879",
+      "bytes": 1212
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/replay.py",
+      "sha256": "36aafa4c772a64821fa8d9cfa69793cdd4e1209b5b9907bc446f3212737412bf",
+      "bytes": 36478
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/common/source.json",
+      "sha256": "fd3c1eacaf19ee4a3a5ad5712785be5fee660562a3f864259187b7e17b02a602",
+      "bytes": 502035
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/export.py",
+      "sha256": "984fe68782179697d4efcf1627dd1ef08459d008ebad15e8ec6319a9e8e36c42",
+      "bytes": 13850
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/01.command.json",
+      "sha256": "4c6133f7179a245401a6100894224fc4cd592d0fa8708769883d2f8f8d17e7c9",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/01.result.json",
+      "sha256": "45437f4b68ce48e476413448c3ed7cb23fe97162a4d9ea9cb07c11aa9184543c",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/01.stdin",
+      "sha256": "f9b99944c4e79c493d95da472378e1ada621d39849f67a0992dd995987e18f3c",
+      "bytes": 55
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/02.command.json",
+      "sha256": "c4a903e551ff2b6af5e9c6c224616c2075d612993375f43b2abad69ac14d7096",
+      "bytes": 636
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/02.result.json",
+      "sha256": "9ab4de9bfbad87ba8e694c24e2ffac27e5f2d39fa304e06b0453d6160da58c61",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/02.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/02.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/03.command.json",
+      "sha256": "0e36f1fac94d1d44f1bf04c9e7a5fb11cf64325f4275dded7f1a552593eaffd6",
+      "bytes": 638
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/03.result.json",
+      "sha256": "1ab1600218dfce64f9f7ca8b165cc5ee309005d30357aef48639a11cb63c8123",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/03.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/03.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/04.command.json",
+      "sha256": "d1f8d600c04a6162f262d8eb2c77f7a0459187fc4084e7403c85c0bfc87d60f4",
+      "bytes": 642
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/04.result.json",
+      "sha256": "82eb660a3e212d00f12b15e96dc390a89e2f0fd4c8ad70b8da2b66614a4043d5",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/04.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/04.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/05.command.json",
+      "sha256": "2193b2466c2f8d66193cb04188136fd6396c84425ae22c59fe54399e2ecf31ef",
+      "bytes": 646
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/05.result.json",
+      "sha256": "ae3ad2315e1f41c06f2188cffc9e2c62b69506b14b6efb62f89eef4d815a0a7e",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/05.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/05.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/06.command.json",
+      "sha256": "34681308d7f2911225da827838a5c9cd655c0d0a510c08e6a203b7d2b86bf472",
+      "bytes": 582
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/06.result.json",
+      "sha256": "d8313f13d13aa90ac9ea26db45333789c74ee5b5ccf615b0ca61cd6d732fcea2",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/06.stderr",
+      "sha256": "80725bf7711cdefe4d183de613de2ea0db4ae7aeed7ca50e5f5bb9b4c5f43f9d",
+      "bytes": 706
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/06.stdin",
+      "sha256": "e321bb24db0dea38f8e82287eba42604ba3554a4295d8fe6f6d25108b68612b4",
+      "bytes": 1159
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/06.stdout",
+      "sha256": "36efd7d916a5c5b4aa2699e03e579fc527f14103512b78eddeb4b4b7dd042a62",
+      "bytes": 34
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/07.command.json",
+      "sha256": "45ab8ff2ee2477f7a8b0e358bbdd5d16abfd7fe927cccd075c3db303a2af6737",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/07.result.json",
+      "sha256": "69ebbd55f3c5dde2447c1e956b3975a059b08340b5c9932d19afec03cec25df8",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/07.stderr",
+      "sha256": "3fc29758c829f57feead72ebc4f23703637456b8dd50cb50264a91acde4bb1f3",
+      "bytes": 39
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/07.stdin",
+      "sha256": "40a5639893c66acb91994a5436b4fc0a1d16047087a137c81be04c4ba7c2167f",
+      "bytes": 857
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/07.stdout",
+      "sha256": "537047c9cbec7502d1e639ea83b415529aacff11538dd31a73c026db4dd81ab1",
+      "bytes": 65664
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/08.command.json",
+      "sha256": "4abb7c62a2dcd642fcf3a9dabd210281920077dfe6638f976c2a2aee322f4f73",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/08.result.json",
+      "sha256": "554df98e1e3ff13b5dad806ea40cdec5fc03e4f95c3683414cb1d3dedb482c31",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/08.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/08.stdin",
+      "sha256": "b548c0d2f0e40caa518d15fe5070cb6019a0971010989f551f172ff50d990c6c",
+      "bytes": 96
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/08.stdout",
+      "sha256": "2ba3c0454606cc5f0cbbca48191b430572c8466f23b529f2184acc78801d7aaa",
+      "bytes": 107
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/09.command.json",
+      "sha256": "994d52bcf541f87886e4514d4776bc520852a7add2046090346c0e3c21f99021",
+      "bytes": 727
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/09.result.json",
+      "sha256": "3a1b3279d76967471b9ec4b67c8d51ee227d336c3b2397240584b432d4f618f5",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/09.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/09.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/10.command.json",
+      "sha256": "0cd99041d1db23e68420f9ac11171675a4ded758a923e9e6a077912bda3262b5",
+      "bytes": 636
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/10.result.json",
+      "sha256": "df515bc5c369295eca1485eb9000e5f5078d56edb74e8424f313be164b62fe76",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/10.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/10.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/11.command.json",
+      "sha256": "2603c29682be50ae01bc74b79053542c3f781e4d6bfb5c30233632a449221c59",
+      "bytes": 688
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/11.result.json",
+      "sha256": "05415f995957af75936035c69f6aff9f69f6207a7981b8a810dc180728ad9bf5",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/11.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/11.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/complete.json",
+      "sha256": "71253c9f772495cb85249b08aa2dc7bb9454889e0ab34906f1044298b173e168",
+      "bytes": 188
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-attempts/20261009T041741194155-guest-build/request.json",
+      "sha256": "91c3978ceef88002bedb3bf3f160eb3c28cc4c8701a09445f346b87501248f07",
+      "bytes": 405
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build-info.json",
+      "sha256": "e222c40ae22a4b546ad239848dc64e04136b03ba19c18feea474bdb9ab1562d5",
+      "bytes": 339
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/build.json",
+      "sha256": "6c3e988cc3c576b14daf6d5c03f8f24d2efac951f820e6b3c129cc9fa6dd125c",
+      "bytes": 825
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/console-unlock-receipt.json",
+      "sha256": "52cf7c3dec44115771e1fb70f01f99ae5ebbe97340d86744a4163e9f046e4dce",
+      "bytes": 318
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/dev.xml",
+      "sha256": "055a8c3d6eb5fccb1f6f28a2e8de2131cd23b34997207032e5efd977109f6be6",
+      "bytes": 39245
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/failures/20261009T043926818256-step/failed.json",
+      "sha256": "5fac39814f945583ed2454dcf4ffab360ff0eba09c940f2b892fb0471bf88e34",
+      "bytes": 513
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/failures/20261009T043927110210-observe/failed.json",
+      "sha256": "aed1c3ab5b2c46f48b27be0fa8831ed61ba284a82d7f8b2b359cb28ca2542235",
+      "bytes": 516
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/failures/20261009T043927343106-configure/failed.json",
+      "sha256": "2a67e62c520f98d9bffa5a206ef9c5710d44ccab005e4aa3bf0d38e1d8b5323f",
+      "bytes": 518
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/failures/20261009T043927613597-matrix/failed.json",
+      "sha256": "a79dc1a7d3c5784bfa79a13535317c7d97c238f4c9dc8c281eff9cb6ed6b6be3",
+      "bytes": 515
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/final-accepted.json",
+      "sha256": "15aff75b95d4ac464a46ce4c1cb48871d063466f7e1a32112b5493f6d2ab381a",
+      "bytes": 762
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/01.command.json",
+      "sha256": "03229638460c14b66b50599dcef442c8849de377728859f6bd91b61af0c48ffa",
+      "bytes": 534
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/01.result.json",
+      "sha256": "d687bafc1008340e5f13bd80f553fe3623c07e4cd1f008e44725e8390f40bb5d",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/02.command.json",
+      "sha256": "6e724bddb96cb0b7c3d2ea8c4423ba44d0a06a35498480ee94325f18902afb72",
+      "bytes": 534
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/02.result.json",
+      "sha256": "b3b97486918f44c0d297774a57382e3178f27dc90738ff0f220d51a22117407e",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/03.command.json",
+      "sha256": "0cb261c426435b85136620f821cf8b8469e48fca971caaa568d3c3510cc2ce4f",
+      "bytes": 321
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/03.result.json",
+      "sha256": "e384a1a845b23adc877412a75953dd3d3cbaf8bfb59b022327b744f9d0a86804",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/04.command.json",
+      "sha256": "4ef0330fd3e28631aefa6405d288c16cce85c7bbe9f9450c48607bf73244f32a",
+      "bytes": 668
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/04.result.json",
+      "sha256": "89f7227df42925b4dfb5dea995287a3f38786ca6fdff9bbde04239aac833be10",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/05.command.json",
+      "sha256": "4aa25b85e95675940abc055a917d3d67ceb589d155df9754ddfbdabed1d76b5c",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/05.result.json",
+      "sha256": "fc24fed48f1c087e8e8c0f62999c89a28090701bf7c90c5ee0fa8d8f4e65e1a0",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/06.command.json",
+      "sha256": "df0c923e7315c396128b14b185ccc53150edf5427f2539daa1775b557e91e7ed",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/06.result.json",
+      "sha256": "886d18510f98b6130fe42907cb5fa2eee6954a1227393b1864a48e846a25dc21",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/07.command.json",
+      "sha256": "50b5ce6a0cf4aed424e2dcba36e11f96fb0faaeb36d457025264ae70e5660936",
+      "bytes": 534
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/07.result.json",
+      "sha256": "63cfe7955fb8d268f473b72068e3f9fe0e6421bf2493f15e61a12b6c6a8e7e3e",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/complete.json",
+      "sha256": "b7fffb96bbc604a1e1c1c2fabd03d358d4d07f0d7bf2d1779ee790e8965fcadc",
+      "bytes": 184
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043705350652-install/request.json",
+      "sha256": "33fd7aeeded18e0140fa6f56e97a678ca2f79dbdaede54bfadad87c348ac8dea",
+      "bytes": 401
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/01.command.json",
+      "sha256": "ebd8f7a71bb2f90886458b94c7387234a4fc1be8212ccd1a7542a696ab9d60c8",
+      "bytes": 534
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/01.result.json",
+      "sha256": "1c1f1c0104e00ff0fec57ee1ae38f0ba8886164ab21ee031940385b97b866c8b",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/02.command.json",
+      "sha256": "3fdd63513852579583280a2a1dcff0452a9446d2f58451530c204a20c104a81a",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/02.result.json",
+      "sha256": "7d61633556eaf9611aa44f6e0101aaf149dfe881de19050327e81ecb75ff4179",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/03.command.json",
+      "sha256": "8189c4053ad5b82c6e0219bc0ad9d34ba0d814b0aabd64f1a99c63f8c318c0ca",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/03.result.json",
+      "sha256": "28b41135d6395aa4b1b94612e3e0ad7adfb4b7c651193d75e5f105391258f9eb",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/04.command.json",
+      "sha256": "6dc8a9075861b84ab52bf56eae2a8e8e55e6905aa84d4746311a552f238c40ec",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/04.result.json",
+      "sha256": "f3063ccea141a342c87ea73c616b3ae400be984a0662bac4614a55a39d9caa96",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/05.command.json",
+      "sha256": "722f14b262c884ca8951a0e91a3ae19726d74a2632b90b966e4e5eefdb4fea82",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/05.result.json",
+      "sha256": "2ba6146282caa6b90ee1a001c97cebe7e256ba644a84bdb5485f1aa457e4333b",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/06.command.json",
+      "sha256": "383b9f425be896ea6cccc11dcce63c43d6a90b7a78e1e585b9ba61b0e480e94f",
+      "bytes": 534
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/06.result.json",
+      "sha256": "4c009032a9c698af7e05d1357298eebbd6f2f49cdbdc77c66a6f6d906ec68549",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/07.command.json",
+      "sha256": "671f246558296a6125c3098588453f02962bc39120b26edc2f9ca5f97c57c5d4",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/07.result.json",
+      "sha256": "43ecf2123627eccb381e8979fc63d73966e731e7148c8a996cccab26a3f7d1c5",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/08.command.json",
+      "sha256": "3f2f126c519a44204836a4e27106655feea6731a42fadbb1f94d925b41541d23",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/08.result.json",
+      "sha256": "445876244268e170d753b79049b3b9280c219dcc2e6edba05c5754c19fe786dd",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/complete.json",
+      "sha256": "156e402f9b94c120970c30eff85ab1b7942b8eca53738e5a0425dc1a491339b6",
+      "bytes": 182
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/identity-attempts/20261009T043732702766-start/request.json",
+      "sha256": "fbe3e3f24b051eba9e4e00a31a590fed3b00f6e3cc3e8404a62b460f2de352ef",
+      "bytes": 399
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/install.json",
+      "sha256": "7db212a08a3c466e5fac42a98bd3d51b33c8b47edaa076ed87ee6be1ba10a52b",
+      "bytes": 2424
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/installed.json",
+      "sha256": "594306111d69d8e522d23764715dcc03e4b0c1729710481a1fe214995ad50722",
+      "bytes": 993
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/01-qt-region/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "bytes": 596083
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/01-qt-region/parameters.json",
+      "sha256": "d01ccb342b1ce33330bce58ce7526274579b64e0829b094d283dc7d9469b273c",
+      "bytes": 3399
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/01-qt-region/results.json",
+      "sha256": "e37d72e45f0e6d5b4e77a246a8a5907691947b86393d5e294d7ba8d3da1f0a3f",
+      "bytes": 2355
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/01-qt-region/results.xml",
+      "sha256": "7588f7a8da91ecc8271bc059bd084b43ef1eabd6b73907b0fc194315bda1b6ee",
+      "bytes": 199
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/01-qt-region/test-events.jsonl",
+      "sha256": "18545a9451b8d4b92d22925f565fc8e64c2c3488a519392b1a9636462d73a1d8",
+      "bytes": 608
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/01-qt-region/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/02-qt-window/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "bytes": 596083
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/02-qt-window/parameters.json",
+      "sha256": "ec1aa838a8537767ea02cf0c9ba7db1a1e82d2e2585e674d9e862407feb0d515",
+      "bytes": 3281
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/02-qt-window/results.json",
+      "sha256": "376f954ce2bd70668658c552696bf07930cf979eece85190d160fcf21dfc167b",
+      "bytes": 2361
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/02-qt-window/results.xml",
+      "sha256": "35cabbd11e963d9c82a59ba469e794130a30aef228e0ff496155873fdfbbfb19",
+      "bytes": 199
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/02-qt-window/test-events.jsonl",
+      "sha256": "4f6421b767476e2c50a425df36a8249100f552024e38937c3f276816dc5de4aa",
+      "bytes": 608
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/02-qt-window/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/03-qt-desktop/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "bytes": 596083
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/03-qt-desktop/parameters.json",
+      "sha256": "f8dea4691a419089f7cf0704252a0e94dec390d65aa364825e9b7d8f010822ba",
+      "bytes": 3286
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/03-qt-desktop/results.json",
+      "sha256": "81755bb05334a4acf49e15bba53a6c50cd6d3428169d6c427f62fe648d4e5af5",
+      "bytes": 2365
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/03-qt-desktop/results.xml",
+      "sha256": "782a74d405dc1ebabc666c5d9637551a6be44fba237b02dcd2018fc8854a423f",
+      "bytes": 200
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/03-qt-desktop/test-events.jsonl",
+      "sha256": "8723f5d23e9a15c4cc6ad9c4b305af5b2f7a2a6b258db090e9624597b2cdf330",
+      "bytes": 610
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/03-qt-desktop/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/04-qt-clipboard-text/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "bytes": 596083
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/04-qt-clipboard-text/parameters.json",
+      "sha256": "a763b3ff73ef2d38324e5d8760cfef47040722038b7adbd14a0980e7f5aece97",
+      "bytes": 3157
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/04-qt-clipboard-text/results.json",
+      "sha256": "7ad46daff232d6939dc961737a3f5393a8c3fbc0864235469bce2e925c810ef9",
+      "bytes": 2244
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/04-qt-clipboard-text/results.xml",
+      "sha256": "5e5ddfaff6173b32f07be7f09d3bacebf18cc7665beb49cdf0a89884c7ff0bab",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/04-qt-clipboard-text/test-events.jsonl",
+      "sha256": "bc05b5a88a1c50110a01d04aad6e9184c9f59895243d1222c499be027805a38e",
+      "bytes": 624
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/04-qt-clipboard-text/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/05-qt-clipboard-image/final.png",
+      "sha256": "00cc7a46d6234898464568d3d5d18aa5f2aed62182408fee97775f0fbedcf7a7",
+      "bytes": 596083
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/05-qt-clipboard-image/parameters.json",
+      "sha256": "7d780ab9f0273eec1106bcaf81c7da2904c84265dd3b3f7a87201d8838bedf5f",
+      "bytes": 3297
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/05-qt-clipboard-image/results.json",
+      "sha256": "bdc91b80ca27eaf3f6d71712092d9c90cdd25c7e97df4fca653c6ec4c93f36b5",
+      "bytes": 2364
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/05-qt-clipboard-image/results.xml",
+      "sha256": "b02e77fe097cb02cdd2261fdba50f86db887e9f380bb39e77e26d6fc042f482f",
+      "bytes": 208
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/05-qt-clipboard-image/test-events.jsonl",
+      "sha256": "c2dcf029bb9e24bca5657ba03f50288673c4011d34b58aaa8dc609ef3ac71360",
+      "bytes": 626
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/05-qt-clipboard-image/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/06-qt-clipboard-files/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "bytes": 595909
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/06-qt-clipboard-files/parameters.json",
+      "sha256": "11956250b8b76dd7c29684a66f2e4f098a9f88b8f279b5b2ecd4eb90cc2b52bb",
+      "bytes": 3160
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/06-qt-clipboard-files/results.json",
+      "sha256": "c7e4618b7fb8ed21b22d9d6b034d3b31483ab67f3ffd58d5ac1d2040b9449217",
+      "bytes": 2434
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/06-qt-clipboard-files/results.xml",
+      "sha256": "7a9378188b0cd2a167131d18176a61a5ccedce7708df3bef888ef4335addd678",
+      "bytes": 208
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/06-qt-clipboard-files/test-events.jsonl",
+      "sha256": "aea8dc58de6372644df6c34c7338cd3c6f6d8b0e875cef3a2cb30671ccefc424",
+      "bytes": 626
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/06-qt-clipboard-files/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/07-qt-region-cancel-escape/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "bytes": 595909
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/07-qt-region-cancel-escape/parameters.json",
+      "sha256": "571310b970b7c6bb27496473b83aec490f662257b95f1be1c9623790c3eed954",
+      "bytes": 3101
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/07-qt-region-cancel-escape/results.json",
+      "sha256": "081403b8c8315565531c4e71a29155b45a4250e571fb010d92930410d1ac6623",
+      "bytes": 1944
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/07-qt-region-cancel-escape/results.xml",
+      "sha256": "ce7dfc3b660263e5b6669cac77a7ffb22eb2c4db19fcf14d1b5fcc6d2d3101d4",
+      "bytes": 213
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/07-qt-region-cancel-escape/test-events.jsonl",
+      "sha256": "1383c7d6806d7f92a56d1f3d0ace57d9d2ec7ca1c9440a51c8bbda2c26f4c56d",
+      "bytes": 636
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/07-qt-region-cancel-escape/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/08-qt-region-cancel-right-click/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "bytes": 595909
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/08-qt-region-cancel-right-click/parameters.json",
+      "sha256": "bf3c99511ed45f16452da5003aa831dbf8a1097a19ac96bd85b74e99b56fbcc5",
+      "bytes": 3111
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/08-qt-region-cancel-right-click/results.json",
+      "sha256": "d36c8f30ac4a438167f5221634ea055b62ca0e5ac29be7700894724fe86b5343",
+      "bytes": 1949
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/08-qt-region-cancel-right-click/results.xml",
+      "sha256": "9d07236948c9b13f557ebd909c2eb87b7f47c457f4f879ce112b1198b9356ae7",
+      "bytes": 218
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/08-qt-region-cancel-right-click/test-events.jsonl",
+      "sha256": "c4aebfc90db256698a0e0f667bb5a936bff86270bb3452c20cddee5f7b0d8113",
+      "bytes": 646
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/08-qt-region-cancel-right-click/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/09-qt-region-cancel-zero-area/final.png",
+      "sha256": "d5dfe61553c17f9edf068444c601025d19fcac3de166b210003c83308b803efd",
+      "bytes": 595909
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/09-qt-region-cancel-zero-area/parameters.json",
+      "sha256": "146db90bec277a5f521f71a9dd6b1eefa350b0921e4191dc4f8eb8b03dd94fb8",
+      "bytes": 3107
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/09-qt-region-cancel-zero-area/results.json",
+      "sha256": "5e310bfa81088196017d3fbaf46e081c93deebdb0f768c217f8b53c40ff9344d",
+      "bytes": 1947
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/09-qt-region-cancel-zero-area/results.xml",
+      "sha256": "aa37a04ad3803955434da9f09be2952027dedba1c4b064dac736ca7ebe96844d",
+      "bytes": 216
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/09-qt-region-cancel-zero-area/test-events.jsonl",
+      "sha256": "0fca0bafec93b449af70b876d21a58bd91de6ad4b7ff4f60f7ad2db8d7d6d628",
+      "bytes": 642
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/09-qt-region-cancel-zero-area/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/10-gtk-clipboard-text/final.png",
+      "sha256": "aca51bcdb1ad9140a64773040da2bdec169bc4139e7aff46faff6e491b4f7607",
+      "bytes": 603679
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/10-gtk-clipboard-text/parameters.json",
+      "sha256": "65d68c4c23dbe68dd3f28765900b412be938fa37748b3590e14ed83cb148851a",
+      "bytes": 3060
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/10-gtk-clipboard-text/results.json",
+      "sha256": "b71c8fec93b6b7fa075b68e563bb7cb7b623ad804640ffa30d2aaf0dd78c99ec",
+      "bytes": 2351
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/10-gtk-clipboard-text/results.xml",
+      "sha256": "250f90e32168a9b74bd430ac363824720b78647c26d78f8d5aca46834c538e54",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/10-gtk-clipboard-text/test-events.jsonl",
+      "sha256": "575876cf6f373e67231113b40424f43f9e5a39b00dcc3bc89f0e2e69b225ef7c",
+      "bytes": 625
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/10-gtk-clipboard-text/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/11-gtk-clipboard-image/final.png",
+      "sha256": "aca51bcdb1ad9140a64773040da2bdec169bc4139e7aff46faff6e491b4f7607",
+      "bytes": 603679
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/11-gtk-clipboard-image/parameters.json",
+      "sha256": "6f02ab64a1f2fbc5d8b7b2c4b15a95b4fe05ec045aa716363ce262939b64230f",
+      "bytes": 3200
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/11-gtk-clipboard-image/results.json",
+      "sha256": "7cdc7d70936f583e43c5f1d95f751509607cc75afdfa9fd5fecbdcd20b219660",
+      "bytes": 2388
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/11-gtk-clipboard-image/results.xml",
+      "sha256": "a50d9954bb7c9db8d729b83c992441b9784fcb6e386c6054b8996d8be2f5d970",
+      "bytes": 208
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/11-gtk-clipboard-image/test-events.jsonl",
+      "sha256": "930ae151db7461e07636c826f7a837824233edd5a4834d027663045558c7f678",
+      "bytes": 627
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/11-gtk-clipboard-image/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/12-gtk-clipboard-files/final.png",
+      "sha256": "91f3945537f422d9e2edbee2e5980799a905d39845ab848db88b285b064d1c80",
+      "bytes": 603664
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/12-gtk-clipboard-files/parameters.json",
+      "sha256": "e2b33fc21322b8ab870340360b539cada03beb06d39b8b3c1ce8efd7d0d26328",
+      "bytes": 3063
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/12-gtk-clipboard-files/results.json",
+      "sha256": "ec223cc05292e7f58f01bafa97f6dfdbb294ef4e5ac94aed5010379d8689b0f2",
+      "bytes": 2642
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/12-gtk-clipboard-files/results.xml",
+      "sha256": "1f5774a6999365061dc5f6ac55999902360ca977f3dde010a44ba980af4d9257",
+      "bytes": 208
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/12-gtk-clipboard-files/test-events.jsonl",
+      "sha256": "af2c44e70d70f58fbac7a72c11a1f2200234a9588b5e7211c8e599f80dab8a3d",
+      "bytes": 627
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix/12-gtk-clipboard-files/versions.json",
+      "sha256": "857025b63f19480fe19c7df8d55525933f25f3a66dad974038d9ae9c3070e5f9",
+      "bytes": 496
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix-contact-sheet-reviewed.png",
+      "sha256": "c8e26801e3c2861e012c0e5c4d91a287991d14cc1b043c1d0dae0b755c68c92d",
+      "bytes": 387052
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix-contact-sheet.png",
+      "sha256": "5c9b7c143e97a0f75d23f4f95dc8e1d363288def592ae9e6371c3153948dd5a6",
+      "bytes": 302725
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/matrix.json",
+      "sha256": "fa4df205719aefcdd467d3960399f47ec1c718643dd2bcff0b3569fb7c579ec9",
+      "bytes": 36463
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/start.json",
+      "sha256": "5ef53d1b3fcb33fc6cca6d9be7b279422334bd6c2e4cf118fad503510c143bfa",
+      "bytes": 630
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/activity-final-normal-close.json",
+      "sha256": "b212a5f5b900ee2865470e86d0e254ba7ce1d9649927dbadcb07741b8538b969",
+      "bytes": 606
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/activity-final-normal-close.png",
+      "sha256": "0ec0af8f7736d996a8ba203cbc63d8ff2d935894826f3a28e0875bde5a6e2cf5",
+      "bytes": 852839
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-capture-tab-first.json",
+      "sha256": "d5246dbec6819e02a0bfe1bd2a8a42454400f4f9e6f9f83d4cd62b7e68db7031",
+      "bytes": 604
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-capture-tab-first.png",
+      "sha256": "06f60090f6fbc95d025c839a791c096765e243ed64d0f7675d2ac5e90780712b",
+      "bytes": 275738
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-configured-advanced-compact.json",
+      "sha256": "6d78be87b1b796d8344a1564caecbd9147410a9767fdde4354c6c84518b9cd8d",
+      "bytes": 624
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-configured-advanced-compact.png",
+      "sha256": "4646cb73f07a08b97e93986f055bd1d6248cc255f45373e647cfb6761d6f85ce",
+      "bytes": 290587
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-configured-normal-close.json",
+      "sha256": "f60e2e5c0ac1dec120061a9a70ab3fe00dc74b9de251e29255275c0cd46d1c95",
+      "bytes": 616
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-configured-normal-close.png",
+      "sha256": "a5beadfacf6dace3dd1b819181c7e063ed74f08680e1575a70f3eed2835e080d",
+      "bytes": 852908
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-configured-simple-compact.json",
+      "sha256": "4759a0e7cf6776f2b1e3a638f4e2799d956b74dd6c7f8f2d18853e1c34064423",
+      "bytes": 620
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-configured-simple-compact.png",
+      "sha256": "c7da798eb4f382096329445d66500ce6c9ba8d0af591f41192b442ade00957a8",
+      "bytes": 71037
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-empty-compact-add-draft.json",
+      "sha256": "5aaf63f02305f914cffe7bdb6d8d30da09d82110579e013ccc151d6546caffe9",
+      "bytes": 616
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-empty-compact-add-draft.png",
+      "sha256": "460f19af04f0df5308355ec8004cdb4c1ff0e3d9e44c04a1f25eb4314a00dd52",
+      "bytes": 261141
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-empty-compact.json",
+      "sha256": "c1e48614618f180489565e54c03e0e75e4b0996e8d8ac2591785abf5a7683f97",
+      "bytes": 596
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-empty-compact.png",
+      "sha256": "289e81bdcaac2ad0a59242281ac742f444a15f64a7035e486dff4cbde6d9af57",
+      "bytes": 237369
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-empty-wide-1200.json",
+      "sha256": "08c8dd525799721e8c5a09b4e3aaaf712bae2409c88bfc20a871a26720e9f3b7",
+      "bytes": 600
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-empty-wide-1200.png",
+      "sha256": "7418afaadc83d60779c15e719a064553c873b521ce1eb85b82dd1b48b24f27e1",
+      "bytes": 93736
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-preferences-tab-first.json",
+      "sha256": "153ff99209a0601b35f13c5e3df65dfa7340800871c41bdb38005e142973d649",
+      "bytes": 612
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-preferences-tab-first.png",
+      "sha256": "1041ef57b7b51b56c769ff15b59b5a740584efed4a9a55cebced2d65fff09370",
+      "bytes": 280975
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-preferences-wide-retained.json",
+      "sha256": "bc77c09253d5006eef7d6451de75bb60709b46941294091c1eb221d5b7230582",
+      "bytes": 620
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-preferences-wide-retained.png",
+      "sha256": "cb31f676d2f26938534f2a10a325d84bda57e7ee7bc22827fad45e614ba9fbbe",
+      "bytes": 136301
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-shortcuts-tab-first.json",
+      "sha256": "8def9e5ccb4275e691a368c4ac511560428718d4d5dbd557b4961d60fc501ae4",
+      "bytes": 608
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/views/settings-shortcuts-tab-first.png",
+      "sha256": "1c15e846897e59440f6ae0bcd2ebe055039aa1a1e18b83fbbd065a74cec5576a",
+      "bytes": 295135
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/visual-review.json",
+      "sha256": "9179aaa3748deaa2948edd06762b7d8484a7d0d69d9470b9477c7ef5d436ac7f",
+      "bytes": 66169
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/gnome/watcher-registration.json",
+      "sha256": "1b37f1c79eccc4432a0df025c1f2ee87f3fd39d6dc524e17675dcca86db3067f",
+      "bytes": 906
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/01.command.json",
+      "sha256": "8d41dfa45d6301f28752fb3d9c7d072d9e2129a2c45124b6ccc1e375ec0a6c99",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/01.result.json",
+      "sha256": "a7111af892c0ed5fa54cf53d552da5640fc170840b3e0a672743620d9198a127",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/01.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/01.stdin",
+      "sha256": "f9b99944c4e79c493d95da472378e1ada621d39849f67a0992dd995987e18f3c",
+      "bytes": 55
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/01.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/02.command.json",
+      "sha256": "9d4e93ea5e858d57eeb76e430a51d3af723f77dec8c28b250d1138c41d6bad46",
+      "bytes": 632
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/02.result.json",
+      "sha256": "47d109230c810b5d6b85359344f2dc9f9da0b7b0a9814dc0fd23e7b9450bdf07",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/02.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/02.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/03.command.json",
+      "sha256": "b4611309d6ea816bb5568ea536d83ddf8a0f13cd50b548439f017b47e380470a",
+      "bytes": 634
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/03.result.json",
+      "sha256": "45d15c4ccc43c984c297234da684dca44c6bf98750272e65a1b13d0bef5f793b",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/03.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/03.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/04.command.json",
+      "sha256": "ce5f18f0dc0d790507e5c3a0345803bf65252de4c842d95a11bd7e4d7babd6df",
+      "bytes": 638
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/04.result.json",
+      "sha256": "a0942914577cec0844b4d1d5f3147c0b007e6e4adb02cc1219adda26803274c0",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/04.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/04.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/05.command.json",
+      "sha256": "0f89d79dc41af9f3ebd7c6ccef93d2bd7f4b85cd1f98d7cddf9425763c06085e",
+      "bytes": 642
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/05.result.json",
+      "sha256": "85ee0ba76b417b09c7e287d30d480e7a5247b8a2985645aef8534ad4a81e07f6",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/05.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/05.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/06.command.json",
+      "sha256": "29019f18ab5e0a0500b2da65268c2ca0548fa965797c94cd61b2e90e03e3f6e3",
+      "bytes": 578
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/06.result.json",
+      "sha256": "fae65da1a7258a4e75bb4d6d290f77dad89c1dfc599d66f3335c36c677e10465",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/06.stderr",
+      "sha256": "80725bf7711cdefe4d183de613de2ea0db4ae7aeed7ca50e5f5bb9b4c5f43f9d",
+      "bytes": 706
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/06.stdin",
+      "sha256": "e321bb24db0dea38f8e82287eba42604ba3554a4295d8fe6f6d25108b68612b4",
+      "bytes": 1159
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/06.stdout",
+      "sha256": "36efd7d916a5c5b4aa2699e03e579fc527f14103512b78eddeb4b4b7dd042a62",
+      "bytes": 34
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/07.command.json",
+      "sha256": "fc93aec2fb3aaa5cf0fd3af2487ea275b1118d778182611f0f2680541879f3a6",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/07.result.json",
+      "sha256": "5b10fb803fafd083175b7dd5ebdf5bc3702e89de99683f2478a0147287ea8679",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/07.stderr",
+      "sha256": "3fc29758c829f57feead72ebc4f23703637456b8dd50cb50264a91acde4bb1f3",
+      "bytes": 39
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/07.stdin",
+      "sha256": "40a5639893c66acb91994a5436b4fc0a1d16047087a137c81be04c4ba7c2167f",
+      "bytes": 857
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/07.stdout",
+      "sha256": "a026f50749b77d5334cac12915b1f6173f6bcfca23b769dc2405808bedf5e6ee",
+      "bytes": 65561
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/08.command.json",
+      "sha256": "b2d8bcb4b97de87219adbf9002b91dd20d3a8c495c1d85473954e81e30e37280",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/08.result.json",
+      "sha256": "404d8b9f8391ca0467e673cbd051cf1ae23f97aff8f177f55764fa543ac7d640",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/08.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/08.stdin",
+      "sha256": "b548c0d2f0e40caa518d15fe5070cb6019a0971010989f551f172ff50d990c6c",
+      "bytes": 96
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/08.stdout",
+      "sha256": "2ba3c0454606cc5f0cbbca48191b430572c8466f23b529f2184acc78801d7aaa",
+      "bytes": 107
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/09.command.json",
+      "sha256": "7ba79df889e3fd3964be11c175745ae00fa311aa4dae3c4f8b009da10cfa6699",
+      "bytes": 721
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/09.result.json",
+      "sha256": "25bf4ef4a1e7e6288ae346fd4ec1e32b34fa7627634255b4948108fa183396bb",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/09.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/09.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/10.command.json",
+      "sha256": "41452beaf2cdd4f59957e0b7f5e0b6abdbcb4fa2cd97906a7dd23198916843b6",
+      "bytes": 630
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/10.result.json",
+      "sha256": "6e65cbdab2125d53b5de8a8d2ef987c60200f19aaa6fd6757e18edb2d1cb8106",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/10.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/10.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/11.command.json",
+      "sha256": "8b44d6e4cdf2258fbd45ac9e96ea01deea41f08c108bd16b9ea5e05f701a6afc",
+      "bytes": 682
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/11.result.json",
+      "sha256": "f61abcc20d29981b30d77ec96b95d7fede9290c456331b00ab7cc5f5ac8693e8",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/11.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/11.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/complete.json",
+      "sha256": "3e7d9f436d1f6d1696fcfb859f1ea2862e194e7f2b1df12d9621aef7f0d54480",
+      "bytes": 188
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-attempts/20261009T041808469474-guest-build/request.json",
+      "sha256": "489971cd6573ce21cf613b622d0640450f16f8eb2e8205d1a4a723b837fe848d",
+      "bytes": 403
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build-info.json",
+      "sha256": "e222c40ae22a4b546ad239848dc64e04136b03ba19c18feea474bdb9ab1562d5",
+      "bytes": 339
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/build.json",
+      "sha256": "143d7c90db9282d070f27958ab87689df3408abbcf9550799ecf79344236c222",
+      "bytes": 823
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/console-unlock-receipt.json",
+      "sha256": "7802f42a3dbb232f4428446153fc6798690be5b780cf55b369e29bc26597e532",
+      "bytes": 318
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/dev.xml",
+      "sha256": "3d98026ab229a85b1d003e9f18947e94114ed825941ed20d8db1f0bfd00aaf16",
+      "bytes": 38823
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/01.command.json",
+      "sha256": "62c943edcbf417f398b558a6c24762fa5475a22dc8c7472d3012531a2f1fde7b",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/01.result.json",
+      "sha256": "ea6c20fdcd29136053119532e79c20aa3c81015d104d802d03696771418eaa32",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/02.command.json",
+      "sha256": "05c555b600a7d5a4fcc3d0841a426c956cd59f637255eb179f68eb0871712322",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/02.result.json",
+      "sha256": "44f52c4c95d1ce62c51837b96d3bde42bb8efe4c6195286494f2d7cc3a375b35",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/03.command.json",
+      "sha256": "bf2fc6642d2759952611f793f97f5e6beb9b54436b3abe7bbc5ad3db48b661bc",
+      "bytes": 319
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/03.result.json",
+      "sha256": "f968960ec23908d6025097637992ae6d3bd8cbbe49cfb04af61067ff058c77c1",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/04.command.json",
+      "sha256": "c7245bd8d7bbc0374427643960ff9240e4a072ff5d8c2351bbb07111a25f5ab4",
+      "bytes": 662
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/04.result.json",
+      "sha256": "79241625454a45bc60a5ca15a75ef5ce5ec7d681f7527a9ea3044fdb300a41ad",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/05.command.json",
+      "sha256": "cff8a897e4e188c6f9817348fe2493fd9378b56719f3948bf51556987b33b00c",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/05.result.json",
+      "sha256": "186b9a968764b7b8a537bf53f14ff11b4059d016c3878e1e1da1565f5387d497",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/06.command.json",
+      "sha256": "956f59dfc6467fd168d867ade26213a44160deb5774bfff47c67307accd14b58",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/06.result.json",
+      "sha256": "973899975032d4005887d9da612d59ccc029bbe14b6af5249f99f5661ca07f49",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/07.command.json",
+      "sha256": "669fa3dd943ef06395eed4f43e79b8c40fc385209111e13bfceac429d38ac0f5",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/07.result.json",
+      "sha256": "f4a3073f3a1cd6800a1ecc983b81f96244633fac3ce6b892804f537f91dddda3",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/complete.json",
+      "sha256": "8b4873144103b4cc008349ebaa61d5792e71161638c1167414b7af2d85f86ad8",
+      "bytes": 184
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043731798947-install/request.json",
+      "sha256": "745a04238eec9ec685e75fa2186052c6d9ae75adfaee872a7aa19f72e4151184",
+      "bytes": 399
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/01.command.json",
+      "sha256": "25d4b9785360d7ece524d5e234899b884ddbe2abbd36ff147ca8a9600518ce0a",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/01.result.json",
+      "sha256": "d963d1cf95b7336857d2ae3c84cbab7245ae9558640118f016c5b644d70e6afe",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/02.command.json",
+      "sha256": "e63a35c26b1ba7e02083c737d4e0c6b2a5bd11ab0bef62749d698560590d214d",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/02.result.json",
+      "sha256": "3fe9c1e548a1a98af4f58e2637fdf5e349d934d1c74543b3bd244da134619dc1",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/03.command.json",
+      "sha256": "252a89b848d064840818e0b306228d9da86dbbb8c3e60f366e459b91568e3bd6",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/03.result.json",
+      "sha256": "a0343e8165afd05d84916a5041c60210f0884831045d3efa632147cf35c2bb09",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/04.command.json",
+      "sha256": "78af560630b2c3af0ac33469914bd076763f4ce2c43adb4d22fb067204f730da",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/04.result.json",
+      "sha256": "08998600eba13c0e7ff83a7ef1a69c4bbb963594a236d98783bab2aa647cd427",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/05.command.json",
+      "sha256": "53c29896b34f9f21ca5197c47dfcbb90d8f5b60a733c5572ab1d7f89cf3883bc",
+      "bytes": 530
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/05.result.json",
+      "sha256": "4c841178520a47c98eb1dd017563fcef68a41518a1af9a4c577a0560f5408365",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/06.command.json",
+      "sha256": "41994e8fab421a1c88272b8090fd5db3c0bcac3ac0eed13ef181c01067e244f5",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/06.result.json",
+      "sha256": "1f1e50bb3f0147d9803f4bb317147dce79887069eb7c64c6bad873e072d1f24c",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/07.command.json",
+      "sha256": "44155190267d81b5f43ad461f5cae9502a593d6d9de1cedc333945cf48937965",
+      "bytes": 526
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/07.result.json",
+      "sha256": "8b44fa5114e5017f6038c9f9e67a9502afa531710b85e19ea74247a6e091232c",
+      "bytes": 73
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/complete.json",
+      "sha256": "a14be151e0bb2b143e75d1585ee5ee89db034e2fbf48ed4d16f674d4c8f6a09c",
+      "bytes": 182
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/identity-attempts/20261009T043822638845-start/request.json",
+      "sha256": "f0cbe721989447581275b1f53b98d563d7fc5c18ed09a9bd7aa77b2830d5f3cc",
+      "bytes": 397
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/install.json",
+      "sha256": "f6f21a65227994e0bea5b65da436233e30850e61e90f2b28ee7671f53debabf6",
+      "bytes": 2395
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/installed.json",
+      "sha256": "be8d9f31981d58eed12760ad7730a0a6d56eedc7ee6f5bce56b74bee2763f2e0",
+      "bytes": 993
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/01-qt-region/final.png",
+      "sha256": "1db92b9228e45e6da4bd5a00b6169fea995023e8a3b3ffe2f5ee07b99ebef760",
+      "bytes": 83831
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/01-qt-region/parameters.json",
+      "sha256": "077508fde67c07865228218aaf5d1c4943f69817a662382ccfabf4c08a14610c",
+      "bytes": 3410
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/01-qt-region/results.json",
+      "sha256": "bdd842f8fe339a05f0929f274e88aad884f10ad51cc5075423ea9991622f08a4",
+      "bytes": 2603
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/01-qt-region/results.xml",
+      "sha256": "24128f1ae2c10af3b89e6e7d13ba5094e7a6e83624504652ef2fc8fb84fd3343",
+      "bytes": 197
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/01-qt-region/test-events.jsonl",
+      "sha256": "eaf23a87a3151a5d66192e3fee8ff63f4028c8679edf067f9bf92d514abac63f",
+      "bytes": 604
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/01-qt-region/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/02-qt-window/final.png",
+      "sha256": "540a0177a5d67c0677a87a6644c71f0aae78571f5ec1bb5c761099fd52a8300c",
+      "bytes": 83831
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/02-qt-window/parameters.json",
+      "sha256": "68b92e5271f5455ef21b75a5945f6e388a95c234eeaf44e77ca4c179dd766502",
+      "bytes": 3349
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/02-qt-window/results.json",
+      "sha256": "2584b877c0f6d34c48770dd35e17d40a8df33acde0913fe767ab8db2489303de",
+      "bytes": 2667
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/02-qt-window/results.xml",
+      "sha256": "5987a9f572a07f01c205fb6469a219f5828dc8edc8cbda878a26443ed709fd28",
+      "bytes": 198
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/02-qt-window/test-events.jsonl",
+      "sha256": "dceabdadfdc9574f0da230218e3f03b8695947c9581409cfa60908c8c6b13931",
+      "bytes": 605
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/02-qt-window/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/03-qt-desktop/final.png",
+      "sha256": "1db92b9228e45e6da4bd5a00b6169fea995023e8a3b3ffe2f5ee07b99ebef760",
+      "bytes": 83831
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/03-qt-desktop/parameters.json",
+      "sha256": "8de9c6fa81e5f8f8ba4127c319ccf76e061762158a6e2cabdb891e8d489541b2",
+      "bytes": 3297
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/03-qt-desktop/results.json",
+      "sha256": "05a14c30f152fbe643534013909a2ca24ea647353de702111e297736af338880",
+      "bytes": 2614
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/03-qt-desktop/results.xml",
+      "sha256": "a2f02512468666c7518d353e1c1b996a41ca4c4eae734516c4049d3022b9adc5",
+      "bytes": 199
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/03-qt-desktop/test-events.jsonl",
+      "sha256": "daa805963068092eafd6000a7324193f2e67f4a4235c95d47916d5b5d349c7f4",
+      "bytes": 607
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/03-qt-desktop/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/04-qt-clipboard-text/final.png",
+      "sha256": "540a0177a5d67c0677a87a6644c71f0aae78571f5ec1bb5c761099fd52a8300c",
+      "bytes": 83831
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/04-qt-clipboard-text/parameters.json",
+      "sha256": "9f6c1e0f1cf19a57c3d5c5725807b8232ca5ce3e492018c049646778f3619e11",
+      "bytes": 3168
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/04-qt-clipboard-text/results.json",
+      "sha256": "7da92ed6f0819b1ae8ed4718c737f47191e12646b273f5e58d6fba44ede9d402",
+      "bytes": 2606
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/04-qt-clipboard-text/results.xml",
+      "sha256": "da8db70e0b31eedff8f2b5148eae2613f4038b50f999ecb3f8735f70abc40787",
+      "bytes": 204
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/04-qt-clipboard-text/test-events.jsonl",
+      "sha256": "343a4eae0eeec958f4553569ecfecb086612f97f1dfaeffc63a31317c3e8eb61",
+      "bytes": 619
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/04-qt-clipboard-text/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/05-qt-clipboard-image/final.png",
+      "sha256": "540a0177a5d67c0677a87a6644c71f0aae78571f5ec1bb5c761099fd52a8300c",
+      "bytes": 83831
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/05-qt-clipboard-image/parameters.json",
+      "sha256": "2ac9d9f6a8697f3dd06238511be35ebe3e154a1eb4382f9f89fcaa07a876ba15",
+      "bytes": 3308
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/05-qt-clipboard-image/results.json",
+      "sha256": "d7005084ece0ce3eecab96d162f98a1b6dca5eaf41a80ad8b9dceb8e8b341f26",
+      "bytes": 2613
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/05-qt-clipboard-image/results.xml",
+      "sha256": "824d3d6f995b4185e3a25b45439e579cef39f817e3065b7b7b22ebf7c65b10fe",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/05-qt-clipboard-image/test-events.jsonl",
+      "sha256": "d81b383755e00c5ac6552b1c06646ee148b2e86979f1d51fdb7e375b79405aa3",
+      "bytes": 623
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/05-qt-clipboard-image/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/06-qt-clipboard-files/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "bytes": 84146
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/06-qt-clipboard-files/parameters.json",
+      "sha256": "a90db39f5a23f6ab07a3267cbf05bae4f19d3d381a2127d14f435658821182f3",
+      "bytes": 3171
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/06-qt-clipboard-files/results.json",
+      "sha256": "8ce632bb49a83d30373eff4dac1dee133f444b4b3cd11a94dd7ce3f66be63003",
+      "bytes": 2682
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/06-qt-clipboard-files/results.xml",
+      "sha256": "5055396caa73a07af2ab02f6f4b2b81e68eab003997c84183020ceee56ff3fef",
+      "bytes": 206
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/06-qt-clipboard-files/test-events.jsonl",
+      "sha256": "1b0060476590d82f14847cfba79d2bf27882c165c16cd69e9aba0aa9f47208ea",
+      "bytes": 622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/06-qt-clipboard-files/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/07-qt-region-cancel-escape/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "bytes": 84146
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/07-qt-region-cancel-escape/parameters.json",
+      "sha256": "1dfadd92f86241ba83f5fa42ae427c58f85831b7da4ba8ecba03894d1e5c2807",
+      "bytes": 3112
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/07-qt-region-cancel-escape/results.json",
+      "sha256": "b91041a9cdb825b30f2e93881732897a02b2d133776c773bb620bc368e959cb0",
+      "bytes": 2123
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/07-qt-region-cancel-escape/results.xml",
+      "sha256": "a1502ad4c01b7b2c0bc3e0062e16afef215547a18803aa67d5bcd6d1d3045216",
+      "bytes": 211
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/07-qt-region-cancel-escape/test-events.jsonl",
+      "sha256": "a15e269544b0e184259402abcc28cad9e5aa750520742f26e0d7dae2a73c7c7e",
+      "bytes": 632
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/07-qt-region-cancel-escape/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/08-qt-region-cancel-right-click/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "bytes": 84146
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/08-qt-region-cancel-right-click/parameters.json",
+      "sha256": "24ab805c72d556aeb712334fffc93934ff2c179f25f514604d3b8fc9626cc9dc",
+      "bytes": 3122
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/08-qt-region-cancel-right-click/results.json",
+      "sha256": "33cf87aa6a3df704dced774c171b525115babfc38ac309ecc7af15f34bfb75be",
+      "bytes": 2128
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/08-qt-region-cancel-right-click/results.xml",
+      "sha256": "413d0b9ede8ad07fbad2b494c7ac6dfe23b5685b4bb54e1f7230f371dfa764aa",
+      "bytes": 216
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/08-qt-region-cancel-right-click/test-events.jsonl",
+      "sha256": "78fd9e3d33bfb692001223b21c3d45578391e3f096987049641f798290849f0e",
+      "bytes": 642
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/08-qt-region-cancel-right-click/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/09-qt-region-cancel-zero-area/final.png",
+      "sha256": "83bd0f9bd98385f4f2495f87099667a46611b8907b30ffb877a51fcdfa73e04e",
+      "bytes": 84146
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/09-qt-region-cancel-zero-area/parameters.json",
+      "sha256": "e2e540405e300e3413a77640410ac777d188abbe3e76a8880c9590a656937713",
+      "bytes": 3118
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/09-qt-region-cancel-zero-area/results.json",
+      "sha256": "a2b5bfce125e852f3aa7b7176b99c9c95cd376ad27ae3be5aa857288a547cb78",
+      "bytes": 2125
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/09-qt-region-cancel-zero-area/results.xml",
+      "sha256": "6f7cb2351ebee71f45e89e700498f7aa4f9968811cd6517a8905e2c2560a7624",
+      "bytes": 213
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/09-qt-region-cancel-zero-area/test-events.jsonl",
+      "sha256": "aa5c7e5753acdbbf20741dadf3f8e30af20da868e1d6f9295b179fc19034a21c",
+      "bytes": 637
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/09-qt-region-cancel-zero-area/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/10-gtk-clipboard-text/final.png",
+      "sha256": "6f54f450d436f3158d5dc6d3e05150aaa622e60b5566f1f2c6737c639244466e",
+      "bytes": 77423
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/10-gtk-clipboard-text/parameters.json",
+      "sha256": "1fe3c19d6fc01936f3c5ac1e353e9eb09343b7a78171f2e72e32b32a181628bc",
+      "bytes": 3071
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/10-gtk-clipboard-text/results.json",
+      "sha256": "c00cf4ad0cc97f4884c8e2de56f3df858d9797eceb2ab591136cd2d2d7d4775e",
+      "bytes": 2531
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/10-gtk-clipboard-text/results.xml",
+      "sha256": "7f75d89d24ada578598669c1b198f21df62be5beae565f1a06223977f445ae4b",
+      "bytes": 206
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/10-gtk-clipboard-text/test-events.jsonl",
+      "sha256": "2c6e9479c1df915d176be649a19f54030446a1eb9f2f60104da15f1e158bc5a5",
+      "bytes": 622
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/10-gtk-clipboard-text/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/11-gtk-clipboard-image/final.png",
+      "sha256": "cd9a84e2342b88468732eb8c1d020b26315acd33ca08a5c5f666fa5473592853",
+      "bytes": 77528
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/11-gtk-clipboard-image/parameters.json",
+      "sha256": "b788b973bc53112d8443bbb24d338e12dc2eda22404899bc3a38be56094068ea",
+      "bytes": 3211
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/11-gtk-clipboard-image/results.json",
+      "sha256": "38618fb0883bc7d8f686eef74d89a44ce32e3afea080229b2282660921937e15",
+      "bytes": 2568
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/11-gtk-clipboard-image/results.xml",
+      "sha256": "f2eee663f7b68accab1e8c1588e6029361d286f214be8c9a4968c298d4d23d7a",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/11-gtk-clipboard-image/test-events.jsonl",
+      "sha256": "e3d1ffab43ee4c9011bcedb9ad5e57b53ba9f43aa5d371332d558536b8a45090",
+      "bytes": 624
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/11-gtk-clipboard-image/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/12-gtk-clipboard-files/final.png",
+      "sha256": "cd9a84e2342b88468732eb8c1d020b26315acd33ca08a5c5f666fa5473592853",
+      "bytes": 77528
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/12-gtk-clipboard-files/parameters.json",
+      "sha256": "1d6c1f92a6a1305b099e7a0ff5f8e879b8fa347dd737e9ac354eb32fa194e65a",
+      "bytes": 3074
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/12-gtk-clipboard-files/results.json",
+      "sha256": "e7b6cbb3a8dbedb8e7aa2d52e65e76b99eb5bfa579f8fd327440b01f902aec86",
+      "bytes": 2822
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/12-gtk-clipboard-files/results.xml",
+      "sha256": "f9f92ecb54b657651fbe3bf0db1e6a8252140c4b5af3cd6e99872fd639d927b6",
+      "bytes": 207
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/12-gtk-clipboard-files/test-events.jsonl",
+      "sha256": "555e5291430e4c7cb43994e9c0a5688c84d9b0e4d303b4341181c0fb756b9e15",
+      "bytes": 624
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix/12-gtk-clipboard-files/versions.json",
+      "sha256": "44e9d7d8f1547069dc413a80cf139a0d3ec519b3c3c0883af483a7b3b1e9eba7",
+      "bytes": 484
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix-contact-1.png",
+      "sha256": "dd12b85c41f95b84f370a81e5b460ce606e0a0621842c5e83ba296da97517170",
+      "bytes": 102433
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix-contact-2.png",
+      "sha256": "86876e0e85c4e6cbc7341201f8f822bba807227283a7000312b1fe1418312b55",
+      "bytes": 103528
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix-contact-3.png",
+      "sha256": "1b206151b763bb714942d7073d3d8b69f7edb117d21ae8e516c0061dcfb1f1f9",
+      "bytes": 100999
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/matrix.json",
+      "sha256": "cc4155788b14744d180231f86ac7a1b3808b0f9d28814145f0f9a3f9a8631cea",
+      "bytes": 40101
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/root-settled-add-review.json",
+      "sha256": "650a7c1a5153e10c3be6497c80c6de044019734d1448f1926dadbc338a845ffa",
+      "bytes": 1691
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/start.json",
+      "sha256": "fbd29a5e476d0ab9751f648789cf1bfaa11613b3986be30f9f992a80690e8b0f",
+      "bytes": 629
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-compact-capture-shift-tab.json",
+      "sha256": "a816b797f6cdb102232dd74cab98536fdc4e93acfb6282bc4d31bfa9d82fb215",
+      "bytes": 616
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-compact-capture-shift-tab.png",
+      "sha256": "32ef1cd0037e48fc770c4d1fbbb921640e3885aace095d04b80bdcf9f15f364f",
+      "bytes": 100694
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-compact-capture-tab.json",
+      "sha256": "7a8066ac315cbd88a57c1ffa4057bfdef4221688c5bbc4e5323ee3d98c05c540",
+      "bytes": 604
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-compact-capture-tab.png",
+      "sha256": "567d5cab63d90f782e1c7dc8157f8c1886405216d16e5b660bc829173ea2c932",
+      "bytes": 100876
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-compact-shortcuts.json",
+      "sha256": "285212d433bc99f7d1a33f1b67a9d9a0bb44b78ea7cfa5c2db849d756b7eddda",
+      "bytes": 600
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-compact-shortcuts.png",
+      "sha256": "01dfde25c554fa98325b289ecf277643fbca4c78bbc4613b19ad5bb17e596e58",
+      "bytes": 121114
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-configured-cancel.json",
+      "sha256": "f2b0c14b04e5a03bfcfc3133eca90c43df6d27d28259da51de77139b0ca69dd1",
+      "bytes": 600
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-configured-cancel.png",
+      "sha256": "a5404875cb2ddc6cb009ab74452c19ec9303a9399b1d8dd1d4d53295d79858b2",
+      "bytes": 86678
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-configured-compact-advanced.json",
+      "sha256": "1708b1623d1fccf54f3510618f812d56cefb75c88b8cf45090333d4d236bf69b",
+      "bytes": 620
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-configured-compact-advanced.png",
+      "sha256": "3ceb22a24239edd982e9407f26c9e911963b71c21a88f91e7156a3bde8767cb6",
+      "bytes": 112140
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-configured-wide-simple-settled.json",
+      "sha256": "3c5a0780f9cbc39eca4b34a063bef313310be1f0f395830658e70614d5fd29dc",
+      "bytes": 626
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-configured-wide-simple-settled.png",
+      "sha256": "5577025d96d1d883e23b59a606582e4bdcc0d1d02de98402f8a072725b4fcf81",
+      "bytes": 84220
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-compact-add-draft.json",
+      "sha256": "6454e68d23f357d4930b2dbc0a16077dd07b4af7095b5372a7b140367b3f90e7",
+      "bytes": 612
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-compact-add-draft.png",
+      "sha256": "c3f3d1b7a6b1c7c0dd29b6aff64ec6749c393fd70084cd8ee463a9437c6f7ec6",
+      "bytes": 81258
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-compact-collapsed.json",
+      "sha256": "73afbe9b46c30b90e1bad226f17d418653fa84105458941b2780a1bdb3683d87",
+      "bytes": 612
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-compact-collapsed.png",
+      "sha256": "e43bfd0da4909e19fcad6478ecf9b6d2cd7056cbae96764aa8ceb76d549bd6a1",
+      "bytes": 55248
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-wide-missing-add-settled.json",
+      "sha256": "b0cbcc94660c35ead04e5eab9a8d13875afdde92937c552cc281fe7022cf8bec",
+      "bytes": 626
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-wide-missing-add-settled.png",
+      "sha256": "150d8b16f7a89073e14ede0ab56e2ed11d294f5db4024dc7995b097d9feb8f9e",
+      "bytes": 57687
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-wide-recovery-collapsed.json",
+      "sha256": "397874dce12e7cbbb90e62ccfa64f5b7bd361b54b8ff34863fb2dca26aed9517",
+      "bytes": 624
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-wide-recovery-collapsed.png",
+      "sha256": "956be3e833422df8d3b0ef49183ff3a3cae7cdd89f1af5ff565be0cd618a570a",
+      "bytes": 57691
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-wide-settled.json",
+      "sha256": "98e259a7027dae83f06e10485aa93988e2d7bc4aa335ce7a2ffa9c6f71186fd2",
+      "bytes": 602
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/views/settings-empty-wide-settled.png",
+      "sha256": "1ca9f3ab6a4ee841925546591ee28f2b92716dbab9622a694f3d0481c1a0198e",
+      "bytes": 62527
+    },
+    {
+      "path": "docs/evidence/2026-10-09-lazy-settings-native-raw/kde/visual-review.json",
+      "sha256": "9677f7aec38d7e3353d13e4df60b3820719cce1a679f44f1d0bc4a314edd503b",
+      "bytes": 51941
+    }
+  ]
+}

@@ -1,0 +1,509 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:22:01.687724+00:00",
+  "status": "complete_read_only_dashboard_and_guest_identity_audit",
+  "scope": "Read-only memory-dashboard and display-wall API plus already collected independent guest metadata. No extra guest sampling, screenshots, GUI input, captures, uploads, configuration/payload/key/environment/full-command-line reads or app/VM changes.",
+  "endpointClarification": {
+    "memoryDashboard": "http://127.0.0.1:8767/",
+    "displayWall": "http://127.0.0.1:8765/",
+    "initial8765Scope": "Display wall inspected before user clarified memory dashboard URL; it computes no memory metric. Its identity inventory is retained only to map visible VMs."
+  },
+  "dashboard": {
+    "url": "http://127.0.0.1:8767/",
+    "api": "/api",
+    "actualHtmlMatchesInspectedSource": true,
+    "linuxMetric": "Per-process RSS from /proc/<guestPID>/status VmRSS. Shared resident pages included; not proportional/exclusive memory.",
+    "rawCalculation": "rssBytes = integer(VmRSS kB) * 1024",
+    "displayCalculation": "currentMiB = rssBytes / 1048576, rendered to two decimal places",
+    "displayUnits": "MiB (2^20 bytes); distinct from decimal MB (10^6 bytes)",
+    "cardCurrentCalculation": "Latest saved sampled RSS for this exact source/boot/PID/starttime session",
+    "cardSampledPeakCalculation": "MAX(rss) across all saved session samples, not OS lifetime VmHWM",
+    "cardAverageCalculation": "AVG(rss) across all saved session samples",
+    "chartCalculation": "Selected window, roughly at most 600 time buckets, each plots MAX(rss); exports preserve individual samples",
+    "metricWindowLimit": "Card current/peak/average stay whole-session values when a chart/recording time window is selected.",
+    "identityCalculation": "sessionId = hex(SHA256(source + \":\" + bootId + \":\" + guestPID + \":\" + guestStartTicks))[0:24]",
+    "configuredSampleIntervalSeconds": 1,
+    "browserRefreshSeconds": 1,
+    "guestTargetDiscoverySeconds": 5,
+    "timestampMeaning": "Remote collector sends counters/identity; server time.time() when ingesting records the sample timestamp. UI age reflects server receipt time, not separately transmitted guest capture time.",
+    "uiFreshnessCalculation": "ended is null and api.now - session.last < max(5, 3 * intervalSeconds)",
+    "uiSourceFreshness": "Connected source older than same threshold is labeled stale; unavailable data is not extrapolated.",
+    "sources": [
+      {
+        "path": "work/memory-monitor/collector.py",
+        "lines": [
+          7,
+          20,
+          24,
+          25,
+          28,
+          30,
+          31,
+          40,
+          41
+        ],
+        "sha256": "774e182c8d8d7ac5a6777c2a96f3c291c8e4767f81baccf987da147451371235"
+      },
+      {
+        "path": "work/memory-monitor/server.py",
+        "lines": [
+          97,
+          103,
+          104,
+          110,
+          116,
+          138,
+          142,
+          154,
+          210,
+          227,
+          233,
+          234,
+          235,
+          236,
+          237,
+          240,
+          284,
+          311,
+          312
+        ],
+        "sha256": "c2e2d4a4328a6c760c10ad85568f7145871fba1fba0bebf880f08fe561c20fd6"
+      },
+      {
+        "path": "work/memory-monitor/index.html",
+        "lines": [
+          10,
+          12,
+          15,
+          16,
+          18
+        ],
+        "sha256": "4cf40e749f91830067e098b9f790643c3ff05e73489e9125f611583a875eb77f"
+      }
+    ]
+  },
+  "apiObservation": {
+    "requestedAtUtc": "2026-10-08T20:18:56.005489+00:00",
+    "serverNowUnixSeconds": 1791490736.0368075,
+    "serverNowUtc": "2026-10-08T20:18:56.036808+00:00",
+    "sourceStates": {
+      "lab/fresh-cinnamon-u9-20261008": {
+        "state": "connected",
+        "last": 1791490735.0380526,
+        "count": 1
+      },
+      "lab/kde-001": {
+        "state": "connected",
+        "last": 1791490735.6886864,
+        "count": 1
+      },
+      "lab/gnome-001": {
+        "state": "connected",
+        "last": 1791490735.7099805,
+        "count": 1
+      }
+    },
+    "responseSha256": "7a9a18c1871c8e7bdb5e073f6b3c2a436254fd18f8a6fea44e9856f2d2ea6038",
+    "artifact": "/tmp/putgd-memory-dashboard-http-inspection.json",
+    "artifactSha256": "cad65fbb9540e9ede3d9aaade5c8b9428cca4ef5ebdb6ce87d5d51890ec3fc98"
+  },
+  "guestCorrelations": [
+    {
+      "source": "lab/gnome-001",
+      "vm": "gnome-001",
+      "hostQemuPid": 1673704,
+      "wallMachineId": "7998af592fdfe28a268d",
+      "sshPort": 22222,
+      "vncPort": 5922,
+      "guestPid": 10255,
+      "guestStartTicks": 114619,
+      "dashboardSessionId": "7cbb88b9e0b87707aa564f17",
+      "metric": "RSS",
+      "currentBytes": 116670464,
+      "currentMiB": 111.265625,
+      "displayedCurrentMiB": "111.27",
+      "sampledPeakBytes": 116670464,
+      "sampledAverageBytes": 116670464.0,
+      "sampleCount": 861,
+      "lastServerReceiptUnixSeconds": 1791490735.7099805,
+      "ageSecondsAtApiRead": 0.3268270492553711,
+      "liveByUi": true,
+      "guestSampleUtc": "2026-10-08T20:17:53.855707+00:00",
+      "guestStatusRssBytes": 116670464,
+      "guestSmapsPssBytes": 74563584,
+      "guestSmapsPssMiB": 71.109375,
+      "guestElfBuildId": "6480a776a7cb2315b1feae77aa787655ddd0a3fa",
+      "guestExecutableSha256": "069464ceec908acf2f392e564706eca78e844356ae5b0446b988ce05d3e1b635",
+      "kernel": "7.0.0-38-generic",
+      "loadedFamilies": {
+        "officialAwsSdkOrCrt": true,
+        "curl": true,
+        "qtNetwork": true,
+        "gtk": true,
+        "wayland": true,
+        "xcb": true,
+        "tlsCrypto": true
+      },
+      "largestMappingBasenames": [
+        {
+          "basename": "[heap]",
+          "rssBytes": 24326144,
+          "pssBytes": 24326144
+        },
+        {
+          "basename": "libQt6Gui.so.6.10.2",
+          "rssBytes": 7012352,
+          "pssBytes": 7012352
+        },
+        {
+          "basename": "memfd:[other]",
+          "rssBytes": 6471680,
+          "pssBytes": 3362816
+        }
+      ],
+      "identityAndRssMatchIndependentGuestCollector": true,
+      "hostQemuStartTicks": 21971090,
+      "directElfDependencies": [
+        "libcurl.so.4",
+        "libaws-cpp-sdk-s3.so",
+        "libaws-cpp-sdk-core.so",
+        "libQt6Network.so.6"
+      ],
+      "linkedDirectlyToAwsCurlAndQtNetwork": true,
+      "buildSupplementUtc": "2026-10-08T20:19:43.261009+00:00",
+      "nativeQtLibraryBasenames": [
+        "libQt6Core.so.6.10.2",
+        "libQt6Gui.so.6.10.2",
+        "libQt6WaylandClient.so.6.10.2"
+      ]
+    },
+    {
+      "source": "lab/kde-001",
+      "vm": "kde-001",
+      "hostQemuPid": 1691093,
+      "wallMachineId": "677c7619ce0c99c32049",
+      "sshPort": 22224,
+      "vncPort": 5924,
+      "guestPid": 37517,
+      "guestStartTicks": 516634,
+      "dashboardSessionId": "d3c186cb68974c4ee88c192b",
+      "metric": "RSS",
+      "currentBytes": 187928576,
+      "currentMiB": 179.22265625,
+      "displayedCurrentMiB": "179.22",
+      "sampledPeakBytes": 187928576,
+      "sampledAverageBytes": 187928576.0,
+      "sampleCount": 863,
+      "lastServerReceiptUnixSeconds": 1791490735.6886864,
+      "ageSecondsAtApiRead": 0.34812116622924805,
+      "liveByUi": true,
+      "guestSampleUtc": "2026-10-08T20:17:55.363497+00:00",
+      "guestStatusRssBytes": 187928576,
+      "guestSmapsPssBytes": 69904384,
+      "guestSmapsPssMiB": 66.666015625,
+      "guestElfBuildId": "cd4ffb58690f7af00d3e5f6cfafdd180b6df6e4e",
+      "guestExecutableSha256": "1629653eb0e785b0c2889b4fc6899403ede2e68a9858e6b4a28f48df2c0f942d",
+      "kernel": "7.0.0-30-generic",
+      "loadedFamilies": {
+        "officialAwsSdkOrCrt": true,
+        "curl": true,
+        "qtNetwork": true,
+        "gtk": false,
+        "wayland": true,
+        "xcb": true,
+        "tlsCrypto": true
+      },
+      "largestMappingBasenames": [
+        {
+          "basename": "libLLVM.so.21.1",
+          "rssBytes": 50622464,
+          "pssBytes": 5963776
+        },
+        {
+          "basename": "[heap]",
+          "rssBytes": 31584256,
+          "pssBytes": 31584256
+        },
+        {
+          "basename": "libgallium-26.0.8-1ubuntu0.3.so",
+          "rssBytes": 10616832,
+          "pssBytes": 1760256
+        }
+      ],
+      "identityAndRssMatchIndependentGuestCollector": true,
+      "hostQemuStartTicks": 22115146,
+      "directElfDependencies": [
+        "libcurl.so.4",
+        "libaws-cpp-sdk-s3.so",
+        "libaws-cpp-sdk-core.so",
+        "libQt6Network.so.6"
+      ],
+      "linkedDirectlyToAwsCurlAndQtNetwork": true,
+      "buildSupplementUtc": "2026-10-08T20:19:43.735084+00:00",
+      "nativeQtLibraryBasenames": [
+        "libQt6Core.so.6.10.2",
+        "libQt6Gui.so.6.10.2",
+        "libQt6WaylandClient.so.6.10.2"
+      ],
+      "kwinRenderer": {
+        "timestampUtc": "2026-10-08T20:20:43.919358+00:00",
+        "rendererLines": [
+          "Compositing is active",
+          "Compositing Type: OpenGL",
+          "OpenGL vendor string: Mesa",
+          "OpenGL renderer string: llvmpipe (LLVM 21.1.8, 256 bits)",
+          "OpenGL version string: 4.5 (Core Profile) Mesa 26.0.8-1ubuntu0.3",
+          "OpenGL shading language version string: 4.50",
+          "Driver: LLVMpipe",
+          "GPU class: Unknown",
+          "OpenGL version: 4.5",
+          "GLSL version: 4.50",
+          "Mesa version: 26.0.8",
+          "Direct rendering: Requires strict binding: no"
+        ],
+        "limit": "KWin compositor renderer proven; putgd-specific GL context not observed."
+      }
+    },
+    {
+      "source": "lab/fresh-cinnamon-u9-20261008",
+      "vm": "fresh-cinnamon-u9-20261008",
+      "hostQemuPid": 1794904,
+      "wallMachineId": "fd9bdecde74b6f8e2a26",
+      "sshPort": 22235,
+      "vncPort": 5935,
+      "guestPid": 28253,
+      "guestStartTicks": 2487381,
+      "dashboardSessionId": "a0dca5c0aa7801ba2329f029",
+      "metric": "RSS",
+      "currentBytes": 58830848,
+      "currentMiB": 56.10546875,
+      "displayedCurrentMiB": "56.11",
+      "sampledPeakBytes": 58830848,
+      "sampledAverageBytes": 58830848.0,
+      "sampleCount": 860,
+      "lastServerReceiptUnixSeconds": 1791490735.0380526,
+      "ageSecondsAtApiRead": 0.9987549781799316,
+      "liveByUi": true,
+      "guestSampleUtc": "2026-10-08T20:17:56.297315+00:00",
+      "guestStatusRssBytes": 58830848,
+      "guestSmapsPssBytes": 33797120,
+      "guestSmapsPssMiB": 32.2314453125,
+      "guestElfBuildId": "0b445c4abad454143b18cfa5e81bb7786b6ffc6c",
+      "guestExecutableSha256": "a9e9ca0b0da48c5710eb547b779855fb1eb4cab2388a5d9e8ff3b4dd8ff96153",
+      "kernel": "6.14.0-37-generic",
+      "loadedFamilies": {
+        "officialAwsSdkOrCrt": true,
+        "curl": true,
+        "qtNetwork": true,
+        "gtk": true,
+        "wayland": true,
+        "xcb": true,
+        "tlsCrypto": true
+      },
+      "largestMappingBasenames": [
+        {
+          "basename": "libQt6Gui.so.6.4.2",
+          "rssBytes": 5300224,
+          "pssBytes": 5300224
+        },
+        {
+          "basename": "libQt6Core.so.6.4.2",
+          "rssBytes": 4075520,
+          "pssBytes": 4075520
+        },
+        {
+          "basename": "[heap]",
+          "rssBytes": 4055040,
+          "pssBytes": 4055040
+        }
+      ],
+      "identityAndRssMatchIndependentGuestCollector": true,
+      "hostQemuStartTicks": 22832108,
+      "directElfDependencies": [
+        "libcurl.so.4",
+        "libaws-cpp-sdk-s3.so",
+        "libaws-cpp-sdk-core.so",
+        "libQt6Network.so.6"
+      ],
+      "linkedDirectlyToAwsCurlAndQtNetwork": true,
+      "buildSupplementUtc": "2026-10-08T20:19:44.188581+00:00",
+      "nativeQtLibraryBasenames": [
+        "libQt6Core.so.6.4.2",
+        "libQt6Gui.so.6.4.2"
+      ]
+    }
+  ],
+  "displayWallInventory": [
+    {
+      "id": "7998af592fdfe28a268d",
+      "pid": 1673704,
+      "name": "gnome-001",
+      "available": true,
+      "runDirectory": "work/lab-runs/gnome-001",
+      "declaredLab": {
+        "schemaVersion": 1,
+        "id": "39842e57-15fa-4ce5-b801-8392191052f1",
+        "profile": "gnome-wayland",
+        "pid": 1673704,
+        "guest_user": "lab",
+        "ssh_port": 22222,
+        "vnc_display": 22,
+        "acceleration": "kvm"
+      },
+      "declaredVncPort": 5922,
+      "stateSha256": "59bef8ef07f5f19a81c0e98c9293c1250f53805eecd6d2ccf45dabe251207036"
+    },
+    {
+      "id": "677c7619ce0c99c32049",
+      "pid": 1691093,
+      "name": "kde-001",
+      "available": true,
+      "runDirectory": "work/lab-runs/kde-001",
+      "declaredLab": {
+        "schemaVersion": 1,
+        "id": "5d8ae43f-5552-4eba-b4c2-f077975b84fe",
+        "profile": "kde-wayland",
+        "pid": 1691093,
+        "guest_user": "lab",
+        "ssh_port": 22224,
+        "vnc_display": 24,
+        "acceleration": "kvm"
+      },
+      "declaredVncPort": 5924,
+      "stateSha256": "acf71db5b9229c88d52f4e98d35741f0e121a4358f75f087f736c421cbe899d8"
+    },
+    {
+      "id": "fd9bdecde74b6f8e2a26",
+      "pid": 1794904,
+      "name": "fresh-cinnamon-u9-20261008",
+      "available": true,
+      "runDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008",
+      "declaredLab": {
+        "schemaVersion": 1,
+        "id": "5984bcb6-b56b-4b1d-9f92-274defa6127e",
+        "profile": "cinnamon-x11",
+        "pid": 1794904,
+        "guest_user": "lab",
+        "ssh_port": 22235,
+        "vnc_display": 35,
+        "acceleration": "kvm"
+      },
+      "declaredVncPort": 5935,
+      "stateSha256": "63a4a851a0c139980d869053ca4d2bb317c1ddd39e0a5b703d85910217e560f4"
+    }
+  ],
+  "displayWallObservationArtifact": "/tmp/putgd-vm-dashboard-http-inspection.json",
+  "conclusion": {
+    "reported170Plus": "Verified: live KDE RSS is 187928576 bytes = 179.22265625 MiB, rendered 179.22 MiB; independent guest status agrees exactly.",
+    "dashboardErrorsObserved": [],
+    "comparisonLimit": "The guest agent additionally confirms resident ELF direct AWS/curl/QtNetwork linkage; these are pre-module/direct-link builds. Their old resident and differing native Qt/graphics stacks cannot be treated as the current optimized cold-idle candidate.",
+    "rssVsPss": "KDE RSS179.22265625 MiB versus PSS66.666015625 MiB; LLVM alone has48.27734375 MiB RSS but5.6875 MiB PSS. These counters support large shared graphics-library attribution, not an exclusive179 MiB heap or leak claim.",
+    "oldProcessHistory": "No process restart or cold-workload normalization was performed; post-use state is unverified.",
+    "compositorEvidence": "KWin supportInformation reports llvmpipe (LLVM21.1.8/Mesa26.0.8); this is compositor proof, not putgd-specific GL context proof."
+  },
+  "guestAttribution": {
+    "owner": "/root/memory_late_sdk_module",
+    "artifact": "/tmp/putgd-vm-memory-audit.json",
+    "status": "complete_frozen",
+    "noDuplicateGuestStats": true,
+    "sha256": "e439bf2b244eac4edeadd672c0211b135bffcaf0779274619340742bbe8db1cb",
+    "artifactBytes": 290770,
+    "noFurtherGuestSamples": true
+  },
+  "limits": [
+    "No physical memory acceptance or fresh-build comparison was rerun.",
+    "No guest configuration/history/payload inspected and no inference that all retained heap is reclaimable.",
+    "PSS and shared-library mapping attribution explain counters but do not establish causality of all allocation or a leak.",
+    "RSS is the retained acceptance metric; PSS is explanatory and does not replace an RSS threshold or establish a pass."
+  ],
+  "accessAttempts": [
+    {
+      "surface": "localhost8765",
+      "mode": "sandbox",
+      "result": "EPERM"
+    },
+    {
+      "surface": "localhost8765",
+      "mode": "authorized require_escalated",
+      "result": "Read-only GETs succeeded"
+    },
+    {
+      "surface": "localhost8767",
+      "mode": "authorized require_escalated",
+      "result": "Read-only GET /api and / succeeded; no POST/record action"
+    }
+  ],
+  "finalizedUtc": "2026-10-08T20:24:36.621869+00:00",
+  "replay": {
+    "dashboardHelper": {
+      "path": "/tmp/putgd-vm-dashboard-readonly.py",
+      "sha256": "b64ae75467faef797ed0f2ed46c47a6a925a040352dc430b5695fcae23737d84",
+      "argv": [
+        "python3",
+        "/tmp/putgd-vm-dashboard-readonly.py",
+        "--output",
+        "/tmp/putgd-dashboard-replay-unique.json"
+      ],
+      "cwd": "/home/patrick/work/put.gd",
+      "scope": "Prepared replay helper for the GET protocol already executed inline; not run as a new measurement. Refuses existing output; GET only, no SSH, POST or record action. Network escalation may be required."
+    },
+    "actualExecutedDashboardRequests": [
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:8767/api"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:8767/"
+      }
+    ],
+    "actualExecutedDisplayWallRequests": [
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:8765/api/machines"
+      },
+      {
+        "method": "GET",
+        "url": "http://127.0.0.1:8765/"
+      }
+    ],
+    "guestExactReplayReference": "/tmp/putgd-vm-memory-audit.json:provenance and guestAttempts[].sshReadOnlyReplay",
+    "guestScripts": [
+      {
+        "role": "collector",
+        "path": "/tmp/putgd-vm-memory-collect.py",
+        "sha256": "122119a39db911593221f5a5c5bffa946767b83ccf293c42c42c55f9b289fb71",
+        "scope": "Executed by guest attribution agent; no duplicate execution by dashboard auditor."
+      },
+      {
+        "role": "buildSupplement",
+        "path": "/tmp/putgd-vm-memory-build-check.py",
+        "sha256": "6b7d012beb5ad3b8863467c4af4634db287b5e91165132ab0232bcba843121ab",
+        "scope": "Executed by guest attribution agent; no duplicate execution by dashboard auditor."
+      },
+      {
+        "role": "rendererSupplement",
+        "path": "/tmp/putgd-vm-renderer-check.py",
+        "sha256": "cf658e6736d9b471487b9bd86f080872477cd64a5ea28ab9e3dfc2eaf1653e5a",
+        "scope": "Executed by guest attribution agent; no duplicate execution by dashboard auditor."
+      }
+    ]
+  },
+  "evidenceArtifacts": [
+    {
+      "path": "/tmp/putgd-memory-dashboard-http-inspection.json",
+      "sha256": "cad65fbb9540e9ede3d9aaade5c8b9428cca4ef5ebdb6ce87d5d51890ec3fc98",
+      "bytes": 3311
+    },
+    {
+      "path": "/tmp/putgd-vm-dashboard-http-inspection.json",
+      "sha256": "ecd236795906e219db67bea3056a35844ad5a89b0b082567eb608582251fe6b9",
+      "bytes": 1530
+    },
+    {
+      "path": "/tmp/putgd-vm-dashboard-inventory.json",
+      "sha256": "efbd94f0f6239264af9c33c1f9a9cdea80f38886a402123a9c3c7c515cbd07b8",
+      "bytes": 1650
+    }
+  ]
+}

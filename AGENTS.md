@@ -15,7 +15,21 @@ See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers 
 Offscreen tests prove widget/core behavior only. Real desktop support requires graphical
 acceptance evidence for each declared compositor. Never report a mock as desktop proof.
 
-Use synthetic payloads and an isolated test destination. Never put credentials in source,
+Test a new candidate on one Cinnamon build first, including its functional and
+memory checks. If either fails its required gate,
+stop expansion and fix or reject it before building/testing GNOME or KDE.
+After Cinnamon passes, independent cross-desktop checks may run in parallel;
+all declared desktops still require current-version evidence before acceptance.
+
+For the user-approved KDE resident-memory experiment, iterate on KDE first.
+Defer Cinnamon and GNOME functional/memory regression runs until KDE has a
+satisfactory candidate, then require both on that exact candidate before keeping
+it. Preserve their checkpointed implementations. This exception avoids repeating
+the full desktop matrix for each small KDE iteration.
+
+Use synthetic payloads and an isolated test destination. Never commit `credentials.txt`, including with force-add. It is user-provided local
+test input only; never include its contents in logs, diagnostics, or review packets.
+Never put credentials in source,
 configuration, logs, history, command lines, or review packets. Never modify bucket policy,
 versioning, or existing user objects during tests. Configuration contains credential references.
 
@@ -26,3 +40,51 @@ Keep review material bounded to the code/specification needed, excluding secrets
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
 owned paths, preserving unrelated pre-existing changes. Do not add recording/editor/OCR
 features: future video support currently means finalized video files in the shared pipeline.
+
+Agent source, workflow and acceptance maps are in `docs/agents.md`. The optional Python
+3.12+ official-SDK stdio helper is under `tools/mcp/`; follow `docs/mcp.md` for locked
+setup and its separate integration suite. It forwards only to the production CLI.
+Inspect actual capabilities/configuration before acting; retain operation IDs and prepare
+exact history IDs/effects before acknowledging deletion. U6 lab and package interfaces
+are implemented; use `docs/vm-lab.md` and `docs/build.md` for their actual commands.
+Full U9 acceptance still requires current-version real Cinnamon evidence and the
+complete fresh-agent walkthrough gates recorded in `docs/verification.md`;
+headless parity or an earlier partial walkthrough alone cannot establish those gates.
+
+Keep graphical lab interactions visible through each VM’s localhost VNC listener.
+The user watches the live display wall at http://127.0.0.1:8765/; do not disable or
+redirect guest display output during graphical tests. Distinguish SSH build/log work
+from graphical acceptance, and restore an idle/locked test session through its
+visible console before using it as acceptance evidence.
+
+Before launching any isolated Linux test, calculate the UTF-8 byte length of
+every resolved Unix socket path, including the harness-added runtime directory
+and `putgd/session.sock` suffix. The Linux limit is 107 bytes excluding the
+terminating NUL. Use a short, new, private output directory and reject an
+overlong path before starting the app. Do not change a frozen performance
+harness or weaken socket ownership checks to accommodate a long artifact name.
+Preserve failed attempts and record the corrected command before retrying.
+Use `python3 tools/diagnostics/check_socket_paths.py --ui-output RUN_1 RUN_2`
+for the UI harness, or `--socket` for complete paths in other tests.
+
+Agents own lab-session unlocking. Inspect the existing run/bootstrap metadata
+for its protected local login input before asking the user for credentials.
+Verify that input is an owned, private regular file, then read it only in memory
+and type into the visibly focused masked login field through the VM console.
+Never include its value in commands, tool output, logs, screenshots, configuration
+or review material; never use `credentials.txt` as a desktop login source.
+Verify the unlocked desktop visibly before acceptance, and ask the user only
+if the protected login input is actually unavailable or rejected.
+
+Windows VM bases under `work/windows/bases/` are sealed: never boot, modify,
+move, overwrite, or delete them while test overlays reference them. Run every
+Windows test in an independent copy under `work/windows/runs/`, created with
+`tools/lab/windows.py clone`; preserve the base disk, UEFI variables, TPM state,
+identity and manifest together. Provision a new base directory for updates.
+See `docs/windows-vm-lab.md` for lifecycle commands and verification evidence.
+
+Apply the same immutable-base rule to provisioned Linux golden disks under
+`work/lab-images/`: never boot or modify them directly, and never move, overwrite
+or delete a disk referenced by overlays. Linux tests use fresh disks under
+`work/lab-runs/` through `tools/lab/lab.py`; provision a new golden disk for updates.
+See `docs/vm-lab.md`.

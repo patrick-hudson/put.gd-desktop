@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T05:12:25.282683+00:00",
+  "command": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--app",
+    "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+    "--cli",
+    "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+    "--helper",
+    "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+    "--source-revision",
+    "9d142919e5e6365227a4424212380e92f85285fe",
+    "--source-archive",
+    "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source.tar",
+    "--fixture",
+    "/tmp/putgd-startup-reclaim-exp001",
+    "--output",
+    "/home/patrick/work/put.gd/work/view-startup-latency/confirmation-46-20261009/reference-1",
+    "--views",
+    "settings",
+    "history",
+    "activity",
+    "--cycles",
+    "3",
+    "--warmup-seconds",
+    "5",
+    "--visible-seconds",
+    "2",
+    "--quiet-seconds",
+    "30",
+    "--interval",
+    "5"
+  ],
+  "workingDirectory": "/home/patrick/work/put.gd",
+  "mode": "split",
+  "scope": "isolated empty-view lifecycle",
+  "parameters": {
+    "mode": "split",
+    "app": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+    "cli": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+    "helper": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+    "source_revision": "9d142919e5e6365227a4424212380e92f85285fe",
+    "source_archive": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source.tar",
+    "output": "/home/patrick/work/put.gd/work/view-startup-latency/confirmation-46-20261009/reference-1",
+    "allow_dirty": false,
+    "acceptance_receipt": [],
+    "pid": null,
+    "start_ticks": null,
+    "socket": null,
+    "label": "existing-process",
+    "seconds": 0,
+    "interval": 5.0,
+    "fixture": "/tmp/putgd-startup-reclaim-exp001",
+    "cycles": 3,
+    "views": [
+      "settings",
+      "history",
+      "activity"
+    ],
+    "warmup_seconds": 5.0,
+    "visible_seconds": 2.0,
+    "quiet_seconds": 30.0,
+    "timeout": 20
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe",
+  "binaries": {
+    "app": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+      "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+      "version": "0.1.1-dev.45+g9d142919e5e6"
+    },
+    "cli": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+      "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+      "version": "0.1.1-dev.45+g9d142919e5e6"
+    },
+    "helper": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+      "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+      "version": "0.1.1-dev.45+g9d142919e5e6"
+    }
+  },
+  "sampleCount": 0,
+  "sampleFile": "samples.jsonl",
+  "samples": [],
+  "events": [],
+  "status": "failed-or-interrupted",
+  "passed": false,
+  "acceptanceReceipts": [],
+  "limitations": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "environment": {
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "desktop": "X-Cinnamon",
+    "session": "x11",
+    "packages": [
+      "cinnamon 6.6.4+zena",
+      "gnome-shell ",
+      "libc6 2.39-0ubuntu8.9",
+      "libc6 2.39-0ubuntu8.9",
+      "libqt6core6 ",
+      "libqt6core6t64 6.4.2+dfsg-21.1build5",
+      "libqt6widgets6 ",
+      "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+      "muffin 6.6.1+zena"
+    ],
+    "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "logicalCpus": 16,
+    "virtualization": "none"
+  },
+  "sourceArchive": {
+    "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source.tar",
+    "sha256": "599944d11b564f79f81dd436a62bb83f29580b83c783dafecde60ccb852c1c73"
+  },
+  "fixture": {
+    "fixtureName": "putgd-startup-reclaim-exp001",
+    "resultsSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+    "configSha256": "3df279b24e87a3587cffc3b63c8169f8fd15e435c67e4236ddcb2394d9f3afeb",
+    "idleAppSha256": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+    "idlePeakSampledRssBytes": 47149056
+  },
+  "dependencies": {
+    "bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe"
+  },
+  "residentIdentity": {
+    "pid": 2750556,
+    "startTicks": 29587828,
+    "uid": 1000,
+    "executable": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+    "device": 66306,
+    "inode": 28059195
+  },
+  "errorCode": "resident_exited_before_readiness",
+  "exitedProcesses": [],
+  "elapsedSeconds": 1.216063686995767
+}

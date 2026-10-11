@@ -1,0 +1,618 @@
+{
+  "observations": [
+    {
+      "monotonicSeconds": 18979.903064334,
+      "helperGoneBeforeInspect": false,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.036781348,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.139106866,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.281091353,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.374701214,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.495530703,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.594983685,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.758385621,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18980.851742866,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.06960548,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.17676687,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.315519761,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.413517215,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.572939026,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.731474494,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.821128499,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.910581486,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18981.995708632,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.086121006,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.187113847,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.334385446,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.419318396,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.51961221,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.627776822,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.738482599,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18982.906257493,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18983.080723366,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18983.226653042,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18983.414279934,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18983.581299416,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18983.684676747,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18983.81325621,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18983.941291403,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.064186435,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.149908763,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.243076543,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.330663796,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.480404881,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.616172412,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.753230891,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.838797517,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18984.926223878,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.016530864,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.120246814,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.250488828,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.347014805,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.451344371,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.543117272,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.629233761,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.77416418,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18985.869128573,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.005117432,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.09343173,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.176596192,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.268686786,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.354587171,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.438977549,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.525660727,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.60517347,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.693363951,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.789082869,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18986.888062928,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18987.017066136,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18987.134284486,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18987.280850725,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "acquiring",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18987.459640064,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18987.666415034,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18987.907260031,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18988.058257232,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "stored",
+      "copyStatus": "pending"
+    },
+    {
+      "monotonicSeconds": 18988.309415175,
+      "helperGoneBeforeInspect": true,
+      "operationId": "93b81229-5590-466d-926c-25dbe61321b8",
+      "state": "completed",
+      "copyStatus": "copied"
+    }
+  ],
+  "operation": {
+    "action": "clipboard",
+    "cancelled": false,
+    "clipboardRevision": "32",
+    "copyStatus": "copied",
+    "created": "2026-10-09T01:47:33.230Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "93b81229-5590-466d-926c-25dbe61321b8",
+    "invocation": "20",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 536870912,
+          "category": "text",
+          "id": "077733c7-1393-44f6-ba6c-6e2015974e65",
+          "mime": "text/plain",
+          "name": "synthetic-1.txt",
+          "namingPrepared": true,
+          "originalFile": true,
+          "previewPath": "",
+          "sha256": "23bd4da48450e844221b7a1217e0ab57b82a2b0f3be2480e22914a9515540afc"
+        },
+        "candidate": "",
+        "concurrencyToken": "",
+        "condition": "",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "/home/lab/putgd-lab/archive/text/synthetic-1-636e6321-63ee-45ca-8720-6841b692b17e.txt",
+          "status": "saved"
+        },
+        "objectReference": {},
+        "publicationId": "5d8323cc-93ee-4d09-bee6-ed045aa9d0aa",
+        "receipt": {
+          "concurrencyToken": "",
+          "destination": {
+            "credentials": {},
+            "profileId": "",
+            "profileRevision": "",
+            "providerId": "",
+            "settings": {}
+          },
+          "directUrl": "",
+          "objectReference": {},
+          "publicationId": "",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "uploadStatus": "local_only"
+      },
+      {
+        "artifact": {
+          "bytes": 23,
+          "category": "text",
+          "id": "989a7555-e101-4217-892c-0b0dac1d73f4",
+          "mime": "text/plain",
+          "name": "synthetic-2.txt",
+          "namingPrepared": true,
+          "originalFile": true,
+          "previewPath": "",
+          "sha256": "010e71d5ea18016d6f57aaf690c656a8d3bcaaa6199336a843fc07eb07c63209"
+        },
+        "candidate": "",
+        "concurrencyToken": "",
+        "condition": "",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "/home/lab/putgd-lab/archive/text/synthetic-2-6845c317-da16-4175-9335-9844b0dfd23a.txt",
+          "status": "saved"
+        },
+        "objectReference": {},
+        "publicationId": "e72fd0c3-51d9-42eb-9e67-05f8c08abf2e",
+        "receipt": {
+          "concurrencyToken": "",
+          "destination": {
+            "credentials": {},
+            "profileId": "",
+            "profileRevision": "",
+            "providerId": "",
+            "settings": {}
+          },
+          "directUrl": "",
+          "objectReference": {},
+          "publicationId": "",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "uploadStatus": "local_only"
+      }
+    ],
+    "settingsRevision": "944c75b3521d234445c878157932e09da314809b70f9625aa8c84e5f79d13bfa",
+    "state": "completed"
+  },
+  "failure": null,
+  "activeOperationObservedAfterHelperExit": true,
+  "elapsedSeconds": 8.599701884999376
+}

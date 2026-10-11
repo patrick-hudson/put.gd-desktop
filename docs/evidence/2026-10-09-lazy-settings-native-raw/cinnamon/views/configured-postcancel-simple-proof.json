@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T04:30:11.060688+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-postcancel-simple-proof.png",
+  "sha256": "063eb775271744fac0faadc63a40198141abe77a83b6bda0af2a09c4d07c3333",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-postcancel-simple-proof-head0.ppm",
+    "sha256": "b8bb037f822fd3778ea842603224d79a83f8da2e7d7ec72f2636c41fe9326efc"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5938,
+  "visualReview": "pending"
+}

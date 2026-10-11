@@ -1,0 +1,28 @@
+{
+  "scope": "Current Cinnamon ready for post-functional quiet VM sampling; no measurement yet",
+  "runningApp": {
+    "pid": 2406,
+    "startTicks": 17322,
+    "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/pre-memory-head0.ppm",
+    "sha256": "ef107939c9aedcb2025830e1f3dfb346dac6392025d906f1289429ae9f6d3e39"
+  },
+  "profile": "cinnamon-x11",
+  "completed": [
+    "9 Qt action/cancellation scenarios",
+    "3 GTK clipboard scenarios",
+    "2 visible cycles of Settings/History/Activity"
+  ],
+  "failedAttemptsRetained": [
+    "GTK X11 stale fixture position before runner fix"
+  ],
+  "operationCount": 12,
+  "diagnosticMemory": {
+    "allocatorReclamationCount": 13,
+    "allocatorReclamationPending": false,
+    "allocatorReclamationSupported": true,
+    "lastAllocatorReclamationUsec": 1069
+  }
+}

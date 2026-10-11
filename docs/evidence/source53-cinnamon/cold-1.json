@@ -1,0 +1,880 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/tmp/pg53-cold1/results.json",
+    "sha256": "79d0f93d7bf318117ef5d10050005ae943ce0ac46f111f246443d1cb4c15d91e"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "warmupSeconds": 5,
+    "initialRssBytes": 25972736,
+    "elapsedSeconds": 300.1279592780047,
+    "idleCpuPercentOneCore": 0.0033319121697479464,
+    "finalRssBytes": 25927680,
+    "peakSampledRssBytes": 25972736,
+    "budgetPassed": true,
+    "appSha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332",
+    "samples": [
+      {
+        "elapsedSeconds": 0.01576661301078275,
+        "cpuTicks": 0,
+        "rssBytes": 25972736
+      },
+      {
+        "elapsedSeconds": 30.027395360986702,
+        "cpuTicks": 0,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 60.03794604499126,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 90.04969295702176,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 120.06166873499751,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 150.07219060900388,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 180.08309158001794,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 210.0948802449857,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 240.10661954799434,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 270.11793931300053,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      },
+      {
+        "elapsedSeconds": 300.1279592780047,
+        "cpuTicks": 1,
+        "rssBytes": 25927680
+      }
+    ],
+    "initialFootprintNumeric": [
+      {
+        "rssBytes": 4055040,
+        "pssBytes": 4055040,
+        "privateBytes": 4055040
+      },
+      {
+        "rssBytes": 3239936,
+        "pssBytes": 3239936,
+        "privateBytes": 3239936
+      },
+      {
+        "rssBytes": 1978368,
+        "pssBytes": 1978368,
+        "privateBytes": 1978368
+      },
+      {
+        "rssBytes": 1724416,
+        "pssBytes": 28672,
+        "privateBytes": 24576
+      },
+      {
+        "rssBytes": 1716224,
+        "pssBytes": 1716224,
+        "privateBytes": 1716224
+      },
+      {
+        "rssBytes": 1552384,
+        "pssBytes": 86016,
+        "privateBytes": 57344
+      },
+      {
+        "rssBytes": 1294336,
+        "pssBytes": 249856,
+        "privateBytes": 86016
+      },
+      {
+        "rssBytes": 1183744,
+        "pssBytes": 1006592,
+        "privateBytes": 929792
+      },
+      {
+        "rssBytes": 741376,
+        "pssBytes": 46080,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 729088,
+        "pssBytes": 729088,
+        "privateBytes": 729088
+      },
+      {
+        "rssBytes": 704512,
+        "pssBytes": 704512,
+        "privateBytes": 704512
+      },
+      {
+        "rssBytes": 573440,
+        "pssBytes": 197632,
+        "privateBytes": 81920
+      },
+      {
+        "rssBytes": 516096,
+        "pssBytes": 261120,
+        "privateBytes": 118784
+      },
+      {
+        "rssBytes": 438272,
+        "pssBytes": 9216,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 368640,
+        "pssBytes": 368640,
+        "privateBytes": 368640
+      },
+      {
+        "rssBytes": 319488,
+        "pssBytes": 10240,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 303104,
+        "pssBytes": 303104,
+        "privateBytes": 303104
+      },
+      {
+        "rssBytes": 278528,
+        "pssBytes": 272384,
+        "privateBytes": 266240
+      },
+      {
+        "rssBytes": 237568,
+        "pssBytes": 16384,
+        "privateBytes": 16384
+      },
+      {
+        "rssBytes": 204800,
+        "pssBytes": 49152,
+        "privateBytes": 49152
+      },
+      {
+        "rssBytes": 204800,
+        "pssBytes": 20480,
+        "privateBytes": 20480
+      },
+      {
+        "rssBytes": 167936,
+        "pssBytes": 12288,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 163840,
+        "pssBytes": 40960,
+        "privateBytes": 36864
+      },
+      {
+        "rssBytes": 155648,
+        "pssBytes": 155648,
+        "privateBytes": 155648
+      },
+      {
+        "rssBytes": 151552,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 151552,
+        "pssBytes": 32768,
+        "privateBytes": 32768
+      },
+      {
+        "rssBytes": 131072,
+        "pssBytes": 8192,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 126976,
+        "pssBytes": 47104,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 118784,
+        "pssBytes": 9216,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 114688,
+        "pssBytes": 114688,
+        "privateBytes": 114688
+      },
+      {
+        "rssBytes": 110592,
+        "pssBytes": 12288,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 106496,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 98304,
+        "pssBytes": 16384,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 94208,
+        "pssBytes": 94208,
+        "privateBytes": 94208
+      },
+      {
+        "rssBytes": 94208,
+        "pssBytes": 13312,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 94208,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 90112,
+        "pssBytes": 13312,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 90112,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 86016,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 86016,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 75776,
+        "privateBytes": 69632
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 81920,
+        "privateBytes": 81920
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 73728,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 73728,
+        "pssBytes": 10240,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 73728,
+        "pssBytes": 20480,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 65536,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 65536,
+        "pssBytes": 43008,
+        "privateBytes": 20480
+      },
+      {
+        "rssBytes": 61440,
+        "pssBytes": 61440,
+        "privateBytes": 61440
+      },
+      {
+        "rssBytes": 61440,
+        "pssBytes": 20480,
+        "privateBytes": 20480
+      },
+      {
+        "rssBytes": 57344,
+        "pssBytes": 12288,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 57344,
+        "pssBytes": 24576,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 53248,
+        "pssBytes": 10240,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 49152,
+        "pssBytes": 49152,
+        "privateBytes": 49152
+      },
+      {
+        "rssBytes": 45056,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 45056,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 45056,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 40960,
+        "pssBytes": 18432,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 28672,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 24576,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 24576,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 16384,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 16384,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 16384,
+        "pssBytes": 16384,
+        "privateBytes": 16384
+      },
+      {
+        "rssBytes": 8192,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 0,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 0,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 0,
+        "pssBytes": 0,
+        "privateBytes": 0
+      }
+    ],
+    "finalFootprintNumeric": [
+      {
+        "rssBytes": 4055040,
+        "pssBytes": 4055040,
+        "privateBytes": 4055040
+      },
+      {
+        "rssBytes": 3239936,
+        "pssBytes": 3239936,
+        "privateBytes": 3239936
+      },
+      {
+        "rssBytes": 1978368,
+        "pssBytes": 1978368,
+        "privateBytes": 1978368
+      },
+      {
+        "rssBytes": 1724416,
+        "pssBytes": 28672,
+        "privateBytes": 24576
+      },
+      {
+        "rssBytes": 1716224,
+        "pssBytes": 1716224,
+        "privateBytes": 1716224
+      },
+      {
+        "rssBytes": 1552384,
+        "pssBytes": 86016,
+        "privateBytes": 57344
+      },
+      {
+        "rssBytes": 1294336,
+        "pssBytes": 249856,
+        "privateBytes": 86016
+      },
+      {
+        "rssBytes": 1183744,
+        "pssBytes": 1006592,
+        "privateBytes": 929792
+      },
+      {
+        "rssBytes": 741376,
+        "pssBytes": 46080,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 729088,
+        "pssBytes": 729088,
+        "privateBytes": 729088
+      },
+      {
+        "rssBytes": 659456,
+        "pssBytes": 659456,
+        "privateBytes": 659456
+      },
+      {
+        "rssBytes": 573440,
+        "pssBytes": 197632,
+        "privateBytes": 81920
+      },
+      {
+        "rssBytes": 516096,
+        "pssBytes": 261120,
+        "privateBytes": 118784
+      },
+      {
+        "rssBytes": 438272,
+        "pssBytes": 9216,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 368640,
+        "pssBytes": 368640,
+        "privateBytes": 368640
+      },
+      {
+        "rssBytes": 319488,
+        "pssBytes": 10240,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 303104,
+        "pssBytes": 303104,
+        "privateBytes": 303104
+      },
+      {
+        "rssBytes": 278528,
+        "pssBytes": 272384,
+        "privateBytes": 266240
+      },
+      {
+        "rssBytes": 237568,
+        "pssBytes": 16384,
+        "privateBytes": 16384
+      },
+      {
+        "rssBytes": 204800,
+        "pssBytes": 49152,
+        "privateBytes": 49152
+      },
+      {
+        "rssBytes": 204800,
+        "pssBytes": 20480,
+        "privateBytes": 20480
+      },
+      {
+        "rssBytes": 167936,
+        "pssBytes": 12288,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 163840,
+        "pssBytes": 40960,
+        "privateBytes": 36864
+      },
+      {
+        "rssBytes": 155648,
+        "pssBytes": 155648,
+        "privateBytes": 155648
+      },
+      {
+        "rssBytes": 151552,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 151552,
+        "pssBytes": 32768,
+        "privateBytes": 32768
+      },
+      {
+        "rssBytes": 131072,
+        "pssBytes": 8192,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 126976,
+        "pssBytes": 47104,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 118784,
+        "pssBytes": 9216,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 114688,
+        "pssBytes": 114688,
+        "privateBytes": 114688
+      },
+      {
+        "rssBytes": 110592,
+        "pssBytes": 12288,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 106496,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 98304,
+        "pssBytes": 16384,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 94208,
+        "pssBytes": 94208,
+        "privateBytes": 94208
+      },
+      {
+        "rssBytes": 94208,
+        "pssBytes": 13312,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 94208,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 90112,
+        "pssBytes": 13312,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 90112,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 86016,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 86016,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 75776,
+        "privateBytes": 69632
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 81920,
+        "privateBytes": 81920
+      },
+      {
+        "rssBytes": 81920,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 73728,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 73728,
+        "pssBytes": 10240,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 73728,
+        "pssBytes": 20480,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 65536,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 65536,
+        "pssBytes": 43008,
+        "privateBytes": 20480
+      },
+      {
+        "rssBytes": 61440,
+        "pssBytes": 61440,
+        "privateBytes": 61440
+      },
+      {
+        "rssBytes": 61440,
+        "pssBytes": 20480,
+        "privateBytes": 20480
+      },
+      {
+        "rssBytes": 57344,
+        "pssBytes": 12288,
+        "privateBytes": 12288
+      },
+      {
+        "rssBytes": 57344,
+        "pssBytes": 24576,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 53248,
+        "pssBytes": 10240,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 49152,
+        "pssBytes": 49152,
+        "privateBytes": 49152
+      },
+      {
+        "rssBytes": 45056,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 45056,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 45056,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 40960,
+        "pssBytes": 18432,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 28672,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 24576,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 24576,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 16384,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 16384,
+        "pssBytes": 8192,
+        "privateBytes": 8192
+      },
+      {
+        "rssBytes": 16384,
+        "pssBytes": 16384,
+        "privateBytes": 16384
+      },
+      {
+        "rssBytes": 8192,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 4096,
+        "pssBytes": 2048,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 0,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 0,
+        "pssBytes": 0,
+        "privateBytes": 0
+      },
+      {
+        "rssBytes": 0,
+        "pssBytes": 0,
+        "privateBytes": 0
+      }
+    ]
+  }
+}

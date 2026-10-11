@@ -1,0 +1,185 @@
+{
+  "operation": {
+    "action": "region",
+    "cancelled": false,
+    "clipboardRevision": "6",
+    "copyStatus": "copied",
+    "created": "2026-10-09T04:31:58.464Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "id": "2e9e63d3-6e1c-4f35-8803-5509c24872fb",
+    "invocation": "2",
+    "items": [
+      {
+        "artifact": {
+          "bytes": 178,
+          "category": "images",
+          "id": "96cb8a5b-3c38-4a1a-b24f-f33dcb1087f5",
+          "mime": "image/png",
+          "name": "Screen-Capture-2026-10-08-23-31-58.png",
+          "namingPrepared": true,
+          "originalFile": false,
+          "previewPath": "/home/lab/putgd-lab/data/putgd/putgd/artifacts/../previews/96cb8a5b-3c38-4a1a-b24f-f33dcb1087f5.png",
+          "sha256": "07433c6d2c221634b10a6a0ae06921b715757767e738a502874ed18a2584093d"
+        },
+        "candidate": "",
+        "concurrencyToken": "",
+        "condition": "",
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "local": {
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "path": "/home/lab/putgd-lab/archive/images/Screen-Capture-2026-10-08-23-31-58.png",
+          "status": "saved"
+        },
+        "objectReference": {},
+        "publicationId": "eda77d62-9583-4cd2-b192-6c12b44344e9",
+        "receipt": {
+          "concurrencyToken": "",
+          "destination": {
+            "credentials": {},
+            "profileId": "",
+            "profileRevision": "",
+            "providerId": "",
+            "settings": {}
+          },
+          "directUrl": "",
+          "objectReference": {},
+          "publicationId": "",
+          "schemaVersion": 1
+        },
+        "remoteStatus": "not_requested",
+        "uploadStatus": "local_only"
+      }
+    ],
+    "settingsRevision": "11ea9d6c7db535c6d6e0fe78aec86f876d8c1c2fe803a940e767c6d5df43688c",
+    "state": "completed"
+  },
+  "diagnostics": {
+    "activeOperations": 0,
+    "backend": "Qt",
+    "build": {
+      "baseVersion": "0.1.1",
+      "commitCount": 45,
+      "dirty": true,
+      "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+      "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+      "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "0.1.1-dev.45+g9d142919e5e6.dirty"
+    },
+    "capabilities": {
+      "providers": {
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "source": {
+        "adapter": "cinnamon-x11",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          },
+          "region": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          },
+          "window": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "import": "asynchronous-x11-selection",
+          "result": "qt-ownership",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "memory": {
+      "allocatorReclamationCount": 2,
+      "allocatorReclamationPending": true,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 109
+    },
+    "qtVersion": "6.4.2",
+    "schemaVersion": 1
+  },
+  "witness": {
+    "utc": "2026-10-09T04:32:02.581793+00:00",
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/diagnostic-region-result.png",
+    "sha256": "09b842aac0d3c09fb41ff4851248206eaeeb51891230e2963e20a578312553c4",
+    "nativeQmp": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-diagnostic-region-result-head0.ppm",
+      "sha256": "be36140e8614ca77d6ee6ada728fb321bda299b75fadfdaacd276dfce270dad3"
+    },
+    "desktopPixels": [
+      1280,
+      800
+    ],
+    "vncPort": 5938,
+    "visualReview": "pending"
+  },
+  "boundedDiagnostic": true
+}

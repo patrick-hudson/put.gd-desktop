@@ -1,0 +1,33 @@
+{
+  "baseRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "scope": "Production Release binaries with uncommitted source hashes; no temporary allocator instrumentation",
+  "files": {
+    "putgd": "bc6eeb6d09f2f35874c6c29adb9eb61a872d72fad331079f0f986497c3e6dfe8",
+    "putgd-cli": "9bbb2781e538cda8dc3659c2a77642fef54c6524cd0ef3b09e69777564bcbe53",
+    "fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+  },
+  "source": {
+    "src/app/OperationService.cpp": "464ec149919e5d89adb81709125c0eefae113170fd5a83536d01e943f3472eff",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "src/main.cpp": "d2a839f25486855320d03171ea3a57a79d4cee5a871f22ff94a50b7562ffb6d8",
+    "CMakeLists.txt": "4983f6239471a823a9b95e0fcb77a986ac8b4a96b635834770b15da22f5dfc2a"
+  },
+  "controllerSha256": "01761e2bf83c492889e886ff9c23209e06dad0889ca3d38752b0e40e3a021fad",
+  "command": [
+    "tests/performance/bench_payload_lab.py",
+    "--run",
+    "work/lab-runs/fresh-cinnamon-u9-20261008",
+    "--app",
+    "build/release/putgd",
+    "--cli",
+    "build/release/putgd-cli",
+    "--fixture",
+    "build/release/packaging/linux/putgd-desktop-fixture",
+    "--output",
+    "work/lab-runs/fresh-cinnamon-u9-20261008/production-heap-reclaim-attempt1",
+    "--cycles",
+    "5",
+    "--settle-seconds",
+    "5"
+  ]
+}

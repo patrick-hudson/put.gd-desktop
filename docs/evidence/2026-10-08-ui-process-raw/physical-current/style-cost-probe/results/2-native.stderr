@@ -1,0 +1,2 @@
+
+(style-cost-probe:2566587): dbind-WARNING **: 21:10:20.008: Couldn't connect to accessibility bus: Failed to connect to socket /run/user/1000/at-spi/bus_0: No such file or directory

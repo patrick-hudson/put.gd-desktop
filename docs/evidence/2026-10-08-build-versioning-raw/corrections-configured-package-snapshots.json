@@ -1,0 +1,82 @@
+{
+  "share/doc/putgd/aws-crt-cpp-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-auth-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-cal-LICENSE": {
+    "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+    "bytes": 10142
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-common-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-compression-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-event-stream-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-http-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-io-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-mqtt-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-s3-LICENSE": {
+    "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+    "bytes": 10142
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-c-sdkutils-LICENSE": {
+    "sha256": "09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b",
+    "bytes": 10142
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-aws-checksums-LICENSE": {
+    "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "bytes": 11357
+  },
+  "share/doc/putgd/aws-crt-cpp-crt-s2n-LICENSE": {
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358
+  },
+  "share/doc/putgd/aws-sdk-LICENSE": {
+    "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+    "bytes": 11357
+  },
+  "share/doc/putgd/runtime-notices.txt": {
+    "sha256": "831be4aad17548c4b86f7fccc4a33bba721849ff658b418a113c3c0fc4268234",
+    "bytes": 1221
+  },
+  "share/doc/putgd/wayland-ext-data-control-v1.xml": {
+    "sha256": "293deba5dfdb974fbcf8dcf891a30a51a36a8bba0047dc6bdf6a03194089b7fb",
+    "bytes": 12029
+  },
+  "share/gnome-shell/extensions/putgd@put.gd/extension.js": {
+    "sha256": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+    "bytes": 33968
+  },
+  "share/gnome-shell/extensions/putgd@put.gd/metadata.json": {
+    "sha256": "8c3c16a23245f6564ccd4542bd00efc7495c8b49e9037aa2a0aa36ce914b75e2",
+    "bytes": 248
+  },
+  "share/icons/hicolor/scalable/apps/putgd.svg": {
+    "sha256": "ad1dda80a76758a57e47939507832dbc9ad66f763200fa4ac3e72bb97893b875",
+    "bytes": 310
+  },
+  "share/putgd/dependency-lock.json": {
+    "sha256": "c6c41e15a56e4f801c1225966b7b6c309eee54745bfa1788a066378a36621333",
+    "bytes": 2450
+  }
+}

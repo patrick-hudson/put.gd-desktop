@@ -1,0 +1,83 @@
+{
+  "scope": "Visible native views; independent screenshots and close/reopen smoke, not full UI acceptance",
+  "results": [
+    {
+      "cycle": 0,
+      "view": "settings",
+      "shown": {
+        "shown": "settings"
+      },
+      "witness": "work/cross-desktop-current/cinnamon/view-0-settings.png",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      }
+    },
+    {
+      "cycle": 0,
+      "view": "history",
+      "shown": {
+        "shown": "history"
+      },
+      "witness": "work/cross-desktop-current/cinnamon/view-0-history.png",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      }
+    },
+    {
+      "cycle": 0,
+      "view": "activity",
+      "shown": {
+        "shown": "activity"
+      },
+      "witness": "work/cross-desktop-current/cinnamon/view-0-activity.png",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "settings",
+      "shown": {
+        "shown": "settings"
+      },
+      "witness": "work/cross-desktop-current/cinnamon/view-1-settings.png",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "shown": {
+        "shown": "history"
+      },
+      "witness": "work/cross-desktop-current/cinnamon/view-1-history.png",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "shown": {
+        "shown": "activity"
+      },
+      "witness": "work/cross-desktop-current/cinnamon/view-1-activity.png",
+      "runningApp": {
+        "pid": 2406,
+        "startTicks": 17322,
+        "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+      }
+    }
+  ]
+}

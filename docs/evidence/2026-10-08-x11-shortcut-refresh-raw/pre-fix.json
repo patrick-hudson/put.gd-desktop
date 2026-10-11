@@ -1,0 +1,17 @@
+{
+  "createdAtUtc": "2026-10-08T22:27:20.042986+00:00",
+  "baseCommit": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+  "branch": "feat/qt-linux-sharing",
+  "statusBeforeProductionEdit": " M AGENTS.md\nM  CMakeLists.txt\nA  cmake/BuildInfo.cpp.in\nA  cmake/BuildVersion.cmake\nA  cmake/CheckBuildIdentity.cmake.in\nA  cmake/GenerateBuildInfo.cmake\nA  cmake/PackageBuildIdentity.cmake.in\nM  docs/agents.md\nM  docs/build.md\nA  docs/versioning.md\n M docs/vm-lab.md\n M docs/windows-vm-lab.md\nM  packaging/linux/CMakeLists.txt\nM  src/app/OperationService.cpp\nM  src/cli/main.cpp\nA  src/core/BuildInfo.h\nM  src/main.cpp\nM  src/ui/TrayController.cpp\nM  src/ui/TrayController.h\nA  tests/cmake/version_contract.cmake\n M tests/desktop/x11/test_x11.cpp\nA  tests/gui/test_version.cpp\nA  tests/integration/test_version.cpp\n?? tests/fixtures/X11MappingBarrier.h\n?? tools/qemu-grid/\n",
+  "sourceSha256": {
+    "src/platform/x11/X11Shortcuts.cpp": "c4da27d8c5ceefad646254250eca250bd7d11047c7a45e424de9735228268dd0",
+    "src/platform/x11/X11Shortcuts.h": "b3a1a37809167b9ada9b575f58cf3d67195730b040ff616a759faa03c941b30c",
+    "tests/desktop/x11/test_x11.cpp": "a107940e9b7352077f86625539f4b5f4de3943c76acfe1be0eec79f73c363ed8",
+    "tests/fixtures/X11MappingBarrier.h": "b6d8da4ab8512a76a5e63f3a821bd242089676a1688657854fcab97c301bcab8"
+  },
+  "hypothesis": "MappingNotify calls bind(), which clears and flushes passive grabs before its modifier-mapping request; a trigger processed in that gap is permanently lost.",
+  "regression": "mappingRefreshKeepsUnchangedChordGrabbed: real unchanged keyboard-map notification, scoped test-only mapping-request barrier, cross-connection server ordering and actual XTEST chord; no retry, sleep or product seam.",
+  "authorization": "Root explicit bounded correctness fix; no commit/index mutation.",
+  "preExistingWork": "All staged versioning paths and unstaged user AGENTS/lab docs/qemu-grid remain root/user owned; fix files had no pre-existing edits.",
+  "diagnosis": "work/memory-surfaces/x11-diagnosis/diagnosis-final.json"
+}

@@ -1,0 +1,6 @@
+{
+  "scope": "Controlled isolated Xvfb negative test; restoreoriginal afterward; not performance/desktop acceptance",
+  "originalSha256": "d1c1f6eb2fcad83b171045086dd67889dc4270eed201c0df81806e3e907932b2",
+  "negativeSha256": "a83cf2dc1c16481a4679c992f0ee3092fe1317d1f7b31b7bda5f3b5aa90192df",
+  "change": "Remove fatal-frame decoder stop/settled flags only, restoring the confirmed old rejection behavior"
+}

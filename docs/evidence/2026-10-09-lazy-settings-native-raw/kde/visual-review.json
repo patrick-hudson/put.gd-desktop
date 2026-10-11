@@ -1,0 +1,1141 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T04:55:48.828824+00:00",
+  "guest": "kde-wayland",
+  "vncPort": 5934,
+  "displayWall": "http://127.0.0.1:8765/",
+  "scope": "Bounded candidate native action matrix, Settings empty/configured wide/compact behavior, normal History/Activity lifecycle; no performance certification.",
+  "source": {
+    "commit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "tree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "commitCount": 45,
+    "archiveSha256": "599944d11b564f79f81dd436a62bb83f29580b83c783dafecde60ccb852c1c73"
+  },
+  "candidate": {
+    "patchSha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+    "bundleSha256": "60a47dc4950ec89deac830cf73186175536c326f1e090aa7412dc068a04c6218",
+    "files": {
+      "src/ui/SettingsWindow.cpp": "18e44b7b50ea52c043d0e0db69d388f6eedf6177dc25f27c0604aae7fc6e033c",
+      "src/ui/SettingsWindow.h": "267536902660030d9ed7e208851951e541b0b514a65b66b2efe35c70d15caba6",
+      "tests/gui/test_settings.cpp": "7fdca5f7fcd1cadec07a06c49cc552b753f1ab94d8258738f9740cc2c61399fd",
+      "tests/gui/test_ui_application.cpp": "5811ad64908371e66340e899d05de02748d90b1d2e0414f2cac2c2fcf0329f98"
+    },
+    "dirty": true,
+    "comparison": "Base45 exact committed tree plus exact four-path overlay; not clean46 and not clean45."
+  },
+  "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+  "packageSha256": "32e99aceb877e8a6b1b12c5b0efc9f8b8173c89e7c444537ec3e6269a727fa11",
+  "installedManifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+    "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "commitCount": 45,
+    "dirty": true,
+    "sourceProvenance": "git"
+  },
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed",
+    "/usr/bin/putgd-cli": "cef069d325ac5a726fd9907ea52360a308ed2627d596c02a142f083f2435c3ae",
+    "/usr/bin/putgd-ui": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+  },
+  "resident": {
+    "pid": 212976,
+    "startTicks": 2922997,
+    "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+  },
+  "helperIdentities": [
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T044636651764-show/shown.json",
+      "identity": {
+        "pid": 229607,
+        "startTicks": 2972478,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "settings"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T044854478500-show/shown.json",
+      "identity": {
+        "pid": 231872,
+        "startTicks": 2986238,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "settings"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T044951929522-show/shown.json",
+      "identity": {
+        "pid": 233274,
+        "startTicks": 2991990,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "settings"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045236154805-show/shown.json",
+      "identity": {
+        "pid": 236864,
+        "startTicks": 3008422,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "settings"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045255355454-show/shown.json",
+      "identity": {
+        "pid": 237462,
+        "startTicks": 3010346,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "history"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045302240809-show/shown.json",
+      "identity": {
+        "pid": 238058,
+        "startTicks": 3011032,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "history"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045309151582-show/shown.json",
+      "identity": {
+        "pid": 238653,
+        "startTicks": 3011731,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "activity"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045316313529-show/shown.json",
+      "identity": {
+        "pid": 239247,
+        "startTicks": 3012432,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "activity"
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045414404479-show/shown.json",
+      "identity": {
+        "pid": 240683,
+        "startTicks": 3018262,
+        "parentPid": 212976,
+        "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+      },
+      "view": "settings"
+    }
+  ],
+  "geometry": [
+    {
+      "label": "settings-empty-wide-native-established",
+      "clientRect": [
+        70,
+        28,
+        1200,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "settings-empty-wide-direct-simple",
+      "clientRect": [
+        40,
+        37,
+        1200,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "settings-empty-compact-settled",
+      "clientRect": [
+        40,
+        37,
+        1024,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "settings-configured-compact-simple",
+      "clientRect": [
+        128,
+        37,
+        1024,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "settings-wide-native-settled",
+      "clientRect": [
+        66,
+        28,
+        1200,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "settings-wide-collapsed-draft",
+      "clientRect": [
+        66,
+        28,
+        1200,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "settings-configured-reopened-saved",
+      "clientRect": [
+        40,
+        37,
+        1200,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "history-open",
+      "clientRect": [
+        140,
+        37,
+        1000,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    },
+    {
+      "label": "activity-open",
+      "clientRect": [
+        140,
+        37,
+        1000,
+        700
+      ],
+      "method": "Actual visible client borders at native scale1 on1280x800 desktop; normal Wayland window, not screenshot dimensions or requested coordinates."
+    }
+  ],
+  "visualWitnesses": [
+    {
+      "label": "console-after-unlock",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/console-after-unlock.png",
+      "sha256": "9b8b7f1a8af83e0059c70ad28dc316cf13b879833aedf7777a4260d366676cff",
+      "utc": "2026-10-09T04:40:11.913541+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-open.png",
+      "sha256": "0f6c55af826725c57c81d10283d33aa3ad249148f24a12a880e6345ed9483ef7",
+      "utc": "2026-10-09T04:46:40.524022+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide.png",
+      "sha256": "08155cf56770743d920af9d335a5b4fbdba3c936554d71e9ec1e538b665c889e",
+      "utc": "2026-10-09T04:46:57.942448+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-settled",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-settled.png",
+      "sha256": "1ca9f3ab6a4ee841925546591ee28f2b92716dbab9622a694f3d0481c1a0198e",
+      "utc": "2026-10-09T04:47:13.634429+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-1200",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-1200.png",
+      "sha256": "e9b6b702244a9ff9a92c5fe57d3eedd54d688b8d1d489067f0f2b0d25b1a9056",
+      "utc": "2026-10-09T04:47:28.183092+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-native-menu",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-native-menu.png",
+      "sha256": "536b4525e518b93fb713f59a314f268b73a7cdf4103a12262c61fa9b3d909a31",
+      "utc": "2026-10-09T04:47:41.603582+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-native-more",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-native-more.png",
+      "sha256": "d5e97abc30c0a6185cb4492e261093f147c19f49f4d9ed2fd67a476c2c9d723e",
+      "utc": "2026-10-09T04:47:52.097706+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-native-established",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-native-established.png",
+      "sha256": "150d8b16f7a89073e14ede0ab56e2ed11d294f5db4024dc7995b097d9feb8f9e",
+      "utc": "2026-10-09T04:48:10.510771+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-missing-add-settled",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-missing-add-settled.png",
+      "sha256": "150d8b16f7a89073e14ede0ab56e2ed11d294f5db4024dc7995b097d9feb8f9e",
+      "utc": "2026-10-09T04:48:22.062284+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-recovery-expanded",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-recovery-expanded.png",
+      "sha256": "697aa0094a4e2887cc8622a5b5a2a1d29f8939132bafef0c0b87d9bce32d899f",
+      "utc": "2026-10-09T04:48:24.050573+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-recovery-collapsed",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-recovery-collapsed.png",
+      "sha256": "956be3e833422df8d3b0ef49183ff3a3cae7cdd89f1af5ff565be0cd618a570a",
+      "utc": "2026-10-09T04:48:26.045256+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-add-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-add-draft.png",
+      "sha256": "4e9a9f3f31a8213ade313ef786240fee7e9be0db7951ca0cd769fd6da7dc9b96",
+      "utc": "2026-10-09T04:48:50.575944+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-reopened",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-reopened.png",
+      "sha256": "f379d044fc79de781c635e4c22839e6949fe8038383a45fdf6334e9216fd550a",
+      "utc": "2026-10-09T04:48:58.094771+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-compact-settled",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-compact-settled.png",
+      "sha256": "eacde2b0defd9d29853e7fbe46afbdfb286830a81a9ea09bf8ac1793a9c12e79",
+      "utc": "2026-10-09T04:49:14.939791+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-compact-add-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-compact-add-draft.png",
+      "sha256": "c3f3d1b7a6b1c7c0dd29b6aff64ec6749c393fd70084cd8ee463a9437c6f7ec6",
+      "utc": "2026-10-09T04:49:45.499104+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-configured-compact-simple",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-configured-compact-simple.png",
+      "sha256": "a3b28bb81ccc927797823f5b8d2f3e7f7ee619f726415bf9e35755c61baae2df",
+      "utc": "2026-10-09T04:49:55.541048+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-configured-compact-advanced",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-configured-compact-advanced.png",
+      "sha256": "3ceb22a24239edd982e9407f26c9e911963b71c21a88f91e7156a3bde8767cb6",
+      "utc": "2026-10-09T04:50:14.591637+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-compact-capture",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-compact-capture.png",
+      "sha256": "32ef1cd0037e48fc770c4d1fbbb921640e3885aace095d04b80bdcf9f15f364f",
+      "utc": "2026-10-09T04:50:32.392435+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-compact-capture-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-compact-capture-tab.png",
+      "sha256": "567d5cab63d90f782e1c7dc8157f8c1886405216d16e5b660bc829173ea2c932",
+      "utc": "2026-10-09T04:50:34.213886+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-compact-capture-shift-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-compact-capture-shift-tab.png",
+      "sha256": "32ef1cd0037e48fc770c4d1fbbb921640e3885aace095d04b80bdcf9f15f364f",
+      "utc": "2026-10-09T04:50:36.019818+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-compact-shortcuts",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-compact-shortcuts.png",
+      "sha256": "01dfde25c554fa98325b289ecf277643fbca4c78bbc4613b19ad5bb17e596e58",
+      "utc": "2026-10-09T04:50:37.888039+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-compact-preferences",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-compact-preferences.png",
+      "sha256": "c89e8d064b1a341b2a6daf838bcc9af62718eeb7aba398b89590a4bc7811dad2",
+      "utc": "2026-10-09T04:50:39.656702+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-compact-collapsed-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-compact-collapsed-draft.png",
+      "sha256": "7b75adc0e37a0e87fc0534083f529476daea01f6a3b63cbd09ee4a7168c48ce6",
+      "utc": "2026-10-09T04:50:43.526836+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-footer-focus",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-footer-focus.png",
+      "sha256": "4e837ef8279da4ef8d1345539446f3fcbe6bbb91ba232417d05e0305db7bb40c",
+      "utc": "2026-10-09T04:51:06.946672+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-configured-wide-simple-settled",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-configured-wide-simple-settled.png",
+      "sha256": "5577025d96d1d883e23b59a606582e4bdcc0d1d02de98402f8a072725b4fcf81",
+      "utc": "2026-10-09T04:51:25.053425+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-configured-wide-advanced",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-configured-wide-advanced.png",
+      "sha256": "40e4c5af8aeaccf15d03d26fa00caa48ed4f8a729c3feb4e994e40be878fcaa3",
+      "utc": "2026-10-09T04:51:26.977459+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-wide-native-settled",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-wide-native-settled.png",
+      "sha256": "70a7b1bd0c61786a35b0e6c90faec0812ede62bc5344be5ff2fce1c214b77bba",
+      "utc": "2026-10-09T04:51:55.077276+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-wide-capture",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-wide-capture.png",
+      "sha256": "40dec6c0689e222f9b1f29c71ae5705d2737c393871d5d8d9bbebafd68064f5c",
+      "utc": "2026-10-09T04:52:20.150364+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-wide-capture-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-wide-capture-tab.png",
+      "sha256": "d591bfdee4afd92afd647ab77e27ca8d15067689bb2f0d98dba2771f4ecc141b",
+      "utc": "2026-10-09T04:52:22.128227+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-wide-capture-shift-tab",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-wide-capture-shift-tab.png",
+      "sha256": "66eb92cd09e0186fccc2ccbae0acea09c9bc1e7a9baafe0e93795cb474fb6d47",
+      "utc": "2026-10-09T04:52:23.962941+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-wide-shortcuts",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-wide-shortcuts.png",
+      "sha256": "d639ae3faf93b813045377ddc998b8a20c159f89c356f4ee23303dd9432df8c8",
+      "utc": "2026-10-09T04:52:25.878020+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-wide-preferences",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-wide-preferences.png",
+      "sha256": "69fbff99ededad37cde176b323d57a96a281a085bdc326a49c01ae1690b5fea4",
+      "utc": "2026-10-09T04:52:27.865049+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-wide-collapsed-draft",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-wide-collapsed-draft.png",
+      "sha256": "d31ef93f68ad6fa835d29a3103da822a09697573959b1f2ed0f4f996eefd6bd5",
+      "utc": "2026-10-09T04:52:31.981375+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-configured-reopened-saved",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-configured-reopened-saved.png",
+      "sha256": "f8a1e9964937a10b0a15725af7532541dc65907dfbbfb6ec804031b750a66a6f",
+      "utc": "2026-10-09T04:52:39.966874+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "history-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/history-open.png",
+      "sha256": "39ae1b11f54fb5c46b4ce5b54663eab01a35ef36cd8b4f35ce037ae1ee304b3f",
+      "utc": "2026-10-09T04:52:59.136995+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "history-reopened",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/history-reopened.png",
+      "sha256": "787ae664af534183da034020c2a8c7a7c8e2e2935facbe440180b58da1d76d59",
+      "utc": "2026-10-09T04:53:05.890386+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "activity-open",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/activity-open.png",
+      "sha256": "1d53224e56e5078eb7777c75519a0e96dc4b45018fc54180250b6134a595974b",
+      "utc": "2026-10-09T04:53:13.086282+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "activity-reopened",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/activity-reopened.png",
+      "sha256": "1d53224e56e5078eb7777c75519a0e96dc4b45018fc54180250b6134a595974b",
+      "utc": "2026-10-09T04:53:20.020165+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "final-tray-tooltip",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/final-tray-tooltip.png",
+      "sha256": "77502942fd69d3188580de1ec4d5dd3236e4526ae8834990f855332c2e77be46",
+      "utc": "2026-10-09T04:53:27.955149+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-direct-simple",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-direct-simple.png",
+      "sha256": "18dd23beda5cc763f18d32c4f5c383b5d960547f830e9604c1f73a15525dd796",
+      "utc": "2026-10-09T04:54:18.512252+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "settings-empty-wide-direct-add",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-direct-add.png",
+      "sha256": "aefd57a2c6da0ead6d03a2d20fb5d850e32d0ae463e521dc8db66073ac205d1a",
+      "utc": "2026-10-09T04:54:20.552821+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    },
+    {
+      "label": "final-tray-completed",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/views/final-tray-completed.png",
+      "sha256": "30cb32784b2378170d6db4741e33d29917ff0669f3000d07b6aa8f67deff5185",
+      "utc": "2026-10-09T04:54:32.956678+00:00",
+      "review": "Actual native pixels inspected; procedural label alone is not outcome evidence."
+    }
+  ],
+  "buildValidation": {
+    "devTests": "40",
+    "failures": "0",
+    "skipped": "0",
+    "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/dev.xml",
+    "releasePackage": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/build.json"
+  },
+  "overallOutcome": "Passed bounded native scope. No confirmed Settings Add continuity failure in current retained pixels; full compositor/U9 and physical performance certification outside scope.",
+  "cases": {
+    "nativeMatrix": {
+      "fullRepeatCases": 12,
+      "fullRepeatPassed": 12,
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/matrix.json",
+      "contactSheets": [
+        {
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/matrix-contact-1.png",
+          "sha256": "dd12b85c41f95b84f370a81e5b460ce606e0a0621842c5e83ba296da97517170"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/matrix-contact-2.png",
+          "sha256": "86876e0e85c4e6cbc7341201f8f822bba807227283a7000312b1fe1418312b55"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/matrix-contact-3.png",
+          "sha256": "1b206151b763bb714942d7073d3d8b69f7edb117d21ae8e516c0061dcfb1f1f9"
+        }
+      ],
+      "cases": [
+        {
+          "client": "qt",
+          "scenario": "region",
+          "operationId": "3dff1ea2-1aea-46c3-81bd-e0f18ac6c12c",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-1",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-1/final-head0.ppm",
+            "sha256": "0590cd75961dda073f9a491d09d981e4fb798ed92d75db7c942c306e2e77b36c"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "window",
+          "operationId": "e302e10b-5829-44a6-935e-8f5c99f14a90",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-2",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-2/final-head0.ppm",
+            "sha256": "ab5b1135758245c7c2097184b99356a46849566b75976d605fdfba42e18d725a"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "desktop",
+          "operationId": "3361c770-ac48-458b-a0f1-bdc7d1a0ae57",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-3",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-3/final-head0.ppm",
+            "sha256": "0590cd75961dda073f9a491d09d981e4fb798ed92d75db7c942c306e2e77b36c"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "clipboard-text",
+          "operationId": "60da043a-6bac-4e66-acf7-2523b6afd28d",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-4",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-4/final-head0.ppm",
+            "sha256": "ab5b1135758245c7c2097184b99356a46849566b75976d605fdfba42e18d725a"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "clipboard-image",
+          "operationId": "3dbce65f-fc99-4aab-8236-df8200a77bbe",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-5",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-5/final-head0.ppm",
+            "sha256": "ab5b1135758245c7c2097184b99356a46849566b75976d605fdfba42e18d725a"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "clipboard-files",
+          "operationId": "65ae4886-8e35-4c88-8889-f01a7af1e04b",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-6",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-6/final-head0.ppm",
+            "sha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "region-cancel-escape",
+          "operationId": "0eb141be-5a68-478e-b351-e60fc8b51e8e",
+          "operationState": "cancelled",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-7",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-7/final-head0.ppm",
+            "sha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "region-cancel-right-click",
+          "operationId": "cc2f62ed-f7c2-4cb1-a671-13f6731c1782",
+          "operationState": "cancelled",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-8",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-8/final-head0.ppm",
+            "sha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3"
+          }
+        },
+        {
+          "client": "qt",
+          "scenario": "region-cancel-zero-area",
+          "operationId": "1e098a64-5061-4c16-ae41-42550ad70b6d",
+          "operationState": "cancelled",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-9",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-9/final-head0.ppm",
+            "sha256": "f7bec0844647cad00e18ed476d51272fd05b497bdc9874ac8d229ef6c7c70fe3"
+          }
+        },
+        {
+          "client": "gtk",
+          "scenario": "clipboard-text",
+          "operationId": "2a6e7837-db5d-4097-b6d5-b11ad5128278",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-10",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-10/final-head0.ppm",
+            "sha256": "b73f5083164cf03219f47a543623f9349964307eead32339e1abd6b2c5f94c9e"
+          }
+        },
+        {
+          "client": "gtk",
+          "scenario": "clipboard-image",
+          "operationId": "b2a81e5f-e25b-4ccc-8157-1f9a8c1ceae1",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-11",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-11/final-head0.ppm",
+            "sha256": "416b2aefff1ebae15850ebbcfa907974a501a27e581995a084faa9876f68b63c"
+          }
+        },
+        {
+          "client": "gtk",
+          "scenario": "clipboard-files",
+          "operationId": "ef42e4a2-8d60-4282-a5f8-2f6a8619b678",
+          "operationState": "completed",
+          "ok": true,
+          "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-12",
+          "nativeWitness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T044358217882-12/final-head0.ppm",
+            "sha256": "416b2aefff1ebae15850ebbcfa907974a501a27e581995a084faa9876f68b63c"
+          }
+        }
+      ]
+    },
+    "emptySettings": {
+      "wide": "Actual1200x700 simple saved empty state: prominent Add, inactive editor/credential cards hidden, Save locally/footer visible. Direct Add visibly opens draft editor; actual Cancel returns helper0 and accepted empty revision unchanged.",
+      "compact": "Actual1024x700 saved empty state with prominent Add and hidden inactive cards; direct Add opens draft editor; actual Cancel leaves accepted empty revision unchanged.",
+      "continuity": "Repeated border/native-menu width changes and settled screenshots retain Add. Previously reported absence was observer error, corrected by independent root review, exact hashes and actual blue button pixels. No verified transient/settled absence claim.",
+      "acceptedEmptyRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf"
+    },
+    "configuredSettings": {
+      "compact": "Actual1024x700 simple and expanded Advanced readable, nav and footer visible. Capture/Shortcuts/Preferences actual sections inspected.",
+      "wide": "Actual1200x700 expanded Advanced and collapsed simple readable, nav and footer visible. Capture/Shortcuts/Preferences actual sections inspected.",
+      "draft": "Appended d to saved synthetic bucket. synthetic-ui-onlyd visible after compact expansion, section switches, collapse and wide resize/navigation/collapse. Actual Cancel discarded draft; reopened bucket synthetic-ui-only. Accepted configured revision unchanged.",
+      "keyboard": "Both widths: Tab from Capture navigation visibly focuses Save locally; ShiftTab returns to Capture navigation. Footer Cancel was actually clicked and reachable at both widths. Complete keyboard traversal of every control to footer was not claimed.",
+      "acceptedConfiguredRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "cloudActionsEnabled": false
+    },
+    "history": {
+      "scope": "Opened/normal closed/reopened/normal closed; actual populated native list from this candidate matrix inspected. Further inspector/copy/preview scenarios intentionally outside bounded repeat.",
+      "visible": "11 synthetic records; Name/date/upload/local/remote columns readable; local-only/saved/not-requested outcomes visible."
+    },
+    "activity": {
+      "scope": "Opened/normal closed/reopened/normal closed; actual12-operation native tree inspected. Parent/child Copy result/full-ID/independent paste repeats outside bounded scope.",
+      "visible": "Matrix completed local-only/copied outcomes and three cancelled region operations visible; current native reopen PNG exactly matches opening SHA256."
+    },
+    "closeTray": {
+      "normalCloseReceipts": [
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045240060628-close/closed.json",
+          "helperBefore": {
+            "pid": 236864,
+            "startTicks": 3008422,
+            "parentPid": 212976,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3338,
+            "lastExit": {
+              "code": 0,
+              "generation": 5,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 212976,
+            "startTicks": 2922997,
+            "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+          }
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045259237032-close/closed.json",
+          "helperBefore": {
+            "pid": 237462,
+            "startTicks": 3010346,
+            "parentPid": 212976,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3758,
+            "lastExit": {
+              "code": 0,
+              "generation": 6,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 212976,
+            "startTicks": 2922997,
+            "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+          }
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045305983165-close/closed.json",
+          "helperBefore": {
+            "pid": 238058,
+            "startTicks": 3011032,
+            "parentPid": 212976,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3758,
+            "lastExit": {
+              "code": 0,
+              "generation": 7,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 212976,
+            "startTicks": 2922997,
+            "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+          }
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045313175682-close/closed.json",
+          "helperBefore": {
+            "pid": 238653,
+            "startTicks": 3011731,
+            "parentPid": 212976,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3851,
+            "lastExit": {
+              "code": 0,
+              "generation": 8,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 212976,
+            "startTicks": 2922997,
+            "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+          }
+        },
+        {
+          "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045320109026-close/closed.json",
+          "helperBefore": {
+            "pid": 239247,
+            "startTicks": 3012432,
+            "parentPid": 212976,
+            "sha256": "88eb318dcbf177561eaa5825a96c614f8629f2141b77a6574983590e9a2b526c"
+          },
+          "helperAfter": {
+            "checkpointBytes": 3851,
+            "lastExit": {
+              "code": 0,
+              "generation": 9,
+              "status": "normal"
+            },
+            "pid": 0,
+            "state": "stopped"
+          },
+          "residentUnchanged": {
+            "pid": 212976,
+            "startTicks": 2922997,
+            "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+          }
+        }
+      ],
+      "finalHelperPid": 0,
+      "activeOperations": 0,
+      "residentUnchanged": true,
+      "renderedTray": "Actual final-tray-completed native image shows rendered put.gd icon and tooltip put.gd \u2014 Share and local capture."
+    }
+  },
+  "acceptedConfigurationObservations": [
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T044353585315-observe/observed.json",
+      "utc": "2026-10-09T04:43:54.988614+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "",
+      "observedRevision": "",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "upload",
+        "desktop": "upload",
+        "region": "upload",
+        "window": "upload"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T044852629990-observe/observed.json",
+      "utc": "2026-10-09T04:48:54.088247+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 1887,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T044947385024-observe/observed.json",
+      "utc": "2026-10-09T04:49:48.874974+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045233982252-observe/observed.json",
+      "utc": "2026-10-09T04:52:35.601467+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 3338,
+        "lastExit": {
+          "code": 0,
+          "generation": 4,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045323082102-observe/observed.json",
+      "utc": "2026-10-09T04:53:24.663046+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 3851,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045354927824-observe/observed.json",
+      "utc": "2026-10-09T04:53:56.697596+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 3851,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045422710358-observe/observed.json",
+      "utc": "2026-10-09T04:54:24.309515+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 2401,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045427906566-observe/observed.json",
+      "utc": "2026-10-09T04:54:29.585047+00:00",
+      "resident": {
+        "pid": 212976,
+        "startTicks": 2922997,
+        "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+      },
+      "ui": {
+        "checkpointBytes": 2401,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    }
+  ],
+  "blockedGates": [],
+  "limitations": [
+    "History inspector/copy/preview and Activity parent/child Copy result/full-ID/paste extra scenarios skipped per bounded scope; source43 evidence not relabelled as current.",
+    "Complete every-control keyboard-to-footer traversal not established; native Capture Tab/ShiftTab and actual footer Cancel interaction were established at both widths.",
+    "No physical timing, memory, cold/quiet/performance budget or fullU9 acceptance claim; no VM lifecycle/base/toolchain/cloud actions.",
+    "Source metadata comparison prose says Base44; actual frozen source identity is commitCount45 and is recorded exactly here."
+  ],
+  "observerCorrection": {
+    "allegedMissingLabel": "settings-empty-wide-native-established",
+    "sameHashSettledLabel": "settings-empty-wide-missing-add-settled",
+    "sha256": "150d8b16f7a89073e14ede0ab56e2ed11d294f5db4024dc7995b097d9feb8f9e",
+    "actualOutcome": "Both are byte-identical and show Add. Label naming and initial observer impression are not product failure evidence. Recovery-collapsed also shows Add."
+  },
+  "finalState": {
+    "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/kde/attempts/20261009T045427906566-observe/observed.json",
+    "utc": "2026-10-09T04:54:29.585047+00:00",
+    "resident": {
+      "pid": 212976,
+      "startTicks": 2922997,
+      "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+    },
+    "ui": {
+      "checkpointBytes": 2401,
+      "lastExit": {
+        "code": 0,
+        "generation": 10,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    },
+    "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+    "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+    "profileIds": [
+      "synthetic-ui-only"
+    ],
+    "actionOutputs": {
+      "clipboard": "local",
+      "desktop": "local",
+      "region": "local",
+      "window": "local"
+    },
+    "activeOperations": 0
+  },
+  "noMoreGuestActions": true
+}

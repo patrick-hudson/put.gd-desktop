@@ -1,0 +1,28 @@
+{
+  "argv": [
+    "strace",
+    "-f",
+    "-qq",
+    "-ttt",
+    "-T",
+    "-e",
+    "trace=fsync,fdatasync,fcntl,flock",
+    "-o",
+    "/home/patrick/work/put.gd/work/capture-parity/journal-sync/syscalls.log",
+    "python3",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/tests/performance/run_capture.py",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "--driver",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-bench-capture",
+    "--capture-helper",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-capture",
+    "--live-outline",
+    "--output",
+    "/tmp/pg-parity-journal-sync"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "startedUtc": "2026-10-09T15:35:38.624756+00:00"
+}

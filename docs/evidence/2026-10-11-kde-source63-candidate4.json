@@ -1,0 +1,1181 @@
+{
+  "schemaVersion": 1,
+  "status": "local_memory_target_met_remote_release_pending",
+  "terminal": true,
+  "trackedExportPerformed": true,
+  "candidateNumber": 4,
+  "source": {
+    "commit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "tree": "553a904064be556ebeec5ae06593994429b356b4",
+    "count": 63,
+    "version": "0.1.1-dev.63+g050b702c6a6d"
+  },
+  "allocatorPolicy": {
+    "changedFile": "src/main.cpp",
+    "platform": "Linux glibc KDE Core resident only",
+    "call": "mallopt(M_MMAP_THRESHOLD, 128 * 1024)",
+    "beforeApplicationConstruction": true,
+    "mechanism": "Fix the mmap threshold for larger transient allocations instead of allowing glibc threshold adaptation. Existing arena free chunks may still serve allocations; unchanged idle cleanup remains active.",
+    "cinnamonGnomeRoutingChanged": false,
+    "policyAppliedToSiblingResidents": false,
+    "portability": "No policy on non-glibc or non-Linux builds.",
+    "benefitConfirmed": false
+  },
+  "build": {
+    "hostStandardBuildPassed": true,
+    "hostRegisteredTests": 51,
+    "hostRegisteredTestsPassed": 51,
+    "hostSkippedCases": [
+      {
+        "case": "svgTextDecodeHasFontServicesOnlyInChild",
+        "reason": "optional host SVG codec absent"
+      },
+      {
+        "case": "svgRegularFilePreviewThroughArtifactStore",
+        "reason": "optional host SVG codec absent"
+      },
+      {
+        "case": "unavailableFacadeChild",
+        "reason": "subprocess helper case"
+      }
+    ],
+    "hostEvidenceScope": "Core/widget/protocol only; SVG guest cases must pass where declared.",
+    "kdePackageBuilt": true,
+    "packageSha256": "bc652760cdbdab8df927c0b775c8d0e873ce6c62874d9d01e7843860a3b87217",
+    "kdeGuestTestsRegistered": 51,
+    "kdeGuestTestsExecuted": true,
+    "compiledInstalledManifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.63+g050b702c6a6d",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.63+g050b702c6a6d",
+      "gitCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+      "gitTree": "553a904064be556ebeec5ae06593994429b356b4",
+      "commitCount": 63,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "installedFamilySha256": {
+      "/usr/bin/putgd": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed",
+      "/usr/bin/putgd-cli": "bf4a6331a1c33ad797fd3a62054b1a891a29faca599045028a19716a3a5b1f82",
+      "/usr/bin/putgd-ui": "f73a5d9da4e4db3c79b84d828f440806b7a8f2ceb2e5f908943661868a8087f8",
+      "/usr/bin/putgd-capture": "8c18d995981a34ba9091d8980a281926bdfd4225b7e9d516cbf8265c55587932",
+      "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750",
+      "/usr/bin/putgd-kde-region": "0ddb504080ca8eaaedb3d06fa1613bb0fc9ec0470f0755a3741d59f97bde6c43",
+      "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": "1239cd5963342c157446507df81fe5eb991d9a7bb3ba9b3b43f1a23486ad3dd0"
+    },
+    "kdeGuestTestsPassed": 51,
+    "kdeGuestVerification": {
+      "complete": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024543970388-candidate63-deferred-ctest/complete.json",
+        "sha256": "fe8cd4df989c34c1c1518481c1d965e3797da35fb7bb6e037aef65cc06070930"
+      },
+      "junit": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024543970388-candidate63-deferred-ctest/dev-full63.xml",
+        "sha256": "7b48653e8e369293e4630d378c36f68fdcc1689f0d194e1f7a511c9ef07a5afd"
+      },
+      "registeredTests": 51,
+      "passedRegisteredTests": 51,
+      "rootIndependentXmlNamesAndHashVerified": true,
+      "fullNativeParityAccepted": false,
+      "memoryAcceptance": false
+    },
+    "guestInternalSkips": [
+      {
+        "case": "S3ModuleContract::unavailableFacadeChild()",
+        "qualification": "subprocess helper case; no registered test omitted"
+      }
+    ]
+  },
+  "residentIdentity": {
+    "device": 64769,
+    "executableBasename": "putgd",
+    "inode": 1312189,
+    "pid": 149243,
+    "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed",
+    "startTicks": 3225818,
+    "uid": 1000
+  },
+  "firstColdDiagnostic": {
+    "timestampUtc": "2026-10-11T00:08:47.388358+00:00",
+    "rssBytes": 29278208,
+    "rssMiB": 27.921875,
+    "pssBytes": 6579200,
+    "pssMiB": 6.2744140625,
+    "privateBytes": 5038080,
+    "privateMiB": 4.8046875,
+    "identityUnchanged": true,
+    "rssCategoriesReconciled": true,
+    "collectionSeconds": 0.025204034998751013,
+    "scored": false,
+    "sampleCount": null,
+    "cpu": null,
+    "limits": [
+      "smaps and rollup are sequential, not an atomic allocation snapshot.",
+      "Categories do not prove allocator ownership or removable memory.",
+      "This is not a scored five-minute sample or native acceptance."
+    ]
+  },
+  "originalSelected4": {
+    "passed": false,
+    "completedPassingCases": 3,
+    "failedCases": 1,
+    "cases": [
+      {
+        "scenario": "clipboard-text-independent-paste",
+        "client": "qt",
+        "passed": true,
+        "elapsedSeconds": 140.24952872202266,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-1/results.json",
+          "sha256": "622803cdd447bd805eefa09b25e6ae32d387aa030a73715ad5a22d93f349e39d"
+        },
+        "errorCategory": null,
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      },
+      {
+        "scenario": "window-independent-paste",
+        "client": "qt",
+        "passed": true,
+        "elapsedSeconds": 165.42558707401622,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-2/results.json",
+          "sha256": "9f817aa169920c6ff6d39eb4fb7102debc2342d57dd15a6cd7ec7ace3e2d3dd5"
+        },
+        "errorCategory": null,
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      },
+      {
+        "scenario": "desktop-independent-paste",
+        "client": "qt",
+        "passed": true,
+        "elapsedSeconds": 141.87570592598058,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-3/results.json",
+          "sha256": "c38f264a096d8bbab7ab836ca06f2845fc93d045fd22e22e6555cfd227eef461"
+        },
+        "errorCategory": null,
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      },
+      {
+        "scenario": "region-cancel-escape-independent-paste",
+        "client": "qt",
+        "passed": false,
+        "elapsedSeconds": 115.49729127896717,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-4/results.json",
+          "sha256": "6f0087973c52a1da0ded547d685a4d0fe64a07a802a03582c3f78271d9427f43"
+        },
+        "errorCategory": "cancellation-artifact-or-terminal-state-unconfirmed",
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      }
+    ],
+    "normalRerunPerformedByDraft": false,
+    "unchangedOracles": true
+  },
+  "cancellationDiagnosis": {
+    "originalFailurePreserved": true,
+    "deadlineInterpretationCorrected": true,
+    "deadlineStart": "After guarded fixture launch returns; exact deadline timestamp not instrumented.",
+    "approximateDeadlineBracketUtc": [
+      "2026-10-11T00:32:43.743116Z",
+      "2026-10-11T00:32:46.019Z"
+    ],
+    "escapeReceiptPublicationUtc": "2026-10-11T00:32:44.352158Z",
+    "publicationIsNotKeydownTime": true,
+    "timingConclusion": "Budget exhaustion is supported; zero operation polls versus one slow empty poll is unproven. Timing alone does not prove product cancellation, artifact absence, or clipboard parity.",
+    "journalReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/reply.json",
+      "sha256": "a76380b0d50df553846e40565c45c7e099af41976212158c26c4bfa85f4e610c"
+    },
+    "itemCopyInspectReceipt": null,
+    "helperNormalExitReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003807511430-candidate63-failed-selected4-fixture-drain/complete.json",
+      "sha256": "d37fa13dccfc49c25440febab7684182a4f10087506adf57745901c948df62f5"
+    },
+    "cancellationAccepted": false,
+    "qualification": "The original timed failure remains failed. Exact journal inspection confirmed cancellation and no items. A separate fresh case then passed the original cancellation and independent clipboard checks; its distinct receipt is recorded in freshCancellationCase. No full native acceptance follows.",
+    "journalCompleteReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/complete.json",
+      "sha256": "01fa7673ceb9437677199fd13e795bdfa428033a1580ffd12858f132bae19ec8"
+    },
+    "journalBoundedProjection": {
+      "id": "79246861-13be-4e44-911e-22fd0b566d77",
+      "action": "region",
+      "state": "cancelled",
+      "cancelled": true,
+      "created": "2026-10-11T00:32:27.207Z",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    "errorCode": "cancelled",
+    "beforeReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/before.json",
+      "sha256": "2ee8909f7865b2c4836319022603bc35546961ea1210dd962c62e9872b7b9b8f"
+    },
+    "afterReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/after.json",
+      "sha256": "2ee8909f7865b2c4836319022603bc35546961ea1210dd962c62e9872b7b9b8f"
+    },
+    "identityAndQuietBeforeAfter": {
+      "sourceCount": 63,
+      "installedFamilyMembers": 7,
+      "pid": 149243,
+      "startTicks": 3225818,
+      "activeOperations": 0,
+      "uiPid": 0,
+      "installedFamilyUnchanged": true
+    },
+    "journalCancellationConfirmed": true,
+    "fixtureDrain": {
+      "fixtureResidue": false,
+      "productionFamilySingle": true,
+      "active": false,
+      "cleanupRequired": false,
+      "lastExit": {
+        "code": 0,
+        "generation": "1",
+        "processId": 177207,
+        "startTicks": "3368847",
+        "status": "normal",
+        "teardownCertified": true
+      }
+    }
+  },
+  "parameters": {
+    "toolchain": "C++20 / dynamic distro Qt>=6.4.2 / CMake presets / Ninja / official AWS SDK",
+    "commands": [
+      "cmake --preset dev",
+      "cmake --build --preset dev",
+      "ctest --preset dev"
+    ],
+    "vm": "Owned KDE Wayland overlay only; golden/base disks immutable; graphical actions visible via localhost VNC5934/display wall8765",
+    "order": "KDE functional/memory first. Current63 Cinnamon/GNOME regression execution only after KDE satisfactory; frozen57 sibling gate provenance only.",
+    "guestCTest": {
+      "count": 51,
+      "timeoutSeconds": 900,
+      "skipPolicy": "No skipped registered tests accepted",
+      "socketPreflight": "Actual Qt/Python templates incl runtime/putgd/session.sock, pgoWayland, qmp; UTF8<=107 before launch; preserve failures"
+    },
+    "native": {
+      "selectedCases": [
+        "clipboard-text/qt",
+        "window/qt",
+        "desktop/qt",
+        "region-cancel-escape/qt"
+      ],
+      "fullCases": 12,
+      "fullRequiredBeforeFocused": true,
+      "hotkeys": "Actual matrix bindings Ctrl+Shift+F9/F10/F11/F12; default bindings not independently qualified",
+      "fixture": "Synthetic original Qt/GTK fixtures and exact PID/start/exe/output inode registry; independent actual paste/pixel gates; no Node"
+    },
+    "supplementalImages": "Three actual GTK SVG clipboard/original-file URI/mislabeled non-PNG cases; original input/image/preview/paste oracles; raw payloads private",
+    "views": "Tray/nativefonts/nativefolder; settings Cancel/Save/Reload/feedback/notifications; Activityparent/item with unrelated-image reset+independent paste; localHistory; normal helperexit; restore priorconfig",
+    "region": "One pending transparent selector +changing clock +no-input cursor alpha/RGB metadata, then Escape/durablecancel/normalhelperexit; retain legacyRFBmask visibility qualification",
+    "memory": {
+      "seconds": 300,
+      "intervalSeconds": 5,
+      "warmupSeconds": 5,
+      "expectedSamples": 61,
+      "minimumSpanSeconds": 299.5,
+      "maximumGapSeconds": 7.5,
+      "timeoutSeconds": 420,
+      "targetRssBytes": 41943040,
+      "pssDiagnosticOnly": true,
+      "cpu": "Actual clockticks/cputime/elapsed fraction of onecore",
+      "family": "Current-version complete productfamily, exact PID/start/device/inode; active0/UIclosed/helpergone/allocatorpendingfalse",
+      "ladder": "Postnative300a1 + independentrepeat300a2 + separatelyfreshcold300 after exactnormalquit/profilepreserve/restartproof",
+      "samplingAltered": false
+    },
+    "environmentQualification": "User-adjusted KDE power/dimming settings docs/vm-lab.md:227; no further mutations. Include bounded actual Qt/glibc version only; no arbitraryenvironment"
+  },
+  "references": {
+    "sourceMetadata": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate4-source63/source-metadata.json",
+      "sha256": "298aaf8a6cfc51405809410992dd720bf661ca946c19723563f4abc3a4c7ca8d"
+    },
+    "hostBuildTests": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate4-host/verification-source63.json",
+      "sha256": "7397b1658e70916cb550b73bd3f3d047eb578a146f4f7dcb9d16cc232e877327"
+    },
+    "kdeBuild": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T000204894583-candidate63-standard-build/complete.json",
+      "sha256": "0641c8f61cb3d86a3a9204a30a9b90cb662059ecc9818c257447467d98fcebd0"
+    },
+    "deployment": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T000808426626-candidate63-deploy-first-cold-continuation/complete.json",
+      "sha256": "64f896485aaa6ea86368d19669713669ca1449f00cc93da255e193e433507b45"
+    },
+    "firstCold": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T000808426626-candidate63-deploy-first-cold-continuation/first-cold-attribution.json",
+      "sha256": "7ecba117c45ce7641d4cf66b8bf4f31f739e025b3947d976601ada0aa0dbbd33"
+    },
+    "selectedMatrixFailure": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/failed.json",
+      "sha256": "e7ff705f7e8110f082d7f3fe756286daac608396fe53e668815e8b5844af9474"
+    },
+    "deadlineOriginal": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-cancellation-diagnosis/original-deadline-evidence.json",
+      "sha256": "9459018d42cf2db0e97c298e22f86b8b7c2af04f6b38d592301a497f0a86e9c5"
+    },
+    "deadlineCorrection": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-cancellation-diagnosis/deadline-interpretation-correction.json",
+      "sha256": "2e22864ba912f2ef62603e3fbc7379c15c865d961120e6d2ca03f5e62d62dea3"
+    },
+    "socketPreflights": [
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-01.json",
+        "sha256": "88235d287884ed7c6f9c05aebd0b2dd9f1ca48d053d767225b9b907f107119a0"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-02.json",
+        "sha256": "d53ac03135c4b6d81916bcda31799d5b64efda7772fc19775956da138c18ac35"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-03.json",
+        "sha256": "19fb6699a9ae2784cafaa313ecb0e8eca6607c6464df9f2006cf06a9f33cd5ab"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-04.json",
+        "sha256": "20d72fac47a2f8789cc690e42cece9528f3e812df71164e837cd56fd2803d447"
+      }
+    ],
+    "cancellationJournal": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/reply.json",
+      "sha256": "a76380b0d50df553846e40565c45c7e099af41976212158c26c4bfa85f4e610c"
+    },
+    "postFailureDrain": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003807511430-candidate63-failed-selected4-fixture-drain/complete.json",
+      "sha256": "d37fa13dccfc49c25440febab7684182a4f10087506adf57745901c948df62f5"
+    }
+  },
+  "pendingGates": [
+    "Current real guest S3 upload/remote History direct-link copy and deletion",
+    "Current post-S3/populated-remote-history memory",
+    "Full U9/fresh-agent walkthrough"
+  ],
+  "acceptance": {
+    "native": false,
+    "memory": true,
+    "keeper": true,
+    "siblings": true,
+    "remote": false,
+    "memoryScope": "Current source63 KDE, physical Cinnamon and GNOME local functional and memory gates passed; remote workflows/full release remain pending.",
+    "localNative": true
+  },
+  "trackedTargets": [
+    "docs/evidence/2026-10-11-kde-source63-candidate4.json",
+    "docs/evidence/kde-source63/recipe-manifest.json",
+    "docs/evidence/kde-source63/reproduction.md"
+  ],
+  "hostControlCostDiagnosis": {
+    "scope": "Test harness/control diagnostics only; no product memory acceptance",
+    "originalAuthorize": {
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-host-guard-cost-audit/original-authorize-cost.json",
+        "sha256": "837fcdfd01da9d7d9a635a9356e64223ef0343f7a03621aa0e10c408edc0e267"
+      },
+      "historicalSourceCount": 57,
+      "current63AcceptanceOrAuthorization": false,
+      "bindSeconds": 0.0021025199675932527,
+      "authorizeSeconds": 0.8348829749738798,
+      "hashCalls": 106,
+      "hashBytes": 345638106,
+      "hashSeconds": 0.7933780799503438,
+      "categoryTotals": {
+        "code-or-metadata": {
+          "calls": 53,
+          "bytes": 3274217,
+          "elapsedSeconds": 0.010071283031720668
+        },
+        "historical-physical-receipt": {
+          "calls": 21,
+          "bytes": 166008,
+          "elapsedSeconds": 0.0009497448918409646
+        },
+        "other": {
+          "calls": 28,
+          "bytes": 11513965,
+          "elapsedSeconds": 0.029579746071249247
+        },
+        "package": {
+          "calls": 2,
+          "bytes": 11503116,
+          "elapsedSeconds": 0.0280610189656727
+        },
+        "source-archive": {
+          "calls": 2,
+          "bytes": 319180800,
+          "elapsedSeconds": 0.7247162869898602
+        }
+      },
+      "historicalHashAlreadyStreaming": true,
+      "arbitraryPerCallPathsExported": false
+    },
+    "hashMethodProbe": {
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-host-guard-cost-audit/hash-method-probe/results.json",
+        "sha256": "350c0670ec53723564ac74a1be0ba81acacb1bc1649d9704ff348b13df918a25"
+      },
+      "rows": [
+        {
+          "method": "read_bytes",
+          "repeat": 1,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.45818150497507304,
+          "highWaterIncreaseBytes": 159625216
+        },
+        {
+          "method": "file_digest",
+          "repeat": 1,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.35967759700724855,
+          "highWaterIncreaseBytes": 258048
+        },
+        {
+          "method": "read_bytes",
+          "repeat": 2,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.4291466569993645,
+          "highWaterIncreaseBytes": 159776768
+        },
+        {
+          "method": "file_digest",
+          "repeat": 2,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.3531535139773041,
+          "highWaterIncreaseBytes": 262144
+        }
+      ],
+      "allDigestsAndMetadataEqual": true,
+      "runOrder": "serialread_bytes1,file_digest1,read_bytes2,file_digest2; freshprocess each",
+      "hostTemporaryAllocationOnly": true,
+      "historicalGuardBenefitProven": false,
+      "freshDigestEachCall": true,
+      "noDigestCache": true,
+      "qualification": "Fresh isolated Python process per method/repeat; existing page cache retained. Current overlay read_bytes versus standard streaming file_digest, not product RSS. Streaming saved about76-99ms and avoided about159MB temporary host high-water allocation in these two pairs; historical guard already streams."
+    },
+    "actualSshTransport": {
+      "completeReceipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004341572151-candidate63-transport/complete.json",
+        "sha256": "bd8cd911349071b99eaa39e8cd300d8264d5ebf4a339852bdad435b219bf32d7"
+      },
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004341572151-candidate63-transport/transport.json",
+        "sha256": "438fe9bb96f66ba1df5b5e831254b754aa4f1896c20164a8269b85af5ddd8106"
+      },
+      "rows": [
+        {
+          "kind": "nop",
+          "hostElapsedSeconds": 0.30246756999986246
+        },
+        {
+          "kind": "inventory",
+          "hostElapsedSeconds": 0.4710725449840538
+        }
+      ],
+      "allChecksRetained": true,
+      "controlMasterAdded": false,
+      "memoryTargetSample": false,
+      "qualification": "Durations include fresh SSH connection and actual guest nop or inventory; original guards run before/after outside measured call. Two serial calls only."
+    },
+    "inventoryConcurrencyProbe": {
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004113984567-candidate63-compare/comparison.json",
+        "sha256": "ae2f13afcaf8318f98b8a0976caa88477b780933628c44e04d88ec56a869ece7"
+      },
+      "completeReceipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004113984567-candidate63-compare/complete.json",
+        "sha256": "ec7fe6fb9d5d14caf6a613e1a211c17d55862ecd967677625afebbe7ba8e5239"
+      },
+      "identicalInventories": true,
+      "originalDurationSeconds": 0.161852571000054,
+      "concurrentDurationSeconds": 0.17038217400113354,
+      "memoryTargetSample": false,
+      "allChecksRetained": true,
+      "applied": false,
+      "qualification": "Two inventory methods returned identical values; concurrency was slower in this single comparison, so it remained unapplied."
+    },
+    "productSourceChanged": false,
+    "productMemoryTargetClaim": false,
+    "nativeAcceptanceClaim": false
+  },
+  "supersedesDraftOnly": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-evidence-export-preparation/draft-a2/manifest.json",
+    "sha256": "6251e4d65e5f514811e095c90be6cacf9dacfcb5a7d276326aca29cf6d466412"
+  },
+  "reproductionAvailability": {
+    "archivalExactCampaign": {
+      "recipes": 24,
+      "storedUnderIgnoredWork": true,
+      "freshCloneRunnableWithoutOriginalArtifacts": false,
+      "requiresOriginalPrivateReceiptsAndRootAdmissions": true,
+      "missingOriginals": "Fail closed. Do not reconstruct or relabel a passed receipt, remove guards, or import a historical gate as current authorization."
+    },
+    "newCampaign": {
+      "trackedRunners": {
+        "tools/lab/lab.py": {
+          "path": "/home/patrick/work/put.gd/tools/lab/lab.py",
+          "sha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89"
+        },
+        "tests/performance/bench_ui_process.py": {
+          "path": "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+          "sha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+        },
+        "tools/diagnostics/check_socket_paths.py": {
+          "path": "/home/patrick/work/put.gd/tools/diagnostics/check_socket_paths.py",
+          "sha256": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+        },
+        "docs/vm-lab.md": {
+          "path": "/home/patrick/work/put.gd/docs/vm-lab.md",
+          "sha256": "96773a33bfe7eb499c35d02c9a233d08aa3c53b9e29efb6b188bb929100e0011"
+        },
+        "docs/testing-ui-process.md": {
+          "path": "/home/patrick/work/put.gd/docs/testing-ui-process.md",
+          "sha256": "ad2b074ec0ede1adc99bf75f5f56ba12a508671c91834cb6456286b2337c7a38"
+        },
+        "docs/cli.md": {
+          "path": "/home/patrick/work/put.gd/docs/cli.md",
+          "sha256": "da43e2e87838de744afa3a105ce50c43b4bd3ec3961c05b2b1d7ff77679fd689"
+        }
+      },
+      "usesNewBaselineAndCurrentBuild": true,
+      "requiresFreshOwnedOverlayAndProtectedBootstrap": true,
+      "usesOriginalTrackedSingleScenarioOracles": true,
+      "memoryUsesUnchangedTrackedSampler": true,
+      "requiresFreshActualNativeQuietFamilyAndIdentityEvidence": true,
+      "historicalAcceptanceTransferred": false,
+      "exactOldCampaignReplayed": false,
+      "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
+    }
+  },
+  "exportedUtc": "2026-10-11T05:25:23.349390+00:00",
+  "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
+  "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
+  "freshCancellationCase": {
+    "matrix": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004623653226-matrix/matrix.json",
+      "sha256": "b25ecba5b830231f6edf81a61909c6f4ff6cdc37a4e76ca6458d410f44cf3ef3"
+    },
+    "complete": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004623653226-matrix/complete.json",
+      "sha256": "ee19b201b53634fa15da55b698bd0228a9616d87613bc9cf4d8dfd09b2a2ed22"
+    },
+    "operationId": "a40a3b07-b2fc-4515-93fd-7296f43897e7",
+    "state": "cancelled",
+    "copyStatus": "no_result",
+    "itemCount": 0,
+    "independentPastePassed": true,
+    "elapsedSeconds": 137.9600599979749,
+    "originalCaseLimitSeconds": 90,
+    "qualification": "A separate fresh Escape case passed with unchanged production version and original oracles. Original timedfailed case remains failed; totalelapsedincludespostpollpaste/guards beyondactiondeadline. Combined cheapcoverage original3passes+fresh1, no full12/CPU/memory acceptance."
+  },
+  "combinedPostWorkloadDiagnostic": {
+    "stage": "exploratory-post-svg3-combined-native",
+    "rssBytes": 31260672,
+    "pssBytes": 7752704,
+    "privateBytes": 5955584,
+    "identity": {
+      "device": 64769,
+      "executableBasename": "putgd",
+      "inode": 1312189,
+      "pid": 149243,
+      "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed",
+      "startTicks": 3225818,
+      "uid": 1000
+    },
+    "attribution": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005327249201-candidate63-quick-attribution/attribution.json",
+      "sha256": "e2f072e22cfe0cfa93b045f73771f6c6c0d8002550bddb9fce306ccd30323b0b"
+    },
+    "receipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005327249201-candidate63-quick-attribution/complete.json",
+      "sha256": "618e6f02d602a963ac5c4a4d698286e1b90b8afb7b9791508435afa0d4f81fd1"
+    },
+    "scored": false,
+    "targetBytes": 41943040,
+    "targetPassed": true,
+    "qualification": "One original quiet diagnostic after SVG3 and original3 passing native cases plus separately passed Escape case; full native/UI, 300-second CPU/RSS and current sibling gates remain pending."
+  },
+  "svg3": {
+    "complete": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T001418179997-kde63-svg3/complete.json",
+      "sha256": "2e73a82b45c9c51751c18234ab3df986b7d498cdeb43b64288d70405ed8992ae"
+    },
+    "result": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T001418179997-kde63-svg3/svg3-result.json",
+      "sha256": "10244616825bc4b1b7496fda3a595a9d5708861a964698550523a8af660927da"
+    },
+    "caseCount": 3,
+    "proceduralPassed": true,
+    "operationIds": [
+      "35af6d73-079e-4d71-bb01-0b762057e03c",
+      "11c8f53b-3391-41a8-98ac-3a49c1e6e81b",
+      "7d4ffdf5-fbac-4218-9c1e-0b28fec292ef"
+    ],
+    "rootReviewedVerifiedWitnesses": true,
+    "preview1TextVisuallyRendered": true,
+    "frozenOracleUnchanged": true,
+    "fullNativeAcceptance": false,
+    "limitations": {
+      "workerGenerationNotIndependentlyObserved": true,
+      "ownerChangeTimingRaceNotAttempted": true
+    }
+  },
+  "full12Progress": {
+    "attempt": "20261011T005447671613-matrix",
+    "region": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-1/results.json",
+      "sha256": "3f0c7ff93b8ccbefbffe9e2b84b5ebb46eff8d29bdb399083e498829e0edc8a4"
+    },
+    "regionPassed": true,
+    "rootViewedNativeDesktopAnd80x60Artifact": true,
+    "independentPasteMatchesArtifact": true,
+    "full12Complete": true,
+    "cases": [
+      {
+        "caseIndex": 1,
+        "client": "qt",
+        "scenario": "region-independent-paste",
+        "passed": true,
+        "operationId": "6f2bfd09-87bb-4812-a1a3-159dd6510b3d",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-1/results.json",
+          "sha256": "3f0c7ff93b8ccbefbffe9e2b84b5ebb46eff8d29bdb399083e498829e0edc8a4"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 2,
+        "client": "qt",
+        "scenario": "window-independent-paste",
+        "passed": true,
+        "operationId": "59527204-8990-4d18-b031-21eeaa71d919",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-2/results.json",
+          "sha256": "fc70a76776eef9e40745964580c694e43694ba4d75c827e925c83a47201e8394"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 3,
+        "client": "qt",
+        "scenario": "desktop-independent-paste",
+        "passed": true,
+        "operationId": "422d19f6-e95a-4127-b115-1bc1bb2071fb",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-3/results.json",
+          "sha256": "3d4a69b3a116b36df332e256a0a0f382a3cec3a163182179aa7162e4f9d1b346"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 4,
+        "client": "qt",
+        "scenario": "clipboard-text-independent-paste",
+        "passed": true,
+        "operationId": "505d530f-d676-41ff-972f-1c9a01b617f1",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-4/results.json",
+          "sha256": "3e9334d8bc678e69e924eee33822fa85488febd681e51cde34c51c200584e659"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 5,
+        "client": "qt",
+        "scenario": "clipboard-image-independent-paste",
+        "passed": true,
+        "operationId": "efd52836-baa8-4c21-8184-5b3db607ef2a",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-5/results.json",
+          "sha256": "4ed928c9b63cb274bdc3cc6fd2052f6e92ec971ad955cb4928dee2ef1a97bd27"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 6,
+        "client": "qt",
+        "scenario": "clipboard-files-independent-paste",
+        "passed": true,
+        "operationId": "77622f18-ad1a-4891-a6da-21c73f312f99",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-6/results.json",
+          "sha256": "127b914ee1f93c27df0aacdd23357bbf14b203e1961110d05717d7156475e93a"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 7,
+        "client": "qt",
+        "scenario": "region-cancel-escape-independent-paste",
+        "passed": true,
+        "operationId": "630aba48-8b48-482f-a102-3abe1e861ee6",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-7/results.json",
+          "sha256": "d5f76fb009ac8ff660974f5e9d16597cc5b30b517bb1db9d17f8da97fb8c9a3e"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 8,
+        "client": "qt",
+        "scenario": "region-cancel-right-click-independent-paste",
+        "passed": true,
+        "operationId": "1d50e35f-fd1f-4418-9b54-031bfe5e9656",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-8/results.json",
+          "sha256": "ed5df4091cab069947f39968bb4ce7472e510fcd212dcd4215e976791254ee6d"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 9,
+        "client": "qt",
+        "scenario": "region-cancel-zero-area-independent-paste",
+        "passed": true,
+        "operationId": "84892bc0-03f5-4444-9ffe-bff95a06cc1e",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-9/results.json",
+          "sha256": "c3218b1b80bf74b0859e48c866ab6b246b201816fabaabc19a402aad7448029a"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 10,
+        "client": "gtk",
+        "scenario": "clipboard-text-independent-paste",
+        "passed": true,
+        "operationId": "d822693b-3aec-473b-a7fd-d704e9de93bd",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-10/results.json",
+          "sha256": "156a3fe401503cc114520f5d123b4b9137c64e86bbee4eb7fa7edb9ecb7fb187"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 11,
+        "client": "gtk",
+        "scenario": "clipboard-image-independent-paste",
+        "passed": true,
+        "operationId": "35281d14-4dc3-4a0d-9a33-c25371f07b48",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-11/results.json",
+          "sha256": "cc11be9b5a9786d0ab0d4a9aad5d102af74a48a23b4fd15df24dcde91fe83fb8"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 12,
+        "client": "gtk",
+        "scenario": "clipboard-files-independent-paste",
+        "passed": true,
+        "operationId": "aa15e880-e3dd-4365-8ec1-9493e0d99062",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-12/results.json",
+          "sha256": "88049b134d94a75891e577a7ff8fd8e1ea2403098d1999898c8ff6b50c66bfd2"
+        },
+        "rootViewedArtifact": false
+      }
+    ],
+    "complete": true,
+    "acceptanceGranted": false,
+    "actualMatrix": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005447671613-matrix/matrix.json",
+      "sha256": "f848570648160a298ec531a4811cd3ed026f7b4845b197da640317f0da638b90"
+    },
+    "actualComplete": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005447671613-matrix/complete.json",
+      "sha256": "ee19b201b53634fa15da55b698bd0228a9616d87613bc9cf4d8dfd09b2a2ed22"
+    },
+    "actualFixtureSafety": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005447671613-matrix/fixture-safety.json",
+      "sha256": "81c30de8bf8ab99c08d66a79c8d0562f4dc1db5255e04e01f8d9dfcd97dbe760"
+    }
+  },
+  "standardHostAsan": {
+    "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "sourceCount": 63,
+    "registeredTests": 51,
+    "passedRegisteredTests": 51,
+    "registeredSkippedTests": 0,
+    "exitCode": 0,
+    "noSuppressionsOrFiltersAdded": true,
+    "individualQtTestSkips": [
+      {
+        "case": "ImageJobTest::svgTextDecodeHasFontServicesOnlyInChild()",
+        "qualification": "host optional SVG codec absent"
+      },
+      {
+        "case": "ImageJobTest::svgRegularFilePreviewThroughArtifactStore()",
+        "qualification": "host optional SVG codec absent"
+      },
+      {
+        "case": "S3ModuleContract::unavailableFacadeChild()",
+        "qualification": "subprocess helper case"
+      }
+    ],
+    "nativeDesktopAcceptance": false,
+    "privateVerificationSha256": "c9b20b4ee510253d8da72fe71e2f2a20acc1929cecbef9b4b49a67a75f9975d7",
+    "junitSha256": "8b3041400cd38b4ce358f351ce9d1a600e1b07358595220e0a30428ee9f271c0",
+    "heavyHostWorkAbsent": true
+  },
+  "settingsUiProgress": {
+    "saveCancelReloadChecked": true,
+    "originalSettingsRestorationPending": false,
+    "nativeKdeFontIntegrationAndFolderDialogObserved": true,
+    "localHistoryRendered": true,
+    "activityRendered": true,
+    "activityIndependentCopyPastePending": false,
+    "notificationScreenshotMissedToastLifetime": true,
+    "liveRegionProofPending": false,
+    "qualification": "Actual UI progress; no full native parity or scored memory acceptance.",
+    "notificationObservedDuringRequiredParentCopy": true,
+    "originalMissedNotificationWitnessPreserved": true
+  },
+  "settingsRestoration": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-streaming-preparation/focus/actual-settings-restoration-final.json",
+    "sha256": "c0f7aec66fb32b1f9f6dd4524ade4de7dc1de113f50801472b6286ba958e85db",
+    "rootIndependentlyComparedWholeDocuments": true
+  },
+  "activityCopyVerification": {
+    "parent": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T021312010797-fixture/activity-result-copy.json",
+      "sha256": "c837fafca3b9f4177cadb27de495a2e6724aabfbb41c910b9147530590881bf6",
+      "rootOracleReviewed": true,
+      "rootUniqueHashImageReviewed": true,
+      "selectionKind": "parent",
+      "passed": true,
+      "itemCheckPending": false,
+      "sourceCount": 63
+    },
+    "item": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T022028552596-fixture/activity-result-copy.json",
+      "sha256": "397f4cdcf5d65e9e6c1e7c76bc18cd102195c62b2e03515169a8eac953ac8266",
+      "rootOracleReviewed": true,
+      "rootUniqueHashImageReviewed": true,
+      "rootSelectedRowImageSha256": "96318593d829d6f12c8be7f51e226c8cd74059906e0554d2d4a6017d3abadc61",
+      "selectionKind": "item",
+      "passed": true,
+      "sourceCount": 63,
+      "qualification": "One-item operation; not proof of a multi-item subset distinction."
+    }
+  },
+  "liveSelectorValidation": {
+    "accepted": false,
+    "attempt1": {
+      "operationId": "43dc9819-1cc3-48ba-869b-cee7b0d5a56f",
+      "status": "failed-validation",
+      "terminal": "capture_timeout/no_result/empty_items",
+      "originals": [
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T022942885548-selector63-clock-after/02.stdout",
+          "sha256": "efbe8be243cf9f1c49fb4cdd5b1c73faccbad0c3f0c239139b20cf256626ec20"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T022942885548-selector63-clock-after/03.stdout",
+          "sha256": "3a74ddfe4f7d216b14625d9faee9be0d9cc0cab5d2ceb714b1570098e8b38fa4"
+        }
+      ],
+      "helperNormalExit": true,
+      "helperTeardownCertified": true,
+      "uiGeneration": 5,
+      "memoryMeasurementStarted": false,
+      "cursorGate": "selected_cursor_rgb_changed; wire bytes were discarded on original strict rejection, so glyph regression not established",
+      "stateBindingIssue": "Original command reply accepted; later inventory acquiring. Strict equal-state host join rejected before outputs. A read-only inspect consumed additional selection lifetime.",
+      "retryPendingRootReview": false,
+      "retryReason": "Correct asynchronous metadata binding and perform observations within unchanged120-second selection lifetime; fresh private namespace, same scripts/pixel/coverage oracles.",
+      "originalFailurePreserved": true
+    },
+    "attempt2": {
+      "operationId": "83ce3b7f-1a18-4b87-8622-e7a83600575b",
+      "status": "failed-setup-unique-witness-label",
+      "originalFailurePreserved": true,
+      "diagnosis": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-live-retry-a2/witness-label-collision-diagnosis.json",
+        "sha256": "65346ae86c0da1a23928403991544f19d0b8f9a5f6e9fa92b0f843a99ee598ba"
+      },
+      "semanticAcceptance": false,
+      "setupCorrectionPending": true
+    },
+    "attempt3": {
+      "rootReviewed": true,
+      "sameOperationId": "40d109c3-e9b6-4dd0-834b-5d2274eb9871",
+      "liveClockChanged": true,
+      "cursorMatched": true,
+      "cancelledNoResultEmptyItems": true,
+      "normalHelperExitCertified": true,
+      "originals": [
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024156178229-selector63-clock-a3-before/observation.json",
+          "sha256": "6c5bd064fb8c088efc82376e449c87bef14b2626b869750b6de9ccd5e38cc68a"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024246067485-selector63-clock-a3-after/observation.json",
+          "sha256": "6b9e082f213100837e3cb439dc7a637ca82f1e7fee1815d9a25969ee5f22389c"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-live-retry-a2/alpha/runtime/kde63-active-selector/cursor.json",
+          "sha256": "11b3e634d5d3319b1b1f61b85fbd4f6193f06680e5a05542bf43a1859285b021"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-live-retry-a2/root-live-visual-review-a3.json",
+          "sha256": "ebfffa48cfc93af100dec418fdaa82de9664421a18007ef3230a562894a455a7"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024349154057-selector63-clock-a3-terminal/observation.json",
+          "sha256": "048adb376332611e89b189e1b2ceb35c2947596874c7bd86a433d7722cff6963"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T024317787486-candidate63-key/after.json",
+          "sha256": "43c6d3bae939d70e7800fd4a2fb2234a92b8423390b2aeb9a0c80e819e9af718"
+        }
+      ],
+      "fullNativeParityAccepted": false
+    },
+    "acceptedLocalSemanticCheck": true
+  },
+  "localNativeSemanticChecks": {
+    "sixChecksReviewed": true,
+    "matrix12Passed": true,
+    "remoteHistoryExcluded": true,
+    "finalPacketPending": false,
+    "fullNativeParityAccepted": false,
+    "freshFinalDrainQuietReviewed": true
+  },
+  "localNativePacket": {
+    "reviewer": "root",
+    "utc": "2026-10-11T02:46:27.835127+00:00",
+    "packet": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-final-native-packet-a1/packet.json",
+      "sha256": "2dd3b7dd6183c5a9b89fb43706903fda6441f272c41bf8e81105595b7ec4a95a"
+    },
+    "decision": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-final-native-decision-a1/root-decision.json",
+      "sha256": "5bd4a8a87b261d390a7246df52c3d30336edeb6eca8dfa3dcbbc4fcfc43f3159"
+    },
+    "sixLocalNativeGatesReviewed": true,
+    "twelveOriginalMatrixCasesReviewed": true,
+    "allOriginalRoleHashesIndependentlyVerified": true,
+    "canonicalProjectionHashesVerified": true,
+    "mirroredFileCount": 10,
+    "safeUiAssetCount": 3,
+    "payloadsConfigSecretsRawLogsExported": false,
+    "remoteHistoryAccepted": false,
+    "fullNativeParityAccepted": false,
+    "currentSiblingRegressionsPending": true,
+    "memoryAcceptance": false,
+    "independentReview": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-final-native-packet-a1/root-independent-review.json",
+      "sha256": "46af75cb69cd651992144ff0d3459352f30b909da278cef02fc95ff594a2deaa"
+    }
+  },
+  "measuredPostNativeRuns": [
+    {
+      "path": "docs/evidence/kde-source63/post-native-a1.json",
+      "sha256": "804aa59ecdb55dbef7ea0964debf6dd6a642fc5dea3f549ce21cb3bd6d42b0a5",
+      "samplesSha256": "4b903f61e04303ceaf7a547d75242f09ce99f2e591bebe7caf966bb1d6c68570",
+      "rssMiB": 30.05078125,
+      "confirmationPending": true
+    },
+    {
+      "path": "docs/evidence/kde-source63/post-native-a2.json",
+      "sha256": "1a127d08c0a753957b8e24b27c983798677aae1ff4c16cb3eb9af030bb594721",
+      "rawSamplesSha256": "18b5d6989a74e1452e589ccb11ee35ddf21255af41d5a33e9ac4008ac27aa132",
+      "peakRssMiB": 30.05078125,
+      "confirmationPending": [
+        "fresh cold300",
+        "current sibling regressions"
+      ]
+    }
+  ],
+  "postNativeTwoRunsConfirmed": true,
+  "freshColdConfirmation": {
+    "path": "docs/evidence/kde-source63/fresh-cold-a1.json",
+    "sha256": "45d64dda7c2f0c5729220b3a2b4839538fa1cbdd764749d7f1bbf92c1e7eaf7a",
+    "samplesSha256": "90bee0309b3f1bc5e5aae629750184b9390791ab321674eaa64b46c3a6b5d5ba",
+    "peakRssMiB": 27.9140625,
+    "newResident": {
+      "pid": 302275,
+      "startTicks": 4298152,
+      "uid": 1000,
+      "executable": "/usr/bin/putgd",
+      "device": 64769,
+      "inode": 1312189,
+      "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed"
+    },
+    "rootVerified": true
+  },
+  "kdeLocalFunctionalAndMemoryLadderPassed": true,
+  "currentSiblingRegressions": {
+    "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "sourceCount": 63,
+    "cinnamon": {
+      "deploymentVerified": true,
+      "nativeMatrixPassed": true,
+      "qtCases": 9,
+      "gtkCases": 3,
+      "matrixReference": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/siblings/cinnamon/cohort/cinnamon/matrix.json",
+        "sha256": "45635929af9883aed527915e60f95ecd26d1e2a6bbbffa220c2b58922dd30362"
+      },
+      "copyLogReference": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/siblings/cinnamon/cohort/cinnamon/attempts/20261011T032846525115-matrix/matrix-copy-log.json",
+        "sha256": "c8a9cc0b72e9721194c86d66872b04dd08b372e74e7af30ff2cae6f486a8139e"
+      },
+      "focusedGuiPassed": true,
+      "physicalTimingPassed": true,
+      "memoryPassed": true,
+      "normalExitsPassed": true,
+      "completeRegressionPassed": true,
+      "trackedEvidence": "docs/evidence/kde-source63/cinnamon-regression-a1.json"
+    },
+    "gnome": {
+      "runtimeTestStarted": true,
+      "passed": true,
+      "buildStarted": true,
+      "buildComplete": true,
+      "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+      "hostPackageReuseRejected": true,
+      "reason": "Five required t64 package names are unavailable in this GNOME guest despite all 22 ELF loader checks passing.",
+      "route": "Original guest CMake dev/Release presets, Ninja, registered CTest and CPack using verified official AWS SDK; no dependency workaround.",
+      "references": {
+        "abi": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T042347099284-abi/abi-result.json",
+          "sha256": "863015af6230e7815581bacf5eff5dfc71a0fbc2428d7831e3a0fa9df8e88292"
+        },
+        "aptDiagnosis": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T042551568855-abi/abi-diagnosis.json",
+          "sha256": "69044a631434bc78e0df449baa5a90abecb3074e74077b0aabdc92ddede679fd"
+        },
+        "sdkAndSource": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T043149326330-guest-build/source-sdk-verification.json",
+          "sha256": "5b2105d318f503f3a5fc9140adcb24983913da9fcb030ed915d01d62730bd0d4"
+        },
+        "build": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/build.json",
+          "sha256": "ad2a8f73a33796e10f0d2db63e7de76f424c218ac8d73b3133df5674a86231c1"
+        },
+        "verifiedBuild": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/build-verified.json",
+          "sha256": "1e8689ddf5ee8d72c091b384a0c31a6ce825189bfacc8403925f45491bdab11c"
+        },
+        "registeredTests": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/dev-registered.json",
+          "sha256": "232d8572d651de83271afd2a24e554265662d651e7700b47f7c278ece65f151d"
+        },
+        "junit": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/dev.xml",
+          "sha256": "bfc2fef92fbc95ee13fe10c911992d5f61d5393be2464b828647468ecdd57509"
+        },
+        "installed": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T045257639596-install/install-complete.json",
+          "sha256": "0a90fc2b895f964080c2e1e361f0eef009dc48341e5c25463f1d7dcd8e483762"
+        },
+        "configured": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T045744076355-configure-local/held-lifecycle-complete.json",
+          "sha256": "19aa7ce5993c340d4daeb811c90225b6b0f11d6d039923c9128d487acf02af2b"
+        }
+      },
+      "buildPassed": true,
+      "installedCurrentVersion": true,
+      "registeredTestsPassed": 52,
+      "registeredTestsFailed": 0,
+      "registeredTestsSkipped": 0,
+      "nativeMatrixPassed": true,
+      "focusedGuiPassed": true,
+      "memoryPassed": true,
+      "testQualification": "One expected internal QtTest helper skip in S3ModuleContract::unavailableFacadeChild; all optional codec cases ran. Registered JUnit has no skipped test entries. Automated tests do not establish compositor support.",
+      "nativeCasesPassed": 12,
+      "qtCases": 9,
+      "gtkCases": 3,
+      "trackedAutomatedBuildEvidence": "docs/evidence/kde-source63/gnome-guest-build-a1.json",
+      "trackedNativeMatrixEvidence": "docs/evidence/kde-source63/gnome-native12-a1.json",
+      "settingsSaveCancelReloadRestorationPassed": true,
+      "trackedSettingsEvidence": "docs/evidence/kde-source63/gnome-settings-a1.json",
+      "nativeGtkFolderDialogVerified": true,
+      "localHistoryPreviewVerified": true,
+      "normalViewExitsVerified": true,
+      "trackedFocusedCheckpoint": "docs/evidence/kde-source63/gnome-focused-checkpoint-a1.json",
+      "safeSameResidentContinuation": false,
+      "completeLocalRegressionPassed": true,
+      "normalPopulatedAndColdQuitVerified": true,
+      "trackedFinalLocalFunctionalEvidence": "docs/evidence/kde-source63/gnome-local-native-a1.json",
+      "trackedMemoryEvidence": [
+        "docs/evidence/kde-source63/gnome-post-native-a1.json",
+        "docs/evidence/kde-source63/gnome-post-native-a2.json",
+        "docs/evidence/kde-source63/gnome-fresh-cold-a1.json"
+      ],
+      "postUsePeakRssMiB": [
+        32.80859375,
+        32.80859375
+      ],
+      "freshColdPeakRssMiB": 27.00390625,
+      "remoteHistoryProven": false,
+      "fullNativeParityAccepted": false
+    },
+    "qualification": "Current source63 local functional and memory gates passed on KDE, physical Cinnamon and GNOME. GNOME A3 live clock and separate A4 normal cancellation are distinct; timed failures retained. Real remote S3/History and full U9 release remain pending."
+  },
+  "regressionWindow": {
+    "deadlineUtc": "2026-10-11T05:28:20.881985Z",
+    "scope": "Current-source Cinnamon then GNOME regressions only; no new optimization candidates, dependencies or desktop-setting changes.",
+    "stoppedAtApprovedDeadline": true,
+    "additional30MinutesApproved": false
+  },
+  "resumedRegressionWindow": {
+    "userApproval": "I guess extend testing?",
+    "startedUtc": "2026-10-11T12:31:32Z",
+    "deadlineUtc": "2026-10-11T13:31:32Z",
+    "scope": "Remaining same-source GNOME focused Activity/live/quiet checks and unchanged three 300-second memory windows only. Prior deadline stop retained as historical evidence.",
+    "sameSourceBuildReused": true,
+    "sameResidentRevalidated": true,
+    "newCandidates": 0,
+    "desktopSettingsChanged": false,
+    "acceptancePending": false,
+    "initialAssistantEstimateUtc": "2026-10-11T13:01:32Z",
+    "durationEstimateCorrectedReason": "Same required graphical checks and unchanged three 300-second windows require a realistic one-hour cap; user requested testing extension without numeric duration.",
+    "finalAdditionalExtension": {
+      "requestedAdditionalMinutes": 30,
+      "approved": true,
+      "currentDeadlineUtc": "2026-10-11T13:31:32Z",
+      "reason": "Finish unchanged three GNOME memory windows after preserved/control-input and private-file test failures; no new candidates/packages/desktop-setting changes",
+      "userAnswer": "Extend 30 minutes",
+      "approvedUtc": "2026-10-11T13:14:30.615700+00:00",
+      "newDeadlineUtc": "2026-10-11T14:01:32Z"
+    },
+    "localScopeCompletedUtc": "2026-10-11T13:43:52.124299+00:00",
+    "fullRemoteReleaseAcceptance": false
+  },
+  "keeperAccepted": true,
+  "keeperScope": "Confirmed local memory and current compositor regressions; full remote/release acceptance pending",
+  "fullNativeParityAccepted": false,
+  "summary": "docs/evidence/kde-source63/memory-summary.md",
+  "remainingReleaseGates": [
+    "Current real guest S3 upload/remote History direct-link copy and deletion",
+    "Current post-S3/populated-remote-history memory",
+    "Full U9/fresh-agent walkthrough"
+  ],
+  "historicalRecordQualification": "Nested diagnostic and first-observation pending flags retain their original chronological meaning; current state is acceptance/currentSiblingRegressions/remainingReleaseGates.",
+  "normalLabParking": {
+    "gnome": "docs/evidence/kde-source63/gnome-normal-parking-a1.json",
+    "kdeAndCinnamonPreviouslyParked": true,
+    "allCompletedTestVmsStopped": true,
+    "goldenBasesAndTestOverlaysRetained": true
+  }
+}

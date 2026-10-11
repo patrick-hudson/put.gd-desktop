@@ -1,0 +1,61 @@
+Test project /home/lab/putgd-current-a3d70dc/build/dev
+      Start  1: geometry_contract
+ 1/28 Test  #1: geometry_contract ................   Passed    0.10 sec
+      Start  2: x11_isolated
+ 2/28 Test  #2: x11_isolated .....................   Passed   18.13 sec
+      Start  3: keychain_backend_integration
+ 3/28 Test  #3: keychain_backend_integration .....   Passed    0.33 sec
+      Start  4: keychain_integration
+ 4/28 Test  #4: keychain_integration .............   Passed    0.13 sec
+      Start  5: collision_policy_integration
+ 5/28 Test  #5: collision_policy_integration .....   Passed    3.55 sec
+      Start  6: s3_delete_integration
+ 6/28 Test  #6: s3_delete_integration ............   Passed    4.09 sec
+      Start  7: s3_module_integration
+ 7/28 Test  #7: s3_module_integration ............   Passed   32.01 sec
+      Start  8: s3_integration
+ 8/28 Test  #8: s3_integration ...................   Passed    2.70 sec
+      Start  9: public_url
+ 9/28 Test  #9: public_url .......................   Passed    0.01 sec
+      Start 10: build_contract
+10/28 Test #10: build_contract ...................   Passed    0.09 sec
+      Start 11: sdk_contract
+11/28 Test #11: sdk_contract .....................   Passed    0.21 sec
+      Start 12: payload_contract
+12/28 Test #12: payload_contract .................   Passed    0.04 sec
+      Start 13: archive_contract
+13/28 Test #13: archive_contract .................   Passed    0.01 sec
+      Start 14: upload_naming_contract
+14/28 Test #14: upload_naming_contract ...........   Passed    0.03 sec
+      Start 15: history_contract
+15/28 Test #15: history_contract .................   Passed    4.57 sec
+      Start 16: operations_contract
+16/28 Test #16: operations_contract ..............   Passed   34.16 sec
+      Start 17: storage_contract_integration
+17/28 Test #17: storage_contract_integration .....   Passed    2.96 sec
+      Start 18: cli_integration
+18/28 Test #18: cli_integration ..................   Passed    0.90 sec
+      Start 19: config_reload_integration
+19/28 Test #19: config_reload_integration ........   Passed    0.63 sec
+      Start 20: gnome_bridge_contract
+20/28 Test #20: gnome_bridge_contract ............   Passed    0.06 sec
+      Start 21: kwin_transfer_contract
+21/28 Test #21: kwin_transfer_contract ...........   Passed    0.18 sec
+      Start 22: settings_contract
+22/28 Test #22: settings_contract ................   Passed    3.02 sec
+      Start 23: gui_settings
+23/28 Test #23: gui_settings .....................   Passed    3.78 sec
+      Start 24: gui_operations_view
+24/28 Test #24: gui_operations_view ..............   Passed    0.39 sec
+      Start 25: gui_history_view
+25/28 Test #25: gui_history_view .................   Passed    3.21 sec
+      Start 26: login_startup_contract
+26/28 Test #26: login_startup_contract ...........   Passed    0.01 sec
+      Start 27: local_ipc_contract
+27/28 Test #27: local_ipc_contract ...............   Passed   12.88 sec
+      Start 28: ip_address_contract
+28/28 Test #28: ip_address_contract ..............   Passed    0.04 sec
+
+100% tests passed, 0 tests failed out of 28
+
+Total Test time (real) = 128.23 sec

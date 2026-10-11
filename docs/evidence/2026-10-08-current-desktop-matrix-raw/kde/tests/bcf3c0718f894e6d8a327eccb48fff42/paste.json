@@ -1,0 +1,12 @@
+{
+    "formats": [
+        "application/x-putgd-result-fff27f9473f1419db5e8e5bd3e9b52d4",
+        "text/uri-list"
+    ],
+    "schemaVersion": 1,
+    "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\n",
+    "urls": [
+        "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+        "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+    ]
+}

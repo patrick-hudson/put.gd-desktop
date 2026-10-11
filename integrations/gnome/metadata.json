@@ -1,0 +1,8 @@
+{
+  "uuid": "putgd@put.gd",
+  "name": "put.gd native capture",
+  "description": "Native GNOME 50 capture, global actions and bounded background CLIPBOARD transfer for put.gd.",
+  "shell-version": ["50"],
+  "version": 1,
+  "url": "https://put.gd"
+}

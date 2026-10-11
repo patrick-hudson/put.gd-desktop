@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "scp",
+    "-q",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/identity",
+    "-P",
+    "22236",
+    "lab@127.0.0.1:/home/lab/putgd-ui-refinement-lazy-exp001-native/source/build/release/build-identity/build-info.json",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/build-info.json"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:36:25.936828+00:00"
+}

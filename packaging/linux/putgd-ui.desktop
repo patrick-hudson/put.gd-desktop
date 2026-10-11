@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=put.gd
+Exec=putgd
+Icon=putgd
+Terminal=false
+Categories=Utility;
+NoDisplay=true
+StartupWMClass=putgd-ui

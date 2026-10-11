@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "client": "GTK",
+  "formats": [
+    "text/uri-list"
+  ],
+  "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1-42bf891f-0cfc-47c9-942d-b01609ac1cfa.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2-906345bc-e7e6-4b95-9441-97cf940b1a43.txt\r\n",
+  "urls": [
+    "file:///home/lab/putgd-lab/archive/text/synthetic-1-42bf891f-0cfc-47c9-942d-b01609ac1cfa.txt",
+    "file:///home/lab/putgd-lab/archive/text/synthetic-2-906345bc-e7e6-4b95-9441-97cf940b1a43.txt"
+  ]
+}

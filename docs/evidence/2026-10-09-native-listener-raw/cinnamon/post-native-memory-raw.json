@@ -1,0 +1,1981 @@
+{
+  "utc": "2026-10-09T09:19:06.647028+00:00",
+  "parameters": {
+    "schemaVersion": 1,
+    "scope": "Cinnamon VM quiescent post-native-use whole-family; not physical cold or closed-view confirmation",
+    "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "resident": {
+      "pid": 114990,
+      "startTicks": 4204250,
+      "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2"
+    },
+    "durationSeconds": 300,
+    "intervalSeconds": 5,
+    "moduleSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "vncPort": 5938,
+    "fortyMiBTargetClaimed": false
+  },
+  "result": {
+    "samples": [
+      {
+        "elapsedSeconds": 0.009175464998406824,
+        "sampleSeconds": 0.009156497995718382,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 5.008824267999444,
+        "sampleSeconds": 0.008660501000122167,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 10.039343619995634,
+        "sampleSeconds": 0.03910934000305133,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 15.009042815996509,
+        "sampleSeconds": 0.008879642002284527,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 20.03129842600174,
+        "sampleSeconds": 0.03102857900375966,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 25.038166592996276,
+        "sampleSeconds": 0.037930537000647746,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 30.040461402997607,
+        "sampleSeconds": 0.0401360950054368,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 35.040537615001085,
+        "sampleSeconds": 0.04020324899465777,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 40.028039799995895,
+        "sampleSeconds": 0.027883701004611794,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 45.03568975399685,
+        "sampleSeconds": 0.03537402499932796,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 50.03844467100134,
+        "sampleSeconds": 0.03816510099568404,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 55.037849686996196,
+        "sampleSeconds": 0.03758915199432522,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 60.031908097997075,
+        "sampleSeconds": 0.03164305400423473,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 65.01024905699887,
+        "sampleSeconds": 0.010091184994962532,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 70.04030801299814,
+        "sampleSeconds": 0.040056969002762344,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 75.02889857799892,
+        "sampleSeconds": 0.028690680002910085,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 80.01914923099685,
+        "sampleSeconds": 0.018996806000359356,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 85.0415533790001,
+        "sampleSeconds": 0.04122154400101863,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 73,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 90.01351325400174,
+        "sampleSeconds": 0.013016375996812712,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 95.01135280499875,
+        "sampleSeconds": 0.011236691003432497,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 100.01262308700097,
+        "sampleSeconds": 0.012424000997270923,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 105.00965869599895,
+        "sampleSeconds": 0.009523153996269684,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 110.02681670799939,
+        "sampleSeconds": 0.026534845994319767,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 115.0406177909972,
+        "sampleSeconds": 0.040292760997544974,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 120.00870579700131,
+        "sampleSeconds": 0.008617387000413146,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 125.01116915899911,
+        "sampleSeconds": 0.010998156998539343,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 130.03656875700108,
+        "sampleSeconds": 0.03634337499534013,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 135.03970550999657,
+        "sampleSeconds": 0.03939128099591471,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 140.03860279799846,
+        "sampleSeconds": 0.038268147996859625,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 145.03835443299613,
+        "sampleSeconds": 0.03806924600212369,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 150.0095368370021,
+        "sampleSeconds": 0.009412874998815823,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 155.04125284499605,
+        "sampleSeconds": 0.04088591299660038,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 160.0389718639999,
+        "sampleSeconds": 0.0388187159987865,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 165.0392239069988,
+        "sampleSeconds": 0.038975264003966004,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 170.03467851599999,
+        "sampleSeconds": 0.0343981280020671,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 175.03918924999743,
+        "sampleSeconds": 0.038940508995437995,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 74,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 180.01291469499847,
+        "sampleSeconds": 0.012659986998187378,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 185.04100969000137,
+        "sampleSeconds": 0.04076410499692429,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 190.03873809799552,
+        "sampleSeconds": 0.03847119300189661,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 195.0374721879998,
+        "sampleSeconds": 0.03720354300457984,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 200.03863929399813,
+        "sampleSeconds": 0.03844462499546353,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 205.01025020900124,
+        "sampleSeconds": 0.009887788000924047,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 210.0404246399994,
+        "sampleSeconds": 0.04015881799568888,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 215.01462220199755,
+        "sampleSeconds": 0.014480701000138652,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 220.0397765230009,
+        "sampleSeconds": 0.039497633995779324,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 225.0098876849952,
+        "sampleSeconds": 0.009696069995698053,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 230.01956660099677,
+        "sampleSeconds": 0.01930117400479503,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 235.0125060520004,
+        "sampleSeconds": 0.01224913199985167,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 240.038408538996,
+        "sampleSeconds": 0.038144341997394804,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 245.03181721900182,
+        "sampleSeconds": 0.031581937000737526,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 250.0151047249965,
+        "sampleSeconds": 0.014917114000127185,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 255.01458679899952,
+        "sampleSeconds": 0.014418117003515363,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 260.03625753399683,
+        "sampleSeconds": 0.036042753999936394,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 265.0094479859981,
+        "sampleSeconds": 0.009312172995123547,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 270.02268872499553,
+        "sampleSeconds": 0.02243065099901287,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 275.04147894799826,
+        "sampleSeconds": 0.041188420000253245,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 280.0094856430005,
+        "sampleSeconds": 0.00938249899627408,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 285.011087744002,
+        "sampleSeconds": 0.010919628002739046,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 290.0137245969963,
+        "sampleSeconds": 0.013409302002401091,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 295.03784889899543,
+        "sampleSeconds": 0.03756947199872229,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      },
+      {
+        "elapsedSeconds": 300.02209169699927,
+        "sampleSeconds": 0.02184896299877437,
+        "processes": [
+          {
+            "pid": 114990,
+            "startTicks": 4204250,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1184271,
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "role": "resident",
+            "rssBytes": 29904896,
+            "pssBytes": 19275776,
+            "privateBytes": 18345984,
+            "privateHugetlbBytes": 0,
+            "swapBytes": 0,
+            "cpuTicks": 75,
+            "threads": 3,
+            "inResidentTree": true
+          }
+        ],
+        "totals": {
+          "rssBytes": 29904896,
+          "pssBytes": 19275776,
+          "privateBytes": 18345984
+        },
+        "processCount": 1,
+        "uiProcessCount": 0,
+        "escapedProcessCount": 0
+      }
+    ],
+    "observedExits": [],
+    "peakRssBytes": 29904896,
+    "finalRssBytes": 29904896,
+    "finalPssBytes": 19275776,
+    "finalPrivateBytes": 18345984,
+    "cpuPercentOneCore": 0.006666379651646045,
+    "scope": "VM quiescent post-native-use totals, no GUI interaction or acquisition during samples"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T09:08:05.177367+00:00",
+  "phase": "close",
+  "errorType": "RuntimeError",
+  "message": "Preserve attempt; diagnose explicitly before retry"
+}

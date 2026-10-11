@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="1"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="73"
+	timestamp="2026-10-08T19:56:31"
+	>
+	<testcase name="gui_settings" classname="gui_settings" time="73.5485" status="run">
+		<properties/>
+		<system-out>********* Start testing of SettingsGui *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.3.0), linuxmint 22.3
+PASS   : SettingsGui::initTestCase()
+QWARN  : SettingsGui::resettingDraftWaitsForTheResidentBeforeCheckpointing() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::resettingDraftWaitsForTheResidentBeforeCheckpointing() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::resettingDraftWaitsForTheResidentBeforeCheckpointing()
+QWARN  : SettingsGui::failedDraftResetPreservesDirtyControls() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::failedDraftResetPreservesDirtyControls() This plugin does not support propagateSizeHints()
+PASS   : SettingsGui::failedDraftResetPreservesDirtyControls()
+QWARN  : SettingsGui::quitWithoutTrayIsExplicitAndDoesNotSaveDraft() This plugin does not support propagateSizeHints()
+QWARN  : SettingsGui::quitWithoutTrayIsExplicitAndDoesNotSaveDra...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

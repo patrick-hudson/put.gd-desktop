@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "578f6c29c64c335e265de231a18d5d793430e6ab",
+  "sourceCount": 56,
+  "version": "0.1.1-dev.56+g578f6c29c64c",
+  "scope": "Physical Cinnamon regression for GNOME-only startup candidate; not GNOME memory or cloud parity",
+  "passed": true,
+  "cold": [
+    {
+      "repeat": 1,
+      "peakRssMiB": 24.61328125,
+      "idleCpuPercentOneCore": 0.003331710710656228,
+      "elapsedSeconds": 300.14610716397874
+    }
+  ],
+  "views": [
+    {
+      "repeat": 1,
+      "label": "original",
+      "peakOpenPssMiB": 51.583984375,
+      "settledCycles": [
+        {
+          "cycle": 1,
+          "rssMiB": 24.80078125,
+          "pssMiB": 16.2763671875
+        },
+        {
+          "cycle": 2,
+          "rssMiB": 25.07421875,
+          "pssMiB": 16.548828125
+        },
+        {
+          "cycle": 3,
+          "rssMiB": 25.08203125,
+          "pssMiB": 16.5576171875
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "label": "supplement",
+      "peakOpenPssMiB": 51.4833984375,
+      "settledCycles": [
+        {
+          "cycle": 1,
+          "rssMiB": 24.7578125,
+          "pssMiB": 16.2626953125
+        },
+        {
+          "cycle": 2,
+          "rssMiB": 25.03515625,
+          "pssMiB": 16.529296875
+        },
+        {
+          "cycle": 3,
+          "rssMiB": 25.046875,
+          "pssMiB": 16.5419921875
+        }
+      ]
+    }
+  ],
+  "p95PaintMilliseconds": 117.578547,
+  "normalExitGenerations": [
+    1,
+    2,
+    3
+  ],
+  "nativeMatrixCases": 12,
+  "rawGate": {
+    "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/cinnamon-expansion-gate.json",
+    "sha256": "a15db4f45ac82366304c9a106f5deb0683001a34cf81dea330ac6837d2f93a0d"
+  },
+  "receipts": [
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/timing-operation-gate.json",
+      "sha256": "a1a792f9e41abea5106baedf8af853dfd72d8cd1e44b55c8c1e13eb34be127bc"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/release-identity.json",
+      "sha256": "1b4b30d461a1e22f34b4701be6a84e4bce9b137e0d5dfc9966d788b46f3b7795"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/ready.json",
+      "sha256": "44942f7e343978e555c3cd2bdcff8658de6f97158ffa9c367be61081cc9d5fb7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/root-live-visual-review.json",
+      "sha256": "05d5189790b12375c91ff4dc83bbb8a30a22cc34bb3d48d10fb101004d3cb38c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/view-exit-audit.json",
+      "sha256": "2125429319d9975d18f5e95ab7da0675db5b8c6674faae16a2cc7bd7493f2c3d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/view-exit-supplement/supplemental-review.json",
+      "sha256": "cb24d0fbb513d0e2ba51dbd5a5e6bd61b6e734f4c5f77e7e10350733c219d124"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/view-exit-supplement/contracts.json",
+      "sha256": "e3ab5e977aeb61c1afb306efe95b55461e1db5226a8353f732e7181dcf69135b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/view-exit-supplement/repeat1/results.json",
+      "sha256": "d7eae67d970730da1def089af2b24eac23cee9a6ae1f0409f7b668467374e1de"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/gnome-native-boundary/cinnamon-candidate1/physical/final-owned-quiet.json",
+      "sha256": "63266f903abcf63fc5520e58723533d8da7553696fc6166039067b4e861b9503"
+    }
+  ],
+  "limitations": [
+    "Root-authorized lower-cost Cinnamon regression: one pair only because Cinnamon implementation is unchanged and source55 margin is about15MiB. GNOME winner confirmation protocol remains unchanged.",
+    "Original view runs omit final generation3 status; separate unchanged-workload supplements add three snapshot queries and explicit normal0 proof.",
+    "No post-S3/post-upload/populated-history retained-memory, permanent plateau, mixed-DPI, GNOME/KDE or full U9 claim."
+  ]
+}

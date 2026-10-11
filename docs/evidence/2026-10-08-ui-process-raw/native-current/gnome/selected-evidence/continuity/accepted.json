@@ -1,0 +1,31 @@
+{
+  "utc": "2026-10-09T01:43:29.571049+00:00",
+  "reply": {
+    "operation": {
+      "action": "clipboard",
+      "cancelled": false,
+      "clipboardRevision": "31",
+      "copyStatus": "pending",
+      "created": "2026-10-09T01:43:29.198Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "1ffaa1dc-f843-4eab-832a-8c35586eaec1",
+      "invocation": "19",
+      "items": [],
+      "settingsRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+      "state": "accepted"
+    },
+    "operationId": "1ffaa1dc-f843-4eab-832a-8c35586eaec1"
+  },
+  "helperPidBeforeClose": 24342
+}

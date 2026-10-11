@@ -1,0 +1,327 @@
+{
+  "spec": {
+    "name": "view-startup-latency",
+    "description": "Reduce mapped Settings reopen latency of the on-demand UI without retaining a hidden helper or losing native desktop integration.",
+    "metric": {
+      "primary": {
+        "type": "hard",
+        "name": "settingsReopenMilliseconds",
+        "direction": "minimize",
+        "target": 200
+      },
+      "degenerate_gates": [
+        {
+          "name": "functionalPassed",
+          "check": "== 1"
+        },
+        {
+          "name": "normalHelperExitPassed",
+          "check": "== 1"
+        },
+        {
+          "name": "closedRssBytes",
+          "check": "<= 48758784"
+        },
+        {
+          "name": "closedPssBytes",
+          "check": "<= 30408704"
+        },
+        {
+          "name": "peakOpenPssBytes",
+          "check": "<= 62914560"
+        }
+      ],
+      "diagnostics": [
+        {
+          "name": "closedRssBytes"
+        },
+        {
+          "name": "closedPssBytes"
+        },
+        {
+          "name": "peakOpenPssBytes"
+        }
+      ]
+    },
+    "measurement": {
+      "command": "python3 work/view-startup-latency/evaluate.py --result RUN_1/results.json --result RUN_2/results.json",
+      "timeout_seconds": 30,
+      "working_directory": ".",
+      "output_format": "json",
+      "stability": {
+        "mode": "stable",
+        "noise_threshold": 40,
+        "comparison": {
+          "method": "absolute"
+        }
+      },
+      "evaluatorSha256": "64145d8ab6036195dc290a9b99abe0201f1f2b7deda16618b8f5fbdcae8cda72"
+    },
+    "scope": {
+      "mutable": [
+        "src/app/UiProcessController.cpp",
+        "src/app/UiProcessController.h",
+        "src/ui/main.cpp",
+        "src/ui/UiSession.cpp",
+        "src/ui/UiSession.h",
+        "src/ui/UiApplicationController.cpp",
+        "src/ui/UiApplicationController.h",
+        "src/ui/SettingsWindow.cpp",
+        "src/ui/SettingsWindow.h",
+        "tests/gui/test_ui_application.cpp",
+        "tests/gui/test_settings.cpp",
+        "tests/integration/test_ui_process.cpp",
+        "tests/integration/test_ui_native_lifecycle.cpp",
+        "tests/integration/test_session_client.cpp"
+      ],
+      "immutable": [
+        "src/core/",
+        "src/storage/",
+        "src/secrets/",
+        "src/platform/",
+        "src/ui/VisualStyle.cpp",
+        "src/ui/HistoryWindow.cpp",
+        "src/ui/RecentOperations.cpp",
+        "tests/performance/bench_ui_process.py",
+        "CMakeLists.txt",
+        "CMakePresets.json",
+        "schemas/",
+        "credentials.txt"
+      ]
+    },
+    "execution": {
+      "mode": "serial",
+      "backend": "worktree",
+      "max_concurrent": 1
+    },
+    "parallel": {
+      "port_strategy": "none",
+      "exclusive_resources": [
+        "physical-cinnamon-session"
+      ]
+    },
+    "dependencies": {
+      "approved": []
+    },
+    "constraints": [
+      "At most three variants/two hours; no new dependencies, paid infrastructure or separate model dollar cap.",
+      "Keep helper normal exit, resident tray/clipboard/operations, classified drafts, typed-secret exclusion, build/epoch validation, native Cinnamon fonts/dialogs and custom visuals.",
+      "First locate startup costs before selecting a candidate; retain all attempts. No prewarming or hidden idle helper.",
+      "Freeze production family harness and three-view/three-cycle workload: warmup5, visible2, quiet30, interval5. Two serial physical runs per confirmed candidate.",
+      "Current-source Cinnamon/GNOME/KDE native functionality precedes performance confirmation; keep all graphical lab output visible via VNC.",
+      "History/Activity polish runs independently and does not establish latency gain. Scope any interaction by source/binary hashes.",
+      "Mapped readiness includes observer overhead and does not establish painted pixels or p95. Empty fixture does not establish populated-history/post-upload memory.",
+      "Keep only confirmed median improvement >40ms with all gates passed; baseline is recent original source41, not a relabelled newer revision."
+    ],
+    "stopping": {
+      "max_iterations": 3,
+      "max_hours": 2,
+      "plateau_iterations": 2,
+      "target_reached": true
+    },
+    "reference": {
+      "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+      "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+          "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+          "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+        }
+      ],
+      "samples": [
+        329.63122898945585,
+        335.72212496073917,
+        393.30363704357296,
+        325.35388303222135
+      ],
+      "currentHeadAtIntake": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+      "reuseReason": "Recent native baseline is reused. The following evidence-only commit changes no runtime, build, schema, platform or performance-harness path. Existing measured binaries retain their original identity; no relabelled build."
+    },
+    "phase": "CP-1 approved; locating measurement before implementation",
+    "approval": {
+      "timestampUtc": "2026-10-09T02:52:41.383568+00:00",
+      "scope": "333ms baseline, ~200ms target; <=3 variants/2h; no dependencies; native Cinnamon fonts/dialogs/tray/helper exit; >40ms keep; memory gates",
+      "userReply": "Proceed with startup experiments (Recommended)"
+    }
+  },
+  "baseline": {
+    "metrics": {
+      "settingsReopenMilliseconds": 332.6766769750975,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1
+    },
+    "gates": {
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896
+    },
+    "identity": {
+      "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+      "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+          "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+          "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+        }
+      ],
+      "samples": [
+        329.63122898945585,
+        335.72212496073917,
+        393.30363704357296,
+        325.35388303222135
+      ],
+      "currentHeadAtIntake": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+      "reuseReason": "Recent native baseline is reused. The following evidence-only commit changes no runtime, build, schema, platform or performance-harness path. Existing measured binaries retain their original identity; no relabelled build."
+    },
+    "diagnostics": {
+      "sampleCount": 4,
+      "p95Certified": false
+    }
+  },
+  "candidate": {
+    "metrics": {
+      "settingsReopenMilliseconds": 295.43196596205235,
+      "closedRssBytes": 47794176.0,
+      "closedPssBytes": 27090432.0,
+      "peakOpenPssBytes": 53140480,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "reopenSamples": [
+        266.50156400864944,
+        286.1989389639348,
+        322.0225799595937,
+        304.6649929601699
+      ],
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/results.json",
+          "sha256": "a97106e45e6d783f916816be878178ecf7614ee6146e396f7ff1c0d4854054e5",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+              "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+              "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+              "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            }
+          },
+          "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2/results.json",
+          "sha256": "862dbbb5dbe09c709e3e68f3116486832c0a1468069d4dc881f79dfb41478258",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+              "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+              "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+              "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            }
+          },
+          "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+        }
+      ],
+      "limits": [
+        "Mapped readiness includes observer overhead; no p95 or paint certification.",
+        "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+      ]
+    },
+    "gates": {
+      "settingsReopenMilliseconds": 295.43196596205235,
+      "closedRssBytes": 47794176.0,
+      "closedPssBytes": 27090432.0,
+      "peakOpenPssBytes": 53140480,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "reopenSamples": [
+        266.50156400864944,
+        286.1989389639348,
+        322.0225799595937,
+        304.6649929601699
+      ],
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-1/results.json",
+          "sha256": "a97106e45e6d783f916816be878178ecf7614ee6146e396f7ff1c0d4854054e5",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+              "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+              "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+              "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            }
+          },
+          "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/candidate-2/results.json",
+          "sha256": "862dbbb5dbe09c709e3e68f3116486832c0a1468069d4dc881f79dfb41478258",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd",
+              "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-cli",
+              "sha256": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release/putgd-ui",
+              "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239",
+              "version": "0.1.1-dev.46+g6f6372e79d8b"
+            }
+          },
+          "sourceRevision": "6f6372e79d8bd81346924aacec7eac842db98725"
+        }
+      ],
+      "limits": [
+        "Mapped readiness includes observer overhead; no p95 or paint certification.",
+        "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+      ]
+    },
+    "smoke_passed": true
+  }
+}

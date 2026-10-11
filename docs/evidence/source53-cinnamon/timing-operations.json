@@ -1,0 +1,187 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/tmp/pg53-cap1/operations.json",
+    "sha256": "baba8d1d7e19e72817a5a63123ecf7789adc1c9576900b16299d17e60e83850f"
+  },
+  "data": {
+    "operations": [
+      {
+        "id": "e5246de7-f8d9-4a11-86ae-8733c014aff8",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "1563ab84-4f40-45be-9108-3ea41b8c05e6",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "6ec77adf-d7fb-4650-9782-eafdc7e9a6ee",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "22c0d7e0-6d4e-4794-ae0e-fdb4cf5bfd07",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "1cf8da50-6f6d-4cc4-91b4-410982f2d05d",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "38f0520b-19d4-4611-a365-c1b1208b8a8f",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "391ae46a-5502-4684-aa68-8e9134e7c66c",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "1e60a7cc-e892-495d-b868-daeb4474a801",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "56d65cf3-7caf-4589-a440-2f75eb35167d",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "d0866a45-7641-40ce-9b11-97df8200d371",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "45c60a61-73ee-4e33-9ba6-c79a77cc33bd",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "3d4fb3cf-4657-4762-b8df-b80cfc784c07",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "32e6e847-c1d4-43d4-a377-05000ee5bd0e",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "cd41fce9-a412-4fb8-9ecf-9cd5875a8531",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "bd0d1678-aaee-44b8-ae32-6a50d300793c",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "6531ca69-d884-491e-8b41-4dd9b9bbe032",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "2e1b1609-f53d-4c26-9e95-b55a09571c7a",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "2e9441a8-fde6-4082-8416-4162321b2775",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "a5ef28a1-b286-40b9-b9c9-a4a3bea7cfd9",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "76fe48b9-7af3-4c2f-8f50-c00e917328bf",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "93393c34-7c73-494d-b48f-be1cf35a630a",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "80e938ad-c9e1-413a-b6fe-1ab4fc0e1dc8",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "d1b957d5-26aa-4086-80e2-3452c19ab3cb",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "b3b83190-d874-45c5-95a7-44a4fda12d80",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "05528aa5-d266-4425-aefa-3fd443a01598",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "10093cc7-8fa1-4ac8-911f-836e37082a75",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "c7f20cb1-2c68-4de0-ab20-44bd6834c2d2",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "07520f17-4278-4b14-8a1d-3e5d05f2904d",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "cc49e5be-fb69-4b98-8cd4-ae0d8285f16b",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "1143f8e0-0027-41fd-b645-5593349b163c",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "0bc9d724-4d6d-4611-b77c-a8aea24261ec",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "0afb967c-8b0a-4190-82bf-ac80d6a80fb5",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "8613fa5e-58e3-45eb-839b-d5726fe56ee3",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "afc6afc1-872c-46fb-b89e-d0de84312885",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      },
+      {
+        "id": "f9f90fee-d806-471c-adff-d07b839f4dd7",
+        "state": "cancelled",
+        "copyStatus": "no_result"
+      }
+    ]
+  }
+}

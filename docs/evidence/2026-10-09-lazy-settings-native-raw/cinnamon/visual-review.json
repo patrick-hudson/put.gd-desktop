@@ -1,0 +1,1280 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T04:33:09.861316+00:00",
+  "compositor": "Cinnamon/X11",
+  "evidenceScope": "Frozen lazy Settings candidate, bounded Settings and helper lifecycle; visible VNC5938 existing overlay only",
+  "candidateCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "candidateTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+  "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+  "dirty": true,
+  "candidatePatchSha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+  "candidateFiles": {
+    "src/ui/SettingsWindow.cpp": "18e44b7b50ea52c043d0e0db69d388f6eedf6177dc25f27c0604aae7fc6e033c",
+    "src/ui/SettingsWindow.h": "267536902660030d9ed7e208851951e541b0b514a65b66b2efe35c70d15caba6",
+    "tests/gui/test_settings.cpp": "7fdca5f7fcd1cadec07a06c49cc552b753f1ab94d8258738f9740cc2c61399fd",
+    "tests/gui/test_ui_application.cpp": "5811ad64908371e66340e899d05de02748d90b1d2e0414f2cac2c2fcf0329f98"
+  },
+  "archiveSha256": "599944d11b564f79f81dd436a62bb83f29580b83c783dafecde60ccb852c1c73",
+  "sourceBundleSha256": "60a47dc4950ec89deac830cf73186175536c326f1e090aa7412dc068a04c6218",
+  "packageSha256": "9212e3448a8afd3cc56f0f95ba4efcaf7ee072916894b4bcb6e23afec097fc81",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009",
+    "/usr/bin/putgd-cli": "b79cc2f78ca24f6cf746a841d7997314a990d584c510bb5ca405d23be23b27d7",
+    "/usr/bin/putgd-ui": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+  },
+  "resident": {
+    "pid": 73893,
+    "startTicks": 2808369,
+    "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+  },
+  "helperIdentities": [
+    {
+      "attempt": "cinnamon/attempts/20261009T042536653680-show",
+      "utc": "2026-10-09T04:25:40.055873+00:00",
+      "view": "settings",
+      "reply": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 82280,
+        "startTicks": 2841711,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:25:40.158129+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/empty-open.png",
+        "sha256": "01840ed3829157cd205a249fb698be22d355b0dc9b53b3a6db7c9c3a2aeb46c9",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-empty-open-head0.ppm",
+          "sha256": "6c0fc0b383544bb048bf73fb194f8bd84b2538299fceaa2d1557d16b20d2a607"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042614995712-show",
+      "utc": "2026-10-09T04:26:17.959240+00:00",
+      "view": "settings",
+      "reply": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 82893,
+        "startTicks": 2845521,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:26:18.055395+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/empty-compact-reopen.png",
+        "sha256": "a626ac6aee9aa541242c36f45ee8b0052ffb3f3c9ae208c440928e460342f9d6",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-empty-compact-reopen-head0.ppm",
+          "sha256": "6a8f5a9276061929a6a183e2eca3bf3cdf18b6fda2dab71404b42cb7fccde93f"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042703062350-show",
+      "utc": "2026-10-09T04:27:06.412506+00:00",
+      "view": "settings",
+      "reply": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 83875,
+        "startTicks": 2850352,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:27:06.543195+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-first-open.png",
+        "sha256": "460429380882e3593a5144be6de234b1ec3dec30b7f53993261e64f5f8d638fd",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-first-open-head0.ppm",
+          "sha256": "c73993fd2f2eba183a22565d21a75cc1a862c6d5fb30ba1d2935367c20b3b5b3"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042937998289-show",
+      "utc": "2026-10-09T04:29:41.569595+00:00",
+      "view": "settings",
+      "reply": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 85473,
+        "startTicks": 2865835,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:29:41.711655+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-cancel-reopened.png",
+        "sha256": "495b1bacad41df67176ef2cad7addfa7477070a4691cdd50d617f6adcf710124",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-cancel-reopened-head0.ppm",
+          "sha256": "5ada75f95f3b24a96ef8d13eab7f109387f79e2ff90a6e39f1a423a2f177fd3e"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043002663377-show",
+      "utc": "2026-10-09T04:30:07.019529+00:00",
+      "view": "settings",
+      "reply": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 85736,
+        "startTicks": 2868353,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:30:07.187279+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-postcancel-proof-open.png",
+        "sha256": "58b0e7db50c7125c662142f74cd5f8c2ddba43416688de97c61d273e69932b9a",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-postcancel-proof-open-head0.ppm",
+          "sha256": "88a68e9414d9e7d8610d6926394a4e10ce668d6064c7f1bf46c03de2c63cef01"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043018387109-show",
+      "utc": "2026-10-09T04:30:22.206696+00:00",
+      "view": "history",
+      "reply": {
+        "shown": "history"
+      },
+      "helper": {
+        "pid": 86040,
+        "startTicks": 2869902,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:30:22.350880+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/history-lifecycle-open.png",
+        "sha256": "2f658d0333f08ef55c2970af4530127977201a23690f7e1f29b661773b9940df",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-history-lifecycle-open-head0.ppm",
+          "sha256": "80e7ced611282b8a39fbc80c69cc685761cdd7743dee3668e7c230d5bac806d5"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043043426737-show",
+      "utc": "2026-10-09T04:30:46.827039+00:00",
+      "view": "history",
+      "reply": {
+        "shown": "history"
+      },
+      "helper": {
+        "pid": 86300,
+        "startTicks": 2872378,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:30:46.950178+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/history-normal-reopened.png",
+        "sha256": "2f658d0333f08ef55c2970af4530127977201a23690f7e1f29b661773b9940df",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-history-normal-reopened-head0.ppm",
+          "sha256": "80e7ced611282b8a39fbc80c69cc685761cdd7743dee3668e7c230d5bac806d5"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043053730380-show",
+      "utc": "2026-10-09T04:30:56.989822+00:00",
+      "view": "activity",
+      "reply": {
+        "shown": "activity"
+      },
+      "helper": {
+        "pid": 86559,
+        "startTicks": 2873420,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:30:57.130551+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/activity-lifecycle-open.png",
+        "sha256": "1521e9929c8cdbd6b86baca95cebecfe74bc18becc15725cf80c253ce2f25a7c",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-activity-lifecycle-open-head0.ppm",
+          "sha256": "1642d849a4191947e79d4fffd97fd77e3f4d8b8cd3252af11fb44eaab3598d2a"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043103354831-show",
+      "utc": "2026-10-09T04:31:06.656717+00:00",
+      "view": "activity",
+      "reply": {
+        "shown": "activity"
+      },
+      "helper": {
+        "pid": 86817,
+        "startTicks": 2874369,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "trigger": "production CLI ui.show; native visible window",
+      "witness": {
+        "utc": "2026-10-09T04:31:06.770058+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/activity-normal-reopened.png",
+        "sha256": "3ea18cbf4f4e5b8bb84bcce7aab0f7f6bc695c4e1884d5cca57093ea35b6983f",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-activity-normal-reopened-head0.ppm",
+          "sha256": "4556792fc563967028e9be8be427b7c6cab491e99e11c3e6bc1546e15500b771"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    }
+  ],
+  "helperNormalCloseEvents": [
+    {
+      "attempt": "cinnamon/attempts/20261009T042943450208-close",
+      "utc": "2026-10-09T04:29:46.344545+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 85473,
+        "startTicks": 2865835,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3337,
+        "lastExit": {
+          "code": 0,
+          "generation": 5,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "witness": {
+        "utc": "2026-10-09T04:29:46.550783+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/settings-normal-closed.png",
+        "sha256": "6bdd48c25b13eca90ca2ecbc46b980aed8fbca201bcb2343e437c9db5564d67c",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-settings-normal-closed-head0.ppm",
+          "sha256": "465e28c750c7c3bcfe5d79c5909c7fce853446d042e3c606c72b7a90ac941f4c"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043012777051-close",
+      "utc": "2026-10-09T04:30:15.591027+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 85736,
+        "startTicks": 2868353,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3338,
+        "lastExit": {
+          "code": 0,
+          "generation": 6,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "witness": {
+        "utc": "2026-10-09T04:30:15.782773+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/settings-proof-normal-closed.png",
+        "sha256": "f817ad8ba780a3b5af51bbe79ac6be49c9e6b2f7fb0b3cf05471da9306d02bf1",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-settings-proof-normal-closed-head0.ppm",
+          "sha256": "25e579ee9791b9c7ca79ba817be8f6501e60376b4bf78a0ec7b40d41a1ded83d"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043038635656-close",
+      "utc": "2026-10-09T04:30:41.129965+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 86040,
+        "startTicks": 2869902,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3759,
+        "lastExit": {
+          "code": 0,
+          "generation": 7,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "witness": {
+        "utc": "2026-10-09T04:30:41.312661+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/history-normal-closed.png",
+        "sha256": "f817ad8ba780a3b5af51bbe79ac6be49c9e6b2f7fb0b3cf05471da9306d02bf1",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-history-normal-closed-head0.ppm",
+          "sha256": "25e579ee9791b9c7ca79ba817be8f6501e60376b4bf78a0ec7b40d41a1ded83d"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043049297014-close",
+      "utc": "2026-10-09T04:30:51.896966+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 86300,
+        "startTicks": 2872378,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3759,
+        "lastExit": {
+          "code": 0,
+          "generation": 8,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "witness": {
+        "utc": "2026-10-09T04:30:52.062471+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/history-reopen-normal-closed.png",
+        "sha256": "f817ad8ba780a3b5af51bbe79ac6be49c9e6b2f7fb0b3cf05471da9306d02bf1",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-history-reopen-normal-closed-head0.ppm",
+          "sha256": "25e579ee9791b9c7ca79ba817be8f6501e60376b4bf78a0ec7b40d41a1ded83d"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043058938518-close",
+      "utc": "2026-10-09T04:31:01.383427+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 86559,
+        "startTicks": 2873420,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3853,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "witness": {
+        "utc": "2026-10-09T04:31:01.549458+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/activity-normal-closed.png",
+        "sha256": "8bd124d23c181cd99af44c93db4709a179de15b9467600913a7dcd234c4cccfa",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-activity-normal-closed-head0.ppm",
+          "sha256": "8e983a9fe4582d823aa80f3bbc909f92f7e6a0b8302fd5babb79f066da14370a"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T043108976491-close",
+      "utc": "2026-10-09T04:31:11.602868+00:00",
+      "gesture": [
+        "alt",
+        "f4"
+      ],
+      "helperBefore": {
+        "pid": 86817,
+        "startTicks": 2874369,
+        "parentPid": 73893,
+        "sha256": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3853,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "witness": {
+        "utc": "2026-10-09T04:31:11.775689+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/activity-reopen-normal-closed.png",
+        "sha256": "8bd124d23c181cd99af44c93db4709a179de15b9467600913a7dcd234c4cccfa",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-activity-reopen-normal-closed-head0.ppm",
+          "sha256": "8e983a9fe4582d823aa80f3bbc909f92f7e6a0b8302fd5babb79f066da14370a"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    }
+  ],
+  "observations": [
+    {
+      "path": "cinnamon/attempts/20261009T042239689346-observe/observed.json",
+      "utc": "2026-10-09T04:22:41.144959+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 3028,
+        "lastExit": {},
+        "pid": 73907,
+        "state": "ready"
+      },
+      "acceptedRevision": "",
+      "observedRevision": "",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "upload",
+        "desktop": "upload",
+        "region": "upload",
+        "window": "upload"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T042253953355-observe/observed.json",
+      "utc": "2026-10-09T04:22:55.529817+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 3028,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "",
+      "observedRevision": "",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "upload",
+        "desktop": "upload",
+        "region": "upload",
+        "window": "upload"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T042509428375-observe/observed.json",
+      "utc": "2026-10-09T04:25:10.884040+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 3028,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+      "observedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T042550190628-observe/observed.json",
+      "utc": "2026-10-09T04:25:51.515216+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 82280,
+        "state": "ready"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T042610666707-observe/observed.json",
+      "utc": "2026-10-09T04:26:11.942936+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T042655196017-observe/observed.json",
+      "utc": "2026-10-09T04:26:56.466487+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "observedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profileIds": [],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T042718356557-observe/observed.json",
+      "utc": "2026-10-09T04:27:19.549272+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 3338,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 83875,
+        "state": "ready"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T042934255783-observe/observed.json",
+      "utc": "2026-10-09T04:29:35.630465+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 3337,
+        "lastExit": {
+          "code": 0,
+          "generation": 4,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "observedRevision": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    },
+    {
+      "path": "cinnamon/attempts/20261009T043231524908-observe/observed.json",
+      "utc": "2026-10-09T04:32:33.026262+00:00",
+      "resident": {
+        "pid": 73893,
+        "startTicks": 2808369,
+        "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+      },
+      "ui": {
+        "checkpointBytes": 3853,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "acceptedRevision": "11ea9d6c7db535c6d6e0fe78aec86f876d8c1c2fe803a940e767c6d5df43688c",
+      "observedRevision": "11ea9d6c7db535c6d6e0fe78aec86f876d8c1c2fe803a940e767c6d5df43688c",
+      "profileIds": [
+        "synthetic-ui-only"
+      ],
+      "actionOutputs": {
+        "clipboard": "local",
+        "desktop": "local",
+        "region": "local",
+        "window": "local"
+      },
+      "activeOperations": 0
+    }
+  ],
+  "nativeGeometryReceipts": [
+    {
+      "attempt": "cinnamon/attempts/20261009T042541931160-resize",
+      "utc": "2026-10-09T04:25:44.137129+00:00",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "pidOwnedWindow": "0x02e00006",
+      "method": "Native EWMH resize of already discovered PID-owned helper window",
+      "witness": {
+        "utc": "2026-10-09T04:25:44.228971+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/empty-wide.png",
+        "sha256": "0038057d96b7201504f8849f33f10520f38f8c111776389d0da3a4c3bdeb99e5",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-empty-wide-head0.ppm",
+          "sha256": "f2ba56f70decf64f379cc8fb516e42a3628bc335727bdb60b5dab7b9fdd3cf14"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042619850456-resize",
+      "utc": "2026-10-09T04:26:22.026978+00:00",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "pidOwnedWindow": "0x02e00006",
+      "method": "Native EWMH resize of already discovered PID-owned helper window",
+      "witness": {
+        "utc": "2026-10-09T04:26:22.124442+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/empty-compact.png",
+        "sha256": "7c2c676ba6f072f4be0e9f988442fe779a3aa9130a095441a5f10f819fe002d0",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-empty-compact-head0.ppm",
+          "sha256": "6a2a411bdb6318379103a4b038252ea133697953a34f99f47ae28617e5bc62bb"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042631792374-resize",
+      "utc": "2026-10-09T04:26:33.901132+00:00",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "pidOwnedWindow": "0x02e00006",
+      "method": "Native EWMH resize of already discovered PID-owned helper window",
+      "witness": {
+        "utc": "2026-10-09T04:26:34.005718+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/empty-stress-wide.png",
+        "sha256": "5e75058420986f1fccfcd1b5ae6c0b72a845d6a1600748ac6826d4db80ee3d46",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-empty-stress-wide-head0.ppm",
+          "sha256": "1ba6a992e7e7f58a82741211c6611af63562da2e3e076aa9f0b7e1c62281df27"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042635564200-resize",
+      "utc": "2026-10-09T04:26:37.717084+00:00",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "pidOwnedWindow": "0x02e00006",
+      "method": "Native EWMH resize of already discovered PID-owned helper window",
+      "witness": {
+        "utc": "2026-10-09T04:26:37.819464+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/empty-stress-compact.png",
+        "sha256": "7c2c676ba6f072f4be0e9f988442fe779a3aa9130a095441a5f10f819fe002d0",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-empty-stress-compact-head0.ppm",
+          "sha256": "6a2a411bdb6318379103a4b038252ea133697953a34f99f47ae28617e5bc62bb"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042708903973-resize",
+      "utc": "2026-10-09T04:27:11.297874+00:00",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "pidOwnedWindow": "0x02e00006",
+      "method": "Native EWMH resize of already discovered PID-owned helper window",
+      "witness": {
+        "utc": "2026-10-09T04:27:11.382414+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-wide-simple.png",
+        "sha256": "a7ff0d000029ebd78b0ed66cc8cfcce05d39da5523d17d2b9d04876a935ee50c",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-wide-simple-head0.ppm",
+          "sha256": "47f4983efa56b1bb0fcef6f9875a9d3e1e10dec36ab593fb95d8f02fc1da9029"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    },
+    {
+      "attempt": "cinnamon/attempts/20261009T042850554303-resize",
+      "utc": "2026-10-09T04:28:52.875842+00:00",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "pidOwnedWindow": "0x02e00006",
+      "method": "Native EWMH resize of already discovered PID-owned helper window",
+      "witness": {
+        "utc": "2026-10-09T04:28:52.984151+00:00",
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-compact-simple-draft.png",
+        "sha256": "46440ccd02714065e94f8a4c6107b7a9a100baae15712dff7527d813facf8312",
+        "nativeQmp": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-compact-simple-draft-head0.ppm",
+          "sha256": "45fe3e02af9c34c98215ef6f140438be6547bdb75c1bc9d3d5b5680f819b75b4"
+        },
+        "desktopPixels": [
+          1280,
+          800
+        ],
+        "vncPort": 5938,
+        "visualReview": "pending"
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "label": "console-after-unlock",
+      "path": "cinnamon/views/console-after-unlock.png",
+      "sha256": "ff94d3cd2e53543e50d9f25ba7065d3f4b390526b3b21558291fc2904b2a463c",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "empty-wide",
+      "path": "cinnamon/views/empty-wide.png",
+      "sha256": "0038057d96b7201504f8849f33f10520f38f8c111776389d0da3a4c3bdeb99e5",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "empty-wide-add",
+      "path": "cinnamon/views/empty-wide-add.png",
+      "sha256": "7bfbf8aa0823a59aa0799a71074a90fdc18ceb693ae60cfef21e6fe94fe96f44",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "empty-compact",
+      "path": "cinnamon/views/empty-compact.png",
+      "sha256": "7c2c676ba6f072f4be0e9f988442fe779a3aa9130a095441a5f10f819fe002d0",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "empty-compact-add",
+      "path": "cinnamon/views/empty-compact-add.png",
+      "sha256": "f2cdefb892c14a9797fc15ab4eb952cfea58440acc58bba420b251416967aca0",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "empty-stress-wide",
+      "path": "cinnamon/views/empty-stress-wide.png",
+      "sha256": "5e75058420986f1fccfcd1b5ae6c0b72a845d6a1600748ac6826d4db80ee3d46",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "empty-stress-compact",
+      "path": "cinnamon/views/empty-stress-compact.png",
+      "sha256": "7c2c676ba6f072f4be0e9f988442fe779a3aa9130a095441a5f10f819fe002d0",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-wide-simple",
+      "path": "cinnamon/views/configured-wide-simple.png",
+      "sha256": "a7ff0d000029ebd78b0ed66cc8cfcce05d39da5523d17d2b9d04876a935ee50c",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-wide-advanced-first",
+      "path": "cinnamon/views/configured-wide-advanced-first.png",
+      "sha256": "fb1a15537deec48106a698203a366c9e31489ee8008d9b912a26125b995915e6",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-wide-capture-tab",
+      "path": "cinnamon/views/configured-wide-capture-tab.png",
+      "sha256": "465eede9fe1be2004a07ac8b2bb18c5d28a2624a9ee2e301c346cbf547ca9ce6",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-wide-capture-shifttab",
+      "path": "cinnamon/views/configured-wide-capture-shifttab.png",
+      "sha256": "b855379e7812bbe092d6ac5b7d1b296ddc270656e3a2bb8723a33bde03f0103b",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-wide-shortcuts-tab",
+      "path": "cinnamon/views/configured-wide-shortcuts-tab.png",
+      "sha256": "7ed165e6f888f892da23512b6f397d743b3bfb6cc069a34e485a2de79656b53e",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-wide-preferences-tab",
+      "path": "cinnamon/views/configured-wide-preferences-tab.png",
+      "sha256": "34f01eeaf0d4a249c463152212f3eb39c7d62a54a49cec70df6fef78d77fd14e",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-wide-collapse-draft",
+      "path": "cinnamon/views/configured-wide-collapse-draft.png",
+      "sha256": "1d08427ab2178bda4fdd1ccb392221fcab0726332d4d5c90e770981b9495c66d",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-compact-simple-draft",
+      "path": "cinnamon/views/configured-compact-simple-draft.png",
+      "sha256": "46440ccd02714065e94f8a4c6107b7a9a100baae15712dff7527d813facf8312",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-compact-expand-preserved",
+      "path": "cinnamon/views/configured-compact-expand-preserved.png",
+      "sha256": "14aa84a150f7be8b93816b28087ed62db54bb73200f976c8afce9fc4fee3d1ff",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-compact-capture",
+      "path": "cinnamon/views/configured-compact-capture.png",
+      "sha256": "047df147918c6bf3e47f9348fd09779b3e7d9f0d89571254b84e12e1f6887fc4",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-compact-shortcuts",
+      "path": "cinnamon/views/configured-compact-shortcuts.png",
+      "sha256": "9072c3a23cc86ccfa5dbc816dc28c22046b41c1856896a18a9b1f12e8f35736f",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-compact-preferences",
+      "path": "cinnamon/views/configured-compact-preferences.png",
+      "sha256": "944f2c71e57c3e5cd2f31d25c23ab307313d86f69295bb6f997888d778a337bf",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "configured-postcancel-simple-proof",
+      "path": "cinnamon/views/configured-postcancel-simple-proof.png",
+      "sha256": "063eb775271744fac0faadc63a40198141abe77a83b6bda0af2a09c4d07c3333",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "history-lifecycle-open",
+      "path": "cinnamon/views/history-lifecycle-open.png",
+      "sha256": "2f658d0333f08ef55c2970af4530127977201a23690f7e1f29b661773b9940df",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "activity-lifecycle-open",
+      "path": "cinnamon/views/activity-lifecycle-open.png",
+      "sha256": "1521e9929c8cdbd6b86baca95cebecfe74bc18becc15725cf80c253ce2f25a7c",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "activity-reopen-normal-closed",
+      "path": "cinnamon/views/activity-reopen-normal-closed.png",
+      "sha256": "8bd124d23c181cd99af44c93db4709a179de15b9467600913a7dcd234c4cccfa",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "diagnostic-selector-ready",
+      "path": "cinnamon/views/diagnostic-selector-ready.png",
+      "sha256": "09b842aac0d3c09fb41ff4851248206eaeeb51891230e2963e20a578312553c4",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "diagnostic-selector-drag",
+      "path": "cinnamon/views/diagnostic-selector-drag.png",
+      "sha256": "ce36f75af558eb162c4fd7caa4d2987dcf1aec864dd7d2e0196109b33cf7543d",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "diagnostic-region-result",
+      "path": "cinnamon/views/diagnostic-region-result.png",
+      "sha256": "09b842aac0d3c09fb41ff4851248206eaeeb51891230e2963e20a578312553c4",
+      "visualReview": "reviewed actual native image"
+    },
+    {
+      "label": "diagnostic-fixture-normal-close",
+      "path": "cinnamon/views/diagnostic-fixture-normal-close.png",
+      "sha256": "edd6333bd9683a257681eb427bc9adbf2d26a98a51a3a13cc505e800bed01237",
+      "visualReview": "reviewed actual native image"
+    }
+  ],
+  "cases": {
+    "initialSetupCancel": {
+      "passed": true,
+      "acceptedRevisionUnchanged": "",
+      "profiles": 0,
+      "helperExit": 0
+    },
+    "emptySavedBothSizes": {
+      "passed": true,
+      "sizes": [
+        [
+          1200,
+          700
+        ],
+        [
+          1024,
+          700
+        ]
+      ],
+      "addVisible": true,
+      "inactiveEditorHidden": true,
+      "footerReachable": true
+    },
+    "emptyAddCancel": {
+      "passed": true,
+      "acceptedRevision": "c8f3d5b861e1d0017852772f1e0f9b652954933b66508fbd4773c582f77a2baf",
+      "profiles": 0
+    },
+    "emptyResizeStress": {
+      "passed": true,
+      "sequence": [
+        [
+          1024,
+          700
+        ],
+        [
+          1200,
+          700
+        ],
+        [
+          1024,
+          700
+        ]
+      ],
+      "addRemainedVisible": true
+    },
+    "configuredSimpleAdvanced": {
+      "passed": true,
+      "sizes": [
+        [
+          1200,
+          700
+        ],
+        [
+          1024,
+          700
+        ]
+      ],
+      "syntheticOnly": true,
+      "actionsLocal": true,
+      "pages": [
+        "Destinations",
+        "Capture",
+        "Shortcuts",
+        "Preferences"
+      ],
+      "navigationTabShiftTab": "Actual focus witnesses show Tab into active page Save locally, region help, desktop notifications; Shift+Tab returns navigation",
+      "footerVisible": true
+    },
+    "draftRetentionAndCancel": {
+      "passed": true,
+      "editedField": "bucket",
+      "before": "synthetic-ui-only",
+      "draft": "synthetic-ui-onlyd",
+      "collapseExpandResizePreserved": true,
+      "acceptedRevisionUnchanged": "3fa1f6c84a70f11d3e39710f81011d6532e9888540b9d9cd6cfc5c8a4ea5ee76",
+      "reopenedBucket": "synthetic-ui-only"
+    },
+    "historyActivityLifecycle": {
+      "passed": true,
+      "scope": "Unchanged source layouts only; empty History and cancelled region Activity opened, normal close/reopen; no new populated inspector/copy-result/payload preview proof",
+      "normalCloseCode": 0,
+      "residentUnchanged": true,
+      "trayRendered": "Actual final screenshot bottom-right blue up-arrow tray icon at x1048"
+    },
+    "matrix": {
+      "passed": false,
+      "status": "First Qt region timed out acquiring; remaining11 not run in first attempt",
+      "operationId": "0447224a-d5ae-44f8-b944-36f2ab62949f",
+      "failureReceipt": "work/lab-runs/ui43-cinnamon-20261009T042304792474-1/results.json",
+      "visibleEscapeSettledCancelled": true,
+      "retry": "Pending root authorization after build drain"
+    },
+    "diagnosticRegion": {
+      "passed": true,
+      "scope": "One synthetic native region gesture only, not full matrix",
+      "attempt": "cinnamon/attempts/20261009T043155260643-diagnostic-region",
+      "operationId": "2e9e63d3-6e1c-4f35-8803-5509c24872fb",
+      "itemId": "96cb8a5b-3c38-4a1a-b24f-f33dcb1087f5",
+      "state": "completed",
+      "copyStatus": "copied",
+      "localStatus": "saved",
+      "uploadStatus": "local_only",
+      "remoteStatus": "not_requested",
+      "input": [
+        150,
+        182,
+        230,
+        242
+      ],
+      "selectorReadiness": "xwininfo root tree 0x4400011 putgd1280x800 plus activeOperations1; actual drag white80x60 rectangle",
+      "pausesSeconds": [
+        1,
+        0.2,
+        0.2
+      ],
+      "causation": "Does not establish original failure cause"
+    }
+  },
+  "gates": [
+    "Full current-candidate matrix12 pending deliberate replay; first failure retained.",
+    "Populated History/Activity copy/payload preview intentionally bounded out because unchanged source43 receipts remain separate; not re-established here.",
+    "Existing KDEsource43 Add disappearance remains separate unrelated acceptance gate.",
+    "No latency or memory budget claim; root owns serial performance."
+  ],
+  "final": {
+    "helperPid": 0,
+    "activeOperations": 0,
+    "residentUnchanged": true,
+    "trayScreenshot": "diagnostic-fixture-normal-close"
+  }
+}

@@ -1,0 +1,544 @@
+{
+  "spec": "/home/patrick/work/put.gd/.context/compound-engineering/ce-optimize/resident-startup-reclaim/spec.yaml",
+  "specSha256": "fab2e53eb86ce52ba863a33cb61863a379ffbc813c1e7dbd468a6b65d809963f",
+  "run_id": "resident-startup-reclaim-20261008",
+  "started_at": "2026-10-08T19:44:20.033730+00:00",
+  "phase3_started_at": "2026-10-08T19:50:53.898305+00:00",
+  "phase": "wrap-up",
+  "baseline": {
+    "timestamp": "2026-10-08T19:44:20.033730+00:00",
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 48431104,
+        "samples": [
+          48431104
+        ]
+      }
+    },
+    "gates": {
+      "budgetPassed": 1
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.0066621829073332675,
+      "finalRssBytes": 48431104
+    },
+    "raw": "/tmp/putgd-ipc-combined-idle/results.json",
+    "rawSha256": "523e8225a437ca6a492e7e59aee076dbfd401161355b3220c0db01b90ae80d92",
+    "observer": "/tmp/putgd-ipc-combined-idle-windows.json",
+    "observerSha256": "52be08640be89f3d9d4137fcf7cf4a0264ca2ddcd734e3223d7d12b79245623a",
+    "sourceCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+    "appSha256": "4810b2413b1a8f8705fc127d884f32beb1f58057a3c67461b619289c2dbc3725",
+    "reuseReason": "Just-completed300second frozen-observer measurement of the exact committed product; no product changes since."
+  },
+  "experiments": [
+    {
+      "iteration": 1,
+      "hypothesis": "startup-idle-request",
+      "timestamp": "2026-10-08T20:03:20.780458+00:00",
+      "opportunity": {
+        "workload": "unchanged 300-second physical Cinnamon cold idle",
+        "baseline": "48,431,104 bytes at 2e789b8",
+        "evidence": "Standalone native QApplication locating probe recovered 1,855,488 and 1,859,584 bytes; product existing idle gate currently never runs on cold startup.",
+        "expected_benefit": "Product benefit unknown; plausible zero to a few MiB. Cheapest decisive measurement is this minimal product change with the frozen observer; standalone probe is not product evidence.",
+        "confidence": "Moderate in available free pages, low in exact product saving; 40 MiB is not promised.",
+        "cost_and_risk": "Two mutable files, no dependencies, one 300-second measurement plus focused lifecycle regressions. Risk: timer ordering or delayed first action; existing gate must remain unchanged."
+      },
+      "metrics": {
+        "peakSampledRssBytes": {
+          "aggregate": 47149056,
+          "samples": [
+            47149056
+          ]
+        }
+      },
+      "gates": {
+        "budgetPassed": 1
+      },
+      "diagnostics": {
+        "idleCpuPercentOneCore": 0.013323591875559577,
+        "finalRssBytes": 47149056
+      },
+      "measurement": {
+        "raw": "/tmp/putgd-startup-reclaim-exp001/results.json",
+        "rawSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+        "observer": "/tmp/putgd-startup-reclaim-exp001-windows.json",
+        "observerSha256": "29336fff4b8419b453a47837c1ee98b423c59c96cdbf990854c7631d2c58aa28",
+        "seconds": 300.2193430539919,
+        "coldIdleUninterrupted": true,
+        "operationCount": 0,
+        "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+      },
+      "snapshot": {
+        "baseCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+        "branch": "optimize-exp/resident-startup-reclaim/exp-001",
+        "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-startup-reclaim-exp-001",
+        "files": {
+          "src/app/OperationService.cpp": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8",
+          "tests/unit/test_operations.cpp": "7bac570f50e0a075c945c2d16fcd8719c814851ddfb33787a1a000062f3dba65"
+        },
+        "immutableTrackedScopeVerified": true,
+        "binaries": {
+          "putgd": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+          "putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+          "libputgd-s3.so": "a00feb50110a965f8af5ebfe4af91e4e8b0276300904483c33c7fdbe4fd65783"
+        },
+        "harnesses": {
+          "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+          "tests/performance/bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+        },
+        "build": {
+          "commands": [
+            "cmake --preset dev",
+            "cmake --build --preset dev --target test_operations",
+            "cmake --preset release",
+            "cmake --build --preset release --target putgd putgd-cli test_operations"
+          ],
+          "configuration": [
+            "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+            "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp"
+          ],
+          "sdk": "official1.11.907, already provisioned; standard existing build/sdk symlink",
+          "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+          "qt": "6.4.2 distro dynamic"
+        }
+      },
+      "outcome": "kept",
+      "comparisons": [
+        {
+          "workload": "unchanged 300-second physical Cinnamon cold idle",
+          "reference": {
+            "timestamp": "2026-10-08T19:44:20.033730+00:00",
+            "metrics": {
+              "peakSampledRssBytes": {
+                "aggregate": 48431104,
+                "samples": [
+                  48431104
+                ]
+              }
+            },
+            "gates": {
+              "budgetPassed": 1
+            },
+            "diagnostics": {
+              "idleCpuPercentOneCore": 0.0066621829073332675,
+              "finalRssBytes": 48431104
+            },
+            "raw": "/tmp/putgd-ipc-combined-idle/results.json",
+            "rawSha256": "523e8225a437ca6a492e7e59aee076dbfd401161355b3220c0db01b90ae80d92",
+            "observer": "/tmp/putgd-ipc-combined-idle-windows.json",
+            "observerSha256": "52be08640be89f3d9d4137fcf7cf4a0264ca2ddcd734e3223d7d12b79245623a",
+            "sourceCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+            "appSha256": "4810b2413b1a8f8705fc127d884f32beb1f58057a3c67461b619289c2dbc3725",
+            "reuseReason": "Just-completed300second frozen-observer measurement of the exact committed product; no product changes since."
+          },
+          "candidate": {
+            "baseCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+            "branch": "optimize-exp/resident-startup-reclaim/exp-001",
+            "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-startup-reclaim-exp-001",
+            "files": {
+              "src/app/OperationService.cpp": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8",
+              "tests/unit/test_operations.cpp": "7bac570f50e0a075c945c2d16fcd8719c814851ddfb33787a1a000062f3dba65"
+            },
+            "immutableTrackedScopeVerified": true,
+            "binaries": {
+              "putgd": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+              "putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+              "libputgd-s3.so": "a00feb50110a965f8af5ebfe4af91e4e8b0276300904483c33c7fdbe4fd65783"
+            },
+            "harnesses": {
+              "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+              "tests/performance/bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+            },
+            "build": {
+              "commands": [
+                "cmake --preset dev",
+                "cmake --build --preset dev --target test_operations",
+                "cmake --preset release",
+                "cmake --build --preset release --target putgd putgd-cli test_operations"
+              ],
+              "configuration": [
+                "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+                "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp"
+              ],
+              "sdk": "official1.11.907, already provisioned; standard existing build/sdk symlink",
+              "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+              "qt": "6.4.2 distro dynamic"
+            }
+          },
+          "measurement": {
+            "raw": "/tmp/putgd-startup-reclaim-exp001/results.json",
+            "rawSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+            "observer": "/tmp/putgd-startup-reclaim-exp001-windows.json",
+            "observerSha256": "29336fff4b8419b453a47837c1ee98b423c59c96cdbf990854c7631d2c58aa28",
+            "seconds": 300.2193430539919,
+            "coldIdleUninterrupted": true,
+            "operationCount": 0,
+            "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+            "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+          },
+          "decision": {
+            "decision": "keep",
+            "eligible": true,
+            "next_measurement": "none",
+            "target_reached": false,
+            "improved_objectives": [
+              "peakSampledRssBytes"
+            ],
+            "violated_objectives": [],
+            "comparisons": {
+              "peakSampledRssBytes": {
+                "verdict": "improved",
+                "delta": 1282048,
+                "relative": 0.026471583220568334,
+                "violated": false
+              }
+            },
+            "primary_delta": 1282048,
+            "rank_score": 0.026471583220568334,
+            "reason": "improved peakSampledRssBytes without violating other required objectives"
+          },
+          "uncertainty": "One stable-mode sample per source, predeclared absolute threshold 1 MiB; post-use and desktop acceptance are separate."
+        }
+      ],
+      "decision": {
+        "decision": "keep",
+        "eligible": true,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [
+          "peakSampledRssBytes"
+        ],
+        "violated_objectives": [],
+        "comparisons": {
+          "peakSampledRssBytes": {
+            "verdict": "improved",
+            "delta": 1282048,
+            "relative": 0.026471583220568334,
+            "violated": false
+          }
+        },
+        "primary_delta": 1282048,
+        "rank_score": 0.026471583220568334,
+        "reason": "improved peakSampledRssBytes without violating other required objectives"
+      },
+      "commit": "68e55493e71d6220ed34634073b355087ac6db0b",
+      "canonicalCommit": "fc69d387003e25dd2f7a4a38bafd15fd413ecaf4"
+    }
+  ],
+  "best": {
+    "iteration": 1,
+    "hypothesis": "startup-idle-request",
+    "timestamp": "2026-10-08T20:03:20.780458+00:00",
+    "opportunity": {
+      "workload": "unchanged 300-second physical Cinnamon cold idle",
+      "baseline": "48,431,104 bytes at 2e789b8",
+      "evidence": "Standalone native QApplication locating probe recovered 1,855,488 and 1,859,584 bytes; product existing idle gate currently never runs on cold startup.",
+      "expected_benefit": "Product benefit unknown; plausible zero to a few MiB. Cheapest decisive measurement is this minimal product change with the frozen observer; standalone probe is not product evidence.",
+      "confidence": "Moderate in available free pages, low in exact product saving; 40 MiB is not promised.",
+      "cost_and_risk": "Two mutable files, no dependencies, one 300-second measurement plus focused lifecycle regressions. Risk: timer ordering or delayed first action; existing gate must remain unchanged."
+    },
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 47149056,
+        "samples": [
+          47149056
+        ]
+      }
+    },
+    "gates": {
+      "budgetPassed": 1
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.013323591875559577,
+      "finalRssBytes": 47149056
+    },
+    "measurement": {
+      "raw": "/tmp/putgd-startup-reclaim-exp001/results.json",
+      "rawSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+      "observer": "/tmp/putgd-startup-reclaim-exp001-windows.json",
+      "observerSha256": "29336fff4b8419b453a47837c1ee98b423c59c96cdbf990854c7631d2c58aa28",
+      "seconds": 300.2193430539919,
+      "coldIdleUninterrupted": true,
+      "operationCount": 0,
+      "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+    },
+    "snapshot": {
+      "baseCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+      "branch": "optimize-exp/resident-startup-reclaim/exp-001",
+      "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-startup-reclaim-exp-001",
+      "files": {
+        "src/app/OperationService.cpp": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8",
+        "tests/unit/test_operations.cpp": "7bac570f50e0a075c945c2d16fcd8719c814851ddfb33787a1a000062f3dba65"
+      },
+      "immutableTrackedScopeVerified": true,
+      "binaries": {
+        "putgd": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+        "putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+        "libputgd-s3.so": "a00feb50110a965f8af5ebfe4af91e4e8b0276300904483c33c7fdbe4fd65783"
+      },
+      "harnesses": {
+        "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "tests/performance/bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+      },
+      "build": {
+        "commands": [
+          "cmake --preset dev",
+          "cmake --build --preset dev --target test_operations",
+          "cmake --preset release",
+          "cmake --build --preset release --target putgd putgd-cli test_operations"
+        ],
+        "configuration": [
+          "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+          "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp"
+        ],
+        "sdk": "official1.11.907, already provisioned; standard existing build/sdk symlink",
+        "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+        "qt": "6.4.2 distro dynamic"
+      }
+    },
+    "outcome": "kept",
+    "comparisons": [
+      {
+        "workload": "unchanged 300-second physical Cinnamon cold idle",
+        "reference": {
+          "timestamp": "2026-10-08T19:44:20.033730+00:00",
+          "metrics": {
+            "peakSampledRssBytes": {
+              "aggregate": 48431104,
+              "samples": [
+                48431104
+              ]
+            }
+          },
+          "gates": {
+            "budgetPassed": 1
+          },
+          "diagnostics": {
+            "idleCpuPercentOneCore": 0.0066621829073332675,
+            "finalRssBytes": 48431104
+          },
+          "raw": "/tmp/putgd-ipc-combined-idle/results.json",
+          "rawSha256": "523e8225a437ca6a492e7e59aee076dbfd401161355b3220c0db01b90ae80d92",
+          "observer": "/tmp/putgd-ipc-combined-idle-windows.json",
+          "observerSha256": "52be08640be89f3d9d4137fcf7cf4a0264ca2ddcd734e3223d7d12b79245623a",
+          "sourceCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+          "appSha256": "4810b2413b1a8f8705fc127d884f32beb1f58057a3c67461b619289c2dbc3725",
+          "reuseReason": "Just-completed300second frozen-observer measurement of the exact committed product; no product changes since."
+        },
+        "candidate": {
+          "baseCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+          "branch": "optimize-exp/resident-startup-reclaim/exp-001",
+          "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-startup-reclaim-exp-001",
+          "files": {
+            "src/app/OperationService.cpp": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8",
+            "tests/unit/test_operations.cpp": "7bac570f50e0a075c945c2d16fcd8719c814851ddfb33787a1a000062f3dba65"
+          },
+          "immutableTrackedScopeVerified": true,
+          "binaries": {
+            "putgd": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+            "putgd-cli": "15c238614796841898b295e34e0ab502e6def049a7c50ad7732fba15d5dc1120",
+            "libputgd-s3.so": "a00feb50110a965f8af5ebfe4af91e4e8b0276300904483c33c7fdbe4fd65783"
+          },
+          "harnesses": {
+            "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+            "tests/performance/bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+          },
+          "build": {
+            "commands": [
+              "cmake --preset dev",
+              "cmake --build --preset dev --target test_operations",
+              "cmake --preset release",
+              "cmake --build --preset release --target putgd putgd-cli test_operations"
+            ],
+            "configuration": [
+              "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+              "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp"
+            ],
+            "sdk": "official1.11.907, already provisioned; standard existing build/sdk symlink",
+            "compiler": "c++ (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0",
+            "qt": "6.4.2 distro dynamic"
+          }
+        },
+        "measurement": {
+          "raw": "/tmp/putgd-startup-reclaim-exp001/results.json",
+          "rawSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+          "observer": "/tmp/putgd-startup-reclaim-exp001-windows.json",
+          "observerSha256": "29336fff4b8419b453a47837c1ee98b423c59c96cdbf990854c7631d2c58aa28",
+          "seconds": 300.2193430539919,
+          "coldIdleUninterrupted": true,
+          "operationCount": 0,
+          "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+          "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+        },
+        "decision": {
+          "decision": "keep",
+          "eligible": true,
+          "next_measurement": "none",
+          "target_reached": false,
+          "improved_objectives": [
+            "peakSampledRssBytes"
+          ],
+          "violated_objectives": [],
+          "comparisons": {
+            "peakSampledRssBytes": {
+              "verdict": "improved",
+              "delta": 1282048,
+              "relative": 0.026471583220568334,
+              "violated": false
+            }
+          },
+          "primary_delta": 1282048,
+          "rank_score": 0.026471583220568334,
+          "reason": "improved peakSampledRssBytes without violating other required objectives"
+        },
+        "uncertainty": "One stable-mode sample per source, predeclared absolute threshold 1 MiB; post-use and desktop acceptance are separate."
+      }
+    ],
+    "decision": {
+      "decision": "keep",
+      "eligible": true,
+      "next_measurement": "none",
+      "target_reached": false,
+      "improved_objectives": [
+        "peakSampledRssBytes"
+      ],
+      "violated_objectives": [],
+      "comparisons": {
+        "peakSampledRssBytes": {
+          "verdict": "improved",
+          "delta": 1282048,
+          "relative": 0.026471583220568334,
+          "violated": false
+        }
+      },
+      "primary_delta": 1282048,
+      "rank_score": 0.026471583220568334,
+      "reason": "improved peakSampledRssBytes without violating other required objectives"
+    },
+    "commit": "68e55493e71d6220ed34634073b355087ac6db0b",
+    "canonicalCommit": "fc69d387003e25dd2f7a4a38bafd15fd413ecaf4"
+  },
+  "cleanTree": "All mutable/immutable tracked source paths clean; unrelated user/lab and evidence docs excluded. credentials.txt remains ignored/untracked and unread.",
+  "correctnessBaseline": {
+    "dev": {
+      "passed": 28,
+      "junit": "/tmp/putgd-combined-ipc-live-heap-dev.xml"
+    },
+    "releaseAffected": {
+      "passed": 4,
+      "junit": "/tmp/putgd-combined-ipc-live-heap-release.xml"
+    }
+  },
+  "cost": "No paid infrastructure/dependencies. Normal host model usage is not dollar-capped; actual cost unavailable. One hour/two variants bound execution.",
+  "parallelProbe": {
+    "reportedMode": "user-decision",
+    "blockers": [
+      {
+        "type": "lock_file",
+        "count": 6
+      }
+    ],
+    "warning": "bundled grep regex warning",
+    "effectiveMode": "serial",
+    "mitigation": "Only one private fresh-output physical run at a time; never reuse measurement roots or overlap build/test/lab processes. Existing unrelated lock files are not modified."
+  },
+  "worktreeBudget": {
+    "bundledCounter": 0,
+    "actualGitWorktrees": 8,
+    "projectionWithExperiment": 9,
+    "maximum": 12,
+    "parentReuse": "Reuse clean managed resident-memory parent, retaining old optimization branch and its referenced experiment/binary."
+  },
+  "optimizationParent": {
+    "path": "/home/patrick/.codex/worktrees/resident-memory/put.gd",
+    "branch": "optimize/resident-startup-reclaim",
+    "base": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+    "status": "clean source; explicit user approval received in current conversation; experiment preparation underway",
+    "warning": "Parent build binaries are stale prior probes. Only fresh experiment builds may be measured."
+  },
+  "hypothesis_backlog": [],
+  "sourceDigestSha256": "1f1c3737381ec3ae06c7680a6306fe5f782961a9f07d8cac9b70bff72de41de4",
+  "activeExperiment": {
+    "iteration": 1,
+    "hypothesis": "startup-idle-request",
+    "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-startup-reclaim-exp-001",
+    "branch": "optimize-exp/resident-startup-reclaim/exp-001",
+    "dispatched_at": "2026-10-08T19:50:53.898305+00:00",
+    "opportunity": {
+      "workload": "unchanged 300-second physical Cinnamon cold idle",
+      "baseline": "48,431,104 bytes at 2e789b8",
+      "evidence": "Standalone native QApplication locating probe recovered 1,855,488 and 1,859,584 bytes; product existing idle gate currently never runs on cold startup.",
+      "expected_benefit": "Product benefit unknown; plausible zero to a few MiB. Cheapest decisive measurement is this minimal product change with the frozen observer; standalone probe is not product evidence.",
+      "confidence": "Moderate in available free pages, low in exact product saving; 40 MiB is not promised.",
+      "cost_and_risk": "Two mutable files, no dependencies, one 300-second measurement plus focused lifecycle regressions. Risk: timer ordering or delayed first action; existing gate must remain unchanged."
+    }
+  },
+  "correctnessCandidate": {
+    "sourceReview": "/tmp/putgd-startup-reclaim-review.json",
+    "sourceReviewSha256": "646010c56ea4d3523cb1495721563a66328733c12216e6c8f82fb1207adb7f8c",
+    "testReceipt": "work/startup-reclaim/test-receipt.json",
+    "testFirst": "Three success-path missing-pending failures before change; failed-initialization regression passed.",
+    "devOperations": "1/1 contract passed36.68s",
+    "releaseOperations": "1/1 contract passed36.51s",
+    "limitations": "ASan/UBSan application code with distro Qt; TSan app and documented Qt/dependencies instrumented, release AWS/curl/OpenSSL are not. View check does not establish first-capture latency, file-dialog acceptance, post-S3 or populated-history memory.",
+    "finalValidation": [
+      {
+        "name": "integratedDev",
+        "raw": "/tmp/putgd-startup-reclaim-combined-dev.xml",
+        "sha256": "961c23e35d017048d479f8aad4ab8be351a4d93b1ed8e4fb0bb05e9b63fc623d",
+        "tests": 28,
+        "failures": 0,
+        "seconds": 144.57
+      },
+      {
+        "name": "asanUbsan",
+        "raw": "/tmp/putgd-startup-reclaim-asan.xml",
+        "sha256": "4abbd6d709045a97459df9f9934abb7744d980cdec84aa50b02ddfd45fc5c633",
+        "tests": 1,
+        "failures": 0,
+        "seconds": 37.56
+      },
+      {
+        "name": "instrumentedQtTsan",
+        "raw": "/tmp/putgd-startup-reclaim-tsan.xml",
+        "sha256": "993dbdfa1493d067e78d3d9e38d960fdfeb1a193332b9aa0fa6d25ccb33ae9cd",
+        "tests": 1,
+        "failures": 0,
+        "seconds": 39.47
+      }
+    ],
+    "nativeViewCycles": {
+      "cycles": 3,
+      "passed": true,
+      "finalHiddenMiB": 73.82421875,
+      "raw": "/tmp/putgd-startup-reclaim-views/results.json"
+    }
+  },
+  "stoppingObservation": {
+    "reason": "No further runnable hypothesis within the approved once-only startup request scope.",
+    "targetReached": false,
+    "noNewDependency": true,
+    "remainingColdMiB": 4.96484375,
+    "remainingOpportunity": "Fresh final mappings are available; further savings require different code scope. No supported second startup request variant preserves this one-pass constraint and promises another >1 MiB.",
+    "iterations": 1
+  },
+  "dispatchedSourceDigestSha256": "53f590f0a9e52ed1882cd8de21ef3a629bd71569870029712ac9f36eed0abd93",
+  "runAccounting": {
+    "phase3StartedAt": "2026-10-08T19:50:53.898305+00:00",
+    "measuredIntegratedValidatedAt": "2026-10-08T20:12:16.131459+00:00",
+    "iterations": 1,
+    "kept": 1,
+    "reverted": 0,
+    "inconclusive": 0,
+    "censored": 0,
+    "notSelected": 0,
+    "errors": 0,
+    "deferredDependencies": 0,
+    "judgeCost": "not applicable, hard metric",
+    "paidInfrastructureCostUSD": 0,
+    "modelUsageCost": "unavailable, no separate dollar cap; reused implementation/review/documentation workers",
+    "stopReason": "No remaining runnable hypothesis within the approved startup scope; 40 MiB remains unmet."
+  }
+}

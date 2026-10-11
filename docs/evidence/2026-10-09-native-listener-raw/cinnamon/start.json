@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-09T08:12:44.793511+00:00",
+  "resident": {
+    "pid": 114990,
+    "startTicks": 4204250,
+    "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 49,
+    "dirty": false,
+    "gitCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "gitTree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+    "packageVersion": "0.1.1~dev.49+g676f6e6d6e0b",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.49+g676f6e6d6e0b"
+  },
+  "session": "visible native cinnamon-x11",
+  "vncPort": 5938
+}

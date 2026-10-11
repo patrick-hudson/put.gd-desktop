@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "f0c4db1c024cf65b0c53f1503cb7a72b7581a2ed8849c54903cb1f1fda2ecbdf",
+  "sourceBytes": 1494,
+  "scope": "Generated cursor fixture image-count correction passes the actual-helper preparation suite.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "1",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "1",
+    "timestamp": "2026-10-09T13:08:46"
+  },
+  "testcases": [
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "1.28256",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "qtTestFunctionOutcomes": [
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin-with-cursor-seed)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(animated-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(oversized-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(missing-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(reject-foreign-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::cleanupTestCase()"
+    }
+  ]
+}

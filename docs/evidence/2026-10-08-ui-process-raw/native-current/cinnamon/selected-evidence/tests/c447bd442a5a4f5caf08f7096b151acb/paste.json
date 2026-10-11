@@ -1,0 +1,16 @@
+{
+    "formats": [
+        "text/uri-list",
+        "text/plain",
+        "TARGETS",
+        "MULTIPLE",
+        "TIMESTAMP",
+        "SAVE_TARGETS"
+    ],
+    "schemaVersion": 1,
+    "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\n",
+    "urls": [
+        "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+        "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+    ]
+}

@@ -1,0 +1,6 @@
+{
+  "utc": "2026-10-09T08:43:33.441546+00:00",
+  "phase": "unlock-wake",
+  "errorType": "CalledProcessError",
+  "message": "Preserve attempt; diagnose explicitly before retry"
+}

@@ -1,0 +1,40 @@
+{
+  "utc": "2026-10-09T01:39:21.590134+00:00",
+  "operation": {
+    "action": "window",
+    "cancelled": false,
+    "clipboardRevision": "30",
+    "copyStatus": "no_result",
+    "created": "2026-10-09T01:39:21.270Z",
+    "destination": {
+      "credentials": {},
+      "profileId": "",
+      "profileRevision": "",
+      "providerId": "",
+      "settings": {}
+    },
+    "error": {
+      "code": "capture_target",
+      "details": {},
+      "message": "Focus an external application window before capture"
+    },
+    "id": "7baccf87-83bf-4109-8ee9-334cb0b975a4",
+    "invocation": "18",
+    "items": [],
+    "settingsRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+    "state": "failed"
+  },
+  "helper": {
+    "checkpointBytes": 2446,
+    "lastExit": {
+      "code": 0,
+      "generation": 9,
+      "status": "normal"
+    },
+    "pid": 21188,
+    "state": "ready"
+  },
+  "focusWitness": "ui/native-folder-dialog-open.png",
+  "passed": true,
+  "replay": "With the shown Settings/native chooser focused, call putgd-cli action.invoke with action=window. Inspect its returned operation ID until terminal; require failed/capture_target, no_result, and zero items. Acceptance itself is asynchronous."
+}

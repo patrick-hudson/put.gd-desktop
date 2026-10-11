@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T03:52:04.145079+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/gnome/views/activity-compact-parent-id-tooltip.png",
+  "sha256": "6a9211a44e210f80c3d427606e9078ff30f4a5dff23e1ec420b4983daa957e60",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-source43-attempt1-activity-compact-parent-id-tooltip-head0.ppm",
+    "sha256": "0b8bb83577b55ea0f1b435a592f2f0eb851ec6c8f78cc519bdccd4239fba05c3"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5936,
+  "visualReview": "pending"
+}

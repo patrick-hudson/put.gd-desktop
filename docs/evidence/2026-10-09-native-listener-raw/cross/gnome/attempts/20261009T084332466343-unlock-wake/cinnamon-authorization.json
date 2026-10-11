@@ -1,0 +1,11 @@
+{
+  "utc": "2026-10-09T08:43:32.466900+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/gates.json",
+  "sha256": "5536705e64b29fae8b586f0c9db9365f1968d77261e10d94c8cac35b43bbabd1",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "functionalPassed": true,
+  "memoryPassed": true,
+  "latencyPassed": false,
+  "scope": "Regression-test expansion after approved functional/memory prerequisites; no keep or release acceptance",
+  "runnerSha256": "3f5a4dff9e8974025cd185e4efc7aba5c59e910afcd559426ffa1c86b95c8165"
+}

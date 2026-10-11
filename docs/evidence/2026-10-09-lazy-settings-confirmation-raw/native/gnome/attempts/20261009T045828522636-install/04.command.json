@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "scp",
+    "-q",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/identity",
+    "-P",
+    "22236",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/putgd_0.1.1~dev.46+g6f6372e79d8b_amd64.deb",
+    "lab@127.0.0.1:/tmp/putgd-ui-refinement-frozen-exp001-source46.deb"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:58:29.791347+00:00"
+}

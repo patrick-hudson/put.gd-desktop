@@ -1,0 +1,23 @@
+{
+  "reviewer": "root",
+  "scope": "Actual retained settled native frames inspected with view_image",
+  "observed": "Blue Add S3 destination visible at desktop x90..255/y190..222 in BOTH frames, so these settled frames do not establish a missing button",
+  "unresolved": "No retained reviewed frame establishes an absent button. Agent instructed to preserve initial impression as unconfirmed observer error, not product failure.",
+  "files": [
+    {
+      "path": "work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-missing-add-settled.png",
+      "sha256": "150d8b16f7a89073e14ede0ab56e2ed11d294f5db4024dc7995b097d9feb8f9e"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-recovery-collapsed.png",
+      "sha256": "956be3e833422df8d3b0ef49183ff3a3cae7cdd89f1af5ff565be0cd618a570a"
+    }
+  ],
+  "agentCorrection": "Initial settled failure claim withdrawn after reinspection; exact immediate resize-final frame is native-established. Settled frame restores Add without needing Advanced toggle.",
+  "immediateFrame": {
+    "path": "work/ui-refinement/native-replay/lazy-exp001-native/kde/views/settings-empty-wide-native-established.png",
+    "sha256": "150d8b16f7a89073e14ede0ab56e2ed11d294f5db4024dc7995b097d9feb8f9e",
+    "rootObserved": "Blue Add S3 destination also visible at x90..255/y190..222; this frame does not establish absence either."
+  },
+  "resolution": "Agent reinspection confirms native-established and settled images have identical SHA256150d8b16\u2026 and Add button pixels; original absence impression was observer error. No verified current candidate Add continuity failure."
+}

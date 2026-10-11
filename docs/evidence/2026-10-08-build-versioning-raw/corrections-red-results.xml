@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="2"
+	failures="2"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="0"
+	timestamp="2026-10-08T17:49:38"
+	>
+	<testcase name="version_contract" classname="version_contract" time="0.817001" status="fail">
+		<failure message="Failed"/>
+		<properties/>
+		<system-out>-- Version contract artifacts: /home/patrick/work/put.gd/build/dev/Testing/version-contract-Debug/730b92eaee61
+CMake Error at /home/patrick/work/put.gd/tests/cmake/version_contract.cmake:40 (message):
+  Installed runtime asset differs from the compiled snapshot:
+  /home/patrick/work/put.gd/build/dev/Testing/version-contract-Debug/730b92eaee61/unpacked/putgd-0.1.1~dev.2+gdf73b46a10ed.dirty-Linux/share/putgd/runtime-asset.js
+Call Stack (most recent call first):
+  /home/patrick/work/put.gd/tests/cmake/version_contract.cmake:143 (check_asset)
+
+
+</system-out>
+	</testcase>
+	<testcase name="gui_version" classname="gui_version" time="0.0391758" status="fail">
+		<failure message="Failed"/>
+		<properties/>
+		<system-out>********* Start testing of VersionView *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : VersionView::initTestCase()
+QWARN  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() This plugin does not support propagateSizeHints()
+FAIL!  : VersionView::aboutIsModelessAndReleasedWithoutOpeningOtherViews() '!enteredModalLoop' returned FALSE. (About must not block capture input with a modal event loop)
+   Loc: [/home/patrick/work/put.gd/tests/gui/test_version.cpp(42)]
+PASS   : VersionView::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 23ms
+********* Finished testing of VersionView *********
+</system-out>
+	</testcase>
+</testsuite>

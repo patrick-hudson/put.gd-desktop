@@ -1,0 +1,5 @@
+{
+  "src/app/OperationService.cpp": "e07f7e5809a9a05e19d9822efa9259e57b43b5c43775503139e246ca6809c5b2",
+  "src/capture/main.cpp": "93c8bfca414c01a2588d54a6366c8bd4207d1a9186785cd2cbfed2ea104130b0",
+  "src/platform/x11/NativeRegionOverlay.cpp": "f7bedaac91b7a7e031c4c6044dc5ee146946c38ac68d7148365dc59e3629cfff"
+}

@@ -1,0 +1,159 @@
+{
+  "status": "complete",
+  "scope": "U11 setup-result recovery follow-up only",
+  "plan_path": "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+  "u_ids_attempted": [
+    "U11"
+  ],
+  "u_ids_completed": [],
+  "unit_complete": true,
+  "baseCommit": "4c687f5d55d69f1717bafd80f02d4771b5b3bac4",
+  "recordedAt": "2026-10-09T00:55:15.756552+00:00",
+  "changed_files": [
+    "src/ui/SettingsWindow.cpp",
+    "src/ui/SettingsWindow.h",
+    "tests/gui/test_settings.cpp"
+  ],
+  "behavior_changed": true,
+  "sourceHashes": {
+    "src/ui/SettingsWindow.cpp": "465fc54fa6e13cd829d1a6074a1168b0e27b060b4d3efda23a89f87b26574f3c",
+    "src/ui/SettingsWindow.h": "3674c95d41f4b3643eb51fe46764a6d6427c0b3a36ce00ea736fdd4305c3582d",
+    "tests/gui/test_settings.cpp": "93359aef104a3ca5ba51232e79c3f4e078788b4ba7a7828277481589cc7907e2"
+  },
+  "verification_evidence": {
+    "existing_tests_inspected": [
+      "acceptedSetupIdSurvivesAnUncertainInspectionReply",
+      "acceptedSetupIsInspectedAfterRecreationWithoutRepeatingMutation",
+      "recreatedSettingsRetainsRawDraftAndExcludesCredentialEntry",
+      "Settings draft/reset/conflict tests"
+    ],
+    "tests_added": [
+      "transientSetupInspectionRecoversWithoutReplayingAcceptedWork",
+      "expiredSetupResultDoesNotStarveLaterAcceptedWork",
+      "destinationTestButtonStaysDisabledUntilEveryAcceptedTestFinishes"
+    ],
+    "tests_used_unchanged": [
+      "gui_settings existing cases"
+    ],
+    "red_observed": [
+      "Transient lost inspection leaves accepted job queued after completion",
+      "Expired first ID remains in queue and blocks the following accepted job",
+      "Completing first destination test re-enables the button while another accepted test remains"
+    ],
+    "red": {
+      "exitCode": 3,
+      "testCasesFailed": 3,
+      "qtHarnessCasesPassed": 2,
+      "durationSeconds": 12.833,
+      "productionChanged": false
+    },
+    "green": {
+      "exitCode": 0,
+      "testCasesPassed": 3,
+      "qtHarnessCasesPassed": 2,
+      "durationSeconds": 2.108
+    },
+    "settings_suite": {
+      "exitCode": 0,
+      "ctestCasesPassed": 1,
+      "durationSeconds": 8.21
+    },
+    "commands": [
+      {
+        "command": "cmake --build --preset dev --target test_gui_settings",
+        "phase": "red build",
+        "exitCode": 0,
+        "log": "red-build.log"
+      },
+      {
+        "command": "QT_QPA_PLATFORM=offscreen build/dev/test_gui_settings transientSetupInspectionRecoversWithoutReplayingAcceptedWork expiredSetupResultDoesNotStarveLaterAcceptedWork destinationTestButtonStaysDisabledUntilEveryAcceptedTestFinishes -o work/u11/setup-recovery/red.log,txt -o work/u11/setup-recovery/red.xml,junitxml",
+        "phase": "red",
+        "exitCode": 3,
+        "log": "red.log"
+      },
+      {
+        "command": "cmake --build --preset dev --target test_gui_settings",
+        "phase": "green build",
+        "exitCode": 0,
+        "log": "green-build.log"
+      },
+      {
+        "command": "QT_QPA_PLATFORM=offscreen build/dev/test_gui_settings transientSetupInspectionRecoversWithoutReplayingAcceptedWork expiredSetupResultDoesNotStarveLaterAcceptedWork destinationTestButtonStaysDisabledUntilEveryAcceptedTestFinishes -o work/u11/setup-recovery/green.log,txt -o work/u11/setup-recovery/green.xml,junitxml",
+        "phase": "green",
+        "exitCode": 0,
+        "log": "green.log"
+      },
+      {
+        "command": "ctest --preset dev -R '^gui_settings$' --output-junit work/u11/setup-recovery/settings-suite.xml",
+        "phase": "Settings suite",
+        "exitCode": 0,
+        "log": "settings-suite.log",
+        "junitNote": "CTest wrote the relative output under build/dev; copied unchanged into this evidence directory."
+      }
+    ],
+    "exception_reason": null,
+    "callback_trace": [
+      "SettingsWindow queue changes emit viewStateChanged to UiApplicationController checkpoints",
+      "Safe setupJobs representation remains accepted by ViewState; no stored schema changed",
+      "SetupService inspect remains read-only; completed cache size and mutation routes unchanged"
+    ]
+  },
+  "implementation_summary": [
+    "Retry only read-only setup.inspect using the existing 500 ms timer; rotate pending IDs so another accepted job is not starved",
+    "Treat setup_not_found as terminal unavailable result; remove only that accepted ID and explain that its action was not repeated",
+    "Keep destination test button disabled while any accepted test or test-acceptance request remains",
+    "Preserve dirty settings and typed secrets during polling; never checkpoint credential entry values"
+  ],
+  "considered_not_built": [
+    "No automatic setup mutation retry: accepted actions must not be repeated",
+    "No new result persistence or resident cache enlargement: terminal unavailable results can be resolved without stored-format changes",
+    "No additional retry scheduler/backoff: the existing 500 ms single-request timer suffices for the bounded view-lifetime read-only loop"
+  ],
+  "limitations": [
+    "Offscreen widget/production-service evidence only; no native compositor or tray acceptance claimed",
+    "No real S3 traffic, cloud credentials or system secret-store calls in new cases",
+    "Full sanitizer and current-desktop integration verification belongs to the caller"
+  ],
+  "implementation_engine_binding": null,
+  "requested_route": "native Codex subagent",
+  "actual_route": "native Codex subagent",
+  "requested_model": "inherited parent",
+  "actual_model": "unverified",
+  "requested_effort": null,
+  "fallback_reason": null,
+  "run_id": null,
+  "source_kind": "plan",
+  "source_digest": "cb3143c22f2d3cfdfa61f026b3a9b641fe5c295a18ddae789ed5f0967152d18d",
+  "unit_receipts": [
+    {
+      "unit": "U11 setup-result recovery",
+      "implementation": "complete",
+      "verification": "focused tests pass",
+      "integration": "pending caller",
+      "canonical_commit": "not attempted; caller owns Git",
+      "cleanup": "dev build cache idle"
+    }
+  ],
+  "plan_checkpoint": null,
+  "blockers": [],
+  "recovery_path": null,
+  "settled_decision_conflicts": [],
+  "standalone_shipping_skipped": true,
+  "artifacts": {
+    "green-build.log": "78bd26ab2a25eb9feeab72521226d45c411834834d5a7c29f0d4244b7d6e31a8",
+    "green.json": "24524cad88927fe1fb2f9f85968884b5ebbd07a47fa0d109364848f165989641",
+    "green.log": "024b4e8fcda357157c6e5717202895489831031bc68c7c62d72dc9ad323a7d19",
+    "green.xml": "0de74dd53a32287763743db2512b1aac252aabdf5194a50f03736760ea9a4f6b",
+    "implementation.patch": "e53a273f408e04d3eb46b162bc125394923e94202fcf1cc3fe554b8734b773d2",
+    "red-build.log": "ecf77b57b8582152745783dc91b57e4fa55c235d2d18a93d0c607b1dfb476b9c",
+    "red-test.patch": "06894185e3c8c58b12a3bacc8a1f87be3e56c55dcfe45b79e3d4a26d52451c81",
+    "red.json": "ab0bf25428865ec2876dc9631607b9857ed99f6e6fee21fb2822fcc8acf20250",
+    "red.log": "99969d1a360ef52db2e657c2f965ba91c242fd268d89f1f614da3d08fda7d830",
+    "red.xml": "55c02afb9309952e26c9a4191275966a2ebfe9fdcf94a466366fcffd99b6122e",
+    "replay.md": "6e36f04c0eb82810cbbf97d5e02d4f5c02c0cc9c631d1c9ad4a09e56d7094eae",
+    "replay.sh": "16a10e581de516385093757839f4c099cdb4870e41622d69591932e70b54b957",
+    "settings-suite.json": "00baabf387acdd9f9ed401d8a5403e9d689d68e62ee9d0e7a499dc261e8ab398",
+    "settings-suite.log": "83293663608f8bf1ffb8f51a24b1b3394af5c0341467584c3b5110e98bc23e51",
+    "settings-suite.xml": "1809615aee7e2aa923c55a7fcf6eb440bcb76576c3ca37afc733f0147d8a9901"
+  }
+}

@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "status": "complete",
+  "scope": "Original scoped CE-code-review plus separate independent read of applied fixes; no whole-product release verdict.",
+  "original": {
+    "status": "complete",
+    "verdict": "Ready with fixes",
+    "scope": {
+      "base": "ece28bb095217896c6cfce1c56a18fb0dbd14c2f",
+      "branch": "feat/qt-linux-sharing",
+      "head_sha": "ece28bb095217896c6cfce1c56a18fb0dbd14c2f",
+      "pr_url": null,
+      "files_changed": 27,
+      "mode": "standalone",
+      "review_checkout": "/tmp/compound-engineering-1000/ce-code-review/20261008-060220-4c45850f/scoped-tree",
+      "owned_path_hashes": "/tmp/compound-engineering-1000/ce-code-review/20261008-060220-4c45850f/owned-path-hashes.json",
+      "exclusions": [
+        "AGENTS.md working changes",
+        "docs/vm-lab.md working changes",
+        "docs/windows-vm-lab.md working changes",
+        "tools/qemu-grid/"
+      ],
+      "snapshot_note": "The 27 owned-path hashes identify the frozen uncommitted refinement over the dispatch HEAD; live follow-up fixes are outside this receipt."
+    },
+    "reviewers": [
+      "correctness",
+      "project-standards",
+      "testing",
+      "maintainability",
+      "agent-native",
+      "security",
+      "performance",
+      "api-contract",
+      "reliability"
+    ],
+    "actionable_findings": [
+      {
+        "#": 1,
+        "autofix_class": "manual",
+        "confidence": 100,
+        "evidence": [
+          "src/core/ArtifactStore.cpp:76:  const auto acquiredAt=QDateTime::currentDateTime();",
+          "src/app/OperationService.cpp:78 enqueues the already returned source payload; src/app/OperationService.cpp:99 only dequeues it when running_ is below the configured concurrentUploads limit; src/app/OperationService.cpp:105 then calls artifacts.acquire, where the timestamp is sampled.",
+          "src/platform/x11/X11SourceAdapter.cpp:30 acquires capture frames before composing and replying; src/platform/x11/X11SourceAdapter.cpp:38 delivers the composed result to OperationService before its processing queue.",
+          "src/core/ArtifactStore.cpp:89 passes the delayed acquiredAt into UploadNaming::acquiredName, which expands the date/time tokens and persists that resulting name.",
+          "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md:91 requires screenshot names using local acquisition time, and src/ui/SettingsWindow.cpp:84 describes date/time tokens as local acquisition time.",
+          "src/core/ArtifactStore.cpp:76: `const auto acquiredAt=QDateTime::currentDateTime();` \u2014 evaluated inside acquire(), which runs from run()",
+          "src/app/OperationService.cpp:99: `while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_)` \u2014 persistence is gated by the upload slot",
+          "src/app/OperationService.cpp:105: acquire() runs in the same run() call that later performs the full provider upload",
+          "tests/unit/test_operations.cpp decodedImagesReleaseBeforeBlockedUploadAndQueuedCancel asserts `QCOMPARE(freed.load(),1)` after the second invoke while the first upload is blocked, which confirms the second image's pixels stay resident until the network slot frees",
+          "docs/configuration.md: '{yyyy}... (local acquisition time)' and 'released after persistence/cancellation'"
+        ],
+        "file": "src/core/ArtifactStore.cpp",
+        "first_evidence": "src/core/ArtifactStore.cpp:76:  const auto acquiredAt=QDateTime::currentDateTime();",
+        "independent_reviewers": [
+          "adversarial-claude",
+          "correctness"
+        ],
+        "line": 76,
+        "owner": "downstream-resolver",
+        "pre_existing": false,
+        "requires_verification": true,
+        "reviewers": [
+          "adversarial-claude",
+          "correctness"
+        ],
+        "severity": "P2",
+        "suggested_fix": "Capture a local acquisition timestamp when the source produces the payload, retain it in Job, and pass it to ArtifactStore::acquire for template expansion. If native adapters expose the exact capture instant, carry that timestamp with their result; otherwise source-completion time is a defensible default. Add a test that blocks an earlier upload, acquires a screenshot across a known clock boundary, then drains the queue and verifies its name retains the acquired timestamp and remains fixed on retry.",
+        "title": "Freeze filename time before waiting in the processing queue",
+        "why_it_matters": "The timestamp is sampled when the disk-acquisition worker finally runs, after the source has already captured or imported its payload. With the default concurrentUploads=1, a slow existing upload holds that worker slot while a new screenshot is acquired and queued. A screenshot acquired at 04:27:21 but processed at 04:29:00 is therefore saved and uploaded as Screen-Capture-...-04-29-00.png. That makes the new filename timestamp describe queue-drain time instead of the local acquisition time required by R29; an arbitrary upload delay changes the name of already acquired content."
+      },
+      {
+        "#": 2,
+        "autofix_class": "gated_auto",
+        "confidence": 100,
+        "evidence": [
+          "src/core/Settings.cpp:60:             {\"fileTemplate\", initial.fileTemplate},",
+          "src/core/Settings.cpp:61-66 also emit captureTemplate, imageTemplate, textTemplate and pendingImageBytes in Settings::defaults().",
+          "schemas/config.schema.json:343-365 declares naming.additionalProperties=false and only mode/collisionPolicy; its mode enum is generated/original. schemas/config.schema.json:366-425 declares limits.additionalProperties=false and has no pendingImageBytes property.",
+          "docs/configuration.md:5: The schema is [config.schema.json](../schemas/config.schema.json). The shared",
+          "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md:197 requires publishing schemas/config.schema.json with every non-secret setting, defaults and constraints.",
+          "agent-native.md independently describes the same published-schema rejection for GUI-saved settings and CLI/MCP configuration; this is corroboration of the schema finding, not a separate capability gap."
+        ],
+        "file": "src/core/Settings.cpp",
+        "first_evidence": "src/core/Settings.cpp:60:             {\"fileTemplate\", initial.fileTemplate},",
+        "independent_reviewers": [
+          "correctness"
+        ],
+        "line": 60,
+        "owner": "downstream-resolver",
+        "pre_existing": false,
+        "requires_verification": true,
+        "reviewers": [
+          "correctness"
+        ],
+        "severity": "P2",
+        "suggested_fix": "Extend schemas/config.schema.json with the template naming mode, optional string properties for the four templates, and optional pendingImageBytes constrained to an integer from 1 through 1099511627776. Keep these properties optional for legacy documents. Verify fresh defaults, template-mode configuration and legacy configurations against both the schema and Settings::validate.",
+        "title": "Update the published schema for newly emitted configuration",
+        "why_it_matters": "Every fresh configuration now contains four filename-template properties and pendingImageBytes, but the published configuration schema rejects additional properties in both naming and limits and still permits only generated/original naming modes. Consequently, a configuration saved successfully by this GUI fails the schema linked from docs/configuration.md, and schema-guided editors or external configuration tooling cannot validate the new default or template mode. This is newly introduced by the changed defaults and validator, rather than an unrelated defect in the unchanged schema.",
+        "validation_status": "confirmed",
+        "validation_reason": "For fresh or GUI-saved configurations, the diff newly emits four template fields and pendingImageBytes (src/core/Settings.cpp:59\u201366), accepts template mode (:134), and passes these unchanged through src/ui/SettingsWindow.cpp:219\u2013220 and src/core/SettingsService.cpp:58\u201359, while the published schema linked by docs/configuration.md:5 rejects those properties and mode at schemas/config.schema.json:343\u2013425; these callers establish reachability, though incidence was not measured.",
+        "protected_subject": "public-contract"
+      },
+      {
+        "#": 3,
+        "autofix_class": "gated_auto",
+        "confidence": 75,
+        "evidence": [
+          "src/ui/HistoryWindow.cpp:88: selectionChanged(); -- newly added showEvent runs it whenever History is shown.",
+          "src/ui/HistoryWindow.cpp:57: deletionId_=record[\"deleteOperationId\"].toString(); -- the selected cached row replaces the active operation ID.",
+          "src/ui/HistoryWindow.cpp:90 stores the accepted deleteOperationId and starts deletionTimer_, without refreshing the model.",
+          "src/ui/HistoryWindow.cpp:53: the Cancel deletion slot returns immediately when deletionId_ is empty and otherwise passes that ID to HistoryService::cancelDelete.",
+          "src/ui/HistoryWindow.cpp:91 stops polling on an empty ID and ignores in-flight poll replies whose ID no longer matches.",
+          "src/app/HistoryService.cpp:45,82 accepts/runs deletion without emitting a HistoryModel refresh; :89 cancels only the supplied active ID.",
+          "full.diff:1101-1104 newly adds showEvent and its selectionChanged call; the underlying ID reset is newly reached during window restoration.",
+          "caller-history-reproduction.md describes the opaque-provider checkpoint barrier, explicit Yes authorization, hide/show, detail completion, then Cancel. The caller states the pre-fix HistoryWindow source matches the frozen snapshot; unrelated follow-up source changes remain outside this review.",
+          "history-restore-red.log: QtTest 6.4.2, dynamic Qt 6.4.2, GCC 13.2.0, linuxmint 22.3; restoringHistoryKeepsActiveDeletionCancellation fails status->text().contains(\"Cancellation requested\"), totals 2 passed/1 failed in 15934ms.",
+          "Caller command: QT_QPA_PLATFORM=offscreen build/dev/test_gui_history_view restoringHistoryKeepsActiveDeletionCancellation, Debug dev preset. This caller-supplied synthetic-widget reproduction establishes the targeted trigger; reviewers ran no tests, and it provides no real-desktop or real-storage acceptance."
+        ],
+        "file": "src/ui/HistoryWindow.cpp",
+        "first_evidence": "src/ui/HistoryWindow.cpp:88:  selectionChanged();",
+        "independent_reviewers": [
+          "adversarial-claude"
+        ],
+        "line": 88,
+        "owner": "downstream-resolver",
+        "pre_existing": false,
+        "requires_verification": true,
+        "reviewers": [
+          "adversarial-claude"
+        ],
+        "severity": "P2",
+        "suggested_fix": "Keep the active deletion ID separate from selected-row display state, or prevent selectionChanged from replacing it while deletionTimer_ is active. Preserve detail/preview reloads and hidden-image release. If the timer is read during constructor-triggered selectionChanged, initialize its pointer to nullptr before construction and guard that access. Add a delayed synthetic-deletion test that confirms the exact prepared target, hides/shows History before row refresh, clicks Cancel deletion, and asserts that the active deletion receives cancellation and remains inspectable.",
+        "title": "Preserve active deletion cancellation when History reopens",
+        "why_it_matters": "After the user confirms a deletion, prepareDelete retains its live operation ID and starts polling. If History is hidden and reopened while that deletion remains active, the newly added showEvent calls selectionChanged, which replaces the live ID with the cached selected row value. That value can still be empty or stale because deletion acceptance does not refresh the row. Cancel deletion then returns immediately or targets the obsolete ID, so pending destructive work receives no cancellation request; progress polling and its final refresh can also stop. The frozen source independently proves this state transition, and the caller supplies a deterministic before-fix widget failure for the hide/show plus Cancel trigger.",
+        "validation_status": "confirmed",
+        "validation_reason": "When an accepted deletion remains active and its selected cached row has an empty or stale deleteOperationId, the newly added HistoryWindow.cpp:86\u201388 showEvent invokes selectionChanged at :57 and overwrites the live ID without refreshing the model, causing Cancel at :53 to return or target the obsolete operation and polling at :91 to lose the active operation; HistoryService.cpp:45,82,89 provides no compensating refresh or cancellation lookup, and the supplied pre-fix Qt 6.4.2 offscreen Debug reproduction exercises confirmation, hide/show, detail completion and Cancel and fails the Cancellation requested assertion, establishing synthetic widget incidence without desktop or real-storage acceptance.",
+        "protected_subject": "data-loss"
+      }
+    ],
+    "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-060220-4c45850f",
+    "run_id": "20261008-060220-4c45850f"
+  },
+  "originalReceiptSha256": "859a6a0e8bd449e8ad3a425761fd170ba68d695306f6ad3cff02e706ecaf7763",
+  "originalSourceHashes": {
+    "src/app/OperationService.cpp": "378054fab3fc7e553e4c04486cb3c9f45632944b2152ef8776572accf0065e69",
+    "src/app/OperationService.h": "39ed60b3691e44f9ede6a2822d5e4f9436f2eb5ab5f25d0534d153129bc444e3",
+    "src/core/ArtifactStore.cpp": "400756bf78d1b7f61bde8b56dcce22393f2052e75a5797ae161a4841e10835fe",
+    "src/core/ArtifactStore.h": "c76d58d966e9700d75cf832f81eddd711a6281b05dc1c785aaa122b971414995",
+    "src/core/LocalArchive.cpp": "bb165a7ecaf62a6f026785f0e8322aa429d9685e94447b4f8ab0255bbc3eb36d",
+    "src/core/Settings.cpp": "a9d21fa34c4fdb5e897108c7b3c5affbe87af6595f6d95aea9f59dab1cf43c51",
+    "src/core/Settings.h": "87cbfc60cd866eb3bec0b64eb1fd362d2b97e043fca2ee32ab6659b66f5b77cd",
+    "src/core/UploadNaming.cpp": "73423deba4ccce8fa7705a7e331229f5870fa19a03211bf549a4c8d8b82d438f",
+    "src/core/UploadNaming.h": "a127a8e22e1d858a0e30482cc50014b87394f4f466467803d41998254a2d9d77",
+    "src/ui/HistoryWindow.cpp": "5a8c0d70969410e62b8d62cb4859d0a7b00ef1bcc6ffcd08bb22280e2db5ac43",
+    "src/ui/HistoryWindow.h": "c5612d8333cf2dadc111488b52deb78731c474fd68d01a5bfae4a23326286f12",
+    "src/ui/SettingsWindow.cpp": "b477a781cdc5c33587b4989a687c3865749f9ecc9042091a666933e514015cf7",
+    "src/ui/SettingsWindow.h": "36310c14855524ffdb980d1fbb3cb156764910fbde3daa82443bd8d408810580",
+    "src/ui/ShortcutEditor.cpp": "9205820e927d00579c1ad597c1cb548f818c9489763576ad26ca118c8d781721",
+    "src/ui/VisualStyle.cpp": "c4263be5ad467f91941c5db621581a7939b94ad81d0ff12329fad0083b9362c5",
+    "src/ui/VisualStyle.h": "9e737338115fd73ff90f7bc6b16e89a2408d1e8da52efdca869c13b340445816",
+    "tests/gui/test_history_view.cpp": "8e9ca92fe2863d05aca3f94985764737a7a3f7575236359c16a934e0533db183",
+    "tests/gui/test_settings.cpp": "f241e02b4ff8ffa420eb4275e5ef62c44310d06b2c934f592869d41ed84dbfe4",
+    "tests/unit/test_archive.cpp": "034ceee076169f05ad3eec358abef2795665c41939d99fd297784bedccd28f7e",
+    "tests/unit/test_operations.cpp": "a1650ae6eb7d0870629dc02244c62ddf4e423c94da0ddbb67c9396cf8e1cedcc",
+    "tests/unit/test_settings.cpp": "1b4da1fe8543abd9578e32e507c28824ecee9e33013080223f2e983d2a3790c3",
+    "tests/unit/test_upload_naming.cpp": "d6f1897f5b52017cccee81e9e5119f46125c463559e3a9480fd273f85334cbb2",
+    "tests/integration/test_collision_policy.cpp": "d02eb4f5ca61163bee533e351aed796a21d6207d8165c9db9dd6cc3443f750b0",
+    "docs/configuration.md": "0bccb4a674ed904af1097f41968b8f31a0d3031bd1bfa69cfef084615a6be062",
+    "docs/design.md": "3ef0aefbddcbe738db448e760ea9666b937551d958f2e4b2f8aa1cd491709ed1",
+    "docs/user-guide.md": "f52ca9e679d122a9cf51c166747126ac4ece0a20796fcda4d5f47bf9ad712004",
+    "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md": "3149c093851990a30c81bb8e09f85a2ba0a6d310809a7d3a2f505e94f7ec1a80"
+  },
+  "crossModel": {
+    "selected": true,
+    "target": "claude",
+    "route": "claude",
+    "preference_source": "default",
+    "outcome": "folded",
+    "artifact": "/tmp/compound-engineering-1000/ce-code-review/20261008-060220-4c45850f/adversarial-claude.json",
+    "coverage": "Independent Anthropic cross-model adversarial pass completed on the scoped temporary mirror: cross_model_route=claude; model_requested=claude-opus-5-5; effort_requested=high; receipt_supported=true; model_actual=claude-opus-5-5; effort_actual=unverified; independence_verified=true.",
+    "model_requested": "claude-opus-5-5",
+    "effort_requested": "high"
+  },
+  "fixDelta": {
+    "status": "complete",
+    "verdict": "Ready to merge",
+    "verdict_scope": "Narrow frozen fix delta only; no whole-plan, compositor or release readiness claim.",
+    "scope": {
+      "base_snapshot": "/tmp/compound-engineering-1000/ce-code-review/20261008-060220-4c45850f/scoped-tree",
+      "review_snapshot": "/tmp/putgd-refinement-fix-review-20261008-060220-4c45850f/scoped-tree",
+      "files_changed": 15,
+      "files": [
+        "src/app/OperationService.cpp",
+        "src/core/ArtifactStore.cpp",
+        "src/core/ArtifactStore.h",
+        "src/ui/HistoryWindow.cpp",
+        "src/ui/HistoryWindow.h",
+        "src/ui/SettingsWindow.cpp",
+        "src/ui/VisualStyle.cpp",
+        "src/ui/VisualStyle.h",
+        "tests/gui/test_history_view.cpp",
+        "tests/unit/test_operations.cpp",
+        "docs/configuration.md",
+        "docs/user-guide.md",
+        "schemas/config.schema.json",
+        "config/development.example.json",
+        "tests/integration/test_config_schema.py"
+      ],
+      "hash_inventory": "/tmp/putgd-refinement-fix-review-20261008-060220-4c45850f/source-hashes.json",
+      "original_receipt": "/tmp/compound-engineering-1000/ce-code-review/20261008-060220-4c45850f/review.json",
+      "excluded": [
+        "AGENTS.md",
+        "docs/testing.md",
+        "docs/vm-lab.md",
+        "docs/windows-vm-lab.md",
+        "tools/qemu-grid/"
+      ]
+    },
+    "reviewers": [
+      "correctness",
+      "testing/schema-contract"
+    ],
+    "findings": [],
+    "actionable_findings": [],
+    "original_findings_resolution": [
+      {
+        "#": 1,
+        "status": "addressed in reviewed delta",
+        "change": "Artifact naming receives the immutable operation local action time before queued processing; retries retain persisted names."
+      },
+      {
+        "#": 2,
+        "status": "addressed in reviewed delta",
+        "change": "Published schema and development example include optional templates, template mode and pendingImageBytes; production-defaults schema integration added."
+      },
+      {
+        "#": 3,
+        "status": "addressed in reviewed delta",
+        "change": "Active history deletion ID survives detail/selection reload while polling, with initialized timer pointer and delayed hide/show/cancel regression coverage."
+      }
+    ],
+    "visual_delta": "Shared native Qt combo class paints a visible chevron and supplies selected popup foreground; no defect found in source review.",
+    "testing_gaps": [
+      "The new schema integration validates real production fresh defaults, while its custom and legacy variants are checked only against JSON Schema; production shared-validator unit coverage remains the separate owner."
+    ],
+    "coverage": {
+      "source_only": true,
+      "builds_tests_run_by_reviewers": false,
+      "independent_readers": 2,
+      "all_30_new_hashes_intact": true,
+      "all_27_original_hashes_intact": true,
+      "caller_verification": {
+        "dev": "25/25 passed 49.71s",
+        "asan_ubsan": "8/8 passed with leak detection 37.47s",
+        "tsan": "8/8 passed against instrumented Qt 82.72s",
+        "production_schema": "1/1 passed",
+        "native": "Caller reports visible VNC5935 Cinnamon current-package checks for save/reload/Cancel, dropdown chevrons, templates/help, region and GTK clipboard images."
+      },
+      "limits": [
+        "Original snapshot receipt and Anthropic peer scope remain unchanged and distinct.",
+        "Caller tests and native checks were not independently rerun by reviewers.",
+        "Complete native acceptance across every declared compositor and post-use RSS remain outside this delta receipt."
+      ]
+    },
+    "artifact_path": "/tmp/putgd-refinement-fix-review-20261008-060220-4c45850f",
+    "completed_at": "2026-10-08T11:31:42.254336+00:00"
+  },
+  "fixDeltaReceiptSha256": "da19e69db86679a5ec5a6ce606977e057fc8795eb5f86d3e81dd93a49c87dff8",
+  "fixDeltaSourceHashes": {
+    "src/app/OperationService.cpp": "7614a58c3ba07bd87e474b415636c2740f5054f91fdd254d75acd25d69fb0fda",
+    "src/app/OperationService.h": "39ed60b3691e44f9ede6a2822d5e4f9436f2eb5ab5f25d0534d153129bc444e3",
+    "src/core/ArtifactStore.cpp": "5732f52ae56741ff6d35356e1e6361561655d10957f9f6568e31543037d62ed5",
+    "src/core/ArtifactStore.h": "ccb497daee158918a799b3bd60a246140a59b567ec28b544ff445df9ff0171be",
+    "src/core/LocalArchive.cpp": "bb165a7ecaf62a6f026785f0e8322aa429d9685e94447b4f8ab0255bbc3eb36d",
+    "src/core/Settings.cpp": "a9d21fa34c4fdb5e897108c7b3c5affbe87af6595f6d95aea9f59dab1cf43c51",
+    "src/core/Settings.h": "87cbfc60cd866eb3bec0b64eb1fd362d2b97e043fca2ee32ab6659b66f5b77cd",
+    "src/core/UploadNaming.cpp": "73423deba4ccce8fa7705a7e331229f5870fa19a03211bf549a4c8d8b82d438f",
+    "src/core/UploadNaming.h": "a127a8e22e1d858a0e30482cc50014b87394f4f466467803d41998254a2d9d77",
+    "src/ui/HistoryWindow.cpp": "bd4621c2d2afb029631e90cfc7f74ada2c73f7305f3e10ccde555560d27815b6",
+    "src/ui/HistoryWindow.h": "bb917bc4ba3e8ef5b0855668733e22d727619516fd5ccc6a35fc689be4214dfb",
+    "src/ui/SettingsWindow.cpp": "e3ec25afedc8dd03d55ce60272a4d3bff191a7e77c9eea8021ff57b8df02f61a",
+    "src/ui/SettingsWindow.h": "36310c14855524ffdb980d1fbb3cb156764910fbde3daa82443bd8d408810580",
+    "src/ui/ShortcutEditor.cpp": "9205820e927d00579c1ad597c1cb548f818c9489763576ad26ca118c8d781721",
+    "src/ui/VisualStyle.cpp": "b1d5a0662916b3899245e72ab65f5b8c0c1d8c2b00df1335fa0493f9dc3f56e8",
+    "src/ui/VisualStyle.h": "abcdf4c74f4a53619c86a4dea4a573a5efe3381fe76d5f817fdf8b0608ec8891",
+    "tests/gui/test_history_view.cpp": "e811c549671e2304e6f0a70c5a094520981ab6a67060a2f524f7615702312001",
+    "tests/gui/test_settings.cpp": "f241e02b4ff8ffa420eb4275e5ef62c44310d06b2c934f592869d41ed84dbfe4",
+    "tests/unit/test_archive.cpp": "034ceee076169f05ad3eec358abef2795665c41939d99fd297784bedccd28f7e",
+    "tests/unit/test_operations.cpp": "9ad9428f706222b6a186320408742c78080bb1f0f8bec5c3076751ef2d5ef617",
+    "tests/unit/test_settings.cpp": "1b4da1fe8543abd9578e32e507c28824ecee9e33013080223f2e983d2a3790c3",
+    "tests/unit/test_upload_naming.cpp": "d6f1897f5b52017cccee81e9e5119f46125c463559e3a9480fd273f85334cbb2",
+    "tests/integration/test_collision_policy.cpp": "d02eb4f5ca61163bee533e351aed796a21d6207d8165c9db9dd6cc3443f750b0",
+    "docs/configuration.md": "057b4a7ad42141e822be3edecc8c1595e6cc3259ee388e359ef4d1a21a75f356",
+    "docs/design.md": "3ef0aefbddcbe738db448e760ea9666b937551d958f2e4b2f8aa1cd491709ed1",
+    "docs/user-guide.md": "7e49f9a080deac06cd06d13f48dd36614d24b7798e9c7e3423c8da1d9132437a",
+    "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md": "3149c093851990a30c81bb8e09f85a2ba0a6d310809a7d3a2f505e94f7ec1a80",
+    "schemas/config.schema.json": "960db92a37eb206aad0aa75ff89154a5074fc9de68ae7c168bae6a5ad3bfe58a",
+    "config/development.example.json": "e1b5735a42bfd99999b3e8baae3f8f906eba992d446bf40b18bbdfaafa53eba8",
+    "tests/integration/test_config_schema.py": "133e3d0b79b957b454be8154562a107f2f64824f5724b54e979715114d2cfa39"
+  },
+  "reconciliation": {
+    "appliedInline": [
+      1,
+      2,
+      3
+    ],
+    "unresolvedActionableFindings": [],
+    "targetedProof": "work/refinement-schema-red.log/green.log, work/refinement-queued-time-red.log/green.log, work/refinement-history-restore-red.log/green.log; final dev/ASan/TSan runs include all regressions.",
+    "advisoryBoundaries": [
+      {
+        "title": "Original-name preservation excludes valid Linux filenames",
+        "file": "src/core/UploadNaming.cpp",
+        "line": 93,
+        "confidence": 50,
+        "reviewers": [
+          "adversarial-claude"
+        ],
+        "autofix_class": "advisory",
+        "owner": "human",
+        "why_it_matters": "Imported basenames containing backslashes or control characters now cause filename_invalid and abort the complete acquisition batch. This restriction is intentional in the new test, but its effect on existing Linux-file imports and the advertised preservation rule has not been measured. Review that boundary before advertising unrestricted basename preservation.",
+        "evidence": [
+          "src/core/UploadNaming.cpp:11: return character != '/' && character != '\\\\' && character.category() != QChar::Other_Control;",
+          "src/core/UploadNaming.cpp:93: if (auto error = checkName(artifact.name)) return {{}, error};",
+          "src/core/ArtifactStore.cpp:90: if(named.error) {fail(named.error.code,named.error.message,i);return result;}",
+          "tests/unit/test_upload_naming.cpp: unsafeTemplatesAndEmptyResultsFail explicitly expects unsafe newline original names to fail."
+        ],
+        "origin": "suppressed single-source P2 candidate; retained as an advisory compatibility boundary, without apply authority"
+      },
+      {
+        "title": "Recovered legacy artifacts can receive generic original-mode names",
+        "file": "src/core/UploadNaming.cpp",
+        "line": 108,
+        "reviewers": [
+          "adversarial-claude"
+        ],
+        "autofix_class": "advisory",
+        "owner": "human",
+        "why_it_matters": "A pre-update capture/text artifact lacking namingPrepared, with original mode and no persisted candidate, now uses its stored image.png/text.txt basename. The prior candidate function generated a UUID for non-file artifacts. Recovery and retry callers can reach this state; upgrade incidence and the resulting collision outcomes remain unmeasured.",
+        "evidence": [
+          "src/core/ArtifactStore.cpp:22 defaults absent namingPrepared to false.",
+          "src/app/OperationService.cpp:27 recovers persisted artifact manifests into operations whose item list is empty.",
+          "src/app/OperationService.cpp:117-118 assigns names to nonterminal items with empty candidates.",
+          "src/core/UploadNaming.cpp:108-116 only generates a random legacy candidate when mode == generated, then otherwise uses the artifact basename.",
+          "full.diff: the removed candidate guard was if(mode!=\"original\"||!a.originalFile) base=unique;"
+        ],
+        "origin": "peer-supplied advisory risk admitted against documented persistent recovery paths"
+      }
+    ],
+    "advisoryBoundaryDisposition": "Unsafe separators/control characters remain rejected deliberately for portable stored names. Already-spooled legacy artifacts without a prepared name use their stored basename until confirmed collision handling; no new historic timestamp is invented. These are compatibility boundaries, not unapplied retained findings.",
+    "testCoverageNotes": [
+      "tests/gui/test_history_view.cpp covers hide/show after the preview has loaded, but not controlled delayed detail/decode callbacks during rapid selection or hide/show. Add a barrier-backed scenario proving only the current row paints, hidden replies release their image, and pending newer previews eventually resume.",
+      "tests/unit/test_operations.cpp covers cancellation while queued, but not the newly added cancellation guard after dequeue and before acquisition. A controlled worker barrier should verify terminal cancellation, no acquired artifact/upload, and released image capacity.",
+      "The new schema integration validates real production fresh defaults, while its custom and legacy variants are checked only against JSON Schema; production shared-validator unit coverage remains the separate owner."
+    ],
+    "coverageDisposition": "Shared Settings unit tests validate template/legacy/budget variants in production code. Deterministic delayed detail/decode and dequeue-cancellation stress remain broader lifecycle coverage, not proven defects in this refinement.",
+    "reviewerBuildsTestsRun": false,
+    "laterDocs": "The final testing/verification/plan evidence checkpoint and exact-label guide correction were assembled by root after snapshots; executable/schema/test hashes still match the independent fix read."
+  }
+}

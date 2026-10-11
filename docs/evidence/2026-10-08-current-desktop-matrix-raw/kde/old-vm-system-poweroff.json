@@ -1,0 +1,7 @@
+{
+  "timestampUtc": "2026-10-08T20:45:19.437645+00:00",
+  "command": "sync\nsystemctl poweroff --no-ask-password\n",
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "Call to PowerOff failed: Access denied as the requested operation requires interactive authentication. However, interactive authentication has not been enabled by the calling program.\n"
+}

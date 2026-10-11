@@ -1,0 +1,48 @@
+{
+  "utc": "2026-10-09T05:10:47.588481+00:00",
+  "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "cleanCandidate": true,
+  "sourceArchive": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/source.tar",
+  "sourceArchiveSha256": "0853b2b526e1b4e6a1d25b501a7b2c91ba86dbf86bb57272fee67a00e8bb690b",
+  "candidateBuild": "/home/patrick/work/put.gd/work/view-startup-latency/exp001/build/release",
+  "nativeReceipts": [
+    {
+      "compositor": "cinnamon",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/visual-review.json",
+      "sha256": "143fe74c66994f0dfabe9dffd8ceda379f1f42df9d13739d81dca27890db5c37"
+    },
+    {
+      "compositor": "gnome",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/visual-review.json",
+      "sha256": "6f5ccc394b296b62dc511572c06c701b7473aa1c439b02757e1a87e7c9da625a"
+    },
+    {
+      "compositor": "kde",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/visual-review.json",
+      "sha256": "dfe94fd3bc2725c94ae5087db1dcf13e6901a239e31b93b3d3fd77a53a10709f"
+    }
+  ],
+  "functionalWorkersQuiet": true,
+  "buildsQuiet": true,
+  "scope": "Root-inspected exactclean46 nativefouractions/clipboard/cancellation12cases eachdesktop plusboundedSettings/tray/normalhelperexit; no performanceclaim. Physicalrunsstartafterpost-native read-onlyguestsamplersfinish.",
+  "guestReadOnlySamplersMustCompleteBeforeTiming": true,
+  "guestReadOnlySamplersCompleted": true,
+  "samplerReceipts": [
+    {
+      "compositor": "cinnamon",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/post-native-memory.json",
+      "sha256": "dcc8d1443179179ccf4ba3717df1b48e2298f20061f85b8c1433fd1f1b6c0fec"
+    },
+    {
+      "compositor": "gnome",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/gnome/post-native-memory.json",
+      "sha256": "84abb134ccbe88f16e9c5860ed3a32d9c677c2983d1a31405f87eb5327d0c5fc"
+    },
+    {
+      "compositor": "kde",
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/kde/post-native-memory.json",
+      "sha256": "80be9c9f8b6b8c41b967188c06b9c3423467d308cde1a975d132c913441dec7f"
+    }
+  ],
+  "quietGateUtc": "2026-10-09T05:12:22.112718+00:00"
+}

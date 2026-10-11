@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "scope": "Instrumented locating only; concurrent guest builds exclude performance scoring",
+  "flushCount": 50,
+  "largestFlushes": [
+    {
+      "pidOrTid": "2947971",
+      "seconds": 0.001757,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2948113",
+      "seconds": 0.001604,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2948076",
+      "seconds": 0.001232,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2948046",
+      "seconds": 0.001164,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2947906",
+      "seconds": 0.001143,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2948126",
+      "seconds": 0.001014,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2948045",
+      "seconds": 0.000986,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2948114",
+      "seconds": 0.000924,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2947905",
+      "seconds": 0.000846,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2948128",
+      "seconds": 0.00075,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2947905",
+      "seconds": 0.000737,
+      "kind": "fdatasync"
+    },
+    {
+      "pidOrTid": "2947906",
+      "seconds": 0.000723,
+      "kind": "fdatasync"
+    }
+  ],
+  "totalFlushSeconds": 0.028777,
+  "probeCompleted": false,
+  "probeFailure": "Actual resident selector did not map/paint on every display",
+  "completedSamples": 5,
+  "observedMapMilliseconds": [
+    223.785437,
+    228.21988,
+    844.917721,
+    245.081908,
+    224.709901
+  ],
+  "limitation": "Instrumented run stopped after five samples when a subsequent selector failed to map/paint; no complete control or causal diagnosis. Fast recorded disk flushes do not by themselves rule out queue/handoff/locking costs."
+}

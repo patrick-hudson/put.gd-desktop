@@ -1,0 +1,9 @@
+{
+  "asanConfigure": "cmake --preset asan -B /tmp/putgd-live-region-asan",
+  "asanBuild": "cmake --build /tmp/putgd-live-region-asan --target test_x11 test_gnome_bridge test_kwin_transfer test_geometry --parallel 2",
+  "asanTest": "env QT_QPA_PLATFORM=offscreen ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ctest --test-dir /tmp/putgd-live-region-asan -R '^(x11_isolated|gnome_bridge_contract|kwin_transfer_contract|geometry_contract)$' --output-on-failure",
+  "tsanConfigure": "setarch x86_64 -R env PKG_CONFIG_PATH=\"$PWD/work/sanitizer-diagnosis/deps-tsan/lib/pkgconfig\" cmake --preset tsan -B /tmp/putgd-live-region-tsan -DQt6_DIR=\"$PWD/work/sanitizer-diagnosis/qtbase-tsan-build/lib/cmake/Qt6\" -DQt6Keychain_DIR=\"$PWD/work/sanitizer-diagnosis/deps-tsan/lib/cmake/Qt6Keychain\" -DCMAKE_PREFIX_PATH=\"$PWD/work/sanitizer-diagnosis/qtbase-tsan-build/lib/cmake;$PWD/build/sdk\"",
+  "tsanInitialBuild": "setarch x86_64 -R cmake --build /tmp/putgd-live-region-tsan --target test_x11 test_gnome_bridge test_kwin_transfer test_geometry --parallel 2",
+  "tsanFinalBuild": "setarch x86_64 -R cmake --build /tmp/putgd-live-region-tsan --target test_x11 test_gnome_bridge test_kwin_transfer test_geometry --parallel 1",
+  "tsanTest": "setarch x86_64 -R env QT_QPA_PLATFORM=offscreen QT_QPA_FONTDIR=/usr/share/fonts/truetype/dejavu PATH=\"$PWD/work/sanitizer-diagnosis/deps-tsan/bin:$PATH\" LD_LIBRARY_PATH=\"$PWD/work/sanitizer-diagnosis/deps-tsan/lib\" TSAN_OPTIONS=\"halt_on_error=1:suppressions=$PWD/tests/sanitizer/tsan.supp\" ctest --test-dir /tmp/putgd-live-region-tsan -R '^(x11_isolated|gnome_bridge_contract|kwin_transfer_contract|geometry_contract)$' --output-on-failure"
+}

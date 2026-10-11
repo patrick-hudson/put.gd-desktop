@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T01:47:31.290434+00:00",
+  "payload": {
+    "path": "/home/lab/putgd-lab/fixture/synthetic-1.txt",
+    "size": 536870912,
+    "sha256": "23bd4da48450e844221b7a1217e0ab57b82a2b0f3be2480e22914a9515540afc",
+    "freeBeforeBytes": 16219127808,
+    "streamBlockBytes": 1048576,
+    "blockPattern": "putgd U11 synthetic continuity newline"
+  },
+  "limits": {
+    "clipboardTextBytes": 16777216,
+    "concurrentUploads": 1,
+    "imageBytes": 536870912,
+    "imagePixels": 100000000,
+    "maxBatchBytes": 2147483648,
+    "maxFileBytes": 2147483648,
+    "maxFiles": 100,
+    "pendingArtifactBytes": 2147483648,
+    "pendingImageBytes": 67108864,
+    "pendingOperations": 8
+  },
+  "archive": {
+    "folders": {
+      "images": null,
+      "other": null,
+      "text": null,
+      "videos": null
+    },
+    "keepUploads": true,
+    "root": "/home/lab/putgd-lab/archive"
+  },
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "helperPid": 142927,
+  "helperIdentity": {
+    "pid": 142927,
+    "parentPid": 105866,
+    "startTicks": 1897355,
+    "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909"
+  },
+  "operationIdsBefore": [
+    "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+    "1ba99bb9-ceaf-4e6c-b36d-22244bee80b8",
+    "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+    "254e5c26-62c8-497f-9c3e-714a13df8f18",
+    "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+    "288231e2-ba52-4b3a-8c33-770b55db321d",
+    "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+    "414c2482-5f1f-4057-90ed-169ece7558a4",
+    "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+    "56640793-ddad-4f0d-afc6-daae20c81476",
+    "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+    "60c2e057-8a6c-4c00-b82c-4aa9fca61c2a",
+    "a02d0838-75c1-4217-a536-743b636f164c",
+    "aeae2378-bebf-45e8-a442-68c75ae48177",
+    "bcdfd637-7e69-468f-861c-9ac986a8e339",
+    "d9974b81-6781-4150-9ebc-61ae82543791",
+    "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+    "ff0c4b13-c493-443c-9c21-d9f417814223"
+  ],
+  "fixtureGeometry": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 320
+  },
+  "hotkey": [
+    "ctrl",
+    "shift",
+    "f12"
+  ],
+  "closeKeys": [
+    "alt",
+    "f4"
+  ],
+  "scope": "512 MiB synthetic file plus small second file; actual Wayland clipboard/local archive, no S3 or injected delay"
+}

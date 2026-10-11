@@ -1,0 +1,20 @@
+# U11 C view state
+
+`validateUiState` is QtCore-only. Version 1 accepts only `schemaVersion: 1` and optional `settings`, `history`, `activity` objects. It enforces the 8 MiB compact-JSON limit. State stays in resident RAM; this implementation writes no payload or state files.
+
+Settings keys: `draft`, `numbers`, `profileEditors`, `baseRevision`, `observedRevision`, `dirty`, `conflict`, `initialProfile`, `profileIndex`, `section`, `advanced`, `geometry`, `setupJobs`.
+
+- `draft` retains the versioned configuration structure with explicit shared field lists. Profile settings are classified only for the currently supported S3 provider: bucket, region, endpoint, objectPrefix, storageClass, aclMode, publicUrlBase, addressing, connectTimeoutMs, requestTimeoutMs, lowSpeedBytesPerSecond, lowSpeedTimeSeconds. Credential metadata is limited to mode/reference. Unknown providers/settings keys reject retention and keep the window open. A future provider must deliberately extend this policy.
+- `numbers` retains raw strings for the declared limits/retention fields, including invalid/incomplete text and exact MiB formatting.
+- `profileEditors` is an array aligned with profile order. Entries contain only id, label, credentialMode, reference, acl, addressing, s3 (known field strings), providerJson. Raw provider text is accepted only when it can be classified as a flat S3 field object, even when values are incomplete or invalid. Unknown/incomplete keys or nested values reject retention. Remove/reorder retains this alignment.
+- `setupJobs` contains accepted setupId/kind/profileId tuples while awaiting completion. Reopen sends only setup.inspect; no setup mutation is automatically replayed. An uncertain inspection retains its accepted ID and stops polling. A later explicit accepted setup action replaces the older tuple for that profile and kind. Save/setup requests awaiting acceptance reject final-close retention until a reply or client timeout resolves their state.
+- Geometry is `[x,y,width,height]`. Base accepted and observed revisions are compared with the authoritative reopened snapshot, including invalid external-file changes.
+- Credential entry controls are never traversed/exported. Unclassified state is replaced before export by a content-free `stateError` marker that the resident rejects. The actual draft remains in the UI. Store, Cancel, ordinary close and shutdown clear credential input.
+
+History keys: `query`, `filters`, `selectedIds`, `deletionId`, `filtersExpanded`, `managementExpanded`, `receiptExpanded`, `geometry`. Query and raw filters use only the existing named history filters plus query limit/offset. Selection is restored by matching IDs after async page load; vanished IDs clear. The accepted deletion ID is inspected after reopening. A confirmation awaiting its acceptance ID rejects close retention; the unaccepted confirmation and acknowledgement are not serialized or replayed. No history rows, details, links or preview pixels are retained in state.
+
+Activity keys: `selectedId`, `selectedItemId`, `collapsedIds`, `geometry`. The list is fetched again; selected operation/item and expanded/collapsed states match IDs. No operation bodies or payloads enter state.
+
+Helper cache: `UiSession` holds authoritative settings/build/diagnostic JSON and readiness. It coalesces invalidations; save/reload update the cache before callbacks and publish accepted/status signals afterward. Mutations use one client request and are never retried automatically. Edits typed while a save reply is pending keep their raw values and become a new unsaved draft based on that accepted revision. A single helper-owned `QThreadPool` worker handles bounded selected previews; final helper teardown drains it. All provider, credential store, database and resident service owners remain outside production views.
+
+Cancel and Reload keep their current draft dirty and non-checkpointable until the resident reply arrives. Editing is disabled during that bounded request. Success replaces the draft with authoritative settings; failure retains the controls and conflict state.

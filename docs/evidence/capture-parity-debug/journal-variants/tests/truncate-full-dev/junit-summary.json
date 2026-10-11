@@ -1,0 +1,1733 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "c85177eaa378224a0a16b8ca251476d520e777f318057afd7d7f1ea51361b8d9",
+  "sourceBytes": 48416,
+  "scope": "Full development48/48 passed while TRUNCATE policy was active; policy later rejected for physical timing. This is not a full original-policy rerun.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "48",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "249",
+    "timestamp": "2026-10-09T13:16:28"
+  },
+  "testcases": [
+    {
+      "name": "native_session_guards",
+      "classname": "native_session_guards",
+      "time": "0.0112178",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "native_tray_integration",
+      "classname": "native_tray_integration",
+      "time": "6.16716",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_control_integration",
+      "classname": "capture_control_integration",
+      "time": "0.0191672",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_process_integration",
+      "classname": "capture_process_integration",
+      "time": "5.58557",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "x11_core_clipboard",
+      "classname": "x11_core_clipboard",
+      "time": "17.9744",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "x11_native_snapshot",
+      "classname": "x11_native_snapshot",
+      "time": "0.14636",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "version_contract",
+      "classname": "version_contract",
+      "time": "2.08748",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "kde_ownership_integration",
+      "classname": "kde_ownership_integration",
+      "time": "1.81139",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_split_services_integration",
+      "classname": "ui_split_services_integration",
+      "time": "0.618925",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_process_integration",
+      "classname": "ui_process_integration",
+      "time": "14.0249",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_endpoints_integration",
+      "classname": "ui_endpoints_integration",
+      "time": "0.508668",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_control_integration",
+      "classname": "ui_control_integration",
+      "time": "1.0308",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "session_client_integration",
+      "classname": "session_client_integration",
+      "time": "16.9091",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "version_integration",
+      "classname": "version_integration",
+      "time": "0.168101",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_application",
+      "classname": "gui_application",
+      "time": "6.29042",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_tray",
+      "classname": "gui_tray",
+      "time": "0.402898",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_version",
+      "classname": "gui_version",
+      "time": "0.0380077",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "geometry_contract",
+      "classname": "geometry_contract",
+      "time": "0.00960176",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ui_native_lifecycle_integration",
+      "classname": "ui_native_lifecycle_integration",
+      "time": "3.38741",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "x11_isolated",
+      "classname": "x11_isolated",
+      "time": "17.3713",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "keychain_backend_integration",
+      "classname": "keychain_backend_integration",
+      "time": "0.015827",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "keychain_integration",
+      "classname": "keychain_integration",
+      "time": "0.115496",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "collision_policy_integration",
+      "classname": "collision_policy_integration",
+      "time": "6.67499",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "s3_delete_integration",
+      "classname": "s3_delete_integration",
+      "time": "5.41279",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "s3_module_integration",
+      "classname": "s3_module_integration",
+      "time": "32.5748",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "s3_integration",
+      "classname": "s3_integration",
+      "time": "3.70807",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "public_url",
+      "classname": "public_url",
+      "time": "0.00735682",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "build_contract",
+      "classname": "build_contract",
+      "time": "0.168339",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "sdk_contract",
+      "classname": "sdk_contract",
+      "time": "0.407701",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "payload_contract",
+      "classname": "payload_contract",
+      "time": "0.0682586",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "archive_contract",
+      "classname": "archive_contract",
+      "time": "0.0166488",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "upload_naming_contract",
+      "classname": "upload_naming_contract",
+      "time": "0.0246938",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "history_contract",
+      "classname": "history_contract",
+      "time": "5.64875",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "operations_contract",
+      "classname": "operations_contract",
+      "time": "37.3409",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "storage_contract_integration",
+      "classname": "storage_contract_integration",
+      "time": "6.60108",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "cli_integration",
+      "classname": "cli_integration",
+      "time": "20.4359",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "config_reload_integration",
+      "classname": "config_reload_integration",
+      "time": "0.637777",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gnome_bridge_contract",
+      "classname": "gnome_bridge_contract",
+      "time": "0.00993489",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "kwin_transfer_contract",
+      "classname": "kwin_transfer_contract",
+      "time": "0.172979",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "settings_contract",
+      "classname": "settings_contract",
+      "time": "3.13179",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_settings",
+      "classname": "gui_settings",
+      "time": "8.69553",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_operations_view",
+      "classname": "gui_operations_view",
+      "time": "1.55841",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "gui_history_view",
+      "classname": "gui_history_view",
+      "time": "5.6834",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "login_startup_contract",
+      "classname": "login_startup_contract",
+      "time": "0.0144978",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "local_ipc_contract",
+      "classname": "local_ipc_contract",
+      "time": "12.9197",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "ip_address_contract",
+      "classname": "ip_address_contract",
+      "time": "0.0268863",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "native_region_overlay",
+      "classname": "native_region_overlay",
+      "time": "0.756064",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "1.31079",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "qtTestFunctionOutcomes": [
+    {
+      "status": "PASS",
+      "case": "NativeSessionTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeSessionTest::routingGuards()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeSessionTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::coreOnlyBrandPropertiesAndActualLayoutWire()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::everyActionAndActivationUsesFixedIds()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::lateHostAndWatcherRestartDoNotDuplicateRegistration()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::initiallyAbsentWatcherResolvesThenRecoversOnAppearance()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::watcherNameBeforeObjectExportRecoversWithoutFalseAbsence()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::registrationFailuresAreBoundedAndNewHostCanRecover()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::destructiveCallbackRemovesServiceAndExports()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::notificationWireAndNoHostSuppression()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::coreControllerRoutesAllFourActionsWithoutViews()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::coreControllerDelegatesViewsAndPreservesCopyPendingAndNotificationSetting()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeTrayWire::clean..."
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::fragmentedFrameAndSequence()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::stoppingInsideDeliveryDiscardsFollowingBufferedCommand()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::excessiveFrameStopsBeforeDelivery()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::unknownTypesCannotBecomeCommands()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::validSnapshotRejectsMalformedOrDuplicateIdentity()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureControlTests::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-id)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-id-negative)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-id-overflow)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-extra)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-zero-width)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-wide)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-negative-height)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin(cursor-fraction)"
+    },
+    {
+      "status": "PASS",
+      "case": "CaptureProcessTests::malformedReadyCursorIsRejectedBeforeBegin"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::nativeCoreGuards()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::textTargetsTimestampAndNoneProperty()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::filesAndImageMime()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::independentIncrementalLeasesSurviveReplacementAndImportCancel()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::selectionClearPreservesExistingTransfer()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::boundedRequestorsAndDestroyedPeer()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::abandonedTransferExpires()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::sharedEncodedImageLeasesReleaseOnReplacementAndClear()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::persistentAfterPayloadLifetimeAndRejectedCopy()"
+    },
+    {
+      "status": "PASS",
+      "case": "CoreClipboardTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeSnapshotTests::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeSnapshotTests::activeTargetFreezesBeforePersistenceAndRejectsOwnedPid()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeSnapshotTests::scalePropertyChangeRejectsFrozenNativeLayout()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeSnapshotTests::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::externalWindowCaptureRemainsNative()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::helperWindowRejectedAfterHelperExit()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::frozenUuidQueriedAfterFocusChanges()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::missingWrongAndUnavailableIdentityAreRejected()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::emptyExternalAppIdIsAccepted()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::cancellationDuringIdentityLookupCompletesOnce()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::noHelperDoesNotQueryWindowInfo()"
+    },
+    {
+      "status": "PASS",
+      "case": "KdeOwnershipTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiSplitServices::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiSplitServices::helperCrashDoesNotCancelAnAcceptedUploadOrSetupJob()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiSplitServices::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::confirmedCloseStillReportsAnAbnormalExit()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::stalledActivationFailsBeforeTheClientsDeadline()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::missingHelperFailsWithoutRestarting()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::helperProtocolFloodIsBounded()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::failureCallbackCanImmediatelyReopenTheUi()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::cancelCloseResumesPendingViewsAndInvalidations()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::startsOneHelperAndShowsAllRequestedViews()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::closeRetainsDraftAndActivationDuringExitStartsFresh()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::crashRequiresNewActivationAndMismatchFails()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::rejectedCheckpointKeepsHelperAlive()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiProcessTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::snapshotIncludesResidentIdentitySettingsAndDiagnostics()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::saveReturnsAcceptedDocumentAndMetadataWithConflictProtection()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::setupEndpointsWithoutServiceReportUnavailable()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::sessionCredentialsBecomeResidentJobsWithoutPersistedSecrets()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::setupRequiresCurrentValidSavedProfileAndStrictCredentialInput()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::delayedDestinationJobCompletesOnOwnerThreadAndIgnoresRepeatedCompletion()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::completionsAfterServiceDestructionAreSafe()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::completedJobsAreBoundedWhileActiveJobsSurvive()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::activeJobsAreBounded()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiEndpointsTest::snapshotEpochIsStableAndAugmentedDiagnosticsAreUsed"
+    },
+    {
+      "status": "PASS",
+      "case": "UiControlTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiControlTest::fragmentedFramesAndPartialWrites()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiControlTest::rejectsUnboundedAndInvalidFrames()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiControlTest::actualHelperPipesCarryLargeFrameWithoutBlocking()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiControlTest::validSequenceAndStop()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiControlTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::fragmentedReplyKeepsEventLoopResponsive()"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::errorReplyPreservesResidentDetails()"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(malformed-json)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(array)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(wrong-schema)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(string-schema)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(wrong-id)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(numeric-id)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(missing-ok)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(numeric-ok)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(array-result)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(missing-result)"
+    },
+    {
+      "status": "PASS",
+      "case": "SessionClientContract::invalidReply(missing-error)"
+    },
+    {
+      "status": "PASS",
+      "case": "VersionContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "VersionContract::binariesAndDiagnosticsMatchManifest()"
+    },
+    {
+      "status": "PASS",
+      "case": "VersionContract::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiApplicationTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiApplicationTest::finalCloseWaitsForAnOutstandingLargeCheckpoint()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiApplicationTest::aboutDismissalAlsoClosesTheHelper()"
+    },
+    {
+      "status": "PASS",
+      "case": "ResidentTray::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "ResidentTray::delegatesEveryViewAndExplicitQuitWithoutConstructingViews()"
+    },
+    {
+      "status": "PASS",
+      "case": "ResidentTray::everyCaptureActionWorksWithNoViewsOpen()"
+    },
+    {
+      "status": "PASS",
+      "case": "ResidentTray::rejectedCaptureCallbackCanDestroyItsTray()"
+    },
+    {
+      "status": "PASS",
+      "case": "VersionView::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "VersionView::aboutUsesTheConnectedResidentBuildAndIsModeless()"
+    },
+    {
+      "status": "PASS",
+      "case": "VersionView::aboutFollowsItsOwnerLifetime()"
+    },
+    {
+      "status": "PASS",
+      "case": "VersionView::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "GeometryTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "GeometryTest::singleFramePreservesPixels()"
+    },
+    {
+      "status": "PASS",
+      "case": "GeometryTest::mixedDensityAndTransparentGap()"
+    },
+    {
+      "status": "PASS",
+      "case": "GeometryTest::fractionalSingleFramePreservesBoundaryPixels()"
+    },
+    {
+      "status": "PASS",
+      "case": "GeometryTest::rejectsStaleOrUnboundedMetadata()"
+    },
+    {
+      "status": "PASS",
+      "case": "GeometryTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "UiNativeLifecycleTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "X11Test::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainBackendTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainBackendTest::lockedOrDeniedDoesNotPersist(locked-unlock-refused)"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainBackendTest::lockedOrDeniedDoesNotPersist(dbus-access-denied)"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainBackendTest::explicitUnlockedRoundtrip()"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainBackendTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainTest::sessionReadinessIsExplicitAndForgetRevokesCache()"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainTest::unavailableStoreDoesNotFallBackOrCache()"
+    },
+    {
+      "status": "PASS",
+      "case": "KeychainTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::existingKeyPolicies(rename)"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::existingKeyPolicies(skip)"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::existingKeyPolicies(overwrite)"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::partialBatchRetriesOnlyFailedAndRetainsArchives()"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::realHistoryDeletionPersistsSdkPhasesAndPreservesLocalCopy()"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::cancellationRetainsCommittedArchivesAndSuppressesCopy()"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::archiveFailureDoesNotBlockUpload()"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::exhaustedRenameAndDeniedHeadsNeverPut(exhaustion)"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::exhaustedRenameAndDeniedHeadsNeverPut(denied)"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::exhaustedRenameAndDeniedHeadsNeverPut(timeout)"
+    },
+    {
+      "status": "PASS",
+      "case": "CollisionTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::guardedUnversionedAndOriginalDestination()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::deniedIdentityAndCheckpointBlockDelete()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::unsupportedJournalNeverDeletes(future-schema)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::unsupportedJournalNeverDeletes(invalid-schema)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::unsupportedJournalNeverDeletes(unknown-phase)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::unsupportedJournalNeverDeletes(missing-phase-target)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::retentionAndConflict(access)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::retentionAndConflict(retention)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::retentionAndConflict(mfa)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::retentionAndConflict(conflict)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::retentionAndConflict(precondition)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::enabledCurrentHidesBeforeRemovingExactVersion()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3DeleteTest::enabledNoncurrentKeepsRep..."
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::residentPathsDoNotLoadSdk()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::missingAndIncompatibleModule()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::deployedFailure(missing)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::deployedFailure(wrong-version)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::deployedFailure(wrong-build)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::deployedFailure(wrong-transport)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::concurrentProvidersAndPermanentWorker()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::boundedQueueDrainsExactlyOnce()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::exceptionsReleaseAdmissionAndPreserveUncertainty()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3ModuleContract::newRuntimeGenerationAfterDrain()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::routingSignedBodyAndPublicUrl()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::terminalErrors(ownership)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::terminalErrors(public-access-block)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::terminalErrors(authentication)"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::lostPutReplyRecoversOwnMetadata()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::lostReplyInconclusiveRemainsUnknown()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::boundedTransientAttemptsKeepWireIdentity()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::lostReplyWithoutOwnMetadataKeepsUnknownKey()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::conditionalRaceNeverOverwritesCompetitor()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::checkedOverwriteDoesNotRefreshToken()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::headDeniedDoesNotPublishAndCredentialsNeverAmbient()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::queuedCancellationAndSlowEventLoop()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::queuedCredentialRevocationPreservesInFlightClient()"
+    },
+    {
+      "status": "PASS",
+      "case": "S3Test::providerDestructionDrainsSentRequestBeforeRuntime()"
+    },
+    {
+      "status": "PASS",
+      "case": "PublicUrlTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "PublicUrlTest::encodedBaseAndKey()"
+    },
+    {
+      "status": "PASS",
+      "case": "PublicUrlTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "BuildContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "BuildContract::sqliteTransactions()"
+    },
+    {
+      "status": "PASS",
+      "case": "BuildContract::keychainAndSdkLink()"
+    },
+    {
+      "status": "PASS",
+      "case": "BuildContract::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "SdkContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "SdkContract::deferredOwnerLifecycle()"
+    },
+    {
+      "status": "PASS",
+      "case": "SdkContract::concurrentDeferredInitialization()"
+    },
+    {
+      "status": "PASS",
+      "case": "SdkContract::conditionalHeaders()"
+    },
+    {
+      "status": "PASS",
+      "case": "SdkContract::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "PayloadTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "PayloadTest::precedenceAndLimits()"
+    },
+    {
+      "status": "PASS",
+      "case": "PayloadTest::contentRoutingAndBoundedPrivatePreviews()"
+    },
+    {
+      "status": "PASS",
+      "case": "PayloadTest::batchAcquisitionIsAtomic()"
+    },
+    {
+      "status": "PASS",
+      "case": "PayloadTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "ArchiveTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "ArchiveTest::copiesAreIndependentAndUnique()"
+    },
+    {
+      "status": "PASS",
+      "case": "ArchiveTest::overridesAndFailure()"
+    },
+    {
+      "status": "PASS",
+      "case": "ArchiveTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::tinyProviderBoundsRemainValidAndCannotLoopOnCollisions()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::templateTokensHaveExactMeaning()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::unsafeTemplatesAndEmptyResultsFail()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::confirmedCollisionKeepsPreparedPrefixAndByteBound()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::originalModeKeepsAcquiredCaptureName()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::collisionsAndNames()"
+    },
+    {
+      "status": "PASS",
+      "case": "NamingTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::everyConnectionPreservesRollbackPolicyAndCommittedStates()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::truncatedSidecarIsPrivateEmptyAndReusedAfterLargeCommit()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::independentWorkerConnectionsCommitWithoutSharingQtSqlObjects()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::processCrashRollsBackHotJournalBeforeRecovery()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::schemaThreeBackfillUsesProviderIdentityAcrossProfilesAndPages()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::tenThousandRecordsArePagedAndIndependent()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::clearedHistoryStaysClearedAndRemoteErrorsSurviveUpdates()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::expiryIsExplicitAndRecentActivityIsBounded()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::interruptedStatesNeverPublish()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::populatedLegacyMigrationPreservesReceipts()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryTest::migrationIsTransactional()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::startupHeapCleanupRunsOnceAfterSuccessfulInitialization()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::failedInitializationDoesNotRequestHeapCleanup()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::shutdownCancelsPendingStartupHeapCleanup()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::startupHeapCleanupWaitsForBackgroundWorker()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::queuedCaptureNameUsesOriginalActionTime()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::queuedImagesRespectByteBudgetAndCancellationReleasesCapacity()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::decodedImagesReleaseBeforeBlockedUploadAndQueuedCancel()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::imageHeapCleanupWaitsForSelectionAndBackgroundWork()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::capturesReceiveStableTimestampNamesBeforeLocalArchive()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsTest::newerInvocationInvalidatesDeferredNativeClipboardCommit()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::deletionDuringBatchCompletionExcludesTheRemovedUrl()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::knownRemovedHistoryNeverWritesClipboard()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::confirmedOverwriteMarksOnlyOriginalObjectHistory()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::opaqueReceiptDeletionAndDurableProgress()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::partialDeletionRetainsIdentityAndHistoryClearNeverCallsProvider()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::wrongStatDestinationNeverAuthorizesDeletion()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::unknownGenericDeletionRetryRejectsReplacement()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::shutdownDrainsPendingDeleteBeforeHistoryDestruction()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::changedAndUnsupportedEntriesCannotDelete()"
+    },
+    {
+      "status": "PASS",
+      "case": "StorageContract::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::quitAcknowledgesBeforeDeferredShutdownAndRejectsUnexpectedParameters()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::realClientReceivesQuitAcknowledgement()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::uiShowWaitsForWindowAcknowledgement()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::launcherActivationUsesValidatedResidentUiRequest()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::backgroundLaunchDoesNotRaiseExistingResident()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::secondLauncherReportsUiFailureAndCanRetry()"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::secondLauncherRejectsInvalidResponses(json)"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::secondLauncherRejectsInvalidResponses(schema)"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::secondLauncherRejectsInvalidResponses(request-id)"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::secondLauncherRejectsInvalidResponses(ok-type)"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::secondLauncherRejectsInvalidResponses(wrong-view)"
+    },
+    {
+      "status": "PASS",
+      "case": "CliContract::secondLaunc..."
+    },
+    {
+      "status": "PASS",
+      "case": "ReloadContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "ReloadContract::replacementsAndValidationHaveNoSideEffects()"
+    },
+    {
+      "status": "PASS",
+      "case": "ReloadContract::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::plainTextUrlsRemainPayloadBytes()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::forgedStaleAndLengthMismatchAreRejected()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::boundedTextAndImageBeforeDecode()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::orderedLocalUrisAndForeignRejection()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::captureFramesComposeGapsAndRejectMalformedGeometry()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::malformedImageAndUnsupportedMimeAreRejected()"
+    },
+    {
+      "status": "PASS",
+      "case": "GnomeBridgeTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::metadataRejectsInvalidAndExcessive()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::paddedRowsDetachNativeBytes()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::truncatedAndSurplusFail()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::delayedTransferKeepsEventLoop()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::excessiveTransferIsBounded()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::timeoutAndCancelCompleteOnce()"
+    },
+    {
+      "status": "PASS",
+      "case": "KWinTransferTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::pendingImageBudgetIsOptionalAndValidated()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::filenameTemplatesAreOptionalAndLegacyChoicesRemainUnchanged()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::asynchronousWritesAndTemplateRemainExplicit()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::freshStartupDoesNotSelectDevelopmentDestination()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::atomicSaveAndConflict()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::invalidEditRetainsAcceptedSettingsAndBadFile()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::repeatedExternalReplacementsAreAccepted()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::strictValidation()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::patchCanClearOptionalFolderOverride()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::lockContentionDoesNotOverwrite()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::missingAndOversizedFilesPreserveAcceptedState()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsContract::fallbackDiscovers..."
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsGui::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsGui::simpleDestinationAndCredentialFieldsShareAlignment()"
+    },
+    {
+      "status": "PASS",
+      "case": "SettingsGui::emptySavedDestinationsShowOnlyTheAddAction()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsGui::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsGui::recreatedActivityPreservesSelectionAndExpansionById()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsGui::uploadedResultCanRetryCopyWithoutAnotherUpload()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsGui::localOperationShowsIndependentItemAndCopyStates()"
+    },
+    {
+      "status": "PASS",
+      "case": "OperationsGui::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryGui::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryGui::compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById()"
+    },
+    {
+      "status": "PASS",
+      "case": "HistoryGui::recreatedHistoryRestoresRawFiltersSelectionAndClearsVanishedIds()"
+    },
+    {
+      "status": "PASS",
+      "case": "LoginStartupTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "LoginStartupTest::preferenceOwnsOnlyManagedAutostartEntry()"
+    },
+    {
+      "status": "PASS",
+      "case": "LoginStartupTest::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::slowPeerReceivesCompleteReply()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::handledRequestObservesDisconnectBeforeReply()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::disconnectedPeerDoesNotInterruptOtherRequests()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::incompleteRequestExpires()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::clientLimitPreservesAcceptedRequests()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::fragmentedRequestAndDuplicateFrames()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::endpointOwnershipAndLiveResident()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::halfClosedRequestReceivesReply()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::teardownPreservesReplacementEndpoint()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::recoversOwnedStaleSocket()"
+    },
+    {
+      "status": "PASS",
+      "case": "LocalIpcContract::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "IpAddressContract::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "IpAddressContract::normalizedLiteralCompatibility()"
+    },
+    {
+      "status": "PASS",
+      "case": "IpAddressContract::cleanupTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "NativeRegionTest::cachedCursorSurvivesSourceClient..."
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::initTestCase()"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(cancel-before-begin-with-cursor-seed)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(animated-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(oversized-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(missing-cursor-falls-back)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::bootstrapRemainsInvisibleAndDoesNotOwnInput(reject-foreign-begin)"
+    },
+    {
+      "status": "PASS",
+      "case": "CapturePreparationTest::cleanupTestCase()"
+    }
+  ]
+}

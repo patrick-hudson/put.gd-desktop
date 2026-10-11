@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T09:22:01.397536+00:00",
+  "reviewer": "Independent delegated GNOME replay agent",
+  "matrixProceduralPassed": true,
+  "nativeWitnesses": [
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-files.png",
+      "sha256": "52a54463c2e230c368342c4a7f243c6bba0b4bef920fac30943822e24d673c44",
+      "bytes": 603660
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-image.png",
+      "sha256": "52a54463c2e230c368342c4a7f243c6bba0b4bef920fac30943822e24d673c44",
+      "bytes": 603660
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-text.png",
+      "sha256": "2b78ddf77d38f85e85f912a39caf18425a44ef0076f9af136155d7761c7482f1",
+      "bytes": 603463
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-files.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-image.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-text.png",
+      "sha256": "af50a907aebcd37d46a176047981dd2b6ff08f4319ce41a8d2bb132ffc5b6636",
+      "bytes": 595666
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-desktop.png",
+      "sha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+      "bytes": 595670
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-escape.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-right-click.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-zero-area.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region.png",
+      "sha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+      "bytes": 595670
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-window.png",
+      "sha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+      "bytes": 595670
+    }
+  ],
+  "observations": [
+    "All 12 retained final native witnesses show the independent Qt or GTK synthetic fixture correctly painted on the GNOME desktop.",
+    "These final witnesses show post-paste or post-cancel state; they do not establish overlay appearance or capture latency.",
+    "Settings, populated History and populated Activity have native chrome and blue controls with no paint corruption in the reviewed witnesses.",
+    "Activity table text truncates within its current columns at 1280x800; this is recorded visually, without treating it as a new candidate49 regression."
+  ],
+  "limits": [
+    "Single-head local-only synthetic actions.",
+    "No remote provider operation, capture latency or full compositor-profile certification.",
+    "Display became inactive/locked during the long build; inactive fresh-start witness is preserved and visibly reviewed re-unlock precedes all matrix acceptance."
+  ]
+}

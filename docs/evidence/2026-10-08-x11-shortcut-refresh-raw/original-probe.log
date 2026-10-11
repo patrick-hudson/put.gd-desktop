@@ -1,0 +1,87 @@
+TRACE 271711956352456 checked c=0x637129e6d800 seq=165 error=0
+TRACE 271711961333613 checked c=0x637129e6d800 seq=203 error=0
+TRACE 271712069150611 checked c=0x637129ed2230 seq=80 error=128
+TRACE 271712116071368 poll c=0x637129ed2230 fd=6 type=0 detail=0 state=0 seq=91
+TRACE 271712116111451 poll c=0x637129ed2230 fd=6 type=0 detail=0 state=0 seq=92
+TRACE 271712118484751 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=119
+TRACE 271712118576691 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=120
+TRACE 271712118582271 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=121
+TRACE 271712118585438 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=122
+TRACE 271712118588149 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=123
+TRACE 271712118590794 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=124
+TRACE 271712118593539 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=125
+TRACE 271712118596326 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=126
+TRACE 271712118599061 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=127
+TRACE 271712118601931 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=128
+TRACE 271712119143388 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=140
+TRACE 271712119193379 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=141
+TRACE 271712119197060 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=142
+TRACE 271712119199831 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=143
+TRACE 271712119228050 poll c=0x637129ed2230 fd=6 type=28 detail=0 state=0 seq=144
+dbus-daemon[2309028]: [session uid=1000 pid=2309028] Activating service name='org.gtk.vfs.Daemon' requested by ':1.0' (uid=1000 pid=2309042 comm="build/dev/test_x11 nativeKeyActivationWithLocks" label="chatgpt (unconfined)")
+dbus-daemon[2309028]: [session uid=1000 pid=2309028] Successfully activated service 'org.gtk.vfs.Daemon'
+dbus-daemon[2309028]: [session uid=1000 pid=2309028] Activating service name='org.a11y.Bus' requested by ':1.2' (uid=1000 pid=2309042 comm="build/dev/test_x11 nativeKeyActivationWithLocks" label="chatgpt (unconfined)")
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[2309028]: [session uid=1000 pid=2309028] Successfully activated service 'org.a11y.Bus'
+********* Start testing of X11Test *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : X11Test::initTestCase()
+TRACE 271712245442874 grab c=0x63712a21f530 key=10 mods=5 seq=3
+TRACE 271712245546183 checked c=0x63712a21f530 seq=3 error=0
+TRACE 271712245566499 grab c=0x63712a21f530 key=10 mods=7 seq=5
+TRACE 271712245635828 checked c=0x63712a21f530 seq=5 error=0
+TRACE 271712245655646 grab c=0x63712a21f530 key=10 mods=21 seq=7
+TRACE 271712245719422 checked c=0x63712a21f530 seq=7 error=0
+TRACE 271712245731124 grab c=0x63712a21f530 key=10 mods=23 seq=9
+TRACE 271712245794375 checked c=0x63712a21f530 seq=9 error=0
+TRACE 271712246289116 fake c=0x63712a16d140 type=2 key=37 seq=3
+TRACE 271712246374971 fake c=0x63712a16d140 type=2 key=50 seq=4
+INJECT 271712246446804 first-key10 server_delay_ms=20
+TRACE 271712246449641 fake c=0x63712a16d140 type=2 key=10 seq=5
+TRACE 271712246526055 fake c=0x63712a16d140 type=3 key=10 seq=6
+TRACE 271712246596916 fake c=0x63712a16d140 type=3 key=50 seq=7
+TRACE 271712246667981 fake c=0x63712a16d140 type=3 key=37 seq=8
+TRACE 271712246899378 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=152
+TRACE 271712246913721 poll c=0x637129ed2230 fd=6 type=35 detail=0 state=0 seq=152
+TRACE 271712246933719 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=152
+TRACE 271712246940157 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=152
+dbus-daemon[2309066]: Activating service name='org.a11y.atspi.Registry' requested by ':1.0' (uid=1000 pid=2309042 comm="build/dev/test_x11 nativeKeyActivationWithLocks" label="chatgpt (unconfined)")
+TRACE 271712248101571 poll c=0x63712a21f530 fd=17 type=34 detail=1 state=8 seq=10
+TRACE 271712248533587 poll c=0x63712a21f530 fd=17 type=34 detail=0 state=0 seq=10
+dbus-daemon[2309066]: Successfully activated service 'org.a11y.atspi.Registry'
+SpiRegistry daemon is running with well-known name - org.a11y.atspi.Registry
+TRACE 271712271558991 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712271595079 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712271739701 poll c=0x63712a21f530 fd=17 type=2 detail=10 state=5 seq=13
+TRACE 271712271960377 poll c=0x63712a21f530 fd=17 type=3 detail=10 state=5 seq=13
+TRACE 271712301729370 fake c=0x63712a16d140 type=2 key=66 seq=9
+TRACE 271712301854376 fake c=0x63712a16d140 type=3 key=66 seq=10
+TRACE 271712301929259 fake c=0x63712a16d140 type=2 key=77 seq=11
+TRACE 271712302050790 fake c=0x63712a16d140 type=3 key=77 seq=12
+TRACE 271712302153133 fake c=0x63712a16d140 type=2 key=37 seq=13
+TRACE 271712302243074 fake c=0x63712a16d140 type=2 key=50 seq=14
+TRACE 271712302334052 fake c=0x63712a16d140 type=2 key=10 seq=15
+TRACE 271712302415160 fake c=0x63712a16d140 type=3 key=10 seq=16
+TRACE 271712302488328 fake c=0x63712a16d140 type=3 key=50 seq=17
+TRACE 271712302570235 fake c=0x63712a16d140 type=3 key=37 seq=18
+TRACE 271712302612559 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712302620842 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712302624001 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712302626937 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712302629767 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712302713953 poll c=0x63712a21f530 fd=17 type=2 detail=10 state=23 seq=15
+TRACE 271712302885310 poll c=0x63712a21f530 fd=17 type=3 detail=10 state=23 seq=15
+TRACE 271712302977528 poll c=0x637129ed2230 fd=6 type=85 detail=0 state=0 seq=161
+TRACE 271712303088688 fake c=0x63712a16d140 type=2 key=66 seq=19
+TRACE 271712303184529 fake c=0x63712a16d140 type=3 key=66 seq=20
+TRACE 271712303326083 fake c=0x63712a16d140 type=2 key=77 seq=21
+TRACE 271712303418115 fake c=0x63712a16d140 type=3 key=77 seq=22
+TRACE 271712303461437 ungrab c=0x63712a21f530 key=10 mods=5 seq=18
+TRACE 271712303465515 ungrab c=0x63712a21f530 key=10 mods=7 seq=19
+TRACE 271712303468137 ungrab c=0x63712a21f530 key=10 mods=21 seq=20
+TRACE 271712303470560 ungrab c=0x63712a21f530 key=10 mods=23 seq=21
+PASS   : X11Test::nativeKeyActivationWithLocks()
+PASS   : X11Test::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 60ms
+********* Finished testing of X11Test *********
+A connection to the bus can't be made

@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "logs": [
+    {
+      "directory": "/tmp/putgd-mem-allocator-views",
+      "source": "resident.log",
+      "sourceSha256": "09e4768735405d01fc707e8d20e5c56581c99fa62bc1be4a2dff7b3555f2d4ae",
+      "sourceBytes": 399,
+      "export": "Only validated PUTGD_ALLOCATOR numeric counters; other log lines omitted.",
+      "counters": []
+    },
+    {
+      "directory": "/tmp/putgd-mem-allocator-views-host",
+      "source": "resident.log",
+      "sourceSha256": "8ac2001f4413ddffb654c4d6eca4c89e770ee6fa938aba262296a859c60ca8c7",
+      "sourceBytes": 242,
+      "export": "Only validated PUTGD_ALLOCATOR numeric counters; other log lines omitted.",
+      "counters": [
+        {
+          "stage": "cold-before",
+          "arenaBytes": 5636096,
+          "allocatedBytes": 3364560,
+          "freeArenaBytes": 2271536,
+          "mmapBytes": 364544,
+          "topFreeBytes": 85696
+        }
+      ]
+    },
+    {
+      "directory": "/tmp/putgd-mem-allocator-views-stable",
+      "source": "resident.log",
+      "sourceSha256": "bba185865fc8717779552ed66aa487f0202b0d1b91984553f6e66cd2afefdd03",
+      "sourceBytes": 1018,
+      "export": "Only validated PUTGD_ALLOCATOR numeric counters; other log lines omitted.",
+      "counters": [
+        {
+          "stage": "cold-before",
+          "arenaBytes": 5771264,
+          "allocatedBytes": 3378960,
+          "freeArenaBytes": 2392304,
+          "mmapBytes": 364544,
+          "topFreeBytes": 83440
+        },
+        {
+          "stage": "views-hidden-before",
+          "arenaBytes": 16977920,
+          "allocatedBytes": 15615600,
+          "freeArenaBytes": 1362320,
+          "mmapBytes": 364544,
+          "topFreeBytes": 129936
+        },
+        {
+          "stage": "before-trim",
+          "arenaBytes": 16977920,
+          "allocatedBytes": 15612944,
+          "freeArenaBytes": 1364976,
+          "mmapBytes": 364544,
+          "topFreeBytes": 129936
+        },
+        {
+          "stage": "after-trim",
+          "arenaBytes": 16850944,
+          "allocatedBytes": 15612944,
+          "freeArenaBytes": 1238000,
+          "mmapBytes": 364544,
+          "topFreeBytes": 2960
+        },
+        {
+          "stage": "second-hidden",
+          "arenaBytes": 16998400,
+          "allocatedBytes": 15635216,
+          "freeArenaBytes": 1363184,
+          "mmapBytes": 364544,
+          "topFreeBytes": 93760
+        },
+        {
+          "stage": "third-hidden",
+          "arenaBytes": 16998400,
+          "allocatedBytes": 15651840,
+          "freeArenaBytes": 1346560,
+          "mmapBytes": 364544,
+          "topFreeBytes": 93760
+        }
+      ]
+    },
+    {
+      "directory": "/tmp/putgd-mem-cold-allocator",
+      "source": "resident.log",
+      "sourceSha256": "f0866c5b9aec81bf7b1a0e7ff10db8b1f1b824b0e971889d8f44056b5f1ef1e2",
+      "sourceBytes": 247,
+      "export": "Only validated PUTGD_ALLOCATOR numeric counters; other log lines omitted.",
+      "counters": [
+        {
+          "stage": "cold-before-trim",
+          "arenaBytes": 5771264,
+          "allocatedBytes": 3369824,
+          "freeArenaBytes": 2401440,
+          "mmapBytes": 364544,
+          "topFreeBytes": 85136
+        }
+      ]
+    },
+    {
+      "directory": "/tmp/putgd-mem-cold-allocator-unbuffered",
+      "source": "resident.log",
+      "sourceSha256": "65dd548a786af1254d1ab163c2112abf9e24db43f1c6b15edbea4b610836015b",
+      "sourceBytes": 460,
+      "export": "Only validated PUTGD_ALLOCATOR numeric counters; other log lines omitted.",
+      "counters": [
+        {
+          "stage": "cold-before-trim",
+          "arenaBytes": 5771264,
+          "allocatedBytes": 3372032,
+          "freeArenaBytes": 2399232,
+          "mmapBytes": 364544,
+          "topFreeBytes": 84928
+        },
+        {
+          "stage": "cold-after-trim",
+          "arenaBytes": 5689344,
+          "allocatedBytes": 3372032,
+          "freeArenaBytes": 2317312,
+          "mmapBytes": 364544,
+          "topFreeBytes": 3008
+        }
+      ]
+    }
+  ]
+}

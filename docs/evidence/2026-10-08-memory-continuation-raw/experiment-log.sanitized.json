@@ -1,0 +1,778 @@
+{
+  "runId": "resident-memory-continuation-20261008",
+  "phase": "optimization-loop",
+  "sourceRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "targetPeakRssBytes": 41943040,
+  "previousBestPeakRssBytes": 58671104,
+  "previousLog": "$HISTORICAL_WORKTREE/.context/compound-engineering/ce-optimize/resident-memory/experiment-log.yaml",
+  "continuationAuthorization": {
+    "message": "keep going",
+    "meaning": "Resume measured memory work after earlier batch limit, preserving all features and standard build toolchain.",
+    "priorPhase1ApprovalInConversation": true,
+    "newDependenciesApproved": false,
+    "limitHandling": "User chose Continue after being told old one-hour stop. This continuation uses the broader built-in8-hour/100-experiment ceiling and10-nonimprovement plateau; preserve5USD overall model cap, accounting unavailable for subscription host. No cloud infrastructure spend."
+  },
+  "protocol": {
+    "seconds": 300,
+    "warmupSeconds": 5,
+    "samplingSeconds": 30,
+    "physicalSession": "Cinnamon X11",
+    "serialPhysicalMeasurements": true,
+    "maxIdleCpuPercentOneCore": 0.5,
+    "maxIdleRssBytes": 104857600
+  },
+  "experiments": [],
+  "remainingGates": [
+    "Post-use RSS workload",
+    "Approximately40MiB target"
+  ],
+  "spend": {
+    "cloudRequests": 0,
+    "newDependencies": 0,
+    "hostModelDollarAccounting": "unavailable; no cloud infrastructure billing",
+    "wholeRunModelCostCapUsd": 5
+  },
+  "resumeAudit": {
+    "priorRunId": "resident-memory-20261008-baseline",
+    "priorExperiments": 3,
+    "priorStop": "One-hour budget: remaining time cannot fit another required300-second measurement plus build/warmup. Three experiments: two retained, one degenerate. Target unmet.",
+    "markers": [
+      {
+        "path": "$HISTORICAL_WORKTREE/.worktrees/optimize-resident-memory-exp-001/result.yaml",
+        "keys": [
+          "iteration",
+          "batch",
+          "hypothesis",
+          "category",
+          "outcome",
+          "timestamp",
+          "opportunity",
+          "metrics",
+          "gates",
+          "diagnostics",
+          "measurement",
+          "comparisons",
+          "notes"
+        ],
+        "hash": "0edf99cdfedea2553f8940e00cf9ec6e5005d66268123017172f67aad928de74"
+      },
+      {
+        "path": "$HISTORICAL_WORKTREE/.worktrees/optimize-resident-memory-exp-002/result.yaml",
+        "keys": [
+          "iteration",
+          "batch",
+          "hypothesis",
+          "category",
+          "outcome",
+          "timestamp",
+          "opportunity",
+          "metrics",
+          "gates",
+          "diagnostics",
+          "measurement",
+          "correctness",
+          "comparisons"
+        ],
+        "hash": "c39b3f9d5a74db7cd76b1bef386d7d81d38b22f91dbb4f22c233b9b3dbd6dd18"
+      },
+      {
+        "path": "$HISTORICAL_WORKTREE/.worktrees/optimize-resident-memory-exp-003/result.yaml",
+        "keys": [
+          "iteration",
+          "batch",
+          "category",
+          "hypothesis",
+          "outcome",
+          "timestamp",
+          "opportunity",
+          "metrics",
+          "gates",
+          "diagnostics",
+          "measurement",
+          "correctness",
+          "comparisons"
+        ],
+        "hash": "8701d42c6e9791e60dfbbad1e71aaa060317de2b658bfb0527c5ddb2f518ccdb"
+      }
+    ],
+    "unloggedMarkers": [],
+    "previousLogSha256": "b77717216431a4abbbaf18dbb14c22e876fb3a434f4bff7d1ccf96395e95dc2c",
+    "branch": "optimize/resident-memory-continuation",
+    "checkout": "$HISTORICAL_WORKTREE"
+  },
+  "spec": "resident-memory-continuation",
+  "specSha256": "782c8f065d6edd76849577f0cc87fae0f127daece67c176326c3769b09d75490",
+  "baselineAttempts": [
+    {
+      "timestamp": "2026-10-08T15:53:38.339303+00:00",
+      "sourceRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+      "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+      "rawResults": "/tmp/putgd-memory-continuation-current/results.json",
+      "rawSha256": "1a2bf2775b53d44ebad8a0734fc6c22d174aff7eea25bb69c482bc0de522ef3e",
+      "metrics": {
+        "peakSampledRssBytes": 102387712,
+        "finalRssBytes": 102264832,
+        "idleCpuPercentOneCore": 0.5496666657025512,
+        "budgetPassed": false
+      },
+      "status": "failed-idle-CPU-gate",
+      "cause": "Not an idle workload: isolated journal contains one user-invoked capture operation. Failed CPU/memory result retained; no payloads inspected/exported. Repeat cold run with independent owned-window observation.",
+      "journalMetadata": {
+        "operationCount": 1,
+        "sourceActionStateErrorOnly": [
+          [
+            "region",
+            "cancelled",
+            "cancelled"
+          ]
+        ]
+      }
+    }
+  ],
+  "startupAttribution": [
+    {
+      "probe": "normal",
+      "temporaryInstrumentedAppSha256": "99dec59ec24eff1e866923d7cd698290e7ee88fb4093809a53fbfe398f872409",
+      "path": "/tmp/putgd-stage-normal/results.json",
+      "sha256": "c0f4c5bddb36904dcf94b0d1c383db88e3c66a960536ffb170d787772537a834",
+      "stages": [
+        {
+          "stage": "before-application",
+          "rssBytes": 27783168,
+          "pssBytes": 16203776,
+          "privateBytes": 14815232
+        },
+        {
+          "stage": "application",
+          "rssBytes": 51556352,
+          "pssBytes": 30985216,
+          "privateBytes": 28098560
+        },
+        {
+          "stage": "visual-style",
+          "rssBytes": 51879936,
+          "pssBytes": 31308800,
+          "privateBytes": 28422144
+        },
+        {
+          "stage": "app-icon",
+          "rssBytes": 52600832,
+          "pssBytes": 31964160,
+          "privateBytes": 29077504
+        },
+        {
+          "stage": "parser-resident-check",
+          "rssBytes": 53399552,
+          "pssBytes": 32762880,
+          "privateBytes": 29876224
+        },
+        {
+          "stage": "settings-providers",
+          "rssBytes": 53817344,
+          "pssBytes": 33180672,
+          "privateBytes": 30294016
+        },
+        {
+          "stage": "source-adapter",
+          "rssBytes": 54059008,
+          "pssBytes": 33422336,
+          "privateBytes": 30535680
+        },
+        {
+          "stage": "operation-history-server",
+          "rssBytes": 54280192,
+          "pssBytes": 33643520,
+          "privateBytes": 30756864
+        },
+        {
+          "stage": "tray",
+          "rssBytes": 58253312,
+          "pssBytes": 36594688,
+          "privateBytes": 33525760
+        },
+        {
+          "stage": "before-event-loop",
+          "rssBytes": 58261504,
+          "pssBytes": 36602880,
+          "privateBytes": 33533952
+        },
+        {
+          "stage": "event-loop-idle",
+          "rssBytes": 58744832,
+          "pssBytes": 36946944,
+          "privateBytes": 33869824
+        }
+      ],
+      "passed": true,
+      "scope": "locating attribution only; no performance acceptance"
+    },
+    {
+      "probe": "gnome",
+      "temporaryInstrumentedAppSha256": "99dec59ec24eff1e866923d7cd698290e7ee88fb4093809a53fbfe398f872409",
+      "path": "/tmp/putgd-stage-gnome/results.json",
+      "sha256": "bfd3a40587119e453742868ef0af2c0abe2fbc2d0bc781c759337027dbf55b81",
+      "stages": [
+        {
+          "stage": "before-application",
+          "rssBytes": 27717632,
+          "pssBytes": 16252928,
+          "privateBytes": 14905344
+        },
+        {
+          "stage": "application",
+          "rssBytes": 36786176,
+          "pssBytes": 24115200,
+          "privateBytes": 22446080
+        },
+        {
+          "stage": "visual-style",
+          "rssBytes": 37109760,
+          "pssBytes": 24438784,
+          "privateBytes": 22769664
+        },
+        {
+          "stage": "app-icon",
+          "rssBytes": 37896192,
+          "pssBytes": 25159680,
+          "privateBytes": 23490560
+        },
+        {
+          "stage": "parser-resident-check",
+          "rssBytes": 38694912,
+          "pssBytes": 25958400,
+          "privateBytes": 24289280
+        },
+        {
+          "stage": "settings-providers",
+          "rssBytes": 39219200,
+          "pssBytes": 26482688,
+          "privateBytes": 24813568
+        },
+        {
+          "stage": "source-adapter",
+          "rssBytes": 39534592,
+          "pssBytes": 26798080,
+          "privateBytes": 25128960
+        },
+        {
+          "stage": "operation-history-server",
+          "rssBytes": 39768064,
+          "pssBytes": 27031552,
+          "privateBytes": 25362432
+        },
+        {
+          "stage": "tray",
+          "rssBytes": 44654592,
+          "pssBytes": 30886912,
+          "privateBytes": 29024256
+        },
+        {
+          "stage": "before-event-loop",
+          "rssBytes": 44679168,
+          "pssBytes": 30911488,
+          "privateBytes": 29048832
+        },
+        {
+          "stage": "event-loop-idle",
+          "rssBytes": 45424640,
+          "pssBytes": 31444992,
+          "privateBytes": 29573120
+        }
+      ],
+      "passed": true,
+      "scope": "locating attribution only; no performance acceptance"
+    }
+  ],
+  "desktopPreference": {
+    "userAnswer": "Keep Cinnamon-native dialogs and fonts",
+    "excludedHypothesis": "Skip GTK3 platform theme",
+    "reason": "Public Qt lightweight selection changes desktop font/settings and native dialogs. User chose preservation."
+  },
+  "scopeClarificationBeforeBacklog": {
+    "reason": "Cost attribution supports deferring AWS library mappings with a normal private CMake module; include install target and focused new module lifecycle/loading contract. Existing tests remain frozen; no dependencies added. Native Cinnamon theme explicitly preserved.",
+    "mutableAdded": [
+      "src/storage/s3/S3Driver.cpp",
+      "src/storage/s3/S3Driver.h",
+      "src/storage/s3/S3Module.cpp",
+      "src/storage/s3/S3Module.h",
+      "src/storage/s3/S3SdkContext.cpp",
+      "src/storage/s3/S3SdkContext.h",
+      "CMakeLists.txt",
+      "packaging/linux/CMakeLists.txt"
+    ],
+    "existingTestFilesFrozen": 48,
+    "noHypothesesOrExperimentsDispatchedYet": true
+  },
+  "run_id": "resident-memory-continuation-20261008",
+  "started_at": "2026-10-08T15:53:38.339303+00:00",
+  "baseline": {
+    "timestamp": "2026-10-08T16:03:27.998768+00:00",
+    "revision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+    "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+    "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "gates": {
+      "budgetPassed": 1
+    },
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 59027456,
+        "samples": [
+          59027456
+        ]
+      }
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.016656745498515306,
+      "finalRssBytes": 59027456
+    },
+    "measurement": {
+      "raw": "/tmp/putgd-mem-cold-repeat/results.json",
+      "rawSha256": "47441dceb0128a7498529377bb2da083838b1ec82e601bf6d578a4c12910d54d",
+      "windowObserver": "/tmp/putgd-mem-cold-repeat-windows.json",
+      "observerSha256": "06e4f1ac90818550159eb8b62caf5246bfd294d49bf758b85ecd269990fae8ef",
+      "coldIdleUninterrupted": true
+    },
+    "correctness": {
+      "releaseTestsPassed": 25,
+      "releaseTestsSeconds": 51.3,
+      "junit": "work/memory-continue-release-tests.xml"
+    }
+  },
+  "best": {
+    "iteration": 0,
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 59027456,
+        "samples": [
+          59027456
+        ]
+      }
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.016656745498515306,
+      "finalRssBytes": 59027456
+    },
+    "gates": {
+      "budgetPassed": 1
+    },
+    "revision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827"
+  },
+  "hypothesis_backlog": [
+    {
+      "id": "late-sdk-module",
+      "description": "Load the official AWS transport shared libraries only when real S3 work begins using a private standard CMake module; preserve resident Qt-only validation/history/credentials.",
+      "category": "architecture",
+      "priority": "high",
+      "dep_status": "approved",
+      "required_deps": [],
+      "opportunity": {
+        "workload": "unchanged300-second physicalCinnamonX11 coldresident; currentRelease1d4f2ef, no windows/captures/network",
+        "baseline": "CP1:59027456bytes peak /56.29296875MiB",
+        "evidence": "Saved initial smaps:AWS/CRT/s2n3768320bytes RSS; selected curl/OpenSSL1859584bytes; officialSDK threadlifetime mismatch audited. Native GTK/theme retained by explicituserdecision.",
+        "expected_benefit": "About3\u20135.4MiB peakRSS reduction before firstS3 use, assuming AWS mappings disappear and some TLS dependencies are solely SDK-owned; moduleoverhead and duplicatedQt-only code can reduce netbenefit. Does not alone establish40MiB.",
+        "confidence": "Medium for~3.6MiB AWSmap removal; low forTLSincrement andpost-usegain untilmeasured.",
+        "cost_and_risk": "No packages; standardCMakeMODULE/publicQLibrary, privateversionedABI, installRPATH, initialize/drain/destroy/shutdownsamepermanentSDKworker. Moderateprovider/packaginglifecyclechange; retainallconditional/delete/ambiguitytests, newloading/lifetimecontract, full25tests andsanitizers/installedcheck needed."
+      }
+    },
+    {
+      "id": "reclaim-idle-allocator",
+      "description": "Return freed capture/preview allocator pages after complete operation/thread drain; never remove live data or retained UI drafts.",
+      "category": "data-handling",
+      "priority": "medium",
+      "dep_status": "approved",
+      "required_deps": [],
+      "opportunity": {
+        "workload": "post-view/post-capture drainedresident, separate fromcoldbaseline",
+        "baseline": "CP1cold56.293MiB; failednonidlecancelregiongrew97.645MiB andretained heap/anonymous pages",
+        "evidence": "Cancelled-region metadata andgroupedheap/anonymousfootprint retained; decodedimage lifetimes alreadybounded/cleared. Allocator-liveness attribution stillmissing.",
+        "expected_benefit": "Unknown; cheapestresolve post-view footprint plus syntheticlabcapture malloc allocated/freebytes before/after full drain. Do not implement until retained freepages versuslivewidgetcache distinguished.",
+        "confidence": "Low, previousnonidlesample confoundedbyviewconstruction; no knowncoldRSSsaving.",
+        "cost_and_risk": "Potentialpublicglibc malloc_trim at genuineidlethread drain, guardedforglibcLinux; measure latency andCPU, no newdependency, preserveQt caches/drafts/allpayloadsemantics."
+      }
+    }
+  ],
+  "excludedHypotheses": [
+    {
+      "id": "builtin-qt-theme",
+      "reason": "Explicit userdecision preserves Cinnamon-native dialogs/fonts; startupattribution43.3MiB onlylocating evidence, neveradopted."
+    }
+  ],
+  "parallelProbe": {
+    "mode": "user-decision",
+    "blockers": [
+      {
+        "type": "lock_file",
+        "description": "Found 1 lock/PID file(s) that may cause contention",
+        "suggestion": "Ensure measurement command cleans up lock files, or run in serial mode"
+      }
+    ],
+    "blocker_count": 1
+  },
+  "worktreeBudget": {
+    "actualRegistered": 6,
+    "afterNextExperiment": 7,
+    "max": 12
+  },
+  "postUseObserverAttempts": [
+    {
+      "directory": "/tmp/putgd-mem-views-current",
+      "status": "observer-error",
+      "reason": "A withdrawn transient X11 window disappeared between enumeration and xprop; no app failure established. Saved partial samples."
+    },
+    {
+      "directory": "/tmp/putgd-mem-views-current-two",
+      "status": "observer-error",
+      "reason": "Observer incorrectly expected stable native IDs across hide/show; Qt can recreate IDs without recreating cached widgets. Cold/visible/hidden samples preserved; use mapped-window counts for repeated lifecycle diagnostic."
+    }
+  ],
+  "postUseViewAttribution": {
+    "timestamp": "2026-10-08T16:18:50.858649+00:00",
+    "raw": "/tmp/putgd-mem-views-current-three/results.json",
+    "rawSha256": "189208d73feb7b8e8e4334fa48d0ea06805ada4597fae03ed8f6fecc289c4bc7",
+    "scope": "physical Cinnamon X11; open/reuse/hide Settings, History and Activity; empty private journal; no pixels, clipboard or cloud calls; diagnostic only, no idle budget claim",
+    "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+    "workloadSha256": "699b93d5d559fd74281dc7e988108b32d3687ef397263a8169bf642ad936e2f1",
+    "parameters": {
+      "cycles": 3,
+      "startupWarmupSeconds": 5,
+      "visibleSettlingSeconds": 2,
+      "hiddenIdleSeconds": 30
+    },
+    "samples": [
+      {
+        "stage": "cold-idle",
+        "elapsedSeconds": 5.281614895997336,
+        "rssBytes": 58961920,
+        "pssBytes": 36657152,
+        "privateBytes": 33804288,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-settings-visible",
+        "elapsedSeconds": 7.554848637984833,
+        "rssBytes": 79884288,
+        "pssBytes": 51374080,
+        "privateBytes": 46723072,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-history-visible",
+        "elapsedSeconds": 9.62280648300657,
+        "rssBytes": 84201472,
+        "pssBytes": 54290432,
+        "privateBytes": 48238592,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-activity-visible",
+        "elapsedSeconds": 11.685859224002343,
+        "rssBytes": 87588864,
+        "pssBytes": 56276992,
+        "privateBytes": 48824320,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-hidden-idle",
+        "elapsedSeconds": 41.778424012998585,
+        "rssBytes": 87670784,
+        "pssBytes": 56311808,
+        "privateBytes": 48857088,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-settings-visible",
+        "elapsedSeconds": 43.84016814100323,
+        "rssBytes": 87711744,
+        "pssBytes": 56352768,
+        "privateBytes": 48898048,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-history-visible",
+        "elapsedSeconds": 45.9691077650059,
+        "rssBytes": 87736320,
+        "pssBytes": 56377344,
+        "privateBytes": 48922624,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-activity-visible",
+        "elapsedSeconds": 48.03949380898848,
+        "rssBytes": 87736320,
+        "pssBytes": 56377344,
+        "privateBytes": 48922624,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-hidden-idle",
+        "elapsedSeconds": 78.13222579399007,
+        "rssBytes": 87736320,
+        "pssBytes": 56384512,
+        "privateBytes": 48918528,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-settings-visible",
+        "elapsedSeconds": 80.22723723298986,
+        "rssBytes": 87838720,
+        "pssBytes": 56485888,
+        "privateBytes": 49020928,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-history-visible",
+        "elapsedSeconds": 82.30707304898533,
+        "rssBytes": 88072192,
+        "pssBytes": 56720384,
+        "privateBytes": 49254400,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-activity-visible",
+        "elapsedSeconds": 84.3809042009816,
+        "rssBytes": 88088576,
+        "pssBytes": 56614912,
+        "privateBytes": 49270784,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-hidden-idle",
+        "elapsedSeconds": 114.50379466998857,
+        "rssBytes": 88088576,
+        "pssBytes": 56957952,
+        "privateBytes": 49410048,
+        "threads": 7
+      }
+    ],
+    "interpretation": "Repeated empty GUI view lifecycle approaches a plateau near 84 MiB after hidden windows. This distinguishes post-use resident from cold idle; allocation liveness not yet attributed, no leak or reclaim claim."
+  },
+  "allocatorProbeAttempts": [
+    {
+      "directory": "/tmp/putgd-mem-allocator-views",
+      "status": "environment-startup-error",
+      "reason": "Sandbox prevented physical X11 display connection; app never reached initialization or workload. Retained resident/observer logs; retry using the host session permission."
+    },
+    {
+      "directory": "/tmp/putgd-mem-allocator-views-host",
+      "status": "observer-error",
+      "reason": "Whole-tree xwininfo failed on a window destroyed during traversal. Saved partial samples/cold allocator counters. Replaced view observer enumeration with EWMH client IDs and existing PID ownership checks; not an application failure."
+    },
+    {
+      "directory": "/tmp/putgd-mem-cold-allocator",
+      "status": "observer-error",
+      "reason": "Buffered stderr readline prefetched the stop-stage marker, so select did not wake to resume the probe. Aggregate before-trim counters saved; observer now uses an unbuffered stderr pipe. Temporary production source was already restored."
+    }
+  ],
+  "allocatorViewAttribution": {
+    "timestamp": "2026-10-08T16:24:16.645757+00:00",
+    "raw": "/tmp/putgd-mem-allocator-views-stable/results.json",
+    "rawSha256": "1d5b2a3ce7d0d75fc6b4d38033e451d118908b7631b27b26468dbded7bdf904e",
+    "temporaryInstrumentedAppSha256": "2c9cc23f378ee12dfe1c377dc0566a58cb76440ea6ea355ab5e3b18689f0cadb",
+    "sourceRestored": true,
+    "workloadSha256": "9b43472683dd9192b5b7a3d89ad85e4f211d55ebaad26ae825bd1e2065948129",
+    "parameters": {
+      "cycles": 3,
+      "startupWarmupSeconds": 5,
+      "visibleSettlingSeconds": 2,
+      "hiddenIdleSeconds": 30
+    },
+    "allocatorCounters": [
+      {
+        "stage": "cold-before",
+        "arenaBytes": 5771264,
+        "allocatedBytes": 3378960,
+        "freeArenaBytes": 2392304,
+        "mmapBytes": 364544,
+        "topFreeBytes": 83440
+      },
+      {
+        "stage": "views-hidden-before",
+        "arenaBytes": 16977920,
+        "allocatedBytes": 15615600,
+        "freeArenaBytes": 1362320,
+        "mmapBytes": 364544,
+        "topFreeBytes": 129936
+      },
+      {
+        "stage": "before-trim",
+        "arenaBytes": 16977920,
+        "allocatedBytes": 15612944,
+        "freeArenaBytes": 1364976,
+        "mmapBytes": 364544,
+        "topFreeBytes": 129936
+      },
+      {
+        "stage": "after-trim",
+        "arenaBytes": 16850944,
+        "allocatedBytes": 15612944,
+        "freeArenaBytes": 1238000,
+        "mmapBytes": 364544,
+        "topFreeBytes": 2960
+      },
+      {
+        "stage": "second-hidden",
+        "arenaBytes": 16998400,
+        "allocatedBytes": 15635216,
+        "freeArenaBytes": 1363184,
+        "mmapBytes": 364544,
+        "topFreeBytes": 93760
+      },
+      {
+        "stage": "third-hidden",
+        "arenaBytes": 16998400,
+        "allocatedBytes": 15651840,
+        "freeArenaBytes": 1346560,
+        "mmapBytes": 364544,
+        "topFreeBytes": 93760
+      }
+    ],
+    "samples": [
+      {
+        "stage": "cold-idle",
+        "elapsedSeconds": 5.311294376006117,
+        "rssBytes": 58789888,
+        "pssBytes": 36652032,
+        "privateBytes": 33894400,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-settings-visible",
+        "elapsedSeconds": 7.6076404610066675,
+        "rssBytes": 79642624,
+        "pssBytes": 51069952,
+        "privateBytes": 46673920,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-history-visible",
+        "elapsedSeconds": 9.781498361000558,
+        "rssBytes": 84021248,
+        "pssBytes": 54106112,
+        "privateBytes": 48250880,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-activity-visible",
+        "elapsedSeconds": 11.951031964010326,
+        "rssBytes": 87416832,
+        "pssBytes": 56100864,
+        "privateBytes": 48844800,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-1-hidden-idle",
+        "elapsedSeconds": 42.39494821400149,
+        "rssBytes": 87216128,
+        "pssBytes": 56057856,
+        "privateBytes": 48644096,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-settings-visible",
+        "elapsedSeconds": 44.46242605801672,
+        "rssBytes": 87261184,
+        "pssBytes": 56103936,
+        "privateBytes": 48689152,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-history-visible",
+        "elapsedSeconds": 46.560765601025196,
+        "rssBytes": 87441408,
+        "pssBytes": 56284160,
+        "privateBytes": 48869376,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-activity-visible",
+        "elapsedSeconds": 48.6900937880273,
+        "rssBytes": 87441408,
+        "pssBytes": 56284160,
+        "privateBytes": 48869376,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-2-hidden-idle",
+        "elapsedSeconds": 78.99087962001795,
+        "rssBytes": 87441408,
+        "pssBytes": 56609792,
+        "privateBytes": 49008640,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-settings-visible",
+        "elapsedSeconds": 81.07307379500708,
+        "rssBytes": 87441408,
+        "pssBytes": 56609792,
+        "privateBytes": 49008640,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-history-visible",
+        "elapsedSeconds": 83.15583773000981,
+        "rssBytes": 87449600,
+        "pssBytes": 56617984,
+        "privateBytes": 49016832,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-activity-visible",
+        "elapsedSeconds": 85.27609083300922,
+        "rssBytes": 87457792,
+        "pssBytes": 56626176,
+        "privateBytes": 49025024,
+        "threads": 7
+      },
+      {
+        "stage": "cycle-3-hidden-idle",
+        "elapsedSeconds": 115.41492603102233,
+        "rssBytes": 87457792,
+        "pssBytes": 56639488,
+        "privateBytes": 49025024,
+        "threads": 7
+      }
+    ],
+    "interpretation": "Empty-view retained heap is predominantly live allocation. At first hidden idle allocated arena bytes 15612944, free 1364976; malloc_trim reduced arena by 126976 only. No production trimming change justified by this view workload. Capture/drained allocator attribution remains separate."
+  },
+  "coldAllocatorAttribution": {
+    "timestamp": "2026-10-08T16:29:58.924697+00:00",
+    "raw": "/tmp/putgd-mem-cold-allocator-unbuffered/results.json",
+    "rawSha256": "d9770bff01c8183d7fd367e78d7b34822b18602b7e48d9eaadeaec56ee7f4814",
+    "temporaryInstrumentedAppSha256": "71da6eb8f9c5726b3ece1adf3e698d919e5551f54e1b846a132a11bf00bca463",
+    "sourceRestored": true,
+    "stages": [
+      {
+        "stage": "cold-before-trim",
+        "rssBytes": 58683392,
+        "pssBytes": 36904960,
+        "privateBytes": 33718272
+      },
+      {
+        "stage": "event-loop-idle",
+        "rssBytes": 57466880,
+        "pssBytes": 35688448,
+        "privateBytes": 32501760
+      }
+    ],
+    "allocatorCounters": [
+      {
+        "stage": "cold-before-trim",
+        "arenaBytes": 5771264,
+        "allocatedBytes": 3372032,
+        "freeArenaBytes": 2399232,
+        "mmapBytes": 364544,
+        "topFreeBytes": 84928
+      },
+      {
+        "stage": "cold-after-trim",
+        "arenaBytes": 5689344,
+        "allocatedBytes": 3372032,
+        "freeArenaBytes": 2317312,
+        "mmapBytes": 364544,
+        "topFreeBytes": 3008
+      }
+    ],
+    "rssReductionBytes": 1216512,
+    "interpretation": "Locating cold allocator attribution only; not a scored implementation or budget acceptance."
+  }
+}

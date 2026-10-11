@@ -1,0 +1,167 @@
+{
+  "scope": "Unscored synthetic metadata stress; actualtaskexiterrno locator not physicalmemory/desktopproof",
+  "syntheticChildLaunches": 8000,
+  "cohorts": [
+    {
+      "cohort": 0,
+      "calls": 232,
+      "knownGenerations": 69,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 1,
+      "calls": 229,
+      "knownGenerations": 64,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 2,
+      "calls": 208,
+      "knownGenerations": 69,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 3,
+      "calls": 206,
+      "knownGenerations": 65,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 4,
+      "calls": 223,
+      "knownGenerations": 63,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 5,
+      "calls": 219,
+      "knownGenerations": 62,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 6,
+      "calls": 219,
+      "knownGenerations": 65,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 7,
+      "calls": 202,
+      "knownGenerations": 59,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 8,
+      "calls": 211,
+      "knownGenerations": 59,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 9,
+      "calls": 236,
+      "knownGenerations": 67,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 10,
+      "calls": 267,
+      "knownGenerations": 61,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 11,
+      "calls": 239,
+      "knownGenerations": 74,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 12,
+      "calls": 245,
+      "knownGenerations": 72,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 13,
+      "calls": 217,
+      "knownGenerations": 60,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 14,
+      "calls": 195,
+      "knownGenerations": 61,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 15,
+      "calls": 197,
+      "knownGenerations": 70,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 16,
+      "calls": 219,
+      "knownGenerations": 56,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 17,
+      "calls": 250,
+      "knownGenerations": 55,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 18,
+      "calls": 212,
+      "knownGenerations": 65,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 19,
+      "calls": 215,
+      "knownGenerations": 62,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    }
+  ],
+  "passed": true
+}

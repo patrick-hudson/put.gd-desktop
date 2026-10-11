@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "scope": "Non-SDK live-selection, quiet heap reclamation and replay utilities",
+  "mode": "three inline serial rubric passes",
+  "reason": "Permanent registered agent limit has no caller-owned close/release API; current handles retain author contexts. No fresh-context reviewer independence claimed. Actual code review is separate and pending.",
+  "sourceHashes": {
+    "src/app/OperationService.cpp": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+    "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+    "src/platform/x11/CinnamonRegionCapture.cpp": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+    "src/platform/x11/CinnamonRegionCapture.h": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "tests/performance/bench_payload_lab.py": "01761e2bf83c492889e886ff9c23209e06dad0889ca3d38752b0e40e3a021fad",
+    "tests/performance/bench_capture.cpp": "ef9161c4d44b1c59d693524a61bf3bb140f91deed0e108dcf4ac914200ddb2c2",
+    "tests/performance/run_capture.py": "28b1a035fac1756ba53db7816dd5c61a77b2c969c7659965eec0e92c706acaa7"
+  },
+  "passes": [
+    {
+      "rubric": "code-reuse",
+      "changes": [],
+      "reason": "Qt lifecycle APIs, public glibc reclamation, public X11/DBus/Wayland primitives already used. Local/remote process samplers have different input ownership; merging them adds coupling without removing a verified defect."
+    },
+    {
+      "rubric": "code-quality",
+      "changes": [],
+      "reason": "Pending cleanup flag is required to distinguish completed payload work from repetitive idle passes. Close-write completion, generation cancellation, worker draining and private file ownership have separate roles. Historical shaded witness remains reproducible evidence and is deliberately preserved."
+    },
+    {
+      "rubric": "efficiency",
+      "changes": [],
+      "reason": "Single-shot cleanup only after tracked operation workers, selectors, queues and image leases drain. Decoder memory is bounded before PNG read. Window observer exports IDs and changes without pixels or titles. No extra repeating app timer or eager views introduced."
+    }
+  ],
+  "separateBehaviorFix": "Cancellation cleanup test first found count0; valid action acceptance now marks pending before acquisition. See work/heap-cancel-delta.json.",
+  "verification": "Full Dev and affected sanitizers in progress; no additional behavior changes from simplification."
+}

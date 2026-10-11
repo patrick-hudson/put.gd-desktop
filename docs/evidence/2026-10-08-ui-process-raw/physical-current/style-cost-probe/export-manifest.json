@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "bytes": 866,
+      "sha256": "e67a06667e1ee0e235850faa24874f9c84dadf22e3c399a9a0cd4ac9eab9646c"
+    },
+    {
+      "path": "CMakePresets.json",
+      "bytes": 229,
+      "sha256": "166ac3c208831936ba6f071676a5fa959748e9aa94b013a40638e61560439d48"
+    },
+    {
+      "path": "probe.cpp",
+      "bytes": 4464,
+      "sha256": "c7f6e9cf9d94ca843fcb3de26f1cade262ce9d82a6335796ab8a7fc63795f482"
+    },
+    {
+      "path": "run.py",
+      "bytes": 4496,
+      "sha256": "c1f8d7c7d6c9d7086c3035133c7a2c60319d5421588268c7d1b3462f4c6a37e7"
+    },
+    {
+      "path": "replay.md",
+      "bytes": 3719,
+      "sha256": "5fa993a80279bf9b812a4e0c8306b38ce637719e44cdeaa3dc2c3cf20b691607"
+    },
+    {
+      "path": "driver.stdout",
+      "bytes": 798,
+      "sha256": "0a6288d194f7bea548ed2909e26c3e6926b8f72193069b8f21079068edc516ac"
+    },
+    {
+      "path": "driver.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/receipt.json",
+      "bytes": 102116,
+      "sha256": "5f53927a97646da305f0048d4f75c3204f29b418de78a3850f6086258d322940"
+    },
+    {
+      "path": "results/analysis.json",
+      "bytes": 9223,
+      "sha256": "d1e85baccb15a0ebfda2728fffa5434ca57a500d68d0553d90d7b08d5e9f27d1"
+    },
+    {
+      "path": "results/configure.stdout",
+      "bytes": 945,
+      "sha256": "c676a2cd62efb7ee9d2a7c2e308c50fa54eaf6c6e31700b42a16b5b75146cdab"
+    },
+    {
+      "path": "results/configure.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/build.stdout",
+      "bytes": 252,
+      "sha256": "cc74a1afa27a260c418629d8499a6f840345115cff153a8713219988d90f0d42"
+    },
+    {
+      "path": "results/build.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/1-full.jsonl",
+      "bytes": 7238,
+      "sha256": "a79e459b86ac93bf28628d4f7455508a9bc28f2971ff7769190de11f496a7027"
+    },
+    {
+      "path": "results/1-full.stderr",
+      "bytes": 183,
+      "sha256": "8ec02523f68e0dbbd771bf283d0012dbfb9c5fdd97ed77a436230b6f809f4d23"
+    },
+    {
+      "path": "results/2-native.jsonl",
+      "bytes": 7241,
+      "sha256": "fc09f5fc2728799c243f8d45922f4dad4abaece558422fc5f1c8f376d1be013b"
+    },
+    {
+      "path": "results/2-native.stderr",
+      "bytes": 183,
+      "sha256": "9526c427eea627306d6b823777530f83f0979de1ec2647c500d33e59ab242f1a"
+    },
+    {
+      "path": "results/3-full.jsonl",
+      "bytes": 7238,
+      "sha256": "f70516d0344ed1d924e09ef730efe8f96ab8038e3ddddd832eaa2b2d813c085c"
+    },
+    {
+      "path": "results/3-full.stderr",
+      "bytes": 183,
+      "sha256": "ab1a7f998ca93104e0fb8b8e40e24556655689106df2a1b99d8976621731097f"
+    },
+    {
+      "path": "results/4-native.jsonl",
+      "bytes": 7241,
+      "sha256": "82ba04a3b549157ca56db849bdf644c6865b06288ef860014c032db304a9dd7d"
+    },
+    {
+      "path": "results/4-native.stderr",
+      "bytes": 183,
+      "sha256": "b31d48c02bc6227e1d6a057b7fa761d95c5e10b72ba51ab5a6f09db6e00abdff"
+    }
+  ],
+  "exclusions": [
+    "build tree",
+    "__pycache__",
+    "private/environment/config/clipboard/payload/credential files"
+  ]
+}

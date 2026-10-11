@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "commit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "commitCount": 45,
+  "version": "0.1.1-dev.45+g9d142919e5e6",
+  "ownedPaths": [
+    "src/ui/TrayController.cpp",
+    "tests/gui/test_tray.cpp"
+  ],
+  "evidence": "Focused regression failed before/pass after on Qt6.4.2; independent completed review no actionable findings. Qt6.10.2 Wayland/GTK3 plugin selection checked against actual GNOME guest.",
+  "nativeGate": "Post-change realGNOME6.10.2 Wayland/GTK3 candidate45dirty started while locked (trayAvailable false), then restored through visible masked console; root inspected unlocked pixels with renderedblueput.gd icon and watcher busPID79451 matching actualresident. This establishes late tray registration/rendering on this supported guest, not all Qtversions/compositors. The fourpathSettingsoverlay is separately identified; source43 failedtray receipt remains unchanged.",
+  "scope": "Review material contained only scoped code/context, no credentials, payloads or unrelated user work.",
+  "files": [
+    {
+      "path": "docs/evidence/2026-10-08-tray-late-availability-raw/review.json",
+      "sha256": "ca84c862e811e9859dc3eadd20d6d94632d2fe22a161a759f9a3ede80bdc35db"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-tray-late-availability-raw/before.log",
+      "sha256": "bf613107b49a9768feb4534b8282e96374af9c2d39c54b7cc8487e4f4a8be417"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-tray-late-availability-raw/before.xml",
+      "sha256": "ad671fa341fcaf87e2d5eb74b7b82818f07b91fbe4dbb66454a671ef2b472493"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-tray-late-availability-raw/after.log",
+      "sha256": "e008c73ad6e3f9668e402f335de7f84f31e5e84b3be559fa5b3d88a3db7f968e"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-tray-late-availability-raw/after.xml",
+      "sha256": "b285e32539b742c58c1bacc27d47f4b6410363daa05fdeb34470de038d485b65"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-tray-late-availability-raw/gnome45dirty-watcher-registration.json",
+      "sha256": "1b37f1c79eccc4432a0df025c1f2ee87f3fd39d6dc524e17675dcca86db3067f"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-tray-late-availability-raw/gnome45dirty-unlocked-rendered-tray.png",
+      "sha256": "04f0d60ef61d8ff41c71cb1b319f770a1ebdeb9f1bfb743efcb94f0536939cdc"
+    }
+  ],
+  "nativeCandidate": {
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+    "patchSha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+    "residentPid": 79451,
+    "startTicks": 1118766,
+    "binarySha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6",
+    "scope": "ConcreteGNOMEpostunlocktrayproof; no startupperformanceclaim"
+  }
+}

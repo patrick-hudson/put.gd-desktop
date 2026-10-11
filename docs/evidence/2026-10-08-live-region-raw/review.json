@@ -1,0 +1,263 @@
+{
+  "status": "complete",
+  "verdict": "Ready with fixes",
+  "verdict_reason": "The original frozen bytes have one confirmed P3 allocator-trigger gap (#2). Mark accepted acquisition work before native preparation and verify first failure/cancellation. This bounded source verdict does not certify desktop or memory acceptance, and the later correction requires a separate receipt.",
+  "scope": {
+    "base": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+    "branch": "codex/review-live-heap-frozen",
+    "head_sha": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+    "pr_url": null,
+    "files_changed": 23,
+    "mode": "standalone",
+    "repository": "/tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823/snapshot",
+    "source_sha256": "6dfe84ee16e22e1e856cc6574588e371108e7315832d406aecde97b12a17b0f0",
+    "diff_sha256": "80288451563b0dec864ac6ca99f88c9e96ad6ca007c91cfa405941cfb3229766"
+  },
+  "intent": "Capture a selected region from the live desktop after selection UI is removed across X11/Cinnamon, KDE and GNOME, retaining frozen geometry/resource limits and cancellation behavior. Reclaim allocator-owned free pages once after payload work drains, without changing native clipboard ownership or UI resources. Add reproducible physical capture/payload/idle/view workload drivers; source-only review does not certify desktop or memory measurements.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "project-standards",
+    "testing",
+    "maintainability",
+    "security",
+    "performance",
+    "reliability",
+    "adversarial-claude"
+  ],
+  "findings": [
+    {
+      "#": 2,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/app/OperationService.cpp:101 --       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code==\"cancelled\"||r.error.code==\"source_cancelled\";op.state=op.cancelled?\"cancelled\":\"failed\";guarded->finish(op);return;}",
+        "src/app/OperationService.cpp:111 --  if(job.acquire)heapReclamationPending_=true;",
+        "src/app/OperationService.cpp:54 --  if(heapReclamationPending_&&heapReclamationIdle())heapReclamationTimer_.start(2000);",
+        "src/platform/x11/X11SourceAdapter.cpp:55-57 rejects a cancelled generation or changed display layout after native frame decoding, without enqueueing those frames.",
+        "src/app/OperationService.cpp:85-86 registers the accepted action and prepares native acquisition before any pending mark; line 92 also permits cancellation to finish before the acquisition result branch."
+      ],
+      "file": "src/app/OperationService.cpp",
+      "first_evidence": "src/app/OperationService.cpp:101 --       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code==\"cancelled\"||r.error.code==\"source_cancelled\";op.state=op.cancelled?\"cancelled\":\"failed\";guarded->finish(op);return;}",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 101,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P3",
+      "suggested_fix": "Set heapReclamationPending_=true under __GLIBC__ after the validated action is inserted into active_ and before prepareAcquisition(), retaining the existing idle/drain gate. This also covers an early cancellation of a prepared native acquisition. Add a first failed/cancelled acquisition regression with no prior successful payload; require one post-drain reclamation and none during active work.",
+      "title": "Failed or cancelled acquisitions never schedule allocator reclamation",
+      "why_it_matters": "A first acquisition that allocates native buffers and then fails or is cancelled can drain without requesting the new allocator cleanup. The error branch reaches finish() without enqueue(), while only successful acquisition enqueueing and detached result copying set the pending flag. Marking the accepted action before native preparation covers failed results and early cancellation while preserving the existing idle/drain checks. Retained RSS incidence and magnitude were not measured by this source review.",
+      "validation_status": "confirmed",
+      "validation_reason": "For a first __GLIBC__ acquisition with no prior pending mark, src/app/OperationService.h:96 initializes false and OperationService.cpp:101 finishes errors/cancellations before the acquisition mark at :111, while :216 skips copying and :54 requires true to schedule reclamation, and X11SourceAdapter.cpp:53\u201358 permits post-decode cancellation/layout failure, so the newly added cleanup can be skipped after native allocation; incidence and retained RSS were not measured in this reused source-only context."
+    }
+  ],
+  "actionable_findings": [
+    {
+      "#": 2,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/app/OperationService.cpp:101 --       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code==\"cancelled\"||r.error.code==\"source_cancelled\";op.state=op.cancelled?\"cancelled\":\"failed\";guarded->finish(op);return;}",
+        "src/app/OperationService.cpp:111 --  if(job.acquire)heapReclamationPending_=true;",
+        "src/app/OperationService.cpp:54 --  if(heapReclamationPending_&&heapReclamationIdle())heapReclamationTimer_.start(2000);",
+        "src/platform/x11/X11SourceAdapter.cpp:55-57 rejects a cancelled generation or changed display layout after native frame decoding, without enqueueing those frames.",
+        "src/app/OperationService.cpp:85-86 registers the accepted action and prepares native acquisition before any pending mark; line 92 also permits cancellation to finish before the acquisition result branch."
+      ],
+      "file": "src/app/OperationService.cpp",
+      "first_evidence": "src/app/OperationService.cpp:101 --       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code==\"cancelled\"||r.error.code==\"source_cancelled\";op.state=op.cancelled?\"cancelled\":\"failed\";guarded->finish(op);return;}",
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "line": 101,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial-claude"
+      ],
+      "severity": "P3",
+      "suggested_fix": "Set heapReclamationPending_=true under __GLIBC__ after the validated action is inserted into active_ and before prepareAcquisition(), retaining the existing idle/drain gate. This also covers an early cancellation of a prepared native acquisition. Add a first failed/cancelled acquisition regression with no prior successful payload; require one post-drain reclamation and none during active work.",
+      "title": "Failed or cancelled acquisitions never schedule allocator reclamation",
+      "why_it_matters": "A first acquisition that allocates native buffers and then fails or is cancelled can drain without requesting the new allocator cleanup. The error branch reaches finish() without enqueue(), while only successful acquisition enqueueing and detached result copying set the pending flag. Marking the accepted action before native preparation covers failed results and early cancellation while preserving the existing idle/drain checks. Retained RSS incidence and magnitude were not measured by this source review.",
+      "validation_status": "confirmed",
+      "validation_reason": "For a first __GLIBC__ acquisition with no prior pending mark, src/app/OperationService.h:96 initializes false and OperationService.cpp:101 finishes errors/cancellations before the acquisition mark at :111, while :216 skips copying and :54 requires true to schedule reclamation, and X11SourceAdapter.cpp:53\u201358 permits post-decode cancellation/layout failure, so the newly added cleanup can be skipped after native allocation; incidence and retained RSS were not measured in this reused source-only context."
+    }
+  ],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": null,
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "Authorship/context limitation: the merge leaf reused the live-region author context and previously performed correctness here; this is not independent authored-code corroboration. Six local fallback lenses shared the dispatcher context, which authored observe_idle.py and bench_views.py. No local agreement was promoted.",
+    "This frozen source review cannot certify native, sanitizer, physical memory or timing results. Parent-reported prior measurements remain separately attributed; the full product, compositor acceptance matrix and 40 MiB gates remain open.",
+    "The sparse snapshot omits tools/lab/lab.py, so guest-session environment, CLI routing and restoration integration for bench_payload_lab.py could not be traced end to end. The conditional cleanup candidate #1 remains unresolved and is excluded from the primary/apply sets.",
+    "The idle observer enumerates EWMH-managed PID-owned windows at one-second intervals. It cannot by itself exclude an override-redirect popup or a brief activation between samples; its coldIdleUninterrupted flag must be interpreted within that observation boundary. No actual interrupted-run incidence is established here."
+  ],
+  "testing_gaps": [
+    "Source and isolated fixtures do not establish clean current desktop pixels after selector dismissal on every supported compositor, output arrangement or scale. Separate KDE/GNOME native and Cinnamon multi-output/HiDPI rapid-release acceptance remains necessary; parent-reported single-layout Cinnamon proof is not independently rerun by this review.",
+    "The native Cinnamon transport fixture uses one monitor and cancels before decode starts. Multi-output partial completion and cancellation while a decoder is already running remain consequential unexercised boundaries: finish one PNG, leave another pending, cancel, then verify one cancelled completion and decoder-drained destruction with no partial success.",
+    "The deferred KDE wl_display_sync dismissal path has no targeted cancel, display-change or adapter-destruction regression while its callback is pending. Current source cleanup can be traced, but the ordering and lifetime edge has not been exercised by this review.",
+    "At this freeze, observe_idle.py and bench_views.py were only compile/help checked and the live-outline driver only compiled. Runtime fidelity of the new physical wrappers and physical outline workload was not revalidated; no budget result is certified here."
+  ],
+  "coverage": {
+    "depth": "full",
+    "reviewer_selection": [
+      {
+        "reviewer": "correctness",
+        "tier": "session",
+        "reason": "Always-on source/control-flow and live capture/heap lifecycle"
+      },
+      {
+        "reviewer": "project-standards",
+        "tier": "mid-tier",
+        "reason": "Active AGENTS instruction-file fallback applies to all 23 paths"
+      },
+      {
+        "reviewer": "testing",
+        "tier": "mid-tier",
+        "reason": "Desktop/unit fixtures and physical workload measurement mechanisms changed"
+      },
+      {
+        "reviewer": "maintainability",
+        "tier": "mid-tier",
+        "reason": "New async compositor capture abstraction and large harness additions"
+      },
+      {
+        "reviewer": "security",
+        "tier": "session",
+        "reason": "Private screenshot files and bounded untrusted PNG decoder input"
+      },
+      {
+        "reviewer": "performance",
+        "tier": "mid-tier",
+        "reason": "Native capture pixel budgets and one-shot glibc allocator reclamation"
+      },
+      {
+        "reviewer": "reliability",
+        "tier": "mid-tier",
+        "reason": "Cancellation, close notification, timeout and drained-work scheduling"
+      }
+    ],
+    "standards": {
+      "criteria": [
+        "AGENTS.md"
+      ],
+      "instruction_file_fallback": true,
+      "governs_changed_paths": 23
+    },
+    "compound_packs": {
+      "roots": [],
+      "warnings": [],
+      "errors": []
+    },
+    "source_sha256": "6dfe84ee16e22e1e856cc6574588e371108e7315832d406aecde97b12a17b0f0",
+    "diff_sha256": "80288451563b0dec864ac6ca99f88c9e96ad6ca007c91cfa405941cfb3229766",
+    "scope_counts": {
+      "files_changed": 23,
+      "changed_lines": 1318,
+      "executable_non_test_lines": 335,
+      "size_band": "large",
+      "hard_block_full": true
+    },
+    "suppressed_by_confidence": {
+      "50": 3
+    },
+    "mode_aware_demotions": 1,
+    "first_evidence_backfilled": 0,
+    "quote_demotions": 0,
+    "malformed_findings": 0,
+    "malformed_returns": 0,
+    "agreement_promotions": 0,
+    "validation": {
+      "outcome": "verdicts",
+      "batch_size": 2,
+      "confirmed": 1,
+      "rejected": 0,
+      "unresolved": 1,
+      "malformed": 0,
+      "failed": 0,
+      "shortcut_skipped": 0,
+      "unprotected_unresolved_removed": 1,
+      "unresolved_protected_or_high_severity_gates": 0,
+      "protected_subject_reclassifications": 0,
+      "verdicts": [
+        {
+          "#": 1,
+          "status": "unresolved",
+          "protected_subject": null,
+          "reason": "With started true, tests/performance/bench_payload_lab.py:259 calls lab.input_events before the restoration/persistence try/finally at :260\u2013278, so an exception would bypass both, but the omitted tools/lab/lab.py and input_events contract prevent validation of that exception precondition; incidence was not measured in this reused source-only context."
+        },
+        {
+          "#": 2,
+          "status": "confirmed",
+          "protected_subject": null,
+          "reason": "For a first __GLIBC__ acquisition with no prior pending mark, src/app/OperationService.h:96 initializes false and OperationService.cpp:101 finishes errors/cancellations before the acquisition mark at :111, while :216 skips copying and :54 requires true to schedule reclamation, and X11SourceAdapter.cpp:53\u201358 permits post-decode cancellation/layout failure, so the newly added cleanup can be skipped after native allocation; incidence and retained RSS were not measured in this reused source-only context."
+        }
+      ],
+      "consumer_protected_subjects": {
+        "1": null,
+        "2": null
+      }
+    },
+    "failed_reviewers": [],
+    "bound_exceeded": [],
+    "peer": {
+      "selected": true,
+      "target": "claude",
+      "route": "claude",
+      "preference_source": "default",
+      "outcome": "folded",
+      "artifact": "/tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823/adversarial-claude.json",
+      "coverage": "Cross-model adversarial pass folded once from verified fixed claude route: requested claude-opus-5-5 at high; receipt_supported=true, model_actual=claude-opus-5-5, effort_actual=unverified, independence_verified=true. Terminal peer job directory removed."
+    },
+    "settlement_suppression_evaluated": false,
+    "prior_runtime_evidence": "Parent-reported only; not independently rerun or certified by this source review.",
+    "not_assessed": [
+      "Full product/implementation-unit completeness",
+      "Full graphical compositor/output/scale matrix",
+      "40 MiB physical target",
+      "Learnings, agent-native and deployment-specialist lenses were not selected."
+    ],
+    "notes": [
+      "Frozen original 23-path private source snapshot versus 1d4f2ef; source SHA 6dfe84ee16e22e1e856cc6574588e371108e7315832d406aecde97b12a17b0f0 and git diff -U10 SHA 80288451563b0dec864ac6ca99f88c9e96ad6ca007c91cfa405941cfb3229766. Canonical source/index were never changed by review. The later accepted-action allocator marking delta is excluded and requires separate review after this receipt.",
+      "Full deterministic scope: 1318 changed lines, 335 executable non-test lines, size_band large, hard_block_full true. All 23 frozen paths staged only in private snapshot index; no untracked paths excluded within this snapshot.",
+      "Sparse snapshot: 157 unchanged baseline UTF-8 text source/doc files materialized plus 23 frozen paths; payload/config/evidence/VM/tool/SDK paths omitted. Git is shallow at base; earlier line history unavailable. Snapshot is not a build/runtime workspace. tools/lab/lab.py integration behavior cannot be traced from this snapshot.",
+      "AGENTS.md instruction-file fallback governs all 23 paths; no CODING_STANDARDS.md or CLAUDE.md criteria. Active user instructions govern omitted newer user-WIP AGENTS text; only baseline AGENTS materialized. No branch-keyword plan discovered from generic review/live/heap keywords; full product/implementation-unit completeness not claimed.",
+      "Permanent registered-thread cap prevented fresh allocation; no release API exists. Root explicitly released /root/live_region_selection after its original native/sanitizer work was terminal. It authored platform paths and performed correctness here; not independent authored-code corroboration. Its artifact was collected and completed launch stopped before reuse.",
+      "Six remaining selected lenses (project-standards, testing, maintainability, security, performance, reliability) executed as attributed in-dispatch source fallback passes, not independent contexts. Dispatcher authored observe_idle.py and bench_views.py and had prior Cinnamon source-audit context. None of this local agreement grants confidence promotion. No roster coverage dropped; mid-tier desired tiers recorded but followup_task has no model selector and fallback uses session model.",
+      "No reviewer was given another reviewer output before its pass. Fast scan found no urgent P0/P1 candidate; no fast-pass finding emitted. All seven full schema artifacts and compact returns were collected before peer status/fold.",
+      "Independent cross-model pass requested Claude Opus 5.5 at high through fixed claude route. Verified artifact: cross_model_route=claude, model_requested=claude-opus-5-5, effort_requested=high, receipt_supported=true, model_actual=claude-opus-5-5, effort_actual=unverified, independence_verified=true. Outcome folded once; terminal owned job directory deleted. The peer never read canonical/private payload/config inputs.",
+      "Prior Cinnamon primary-source audit is source-only corroboration at /tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823/prior-cinnamon-primary-source-audit.md. It establishes exact installed Cinnamon6.6.4 native area inputs unscaled, in-place Cairo PNG close, and override-redirect actor destruction without fade for this declared version. Do not turn unknown future version, private mount namespace, or assumed fade scenarios into technical residual risks absent supported deployment evidence. Qt/Wayland default dispatch niche facts were not conclusively established by this review; no such defect is alleged.",
+      "Root reported prior native Cinnamon normal/rapid/cancel and exact independent Qt paste passes, platform Dev4/4 ASan4/4 TSan4/4, full Dev25/25 78.07s, cleanup ASan1/1 21.70s TSan1/1 23.53s, ten synthetic local image actions with exact colors and automatic cleanup, post-use75.648MiB reference to66.473MiB, max sampled cleanup750usec. These are parent-provided prior evidence, not independently rerun or certified by source review; private evidence/results excluded.",
+      "Canonical observe_idle/bench_views wrappers were only compiled/help checked and not runtime revalidated. Live-outline benchmark driver compiled only, physical workload pending at freeze. Source review does not certify these or any graphical/memory measure. 40 MiB target and full product/graphical requirements remain open.",
+      "Root later reported a three-line glibc pending mark after validated active_.insert plus first-cancel test red/green and full Dev25/25, ASan/TSan operations receipts; those source bytes and results are outside this original frozen review. Preserve attribution; do not pretend original receipt reviewed the correction.",
+      "Root has now released terminal /root/memory_late_sdk_module for a bounded non-SDK validator turn. It authored only separate SDK work, not these 23 paths. Existing context is reused, not newly allocated or fresh independence. Source only; product builds/tests/lab activity paused during parent physical measurements.",
+      "The pending validator was administratively interrupted by the model switch before writing a verdict. The already selected non-origin SDK-author handle resumed the same bounded source-only turn; no finished lens or terminal peer job was restarted. Its verdicts arrived within the resumed 15-minute bound. Reused context is explicitly recorded and grants no fresh-allocation independence claim.",
+      "Cross-model adversarial pass folded once from verified fixed claude route: requested claude-opus-5-5 at high; receipt_supported=true, model_actual=claude-opus-5-5, effort_actual=unverified, independence_verified=true. Terminal peer job directory removed.",
+      "Merge inspected all seven full reviewer artifacts and the folded adversarial-claude artifact, hydrated source detail before mechanics, and ran the prescribed helper for schema checks, conservative routing, confidence filtering and stable numbering. Three mechanics passes preserved the collected raw inputs and source attribution; no semantic duplicate or confidence promotion was added.",
+      "Mechanical outcome: two primary findings, zero pre-existing findings, three distinct anchor-50 candidates suppressed, zero malformed findings/returns, first_evidence_backfilled=0 and zero missing-quote demotions. One retained peer error-branch quotation was replaced with the complete verified source line; its incorrect scheduling line reference was corrected to line 54.",
+      "Two anchor-50 generic/non-composited X11 defect claims were not admitted: the available scoped standards and intent establish declared-compositor gates, not the peer-assumed i3/XFCE deployment matrix. Proposed frozen-frame or timer fallbacks also do not implement the requested live-current-pixel behavior. These rejected claims are not recycled as technical residual risks.",
+      "One anchor-50 observer claim was admitted only as a measurement-boundary caveat, not proof of activation or a failed physical run. Mode-aware soft-bucket demotions=1. Speculation about future Cinnamon writers/property changes, private mount namespaces, scaled native area inputs, assumed selector fades and healthy-server sync stalls was discarded; exact installed-version audit or lack of evidenced deployment conditions prevents admission.",
+      "Peer teardown prose overlaps finding #1 but lacks a structured quote-anchored peer finding; it was not used to promote confidence or skip validation. The peer-only allocator finding likewise has no ordinary structured corroborating finding. Validator shortcut-skipped=0; both remaining actionable findings are selected in one severity/stable-number ordered batch.",
+      "No discovered plan was supplied in finish-input.json, so settlement suppression was not evaluated. Two unrelated fix paths do not form a meaningful multi-finding group under grouping:auto; triage_groups remains empty.",
+      "The later accepted-action allocator marking correction and its tests are outside this original frozen source/diff. Their reported existence does not erase finding #2 or certify that correction; a separate delta review must own that conclusion.",
+      "Merge-stage record: This leaf owns only Stage 5 and Stage 5b steps 1-3. It has not validated candidates, applied fixes, reported a verdict, operated the peer lifecycle, or changed source/index/build/runtime state.",
+      "Independence metadata repair: finding #1 retains reviewer testing but independent_reviewers=[] because testing was an in-dispatch fallback pass in the shared dispatcher context. None of the six in-dispatch personas qualifies as independent corroboration. Severity, confidence, content, numbering and validator selection are unchanged; independence_verified=true for adversarial-claude remains intact.",
+      "Report-stage Stage 5b classifications were made before reading the verdict file: #1 is a conditional teardown-control-flow claim, not destructive data loss or authorization; #2 is a missed allocator optimization trigger, not allocation/index/lifetime memory safety. Both protected_subject classifications are null, matching the validator.",
+      "One deterministic two-finding validator batch returned valid mapped verdicts within the resumed 15-minute bound: confirmed=1 (#2), unresolved=1 (#1), rejected=0, malformed=0, failed=0, shortcut-skipped=0. Incidence was not measured. The administrative interruption/reuse limitation is disclosed in the dispatch record.",
+      "Finding #1 is unprotected P2 and therefore leaves primary/actionable findings under Stage 5b step 5; it is neither disproven nor confirmed. The missing tools/lab/lab.py contract leaves its exception precondition unvalidated. Finding #2 retains stable number 2, P3, confidence 75 and its original action route, with the unmeasured-incidence validation reason. No protected-subject reclassification or degraded P0/P1 gate occurred.",
+      "Stage 5c was skipped because mode:agent is report-only and apply_local=false. No source/index changes, product builds/tests, runtime/UI/VM operations, private inputs, new agents or peer lifecycle actions were performed by the report leaf.",
+      "The report leaf reuses the platform-author, correctness and merge context; it provides no fresh or independent authored-code corroboration. No local fallback persona is independent corroboration. Adversarial-claude retains its verified serving-family independence. The later cancellation marking delta was not read or included in this receipt."
+    ]
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-122340-af497823",
+  "run_id": "20261008-122340-af497823"
+}

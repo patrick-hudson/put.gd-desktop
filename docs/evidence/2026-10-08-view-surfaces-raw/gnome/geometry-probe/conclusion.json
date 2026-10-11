@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T23:00:31.030137+00:00",
+  "result": "Normal geometry loss reproduces identically in plain QWidget and frozen001b RetainedWindow on the same native GNOME Wayland session. No candidate-specific geometry difference established.",
+  "steps": [
+    "show normal640x480",
+    "showMaximized",
+    "close",
+    "show",
+    "showNormal"
+  ],
+  "timing": "Each action settles1200ms, logs logical/native state, remains3500ms for independent QMP frame",
+  "qt": "6.10.2 distro Widgets/Test",
+  "normalBefore": [
+    640,
+    480
+  ],
+  "maximizedClient": [
+    1213,
+    730
+  ],
+  "normalAfter": [
+    1211,
+    728
+  ],
+  "normalGeometryBeforeUnmaximizeBoth": [
+    0,
+    0,
+    640,
+    480
+  ],
+  "visibleStateComparisons": [
+    {
+      "stage": "normal-before",
+      "differences": {}
+    },
+    {
+      "stage": "maximized-before-close",
+      "differences": {}
+    },
+    {
+      "stage": "closed",
+      "differences": {
+        "nativeGeometry": {
+          "plain": [
+            0,
+            0,
+            1213,
+            730
+          ],
+          "retained": null
+        },
+        "nativeState": {
+          "plain": 2,
+          "retained": null
+        }
+      }
+    },
+    {
+      "stage": "reopened-maximized",
+      "differences": {}
+    },
+    {
+      "stage": "normal-restored",
+      "differences": {}
+    }
+  ],
+  "closedResources": {
+    "plain": {
+      "backingStore": true,
+      "nativeExists": true
+    },
+    "retained": {
+      "backingStore": false,
+      "nativeExists": false
+    }
+  },
+  "witnessReview": "All10 QMP frames reviewed in labeled comparison; both visibly normal initially, maximized before/after close, desktop while closed, and nearly workarea-sized when normal restored. Original full-resolution images retained.",
+  "limits": [
+    "Independent native Qt helper control, not an installed baseline product replay.",
+    "Geometry x/y values from Qt under Wayland are not global desktop positions; QMP frames independently establish placement.",
+    "This comparison uses QWidget showNormal; installed app observation used compositor Alt+F10. Both show the same failure to return to original size, but no upstream component blame or fix is asserted."
+  ],
+  "residentUnchanged": true,
+  "probeCommandsRecordedIn": "results.json",
+  "probeBinarySha256": "5da1f69f7a7792d7cbf3a9913b08e34bf0c837b15350115c0ee789ecbff54005"
+}

@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "profile": "gnome-wayland",
+  "scenario": "region-cancel-escape",
+  "clipboardClient": "qt",
+  "destination": "local",
+  "runningApp": {
+    "pid": 2775,
+    "startTicks": 4592,
+    "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+  },
+  "runnerSha256": "4e688dd6fab5f766a8274dc76022162f80f0cb29334160be61fd4f0c64a5c6ee",
+  "hotkeys": {
+    "region": {
+      "shortcut": "Ctrl+Shift+1",
+      "keys": [
+        "ctrl",
+        "shift",
+        "1"
+      ]
+    },
+    "window": {
+      "shortcut": "Ctrl+Shift+2",
+      "keys": [
+        "ctrl",
+        "shift",
+        "2"
+      ]
+    },
+    "desktop": {
+      "shortcut": "Ctrl+Shift+3",
+      "keys": [
+        "ctrl",
+        "shift",
+        "3"
+      ]
+    },
+    "clipboard": {
+      "shortcut": "Ctrl+Shift+4",
+      "keys": [
+        "ctrl",
+        "shift",
+        "4"
+      ]
+    }
+  },
+  "displayLayout": [
+    {
+      "height": 800,
+      "name": "Virtual-1",
+      "nativeHeight": 800,
+      "nativeWidth": 1280,
+      "rotation": 2,
+      "scale": 1,
+      "width": 1280,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "qtVersion": "6.10.2",
+  "acceleration": "kvm",
+  "goldenSha256": "ffb4aecd868da250b091c1ae9759552b71cfd3ffed12995b56560ace8f8602ad",
+  "timingSeconds": {
+    "keyHold": 0.05,
+    "focusPoll": 0.1,
+    "focusAttemptLimit": 2,
+    "clipboardSourceSettle": 0.3,
+    "selectorSettle": 0.5,
+    "operationPoll": 0.2
+  },
+  "selection": {
+    "fixtureOffset": {
+      "x": 30,
+      "y": 30
+    },
+    "width": 80,
+    "height": 60,
+    "start": {
+      "x": 383,
+      "y": 255
+    },
+    "end": {
+      "x": 463,
+      "y": 315
+    },
+    "inputViewport": {
+      "width": 1280,
+      "height": 800
+    }
+  },
+  "timeoutSeconds": 90,
+  "replayCommand": [
+    "/usr/bin/python3",
+    "tools/lab/lab.py",
+    "run",
+    "--run",
+    "<disposable-run>",
+    "--scenario",
+    "region-cancel-escape",
+    "--clipboard-client",
+    "qt",
+    "--timeout",
+    "90",
+    "--keep"
+  ],
+  "package": {
+    "sha256": "10d9c0023b71e40b66ffa714fefe3b923ba38a39b915ff83b48206943228f974",
+    "filename": "putgd_0.1.0_amd64.deb",
+    "installedBinarySha256": {
+      "/usr/bin/putgd": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3",
+      "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+      "/usr/bin/putgd-cli": "41a0542166faf4eb0afc3627f1ecf262a6440ac63e8fa2088e6c226d93370c85",
+      "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+    }
+  },
+  "independentFixtureGeometry": {
+    "x": 353,
+    "y": 225,
+    "width": 640,
+    "height": 320
+  },
+  "independentWindowFrame": {
+    "x": 342,
+    "y": 176,
+    "width": 662,
+    "height": 480
+  }
+}

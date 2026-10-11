@@ -1,0 +1,7 @@
+[1/7] cd /home/lab/putgd-u11-97ca3a521714/source/build/release && /usr/bin/cmake -DSOURCE_DIR=/home/lab/putgd-u11-97ca3a521714/source -DOUTPUT_DIR=/home/lab/putgd-u11-97ca3a521714/source/build/release/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT=97ca3a521714e2717cedc1139976130627bfb8a8 -DSUPPLIED_TREE=888460466ff1d240bd8e3c61189f36f407fb3485 -DSUPPLIED_COUNT=41 -P /home/lab/putgd-u11-97ca3a521714/source/cmake/GenerateBuildInfo.cmake
+CPack: Create package using DEB
+CPack: Install projects
+CPack: - Install project: putgd []
+CPack: Create package
+CPackDeb: - Generating dependency list
+CPack: - package: /home/lab/putgd-u11-97ca3a521714/packages-recovery/putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb generated.

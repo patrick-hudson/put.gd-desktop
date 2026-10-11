@@ -1,0 +1,15 @@
+{
+  "command": [
+    "python3",
+    "/home/lab/putgd-lab/u11-mapping-after-sample.py",
+    "--results",
+    "/home/lab/putgd-lab/u11-memory-post-native-97ca3a5/results.json",
+    "--bench-idle",
+    "/home/lab/putgd-lab/u11-bench-idle.py",
+    "--bench-idle-sha256",
+    "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "--output",
+    "/home/lab/putgd-lab/u11-resident-mappings.json"
+  ],
+  "scope": "Separate post-interval attribution only"
+}

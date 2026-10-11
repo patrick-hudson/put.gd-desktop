@@ -1,0 +1,18 @@
+{
+  "timestampUtc": "2026-10-08T20:58:44.980354+00:00",
+  "scope": "Host namespace verification of requested obsolete VM PIDs",
+  "oldVms": [
+    {
+      "pid": 1794904,
+      "processPresent": false
+    },
+    {
+      "pid": 1691093,
+      "processPresent": false
+    },
+    {
+      "pid": 1673704,
+      "processPresent": false
+    }
+  ]
+}

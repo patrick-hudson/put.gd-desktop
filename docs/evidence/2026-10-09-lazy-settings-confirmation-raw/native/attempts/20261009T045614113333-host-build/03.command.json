@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "dev",
+    "-R",
+    "^(version_contract|version_integration|gui_version|gui_tray|ui_split_services_integration)$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/host/dev.xml"
+  ],
+  "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T04:56:42.892965+00:00"
+}

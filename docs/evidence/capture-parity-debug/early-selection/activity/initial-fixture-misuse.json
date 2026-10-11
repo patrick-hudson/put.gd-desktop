@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "scope": "First new-test setup error, not product behavior evidence",
+  "test": "narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines",
+  "exitCode": 139,
+  "signal": "SIGSEGV",
+  "sourceEmptyJUnitSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceEmptyJUnitBytes": 0,
+  "sourceTextSha256": "25189911038b9776ae2c0eb27ec1a9dee0434ef2c92e02fb9bddd2a472a3457b",
+  "textExported": false,
+  "correction": "The test cached a QTreeWidgetItem while asynchronous operation refresh replaced rows. Resolve the current row inside each QTRY condition, then observe the expected missing-layout red assertion before editing production.",
+  "acceptance": false
+}

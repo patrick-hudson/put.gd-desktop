@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "scp",
+    "-q",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+    "-P",
+    "22234",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/source.json",
+    "lab@127.0.0.1:/home/lab/putgd-ui-refinement-nativecore-exp001-c49-cross/source.json"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T08:45:33.891242+00:00"
+}

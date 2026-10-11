@@ -1,0 +1,1186 @@
+{
+  "backtraceGraph" : 
+  {
+    "commands" : 
+    [
+      "add_test"
+    ],
+    "files" : 
+    [
+      "/home/lab/putgd-u11-97ca3a521714/source/CMakeLists.txt"
+    ],
+    "nodes" : 
+    [
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 204,
+        "parent" : 0
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 212,
+        "parent" : 2
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 221,
+        "parent" : 4
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 229,
+        "parent" : 6
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 234,
+        "parent" : 8
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 237,
+        "parent" : 10
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 240,
+        "parent" : 12
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 249,
+        "parent" : 14
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 254,
+        "parent" : 16
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 262,
+        "parent" : 18
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 264,
+        "parent" : 20
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 268,
+        "parent" : 22
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 277,
+        "parent" : 24
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 281,
+        "parent" : 26
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 287,
+        "parent" : 28
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 292,
+        "parent" : 30
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 298,
+        "parent" : 32
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 304,
+        "parent" : 34
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 326,
+        "parent" : 36
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 332,
+        "parent" : 38
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 336,
+        "parent" : 40
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 341,
+        "parent" : 42
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 345,
+        "parent" : 44
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 351,
+        "parent" : 46
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 351,
+        "parent" : 48
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 351,
+        "parent" : 50
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 351,
+        "parent" : 52
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 351,
+        "parent" : 54
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 362,
+        "parent" : 56
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 362,
+        "parent" : 58
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 362,
+        "parent" : 60
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 370,
+        "parent" : 62
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 379,
+        "parent" : 64
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 384,
+        "parent" : 66
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 393,
+        "parent" : 68
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 393,
+        "parent" : 70
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 393,
+        "parent" : 72
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 405,
+        "parent" : 74
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 412,
+        "parent" : 76
+      },
+      {
+        "file" : 0
+      },
+      {
+        "command" : 0,
+        "file" : 0,
+        "line" : 418,
+        "parent" : 78
+      }
+    ]
+  },
+  "kind" : "ctestInfo",
+  "tests" : 
+  [
+    {
+      "backtrace" : 1,
+      "command" : 
+      [
+        "/usr/bin/cmake",
+        "-DREPO_ROOT=/home/lab/putgd-u11-97ca3a521714/source",
+        "-DTEST_ROOT=/home/lab/putgd-u11-97ca3a521714/source/build/dev/Testing/version-contract-Debug",
+        "-P",
+        "/home/lab/putgd-u11-97ca3a521714/source/tests/cmake/version_contract.cmake"
+      ],
+      "name" : "version_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 90.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 3,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_kde_ownership"
+      ],
+      "name" : "kde_ownership_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 5,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_ui_split_services"
+      ],
+      "name" : "ui_split_services_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 45.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 7,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_ui_process"
+      ],
+      "name" : "ui_process_integration",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 9,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_ui_endpoints"
+      ],
+      "name" : "ui_endpoints_integration",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 11,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_ui_control"
+      ],
+      "name" : "ui_control_integration",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 13,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_session_client"
+      ],
+      "name" : "session_client_integration",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 15,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_version"
+      ],
+      "name" : "version_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 17,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_gui_application"
+      ],
+      "name" : "gui_application",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 19,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_gui_tray"
+      ],
+      "name" : "gui_tray",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 21,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_gui_version"
+      ],
+      "name" : "gui_version",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 23,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_geometry"
+      ],
+      "name" : "geometry_contract",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 25,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-a",
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_ui_native_lifecycle"
+      ],
+      "name" : "ui_native_lifecycle_integration",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 90.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 27,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/usr/bin/xvfb-run",
+        "-a",
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_x11"
+      ],
+      "name" : "x11_isolated",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=xcb"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 29,
+      "command" : 
+      [
+        "/usr/bin/dbus-run-session",
+        "--",
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_keychain_backend"
+      ],
+      "name" : "keychain_backend_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 31,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_keychain"
+      ],
+      "name" : "keychain_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 33,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_collision_policy"
+      ],
+      "name" : "collision_policy_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 120.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 35,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_s3_delete"
+      ],
+      "name" : "s3_delete_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 120.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 37,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_s3_module"
+      ],
+      "name" : "s3_module_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 120.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 39,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_s3"
+      ],
+      "name" : "s3_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 120.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 41,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_public_url"
+      ],
+      "name" : "public_url",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 43,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_build_contract"
+      ],
+      "name" : "build_contract",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 45,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_sdk_contract"
+      ],
+      "name" : "sdk_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 47,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_payload"
+      ],
+      "name" : "payload_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 49,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_archive"
+      ],
+      "name" : "archive_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 51,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_upload_naming"
+      ],
+      "name" : "upload_naming_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 53,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_history"
+      ],
+      "name" : "history_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 55,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_operations"
+      ],
+      "name" : "operations_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 57,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_storage_contract"
+      ],
+      "name" : "storage_contract_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 59,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_cli"
+      ],
+      "name" : "cli_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 61,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_config_reload"
+      ],
+      "name" : "config_reload_integration",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 63,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_gnome_bridge"
+      ],
+      "name" : "gnome_bridge_contract",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 65,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_kwin_transfer"
+      ],
+      "name" : "kwin_transfer_contract",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 67,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_settings"
+      ],
+      "name" : "settings_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 30.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 69,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_gui_settings"
+      ],
+      "name" : "gui_settings",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 71,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_gui_operations_view"
+      ],
+      "name" : "gui_operations_view",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 73,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_gui_history_view"
+      ],
+      "name" : "gui_history_view",
+      "properties" : 
+      [
+        {
+          "name" : "ENVIRONMENT",
+          "value" : 
+          [
+            "QT_QPA_PLATFORM=offscreen"
+          ]
+        },
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 75,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_login_startup"
+      ],
+      "name" : "login_startup_contract",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 77,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_local_ipc"
+      ],
+      "name" : "local_ipc_contract",
+      "properties" : 
+      [
+        {
+          "name" : "TIMEOUT",
+          "value" : 60.0
+        },
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    },
+    {
+      "backtrace" : 79,
+      "command" : 
+      [
+        "/home/lab/putgd-u11-97ca3a521714/source/build/dev/test_ip_address"
+      ],
+      "name" : "ip_address_contract",
+      "properties" : 
+      [
+        {
+          "name" : "WORKING_DIRECTORY",
+          "value" : "/home/lab/putgd-u11-97ca3a521714/source/build/dev"
+        }
+      ]
+    }
+  ],
+  "version" : 
+  {
+    "major" : 1,
+    "minor" : 0
+  }
+}

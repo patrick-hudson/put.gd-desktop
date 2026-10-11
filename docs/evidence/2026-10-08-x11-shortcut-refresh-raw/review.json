@@ -1,0 +1,81 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "scope": {
+    "base": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+    "branch": "",
+    "head_sha": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+    "pr_url": null,
+    "files_changed": 4,
+    "workspace": "/tmp/putgd-x11-review",
+    "patch_sha256": "661560c95cb908f8381161dceb48a44daad5f63cf3e47e3dc42e977d759758ff"
+  },
+  "intent": "Prevent shortcut input loss during MappingNotify refresh by retaining unchanged native grabs, installing missing combinations and then releasing obsolete grabs. Preserve conflict rollback, action precedence and active keyboard handoff; prove the original gap with a real XCB/XTEST barrier.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "adversarial-claude"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": null,
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "During binding changes, obsolete or rejected chords remain grabbed until final cleanup (X11Shortcuts.cpp:60). Input arriving in that narrow interval can be swallowed when dispatch checks the new grab list. This is a bounded reconciliation tradeoff, not loss of an unchanged accepted shortcut; incidence was not measured."
+  ],
+  "testing_gaps": [
+    "The conflict test does not exercise an earlier-sorted action failing after retaining a native combination, followed by a later accepted action claiming that same combination. A focused case would directly cover the cleanup exemption at X11Shortcuts.cpp:60. Source inspection found the current logic preserves it."
+  ],
+  "coverage": {
+    "depth": "focused",
+    "depth_reason": "Small internal ordering/resource reconciliation and test guard changes can fail silently, but introduce no auth, money or public schema boundary; helper reports no full-review floor.",
+    "criteria": [
+      "AGENTS.md"
+    ],
+    "standards": "Checked AGENTS.md as instruction-file fallback governing all four changed paths; no violations found.",
+    "reviewer_agents_dispatched": 0,
+    "validator_ran": false,
+    "not_assessed": [
+      "Separate specialist personas",
+      "Institutional learnings",
+      "Agent-native gaps",
+      "Deployment notes",
+      "Broad product-plan completeness"
+    ],
+    "compound_packs": "None declared; not applied on focused path.",
+    "peer": {
+      "cross_model_route": "claude",
+      "model_requested": "claude-opus-5-5",
+      "effort_requested": "high",
+      "receipt_supported": true,
+      "model_actual": "claude-opus-5-5",
+      "effort_actual": "unverified",
+      "independence_verified": true
+    },
+    "peer_result": "No actionable findings; peer terminal, result verified through runner, job directory deleted.",
+    "evidence": [
+      "Caller-run red.log shows activated=0, expected=1 against original product source; the initial sandbox socket failure is separate.",
+      "Caller-run final-x11-isolated receipt passes one CTest entry with 25 QtTest cases (including setup/cleanup), 0 failures, on Qt 6.4.2, GCC 13.2.0 and Linux Mint 22.3. This is not 25 repeated suite runs.",
+      "All four source/header/test hashes recorded by final-x11-isolated.json match the reviewed snapshot. Patch SHA-256 matches review-snapshot.json.",
+      "Caller-run original diagnostic interposer probe passed after the correction.",
+      "No builds, tests, VM or desktop activity, product/fixture edits or credential reads were performed by this review."
+    ],
+    "limits": [
+      "The original intermittent Qt 6.10.2 VM failure did not record event scheduling, so its exact causality remains unproven.",
+      "Isolated Xvfb demonstrates the input-loss window and correction; it does not establish Cinnamon, GNOME or KDE graphical acceptance.",
+      "No explicit plan selector, PR metadata or branch keywords existed in the detached snapshot; requirements completeness is not claimed."
+    ],
+    "admission_notes": [
+      "The peer\u2019s moved-action dispatch caveat is not an introduced defect: both versions dispatch queued events using the post-bind grab list.",
+      "A speculative future ungrab after the barrier is not a current failure or a required exhaustive mutation test; the existing barrier reproduces the actual removed gap.",
+      "Retained the concrete rejected-action/later-owner coverage opportunity and the narrow retirement timing tradeoff without promoting them to actionable defects."
+    ]
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-175857-1e08cd33",
+  "export_path": "/home/patrick/work/put.gd/work/memory-surfaces/x11-grab-fix/review/20261008-175857-1e08cd33",
+  "run_id": "20261008-175857-1e08cd33"
+}

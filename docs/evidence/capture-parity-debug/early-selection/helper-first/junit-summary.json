@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "85deed76a85ea819b48bcdcea5d0aab14c8363549c714ada6eb4d48c51a9b833",
+  "sourceBytes": 1494,
+  "scope": "Actual helper synthetic Xvfb preparation suite after cleanup of pending/visible selector state.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "1",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "5",
+    "timestamp": "2026-10-09T14:06:37"
+  },
+  "testcases": [
+    {
+      "name": "capture_preparation_x11",
+      "classname": "capture_preparation_x11",
+      "time": "5.03053",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

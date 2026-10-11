@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "testId": "3e30812142ce413d9a10407780e9012a",
+  "profile": "kde-wayland",
+  "scenario": "region-cancel-zero-area-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 2958,
+    "startTicks": 81226,
+    "sha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": [
+        "Ctrl+Shift+F12"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F12",
+      "state": "bound"
+    },
+    "desktop": {
+      "actual": [
+        "Ctrl+Shift+F11"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F11",
+      "state": "bound"
+    },
+    "region": {
+      "actual": [
+        "Ctrl+Shift+F9"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F9",
+      "state": "bound"
+    },
+    "window": {
+      "actual": [
+        "Ctrl+Shift+F10"
+      ],
+      "bound": true,
+      "requested": "Ctrl+Shift+F10",
+      "state": "bound"
+    }
+  },
+  "independentPaintGeometry": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 320
+  },
+  "independentWindowFrame": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 420
+  },
+  "parameters": "parameters.json",
+  "operationId": "4f52797b-b124-4680-8e49-b76af5d416fc",
+  "operationState": "cancelled",
+  "copyStatus": "no_result",
+  "itemOutcomes": [],
+  "paste": {
+    "ok": true,
+    "expected": {
+      "text": "putgd synthetic clipboard text"
+    },
+    "actual": {
+      "formats": [
+        "text/plain",
+        "text/plain;charset=utf-8"
+      ],
+      "schemaVersion": 1,
+      "text": "putgd synthetic clipboard text"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+    "sha256": "66e5bd9b9e22cb23ac3c3dc1d40e6cbe68d66c2f0e51cd96c92f3c106a55f156"
+  },
+  "elapsedSeconds": 8.876879539981019,
+  "evidenceDirectory": "tests/3e30812142ce413d9a10407780e9012a"
+}

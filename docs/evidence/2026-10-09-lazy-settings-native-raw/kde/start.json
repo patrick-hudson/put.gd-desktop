@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-09T04:38:24.984232+00:00",
+  "resident": {
+    "pid": 212976,
+    "startTicks": 2922997,
+    "sha256": "c949963b19620412f4f9420881a6e01d0d71fae2dbe11609757d4018b81a01ed"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 45,
+    "dirty": true,
+    "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty"
+  },
+  "session": "visible native kde-wayland",
+  "vncPort": 5934
+}

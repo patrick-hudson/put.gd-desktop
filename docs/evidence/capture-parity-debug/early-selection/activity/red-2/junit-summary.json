@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "38f68abd273ca14f5d2182f1beb8bb134054346cbae6748ed09a7370488b15d2",
+  "sourceBytes": 1060,
+  "scope": "Expected missing separate local-state/path line before Activity fix; corrected asynchronous row lookup.",
+  "suite": {
+    "name": "OperationsGui",
+    "timestamp": "2026-10-09T13:59:18",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "1",
+    "errors": "0",
+    "skipped": "0",
+    "time": "15.390"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "OperationsGui",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines",
+      "classname": "OperationsGui",
+      "time": "15.390",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "'rows->topLevelItem(0)->child(0)->text(3).startsWith(\"Saved\\n\")' returned FALSE. ()",
+          "text": ""
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "OperationsGui",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

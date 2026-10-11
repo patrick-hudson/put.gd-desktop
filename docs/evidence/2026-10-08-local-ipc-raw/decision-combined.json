@@ -1,0 +1,21 @@
+{
+  "decision": "keep",
+  "eligible": true,
+  "next_measurement": "none",
+  "target_reached": false,
+  "improved_objectives": [
+    "peakSampledRssBytes"
+  ],
+  "violated_objectives": [],
+  "comparisons": {
+    "peakSampledRssBytes": {
+      "verdict": "improved",
+      "delta": 6107136,
+      "relative": 0.11197897108524221,
+      "violated": false
+    }
+  },
+  "primary_delta": 6107136,
+  "rank_score": 0.11197897108524221,
+  "reason": "improved peakSampledRssBytes without violating other required objectives"
+}

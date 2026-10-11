@@ -1,0 +1,241 @@
+{
+  "coldReference": {
+    "schemaVersion": 1,
+    "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "version": "0.1.1-dev.45+g9d142919e5e6",
+    "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+    "parameters": {
+      "warmupSeconds": 5,
+      "seconds": 300,
+      "rssSamplingIntervalSeconds": 30,
+      "ownedWindowPollingSeconds": 1
+    },
+    "command": [
+      "python3",
+      "tests/performance/observe_idle.py",
+      "--app",
+      "work/view-startup-latency/reference45/source/build/release/putgd",
+      "--cli",
+      "work/view-startup-latency/reference45/source/build/release/putgd-cli",
+      "--output",
+      "/tmp/putgd-cold45-20261009",
+      "--seconds",
+      "300"
+    ],
+    "appSha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+    "cliSha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+    "peakRssBytes": 47620096,
+    "finalRssBytes": 47620096,
+    "finalMappingTotals": {
+      "rssBytes": 47620096,
+      "pssBytes": 26744832,
+      "privateBytes": 24186880
+    },
+    "idleCpuPercentOneCore": 0.0033316960040275906,
+    "coldIdleUninterrupted": true,
+    "operationCount": 0,
+    "legacyBudgetPassed": true,
+    "target40MiBReached": false,
+    "rawDirectory": "2026-10-09-cold-reference45-raw",
+    "files": [
+      {
+        "path": "results.json",
+        "sha256": "da16928ed45447c2ce92799c0ff8d04f67270756858b1d9a5817cbf63486f4d9",
+        "bytes": 39036
+      },
+      {
+        "path": "progress.json",
+        "sha256": "8b8c349262f14f07a7986bdf295d19ef6d717aa50b5d0f2fa00668b74ab7ac62",
+        "bytes": 20218
+      },
+      {
+        "path": "window-observations.json",
+        "sha256": "ee78c7437da7d8849687d4a48dfbdf26683a5b4e5f002c177c4df29d253ba2de",
+        "bytes": 2136
+      },
+      {
+        "path": "source-provenance.json",
+        "sha256": "cda2310aab0a28a3ae5aa8a2fd4b8942c290f8e99d1a185c4ee3fe6c891a14b8",
+        "bytes": 1019
+      },
+      {
+        "path": "bench_idle.py",
+        "sha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+        "bytes": 7209
+      },
+      {
+        "path": "observe_idle.py",
+        "sha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "bytes": 10143
+      }
+    ],
+    "limitations": [
+      "One fresh cold baseline, not a paired optimization saving",
+      "Build retains source45 identity after later documentation commits",
+      "RSS and smaps mapping totals use different snapshot mechanisms",
+      "No tray rendering or native function claim from this idle run",
+      "No credentials/config/history/resident stderr exported"
+    ]
+  },
+  "initializationLocator": {
+    "schemaVersion": 1,
+    "classification": "Cinnamon initialization locator only; no working tray, resident or product saving",
+    "workload": {
+      "idleSeconds": 5,
+      "order": [
+        "core",
+        "gui",
+        "widgets",
+        "widgets",
+        "gui",
+        "core"
+      ],
+      "runsPerType": 2
+    },
+    "observations": {
+      "cinnamon-constructor-01": {
+        "core": {
+          "rssBytes": 10498048.0,
+          "pssBytes": 3935232.0,
+          "privateBytes": 3305472.0
+        },
+        "gui": {
+          "rssBytes": 39221248.0,
+          "pssBytes": 19969024.0,
+          "privateBytes": 17545216.0
+        },
+        "widgets": {
+          "rssBytes": 41955328.0,
+          "pssBytes": 22702592.0,
+          "privateBytes": 20297728.0
+        }
+      },
+      "cinnamon-session-bus-01": {
+        "core": {
+          "rssBytes": 11890688.0,
+          "pssBytes": 5111296.0,
+          "privateBytes": 4476928.0
+        },
+        "gui": {
+          "rssBytes": 39133184.0,
+          "pssBytes": 19916800.0,
+          "privateBytes": 17504256.0
+        },
+        "widgets": {
+          "rssBytes": 41990144.0,
+          "pssBytes": 22722048.0,
+          "privateBytes": 20316160.0
+        }
+      }
+    },
+    "limitations": [
+      "No tray/menu/notifications/clipboard/shortcuts/capture/operation engine present",
+      "Bare QCore is not a product footprint estimate",
+      "Native theme/fonts remain enabled for Gui/Widgets; no Qt override flags",
+      "Memory includes constructor and settled snapshots; not a 300sec budget or paired product win"
+    ],
+    "rawDirectory": "2026-10-09-native-initialization-raw",
+    "files": [
+      {
+        "path": "cinnamon-constructor-01/receipt.json",
+        "sha256": "cff0cbb8d733fcc7de926b93d94b2eedb9e400dde3fdbc93afcaaf28a7ff6174",
+        "bytes": 127095
+      },
+      {
+        "path": "cinnamon-constructor-01/01-core.stdout.jsonl",
+        "sha256": "444aac11aae6e7f172741a6a003fa77be3260a0b8b3b15b2ab7071688da94790",
+        "bytes": 412
+      },
+      {
+        "path": "cinnamon-constructor-01/02-gui.stdout.jsonl",
+        "sha256": "7564dbbab9f0511f2e9a21cf76380b8944192f2b30996743dea2bc31250b9e6e",
+        "bytes": 412
+      },
+      {
+        "path": "cinnamon-constructor-01/03-widgets.stdout.jsonl",
+        "sha256": "27bdb1b43756b76be76642195f9b4326a1fe8da847ab9a306858b9a12c291b98",
+        "bytes": 406
+      },
+      {
+        "path": "cinnamon-constructor-01/04-widgets.stdout.jsonl",
+        "sha256": "c1738c01e271186d6cba1fad2c6472bc3e21a2aa82e7e4697e27613022594971",
+        "bytes": 406
+      },
+      {
+        "path": "cinnamon-constructor-01/05-gui.stdout.jsonl",
+        "sha256": "008d751ef185ee7f4dd1e3a84da816de1a9d2f5c90ad002c5355b16e1b914964",
+        "bytes": 412
+      },
+      {
+        "path": "cinnamon-constructor-01/06-core.stdout.jsonl",
+        "sha256": "9e54a8758dc39be71cb3e70f764da33ed9bd11767494de8759f3b1af8d4e97db",
+        "bytes": 412
+      },
+      {
+        "path": "cinnamon-session-bus-01/receipt.json",
+        "sha256": "5dd99e21c2f43d6db011033bcca54d814d3e9cb17ae4a1cab3fdd4eca1203764",
+        "bytes": 131563
+      },
+      {
+        "path": "cinnamon-session-bus-01/01-core.stdout.jsonl",
+        "sha256": "48bb7dfc773110404442d9936a1b485d85b946370a3755c3473af5baef81f817",
+        "bytes": 626
+      },
+      {
+        "path": "cinnamon-session-bus-01/02-gui.stdout.jsonl",
+        "sha256": "3f7c44c58040e7d8e153ee72641ddf827da3f1606ed9fad79e518fa138c9600a",
+        "bytes": 625
+      },
+      {
+        "path": "cinnamon-session-bus-01/03-widgets.stdout.jsonl",
+        "sha256": "942ab1f51243c48212226cdee03518a13e255011644afca219f655b692dbc8a6",
+        "bytes": 616
+      },
+      {
+        "path": "cinnamon-session-bus-01/04-widgets.stdout.jsonl",
+        "sha256": "788f26103280fbc65dcf58fccc8a067c698dc0c242511e482b8f4a19237c9a53",
+        "bytes": 616
+      },
+      {
+        "path": "cinnamon-session-bus-01/05-gui.stdout.jsonl",
+        "sha256": "b709bbeeab902e635ecf059d23ee51f195604f672c3acd543e9efd5847e7bb16",
+        "bytes": 625
+      },
+      {
+        "path": "cinnamon-session-bus-01/06-core.stdout.jsonl",
+        "sha256": "729e19f3f9a0f4b82f39fdb851a8f44ac847f446b0e33ddf625f3840a57e2a72",
+        "bytes": 626
+      },
+      {
+        "path": "CMakeLists.txt",
+        "sha256": "fd887b3e39f333c4bf40567c901936b721e60daae08a7cfec3e9dcd483a07b84",
+        "bytes": 828
+      },
+      {
+        "path": "CMakePresets.json",
+        "sha256": "ec165d1e27143f6b359b273b23105f71ff6d7a940fa065544724dd43c1031b81",
+        "bytes": 280
+      },
+      {
+        "path": "locator.cpp",
+        "sha256": "16d1e9f484b5e444eb9203d8c2b16d9f392c8b1a482b3c823ad4bb81c5c967f3",
+        "bytes": 2956
+      },
+      {
+        "path": "run.py",
+        "sha256": "82747060f130e72f716c17a1a28debd93ce188f6722059e1d944d81d2630df8a",
+        "bytes": 9945
+      },
+      {
+        "path": "README.md",
+        "sha256": "4773ea282121a2aa1af1607a5a0b3458e234eae86902a1f184ddf0201a5a5ec1",
+        "bytes": 5530
+      },
+      {
+        "path": "build-receipt.json",
+        "sha256": "0900d04435f095582c9036e78e5eb29f89444142b371d331668aaced70d2fdf6",
+        "bytes": 984
+      }
+    ]
+  }
+}

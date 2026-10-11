@@ -1,0 +1,18 @@
+{
+  "status": "resolved",
+  "reviewFinding": "Failed reinstall leaves previous receipt eligible",
+  "redBeforeFix": "New install-command regression failed twice, upload and verification failure subcases; receipt remained",
+  "fix": "Remove receipt before put/apt, recreate only after installed hash verification",
+  "verification": "11/11 host tests pass; CI body executed locally and saves exit/log; final graphical matrices recorded separately",
+  "additionalFix": "CI protocol step runs with always() and creates report directory even if core test step fails",
+  "limits": [
+    "Main-binary guard does not alone attest every loaded library; wave uses fresh overlays and separate module/helper hashes",
+    "No mocked end-to-end late-identity-change fixture scenario; actual cancellation successes exercise finally path",
+    "Cloud/history restart acceptance remains a separate existing gate"
+  ],
+  "files": {
+    "tools/lab/lab.py": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+    "tests/desktop/test_lab.py": "4fa2277f7ca9e05218b2282ea0094f6eadaa15c39b65c187a5d689b901a6d7ae",
+    ".github/workflows/build.yml": "e3036fb29e993fd4c9664f6d1ad5712b1072b2d8c13317b4c544dc0c1d3556ae"
+  }
+}

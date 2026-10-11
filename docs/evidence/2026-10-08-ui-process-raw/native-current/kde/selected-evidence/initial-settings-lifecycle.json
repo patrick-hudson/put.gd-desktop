@@ -1,0 +1,22 @@
+{
+  "timestampUtc": "2026-10-09T01:28:17.568262+00:00",
+  "mode": "closed",
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "ok": true,
+  "ui": {
+    "checkpointBytes": 3027,
+    "lastExit": {
+      "code": 0,
+      "generation": 1,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "remainingHelpers": [],
+  "finishedUtc": "2026-10-09T01:28:18.699126+00:00"
+}

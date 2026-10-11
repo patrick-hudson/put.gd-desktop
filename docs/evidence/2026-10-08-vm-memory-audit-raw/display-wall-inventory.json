@@ -1,0 +1,59 @@
+[
+  {
+    "id": "7998af592fdfe28a268d",
+    "pid": 1673704,
+    "name": "gnome-001",
+    "available": true,
+    "runDirectory": "work/lab-runs/gnome-001",
+    "declaredLab": {
+      "schemaVersion": 1,
+      "id": "39842e57-15fa-4ce5-b801-8392191052f1",
+      "profile": "gnome-wayland",
+      "pid": 1673704,
+      "guest_user": "lab",
+      "ssh_port": 22222,
+      "vnc_display": 22,
+      "acceleration": "kvm"
+    },
+    "declaredVncPort": 5922,
+    "stateSha256": "59bef8ef07f5f19a81c0e98c9293c1250f53805eecd6d2ccf45dabe251207036"
+  },
+  {
+    "id": "677c7619ce0c99c32049",
+    "pid": 1691093,
+    "name": "kde-001",
+    "available": true,
+    "runDirectory": "work/lab-runs/kde-001",
+    "declaredLab": {
+      "schemaVersion": 1,
+      "id": "5d8ae43f-5552-4eba-b4c2-f077975b84fe",
+      "profile": "kde-wayland",
+      "pid": 1691093,
+      "guest_user": "lab",
+      "ssh_port": 22224,
+      "vnc_display": 24,
+      "acceleration": "kvm"
+    },
+    "declaredVncPort": 5924,
+    "stateSha256": "acf71db5b9229c88d52f4e98d35741f0e121a4358f75f087f736c421cbe899d8"
+  },
+  {
+    "id": "fd9bdecde74b6f8e2a26",
+    "pid": 1794904,
+    "name": "fresh-cinnamon-u9-20261008",
+    "available": true,
+    "runDirectory": "work/lab-runs/fresh-cinnamon-u9-20261008",
+    "declaredLab": {
+      "schemaVersion": 1,
+      "id": "5984bcb6-b56b-4b1d-9f92-274defa6127e",
+      "profile": "cinnamon-x11",
+      "pid": 1794904,
+      "guest_user": "lab",
+      "ssh_port": 22235,
+      "vnc_display": 35,
+      "acceleration": "kvm"
+    },
+    "declaredVncPort": 5935,
+    "stateSha256": "63a4a851a0c139980d869053ca4d2bb317c1ddd39e0a5b703d85910217e560f4"
+  }
+]

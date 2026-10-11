@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "d3622dca06182b9bb1e8d810c268240bad6dc06fcffafaba2addf398be524d42",
+  "sourceBytes": 1946,
+  "scope": "Expected failure before early terminal metadata is latched while durable acceptance/acquiring are blocked; four synthetic data rows.",
+  "suite": {
+    "name": "OperationsTest",
+    "timestamp": "2026-10-09T13:59:24",
+    "hostname": "patrick-Precision-5540",
+    "tests": "6",
+    "failures": "4",
+    "errors": "0",
+    "skipped": "0",
+    "time": "20.360"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(escape-before-acceptance)",
+      "classname": "OperationsTest",
+      "time": "10.083",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (source.previews): 0\n   Expected (1)              : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(failure-before-acceptance)",
+      "classname": "OperationsTest",
+      "time": "10.088",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (source.previews): 0\n   Expected (1)              : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(escape-during-acquiring)",
+      "classname": "OperationsTest",
+      "time": "0.129",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (source.previews): 0\n   Expected (1)              : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "earlySelectionTerminalNeverBeginsPixels(failure-during-acquiring)",
+      "classname": "OperationsTest",
+      "time": "0.060",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (source.previews): 0\n   Expected (1)              : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "OperationsTest",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

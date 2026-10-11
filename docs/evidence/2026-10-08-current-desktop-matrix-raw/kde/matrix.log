@@ -1,0 +1,19 @@
+RUN region
+RESULT region True None
+RUN window
+RESULT window True None
+RUN desktop
+RESULT desktop True None
+RUN clipboard-text
+RESULT clipboard-text True None
+RUN clipboard-image
+RESULT clipboard-image True None
+RUN clipboard-files
+RESULT clipboard-files True None
+RUN region-cancel-escape
+RESULT region-cancel-escape True None
+RUN region-cancel-right-click
+RESULT region-cancel-right-click True None
+RUN region-cancel-zero-area
+RESULT region-cancel-zero-area True None
+matrix finished 9 9

@@ -1,0 +1,52 @@
+{
+  "scope": "Unscored boundedsyntheticownedprocesschurn; diagnosticidentitywrapperonlycapturespermissionfailure metadata withoutretry",
+  "rows": [
+    {
+      "cohort": 0,
+      "calls": 219,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 1,
+      "calls": 259,
+      "exitCode": 0,
+      "failure": null,
+      "ownedLiveAfterCleanup": 0
+    },
+    {
+      "cohort": 2,
+      "calls": 119,
+      "exitCode": 0,
+      "failure": {
+        "errorType": "PermissionError",
+        "diagnostics": {
+          "errno": 13,
+          "frames": [
+            {
+              "module": "observe_cold_family",
+              "function": "discover",
+              "line": 156
+            },
+            {
+              "module": "bench_ui_process",
+              "function": "identity",
+              "line": 70
+            }
+          ]
+        }
+      },
+      "ownedLiveAfterCleanup": 0
+    }
+  ],
+  "failuresCaptured": [
+    {
+      "pid": 3488544,
+      "errno": 13,
+      "controlledProcFile": "/proc/3488544/exe",
+      "procExists": false,
+      "statAfterFailure": "task-gone"
+    }
+  ]
+}

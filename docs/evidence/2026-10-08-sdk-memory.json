@@ -1,0 +1,603 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-08",
+  "exportedAt": "2026-10-08T16:47:57.777221+00:00",
+  "scope": "Standalone SDK-module candidate; completed unchanged physical Cinnamon cold idle score. Review/integration/post-use acceptance remain separate.",
+  "state": "Reviewed SDK change kept at cadd9ed and integrated at c4808dd; canonical combined verification complete. Approximately 40 MiB and post-S3/populated-history memory gates remain open.",
+  "source": {
+    "expectedHEAD": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+    "ownedSourceSha256": "bee9b3021dab5aa5d96d1321543d3bda2802ec6f15a0e41ec44c65a2bd6cccdc",
+    "files": {
+      "CMakeLists.txt": "023e2d44f30661b6491bcc0c674bb1df4180826aef0d3ca07f840a84353256e7",
+      "packaging/linux/CMakeLists.txt": "409ad34e4c3caa1f02b07a8bec32397afcbce7f386789ec175f7c95f5be354dd",
+      "src/main.cpp": "f2d21ba631eb98e20deef0adef53765d528835846ace67664229ca71d279db39",
+      "src/storage/s3/S3Driver.cpp": "4354b6d4a3ec11dc4542a984bfc7c8af9a8725c69cc1340d423cf1774f732ae7",
+      "src/storage/s3/S3Driver.h": "188d9fd28552a71c81c8a965b3a77a2eac5d00edf689513f4f657bdd576a2e86",
+      "src/storage/s3/S3Module.cpp": "1494045e3c65c6cf265be6e2fb9c69471bfd2e09ddf72dd4824e2611dbff95ae",
+      "src/storage/s3/S3Module.h": "87558a1e9d21404fae0b47ee2547d279e89d35d9f267cdd035d8e42039ab2cba",
+      "src/storage/s3/S3Provider.cpp": "f84b494d9b16d16d5e92ce8211370d2e5650ef9f3bb45dd1c56e6566948cfca9",
+      "src/storage/s3/S3SdkContext.cpp": "166adb781bcb8ddbe92a31591c594d29388eaf35ce97910f374407bd466759d5",
+      "src/storage/s3/S3SdkContext.h": "63d3095c755b28cf580bd952e7d8b240cc903b4479361d789851ab94e4e6ed66",
+      "src/storage/s3/SdkRuntime.cpp": "1d74ff1f21be361b20ae9c819da30cc2a30af31950190ad567ca7e568b444929",
+      "src/storage/s3/SdkRuntime.h": "ab95fd67b71853fd60636de6f9a402a877aab358f44821312529b139af86e3a4",
+      "tests/fixtures/S3Fixture.h": "239a6819a1d2d3d2778c955c9ad76959e319e254390fc3579b0ba9973b13f211",
+      "tests/integration/test_s3_module.cpp": "8b293915e95b6d0a874cbc727aefdaac47e2794945a41ea8ca924a6169e75137"
+    },
+    "previousOwnedSourceSha256": "2781f290bda3fc3a61a0d7d0fb92332f63dd165a4d53a1d3740163009c27ed06",
+    "simplifiedPaths": [
+      "src/storage/s3/S3Driver.cpp"
+    ]
+  },
+  "build": {
+    "expectedHEAD": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+    "ownedSourceSha256": "bee9b3021dab5aa5d96d1321543d3bda2802ec6f15a0e41ec44c65a2bd6cccdc",
+    "files": {
+      "build/release/putgd": "6d8b8f336748cc5f77adc7372661bcc7b2210edac51fef8926bbd63e609e9382",
+      "build/release/putgd-cli": "d653b7c495bfe6bff54522a5490e1afb59475e573f7859506b88d22c64d3da47",
+      "build/release/libputgd-s3.so": "e0545ef106bc375e94019e1ab7819efcfff7b774478e6bbdbe5a6642af0a0697",
+      "build/release/putgd_0.1.0_amd64.deb": "36e8e7752109e4574d9eb8e5af19f2268fb5f752b117356e884f7df1a5a593a1"
+    }
+  },
+  "protocol": {
+    "seconds": 300,
+    "warmupSeconds": 5,
+    "samplingSeconds": 30,
+    "physicalSession": "Cinnamon X11",
+    "serialPhysicalMeasurements": true,
+    "maxIdleCpuPercentOneCore": 0.5,
+    "maxIdleRssBytes": 104857600
+  },
+  "nativeAppearance": {
+    "userAnswer": "Keep Cinnamon-native dialogs and fonts",
+    "excludedHypothesis": "Skip GTK3 platform theme",
+    "reason": "Public Qt lightweight selection changes desktop font/settings and native dialogs. User chose preservation."
+  },
+  "forecastAsDispatched": {
+    "workload": "unchanged300-second physicalCinnamonX11 coldresident; currentRelease1d4f2ef, no windows/captures/network",
+    "baseline": "CP1:59027456bytes peak /56.29296875MiB",
+    "evidence": "Saved initial smaps:AWS/CRT/s2n3768320bytes RSS; selected curl/OpenSSL1859584bytes; officialSDK threadlifetime mismatch audited. Native GTK/theme retained by explicituserdecision.",
+    "expected_benefit": "About3\u20135.4MiB peakRSS reduction before firstS3 use, assuming AWS mappings disappear and some TLS dependencies are solely SDK-owned; moduleoverhead and duplicatedQt-only code can reduce netbenefit. Does not alone establish40MiB.",
+    "confidence": "Medium for~3.6MiB AWSmap removal; low forTLSincrement andpost-usegain untilmeasured.",
+    "cost_and_risk": "No packages; standardCMakeMODULE/publicQLibrary, privateversionedABI, installRPATH, initialize/drain/destroy/shutdownsamepermanentSDKworker. Moderateprovider/packaginglifecyclechange; retainallconditional/delete/ambiguitytests, newloading/lifetimecontract, full25tests andsanitizers/installedcheck needed."
+  },
+  "reference": {
+    "timestamp": "2026-10-08T16:03:27.998768+00:00",
+    "revision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+    "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+    "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "gates": {
+      "budgetPassed": 1
+    },
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 59027456,
+        "samples": [
+          59027456
+        ]
+      }
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.016656745498515306,
+      "finalRssBytes": 59027456
+    },
+    "measurement": {
+      "rawSha256": "47441dceb0128a7498529377bb2da083838b1ec82e601bf6d578a4c12910d54d",
+      "observerSha256": "06e4f1ac90818550159eb8b62caf5246bfd294d49bf758b85ecd269990fae8ef",
+      "coldIdleUninterrupted": true
+    },
+    "correctness": {
+      "releaseTestsPassed": 25,
+      "releaseTestsSeconds": 51.3,
+      "junit": "work/memory-continue-release-tests.xml"
+    }
+  },
+  "metrics": {
+    "peakSampledRssBytes": {
+      "aggregate": 54521856,
+      "samples": [
+        54521856
+      ]
+    }
+  },
+  "gates": {
+    "budgetPassed": 1
+  },
+  "diagnostics": {
+    "idleCpuPercentOneCore": 0.009993444316251583,
+    "finalRssBytes": 54521856
+  },
+  "decision": {
+    "decision": "keep",
+    "eligible": true,
+    "next_measurement": "none",
+    "target_reached": false,
+    "improved_objectives": [
+      "peakSampledRssBytes"
+    ],
+    "violated_objectives": [],
+    "comparisons": {
+      "peakSampledRssBytes": {
+        "verdict": "improved",
+        "delta": 4505600,
+        "relative": 0.0763305808063285,
+        "violated": false
+      }
+    },
+    "primary_delta": 4505600,
+    "rank_score": 0.0763305808063285,
+    "reason": "improved peakSampledRssBytes without violating other required objectives"
+  },
+  "correctness": [
+    "original dev26/26",
+    "original release26/26",
+    "post-simplification dev8/8",
+    "post-simplification release8/8",
+    "post-simplification ASan8/8",
+    "post-simplification TSan8/8",
+    "refreshed package/installedloader/hash/RPATH"
+  ],
+  "correctnessReceiptHashes": [
+    {
+      "name": "memory-sdk-module-dev-tests-final.xml",
+      "sha256": "020f3a01757d73baa8543ec30bc82ca8fd55f2c3d722291d3e3ba6a9139d5f38"
+    },
+    {
+      "name": "memory-sdk-module-release-tests.xml",
+      "sha256": "0b86d8c89554f60e9b0fb9ca17cdd7aca4ada12b287bf7beb9b3ae2a11069ae2"
+    },
+    {
+      "name": "memory-sdk-module-dev-simplify-tests.xml",
+      "sha256": "6673f287726869613129004fc6d0519fb934852b02dbb877380b5c9150cfb078"
+    },
+    {
+      "name": "memory-sdk-module-release-simplify-tests.xml",
+      "sha256": "3aacdc3656f7fb62d7bba2538d199d6d6ace4c074788ff0a3c255573dd78aad9"
+    },
+    {
+      "name": "memory-sdk-module-asan-simplify-tests.xml",
+      "sha256": "3479f22a1bb69f037d123ad555047d56dd856218506affb524c8b0abd1d7026b"
+    },
+    {
+      "name": "memory-sdk-module-tsan-simplify-tests.xml",
+      "sha256": "1cc057d0850cc2da4ae2c3de90ad952b7f09508f874d3fddd016493b0b5e4576"
+    },
+    {
+      "name": "memory-sdk-module-package-simplify-tests.xml",
+      "sha256": "c6ab0faa61523e4880d4087b0d2234afd95bea8b3f3787ed0accaf30449b4d84"
+    }
+  ],
+  "measurement": {
+    "seconds": 300.19679952799925,
+    "rawSha256": "93c9a3f27de3c3a0b95810f86100e04d9ad8ee6b40792c6a61d42badbcc9216c",
+    "observerSha256": "1782d9e33ccc0cf15e563e48c779446c4e99e67c5ba9fe3054eb6923eb002b17",
+    "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "observerSourceSha256": "79c209675e06e333fc62a9f782c7200c7408a7bb273d6a54c0cfd5c3c7533343",
+    "operationCount": 0,
+    "mappedWindowObservations": 1,
+    "coldIdleUninterrupted": true,
+    "observerLimit": "Observer polls each second and persists changes only: one row is the unchanged empty owned-window set, not one poll. Historical observer does not persist pollCount; sampling cannot exclude transient activation shorter than1second. Private journal contains zero operations.",
+    "observerSamplingVerifiedFromSource": true
+  },
+  "comparisons": [
+    {
+      "kind": "standalone",
+      "workload": "unchanged300-second physicalCinnamonX11 coldresident; native dialogs/fonts; no capture/network",
+      "reference": {
+        "revision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+        "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+        "rawSha256": "47441dceb0128a7498529377bb2da083838b1ec82e601bf6d578a4c12910d54d",
+        "peakSampledRssBytes": 59027456
+      },
+      "candidate": {
+        "expectedHEAD": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+        "ownedSourceSha256": "bee9b3021dab5aa5d96d1321543d3bda2802ec6f15a0e41ec44c65a2bd6cccdc",
+        "files": {
+          "build/release/putgd": "6d8b8f336748cc5f77adc7372661bcc7b2210edac51fef8926bbd63e609e9382",
+          "build/release/putgd-cli": "d653b7c495bfe6bff54522a5490e1afb59475e573f7859506b88d22c64d3da47",
+          "build/release/libputgd-s3.so": "e0545ef106bc375e94019e1ab7819efcfff7b774478e6bbdbe5a6642af0a0697",
+          "build/release/putgd_0.1.0_amd64.deb": "36e8e7752109e4574d9eb8e5af19f2268fb5f752b117356e884f7df1a5a593a1"
+        }
+      },
+      "candidatePeakSampledRssBytes": 54521856,
+      "uncertainty": "Single stable-mode five-minute score,1MiB noise,5% relative threshold;1second owner-window polling persisted changes only; zero operations and no activation observed.",
+      "correctness": [
+        "original dev26/26",
+        "original release26/26",
+        "post-simplification dev8/8",
+        "post-simplification release8/8",
+        "post-simplification ASan8/8",
+        "post-simplification TSan8/8",
+        "refreshed package/installedloader/hash/RPATH"
+      ]
+    }
+  ],
+  "rawManifest": [
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/cold-results.json",
+      "sha256": "93c9a3f27de3c3a0b95810f86100e04d9ad8ee6b40792c6a61d42badbcc9216c",
+      "originalSha256": "93c9a3f27de3c3a0b95810f86100e04d9ad8ee6b40792c6a61d42badbcc9216c",
+      "completeness": "All JSON fields retained; mappings already basenames or anonymous labels; no configuration/payload/credential/log export."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/cold-window-observer.json",
+      "sha256": "1782d9e33ccc0cf15e563e48c779446c4e99e67c5ba9fe3054eb6923eb002b17",
+      "originalSha256": "1782d9e33ccc0cf15e563e48c779446c4e99e67c5ba9fe3054eb6923eb002b17",
+      "completeness": "All JSON fields retained; mappings already basenames or anonymous labels; no configuration/payload/credential/log export."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/source-review.json",
+      "sha256": "379bcef4369db2bcb268799bd06bf698a43ca62a53437cffd7a12412474c2aef",
+      "originalSha256": "379bcef4369db2bcb268799bd06bf698a43ca62a53437cffd7a12412474c2aef",
+      "completeness": "Complete bounded public source review/verification identity, no credentials, config, payloads or resident logs."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/review-resolution.json",
+      "sha256": "e189fbc571561f78f736e7e611624c55fae2c1fcbb6839e60ed2c3864992299a",
+      "originalSha256": "e189fbc571561f78f736e7e611624c55fae2c1fcbb6839e60ed2c3864992299a",
+      "completeness": "Complete bounded public source review/verification identity, no credentials, config, payloads or resident logs."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/review-fixed-source.json",
+      "sha256": "18a042d7cbc38ecfca5ef4b97116f5aa814b4b951b75a29b96d22a3b2b2e607d",
+      "originalSha256": "18a042d7cbc38ecfca5ef4b97116f5aa814b4b951b75a29b96d22a3b2b2e607d",
+      "completeness": "Complete bounded public source review/verification identity, no credentials, config, payloads or resident logs."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/review-fixed-build.json",
+      "sha256": "429210ef87163d7d32700a5ebb4be65dfb42fb08a2678aecdfa7f085539c8d10",
+      "originalSha256": "429210ef87163d7d32700a5ebb4be65dfb42fb08a2678aecdfa7f085539c8d10",
+      "completeness": "Complete bounded public source review/verification identity, no credentials, config, payloads or resident logs."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/reference-repeat-results.json",
+      "sha256": "d750b86994277181ebe7039f1598625bd2f83900e3a37fec6f34f63a18e118b2",
+      "originalSha256": "d750b86994277181ebe7039f1598625bd2f83900e3a37fec6f34f63a18e118b2",
+      "completeness": "Complete controlled JSON; private config/resident logs excluded."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/reference-repeat-observer.json",
+      "sha256": "9f6e1f08ff814920554cb936dc4bdbb73dc9d16b71936a1602a4e36f3ef982cb",
+      "originalSha256": "9f6e1f08ff814920554cb936dc4bdbb73dc9d16b71936a1602a4e36f3ef982cb",
+      "completeness": "Complete controlled JSON; private config/resident logs excluded."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/review-fixed-cold-results.json",
+      "sha256": "8bfcd5753aae5a50eaca4f7b8b8acd9a3d5dc134fbf86a596734969d9d75f249",
+      "originalSha256": "8bfcd5753aae5a50eaca4f7b8b8acd9a3d5dc134fbf86a596734969d9d75f249",
+      "completeness": "Complete controlled results JSON; private config, resident logs and payloads excluded."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/review-fixed-cold-observer.json",
+      "sha256": "1b82a2859669ca498a67b61f79aab08c9ce97922c7442a626ee4271f79e0acdb",
+      "originalSha256": "1b82a2859669ca498a67b61f79aab08c9ce97922c7442a626ee4271f79e0acdb",
+      "completeness": "Complete controlled results JSON; private config, resident logs and payloads excluded."
+    },
+    {
+      "path": "docs/evidence/2026-10-08-sdk-memory-raw/review-fixed-empty-views.json",
+      "sha256": "d5058a4ca0c3330ba83e4fe0969beffaf29c43c4ccc8f7ef33deb65d074c2ee4",
+      "originalSha256": "d5058a4ca0c3330ba83e4fe0969beffaf29c43c4ccc8f7ef33deb65d074c2ee4",
+      "completeness": "Complete controlled results JSON; private config, resident logs and payloads excluded."
+    }
+  ],
+  "limitations": [
+    "40MiB RSS target remains unmet.",
+    "SDK is pinned after first real S3 use; cold savings do not establish post-S3 savings.",
+    "Historical owner-window observer polls once per second and records changes only;1 row is not1 poll. No observed activation and zero journal operations.",
+    "Existing Release AWS SDK remains uninstrumented in sanitizer runs.",
+    "Original and review-fixed measurements have different source/binary identities and are preserved as distinct comparisons. Canonical live-region/heap integration is pending combined verification."
+  ],
+  "replay": {
+    "build": [
+      "cmake --preset release",
+      "cmake --build --preset release",
+      "ctest --preset release"
+    ],
+    "measurement": [
+      "python3",
+      "tests/performance/observe_idle.py",
+      "--app",
+      "build/release/putgd",
+      "--cli",
+      "build/release/putgd-cli",
+      "--output",
+      "/tmp/putgd-sdk-idle-replay-unique",
+      "--seconds",
+      "300"
+    ],
+    "note": "Canonical observer has improved metadata and a distinct hash; historical score used frozen idle workload plus scratch change-only observer. Compare future reference and candidate using the same observer."
+  },
+  "additionalAttribution": [
+    {
+      "scope": "Temporary nativeCinnamon baseline startup locating measurement; no scoredcandidate or productionchange.",
+      "identity": {
+        "baseRevision": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+        "scope": "Temporary native startup tray stage attribution only; no production switches/scored optimization.",
+        "files": {
+          "main.cpp": "112422792f26a363b15d39fc1fb81e6693723e239d02b2fad62ca0d16c06d9fe",
+          "TrayController.cpp": "3a0080a0ee433d9da1a8039c2f29a13c7b3828ec3e37958f34a355d727398211",
+          "putgd": "e62b8022975d30a801885de963e302c28baf3e7138127c359faafa40a3f3ca66"
+        }
+      },
+      "raw": {
+        "path": "docs/evidence/2026-10-08-sdk-memory-raw/tray-startup-attribution.json",
+        "sha256": "7a9565e72997c709aea59165d0c365cd6ed7c02fc02bf70e09596e23c9112ef7",
+        "originalSha256": "7a9565e72997c709aea59165d0c365cd6ed7c02fc02bf70e09596e23c9112ef7"
+      },
+      "stages": [
+        {
+          "stage": "before-tray",
+          "rssBytes": 54239232,
+          "pssBytes": 33910784,
+          "privateBytes": 31019008
+        },
+        {
+          "stage": "tray-object",
+          "rssBytes": 54550528,
+          "pssBytes": 34222080,
+          "privateBytes": 31330304
+        },
+        {
+          "stage": "tray-empty-menu",
+          "rssBytes": 55771136,
+          "pssBytes": 35442688,
+          "privateBytes": 32550912
+        },
+        {
+          "stage": "tray-capture-actions",
+          "rssBytes": 55771136,
+          "pssBytes": 35442688,
+          "privateBytes": 32550912
+        },
+        {
+          "stage": "tray-all-actions",
+          "rssBytes": 56422400,
+          "pssBytes": 35856384,
+          "privateBytes": 32944128
+        },
+        {
+          "stage": "tray-context-bound",
+          "rssBytes": 58007552,
+          "pssBytes": 36786176,
+          "privateBytes": 33714176
+        },
+        {
+          "stage": "tray-shown",
+          "rssBytes": 58036224,
+          "pssBytes": 36814848,
+          "privateBytes": 33742848
+        },
+        {
+          "stage": "event-loop-idle",
+          "rssBytes": 58703872,
+          "pssBytes": 37196800,
+          "privateBytes": 34115584
+        }
+      ],
+      "interpretation": "First QMenu construction adds1,220,608 RSSbytes, principally QtGui/Widgets code. Much apparent later tray cost is concurrent asynchronous SQLite journal startup, so it cannot be attributed to menu binding. This does not justify a lazy-tray implementation relative to the5%score threshold and native menu behavior.",
+      "limits": [
+        "Temporary app is baseline1d4, not integratedSDKmodulecandidate.",
+        "SIGSTOP pauses all process threads at boundaries; work between boundaries includes asynchronousjournalstartup.",
+        "Native Cinnamon fonts/dialogs unchanged.",
+        "No capture, clipboard, cloud or profile actions."
+      ]
+    }
+  ],
+  "reviewResolution": {
+    "originalReview": "ready-with-fixes; two P2 findings, both resolved",
+    "finalSourceSha256": "805e449b0be798bd43e94d6fdef56612b79efde7574afcd67a6b9a31a6a77827",
+    "verification": {
+      "dev": {
+        "passed": 8,
+        "total": 8,
+        "exit": 0
+      },
+      "release": {
+        "passed": 8,
+        "total": 8,
+        "exit": 0
+      },
+      "asan": {
+        "passed": 8,
+        "total": 8,
+        "exit": 0
+      },
+      "tsan": {
+        "passed": 8,
+        "total": 8,
+        "exit": 0
+      },
+      "installed": {
+        "passed": 10,
+        "total": 10,
+        "exit": 0
+      },
+      "fresh-process-reload": {
+        "passed": 4,
+        "total": 4,
+        "exit": 0
+      }
+    },
+    "sourceChanges": "Restart guidance and separately falsifiable matching-version wrong-build/wrong-transport fixtures; guard logic unchanged.",
+    "pending": "Post-S3/populated-history memory and remaining product/desktop acceptance; matching-observer scores and canonical integration are complete."
+  },
+  "matchingObserverReferenceRepeat": {
+    "kind": "matching-observer-reference-repeat",
+    "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 59002880,
+        "samples": [
+          59002880
+        ]
+      }
+    },
+    "gates": {
+      "budgetPassed": 1
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.013324122764236185,
+      "finalRssBytes": 59002880
+    },
+    "measurement": {
+      "seconds": 300.2073810620059,
+      "raw": "/tmp/putgd-native-idle-reference-review-repeat/results.json",
+      "rawSha256": "d750b86994277181ebe7039f1598625bd2f83900e3a37fec6f34f63a18e118b2",
+      "observer": "/tmp/putgd-native-idle-reference-review-repeat-windows.json",
+      "observerSha256": "9f6e1f08ff814920554cb936dc4bdbb73dc9d16b71936a1602a4e36f3ef982cb",
+      "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+      "pollCount": 294,
+      "operationCount": 0,
+      "coldIdleUninterrupted": true
+    }
+  },
+  "reviewFixedComparison": {
+    "kind": "standalone-reviewed-repeat",
+    "workload": "Same observer SHA and unchanged300-second physical Cinnamon cold idle; no acquisition/cloud/view activation",
+    "reference": {
+      "kind": "matching-observer-reference-repeat",
+      "appSha256": "29c3906f7884a823ba880c1618e85883a1b0fcb22d77d414dd9a0462429b5430",
+      "metrics": {
+        "peakSampledRssBytes": {
+          "aggregate": 59002880,
+          "samples": [
+            59002880
+          ]
+        }
+      },
+      "gates": {
+        "budgetPassed": 1
+      },
+      "diagnostics": {
+        "idleCpuPercentOneCore": 0.013324122764236185,
+        "finalRssBytes": 59002880
+      },
+      "measurement": {
+        "seconds": 300.2073810620059,
+        "raw": "/tmp/putgd-native-idle-reference-review-repeat/results.json",
+        "rawSha256": "d750b86994277181ebe7039f1598625bd2f83900e3a37fec6f34f63a18e118b2",
+        "observer": "/tmp/putgd-native-idle-reference-review-repeat-windows.json",
+        "observerSha256": "9f6e1f08ff814920554cb936dc4bdbb73dc9d16b71936a1602a4e36f3ef982cb",
+        "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+        "pollCount": 294,
+        "operationCount": 0,
+        "coldIdleUninterrupted": true
+      }
+    },
+    "candidate": {
+      "snapshot": {
+        "expectedHEAD": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+        "ownedSourceSha256": "805e449b0be798bd43e94d6fdef56612b79efde7574afcd67a6b9a31a6a77827",
+        "files": {
+          "build/release/putgd": "ed9a75dd8dfabf616a5ae8c2bab4ef2a952621b570d3d5a5075f00dc19cb2da4",
+          "build/release/putgd-cli": "d653b7c495bfe6bff54522a5490e1afb59475e573f7859506b88d22c64d3da47",
+          "build/release/libputgd-s3.so": "12f9cd023f2458a9c67d8878b6453cb5d551d521802d24bdcfb045552ba7fac6",
+          "build/release/putgd_0.1.0_amd64.deb": "36e8e7752109e4574d9eb8e5af19f2268fb5f752b117356e884f7df1a5a593a1"
+        }
+      },
+      "metrics": {
+        "peakSampledRssBytes": {
+          "aggregate": 54407168,
+          "samples": [
+            54407168
+          ]
+        }
+      },
+      "gates": {
+        "budgetPassed": 1
+      },
+      "diagnostics": {
+        "idleCpuPercentOneCore": 0.003330574745699256,
+        "finalRssBytes": 54407168
+      },
+      "measurement": {
+        "seconds": 300.24847852200037,
+        "raw": "/tmp/putgd-native-idle-module-review-fixed/results.json",
+        "rawSha256": "8bfcd5753aae5a50eaca4f7b8b8acd9a3d5dc134fbf86a596734969d9d75f249",
+        "windowObserver": "/tmp/putgd-native-idle-module-review-fixed-windows.json",
+        "observerSha256": "1b82a2859669ca498a67b61f79aab08c9ce97922c7442a626ee4271f79e0acdb",
+        "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+        "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "pollCount": 292,
+        "operationCount": 0,
+        "coldIdleUninterrupted": true,
+        "scope": "Review-fixed standalone source, same canonical observer and frozen idle harness as fresh reference; native Cinnamon appearance."
+      }
+    },
+    "uncertainty": "Stable mode single5minute score per uniquely identified source, relative5% threshold; window visibility sampled1second; no operations or mapped activation observed. No post-S3/wholeproduct/40MiB acceptance.",
+    "correctness": "Two reviewed P2s resolved; all8 affected Dev/Release/ASan/TSan contracts, installed package and fresh reload pass; root source fingerprints verified."
+  },
+  "reviewFixedDecision": {
+    "decision": "keep",
+    "eligible": true,
+    "next_measurement": "none",
+    "target_reached": false,
+    "improved_objectives": [
+      "peakSampledRssBytes"
+    ],
+    "violated_objectives": [],
+    "comparisons": {
+      "peakSampledRssBytes": {
+        "verdict": "improved",
+        "delta": 4595712,
+        "relative": 0.07788962165914613,
+        "violated": false
+      }
+    },
+    "primary_delta": 4595712,
+    "rank_score": 0.07788962165914613,
+    "reason": "improved peakSampledRssBytes without violating other required objectives"
+  },
+  "optimizationIntegration": {
+    "commit": "cadd9ed7463ee51888ae0a2b0ddc4650e27157a5",
+    "branch": "optimize/resident-memory-continuation",
+    "state": "kept",
+    "canonical": "Integrated at c4808dd; combined SDK/live-region/cleanup verification complete. Later native IPC integration and its combined checks are recorded in 2026-10-08-local-ipc.json."
+  },
+  "reviewedCandidateViews": {
+    "raw": "/tmp/putgd-native-reviewed-empty-views/results.json",
+    "sha256": "d5058a4ca0c3330ba83e4fe0969beffaf29c43c4ccc8f7ef33deb65d074c2ee4",
+    "appSha256": "ed9a75dd8dfabf616a5ae8c2bab4ef2a952621b570d3d5a5075f00dc19cb2da4",
+    "workloadSha256": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "parameters": {
+      "cycles": 3,
+      "startupWarmupSeconds": 5,
+      "visibleSettlingSeconds": 2,
+      "hiddenIdleSeconds": 30,
+      "hiddenWindowPollingSeconds": 0.1,
+      "readinessTimeoutSeconds": 20,
+      "hiddenWindowTimeoutSeconds": 5
+    },
+    "finalHiddenRssBytes": 83415040,
+    "peakSampledRssBytes": 83415040,
+    "operationCount": 0,
+    "scope": "Three empty-view cycles; runtime replay validation, not cold gate or permanent plateau."
+  },
+  "combinedRelease": {
+    "passed": 26,
+    "failed": 0,
+    "seconds": 110.41,
+    "junit": "docs/evidence/2026-10-08-heap-reclaim-raw/combined-release.xml",
+    "scope": "Canonical SDK module, live-region and allocator-cleanup integration"
+  },
+  "canonicalIntegration": {
+    "revision": "c4808dd",
+    "sourceMatchesReviewedOptimizationRevision": "cadd9ed",
+    "ownedPathCount": 14
+  },
+  "historicalStatusLabels": {
+    "state": {
+      "value": "Reviewed SDK change kept on optimization branch; canonical combined checks pending",
+      "scope": "Previous checkpoint label retained as historical provenance; later sibling results establish the completed state."
+    },
+    "reviewResolution.pending": {
+      "value": "New matching-observer physical reference/candidate scores and caller-owned integration.",
+      "scope": "Previous checkpoint label retained as historical provenance; later sibling results establish the completed state."
+    },
+    "optimizationIntegration.canonical": {
+      "value": "patch applied; combined verification pending",
+      "scope": "Previous checkpoint label retained as historical provenance; later sibling results establish the completed state."
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "asan",
+    "-R",
+    "^(operations_contract|capture_process_integration|capture_control_integration|capture_preparation_x11|native_region_overlay|x11_isolated|gui_operations_view)$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/clean50/asan-focused.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:46:17.239526+00:00"
+}

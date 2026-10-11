@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "f0f5f5cda149f4615771ca627c542a24d7d030fa548c87dfded550ee8b251289",
+  "sourceBytes": 1250,
+  "scope": "Expected failure before authenticated preview support; fallback/cached cursor data rows.",
+  "suite": {
+    "name": "CaptureProcessTests",
+    "timestamp": "2026-10-09T14:01:31",
+    "hostname": "patrick-Precision-5540",
+    "tests": "4",
+    "failures": "2",
+    "errors": "0",
+    "skipped": "0",
+    "time": "15.314"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "regionPreviewPrecedesBeginWithoutProducingImage(fallback-cursor)",
+      "classname": "CaptureProcessTests",
+      "time": "15.200",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (cursorTrace(trace).size()): 1\n   Expected (2)                        : 2\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "regionPreviewPrecedesBeginWithoutProducingImage(cached-cursor)",
+      "classname": "CaptureProcessTests",
+      "time": "0.114",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "'!error' returned FALSE. (capture_crashed)",
+          "text": ""
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

@@ -1,0 +1,65 @@
+{
+  "branch": "feat/qt-linux-sharing",
+  "completed_at": "2026-10-09T02:53:59.759581+00:00",
+  "cost": {
+    "host": "codex",
+    "scope": {
+      "changed_lines": 140,
+      "depth": "focused",
+      "exec_nontest_lines": 78,
+      "size_band": "small",
+      "unclassified_lines": {
+        ".h": 10
+      }
+    },
+    "stages": [
+      {
+        "elapsed_seconds": 0.051,
+        "ended_at": "2026-10-09T02:48:54.508129+00:00",
+        "facts": {
+          "changed_lines": 140,
+          "depth": "focused",
+          "exec_nontest_lines": 78,
+          "size_band": "small",
+          "unclassified_lines": {
+            ".h": 10
+          }
+        },
+        "stage": "scope",
+        "started_at": "2026-10-09T02:48:54.457567+00:00"
+      },
+      {
+        "candidates": 0,
+        "elapsed_seconds": 0.054,
+        "ended_at": "2026-10-09T02:53:59.746939+00:00",
+        "reviewers": 2,
+        "stage": "review",
+        "started_at": "2026-10-09T02:53:59.692859+00:00"
+      },
+      {
+        "candidates": 3,
+        "elapsed_seconds": 229.216,
+        "ended_at": "2026-10-09T02:53:23.273256+00:00",
+        "stage": "peer",
+        "started_at": "2026-10-09T02:49:34.057146+00:00"
+      },
+      {
+        "elapsed_seconds": 0.062,
+        "ended_at": "2026-10-09T02:53:59.808528+00:00",
+        "stage": "receipt",
+        "started_at": "2026-10-09T02:53:59.746939+00:00"
+      }
+    ],
+    "status": "complete",
+    "totals": {
+      "artifact_bytes": 355681,
+      "candidates": 3,
+      "elapsed_seconds": 229.383,
+      "reviewers": 2
+    },
+    "truncated_events": 0
+  },
+  "head_sha": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+  "run_id": "20261008-214854-484e0110",
+  "verdict": "Ready to merge"
+}

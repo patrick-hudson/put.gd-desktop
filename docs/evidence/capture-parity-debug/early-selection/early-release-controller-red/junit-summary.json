@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "7033d6aedc1a871ff3489903f1903ee002a7cfa1d0e6b1cdde15260cf7d70074",
+  "sourceBytes": 947,
+  "scope": "Expected failure before generation-bound release waits for complete helper cleanup.",
+  "suite": {
+    "name": "CaptureProcessTests",
+    "timestamp": "2026-10-09T14:19:51",
+    "hostname": "patrick-Precision-5540",
+    "tests": "3",
+    "failures": "1",
+    "errors": "0",
+    "skipped": "0",
+    "time": "15.231"
+  },
+  "testcases": [
+    {
+      "name": "initTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    },
+    {
+      "name": "earlyReleaseWaitsForCompleteHelperCleanup",
+      "classname": "CaptureProcessTests",
+      "time": "15.230",
+      "failures": [
+        {
+          "type": "fail",
+          "message": "Compared values are not the same",
+          "text": "\n         Actual   (released): 0\n   Expected (1)       : 1\n    "
+        }
+      ],
+      "errors": []
+    },
+    {
+      "name": "cleanupTestCase",
+      "classname": "CaptureProcessTests",
+      "time": "0.000",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, raw logs, configuration, databases, credentials and payload bytes"
+}

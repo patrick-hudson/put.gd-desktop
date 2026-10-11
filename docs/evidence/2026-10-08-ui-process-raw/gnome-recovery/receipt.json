@@ -1,0 +1,179 @@
+{
+  "status": "complete",
+  "scope": "Only the assigned GNOME recovery sub-unit; U11 overall and native desktop acceptance remain caller-owned.",
+  "created_utc": "2026-10-09T00:59:34.502565+00:00",
+  "plan_path": "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+  "changed_files": [
+    "src/platform/gnome/GnomeAdapter.cpp",
+    "tests/integration/test_gnome_bridge.cpp"
+  ],
+  "u_ids_attempted": [
+    "U11"
+  ],
+  "u_ids_completed": [],
+  "completed_subunit": "GNOME UI ownership-clear recovery",
+  "requirements": [
+    "R37"
+  ],
+  "verification_results": {
+    "red": "Expected failure observed before production change",
+    "green": "All three native-Qt/private-D-Bus transport scenarios pass",
+    "existing": "Guest decoder contract and host extension ownership fixture pass",
+    "diff_check": "pass",
+    "warning_cleanup": "Test main indentation warning corrected; final green build has no compiler warnings"
+  },
+  "verification_evidence": [
+    {
+      "unit": "U11 GNOME UI ownership-clear recovery (bounded sub-unit)",
+      "behavior_changed": true,
+      "trace": "UiProcessController::finished emits helperPidChanged(0); main forwards it to GnomeAdapter::setUiProcess(0). A failed SetUiProcess leaves ready_ true and uiProcessError_ set. The old probe only called discover when not ready, and prepareAcquisition(window) rejected indefinitely until another UI registration or helper rediscovery.",
+      "change": "Reuse the existing 3000 ms probe to retry SetUiProcess(0) only when ready, the current desired UI PID is zero, and the preceding registration failed. A newer live PID suppresses clear recovery; successful acknowledgement restores window acquisition. Existing synchronous call timeout and pinned unique owner remain unchanged. No new timer, async queue, state member, dependency, format, or production test hook.",
+      "existing_tests_inspected": [
+        "tests/integration/test_gnome_bridge.cpp (six decoder cases)",
+        "tests/desktop/test_gnome_ownership.mjs (extension authorization/frozen target)",
+        "tests/integration/test_kde_ownership.cpp (private-bus fixture pattern)"
+      ],
+      "tests_added_or_changed": [
+        "GnomeAdapterTransportTest::clearFailureRecoversWithoutUiReopen: capability remains blocked before acknowledgement, existing probe recovers without Hello/Bind restart, then an Action/window ticket completes through actual D-Bus transport",
+        "GnomeAdapterTransportTest::liveFailureStaysClosedAndNewPidSupersedesClear: live helper registration failure remains blocked past a probe interval; newer live PID is never cleared by stale recovery",
+        "GnomeAdapterTransportTest::ownerReplacementRegistersLatestPid: replacement peer receives the latest PID, not stale clear or old helper identity"
+      ],
+      "tests_used_unchanged": [
+        "gnome_bridge_contract (guest)",
+        "tests/desktop/test_gnome_ownership.mjs (host)"
+      ],
+      "red": {
+        "production_changed": false,
+        "exit": 1,
+        "scenario_passed": 2,
+        "scenario_failed": 1,
+        "failed_case": "clearFailureRecoversWithoutUiReopen",
+        "failure": "windowAvailable(source) returned FALSE after timeout",
+        "elapsed_ms": 22133,
+        "log": "adapter-red.log",
+        "junit": "adapter-red.xml"
+      },
+      "green": {
+        "exit": 0,
+        "scenario_passed": 3,
+        "scenario_failed": 0,
+        "qt_test_totals_including_init_cleanup": {
+          "passed": 5,
+          "failed": 0
+        },
+        "elapsed_ms": 10020,
+        "log": "adapter-green.log",
+        "junit": "adapter-green.xml"
+      },
+      "existing": {
+        "guest_ctest": {
+          "passed": 1,
+          "failed": 0,
+          "test": "gnome_bridge_contract",
+          "log": "existing.log",
+          "junit": "existing.xml"
+        },
+        "host_extension_fixture": {
+          "passed_assertion_groups": 5,
+          "exit": 0,
+          "log": "extension-ownership.log"
+        },
+        "note": "Node is absent from guest, so CMake omitted gnome_ui_ownership_contract; the unchanged extension fixture ran separately using existing host Node."
+      },
+      "commands": {
+        "configure": "cmake --preset dev -DCMAKE_PREFIX_PATH=/home/lab/putgd-memory-build/sdk -DPUTGD_AWS_RUNTIME_DIR=/home/lab/putgd-memory-build/sdk/lib -DPUTGD_AWS_SOURCE_DIR=/home/lab/putgd-memory-build/dependencies/aws-sdk-cpp",
+        "build": "cmake --build --preset dev --target test_gnome_bridge",
+        "adapter": "XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 QT_QPA_PLATFORM=wayland dbus-run-session -- build/dev/test_gnome_bridge --adapter-transport -o adapter-green.xml,junitxml -o -,txt",
+        "existing": "ctest --preset dev -R \"^gnome_(bridge_contract|ui_ownership_contract)$\" --output-junit existing.xml",
+        "extension_on_host": "node tests/desktop/test_gnome_ownership.mjs",
+        "diff": "git diff --check -- src/platform/gnome/GnomeAdapter.cpp tests/integration/test_gnome_bridge.cpp"
+      },
+      "exception_reason": null
+    }
+  ],
+  "base_commit": "4c687f5d55d69f1717bafd80f02d4771b5b3bac4",
+  "source_identity": {
+    "base": "4c687f5d55d69f1717bafd80f02d4771b5b3bac4",
+    "archiveSha256": "dca66054f6b4540678e5940a2383e9f9b2df6dd53d6cdb6d44997c9bcf3f7a47",
+    "redTestSha256": "30d32aeecf5f203a95c0d2a71d7e368bb7c29cf569c619aad4481efa10e83440",
+    "redProductionSha256": "7702b48318c6898561279419fccf280138d2faa10b4091366e3c510edfd1a201"
+  },
+  "changed_file_sha256": {
+    "src/platform/gnome/GnomeAdapter.cpp": "e7d446e1bcbc4de9fc63c060c2c6b801736ba4095f85140f739a24e8dda92457",
+    "tests/integration/test_gnome_bridge.cpp": "9ef1c3bdfecf8aa051bb24d6905c6086e26ca6ba8c26a1cbe6210442a888d630"
+  },
+  "guest": {
+    "overlay": "work/lab-runs/current-gnome-a3d70dc",
+    "workdir": "/home/lab/putgd-u11-gnome-recovery",
+    "qt": "6.10.2 dynamic distro Qt",
+    "os": "Ubuntu 26.04",
+    "compiler": "GCC 15.2.0",
+    "qt_platform": "native wayland (asserted by test)",
+    "dbus": "isolated dbus-run-session synthetic Shell peer",
+    "vnc": "127.0.0.1:5936 left active",
+    "windows_created": false,
+    "resident_or_extension_changed": false,
+    "vm_ownership_released": true
+  },
+  "limitations": [
+    "Transport regression uses native Qt Wayland but synthetic Shell responses; it is not graphical desktop/tray/hotkey/capture acceptance.",
+    "This sub-unit does not establish current installed-package AE17, sanitizer coverage of the new native adapter mode, memory savings, or the 40 MiB goal.",
+    "Existing guiless decoder CTest stays unchanged; the new --adapter-transport mode must be run explicitly under native Wayland plus an isolated bus.",
+    "The guest test archive is base commit plus owned files, not a committed deployment candidate. Source and binary hashes are retained."
+  ],
+  "considered_not_built": [
+    "No symbol-interposed/fake Qt platform name or production platform override: actual Qt Wayland was available in the authorized existing overlay.",
+    "No broad rediscovery/rebind on clear errors: only the failed registration needs recovery.",
+    "No retry of a live UI PID or asynchronous retry queue: the narrowly requested zero-PID recovery avoids changing live ownership policy and stale-response handling.",
+    "No compositor readiness fix, extension edit, UI work, new VM, new package, or new dependency in this unit."
+  ],
+  "implementation_engine_binding": null,
+  "requested_route": "native Codex collaboration worker",
+  "actual_route": "native Codex collaboration worker; standard shell/CMake/Ninja/QtTest and authorized SSH fixture run",
+  "requested_model": null,
+  "actual_model": "unverified",
+  "requested_effort": null,
+  "fallback_reason": null,
+  "run_id": null,
+  "source_kind": "plan",
+  "source_digest": "5071996ad659b9a43be209f7a79f82b8d8d3cb47d9f7d1b82238560800311494",
+  "unit_receipts": [
+    {
+      "unit": "U11 GNOME UI ownership-clear recovery",
+      "route": "native",
+      "model": "unverified",
+      "detached_processes": "all focused build/test sessions completed; fixture children stopped by test cleanup",
+      "integration": "owned source changes returned uncommitted to caller",
+      "verification": "red then green native-Qt/private-bus evidence; unchanged contracts pass",
+      "canonical_commit": "caller-owned; worker did not write Git index",
+      "cleanup": "private fixture peer/bus exited; existing VM kept available and VNC active"
+    }
+  ],
+  "plan_checkpoint": null,
+  "blockers": [],
+  "recovery_path": null,
+  "settled_decision_conflicts": [],
+  "behavior_change": true,
+  "standalone_shipping_skipped": true,
+  "evidence_files": {
+    "adapter-green-exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "adapter-green.log": "c3fb3e1f2af10541a397aed1a2d3ac30ff7afee2700cc90f57d2bc5bb27ffb1d",
+    "adapter-green.xml": "18457e2fe4486e77871d3214d816f3e1152965eac2b06e5b2d54daf623404d5c",
+    "adapter-red-exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "adapter-red.log": "cdbee18ba6b740d63ae61e17357c89c5c7015504900a1677ceb241ef1c62a6fd",
+    "adapter-red.xml": "e90c3cdc0200762f605cd4b252cee1c0ec3496f1665a1152c183824cc26bf6ec",
+    "build-green.log": "5e84319b8d557e3446ff90bf1a44c17eaa893eeb107ba88249162b309f6ff460",
+    "build-red.log": "1f1cdfdfe57fd8a6a65bcdfc60af07f09655bb7e17f00820eccfae864d251b3e",
+    "configure-missing-prefix.log": "8917bef0bb1998262526c41a0a3390bf0c13facfdef08751d58c023043a4f99d",
+    "configure-wrong-source.log": "c10a9e03c58eb50a5288e696d691f6beb21dab96f24708b60c6db38e4e03d9ec",
+    "configure.log": "8f360de22da95971e3b8c96d3d8ea7222d36efa3f5653f3b5271bbaa098ede6e",
+    "existing-exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "existing.log": "218b3a1d1e910e9bc5d4c7444d781743ee20e9c54f0ef11265db78f97d01967b",
+    "existing.xml": "cbaa2609a705781e384432e61d06e652ef92a4623f162e8296d5bd3f043ccb4e",
+    "extension-ownership.log": "806d39450506baa416657dec6d7270796224ad71184aae0cbaab68eb4021f3b3",
+    "replay.sh": "4ffb18d6fa8c178b0d7affa67f47cae0679a8ac3aa313ae0bebf82c7f460e0fa",
+    "source-binary.sha256": "880c43cbfca6aa3b3db1b4ba8b33fabf05f896cedef15995315e193429701851",
+    "source.json": "2d83a3d365b31ccd5c1ebde559bd81d4c53433d3ea9f9281678c5fdb7377f15c",
+    "ssh-build-red.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

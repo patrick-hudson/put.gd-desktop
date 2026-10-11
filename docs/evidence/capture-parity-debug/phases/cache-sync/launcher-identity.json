@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sha256": "ebbca55327277df8ece788c405e63a1868a83d4a91068bbe8ba9ae27137029b0",
+  "bytes": 368,
+  "limitation": "Launcher identity only; raw syscall traces and arbitrary launcher/log content excluded.",
+  "traceFlags": [
+    "-D",
+    "-f",
+    "-qq",
+    "-ttt",
+    "-T",
+    "-e",
+    "trace=fsync,fdatasync,fcntl"
+  ],
+  "versionProbe": "--version/-v forwarded directly to production executable, without strace",
+  "scope": "Resident and descendants; syscall-duration diagnostic only, not an acceptance run"
+}

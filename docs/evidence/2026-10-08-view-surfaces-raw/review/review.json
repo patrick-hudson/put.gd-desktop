@@ -1,0 +1,124 @@
+{
+  "status": "complete",
+  "verdict": "Ready with fixes",
+  "scope": {
+    "base": "dac46af06feb0e8326d472c77bdf96cff117be51",
+    "branch": "optimize-exp/resident-view-surfaces/exp-001",
+    "head_sha": "dac46af06feb0e8326d472c77bdf96cff117be51",
+    "uncommitted_source_tree": "52667aa0291bf3eb1eeb30f1e6d11ef1cc8d5ce3",
+    "pr_url": null,
+    "files_changed": 10
+  },
+  "intent": "Release hidden view drawing resources while retaining settings/history/activity objects, drafts and native desktop behavior.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "adversarial-claude"
+  ],
+  "findings": [
+    {
+      "title": "Recreated native window loses QWidget window state",
+      "severity": "P2",
+      "file": "src/ui/RetainedWindow.h",
+      "line": 51,
+      "why_it_matters": "After release, the state the native window kept (maximized, fullscreen, normal geometry) is gone, but QWidget still holds the old windowState(). A user who maximizes Settings or History, closes it and reopens it from the tray gets a normal window at the old maximized size, while isMaximized() still returns true. A later showMaximized() or setWindowState() does nothing because QWidget sees no state change. A window closed from the taskbar while minimized keeps WindowMinimized in QWidget state after the product's show() recreates it as a normal window, so the next WM minimize sends no WindowStateChange or spontaneous hide. Before this change, Qt6's close path destroyed only the platform window and kept the same QWidgetWindow, so the native state survived reopen.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "confidence": 100,
+      "evidence": [
+        "src/ui/RetainedWindow.h:51 `destroy(true,true);` deletes the QWidgetWindow through deleteTLSysExtra. QWidget::create() and show_sys() then build a fresh QWidgetWindow with Qt::WindowNoState and apply only flags and size, not data.window_state.",
+        "src/ui/TrayController.cpp:12 `void showWindow(QWidget& window){window.show();window.raise();window.activateWindow();}`: the product reopens with show(), which does not reapply the stored state.",
+        "The minimize step in tests/gui/test_settings.cpp (resourceReleaseGuardsReopenMinimizeDialogsAndTeardown) reopens with `window.showNormal();QTRY_VERIFY(!window.isMinimized());`. showNormal() resets QWidget state, so the test never runs the product's show() path after a minimized window was released.",
+        "Scenario: maximize Settings, close it (closeEvent schedules release, then hide, then the 0 ms timer runs destroy(true,true)), then use Tray > Settings. A new native window appears unmaximized at the old maximized geometry, and QWidget::isMaximized() is still true.",
+        "work/memory-surfaces/state-probe/red-state.xml: nativeStateSurvivesCloseRecreation fails: native WindowNoState vs expected WindowMaximized; plain-offscreen.log preserves state."
+      ],
+      "pre_existing": false,
+      "suggested_fix": "Synchronize the recreated QWindow states with existing QWidget states in showEvent. Preserve baseline minimized semantics; do not introduce a new restore policy.",
+      "first_evidence": "src/ui/RetainedWindow.h:51 `destroy(true,true);` deletes the QWidgetWindow through deleteTLSysExtra. QWidget::create() and show_sys() then build a fresh QWidgetWindow with Qt::WindowNoState and apply only flags and size, not data.window_state.",
+      "#": 1,
+      "reviewers": [
+        "adversarial-claude",
+        "correctness-verification"
+      ],
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "validation_status": "confirmed",
+      "validation_reason": "Plain QWidget control preserves native max/min flags; RetainedWindow probe and added Settings regression fail max state after close/show. Cinnamon WM restores maximization visually, so the screenshot itself does not reproduce user-visible failure."
+    }
+  ],
+  "actionable_findings": [
+    {
+      "title": "Recreated native window loses QWidget window state",
+      "severity": "P2",
+      "file": "src/ui/RetainedWindow.h",
+      "line": 51,
+      "why_it_matters": "After release, the state the native window kept (maximized, fullscreen, normal geometry) is gone, but QWidget still holds the old windowState(). A user who maximizes Settings or History, closes it and reopens it from the tray gets a normal window at the old maximized size, while isMaximized() still returns true. A later showMaximized() or setWindowState() does nothing because QWidget sees no state change. A window closed from the taskbar while minimized keeps WindowMinimized in QWidget state after the product's show() recreates it as a normal window, so the next WM minimize sends no WindowStateChange or spontaneous hide. Before this change, Qt6's close path destroyed only the platform window and kept the same QWidgetWindow, so the native state survived reopen.",
+      "autofix_class": "gated_auto",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "confidence": 100,
+      "evidence": [
+        "src/ui/RetainedWindow.h:51 `destroy(true,true);` deletes the QWidgetWindow through deleteTLSysExtra. QWidget::create() and show_sys() then build a fresh QWidgetWindow with Qt::WindowNoState and apply only flags and size, not data.window_state.",
+        "src/ui/TrayController.cpp:12 `void showWindow(QWidget& window){window.show();window.raise();window.activateWindow();}`: the product reopens with show(), which does not reapply the stored state.",
+        "The minimize step in tests/gui/test_settings.cpp (resourceReleaseGuardsReopenMinimizeDialogsAndTeardown) reopens with `window.showNormal();QTRY_VERIFY(!window.isMinimized());`. showNormal() resets QWidget state, so the test never runs the product's show() path after a minimized window was released.",
+        "Scenario: maximize Settings, close it (closeEvent schedules release, then hide, then the 0 ms timer runs destroy(true,true)), then use Tray > Settings. A new native window appears unmaximized at the old maximized geometry, and QWidget::isMaximized() is still true.",
+        "work/memory-surfaces/state-probe/red-state.xml: nativeStateSurvivesCloseRecreation fails: native WindowNoState vs expected WindowMaximized; plain-offscreen.log preserves state."
+      ],
+      "pre_existing": false,
+      "suggested_fix": "Synchronize the recreated QWindow states with existing QWidget states in showEvent. Preserve baseline minimized semantics; do not introduce a new restore policy.",
+      "first_evidence": "src/ui/RetainedWindow.h:51 `destroy(true,true);` deletes the QWidgetWindow through deleteTLSysExtra. QWidget::create() and show_sys() then build a fresh QWidgetWindow with Qt::WindowNoState and apply only flags and size, not data.window_state.",
+      "#": 1,
+      "reviewers": [
+        "adversarial-claude",
+        "correctness-verification"
+      ],
+      "independent_reviewers": [
+        "adversarial-claude"
+      ],
+      "validation_status": "confirmed",
+      "validation_reason": "Plain QWidget control preserves native max/min flags; RetainedWindow probe and added Settings regression fail max state after close/show. Cinnamon WM restores maximization visually, so the screenshot itself does not reproduce user-visible failure."
+    }
+  ],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "scope": "Approved retained-view memory experiment only; not entire product release",
+    "status": "Native paint, memory and cold gates remain pending"
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "Hidden combo popup stores were retained in both plain QWidget control and candidate; this is residual pre-existing memory rather than a newly introduced retention defect. Candidate scope reclaims main view surfaces. Native popup placement/reopen still needs graphical checks.",
+    "A modal or owned visible child can conservatively defer release until a later eligible hide.",
+    "Native compositor graphical evidence and mixed-DPI behavior are not proven by offscreen checks."
+  ],
+  "testing_gaps": [
+    "Complete candidate native GUI and frozen memory gates after state correction."
+  ],
+  "coverage": {
+    "depth": "focused",
+    "criteria": [
+      "AGENTS.md"
+    ],
+    "instruction_fallback": true,
+    "not_assessed": [
+      "learnings",
+      "agent-native gaps",
+      "deployment notes",
+      "Compound Packs"
+    ],
+    "validator_agents": false,
+    "cross_model_route": "claude",
+    "model_requested": "claude-opus-5-5",
+    "effort_requested": "high",
+    "receipt_supported": true,
+    "model_actual": "claude-opus-5-5",
+    "effort_actual": "unverified",
+    "independence_verified": true
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261008-220347-c4689437",
+  "run_id": "20261008-220347-c4689437"
+}

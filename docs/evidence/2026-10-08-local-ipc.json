@@ -1,0 +1,777 @@
+{
+  "schemaVersion": 1,
+  "status": "kept_and_combined_verified",
+  "intent": "Remove Linux resident QtNetwork dependency while preserving native Cinnamon integration and existing private JSON/CLI/MCP contracts.",
+  "baseRevision": "3b8ea0ea68d2e18644223526a89256a3bde8dbd4",
+  "experimentBranch": "optimize-exp/resident-local-ipc/exp-001",
+  "sourceManifest": "2026-10-08-local-ipc-raw/source-fixed-manifest.json",
+  "commands": {
+    "workingDirectory": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001",
+    "configure": [
+      "cmake",
+      "--preset",
+      "dev",
+      "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+      "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp"
+    ],
+    "build": [
+      "cmake",
+      "--build",
+      "--preset",
+      "dev"
+    ],
+    "dev": [
+      "ctest",
+      "--preset",
+      "dev",
+      "--output-junit",
+      "/tmp/putgd-local-ipc-dev.xml"
+    ],
+    "release": [
+      "ctest",
+      "--preset",
+      "release",
+      "-R",
+      "^(local_ipc_contract|ip_address_contract)$",
+      "--output-junit",
+      "/tmp/putgd-local-ipc-release-focused.xml"
+    ],
+    "asan": [
+      "ctest",
+      "--preset",
+      "asan",
+      "-R",
+      "^(local_ipc_contract|ip_address_contract|cli_integration|s3_module_integration)$",
+      "--output-junit",
+      "/tmp/putgd-local-ipc-asan.xml"
+    ],
+    "asanEnvironment": {
+      "ASAN_OPTIONS": "halt_on_error=1",
+      "UBSAN_OPTIONS": "halt_on_error=1"
+    },
+    "tsan": [
+      "setarch",
+      "x86_64",
+      "-R",
+      "ctest",
+      "--preset",
+      "tsan",
+      "-R",
+      "^(local_ipc_contract|ip_address_contract|cli_integration|s3_module_integration)$",
+      "--output-junit",
+      "/tmp/putgd-local-ipc-tsan.xml"
+    ],
+    "tsanEnvironment": {
+      "QT_QPA_PLATFORM": "offscreen",
+      "QT_QPA_FONTDIR": "/usr/share/fonts/truetype/dejavu",
+      "prependPATH": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/deps-tsan/bin",
+      "LD_LIBRARY_PATH": "/home/patrick/work/put.gd/work/sanitizer-diagnosis/deps-tsan/lib",
+      "TSAN_OPTIONS": "halt_on_error=1:suppressions=/home/patrick/work/put.gd/tests/sanitizer/tsan.supp"
+    },
+    "tsanDependencyRecipe": "docs/thread-sanitizer.md",
+    "physical": [
+      "python3",
+      "tests/performance/observe_idle.py",
+      "--app",
+      "build/release/putgd",
+      "--cli",
+      "build/release/putgd-cli",
+      "--output",
+      "/tmp/putgd-ipc-candidate-fixed",
+      "--seconds",
+      "300"
+    ],
+    "replayNote": "Adapt absolute dependency/worktree/output roots for the host, use fresh output directories, and keep physical runs serial. Configure release/asan with the same dependency arguments; TSan additionally uses the documented existing instrumented Qt/Keychain prefixes."
+  },
+  "tests": {
+    "initialCandidate": {
+      "junit": "/tmp/putgd-ipc-first-tests.xml",
+      "passed": 1,
+      "failed": 1,
+      "failure": "IPv4-compatible IPv6 ::127.0.0.1 was incorrectly classified as loopback; test caught divergence from Qt6.4.2. Corrected to accept only IPv4-mapped loopback and ::1.",
+      "sha256": "0b86eafc706312a90783f4ececec6d0c7be7d36cf86bbe15b0aa16e333e420f0"
+    },
+    "state": "Reviewed fix passes development and affected Release/ASan/TSan checks. Combined committed implementation passed 28 development and four affected Release contracts and completed its 300-second cold-idle measurement; see combined.",
+    "passedRuns": [
+      {
+        "path": "/tmp/putgd-local-ipc-dev.xml",
+        "passed": 28,
+        "failed": 0,
+        "seconds": 102.25,
+        "sha256": "fcc2146356be08e1672eb3198d28ce5b937d8e14d9cc3275108d7bec6f733839"
+      },
+      {
+        "path": "/tmp/putgd-local-ipc-release-focused.xml",
+        "passed": 2,
+        "failed": 0,
+        "seconds": 13.52,
+        "sha256": "30d972b2ad5038b61ed16712c319ebab310f10f7b1d113b2e3f07bd5a63f1e3b"
+      },
+      {
+        "path": "/tmp/putgd-local-ipc-mcp.txt",
+        "passed": 3,
+        "failed": 0,
+        "seconds": 2.184,
+        "sha256": "2040bdc79fe77de3178dbf489331c19855fea56c774fb9665afe414dd2b7202a"
+      },
+      {
+        "path": "/tmp/putgd-local-ipc-asan.xml",
+        "passed": 4,
+        "failed": 0,
+        "seconds": 49.74,
+        "sha256": "d58fe4113b485db26b7fb335ee8681d005d3efffb8948f258a709396f3044bb8",
+        "limitation": "Application ASan/UBSan including leak detection; distro Qt and Release AWS SDK are not instrumented."
+      },
+      {
+        "path": "/tmp/putgd-local-ipc-tsan.xml",
+        "passed": 4,
+        "failed": 0,
+        "seconds": 50.62,
+        "sha256": "6c6fbd8cfe273de422938a6edad1fc9889a0eda7f53f75049a99e6fc07d816bc",
+        "limitation": "Application and documented Qt/DBus/GLib/keychain instrumented; existing Release AWS SDK/OpenSSL/curl not instrumented."
+      }
+    ],
+    "fixedValidation": {
+      "sourceManifest": "work/local-ipc-review-fixed/manifest.json",
+      "runs": [
+        {
+          "path": "/tmp/putgd-ipc-disconnect-regression-green.xml",
+          "sha256": "9c6444274bd9a1fdf932ec99ee20a3f7412e63ae4ad22a2518b73bdc73470b03",
+          "testcases": 3,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-ipc-disconnect-regression-unix-green.xml",
+          "sha256": "eb2686f3a6963079d8ca590a9975323816b4eabfba8a5470ead892449a789070",
+          "testcases": 3,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-ipc-abort-fixed-green.xml",
+          "sha256": "62aea1d25232fd78f4f525fdc37ed678eb4fe23991d01f8009e760c5be25a313",
+          "testcases": 4,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-ipc-abort-fixed-unix-green.xml",
+          "sha256": "c949d3268a0528133120654ad9c511dbb71f039eb5b0775c8b75a912a8323f71",
+          "testcases": 4,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-fixed-dev.xml",
+          "sha256": "e95e8dba2a26484e18cbde983785273dfdeb1157c2e4736c062c1bb6ab928d17",
+          "testcases": 28,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-fixed-release.xml",
+          "sha256": "4f366b53fb9cda706181ba475e90cb9f4f358aa373c6151a5985307cc8904b54",
+          "testcases": 4,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-fixed-asan.xml",
+          "sha256": "886f17caf0d5924b0b9c74c3c760aaf3239ed86af27679f1c2f1d8f5e940627c",
+          "testcases": 4,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-fixed-tsan.xml",
+          "sha256": "48ef465578ac99b777b7f90ceb3eb551772bab1ad14139a6163121d86b085985",
+          "testcases": 4,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-ipc-half-close-compatibility.xml",
+          "sha256": "0348d27b24d21294727db01dc3c82ae4a6c78892062cd2029006894a144d5256",
+          "testcases": 4,
+          "failures": 0
+        },
+        {
+          "path": "/tmp/putgd-ipc-half-close-unix-compatibility.xml",
+          "sha256": "1b222238b2e204244d5393ae60bdfe6a6e3509fc1de5f0208d8df72af9088fd3",
+          "testcases": 4,
+          "failures": 0
+        }
+      ],
+      "state": "Dev 28/28, Release 4/4, ASan/UBSan 4/4 and instrumented Qt TSan 4/4 pass. GLib/Unix full-disconnect and async half-close match original Qt. Fixed-source physical measurement completed at 46.01953125 MiB over 300 seconds, separately from combined integration."
+    }
+  },
+  "bounds": {
+    "maximumRequestBytes": 1048576,
+    "initialRequestDeadlineMs": 10000,
+    "maximumClients": 64,
+    "slowPeerReplyBytes": 2097152,
+    "slowPeerReadBufferBytes": 1024
+  },
+  "limitations": [
+    "Completed300-second physical Cinnamon cold comparison; approximately40MiB remains unmet and cold savings do not establish post-S3 memory.",
+    "MCP suite uses synthetic local peers; C++ CLI tests cover actual resident transport.",
+    "Linux socket tests do not establish Windows/macOS acceptance.",
+    "Sanitizers cover application code; the separate thread recipe instruments Qt/DBus/GLib/keychain, not the existing Release AWS SDK/OpenSSL/curl.",
+    "No user credentials, remote requests or user payloads are used."
+  ],
+  "artifactsManifest": "2026-10-08-local-ipc-raw/manifest.json",
+  "binaries": {
+    "putgd": "712e80cfab0d54092eaa21281b4966555dff1679c3995ce6746f4a51b643f70e",
+    "putgd-cli": "c8c91aa86c15d70176900e09c72531b1951d53f121894859bf1b602218d449cd",
+    "libputgd-s3.so": "2521cc9de356793d79782d693afb6af62550a788e75267f21ff25baaf6207c1d"
+  },
+  "threadSuppressionSha256": "bd364f5df8a645e52bac2f8ba0f43faf09111062bf7e79fc6b70d97b39c2ab65",
+  "measurement": {
+    "raw": "/tmp/putgd-ipc-candidate-fixed/results.json",
+    "rawSha256": "a899850398f41b96b99952bb2105ca7f47cc264e3b2e924b18c69239c0db3796",
+    "observer": "/tmp/putgd-ipc-candidate-fixed-windows.json",
+    "observerSha256": "c7e3681b0e88d66bf9261e6a6cc46c2e7daa332143aa7fb6979b2640b0ae6e2e",
+    "seconds": 300.2110095109965,
+    "pollCount": 293,
+    "operationCount": 0,
+    "coldIdleUninterrupted": true,
+    "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+  },
+  "metrics": {
+    "peakSampledRssBytes": {
+      "aggregate": 48254976,
+      "samples": [
+        48254976
+      ]
+    }
+  },
+  "diagnostics": {
+    "idleCpuPercentOneCore": 0.013323961724506585,
+    "finalRssBytes": 48254976
+  },
+  "decisions": [
+    {
+      "baseline": "frozen",
+      "decision": {
+        "decision": "keep",
+        "eligible": true,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [
+          "peakSampledRssBytes"
+        ],
+        "violated_objectives": [],
+        "comparisons": {
+          "peakSampledRssBytes": {
+            "verdict": "improved",
+            "delta": 6565888,
+            "relative": 0.12068056914853573,
+            "violated": false
+          }
+        },
+        "primary_delta": 6565888,
+        "rank_score": 0.12068056914853573,
+        "reason": "improved peakSampledRssBytes without violating other required objectives"
+      }
+    },
+    {
+      "baseline": "paired",
+      "decision": {
+        "decision": "keep",
+        "eligible": true,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [
+          "peakSampledRssBytes"
+        ],
+        "violated_objectives": [],
+        "comparisons": {
+          "peakSampledRssBytes": {
+            "verdict": "improved",
+            "delta": 6696960,
+            "relative": 0.12279384153210665,
+            "violated": false
+          }
+        },
+        "primary_delta": 6696960,
+        "rank_score": 0.12279384153210665,
+        "reason": "improved peakSampledRssBytes without violating other required objectives"
+      }
+    },
+    {
+      "baseline": "frozen",
+      "candidate": "review-fixed",
+      "candidateIdentity": {
+        "base": "3b8ea0e",
+        "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001",
+        "files": {
+          "CMakeLists.txt": "85c3275f84e9c8da7f6a46babb33641feade9759f29ec6585cc64deedc491033",
+          "src/app/LocalIpc.cpp": "65917736dd9dc30a8cfdce75f0e81dba39931c9d3fff7c31f587cee7ba2f41bb",
+          "src/app/LocalIpc.h": "8c63ad8aa72ecccb970f5c17ed1667e2a10bf4f3266e99be6badf3c8c005e36b",
+          "src/app/LocalServer.cpp": "975e85a5a6146ba658369480e06070ef1794f00e12a17737ff15b60093a536e4",
+          "src/app/LocalServer.h": "4d8a6edd559ef19e7825a6e0163085ec88545994ec1aead91d9cbc2caf054a22",
+          "src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+          "src/storage/s3/IpAddress.cpp": "84466c749bac34f239e2460ddde9bbf8b3e51703db2c3064282ff7b426d7da41",
+          "src/storage/s3/IpAddress.h": "153e9c8aba1d56ed6e019f7e09c92377cbbf406a0aaf032e58323d20bada7d5d",
+          "src/storage/s3/S3Provider.cpp": "2dfaeeef97a0e95a3ca8cf9ab0ca997c2f9b1a97459fe295e36c260eef9f182c",
+          "tests/integration/test_local_ipc.cpp": "85e4046f8be901be1d3da7dd5b7243b8ef8231a72153faaca198094798b01969",
+          "tests/unit/test_ip_address.cpp": "186a50904e03f19deb27755d212bae9e9f5526bce44c9af7291a35875bcabc89"
+        }
+      },
+      "measurement": {
+        "raw": "/tmp/putgd-ipc-candidate-fixed/results.json",
+        "rawSha256": "a899850398f41b96b99952bb2105ca7f47cc264e3b2e924b18c69239c0db3796",
+        "observer": "/tmp/putgd-ipc-candidate-fixed-windows.json",
+        "observerSha256": "c7e3681b0e88d66bf9261e6a6cc46c2e7daa332143aa7fb6979b2640b0ae6e2e",
+        "seconds": 300.2110095109965,
+        "pollCount": 293,
+        "operationCount": 0,
+        "coldIdleUninterrupted": true,
+        "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+      },
+      "decision": {
+        "decision": "keep",
+        "eligible": true,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [
+          "peakSampledRssBytes"
+        ],
+        "violated_objectives": [],
+        "comparisons": {
+          "peakSampledRssBytes": {
+            "verdict": "improved",
+            "delta": 6152192,
+            "relative": 0.11307686516600166,
+            "violated": false
+          }
+        },
+        "primary_delta": 6152192,
+        "rank_score": 0.11307686516600166,
+        "reason": "improved peakSampledRssBytes without violating other required objectives"
+      }
+    },
+    {
+      "baseline": "paired",
+      "candidate": "review-fixed",
+      "candidateIdentity": {
+        "base": "3b8ea0e",
+        "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001",
+        "files": {
+          "CMakeLists.txt": "85c3275f84e9c8da7f6a46babb33641feade9759f29ec6585cc64deedc491033",
+          "src/app/LocalIpc.cpp": "65917736dd9dc30a8cfdce75f0e81dba39931c9d3fff7c31f587cee7ba2f41bb",
+          "src/app/LocalIpc.h": "8c63ad8aa72ecccb970f5c17ed1667e2a10bf4f3266e99be6badf3c8c005e36b",
+          "src/app/LocalServer.cpp": "975e85a5a6146ba658369480e06070ef1794f00e12a17737ff15b60093a536e4",
+          "src/app/LocalServer.h": "4d8a6edd559ef19e7825a6e0163085ec88545994ec1aead91d9cbc2caf054a22",
+          "src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+          "src/storage/s3/IpAddress.cpp": "84466c749bac34f239e2460ddde9bbf8b3e51703db2c3064282ff7b426d7da41",
+          "src/storage/s3/IpAddress.h": "153e9c8aba1d56ed6e019f7e09c92377cbbf406a0aaf032e58323d20bada7d5d",
+          "src/storage/s3/S3Provider.cpp": "2dfaeeef97a0e95a3ca8cf9ab0ca997c2f9b1a97459fe295e36c260eef9f182c",
+          "tests/integration/test_local_ipc.cpp": "85e4046f8be901be1d3da7dd5b7243b8ef8231a72153faaca198094798b01969",
+          "tests/unit/test_ip_address.cpp": "186a50904e03f19deb27755d212bae9e9f5526bce44c9af7291a35875bcabc89"
+        }
+      },
+      "measurement": {
+        "raw": "/tmp/putgd-ipc-candidate-fixed/results.json",
+        "rawSha256": "a899850398f41b96b99952bb2105ca7f47cc264e3b2e924b18c69239c0db3796",
+        "observer": "/tmp/putgd-ipc-candidate-fixed-windows.json",
+        "observerSha256": "c7e3681b0e88d66bf9261e6a6cc46c2e7daa332143aa7fb6979b2640b0ae6e2e",
+        "seconds": 300.2110095109965,
+        "pollCount": 293,
+        "operationCount": 0,
+        "coldIdleUninterrupted": true,
+        "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+      },
+      "decision": {
+        "decision": "keep",
+        "eligible": true,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [
+          "peakSampledRssBytes"
+        ],
+        "violated_objectives": [],
+        "comparisons": {
+          "peakSampledRssBytes": {
+            "verdict": "improved",
+            "delta": 6283264,
+            "relative": 0.11520841156590311,
+            "violated": false
+          }
+        },
+        "primary_delta": 6283264,
+        "rank_score": 0.11520841156590311,
+        "reason": "improved peakSampledRssBytes without violating other required objectives"
+      }
+    }
+  ],
+  "reference": {
+    "elapsedSeconds": 300.1863244450069,
+    "peakSampledRssBytes": 54538240,
+    "finalRssBytes": 54538240,
+    "idleCpuPercentOneCore": 0.01998758608038848,
+    "budgetPassed": true,
+    "sha256": "d7c51fa3dac52a228be037e44e2dc309b7da8b81f5f93174ac5c4f1ae9fd9349",
+    "differenceFromFrozenBaselineBytes": 131072
+  },
+  "target": {
+    "MiB": 40,
+    "achieved": false,
+    "remainingMiB": 6.01953125,
+    "remainingCombinedMiB": 6.1875
+  },
+  "emptyViews": {
+    "raw": "/tmp/putgd-ipc-empty-views/results.json",
+    "sha256": "dfb057fce75fce2778f1238ecbd62b656ce2bdf7e94ac3bb68cde3f2c3bf8a77",
+    "cycles": 3,
+    "hiddenSecondsPerCycle": 30,
+    "finalRssBytes": 76890112,
+    "scope": "Separate post-use empty native windows, no S3/capture; not40MiB or leak/plateau proof."
+  },
+  "reviewFollowUp": {
+    "receipt": "work/native-ipc-abort-probe/receipt.json",
+    "limitation": "Original 45.625MiB sample remains pre-fix. Fixed source was separately measured at46.020MiB over300seconds before integration."
+  },
+  "preReviewFix": {
+    "sourceManifest": "2026-10-08-local-ipc-raw/source-manifest.json",
+    "binaries": {
+      "putgd": "2a940ffcdaae95fba0eb97e578b464b33bcb09b2f18241916aa754741a5af677",
+      "putgd-cli": "1fc1f5e2755a54e1b666c2a5df132670617d914ee26feaf8569e9535abbc9a32",
+      "libputgd-s3.so": "2521cc9de356793d79782d693afb6af62550a788e75267f21ff25baaf6207c1d"
+    },
+    "measurement": {
+      "raw": "/tmp/putgd-ipc-candidate-paired/results.json",
+      "rawSha256": "9b149d4197769c29ea5edb8c1e8d2bb9feaf7edcda1a8f7ee06e8e9665ca2c67",
+      "observer": "/tmp/putgd-ipc-candidate-paired-windows.json",
+      "observerSha256": "5a6e592f43cf45b611e8edfa643be7fd5383c62002725ef7b9cad9f5ca21a5ba",
+      "seconds": 300.19914680800866,
+      "pollCount": 292,
+      "operationCount": 0,
+      "coldIdleUninterrupted": true,
+      "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+    },
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 47841280,
+        "samples": [
+          47841280
+        ]
+      }
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.009993366176748796,
+      "finalRssBytes": 47841280
+    },
+    "decisions": [
+      {
+        "baseline": "frozen",
+        "decision": {
+          "decision": "keep",
+          "eligible": true,
+          "next_measurement": "none",
+          "target_reached": false,
+          "improved_objectives": [
+            "peakSampledRssBytes"
+          ],
+          "violated_objectives": [],
+          "comparisons": {
+            "peakSampledRssBytes": {
+              "verdict": "improved",
+              "delta": 6565888,
+              "relative": 0.12068056914853573,
+              "violated": false
+            }
+          },
+          "primary_delta": 6565888,
+          "rank_score": 0.12068056914853573,
+          "reason": "improved peakSampledRssBytes without violating other required objectives"
+        }
+      },
+      {
+        "baseline": "paired",
+        "decision": {
+          "decision": "keep",
+          "eligible": true,
+          "next_measurement": "none",
+          "target_reached": false,
+          "improved_objectives": [
+            "peakSampledRssBytes"
+          ],
+          "violated_objectives": [],
+          "comparisons": {
+            "peakSampledRssBytes": {
+              "verdict": "improved",
+              "delta": 6696960,
+              "relative": 0.12279384153210665,
+              "violated": false
+            }
+          },
+          "primary_delta": 6696960,
+          "rank_score": 0.12279384153210665,
+          "reason": "improved peakSampledRssBytes without violating other required objectives"
+        }
+      }
+    ]
+  },
+  "integration": {
+    "optimizationCommit": "783df0d6ec1839ef914bcbbf6395d6ac018361c3",
+    "canonicalCommit": "1fdfff0a71c98e82d7f0e7f17e326f1a2a8a7197",
+    "exactReviewedProductFiles": true,
+    "at": "2026-10-08T19:25:10.697304+00:00"
+  },
+  "review": {
+    "status": "Full original review and focused disconnect-fix review complete",
+    "artifact": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/review.json",
+    "verdict": "Ready to merge",
+    "actionableFindingCount": 0,
+    "residualRiskAction": "Root reproduced and fixed stopped-notifier disconnect retention; red/green and baseline half-close compatibility retained separately.",
+    "crossModel": {
+      "outcome": "folded",
+      "coverage": "Independent cross-model adversarial retry completed after explicit user authorization overrode the same-route authentication no-retry rule. First attempt OAuth refresh collision and attributed local fallback are preserved; retry verified and cleaned. Route claude; model_requested claude-opus-5-5; effort_requested high; receipt_supported true; model_actual claude-opus-5-5; effort_actual unverified; independence_verified true. Supplemental merge must fold artifact exactly once.",
+      "identity": {
+        "cross_model_route": "claude",
+        "model_requested": "claude-opus-5-5",
+        "effort_requested": "high",
+        "receipt_supported": true,
+        "model_actual": "claude-opus-5-5",
+        "effort_actual": "unverified",
+        "independence_verified": true,
+        "fold_count": 1,
+        "job_cleanup_complete": true
+      }
+    },
+    "localContextReused": true,
+    "freshLocalIndependence": false,
+    "deltaArtifact": "/tmp/compound-engineering-1000/ce-code-review/20261008-133701-bc4bb765/disconnect-fix-delta-review.json",
+    "deltaSha256": "72490b033cbbca3c34c1950755a16ed2b4dc0360b5c61f9923b44be30708690f"
+  },
+  "combined": {
+    "sourceManifest": {
+      "baseRevision": "1fdfff0a71c98e82d7f0e7f17e326f1a2a8a7197",
+      "files": {
+        "CMakeLists.txt": "db29858a9ba57a554f1c24272fd52be3dca5eb36eb59fdce23fef586ccf3bd9f",
+        "integrations/gnome/extension.js": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+        "src/app/LocalIpc.cpp": "65917736dd9dc30a8cfdce75f0e81dba39931c9d3fff7c31f587cee7ba2f41bb",
+        "src/app/LocalIpc.h": "8c63ad8aa72ecccb970f5c17ed1667e2a10bf4f3266e99be6badf3c8c005e36b",
+        "src/app/LocalServer.cpp": "975e85a5a6146ba658369480e06070ef1794f00e12a17737ff15b60093a536e4",
+        "src/app/LocalServer.h": "4d8a6edd559ef19e7825a6e0163085ec88545994ec1aead91d9cbc2caf054a22",
+        "src/app/OperationService.cpp": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+        "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+        "src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+        "src/platform/kde/KdeRegionOverlay.cpp": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+        "src/platform/kde/KdeRegionOverlay.h": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+        "src/platform/kde/KdeSourceAdapter.cpp": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+        "src/platform/kde/KdeSourceAdapter.h": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+        "src/platform/x11/CinnamonRegionCapture.cpp": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+        "src/platform/x11/CinnamonRegionCapture.h": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+        "src/platform/x11/X11Capture.cpp": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+        "src/platform/x11/X11Capture.h": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+        "src/platform/x11/X11SourceAdapter.cpp": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+        "src/platform/x11/X11SourceAdapter.h": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+        "src/storage/s3/IpAddress.cpp": "84466c749bac34f239e2460ddde9bbf8b3e51703db2c3064282ff7b426d7da41",
+        "src/storage/s3/IpAddress.h": "153e9c8aba1d56ed6e019f7e09c92377cbbf406a0aaf032e58323d20bada7d5d",
+        "src/storage/s3/S3Provider.cpp": "2dfaeeef97a0e95a3ca8cf9ab0ca997c2f9b1a97459fe295e36c260eef9f182c",
+        "src/ui/RegionOverlay.cpp": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1",
+        "tests/desktop/x11/test_x11.cpp": "94b306b20004b94ba9bcf9d350415d373900de9a78c65590010dae84e0164756",
+        "tests/fixtures/desktop_fixture.cpp": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+        "tests/integration/test_local_ipc.cpp": "85e4046f8be901be1d3da7dd5b7243b8ef8231a72153faaca198094798b01969",
+        "tests/performance/bench_capture.cpp": "6ee9b45beccc05016de5d91e39c833d16a1cd6b4d80421e4c34e6658638e25bd",
+        "tests/performance/bench_payload_lab.py": "cfc787158a23685f44cc9ff69abe6b8461c09af179c2fbf53a5365cf6e4f3b93",
+        "tests/performance/bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+        "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "tests/performance/run_capture.py": "28b1a035fac1756ba53db7816dd5c61a77b2c969c7659965eec0e92c706acaa7",
+        "tests/unit/test_ip_address.cpp": "186a50904e03f19deb27755d212bae9e9f5526bce44c9af7291a35875bcabc89",
+        "tests/unit/test_operations.cpp": "cffaa33273194981a9d52361a06cce20af42d8783a29b5807ebf661c1a47f2fb"
+      },
+      "binaries": {
+        "putgd": "4810b2413b1a8f8705fc127d884f32beb1f58057a3c67461b619289c2dbc3725",
+        "putgd-cli": "3893d7cbb79d958ee0e2330708ab34b1244af61b398ef5a833aa4ac6b67e256f",
+        "libputgd-s3.so": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762"
+      },
+      "buildCommands": [
+        [
+          "cmake",
+          "--preset",
+          "dev"
+        ],
+        [
+          "cmake",
+          "--build",
+          "--preset",
+          "dev"
+        ],
+        [
+          "cmake",
+          "--preset",
+          "release"
+        ],
+        [
+          "cmake",
+          "--build",
+          "--preset",
+          "release",
+          "--target",
+          "putgd",
+          "putgd-cli",
+          "test_local_ipc",
+          "test_ip_address",
+          "test_cli",
+          "test_s3_module",
+          "putgd-bench-capture",
+          "putgd-desktop-fixture"
+        ]
+      ],
+      "scope": "Combined IPC, SDK module, live-selection and idle image cleanup; no unrelated user files included"
+    },
+    "validationState": "Dev28/28, Release4/4 and300s physical cold idle passed",
+    "coldMeasurementState": "complete",
+    "sourceIdentity": {
+      "baseRevision": "1fdfff0a71c98e82d7f0e7f17e326f1a2a8a7197",
+      "files": {
+        "CMakeLists.txt": "db29858a9ba57a554f1c24272fd52be3dca5eb36eb59fdce23fef586ccf3bd9f",
+        "integrations/gnome/extension.js": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+        "src/app/LocalIpc.cpp": "65917736dd9dc30a8cfdce75f0e81dba39931c9d3fff7c31f587cee7ba2f41bb",
+        "src/app/LocalIpc.h": "8c63ad8aa72ecccb970f5c17ed1667e2a10bf4f3266e99be6badf3c8c005e36b",
+        "src/app/LocalServer.cpp": "975e85a5a6146ba658369480e06070ef1794f00e12a17737ff15b60093a536e4",
+        "src/app/LocalServer.h": "4d8a6edd559ef19e7825a6e0163085ec88545994ec1aead91d9cbc2caf054a22",
+        "src/app/OperationService.cpp": "e28ece0a1e4c6d9d24d7e8f0cd3ceb396eca04140cbfb195376400d354457d7a",
+        "src/app/OperationService.h": "11a5d887bc9a78250fc8b3e357e9c7ec5f89bebd2eca9893071b83afdf2c901f",
+        "src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+        "src/platform/kde/KdeRegionOverlay.cpp": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+        "src/platform/kde/KdeRegionOverlay.h": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+        "src/platform/kde/KdeSourceAdapter.cpp": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+        "src/platform/kde/KdeSourceAdapter.h": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+        "src/platform/x11/CinnamonRegionCapture.cpp": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+        "src/platform/x11/CinnamonRegionCapture.h": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+        "src/platform/x11/X11Capture.cpp": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+        "src/platform/x11/X11Capture.h": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+        "src/platform/x11/X11SourceAdapter.cpp": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+        "src/platform/x11/X11SourceAdapter.h": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+        "src/storage/s3/IpAddress.cpp": "84466c749bac34f239e2460ddde9bbf8b3e51703db2c3064282ff7b426d7da41",
+        "src/storage/s3/IpAddress.h": "153e9c8aba1d56ed6e019f7e09c92377cbbf406a0aaf032e58323d20bada7d5d",
+        "src/storage/s3/S3Provider.cpp": "2dfaeeef97a0e95a3ca8cf9ab0ca997c2f9b1a97459fe295e36c260eef9f182c",
+        "src/ui/RegionOverlay.cpp": "28ce09360390f3192ee8761c0e00983637fde107a35dd400605a374d762d4fb1",
+        "tests/desktop/x11/test_x11.cpp": "94b306b20004b94ba9bcf9d350415d373900de9a78c65590010dae84e0164756",
+        "tests/fixtures/desktop_fixture.cpp": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+        "tests/integration/test_local_ipc.cpp": "85e4046f8be901be1d3da7dd5b7243b8ef8231a72153faaca198094798b01969",
+        "tests/performance/bench_capture.cpp": "6ee9b45beccc05016de5d91e39c833d16a1cd6b4d80421e4c34e6658638e25bd",
+        "tests/performance/bench_payload_lab.py": "cfc787158a23685f44cc9ff69abe6b8461c09af179c2fbf53a5365cf6e4f3b93",
+        "tests/performance/bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+        "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+        "tests/performance/run_capture.py": "28b1a035fac1756ba53db7816dd5c61a77b2c969c7659965eec0e92c706acaa7",
+        "tests/unit/test_ip_address.cpp": "186a50904e03f19deb27755d212bae9e9f5526bce44c9af7291a35875bcabc89",
+        "tests/unit/test_operations.cpp": "cffaa33273194981a9d52361a06cce20af42d8783a29b5807ebf661c1a47f2fb"
+      },
+      "binaries": {
+        "putgd": "4810b2413b1a8f8705fc127d884f32beb1f58057a3c67461b619289c2dbc3725",
+        "putgd-cli": "3893d7cbb79d958ee0e2330708ab34b1244af61b398ef5a833aa4ac6b67e256f",
+        "libputgd-s3.so": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762"
+      },
+      "buildCommands": [
+        [
+          "cmake",
+          "--preset",
+          "dev"
+        ],
+        [
+          "cmake",
+          "--build",
+          "--preset",
+          "dev"
+        ],
+        [
+          "cmake",
+          "--preset",
+          "release"
+        ],
+        [
+          "cmake",
+          "--build",
+          "--preset",
+          "release",
+          "--target",
+          "putgd",
+          "putgd-cli",
+          "test_local_ipc",
+          "test_ip_address",
+          "test_cli",
+          "test_s3_module",
+          "putgd-bench-capture",
+          "putgd-desktop-fixture"
+        ]
+      ],
+      "scope": "Combined IPC, SDK module, live-selection and idle image cleanup; no unrelated user files included"
+    },
+    "checks": [
+      {
+        "path": "/tmp/putgd-combined-ipc-live-heap-dev.xml",
+        "testcases": 28,
+        "failures": 0,
+        "seconds": "127",
+        "sha256": "c5db452d5a5f3f6ba478cc48e15d9445828fda1d7bcaed7ed4675681592a1fb0"
+      },
+      {
+        "path": "/tmp/putgd-combined-ipc-live-heap-release.xml",
+        "testcases": 4,
+        "failures": 0,
+        "seconds": "46",
+        "sha256": "d3be237330cde02799044db1bb8051eb881f89b176a3319e40c8c400e6a6af37"
+      }
+    ],
+    "sourceCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+    "kind": "combined-validation",
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 48431104,
+        "samples": [
+          48431104
+        ]
+      }
+    },
+    "gates": {
+      "budgetPassed": 1
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.0066621829073332675,
+      "finalRssBytes": 48431104
+    },
+    "measurement": {
+      "raw": "/tmp/putgd-ipc-combined-idle/results.json",
+      "sha256": "523e8225a437ca6a492e7e59aee076dbfd401161355b3220c0db01b90ae80d92",
+      "observer": "/tmp/putgd-ipc-combined-idle-windows.json",
+      "observerSha256": "52be08640be89f3d9d4137fcf7cf4a0264ca2ddcd734e3223d7d12b79245623a",
+      "seconds": 300.201904963993,
+      "coldIdleUninterrupted": true,
+      "operationCount": 0
+    },
+    "limitation": "Includes independently reviewed live-capture/heap changes absent from the paired reference; do not attribute this entire comparison solely to IPC.",
+    "decision": {
+      "decision": "keep",
+      "eligible": true,
+      "next_measurement": "none",
+      "target_reached": false,
+      "improved_objectives": [
+        "peakSampledRssBytes"
+      ],
+      "violated_objectives": [],
+      "comparisons": {
+        "peakSampledRssBytes": {
+          "verdict": "improved",
+          "delta": 6107136,
+          "relative": 0.11197897108524221,
+          "violated": false
+        }
+      },
+      "primary_delta": 6107136,
+      "rank_score": 0.11197897108524221,
+      "reason": "improved peakSampledRssBytes without violating other required objectives"
+    }
+  },
+  "historicalStatusLabels": {
+    "tests.state": {
+      "value": "Reviewed fix passes development and affected Release/ASan/TSan checks. Combined current implementation is rebuilding.",
+      "scope": "Previous checkpoint label retained as historical provenance; later sibling results establish the completed state."
+    },
+    "tests.fixedValidation.state": {
+      "value": "Dev28/28, Release4/4, ASan/UBSan4/4, instrumented Qt TSan4/4 pass. GLib/Unix full-disconnect and async half-close match originalQt. Fresh physical sample running.",
+      "scope": "Previous checkpoint label retained as historical provenance; later sibling results establish the completed state."
+    }
+  }
+}

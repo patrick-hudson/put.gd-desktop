@@ -1,0 +1,297 @@
+{
+  "spec": {
+    "name": "resident-local-ipc",
+    "description": "Next proposed memory experiment: remove Linux resident QtNetwork linkage while preserving existing private JSON IPC, IP validation, native Cinnamon fonts/dialogs and all features.",
+    "metric": {
+      "primary": {
+        "type": "hard",
+        "name": "peakSampledRssBytes",
+        "direction": "minimize",
+        "target": 41943040
+      },
+      "degenerate_gates": [
+        {
+          "name": "budgetPassed",
+          "check": "== 1",
+          "description": "Preserve unchanged five-minute idle CPU and100MiB limits."
+        }
+      ],
+      "diagnostics": [
+        {
+          "name": "idleCpuPercentOneCore"
+        },
+        {
+          "name": "finalRssBytes"
+        }
+      ]
+    },
+    "measurement": {
+      "command": "python3 tests/performance/observe_idle.py --app build/release/putgd --cli build/release/putgd-cli --output /tmp/putgd-local-ipc-unique --seconds 300",
+      "timeout_seconds": 360,
+      "working_directory": ".",
+      "output_format": "json",
+      "stability": {
+        "mode": "stable",
+        "noise_threshold": 1048576,
+        "comparison": {
+          "method": "relative",
+          "relative_threshold": 0.05
+        }
+      }
+    },
+    "scope": {
+      "mutable": [
+        "CMakeLists.txt",
+        "src/main.cpp",
+        "src/app/LocalServer.cpp",
+        "src/app/LocalServer.h",
+        "src/app/LocalIpc.cpp",
+        "src/app/LocalIpc.h",
+        "src/storage/s3/S3Provider.cpp",
+        "src/storage/s3/IpAddress.cpp",
+        "src/storage/s3/IpAddress.h",
+        "tests/integration/test_local_ipc.cpp",
+        "tests/unit/test_ip_address.cpp",
+        "docs/architecture.md",
+        "docs/build.md",
+        "docs/testing-memory.md"
+      ],
+      "immutable": [
+        "tests/desktop/cinnamon.yaml",
+        "tests/desktop/common.yaml",
+        "tests/desktop/gnome.yaml",
+        "tests/desktop/kde.yaml",
+        "tests/desktop/test_lab.py",
+        "tests/desktop/test_windows_lab.py",
+        "tests/desktop/x11/test_x11.cpp",
+        "tests/fixtures/U2Fixtures.h",
+        "tests/fixtures/X11DesktopFixture.h",
+        "tests/fixtures/X11SelectionFixture.h",
+        "tests/fixtures/desktop_fixture.cpp",
+        "tests/fixtures/s3_server.py",
+        "tests/gui/test_history_view.cpp",
+        "tests/gui/test_operations_view.cpp",
+        "tests/gui/test_settings.cpp",
+        "tests/integration/test_cli.cpp",
+        "tests/integration/test_collision_policy.cpp",
+        "tests/integration/test_config_reload.cpp",
+        "tests/integration/test_config_schema.py",
+        "tests/integration/test_gnome_bridge.cpp",
+        "tests/integration/test_keychain.cpp",
+        "tests/integration/test_keychain_backend.cpp",
+        "tests/integration/test_kwin_transfer.cpp",
+        "tests/integration/test_mcp.py",
+        "tests/integration/test_s3.cpp",
+        "tests/integration/test_s3_delete.cpp",
+        "tests/integration/test_storage_contract.cpp",
+        "tests/performance/bench_capture.cpp",
+        "tests/performance/bench_idle.py",
+        "tests/performance/run_capture.py",
+        "tests/sanitizer/probes/CMakeLists.txt",
+        "tests/sanitizer/probes/known_deadlock.cpp",
+        "tests/sanitizer/probes/known_race.cpp",
+        "tests/sanitizer/probes/qt_dbus.cpp",
+        "tests/sanitizer/probes/qt_queue.cpp",
+        "tests/sanitizer/tsan.supp",
+        "tests/storage/s3/test_sdk_contract.cpp",
+        "tests/unit/test_archive.cpp",
+        "tests/unit/test_build_contract.cpp",
+        "tests/unit/test_geometry.cpp",
+        "tests/unit/test_history.cpp",
+        "tests/unit/test_login_startup.cpp",
+        "tests/unit/test_operations.cpp",
+        "tests/unit/test_payload.cpp",
+        "tests/unit/test_public_url.cpp",
+        "tests/unit/test_settings.cpp",
+        "tests/unit/test_upload_naming.cpp",
+        "schemas/",
+        "src/platform/",
+        "src/ui/",
+        "src/app/OperationService.cpp",
+        "src/app/OperationService.h",
+        "src/cli/main.cpp",
+        "src/core/",
+        "credentials.txt",
+        "tests/performance/observe_idle.py",
+        "tests/performance/bench_views.py"
+      ]
+    },
+    "execution": {
+      "mode": "serial",
+      "backend": "worktree",
+      "max_concurrent": 1
+    },
+    "parallel": {
+      "port_strategy": "none",
+      "exclusive_resources": [
+        "physical-cinnamon-session"
+      ]
+    },
+    "dependencies": {
+      "approved": []
+    },
+    "constraints": [
+      "Standard CMake/Ninja, dynamically linked distroQt; no new dependencies without approval.",
+      "Preserve capture, clipboard ownership, S3 safety, configuration, history, drafts, custom visuals, accessibility and native input methods.",
+      "Freeze benchmark while comparing experiments. Attribute startup cost before selecting changes.",
+      "Only private synthetic local configuration, no host pixels, user clipboard content, credentials or cloud objects in memory benchmarks.",
+      "Use serial physical measurements and separately record post-use costs; VNC stays active for lab acceptance.",
+      "Keep original failed/successful experiment evidence; regression tests and graphical checks before integration.",
+      "Preserve the exact versioned JSON protocol, owner-only socket path, live-resident protection, request/client limits and deadlines, CLI/MCP compatibility, shutdown and response delivery.",
+      "Keep Qt local socket implementation on non-Linux; use normal Linux local sockets with Qt Core event notification if the measured candidate justifies it. No private Qt APIs or modified distro libraries.",
+      "Preserve endpoint/public URL numeric-address and loopback validation with differential tests against Qt QHostAddress.",
+      "Do not move memory into an always-running helper or weaken test thresholds. Compare against retained cadd9ed reviewed binary using the same observer."
+    ],
+    "stopping": {
+      "max_iterations": 3,
+      "max_hours": 2,
+      "plateau_iterations": 2,
+      "target_reached": true,
+      "max_total_cost_usd": 5
+    },
+    "reference": {
+      "revision": "cadd9ed7463ee51888ae0a2b0ddc4650e27157a5",
+      "peakSampledRssBytes": 54407168,
+      "seconds": 300.248478522,
+      "idleCpuPercentOneCore": 0.003330574745699256,
+      "source": "/tmp/putgd-native-idle-module-review-fixed/results.json",
+      "locatingProbe": "docs/evidence/2026-10-08-memory-continuation-raw/native-qt-network-network-comparison.json",
+      "expectedOpportunity": "Measured causal dependency cost6.06\u20136.22MiB; optimistic remaining45.7MiB, not guaranteed40MiB."
+    }
+  },
+  "baseline": {
+    "timestamp": "2026-10-08T17:46:11.220248+00:00",
+    "gates": {
+      "budgetPassed": 1
+    },
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 54407168,
+        "samples": [
+          54407168
+        ]
+      }
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.003330574745699256,
+      "finalRssBytes": 54407168
+    },
+    "raw": "/tmp/putgd-native-idle-module-review-fixed/results.json",
+    "rawSha256": "8bfcd5753aae5a50eaca4f7b8b8acd9a3d5dc134fbf86a596734969d9d75f249",
+    "reuseReason": "Already completed full300s same-observer measurement of exact reviewed product tree cadd9ed. git diff cadd9ed c4808dd is empty;3b8ea0e adds only the same reviewed measurement wrappers. No product code changed before this experiment.",
+    "sourceRevision": "3b8ea0e",
+    "productEquivalentRevision": "cadd9ed"
+  },
+  "candidate": {
+    "iteration": 1,
+    "batch": 1,
+    "hypothesis": "linux-local-ipc-no-qtnetwork",
+    "category": "architecture",
+    "outcome": "measured",
+    "timestamp": "2026-10-08T18:55:38.749326+00:00",
+    "opportunity": {
+      "workload": "same-observer physical Cinnamon300s cold idle with nativeGTK",
+      "baseline": 54407168,
+      "evidence": "Paired standalone Qt Widgets vs same-source inert QLocalSocket adds6352896 and6524928RSSbytes; ELF closure28extra maps6.035MiB in product.",
+      "expected_benefit": "Upper bound about6MiBRSS; net benefit must be measured. Optimistic~45.8MiB,40MiB not guaranteed.",
+      "confidence": "High dependency attribution, net implementation unknown",
+      "cost_and_risk": "Existing IPC wire protocol and user-private endpoint remain; characterize framing, permissions, stale/live behavior, async replies and disconnect/backpressure; differential IP validation against QHostAddress; full contracts and sanitizers."
+    },
+    "metrics": {
+      "peakSampledRssBytes": {
+        "aggregate": 47841280,
+        "samples": [
+          47841280
+        ]
+      }
+    },
+    "gates": {
+      "budgetPassed": 1
+    },
+    "diagnostics": {
+      "idleCpuPercentOneCore": 0.009993366176748796,
+      "finalRssBytes": 47841280
+    },
+    "measurement": {
+      "raw": "/tmp/putgd-ipc-candidate-paired/results.json",
+      "rawSha256": "9b149d4197769c29ea5edb8c1e8d2bb9feaf7edcda1a8f7ee06e8e9665ca2c67",
+      "observer": "/tmp/putgd-ipc-candidate-paired-windows.json",
+      "observerSha256": "5a6e592f43cf45b611e8edfa643be7fd5383c62002725ef7b9cad9f5ca21a5ba",
+      "seconds": 300.19914680800866,
+      "pollCount": 292,
+      "operationCount": 0,
+      "coldIdleUninterrupted": true,
+      "observerSourceSha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+      "harnessSha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+    },
+    "snapshot": {
+      "base": "3b8ea0e",
+      "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-local-ipc-exp-001",
+      "files": {
+        "CMakeLists.txt": "85c3275f84e9c8da7f6a46babb33641feade9759f29ec6585cc64deedc491033",
+        "src/app/LocalIpc.cpp": "8ac4ebd1bc5b532dc11691bcec30779dffb1e6f77e57e93ac11df4a5f35ae20b",
+        "src/app/LocalIpc.h": "671c562b602f838b09b1d3e17abe5026654efc80bd537e789d986054c4e23096",
+        "src/app/LocalServer.cpp": "975e85a5a6146ba658369480e06070ef1794f00e12a17737ff15b60093a536e4",
+        "src/app/LocalServer.h": "4d8a6edd559ef19e7825a6e0163085ec88545994ec1aead91d9cbc2caf054a22",
+        "src/main.cpp": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d",
+        "src/storage/s3/IpAddress.cpp": "84466c749bac34f239e2460ddde9bbf8b3e51703db2c3064282ff7b426d7da41",
+        "src/storage/s3/IpAddress.h": "153e9c8aba1d56ed6e019f7e09c92377cbbf406a0aaf032e58323d20bada7d5d",
+        "src/storage/s3/S3Provider.cpp": "2dfaeeef97a0e95a3ca8cf9ab0ca997c2f9b1a97459fe295e36c260eef9f182c",
+        "tests/integration/test_local_ipc.cpp": "f42e6def039e29ffce04d428a1d4bfabab8e7b2af0065c72bde0eaa52e904d07",
+        "tests/unit/test_ip_address.cpp": "186a50904e03f19deb27755d212bae9e9f5526bce44c9af7291a35875bcabc89"
+      }
+    },
+    "correctness": {
+      "initialCandidate": {
+        "junit": "/tmp/putgd-ipc-first-tests.xml",
+        "passed": 1,
+        "failed": 1,
+        "failure": "IPv4-compatible IPv6 ::127.0.0.1 was incorrectly classified as loopback; test caught divergence from Qt6.4.2. Corrected to accept only IPv4-mapped loopback and ::1.",
+        "sha256": "0b86eafc706312a90783f4ececec6d0c7be7d36cf86bbe15b0aa16e333e420f0"
+      },
+      "state": "All declared application checks passed; source review and physical comparison in progress.",
+      "passedRuns": [
+        {
+          "path": "/tmp/putgd-local-ipc-dev.xml",
+          "passed": 28,
+          "failed": 0,
+          "seconds": 102.25,
+          "sha256": "fcc2146356be08e1672eb3198d28ce5b937d8e14d9cc3275108d7bec6f733839"
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-release-focused.xml",
+          "passed": 2,
+          "failed": 0,
+          "seconds": 13.52,
+          "sha256": "30d972b2ad5038b61ed16712c319ebab310f10f7b1d113b2e3f07bd5a63f1e3b"
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-mcp.txt",
+          "passed": 3,
+          "failed": 0,
+          "seconds": 2.184,
+          "sha256": "2040bdc79fe77de3178dbf489331c19855fea56c774fb9665afe414dd2b7202a"
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-asan.xml",
+          "passed": 4,
+          "failed": 0,
+          "seconds": 49.74,
+          "sha256": "d58fe4113b485db26b7fb335ee8681d005d3efffb8948f258a709396f3044bb8",
+          "limitation": "Application ASan/UBSan including leak detection; distro Qt and Release AWS SDK are not instrumented."
+        },
+        {
+          "path": "/tmp/putgd-local-ipc-tsan.xml",
+          "passed": 4,
+          "failed": 0,
+          "seconds": 50.62,
+          "sha256": "6c6fbd8cfe273de422938a6edad1fc9889a0eda7f53f75049a99e6fc07d816bc",
+          "limitation": "Application and documented Qt/DBus/GLib/keychain instrumented; existing Release AWS SDK/OpenSSL/curl not instrumented."
+        }
+      ]
+    },
+    "review": {
+      "status": "local passes complete; terminal receipt pending; external Claude authentication failure"
+    }
+  }
+}

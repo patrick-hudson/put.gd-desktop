@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/test_operations",
+    "drainedEarlySelectionAllowsNextRequestBeforeJournalCompletes",
+    "-o",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/early-release-operation-red.xml,junitxml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:19:55.505770+00:00"
+}

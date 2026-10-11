@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T04:24:49.147837+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/matrix-failure-current.png",
+  "sha256": "0953e1df57281f35d229bae6674bd9d127e87397efe36569e4ea9a580cb3ee70",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-matrix-failure-current-head0.ppm",
+    "sha256": "62383e6691afd19fc92d9de3cd5351db372f610e719d1e2b5ebe3d8cd31a88ad"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5938,
+  "visualReview": "pending"
+}

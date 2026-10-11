@@ -1,0 +1,339 @@
+{
+    "environment": {
+        "bits_per_byte": 8,
+        "build_type": "Release",
+        "compiler_id": "GNU",
+        "compiler_version": "13.3.0",
+        "cplusplus": 202002,
+        "pointer_size_bytes": 8,
+        "pointer_width_bits": 64,
+        "qt_compile_version": "6.4.2",
+        "qt_runtime_version": "6.4.2"
+    },
+    "limitations": [
+        "sizeof measures inline object stride, not pointed-to allocations or RSS.",
+        "No application objects, data, live population counts or workload were inspected.",
+        "Layouts and padding depend on the compiler, ABI, architecture and Qt build.",
+        "Synthetic narrower fields have different bounds; no production type was changed."
+    ],
+    "schema_version": 1,
+    "synthetic_examples": {
+        "narrowing": {
+            "after": {
+                "alignment_bytes": 8,
+                "member_payload_bytes": 11,
+                "members": [
+                    {
+                        "alignment_bytes": 1,
+                        "member": "tag",
+                        "offset_bytes": 0,
+                        "size_bytes": 1
+                    },
+                    {
+                        "alignment_bytes": 2,
+                        "member": "count",
+                        "offset_bytes": 2,
+                        "size_bytes": 2
+                    },
+                    {
+                        "alignment_bytes": 8,
+                        "member": "total",
+                        "offset_bytes": 8,
+                        "size_bytes": 8
+                    }
+                ],
+                "padding_bytes": 5,
+                "size_bytes": 16,
+                "standard_layout": true,
+                "type": "synthetic::NarrowCount"
+            },
+            "before": {
+                "alignment_bytes": 8,
+                "member_payload_bytes": 13,
+                "members": [
+                    {
+                        "alignment_bytes": 1,
+                        "member": "tag",
+                        "offset_bytes": 0,
+                        "size_bytes": 1
+                    },
+                    {
+                        "alignment_bytes": 4,
+                        "member": "count",
+                        "offset_bytes": 4,
+                        "size_bytes": 4
+                    },
+                    {
+                        "alignment_bytes": 8,
+                        "member": "total",
+                        "offset_bytes": 8,
+                        "size_bytes": 8
+                    }
+                ],
+                "padding_bytes": 3,
+                "size_bytes": 16,
+                "standard_layout": true,
+                "type": "synthetic::WideCount"
+            },
+            "stride_saved_bytes": 0
+        },
+        "reordering": {
+            "after": {
+                "alignment_bytes": 8,
+                "member_payload_bytes": 10,
+                "members": [
+                    {
+                        "alignment_bytes": 8,
+                        "member": "total",
+                        "offset_bytes": 0,
+                        "size_bytes": 8
+                    },
+                    {
+                        "alignment_bytes": 1,
+                        "member": "first",
+                        "offset_bytes": 8,
+                        "size_bytes": 1
+                    },
+                    {
+                        "alignment_bytes": 1,
+                        "member": "second",
+                        "offset_bytes": 9,
+                        "size_bytes": 1
+                    }
+                ],
+                "padding_bytes": 6,
+                "size_bytes": 16,
+                "standard_layout": true,
+                "type": "synthetic::Grouped"
+            },
+            "before": {
+                "alignment_bytes": 8,
+                "member_payload_bytes": 10,
+                "members": [
+                    {
+                        "alignment_bytes": 1,
+                        "member": "first",
+                        "offset_bytes": 0,
+                        "size_bytes": 1
+                    },
+                    {
+                        "alignment_bytes": 8,
+                        "member": "total",
+                        "offset_bytes": 8,
+                        "size_bytes": 8
+                    },
+                    {
+                        "alignment_bytes": 1,
+                        "member": "second",
+                        "offset_bytes": 16,
+                        "size_bytes": 1
+                    }
+                ],
+                "padding_bytes": 14,
+                "size_bytes": 24,
+                "standard_layout": true,
+                "type": "synthetic::Interleaved"
+            },
+            "stride_saved_bytes": 8
+        },
+        "synthetic_only": true
+    },
+    "types": [
+        {
+            "alignment_bytes": 4,
+            "maximum": "2147483647",
+            "minimum": "-2147483648",
+            "signed": true,
+            "size_bytes": 4,
+            "standard_layout": true,
+            "type": "int",
+            "value_bits": 31
+        },
+        {
+            "alignment_bytes": 2,
+            "maximum": "32767",
+            "minimum": "-32768",
+            "signed": true,
+            "size_bytes": 2,
+            "standard_layout": true,
+            "type": "std::int16_t",
+            "value_bits": 15
+        },
+        {
+            "alignment_bytes": 4,
+            "maximum": "2147483647",
+            "minimum": "-2147483648",
+            "signed": true,
+            "size_bytes": 4,
+            "standard_layout": true,
+            "type": "std::int32_t",
+            "value_bits": 31
+        },
+        {
+            "alignment_bytes": 4,
+            "maximum": "2147483647",
+            "minimum": "-2147483648",
+            "signed": true,
+            "size_bytes": 4,
+            "standard_layout": true,
+            "type": "qint32",
+            "value_bits": 31
+        },
+        {
+            "alignment_bytes": 8,
+            "maximum": "9223372036854775807",
+            "minimum": "-9223372036854775808",
+            "signed": true,
+            "size_bytes": 8,
+            "standard_layout": true,
+            "type": "std::int64_t",
+            "value_bits": 63
+        },
+        {
+            "alignment_bytes": 8,
+            "maximum": "9223372036854775807",
+            "minimum": "-9223372036854775808",
+            "signed": true,
+            "size_bytes": 8,
+            "standard_layout": true,
+            "type": "qint64",
+            "value_bits": 63
+        },
+        {
+            "alignment_bytes": 4,
+            "maximum": "2147483647",
+            "minimum": "-2147483648",
+            "signed": true,
+            "size_bytes": 4,
+            "standard_layout": true,
+            "type": "std::int_least32_t",
+            "value_bits": 31
+        },
+        {
+            "alignment_bytes": 8,
+            "maximum": "9223372036854775807",
+            "minimum": "-9223372036854775808",
+            "signed": true,
+            "size_bytes": 8,
+            "standard_layout": true,
+            "type": "std::int_fast32_t",
+            "value_bits": 63
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 24,
+            "standard_layout": true,
+            "type": "QString"
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 8,
+            "standard_layout": true,
+            "type": "QJsonObject"
+        },
+        {
+            "alignment_bytes": 8,
+            "members": [
+                {
+                    "alignment_bytes": 4,
+                    "member": "maxFiles",
+                    "offset_bytes": 0,
+                    "size_bytes": 4
+                },
+                {
+                    "alignment_bytes": 4,
+                    "member": "pendingOperations",
+                    "offset_bytes": 4,
+                    "size_bytes": 4
+                },
+                {
+                    "alignment_bytes": 4,
+                    "member": "concurrentUploads",
+                    "offset_bytes": 8,
+                    "size_bytes": 4
+                },
+                {
+                    "alignment_bytes": 8,
+                    "member": "maxFileBytes",
+                    "offset_bytes": 16,
+                    "size_bytes": 8
+                },
+                {
+                    "alignment_bytes": 8,
+                    "member": "maxBatchBytes",
+                    "offset_bytes": 24,
+                    "size_bytes": 8
+                },
+                {
+                    "alignment_bytes": 8,
+                    "member": "pendingArtifactBytes",
+                    "offset_bytes": 32,
+                    "size_bytes": 8
+                },
+                {
+                    "alignment_bytes": 8,
+                    "member": "pendingImageBytes",
+                    "offset_bytes": 40,
+                    "size_bytes": 8
+                },
+                {
+                    "alignment_bytes": 8,
+                    "member": "clipboardTextBytes",
+                    "offset_bytes": 48,
+                    "size_bytes": 8
+                },
+                {
+                    "alignment_bytes": 8,
+                    "member": "imagePixels",
+                    "offset_bytes": 56,
+                    "size_bytes": 8
+                },
+                {
+                    "alignment_bytes": 8,
+                    "member": "imageBytes",
+                    "offset_bytes": 64,
+                    "size_bytes": 8
+                }
+            ],
+            "size_bytes": 72,
+            "standard_layout": true,
+            "type": "putgd::ResourceLimits"
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 304,
+            "standard_layout": true,
+            "type": "putgd::Settings"
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 640,
+            "standard_layout": true,
+            "type": "putgd::Operation"
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 680,
+            "standard_layout": true,
+            "type": "putgd::OperationItem"
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 192,
+            "standard_layout": true,
+            "type": "putgd::Artifact"
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 224,
+            "standard_layout": true,
+            "type": "putgd::HistoryQuery"
+        },
+        {
+            "alignment_bytes": 8,
+            "size_bytes": 280,
+            "standard_layout": false,
+            "type": "putgd::HistoryModel"
+        }
+    ]
+}

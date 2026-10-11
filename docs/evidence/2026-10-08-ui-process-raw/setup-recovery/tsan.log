@@ -1,0 +1,8 @@
+Internal ctest changing into directory: /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/tsan-instrumented-qt
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/tsan-instrumented-qt
+    Start 36: gui_settings
+1/1 Test #36: gui_settings .....................   Passed   73.55 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =  73.55 sec

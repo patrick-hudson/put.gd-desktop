@@ -1,0 +1,49 @@
+{
+  "reviewer": "adversarial-claude",
+  "cross_model_route": "claude",
+  "cross_model_target": "claude",
+  "cross_model_harness": "claude",
+  "serving_family": "claude",
+  "independence_verified": true,
+  "model_requested": "claude-opus-5-5",
+  "model_actual": "claude-opus-5-5",
+  "effort_requested": "high",
+  "effort_actual": "unverified",
+  "receipt_supported": true,
+  "findings": [
+    {
+      "title": "Cascade: cancelled CLI clients keep IPC slots while dispatch is pending",
+      "severity": "P2",
+      "file": "src/app/LocalServer.cpp",
+      "line": 59,
+      "why_it_matters": "The old QLocalSocket kept watching the connection after a request was marked handled. When a CLI or MCP client exited before the reply, QLocalSocket noticed the EOF and emitted disconnected, which removed the client from clients_. On Linux, LocalIpcConnection::stopReading() turns off the only read notifier, and the 10 s deadline is stopped on the same line. A peer that closes while dispatch is still running is therefore only noticed when the reply is finally written. Each cancelled or timed-out client holds one of the 64 client slots until its dispatch replies, or forever if the reply never comes. If the resident is slow, for example a settings.patchAsync stuck on a keychain operation or a slow history query, repeated CLI/MCP retries (the CLI gives up after 15 s per read) can use up all 64 slots. After that, every new connection is accepted and immediately closed, including a GUI ui.show activation: activateLocalSession reports connected but not responded, and main returns 0 without showing the window.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "confidence": 50,
+      "evidence": [
+        "src/app/LocalServer.cpp:59: socket->setProperty(\"handled\",true);socket->stopReading();deadline->stop();",
+        "src/app/LocalIpc.cpp: void LocalIpcConnection::stopReading(){state_->readable->setEnabled(false);} -- after this, nothing watches the fd until sendAndClose()/flush() gets EPIPE",
+        "src/app/LocalIpc.cpp readAll(): if(count==0&&!bytes.isEmpty())state_->readable->setEnabled(false); -- after a half-close the notifier also stays off, so a later full close is also missed",
+        "Old code (removed lines): the readyRead handler returned early when handled, but QLocalSocket kept reading and emitted disconnected on EOF, so `clients_.remove(socket)` ran and the QPointer-guarded reply was dropped",
+        "src/app/LocalServer.cpp:49: if(clients_.size()>=64) {socket->disconnectFromServer();socket->deleteLater();continue;} -- the admission check counts these orphaned connections",
+        "src/cli/main.cpp: if(!socket.waitForReadyRead(15000))return error(\"transport_failed\",...) -- the client gives up and exits while the server-side slot stays held",
+        "Not confirmed: how long OperationService/SettingsService async replies can take (OperationService.cpp is not in the review packet)"
+      ],
+      "pre_existing": false,
+      "suggested_fix": "While a dispatched request is outstanding on Linux, check whether the peer has fully closed. A level-triggered read notifier cannot do this after a half-close because it would spin. Instead, in stopReading()/the half-close branch, start a 1 s QTimer owned by the connection that runs ::poll(fd, POLLRDHUP, 0) and calls state_->close() when revents contains POLLHUP or POLLERR. On AF_UNIX stream sockets, POLLHUP means the peer shut down both directions, so a peer that only did SHUT_WR still gets its reply. Stop the timer in sendAndClose()/close(). Add a LocalServer-level test: send a request whose reply is delayed, abort the client, and assert the slot is released (e.g. 64 new clients are still admitted).",
+      "pre_existing_note": null,
+      "first_evidence": "src/app/LocalServer.cpp:59: socket->setProperty(\"handled\",true);socket->stopReading();deadline->stop();"
+    }
+  ],
+  "residual_risks": [
+    "LocalIpcServer::State::accept() returns on any accept4 error other than EINTR, including EMFILE, ENFILE and ENOBUFS, and leaves the level-triggered listening notifier enabled. Under fd exhaustion the pending connection stays in the backlog, so the notifier fires again on every event-loop pass and the resident spins at 100% CPU. Qt's QLocalServer closed the server in this case instead. The precondition (fd exhaustion in the resident) has no evidence in the packet.",
+    "Linux connectSocket() treats EAGAIN from a non-blocking AF_UNIX connect (listener backlog of 64 full while the resident's event loop is stalled) as Unavailable and fails immediately. QLocalSocket used to retry within the 200 ms window. In that state a second `putgd` launch fails activateResident, then LocalServer::listen returns session_unavailable, and main exits 1 instead of activating the UI. This is safer than the old stale-unlink, but users would see it as a launch failure.",
+    "There is still a race between the stale-socket probe and the unlink in LocalServer::listen, and it predates this change. If two launches both classify an old socket as Absent, the later removeServer() can unlink the earlier winner's freshly bound live socket. The new inode check in ~LocalIpcServer::State only stops the loser from deleting the winner's file at teardown; it does not stop the orphaning. LocalIpcServer::removeServer also now returns false on ENOENT where QLocalServer returned true, so the loser exits with session_unavailable instead of a clean bind error."
+  ],
+  "testing_gaps": [
+    "There is no executable check that the Linux `putgd` binary no longer has libQt6Network in its DT_NEEDED entries, which is the dependency goal of this change. A future transitive PUBLIC link would silently restore QtNetwork while every functional fixture stays green. A ctest that runs readelf/objdump on $<TARGET_FILE:putgd> would catch this.",
+    "The half-close and slow-peer tests drive LocalIpcServer with test-only handlers, not LocalServer. No fixture sends a SHUT_WR-terminated request through LocalServer's real framing/handled/deadline path and checks that the reply arrives.",
+    "No fixture covers a client disconnecting while a LocalServer dispatch is pending and then checks that the 64-client admission budget recovers."
+  ]
+}

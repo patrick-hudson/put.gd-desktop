@@ -1,0 +1,21 @@
+{
+  "phase": "red",
+  "timeUtc": "2026-10-09T00:28:23.521765+00:00",
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests/performance",
+    "-p",
+    "test_bench_ui_process.py",
+    "-v"
+  ],
+  "exitCode": 1,
+  "sourceSha256": {
+    "tests/performance/bench_ui_process.py": "544c35a269d43d1a5e41d3897ad6f5a9b485365d857486f2a95d303703816660",
+    "tests/performance/test_bench_ui_process.py": "83d40c408407d8e8694e6983a9ee1b329995b2703a52bea8e729a307090023ba",
+    "docs/testing-ui-process.md": "024d0fdce52e8fa3c567d849f99e85be1fb593bdcbd048a07841aee2980dfa9b"
+  }
+}

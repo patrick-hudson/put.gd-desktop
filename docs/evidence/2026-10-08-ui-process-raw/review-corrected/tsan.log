@@ -1,0 +1,34 @@
+Internal ctest changing into directory: /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/tsan-instrumented-qt
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/tsan-instrumented-qt
+      Start  2: kde_ownership_integration
+ 1/14 Test  #2: kde_ownership_integration .........   Passed    2.78 sec
+      Start  3: ui_split_services_integration
+ 2/14 Test  #3: ui_split_services_integration .....   Passed    1.70 sec
+      Start  4: ui_process_integration
+ 3/14 Test  #4: ui_process_integration ............   Passed   19.06 sec
+      Start  5: ui_endpoints_integration
+ 4/14 Test  #5: ui_endpoints_integration ..........   Passed    1.13 sec
+      Start  6: ui_control_integration
+ 5/14 Test  #6: ui_control_integration ............   Passed    8.14 sec
+      Start  7: session_client_integration
+ 6/14 Test  #7: session_client_integration ........   Passed   23.97 sec
+      Start  9: gui_application
+ 7/14 Test  #9: gui_application ...................   Passed   15.10 sec
+      Start 10: gui_tray
+ 8/14 Test #10: gui_tray ..........................   Passed    0.53 sec
+      Start 11: gui_version
+ 9/14 Test #11: gui_version .......................   Passed    0.15 sec
+      Start 13: ui_native_lifecycle_integration
+10/14 Test #13: ui_native_lifecycle_integration ...   Passed   14.13 sec
+      Start 14: x11_isolated
+11/14 Test #14: x11_isolated ......................   Passed   17.94 sec
+      Start 36: gui_settings
+12/14 Test #36: gui_settings ......................   Passed   87.78 sec
+      Start 37: gui_operations_view
+13/14 Test #37: gui_operations_view ...............   Passed    2.28 sec
+      Start 38: gui_history_view
+14/14 Test #38: gui_history_view ..................   Passed   46.33 sec
+
+100% tests passed, 0 tests failed out of 14
+
+Total Test time (real) = 241.04 sec

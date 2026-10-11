@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "unit": "U11",
+  "kind": "setup-recovery",
+  "callerReview": "Confirmed the reported control-flow failure; applied smallest recovery correction, preserving accepted mutations and current helper ownership.",
+  "behaviorTests": "Actual red before production change and green after; see receipt and logs.",
+  "files": [
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/receipt.json",
+      "sha256": "c61aca607ab5bdc6c4646e11d326aaf136a3f22b0a7f4768f424691de266060e"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/red.json",
+      "sha256": "ab0bf25428865ec2876dc9631607b9857ed99f6e6fee21fb2822fcc8acf20250"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/red.log",
+      "sha256": "99969d1a360ef52db2e657c2f965ba91c242fd268d89f1f614da3d08fda7d830"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/red.xml",
+      "sha256": "55c02afb9309952e26c9a4191275966a2ebfe9fdcf94a466366fcffd99b6122e"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/green.json",
+      "sha256": "24524cad88927fe1fb2f9f85968884b5ebbd07a47fa0d109364848f165989641"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/green.log",
+      "sha256": "024b4e8fcda357157c6e5717202895489831031bc68c7c62d72dc9ad323a7d19"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/green.xml",
+      "sha256": "0de74dd53a32287763743db2512b1aac252aabdf5194a50f03736760ea9a4f6b"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/settings-suite.json",
+      "sha256": "00baabf387acdd9f9ed401d8a5403e9d689d68e62ee9d0e7a499dc261e8ab398"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/settings-suite.log",
+      "sha256": "83293663608f8bf1ffb8f51a24b1b3394af5c0341467584c3b5110e98bc23e51"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/settings-suite.xml",
+      "sha256": "1809615aee7e2aa923c55a7fcf6eb440bcb76576c3ca37afc733f0147d8a9901"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/red-test.patch",
+      "sha256": "06894185e3c8c58b12a3bacc8a1f87be3e56c55dcfe45b79e3d4a26d52451c81"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/replay.sh",
+      "sha256": "16a10e581de516385093757839f4c099cdb4870e41622d69591932e70b54b957"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/replay.md",
+      "sha256": "6e36f04c0eb82810cbbf97d5e02d4f5c02c0cc9c631d1c9ad4a09e56d7094eae"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/asan.log",
+      "sha256": "346c0daaecd96179c45c5327e321229ca80ad43910aead0d2f25b7bc12c3284d"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/asan.xml",
+      "sha256": "de8dffecacc2e5d95397e8a5b4da4b7b8a059f93605d82109c72f4c99f09154b"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/asan-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/tsan.log",
+      "sha256": "0610ea2485b762791a04e7c3c0be8096be118d91481009c18a41ea3ce5f512a3"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/tsan.xml",
+      "sha256": "f0f2a92466bc375a678caba16d2a7ab3e3cfef15c29222cc1d12aa807943c8df"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/tsan-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-process-raw/setup-recovery/sanitizer-replay.sh",
+      "sha256": "a83365886d8e55615046bf010d1f10a8688cc31f0adb290bc2be4614f16e2188"
+    }
+  ],
+  "nativeAe17": "Still pending; GNOME isolated D-Bus test is transport proof, not compositor capture/tray proof.",
+  "sanitizers": "Affected gui_settings passes ASan/UBSan and instrumented-Qt TSan with unchanged suppression."
+}

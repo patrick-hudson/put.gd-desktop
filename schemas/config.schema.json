@@ -1,0 +1,645 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "actions",
+    "profiles",
+    "archive",
+    "naming",
+    "limits",
+    "retention",
+    "preferences"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "actions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "region",
+        "window",
+        "desktop",
+        "clipboard"
+      ],
+      "properties": {
+        "region": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "desktop": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "clipboard": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        }
+      }
+    },
+    "profiles": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "provider",
+          "settings",
+          "credentials"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "provider": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+          },
+          "settings": {
+            "type": "object"
+          },
+          "credentials": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "reference"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "keychain",
+                  "session"
+                ]
+              },
+              "reference": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 256
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "const": "keychain"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "reference": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "reference": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "s3"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/s3Settings"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "archive": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "keepUploads",
+        "root",
+        "folders"
+      ],
+      "properties": {
+        "keepUploads": {
+          "type": "boolean"
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+        },
+        "folders": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "images",
+            "videos",
+            "text",
+            "other"
+          ],
+          "properties": {
+            "images": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "videos": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "text": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "other": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096,
+                  "pattern": "^(?:/|[A-Za-z]:[\\\\/])"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "naming": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "collisionPolicy"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "generated",
+            "original",
+            "template"
+          ]
+        },
+        "collisionPolicy": {
+          "enum": [
+            "rename",
+            "skip",
+            "overwrite"
+          ]
+        },
+        "fileTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "{name}.{ext}"
+        },
+        "captureTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+        },
+        "imageTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+        },
+        "textTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxFiles",
+        "pendingOperations",
+        "concurrentUploads",
+        "maxFileBytes",
+        "maxBatchBytes",
+        "pendingArtifactBytes",
+        "clipboardTextBytes",
+        "imagePixels",
+        "imageBytes"
+      ],
+      "properties": {
+        "maxFiles": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "pendingOperations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1024
+        },
+        "concurrentUploads": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "maxFileBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "maxBatchBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "pendingArtifactBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "clipboardTextBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "imagePixels": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000
+        },
+        "imageBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776
+        },
+        "pendingImageBytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1099511627776,
+          "default": 67108864,
+          "description": "Total decoded image bytes admitted for queued/encoding jobs; released after persistence or cancellation. Does not bound total RSS."
+        }
+      }
+    },
+    "retention": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "failedArtifactDays",
+        "recentActivityLimit",
+        "previewCacheBytes",
+        "historyRetentionDays"
+      ],
+      "properties": {
+        "failedArtifactDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 36500
+        },
+        "recentActivityLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "previewCacheBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1099511627776
+        },
+        "historyRetentionDays": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 36500
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "notifications",
+        "launchAtLogin"
+      ],
+      "properties": {
+        "notifications": {
+          "type": "boolean"
+        },
+        "launchAtLogin": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://put.gd/schemas/config.schema.json",
+  "title": "put.gd non-secret configuration",
+  "$defs": {
+    "s3Settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bucket",
+        "region",
+        "endpoint",
+        "objectPrefix",
+        "storageClass",
+        "aclMode",
+        "publicUrlBase",
+        "addressing",
+        "connectTimeoutMs",
+        "requestTimeoutMs",
+        "lowSpeedBytesPerSecond",
+        "lowSpeedTimeSeconds"
+      ],
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "maxLength": 63,
+          "minLength": 3
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "endpoint": {
+          "type": "string",
+          "pattern": "^(https://|http://(127\\.[0-9.]+|\\[::1\\]))"
+        },
+        "objectPrefix": {
+          "type": "string",
+          "maxLength": 1022,
+          "description": "UTF-8 byte length is limited to 1022; adapter enforces the final 1024-byte object key limit."
+        },
+        "storageClass": {
+          "enum": [
+            "STANDARD",
+            "REDUCED_REDUNDANCY",
+            "STANDARD_IA",
+            "ONEZONE_IA",
+            "INTELLIGENT_TIERING",
+            "GLACIER",
+            "DEEP_ARCHIVE",
+            "GLACIER_IR"
+          ]
+        },
+        "aclMode": {
+          "enum": [
+            "public-read",
+            "omit"
+          ]
+        },
+        "publicUrlBase": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Absolute HTTPS URL without credentials/query/fragment, or literal-loopback HTTP. An encoded base path is preserved. Null derives from effective S3 addressing."
+        },
+        "addressing": {
+          "enum": [
+            "path",
+            "virtual",
+            "auto"
+          ],
+          "description": "auto uses virtual only for AWS hosts and undotted bucket names; path supports dotted buckets; virtual rejects dotted names and literal IP endpoints."
+        },
+        "connectTimeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "lowSpeedBytesPerSecond": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "lowSpeedTimeSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      }
+    }
+  },
+  "description": "SettingsService is authoritative for profile references, uniqueness, shortcuts and registered provider validation."
+}

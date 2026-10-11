@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "python3",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/tests/performance/run_capture.py",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "--driver",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-bench-capture",
+    "--capture-helper",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-capture",
+    "--live-outline",
+    "--output",
+    "/tmp/pg-parity-native-phases"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "startedUtc": "2026-10-09T15:08:52.320441+00:00"
+}

@@ -1,0 +1,17 @@
+{
+  "kernel": "7.0.0-30-generic",
+  "packages": [
+    "cinnamon ",
+    "gnome-shell ",
+    "kwin-wayland 4:6.6.6-0ubuntu0.1",
+    "libqt6core6 ",
+    "libqt6core6t64 6.10.2+dfsg-7",
+    "plasma-workspace 4:6.6.6-0ubuntu0.1",
+    "putgd 0.1.1~dev.45+g9d142919e5e6.dirty",
+    "xdg-desktop-portal 1.21.1+ds-1ubuntu3.1",
+    "xdg-desktop-portal-backend ",
+    "xdg-desktop-portal-gnome ",
+    "xdg-desktop-portal-gtk 1.15.3-2ubuntu1",
+    "xdg-desktop-portal-kde 6.6.6-0ubuntu0.1"
+  ]
+}

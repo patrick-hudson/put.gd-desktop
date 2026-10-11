@@ -1,0 +1,61 @@
+{
+  "reviewer": "adversarial-claude",
+  "cross_model_route": "claude",
+  "cross_model_target": "claude",
+  "cross_model_harness": "claude",
+  "serving_family": "claude",
+  "independence_verified": true,
+  "model_requested": "claude-opus-5-5",
+  "model_actual": "claude-opus-5-5",
+  "effort_requested": "high",
+  "effort_actual": "unverified",
+  "receipt_supported": true,
+  "findings": [
+    {
+      "title": "Async gjs module failure may exit 0 and pass CTest",
+      "severity": "P1",
+      "file": "CMakeLists.txt",
+      "line": 376,
+      "why_it_matters": "CTest judges this test only by gjs's exit code. Because the fixture uses top-level await, it is an async module. Every assertion from line 76 onward, plus the ARGV and file-load throws at lines 26-29, settles the module-evaluation promise as a rejection. Node exited 1 on a rejected top-level await and exited 13 on a top-level await that never settled. I could not confirm that every distro gjs that `find_program` might find does the same. On some versions a rejection may only be logged as an unhandled rejection. A promise that never settles may let the job queue drain and exit 0. Either way the five ownership assertions could report green while one of them is red.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Stop relying on gjs's exit-code semantics. Add `PASS_REGULAR_EXPRESSION \"PASS helper registration/focus changes do not replace frozen target\"` to the existing `set_tests_properties(gnome_ui_ownership_contract PROPERTIES TIMEOUT 30)`. The last PASS line prints only after every earlier assertion and await has finished in order. Belt-and-braces option: wrap the test body in `try { ... } catch (e) { logError(e); System.exit(1); }` using `import System from 'system'` (built into GJS, not a new dependency).",
+      "confidence": 50,
+      "evidence": [
+        "CMakeLists.txt:375-376: `add_test(NAME gnome_ui_ownership_contract COMMAND \"${PUTGD_GJS}\" -m \".../test_gnome_ownership.mjs\" \".../extension.js\")` / `set_tests_properties(gnome_ui_ownership_contract PROPERTIES TIMEOUT 30)`: no PASS_REGULAR_EXPRESSION or FAIL_REGULAR_EXPRESSION, so the verdict is the exit code alone.",
+        "tests/desktop/test_gnome_ownership.mjs:76: `await assert.rejects(own.extension._prepare(...), e => e.bridgeCode === 'capture_target');` is the first top-level await. From here every `assert.*` throw rejects the async module-evaluation promise; it is not a synchronous script exception.",
+        "Never-settled scenario: `register()` (lines 65-69) resolves only through the mocked `return_value`. Suppose the extension answers an error path through an unmocked invocation method such as `return_dbus_error`. The resulting TypeError is swallowed inside the async D-Bus handler and the promise never settles. Node would have exited 13. gjs either hangs until the 30 s TIMEOUT (red) or ends with the evaluation still pending (possibly exit 0 = green).",
+        "Lines 102-106: if `_prepare` fails before `_layout` is called, `releaseLayout` is undefined and `releaseLayout([])` throws after several awaits. That is again a failure that depends on async-module rejection handling."
+      ],
+      "pre_existing": false,
+      "first_evidence": "CMakeLists.txt:375-376: `add_test(NAME gnome_ui_ownership_contract COMMAND \"${PUTGD_GJS}\" -m \".../test_gnome_ownership.mjs\" \".../extension.js\")` / `set_tests_properties(gnome_ui_ownership_contract PROPERTIES TIMEOUT 30)`: no PASS_REGULAR_EXPRESSION or FAIL_REGULAR_EXPRESSION, so the verdict is the exit code alone."
+    },
+    {
+      "title": "Missing gjs silently removes the ownership contract from ctest",
+      "severity": "P2",
+      "file": "CMakeLists.txt",
+      "line": 378,
+      "why_it_matters": "Before this change, a machine without Node got a CMake WARNING. Now a machine without gjs registers no test and prints only a STATUS line, which is lost in normal configure output. On any build or CI host that had node but has no gjs, the five helper/resident ownership assertions drop out of `ctest`. The results show no Not Run, Skipped or Failed entry, so the suite looks fully green with the ownership-exclusion coverage gone.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Make the gap visible without adding a dependency. In the `else()` branch, register `add_test(NAME gnome_ui_ownership_contract COMMAND \"${CMAKE_COMMAND}\" -E false)` with `set_tests_properties(gnome_ui_ownership_contract PROPERTIES DISABLED TRUE)` so ctest reports it as 'Not Run (Disabled)'. Keep `message(WARNING ...)` instead of STATUS. Optionally add a cache option, such as PUTGD_REQUIRE_GJS_CONTRACT, that turns a missing gjs into FATAL_ERROR in the GNOME lab.",
+      "confidence": 75,
+      "evidence": [
+        "CMakeLists.txt:378: `message(STATUS \"GNOME extension ownership contract runs in the GNOME lab with its native GJS runtime\")`",
+        "Diff removes `message(WARNING \"Node.js unavailable: GNOME extension ownership fixture cannot run\")`: the severity is downgraded at the same time the required runtime changes from node to gjs, which is much less common on generic build hosts.",
+        "CMakeLists.txt:374: `if(PUTGD_GJS)` is the only path that calls add_test, so the test name does not exist at all when gjs is absent."
+      ],
+      "pre_existing": false,
+      "first_evidence": "CMakeLists.txt:378: `message(STATUS \"GNOME extension ownership contract runs in the GNOME lab with its native GJS runtime\")`"
+    }
+  ],
+  "residual_risks": [
+    "Direct `eval(source)` (test_gnome_ownership.mjs:50) runs the extension in the whole module scope plus real GJS globals (`imports`, `console`, `log`, `setTimeout`, `ARGV`, `print`, `TextDecoder`, `FileIO`). The comment at line 48 says it captures 'only these deliberately mocked Shell dependencies', but that is not true. The old `vm.createContext` sandbox raised ReferenceError on any unmocked dependency. Now such a dependency silently uses the real GJS facility. For example, a real `setTimeout` scheduled on a main loop that never runs could hide a code path instead of failing the fixture.",
+    "`gjs -m` needs GJS ≥ 1.68, and `TextDecoder` with `{fatal: true}` needs a newer GJS still. If `find_program` finds an older distro gjs on a host build machine, the test is registered but fails with an interpreter/option error. That is a false red unrelated to the extension. It is not silent, but it could push people to delete or ignore the test."
+  ],
+  "testing_gaps": [
+    "Nothing proves this gate turns red under gjs. No check deliberately breaks an assertion after the first top-level await (or leaves a `register()` promise pending) to confirm that `ctest` reports gnome_ui_ownership_contract as failed with the distro gjs the lab uses."
+  ]
+}

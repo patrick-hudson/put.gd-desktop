@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "testId": "d6052223c53047ba9959845ad417f180",
+  "profile": "gnome-wayland",
+  "scenario": "region-cancel-right-click-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 79451,
+    "startTicks": 1118766,
+    "sha256": "169f49a45afec5dbb4f3fc4a662b365dc02e29b03ad46393281c292b6ff2f7c6"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": "Ctrl+Shift+4",
+      "bound": true,
+      "requested": "Ctrl+Shift+4"
+    },
+    "desktop": {
+      "actual": "Ctrl+Shift+3",
+      "bound": true,
+      "requested": "Ctrl+Shift+3"
+    },
+    "region": {
+      "actual": "Ctrl+Shift+1",
+      "bound": true,
+      "requested": "Ctrl+Shift+1"
+    },
+    "window": {
+      "actual": "Ctrl+Shift+2",
+      "bound": true,
+      "requested": "Ctrl+Shift+2"
+    }
+  },
+  "independentPaintGeometry": {
+    "x": 353,
+    "y": 225,
+    "width": 640,
+    "height": 320
+  },
+  "independentWindowFrame": {
+    "x": 342,
+    "y": 176,
+    "width": 662,
+    "height": 480
+  },
+  "parameters": "parameters.json",
+  "operationId": "b0f85b9b-266e-495a-83bd-1a10ac665199",
+  "operationState": "cancelled",
+  "copyStatus": "no_result",
+  "itemOutcomes": [],
+  "paste": {
+    "ok": true,
+    "expected": {
+      "text": "putgd synthetic clipboard text"
+    },
+    "actual": {
+      "formats": [
+        "text/plain",
+        "text/plain;charset=utf-8"
+      ],
+      "schemaVersion": 1,
+      "text": "putgd synthetic clipboard text"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T044003011361-8/final-head0.ppm",
+    "sha256": "e9e91e0a2a2272df80f08b6b4bf8c9d0ac2ad06e6a4b16a2859085260405a2bc"
+  },
+  "elapsedSeconds": 8.828501423995476,
+  "evidenceDirectory": "tests/d6052223c53047ba9959845ad417f180"
+}

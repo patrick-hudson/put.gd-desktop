@@ -1,0 +1,164 @@
+{
+  "diagnostics": {
+    "activeOperations": 1,
+    "backend": "Qt",
+    "build": {
+      "baseVersion": "0.1.1",
+      "commitCount": 45,
+      "dirty": true,
+      "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+      "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+      "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "0.1.1-dev.45+g9d142919e5e6.dirty"
+    },
+    "capabilities": {
+      "providers": {
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "source": {
+        "adapter": "cinnamon-x11",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          },
+          "region": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          },
+          "window": {
+            "available": true,
+            "consent": "none",
+            "mode": "visible-pixels"
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "import": "asynchronous-x11-selection",
+          "result": "qt-ownership",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "memory": {
+      "allocatorReclamationCount": 2,
+      "allocatorReclamationPending": true,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 109
+    },
+    "qtVersion": "6.4.2",
+    "schemaVersion": 1
+  },
+  "operations": {
+    "operations": [
+      {
+        "action": "region",
+        "cancelled": false,
+        "clipboardRevision": "6",
+        "copyStatus": "pending",
+        "created": "2026-10-09T04:31:58.464Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "id": "2e9e63d3-6e1c-4f35-8803-5509c24872fb",
+        "invocation": "2",
+        "items": [],
+        "settingsRevision": "11ea9d6c7db535c6d6e0fe78aec86f876d8c1c2fe803a940e767c6d5df43688c",
+        "state": "acquiring"
+      },
+      {
+        "action": "region",
+        "cancelled": true,
+        "clipboardRevision": "6",
+        "copyStatus": "no_result",
+        "created": "2026-10-09T04:23:10.942Z",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "error": {
+          "code": "cancelled",
+          "details": {},
+          "message": "Region selection cancelled"
+        },
+        "id": "0447224a-d5ae-44f8-b944-36f2ab62949f",
+        "invocation": "1",
+        "items": [],
+        "settingsRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+        "state": "cancelled"
+      }
+    ]
+  },
+  "nativeWindows": "/usr/bin/xwininfo\n\nxwininfo: Window id: 0x21d (the root window) (has no name)\n\n  Root window id: 0x21d (the root window) (has no name)\n  Parent window id: 0x0 (none)\n     60 children:\n     0x4400011 \"putgd\": (\"putgd\" \"putgd\")  1280x800+0+0  +0+0\n        1 child:\n        0x4400013 \"Qt NET_WM User Time Window\": ()  1x1+-1+-1  +-1+-1\n     0x260000b \"cinnamon\": (\"cinnamon\" \"Cinnamon\")  1x1+-200+-200  +-200+-200\n        1 child:\n        0x260000c (has no name): ()  1x1+-1+-1  +-201+-201\n     0x2602b7f (has no name): ()  660x470+110+112  +110+112\n        1 child:\n        0x2e00006 \"put.gd independent synthetic paint / paste fixture\": (\"putgd-desktop-fixture\" \"putgd-desktop-fixture\")  640x420+10+40  +120+152\n           1 child:\n           0x2e00010 \"Qt NET_WM User Time Window\": ()  1x1+-1+-1  +119+151\n     0x2e00008 \"putgd-desktop-fixture\": ()  1x1+0+0  +0+0\n     0x3c00001 \"putgd-desktop-fixture\": (\"putgd-desktop-fixture\" \"Putgd-desktop-fixture\")  10x10+10+10  +10+10\n     0x2e00004 \"Qt Selection Owner for putgd-desktop-fixture\": ()  3x3+0+0  +0+0\n     0x4400008 \"putgd\": ()  1x1+0+0  +0+0\n     0x4e00000 (has no name): ()  1x1+0+0  +0+0\n     0x4600001 \"putgd\": (\"putgd\" \"Putgd\")  10x10+10+10  +10+10\n     0x4400004 \"Qt Selection Owner for putgd\": ()  3x3+0+0  +0+0\n     0x2602706 (has no name): ()  810x620+235+87  +235+87\n        1 child:\n        0x3a0000e \"Update Manager\": (\"mintUpdate.py\" \"MintUpdate.py\")  790x570+10+40  +245+127\n           1 child:\n           0x3a0000f (has no name): ()  1x1+-1+-1  +244+126\n     0x4c00001 \"xdg-desktop-portal-gtk\": (\"xdg-desktop-portal-gtk\" \"Xdg-desktop-portal-gtk\")  10x10+10+10  +10+10\n     0x4800001 \"xdg-desktop-portal-xapp\": (\"xdg-desktop-portal-xapp\" \"Xdg-desktop-portal-xapp\")  10x10+10+10  +10+10\n     0x28001f5 \"xapp-sn-watcher\": (\"xapp-sn-watcher\" \"Xapp-sn-watcher\")  191x244+1032+516  +1032+516\n        1 child:\n        0x28001f6 (has no name): ()  1x1+-1+-1  +1031+515\n     0x280037b (has no name): ()  24x24+1032+760  +1032+760\n     0x28002e2 \"xapp-sn-watcher\": ()  10x10+-100+-100  +-100+-100\n     0x2800025 \"xapp-sn-watcher\": (\"xapp-sn-watcher\" \"Xapp-sn-watcher\")  191x244+1032+516  +1032+516\n        1 child:\n        0x2800026 (has no name): ()  1x1+-1+-1  +1031+515\n     0x28001d0 (has no name): ()  24x24+1032+760  +1032+760\n     0x3000003 \"Desktop\": (\"nemo-desktop\" \"Nemo-desktop\")  1280x760+0+0  +0+0\n        1 child:\n        0x3000004 (has no name): ()  1x1+-1+-1  +-1+-1\n     0x2800003 (has no name): ()  1x1+-1+-1  +-1+-1\n     0x2c00001 \"tray.py\": (\"tray.py\" \"\")  10x10+10+10  +10+10\n     0x3a00003 (has no name): ()  1x1+-1+-1  +-1+-1\n     0x3a00001 \"mintUpdate.py\": (\"mintUpdate.py\" \"\")  10x10+10+10  +10+10\n     0x300001f \"nemo-desktop\": ()  10x10+-100+-100  +-100+-100\n     0x300000c (has no name): ()  1x1+-1+-1  +-1+-1\n     0x2600021 \"cinnamon\": ()  10x10+-100+-100  +-100+-100\n     0x3600001 \"evolution-alarm-notify\": (\"evolution-alarm-notify\" \"Evolution-alarm-notify\")  10x10+10+10  +10+10\n     0x2a00001 \"cinnamon-killer-daemon\": (\"cinnamon-killer-daemon\" \"\")  10x10+10+10  +10+10\n     0x3400001 \"blueman-applet\": (\"blueman-applet\" \"\")  10x10+10+10  +10+10\n     0x3000001 \"nemo-desktop\": (\"nemo-desktop\" \"Nemo-desktop\")  10x10+10+10  +10+10\n     0x1c00003 (has no name): ()  1x1+-1+-1  +-1+-1\n     0x2800001 \"xapp-sn-watcher\": (\"xapp-sn-watcher\" \"Xapp-sn-watcher\")  10x10+10+10  +10+10\n     0x260001a (has no name): ()  1x1+-1+-1  +-1+-1\n     0x2600011 (has no name): ()  1x1+-100+-100  +-100+-100\n     0x260000f (has no name): ()  1x1+-1+-1  +-1+-1\n     0x2600009 (has no name): ()  1x1+-100+-100  +-100+-100\n     0x2600008 (has no name): ()  1x1+-100+-100  +-100+-100\n     0x2600007 (has no name): ()  1x1+-100+-100  +-100+-100\n     0x2600006 \"Mutter (Muffin)\": ()  1x1+-100+-100  +-100+-100\n     0x2600001 \"cinnamon\": (\"cinnamon\" \"Cinnamon\")  10x10+10+10  +10+10\n     0x2000008 (has no name): ()  1x1+-100+-100  +-100+-100\n     0x2200001 \"cinnamon-launcher\": (\"cinnamon-launcher\" \"\")  10x10+10+10  +10+10\n     0x60000c (has no name): ()  1x1+-1+-1  +-1+-1\n     0x1600002 (has no name): ()  10x10+0+0  +0+0\n     0x1600001 \"csd-xsettings\": (\"csd-xsettings\" \"Csd-xsettings\")  10x10+10+10  +10+10\n     0x1200002 (has no name): ()  10x10+0+0  +0+0\n     0x1000001 \"csd-media-keys\": (\"csd-media-keys\" \"Csd-media-keys\")  10x10+10+10  +10+10\n     0x1200001 \"csd-clipboard\": (\"csd-clipboard\" \"Csd-clipboard\")  10x10+10+10  +10+10\n     0xc00001 \"csd-automount\": (\"csd-automount\" \"Csd-automount\")  10x10+10+10  +10+10\n     0xe00001 \"csd-power\": (\"csd-power\" \"Csd-power\")  10x10+10+10  +10+10\n     0x800003 \"ibus-xim\": ()  1x1+0+0  +0+0\n        1 child:\n        0x800004 (has no name): ()  1x1+-1+-1  +-1+-1\n     0x1e00001 \"csd-keyboard\": (\"csd-keyboard\" \"Csd-keyboard\")  10x10+10+10  +10+10\n     0x1c00001 \"csd-background\": (\"csd-background\" \"Csd-background\")  10x10+10+10  +10+10\n     0x1800001 \"csd-housekeeping\": (\"csd-housekeeping\" \"Csd-housekeeping\")  10x10+10+10  +10+10\n     0x400001 \"ibus-extension-gtk3\": (\"ibus-extension-gtk3\" \"Ibus-extension-gtk3\")  10x10+10+10  +10+10\n     0xa00001 \"csd-wacom\": (\"csd-wacom\" \"Csd-wacom\")  10x10+10+10  +10+10\n     0x600001 \"ibus-ui-gtk3\": (\"ibus-ui-gtk3\" \"Ibus-ui-gtk3\")  10x10+10+10  +10+10\n     0x1400001 \"csd-color\": (\"csd-color\" \"Csd-color\")  10x10+10+10  +10+10\n     0x800001 \"ibus-x11\": (\"ibus-x11\" \"Ibus-x11\")  10x10+10+10  +10+10\n     0x2600010 \"muffin guard window\": ()  1280x800+0+0  +0+0\n\n",
+  "witness": {
+    "utc": "2026-10-09T04:32:00.715627+00:00",
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/diagnostic-selector-ready.png",
+    "sha256": "09b842aac0d3c09fb41ff4851248206eaeeb51891230e2963e20a578312553c4",
+    "nativeQmp": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-diagnostic-selector-ready-head0.ppm",
+      "sha256": "be36140e8614ca77d6ee6ada728fb321bda299b75fadfdaacd276dfce270dad3"
+    },
+    "desktopPixels": [
+      1280,
+      800
+    ],
+    "vncPort": 5938,
+    "visualReview": "pending"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T04:42:23.391404+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/gnome/views/settings-empty-compact.png",
+  "sha256": "289e81bdcaac2ad0a59242281ac742f444a15f64a7035e486dff4cbde6d9af57",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/ui-refinement-lazy-exp001-native-settings-empty-compact-head0.ppm",
+    "sha256": "a53780c310e764f2da9fbe1f886698cd512f3738a801e8e93e105c223f97a2af"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5936,
+  "visualReview": "pending"
+}

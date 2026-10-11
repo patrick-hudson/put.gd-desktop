@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "sourceReleaseSnapshotSha256": "62894637c1dc7ba69c18b0dad82939023cf4806b80751be240016bb8315c7afa",
+  "scope": "Supplementary assertion-only X11 test hash; earlier source snapshots remain immutable.",
+  "file": "tests/desktop/x11/test_x11.cpp",
+  "sha256": "b7fe7522a4b11d90eceb4335fd8f5e0f90a0b4056eb282c02f32f35f62438d31",
+  "dirty": true
+}

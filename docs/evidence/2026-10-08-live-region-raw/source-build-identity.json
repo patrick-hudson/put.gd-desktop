@@ -1,0 +1,22 @@
+{
+  "baseHead": "1d4f2ef14c6dbf88e91e4744e3c6bea5b73b5827",
+  "cmakePreset": "dev",
+  "sourceSha256": {
+    "src/ui/RegionOverlay.cpp": "506268546f0e6d60fbde35a096265d630bbd608a9731e4a9bf2c8092c68f3255",
+    "src/platform/x11/X11SourceAdapter.cpp": "35c324a589821839c352aa1646faecef8a33443664ce9e35982c1b088ef8ba1f",
+    "src/platform/x11/X11SourceAdapter.h": "8ff4da7da92b8914a8420d622c6ab0e341990781780e590c39523ac9cc3799c0",
+    "src/platform/x11/X11Capture.cpp": "afd2c3ec713bea9cc74db1c9a94ba2042ce621d470ba11205a02310715739127",
+    "src/platform/x11/X11Capture.h": "85e5f5ff9c3e34f95cdda1fd07d9d7d2b2bc8003b490b7b443931eafb9aea060",
+    "src/platform/x11/CinnamonRegionCapture.cpp": "2d004d43d90bbed799007e1adeff7d08df7aec219d33165dc75429b33a0ad18a",
+    "src/platform/x11/CinnamonRegionCapture.h": "1f2e36d26fedc2871199e2f9f28cab4ddf01f1fc77716a42e86243c33913f9a2",
+    "src/platform/kde/KdeRegionOverlay.cpp": "48fcf77cb574e01ee4091df2538f40865a601ecd7302b2a6d04f488e458562f1",
+    "src/platform/kde/KdeRegionOverlay.h": "21d21bcde05745f2800dbf30f51515995cee143928300b59f16b9cb576ac2af0",
+    "src/platform/kde/KdeSourceAdapter.cpp": "c506fd6f03811f4d040358a9b7ac89c7b4aa1bcb71b355056d2ad2053563cefc",
+    "src/platform/kde/KdeSourceAdapter.h": "b20f87b0344ea0b09ecb122226659cfa34cecd2dc81caa131cd523dbf2ac89fb",
+    "integrations/gnome/extension.js": "864dad69ec43b65c0d290a2cddf13f3ebdbe9b23a5b1734e2df748f58679a6e5",
+    "tests/desktop/x11/test_x11.cpp": "a71a1851d04f9f531165a1abce660d828a763b24558ddd4dfe375092f161d718",
+    "tests/fixtures/desktop_fixture.cpp": "87c12c60d4078a3863f379542657c9ac0d40b29aa2060c3aec7d017eedc21a5b",
+    "CMakeLists.txt": "4983f6239471a823a9b95e0fcb77a986ac8b4a96b635834770b15da22f5dfc2a"
+  },
+  "controllerSha256": "6cf912a23acdd7de6aeafecda1a252c337eca6ec780afaeea17a1bd791813ecf"
+}

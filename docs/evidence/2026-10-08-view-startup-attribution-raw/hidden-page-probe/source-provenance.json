@@ -1,0 +1,118 @@
+{
+  "classification": "diagnostic instrumentation only; not original bytes/product variant/native certification",
+  "base": {
+    "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "tree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "commitCount": 41,
+    "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1"
+  },
+  "baseSourceJsonSha256": "e119f86238bfa76b3782890683504826d019fd05c1db066efae92ad47b6f7caa",
+  "baseVerifiedFiles": 1348,
+  "instrumentationPatchSha256": "b0f22b61d447488040fd96f932eb50be28ba1978d86d99d0ead420c13cdd9694",
+  "changedSources": {
+    "src/ui/main.cpp": {
+      "originalSha256": "1e7eb571b7c943125bf6f7d205dbcc82eea5864d1375f6bfb8dece2f704bb5d2",
+      "overlaySha256": "77cd7f242dfe084115ddfdbd8dcde45a1d3187d299c2c838bc0197b2ff8feac2"
+    },
+    "src/ui/UiSession.cpp": {
+      "originalSha256": "1864402da402c8654b639522bcf3193cb92cfc13599b434dd299cd2cdcb24137",
+      "overlaySha256": "6fdf5a590a12dce47c8bfd44090848ee8bb5bf13a72587df4b9b6178d017641c"
+    },
+    "src/ui/SettingsWindow.cpp": {
+      "originalSha256": "465fc54fa6e13cd829d1a6074a1168b0e27b060b4d3efda23a89f87b26574f3c",
+      "overlaySha256": "b515f26503e9a4a33aee24a3f351e353971c61059eaa4fced7072b30eb33c093"
+    },
+    "src/ui/UiApplicationController.cpp": {
+      "originalSha256": "80ff202057555563531b279653fb6a920de971b1c8c6e27e352a325581fdb83a",
+      "overlaySha256": "08f903f00cea527fb4b5b996ad5fa6a7b31f253c826ab9ced993ce9a0281927c"
+    },
+    "src/app/UiProcessController.cpp": {
+      "originalSha256": "173a5e0f5b30eaadf261a90e9243ae3063d696442ff52ace4091cf5878bc603e",
+      "overlaySha256": "02b72c0dfae986818f7dfa8f00f65111dda48bc8316760ac4d8f9176d359fdcc"
+    },
+    "src/ui/StartupPolish.h": {
+      "originalSha256": null,
+      "overlaySha256": "94f4a3efd91676205caf77e30ac87077cc2e43b88ca46cea9580755d8a3efc8a"
+    },
+    "src/ui/StartupTrace.h": {
+      "originalSha256": null,
+      "overlaySha256": "c3dc30b9c26d1afe06b88be014f80e46efd54bd72dc2d24fe130dd1a94954903"
+    }
+  },
+  "frozenHarnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "binaries": {
+    "putgd": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/hidden-page-probe/source/build/release/putgd",
+      "sha256": "9e7ecf9e614e7d8b74496b3469c2daa0cc92600fcf47ab334496aeb42dd2f2f2",
+      "bytes": 2598224
+    },
+    "putgd-cli": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/hidden-page-probe/source/build/release/putgd-cli",
+      "sha256": "fe68622526ff25a3867e3d32078b0cc332e4ae53f3f5c8e28770275def7c37b2",
+      "bytes": 1126864
+    },
+    "putgd-ui": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/hidden-page-probe/source/build/release/putgd-ui",
+      "sha256": "8ec78ebec65ceda0bd3d5e31f0450b35bd72b42b1ce8f153da1ef3ad87a398b7",
+      "bytes": 1052280
+    },
+    "libputgd-s3.so": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/hidden-page-probe/source/build/release/libputgd-s3.so",
+      "sha256": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762",
+      "bytes": 272552
+    },
+    "putgd-desktop-fixture": {
+      "path": "/home/patrick/work/put.gd/work/view-startup-latency/hidden-page-probe/source/build/release/packaging/linux/putgd-desktop-fixture",
+      "sha256": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc",
+      "bytes": 81808
+    }
+  },
+  "buildStatus": "success; runtime and graphical tests not run",
+  "compiledManifestLabelIsOnlyBaseIdentity": true,
+  "buildArtifacts": {
+    "build-identity/build-info.json": "8483452420b77067e49c54053405908b9ca8924b71b9d9bc4e6577f68e69f007",
+    "compile_commands.json": "68f63c054dc2d1586364c6a87402c8f439cba813196b632da8ec9d7905d1122d",
+    "CMakeCache.txt": "60f58b2efcf1243ef7e31fbed8911e3b15d706f9a39228f4b52d1b6ff7a717b5",
+    "build.ninja": "92170c5f0944a30ca7a1c8a9bce52c61a261ced0ee224dbe2458435d070913fc"
+  },
+  "preparationTools": {
+    "prepare.py": "56b2716ebb54587bb021beead184c7ac3c937914ecc42f4dd135bae6df0f9688",
+    "extra_overlay.py": "482344c30a54411c684683a58d6c48035dc6f591babc68027fc1e444814f8987",
+    "build.py": "7f7f567c48fe945eabbe04d20bbd582d0557f75d45afbebb9418a7de209eaabf",
+    "finalize.py": "7e235e3339f87053a805f65d3b63a4c982f7d1b8d8ed1f23d31eac6c8dd0f684",
+    "parse_trace.py": "e2f0472c496744316657462703fe13169835234514f9ee7839a5d33e358b6a40",
+    "replay.py": "a9cff12c93e4d3cb746d0805d50d230c3a1f4a4cd5d826594ebc942555c24da2",
+    "validate_parser.py": "324a2b203b6a5384d2a444af0c499249d7e88ca69238d92ca3f5ce95ca173559",
+    "README.md": "fa292e4c9f3d040cd4d076a75eeb8f6634f1822dbfa68144bc3ff9d67235efc3"
+  },
+  "postBuildAllSourceHashesVerified": true,
+  "compiledBaseLabel": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.41+g97ca3a521714",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "commitCount": 41,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "parserValidation": {
+    "status": "passed",
+    "checks": [
+      "Safe fixed stage/page/phase grammar",
+      "Unknown and signed token rejection without content export",
+      "Page constructor interval",
+      "Cumulative Polish delta and non-double-counted aggregate",
+      "Missing/non-monotonic snapshot reporting",
+      "Helper PID correlation",
+      "Independent mapped versus CLI acknowledgement"
+    ]
+  },
+  "preparationValidation": [
+    "Python syntax checks passed",
+    "Synthetic parser grammar/correlation/attribution/independent observer checks passed",
+    "Complete diagnostic patch reverse dry-run passed against prepared source",
+    "Runtime/display/VM tests not performed"
+  ]
+}

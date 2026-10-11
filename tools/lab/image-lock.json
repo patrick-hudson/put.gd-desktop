@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "images": {
+    "cinnamon-x11": {
+      "distribution": "Linux Mint 22.3 Cinnamon 64-bit",
+      "url": "https://mirrors.edge.kernel.org/linuxmint/stable/22.3/linuxmint-22.3-cinnamon-64bit.iso",
+      "sha256": "a081ab202cfda17f6924128dbd2de8b63518ac0531bcfe3f1a1b88097c459bd4",
+      "signingFingerprint": "27DEB15644C6B3CF3BD7D291300F846BA25BAE09",
+      "editionPage": "https://www.linuxmint.com/edition.php?id=326",
+      "checksumUrl": "https://mirrors.edge.kernel.org/linuxmint/stable/22.3/sha256sum.txt"
+    },
+    "gnome-wayland": {
+      "distribution": "Ubuntu 26.04.1 Desktop",
+      "filename": "ubuntu-26.04.1-desktop-amd64.iso",
+      "url": "https://releases.ubuntu.com/26.04.1/ubuntu-26.04.1-desktop-amd64.iso",
+      "sha256": "601e30fbf5d97759367c632e2c33630665039b7e2158fd068403da3ccf1bda1f",
+      "signingFingerprint": "843938DF228D22F7B3742BC0D94AA3F0EFE21092",
+      "checksumUrl": "https://releases.ubuntu.com/26.04.1/SHA256SUMS",
+      "signatureUrl": "https://releases.ubuntu.com/26.04.1/SHA256SUMS.gpg"
+    },
+    "fedora-gnome-wayland": {
+      "distribution": "Fedora Workstation 44",
+      "filename": "Fedora-Workstation-Live-44-1.7.x86_64.iso",
+      "sha256": "1620295f6a00c27c3208f0c00b8ece4eab1ec69b9002152d97488bf26a426ddf",
+      "signingFingerprint": "36F612DCF27F7D1A48A835E4DBFCF71C6D9F90A6",
+      "checksumUrl": "https://download.fedoraproject.org/pub/fedora/linux/releases/44/Workstation/x86_64/iso/Fedora-Workstation-44-1.7-x86_64-CHECKSUM"
+    },
+    "kde-wayland": {
+      "distribution": "Kubuntu26.04.1 Desktop",
+      "filename": "kubuntu-26.04.1-desktop-amd64.iso",
+      "url": "https://cdimage.ubuntu.com/kubuntu/releases/26.04.1/release/kubuntu-26.04.1-desktop-amd64.iso",
+      "sha256": "831e4d4bb85098339ba43d3502cd6619b27e76daf37246a084cd68a6413090b8",
+      "signingFingerprint": "843938DF228D22F7B3742BC0D94AA3F0EFE21092",
+      "checksumUrl": "https://cdimage.ubuntu.com/kubuntu/releases/26.04.1/release/SHA256SUMS",
+      "signatureUrl": "https://cdimage.ubuntu.com/kubuntu/releases/26.04.1/release/SHA256SUMS.gpg"
+    }
+  }
+}

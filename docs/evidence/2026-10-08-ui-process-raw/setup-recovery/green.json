@@ -1,0 +1,9 @@
+{
+  "exitCode": 0,
+  "test": "SettingsGui",
+  "cases": [
+    "transientSetupInspectionRecoversWithoutReplayingAcceptedWork",
+    "expiredSetupResultDoesNotStarveLaterAcceptedWork",
+    "destinationTestButtonStaysDisabledUntilEveryAcceptedTestFinishes"
+  ]
+}

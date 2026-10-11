@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "unit": "U11 real helper native lifecycle protocol verification",
+  "source": {
+    "path": "tests/integration/test_ui_native_lifecycle.cpp",
+    "sha256": "dc675fd5e7fa640a3e9d830bc654755d59e7f7c3bee049a4ce9d132eff4b6d46"
+  },
+  "status": "dev_passed_before_signedness_warning_cleanup; final_rebuild_and_sanitizers_owned_by_parent",
+  "test": "ui_native_lifecycle_integration",
+  "cases": [
+    "normalCloseCheckpointsDirtyDraftAndRelaunchesCleanly",
+    "closingAllViewsPreservesAcceptedWorkAndResidentClipboard"
+  ],
+  "coverage": [
+    "Production putgd-ui with real LocalServer and private pipe protocol",
+    "Actual X11 WM_DELETE_WINDOW on mapped windows selected by helper PID/title",
+    "Normal helper exit code 0 and closeConfirmed acknowledgement",
+    "Four generations with a nonsecret unfinished Settings draft restored across three relaunches",
+    "Dirty configuration never saved merely by closing",
+    "One of multiple windows can close without process exit",
+    "Accepted resident operation continues after final helper close",
+    "Resident X11 clipboard selection persists and serves an independent X11 reader"
+  ],
+  "limits": [
+    "Disposable Xvfb only; not compositor acceptance, native theme, tray, or VM evidence",
+    "Draft values are seeded at the checkpoint boundary; real widget editing is covered by gui_settings",
+    "Provider/source completion is synthetic and local; no cloud or credentials",
+    "Parent directly drives documented control handshake; supervisor lifecycle is covered separately"
+  ],
+  "commandsSuggested": [
+    "cmake --preset dev",
+    "cmake --build --preset dev --target test_ui_native_lifecycle",
+    "ctest --preset dev -R ^ui_native_lifecycle_integration$ --output-on-failure"
+  ],
+  "buildAndTestResults": [
+    {
+      "owner": "parent",
+      "configuration": "dev",
+      "test": "ui_native_lifecycle_integration",
+      "status": "passed",
+      "durationSeconds": 3.27624,
+      "testedSourceSha256": "5a671abb6a5775e9021882eb1e9b27ab503d4d5b07b3f8d43423ff5af2b0dac0",
+      "log": "work/u11/native-lifecycle/results.log",
+      "junit": "work/u11/native-lifecycle/results.xml",
+      "relatedTest": {
+        "name": "ui_process_integration",
+        "status": "passed",
+        "durationSeconds": 13.7368
+      },
+      "postTestEdit": "Use constexpr qsizetype atomBytes to remove signed comparison warning in WM_PROTOCOLS scan; no behavioral change. Parent owns rebuild/sanitizer runs."
+    }
+  ]
+}

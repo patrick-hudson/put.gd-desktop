@@ -1,0 +1,2572 @@
+{
+  "schemaVersion": 1,
+  "diagnosticOnly": true,
+  "productAcceptance": false,
+  "qualification": "Standalone synthetic sequence; no resident allocation calls or product input. Original result rows do not embed elapsed time; command execution receipts retained separately. None of these numbers is a product memory/CPU gate.",
+  "source": {
+    "CMakeListsSha256": "059d42c8493c2cb89d7671c88ef282c113dba33d49ce3ff5651d15b14591ae33",
+    "mainSha256": "0d087b7aee68ab9951595e839b841e632b0c7f0f760e2f5ad11da24b376f0877"
+  },
+  "host": {
+    "originalCollectionSha256": "cb86e615fb253ed0d53a8a6e6b8bf4815b33e08c16a7a895ec905bb919544f45",
+    "collection": {
+      "schemaVersion": 1,
+      "hostOnly": true,
+      "productAcceptance": false,
+      "qualification": "Standalone source-backed allocator diagnostic only; no product policy changes or KDE evidence.",
+      "runs": [
+        {
+          "mode": "dynamic",
+          "iteration": 1,
+          "exitCode": 0,
+          "durationSeconds": 0.18227490200661123,
+          "result": {
+            "appOwnedUnixSockets": [],
+            "before": {
+              "Anonymous": 1396736,
+              "Private_Clean": 5369856,
+              "Private_Dirty": 1437696,
+              "Pss": 7331840,
+              "Rss": 14528512,
+              "allocatorArenaBytes": 294912,
+              "allocatorFreeBytes": 104944,
+              "allocatorLiveBytes": 189968,
+              "allocatorMmapBytes": 0
+            },
+            "environmentChanged": false,
+            "final": {
+              "Anonymous": 6139904,
+              "Private_Clean": 7634944,
+              "Private_Dirty": 6180864,
+              "Pss": 14364672,
+              "Rss": 22061056,
+              "allocatorArenaBytes": 5099520,
+              "allocatorFreeBytes": 4846192,
+              "allocatorLiveBytes": 253328,
+              "allocatorMmapBytes": 0
+            },
+            "glibcVersion": "2.39",
+            "mode": "dynamic",
+            "payloadExported": false,
+            "policyResult": 0,
+            "qtVersion": "6.4.2",
+            "schemaVersion": 1,
+            "stages": [
+              {
+                "after": {
+                  "Anonymous": 2007040,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 2048000,
+                  "Pss": 10231808,
+                  "Rss": 17928192,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 693536,
+                  "allocatorLiveBytes": 293600,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1417216,
+                  "Private_Clean": 5632000,
+                  "Private_Dirty": 1458176,
+                  "Pss": 7614464,
+                  "Rss": 14811136,
+                  "allocatorArenaBytes": 294912,
+                  "allocatorFreeBytes": 101568,
+                  "allocatorLiveBytes": 193344,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1990656,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 2031616,
+                  "Pss": 10215424,
+                  "Rss": 17911808,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 690976,
+                  "allocatorLiveBytes": 296160,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 5791744,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 5832704,
+                  "Pss": 14016512,
+                  "Rss": 21712896,
+                  "allocatorArenaBytes": 5033984,
+                  "allocatorFreeBytes": 4732048,
+                  "allocatorLiveBytes": 301936,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1994752,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 2035712,
+                  "Pss": 10219520,
+                  "Rss": 17915904,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 753040,
+                  "allocatorLiveBytes": 234096,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 2031616,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 2072576,
+                  "Pss": 10256384,
+                  "Rss": 17952768,
+                  "allocatorArenaBytes": 1003520,
+                  "allocatorFreeBytes": 699472,
+                  "allocatorLiveBytes": 304048,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              },
+              {
+                "after": {
+                  "Anonymous": 6021120,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 6062080,
+                  "Pss": 14245888,
+                  "Rss": 21942272,
+                  "allocatorArenaBytes": 6164480,
+                  "allocatorFreeBytes": 5856320,
+                  "allocatorLiveBytes": 308160,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 2035712,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 2076672,
+                  "Pss": 10260480,
+                  "Rss": 17956864,
+                  "allocatorArenaBytes": 1003520,
+                  "allocatorFreeBytes": 762320,
+                  "allocatorLiveBytes": 241200,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 3149824,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 3190784,
+                  "Pss": 11374592,
+                  "Rss": 19070976,
+                  "allocatorArenaBytes": 2134016,
+                  "allocatorFreeBytes": 1825008,
+                  "allocatorLiveBytes": 309008,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 14000128,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 14041088,
+                  "Pss": 22224896,
+                  "Rss": 29921280,
+                  "allocatorArenaBytes": 13324288,
+                  "allocatorFreeBytes": 13010544,
+                  "allocatorLiveBytes": 313744,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 3149824,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 3190784,
+                  "Pss": 11374592,
+                  "Rss": 19070976,
+                  "allocatorArenaBytes": 2134016,
+                  "allocatorFreeBytes": 1888128,
+                  "allocatorLiveBytes": 245888,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 6139904,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 6180864,
+                  "Pss": 14364672,
+                  "Rss": 22061056,
+                  "allocatorArenaBytes": 5099520,
+                  "allocatorFreeBytes": 4783392,
+                  "allocatorLiveBytes": 316128,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              }
+            ],
+            "syntheticOnly": true
+          }
+        },
+        {
+          "mode": "dynamic",
+          "iteration": 2,
+          "exitCode": 0,
+          "durationSeconds": 0.17214191297534853,
+          "result": {
+            "appOwnedUnixSockets": [],
+            "before": {
+              "Anonymous": 1392640,
+              "Private_Clean": 5316608,
+              "Private_Dirty": 1433600,
+              "Pss": 7274496,
+              "Rss": 14569472,
+              "allocatorArenaBytes": 294912,
+              "allocatorFreeBytes": 104944,
+              "allocatorLiveBytes": 189968,
+              "allocatorMmapBytes": 0
+            },
+            "environmentChanged": false,
+            "final": {
+              "Anonymous": 6135808,
+              "Private_Clean": 7581696,
+              "Private_Dirty": 6176768,
+              "Pss": 14308352,
+              "Rss": 22102016,
+              "allocatorArenaBytes": 5099520,
+              "allocatorFreeBytes": 4846192,
+              "allocatorLiveBytes": 253328,
+              "allocatorMmapBytes": 0
+            },
+            "glibcVersion": "2.39",
+            "mode": "dynamic",
+            "payloadExported": false,
+            "policyResult": 0,
+            "qtVersion": "6.4.2",
+            "schemaVersion": 1,
+            "stages": [
+              {
+                "after": {
+                  "Anonymous": 2002944,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 2043904,
+                  "Pss": 10175488,
+                  "Rss": 17969152,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 693536,
+                  "allocatorLiveBytes": 293600,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1413120,
+                  "Private_Clean": 5578752,
+                  "Private_Dirty": 1454080,
+                  "Pss": 7557120,
+                  "Rss": 14852096,
+                  "allocatorArenaBytes": 294912,
+                  "allocatorFreeBytes": 101568,
+                  "allocatorLiveBytes": 193344,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1986560,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 2027520,
+                  "Pss": 10159104,
+                  "Rss": 17952768,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 690976,
+                  "allocatorLiveBytes": 296160,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 5787648,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 5828608,
+                  "Pss": 13960192,
+                  "Rss": 21753856,
+                  "allocatorArenaBytes": 5033984,
+                  "allocatorFreeBytes": 4732048,
+                  "allocatorLiveBytes": 301936,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1990656,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 2031616,
+                  "Pss": 10163200,
+                  "Rss": 17956864,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 753040,
+                  "allocatorLiveBytes": 234096,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 2027520,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 2068480,
+                  "Pss": 10200064,
+                  "Rss": 17993728,
+                  "allocatorArenaBytes": 1003520,
+                  "allocatorFreeBytes": 699472,
+                  "allocatorLiveBytes": 304048,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              },
+              {
+                "after": {
+                  "Anonymous": 6017024,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 6057984,
+                  "Pss": 14189568,
+                  "Rss": 21983232,
+                  "allocatorArenaBytes": 6164480,
+                  "allocatorFreeBytes": 5856320,
+                  "allocatorLiveBytes": 308160,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 2031616,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 2072576,
+                  "Pss": 10204160,
+                  "Rss": 17997824,
+                  "allocatorArenaBytes": 1003520,
+                  "allocatorFreeBytes": 762320,
+                  "allocatorLiveBytes": 241200,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 3145728,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 3186688,
+                  "Pss": 11318272,
+                  "Rss": 19111936,
+                  "allocatorArenaBytes": 2134016,
+                  "allocatorFreeBytes": 1825008,
+                  "allocatorLiveBytes": 309008,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 13996032,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 14036992,
+                  "Pss": 22168576,
+                  "Rss": 29962240,
+                  "allocatorArenaBytes": 13324288,
+                  "allocatorFreeBytes": 13010544,
+                  "allocatorLiveBytes": 313744,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 3145728,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 3186688,
+                  "Pss": 11318272,
+                  "Rss": 19111936,
+                  "allocatorArenaBytes": 2134016,
+                  "allocatorFreeBytes": 1888128,
+                  "allocatorLiveBytes": 245888,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 6135808,
+                  "Private_Clean": 7581696,
+                  "Private_Dirty": 6176768,
+                  "Pss": 14308352,
+                  "Rss": 22102016,
+                  "allocatorArenaBytes": 5099520,
+                  "allocatorFreeBytes": 4783392,
+                  "allocatorLiveBytes": 316128,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              }
+            ],
+            "syntheticOnly": true
+          }
+        },
+        {
+          "mode": "dynamic",
+          "iteration": 3,
+          "exitCode": 0,
+          "durationSeconds": 0.17548256902955472,
+          "result": {
+            "appOwnedUnixSockets": [],
+            "before": {
+              "Anonymous": 1396736,
+              "Private_Clean": 5308416,
+              "Private_Dirty": 1437696,
+              "Pss": 7270400,
+              "Rss": 14557184,
+              "allocatorArenaBytes": 294912,
+              "allocatorFreeBytes": 104944,
+              "allocatorLiveBytes": 189968,
+              "allocatorMmapBytes": 0
+            },
+            "environmentChanged": false,
+            "final": {
+              "Anonymous": 6135808,
+              "Private_Clean": 7573504,
+              "Private_Dirty": 6176768,
+              "Pss": 14299136,
+              "Rss": 22085632,
+              "allocatorArenaBytes": 5099520,
+              "allocatorFreeBytes": 4846816,
+              "allocatorLiveBytes": 252704,
+              "allocatorMmapBytes": 0
+            },
+            "glibcVersion": "2.39",
+            "mode": "dynamic",
+            "payloadExported": false,
+            "policyResult": 0,
+            "qtVersion": "6.4.2",
+            "schemaVersion": 1,
+            "stages": [
+              {
+                "after": {
+                  "Anonymous": 2015232,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 2056192,
+                  "Pss": 10178560,
+                  "Rss": 17965056,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 693152,
+                  "allocatorLiveBytes": 293984,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1417216,
+                  "Private_Clean": 5570560,
+                  "Private_Dirty": 1458176,
+                  "Pss": 7553024,
+                  "Rss": 14839808,
+                  "allocatorArenaBytes": 294912,
+                  "allocatorFreeBytes": 101568,
+                  "allocatorLiveBytes": 193344,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1998848,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 2039808,
+                  "Pss": 10162176,
+                  "Rss": 17948672,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 690592,
+                  "allocatorLiveBytes": 296544,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 5799936,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 5840896,
+                  "Pss": 13963264,
+                  "Rss": 21749760,
+                  "allocatorArenaBytes": 5033984,
+                  "allocatorFreeBytes": 4731664,
+                  "allocatorLiveBytes": 302320,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 2002944,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 2043904,
+                  "Pss": 10166272,
+                  "Rss": 17952768,
+                  "allocatorArenaBytes": 987136,
+                  "allocatorFreeBytes": 752656,
+                  "allocatorLiveBytes": 234480,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 2039808,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 2080768,
+                  "Pss": 10203136,
+                  "Rss": 17989632,
+                  "allocatorArenaBytes": 1003520,
+                  "allocatorFreeBytes": 699088,
+                  "allocatorLiveBytes": 304432,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              },
+              {
+                "after": {
+                  "Anonymous": 6029312,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 6070272,
+                  "Pss": 14192640,
+                  "Rss": 21979136,
+                  "allocatorArenaBytes": 6164480,
+                  "allocatorFreeBytes": 5855936,
+                  "allocatorLiveBytes": 308544,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 2043904,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 2084864,
+                  "Pss": 10207232,
+                  "Rss": 17993728,
+                  "allocatorArenaBytes": 1003520,
+                  "allocatorFreeBytes": 761936,
+                  "allocatorLiveBytes": 241584,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 3158016,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 3198976,
+                  "Pss": 11321344,
+                  "Rss": 19107840,
+                  "allocatorArenaBytes": 2134016,
+                  "allocatorFreeBytes": 1824624,
+                  "allocatorLiveBytes": 309392,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 13996032,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 14036992,
+                  "Pss": 22159360,
+                  "Rss": 29945856,
+                  "allocatorArenaBytes": 13324288,
+                  "allocatorFreeBytes": 13011072,
+                  "allocatorLiveBytes": 313216,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 3158016,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 3198976,
+                  "Pss": 11321344,
+                  "Rss": 19107840,
+                  "allocatorArenaBytes": 2134016,
+                  "allocatorFreeBytes": 1887744,
+                  "allocatorLiveBytes": 246272,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 6135808,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 6176768,
+                  "Pss": 14299136,
+                  "Rss": 22085632,
+                  "allocatorArenaBytes": 5099520,
+                  "allocatorFreeBytes": 4785088,
+                  "allocatorLiveBytes": 314432,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              }
+            ],
+            "syntheticOnly": true
+          }
+        },
+        {
+          "mode": "static128k",
+          "iteration": 1,
+          "exitCode": 0,
+          "durationSeconds": 0.1889067689771764,
+          "result": {
+            "appOwnedUnixSockets": [],
+            "before": {
+              "Anonymous": 1392640,
+              "Private_Clean": 5369856,
+              "Private_Dirty": 1433600,
+              "Pss": 7329792,
+              "Rss": 14528512,
+              "allocatorArenaBytes": 294912,
+              "allocatorFreeBytes": 104944,
+              "allocatorLiveBytes": 189968,
+              "allocatorMmapBytes": 0
+            },
+            "environmentChanged": false,
+            "final": {
+              "Anonymous": 1724416,
+              "Private_Clean": 7634944,
+              "Private_Dirty": 1765376,
+              "Pss": 9952256,
+              "Rss": 17649664,
+              "allocatorArenaBytes": 544768,
+              "allocatorFreeBytes": 292064,
+              "allocatorLiveBytes": 252704,
+              "allocatorMmapBytes": 0
+            },
+            "glibcVersion": "2.39",
+            "mode": "static128k",
+            "payloadExported": false,
+            "policyResult": 1,
+            "qtVersion": "6.4.2",
+            "schemaVersion": 1,
+            "stages": [
+              {
+                "after": {
+                  "Anonymous": 1724416,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1765376,
+                  "Pss": 9952256,
+                  "Rss": 17649664,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 316704,
+                  "allocatorLiveBytes": 293600,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1413120,
+                  "Private_Clean": 5632000,
+                  "Private_Dirty": 1454080,
+                  "Pss": 7612416,
+                  "Rss": 14811136,
+                  "allocatorArenaBytes": 294912,
+                  "allocatorFreeBytes": 101568,
+                  "allocatorLiveBytes": 193344,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1708032,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1748992,
+                  "Pss": 9935872,
+                  "Rss": 17633280,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 314144,
+                  "allocatorLiveBytes": 296160,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 1728512,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1769472,
+                  "Pss": 9956352,
+                  "Rss": 17653760,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 242832,
+                  "allocatorLiveBytes": 301936,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1712128,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1753088,
+                  "Pss": 9939968,
+                  "Rss": 17637376,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 310672,
+                  "allocatorLiveBytes": 234096,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1716224,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1757184,
+                  "Pss": 9944064,
+                  "Rss": 17641472,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 306256,
+                  "allocatorLiveBytes": 304048,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              },
+              {
+                "after": {
+                  "Anonymous": 1732608,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1773568,
+                  "Pss": 9960448,
+                  "Rss": 17657856,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 236608,
+                  "allocatorLiveBytes": 308160,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1720320,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1761280,
+                  "Pss": 9948160,
+                  "Rss": 17645568,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 303568,
+                  "allocatorLiveBytes": 241200,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1724416,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1765376,
+                  "Pss": 9952256,
+                  "Rss": 17649664,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 301296,
+                  "allocatorLiveBytes": 309008,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 1736704,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1777664,
+                  "Pss": 9964544,
+                  "Rss": 17661952,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 231936,
+                  "allocatorLiveBytes": 312832,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1724416,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1765376,
+                  "Pss": 9952256,
+                  "Rss": 17649664,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 298880,
+                  "allocatorLiveBytes": 245888,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1724416,
+                  "Private_Clean": 7634944,
+                  "Private_Dirty": 1765376,
+                  "Pss": 9952256,
+                  "Rss": 17649664,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 296256,
+                  "allocatorLiveBytes": 314048,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              }
+            ],
+            "syntheticOnly": true
+          }
+        },
+        {
+          "mode": "static128k",
+          "iteration": 2,
+          "exitCode": 0,
+          "durationSeconds": 0.18406151694944128,
+          "result": {
+            "appOwnedUnixSockets": [],
+            "before": {
+              "Anonymous": 1396736,
+              "Private_Clean": 5361664,
+              "Private_Dirty": 1437696,
+              "Pss": 7326720,
+              "Rss": 14610432,
+              "allocatorArenaBytes": 294912,
+              "allocatorFreeBytes": 104944,
+              "allocatorLiveBytes": 189968,
+              "allocatorMmapBytes": 0
+            },
+            "environmentChanged": false,
+            "final": {
+              "Anonymous": 1740800,
+              "Private_Clean": 7626752,
+              "Private_Dirty": 1781760,
+              "Pss": 9961472,
+              "Rss": 17743872,
+              "allocatorArenaBytes": 544768,
+              "allocatorFreeBytes": 294848,
+              "allocatorLiveBytes": 249920,
+              "allocatorMmapBytes": 0
+            },
+            "glibcVersion": "2.39",
+            "mode": "static128k",
+            "payloadExported": false,
+            "policyResult": 1,
+            "qtVersion": "6.4.2",
+            "schemaVersion": 1,
+            "stages": [
+              {
+                "after": {
+                  "Anonymous": 1728512,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1769472,
+                  "Pss": 9949184,
+                  "Rss": 17731584,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 316704,
+                  "allocatorLiveBytes": 293600,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1417216,
+                  "Private_Clean": 5623808,
+                  "Private_Dirty": 1458176,
+                  "Pss": 7609344,
+                  "Rss": 14893056,
+                  "allocatorArenaBytes": 294912,
+                  "allocatorFreeBytes": 101568,
+                  "allocatorLiveBytes": 193344,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1712128,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1753088,
+                  "Pss": 9932800,
+                  "Rss": 17715200,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 314144,
+                  "allocatorLiveBytes": 296160,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 1732608,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1773568,
+                  "Pss": 9953280,
+                  "Rss": 17735680,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 242832,
+                  "allocatorLiveBytes": 301936,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1716224,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1757184,
+                  "Pss": 9936896,
+                  "Rss": 17719296,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 310672,
+                  "allocatorLiveBytes": 234096,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1720320,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1761280,
+                  "Pss": 9940992,
+                  "Rss": 17723392,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 306256,
+                  "allocatorLiveBytes": 304048,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              },
+              {
+                "after": {
+                  "Anonymous": 1748992,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1789952,
+                  "Pss": 9969664,
+                  "Rss": 17752064,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 236000,
+                  "allocatorLiveBytes": 308768,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1724416,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1765376,
+                  "Pss": 9945088,
+                  "Rss": 17727488,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 303568,
+                  "allocatorLiveBytes": 241200,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1740800,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1781760,
+                  "Pss": 9961472,
+                  "Rss": 17743872,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 300432,
+                  "allocatorLiveBytes": 309872,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 1753088,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1794048,
+                  "Pss": 9973760,
+                  "Rss": 17756160,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 231872,
+                  "allocatorLiveBytes": 312896,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1740800,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1781760,
+                  "Pss": 9961472,
+                  "Rss": 17743872,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 298608,
+                  "allocatorLiveBytes": 246160,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1740800,
+                  "Private_Clean": 7626752,
+                  "Private_Dirty": 1781760,
+                  "Pss": 9961472,
+                  "Rss": 17743872,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 296560,
+                  "allocatorLiveBytes": 313744,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              }
+            ],
+            "syntheticOnly": true
+          }
+        },
+        {
+          "mode": "static128k",
+          "iteration": 3,
+          "exitCode": 0,
+          "durationSeconds": 0.17900036700302735,
+          "result": {
+            "appOwnedUnixSockets": [],
+            "before": {
+              "Anonymous": 1396736,
+              "Private_Clean": 5308416,
+              "Private_Dirty": 1437696,
+              "Pss": 7270400,
+              "Rss": 14553088,
+              "allocatorArenaBytes": 294912,
+              "allocatorFreeBytes": 104944,
+              "allocatorLiveBytes": 189968,
+              "allocatorMmapBytes": 0
+            },
+            "environmentChanged": false,
+            "final": {
+              "Anonymous": 1728512,
+              "Private_Clean": 7573504,
+              "Private_Dirty": 1769472,
+              "Pss": 9891840,
+              "Rss": 17674240,
+              "allocatorArenaBytes": 544768,
+              "allocatorFreeBytes": 292064,
+              "allocatorLiveBytes": 252704,
+              "allocatorMmapBytes": 0
+            },
+            "glibcVersion": "2.39",
+            "mode": "static128k",
+            "payloadExported": false,
+            "policyResult": 1,
+            "qtVersion": "6.4.2",
+            "schemaVersion": 1,
+            "stages": [
+              {
+                "after": {
+                  "Anonymous": 1728512,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1769472,
+                  "Pss": 9891840,
+                  "Rss": 17674240,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 316704,
+                  "allocatorLiveBytes": 293600,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1417216,
+                  "Private_Clean": 5570560,
+                  "Private_Dirty": 1458176,
+                  "Pss": 7553024,
+                  "Rss": 14835712,
+                  "allocatorArenaBytes": 294912,
+                  "allocatorFreeBytes": 101568,
+                  "allocatorLiveBytes": 193344,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1712128,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1753088,
+                  "Pss": 9875456,
+                  "Rss": 17657856,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 314144,
+                  "allocatorLiveBytes": 296160,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 1732608,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1773568,
+                  "Pss": 9895936,
+                  "Rss": 17678336,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 242832,
+                  "allocatorLiveBytes": 301936,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1716224,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1757184,
+                  "Pss": 9879552,
+                  "Rss": 17661952,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 310672,
+                  "allocatorLiveBytes": 234096,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1720320,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1761280,
+                  "Pss": 9883648,
+                  "Rss": 17666048,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 306256,
+                  "allocatorLiveBytes": 304048,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              },
+              {
+                "after": {
+                  "Anonymous": 1736704,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1777664,
+                  "Pss": 9900032,
+                  "Rss": 17682432,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 236608,
+                  "allocatorLiveBytes": 308160,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1724416,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1765376,
+                  "Pss": 9887744,
+                  "Rss": 17670144,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 303568,
+                  "allocatorLiveBytes": 241200,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 448,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1728512,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1769472,
+                  "Pss": 9891840,
+                  "Rss": 17674240,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 301296,
+                  "allocatorLiveBytes": 309008,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 1146880,
+                "rawCapacityBytes": 2097136,
+                "trimResult": 1,
+                "width": 640
+              },
+              {
+                "after": {
+                  "Anonymous": 1740800,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1781760,
+                  "Pss": 9904128,
+                  "Rss": 17686528,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 231936,
+                  "allocatorLiveBytes": 312832,
+                  "allocatorMmapBytes": 0
+                },
+                "before": {
+                  "Anonymous": 1728512,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1769472,
+                  "Pss": 9891840,
+                  "Rss": 17674240,
+                  "allocatorArenaBytes": 544768,
+                  "allocatorFreeBytes": 298880,
+                  "allocatorLiveBytes": 245888,
+                  "allocatorMmapBytes": 0
+                },
+                "height": 800,
+                "pngStagePassed": true,
+                "postTrim": {
+                  "Anonymous": 1728512,
+                  "Private_Clean": 7573504,
+                  "Private_Dirty": 1769472,
+                  "Pss": 9891840,
+                  "Rss": 17674240,
+                  "allocatorArenaBytes": 610304,
+                  "allocatorFreeBytes": 296256,
+                  "allocatorLiveBytes": 314048,
+                  "allocatorMmapBytes": 0
+                },
+                "rawBytes": 4096000,
+                "rawCapacityBytes": 4194288,
+                "trimResult": 1,
+                "width": 1280
+              }
+            ],
+            "syntheticOnly": true
+          }
+        }
+      ]
+    }
+  },
+  "guest": {
+    "originalResultsSha256": "289d770aecbb7f0f6e863c4ad35d276ba6a23abc210e5cdad02af8371d10cf70",
+    "originalCompleteSha256": "4c6e8e58fafa513f1ae4e36962d43365c7749638b8d3665d28d545fcb8067252",
+    "rows": [
+      {
+        "mode": "dynamic",
+        "zeroBasedIndex": 0,
+        "exitCode": 0,
+        "originalStdout": "{\"appOwnedUnixSockets\":[],\"before\":{\"Anonymous\":1376256,\"Private_Clean\":0,\"Private_Dirty\":1417216,\"Pss\":1985536,\"Rss\":16138240,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":108336,\"allocatorLiveBytes\":186576,\"allocatorMmapBytes\":0},\"environmentChanged\":false,\"final\":{\"Anonymous\":5898240,\"Private_Clean\":0,\"Private_Dirty\":5939200,\"Pss\":6716416,\"Rss\":23650304,\"allocatorArenaBytes\":5070848,\"allocatorFreeBytes\":4754480,\"allocatorLiveBytes\":316368,\"allocatorMmapBytes\":0},\"glibcVersion\":\"2.43\",\"mode\":\"dynamic\",\"payloadExported\":false,\"policyResult\":0,\"qtVersion\":\"6.10.2\",\"schemaVersion\":1,\"stages\":[{\"after\":{\"Anonymous\":4198400,\"Private_Clean\":0,\"Private_Dirty\":4239360,\"Pss\":5016576,\"Rss\":21950464,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3061680,\"allocatorLiveBytes\":350288,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1388544,\"Private_Clean\":0,\"Private_Dirty\":1429504,\"Pss\":2009088,\"Rss\":16412672,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":106048,\"allocatorLiveBytes\":188864,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":4177920,\"Private_Clean\":0,\"Private_Dirty\":4218880,\"Pss\":4996096,\"Rss\":21929984,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3059440,\"allocatorLiveBytes\":352528,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":5541888,\"Private_Clean\":0,\"Private_Dirty\":5582848,\"Pss\":6360064,\"Rss\":23293952,\"allocatorArenaBytes\":5005312,\"allocatorFreeBytes\":4645072,\"allocatorLiveBytes\":360240,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":4190208,\"Private_Clean\":0,\"Private_Dirty\":4231168,\"Pss\":5008384,\"Rss\":21942272,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3121776,\"allocatorLiveBytes\":290192,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1777664,\"Private_Clean\":0,\"Private_Dirty\":1818624,\"Pss\":2595840,\"Rss\":19529728,\"allocatorArenaBytes\":974848,\"allocatorFreeBytes\":611728,\"allocatorLiveBytes\":363120,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280},{\"after\":{\"Anonymous\":8212480,\"Private_Clean\":0,\"Private_Dirty\":8253440,\"Pss\":9030656,\"Rss\":25964544,\"allocatorArenaBytes\":8589312,\"allocatorFreeBytes\":8220736,\"allocatorLiveBytes\":368576,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1785856,\"Private_Clean\":0,\"Private_Dirty\":1826816,\"Pss\":2604032,\"Rss\":19537920,\"allocatorArenaBytes\":974848,\"allocatorFreeBytes\":674128,\"allocatorLiveBytes\":300720,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":5328896,\"Private_Clean\":0,\"Private_Dirty\":5369856,\"Pss\":6147072,\"Rss\":23080960,\"allocatorArenaBytes\":4558848,\"allocatorFreeBytes\":4187920,\"allocatorLiveBytes\":370928,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":13750272,\"Private_Clean\":0,\"Private_Dirty\":13791232,\"Pss\":14568448,\"Rss\":31502336,\"allocatorArenaBytes\":13295616,\"allocatorFreeBytes\":12919360,\"allocatorLiveBytes\":376256,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":5341184,\"Private_Clean\":0,\"Private_Dirty\":5382144,\"Pss\":6159360,\"Rss\":23093248,\"allocatorArenaBytes\":4558848,\"allocatorFreeBytes\":4250480,\"allocatorLiveBytes\":308368,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":5885952,\"Private_Clean\":0,\"Private_Dirty\":5926912,\"Pss\":6704128,\"Rss\":23638016,\"allocatorArenaBytes\":5070848,\"allocatorFreeBytes\":4692192,\"allocatorLiveBytes\":378656,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280}],\"syntheticOnly\":true}\n",
+        "originalStderr": "",
+        "parsedResult": {
+          "appOwnedUnixSockets": [],
+          "before": {
+            "Anonymous": 1376256,
+            "Private_Clean": 0,
+            "Private_Dirty": 1417216,
+            "Pss": 1985536,
+            "Rss": 16138240,
+            "allocatorArenaBytes": 294912,
+            "allocatorFreeBytes": 108336,
+            "allocatorLiveBytes": 186576,
+            "allocatorMmapBytes": 0
+          },
+          "environmentChanged": false,
+          "final": {
+            "Anonymous": 5898240,
+            "Private_Clean": 0,
+            "Private_Dirty": 5939200,
+            "Pss": 6716416,
+            "Rss": 23650304,
+            "allocatorArenaBytes": 5070848,
+            "allocatorFreeBytes": 4754480,
+            "allocatorLiveBytes": 316368,
+            "allocatorMmapBytes": 0
+          },
+          "glibcVersion": "2.43",
+          "mode": "dynamic",
+          "payloadExported": false,
+          "policyResult": 0,
+          "qtVersion": "6.10.2",
+          "schemaVersion": 1,
+          "stages": [
+            {
+              "after": {
+                "Anonymous": 4198400,
+                "Private_Clean": 0,
+                "Private_Dirty": 4239360,
+                "Pss": 5016576,
+                "Rss": 21950464,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3061680,
+                "allocatorLiveBytes": 350288,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1388544,
+                "Private_Clean": 0,
+                "Private_Dirty": 1429504,
+                "Pss": 2009088,
+                "Rss": 16412672,
+                "allocatorArenaBytes": 294912,
+                "allocatorFreeBytes": 106048,
+                "allocatorLiveBytes": 188864,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 4177920,
+                "Private_Clean": 0,
+                "Private_Dirty": 4218880,
+                "Pss": 4996096,
+                "Rss": 21929984,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3059440,
+                "allocatorLiveBytes": 352528,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 5541888,
+                "Private_Clean": 0,
+                "Private_Dirty": 5582848,
+                "Pss": 6360064,
+                "Rss": 23293952,
+                "allocatorArenaBytes": 5005312,
+                "allocatorFreeBytes": 4645072,
+                "allocatorLiveBytes": 360240,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 4190208,
+                "Private_Clean": 0,
+                "Private_Dirty": 4231168,
+                "Pss": 5008384,
+                "Rss": 21942272,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3121776,
+                "allocatorLiveBytes": 290192,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1777664,
+                "Private_Clean": 0,
+                "Private_Dirty": 1818624,
+                "Pss": 2595840,
+                "Rss": 19529728,
+                "allocatorArenaBytes": 974848,
+                "allocatorFreeBytes": 611728,
+                "allocatorLiveBytes": 363120,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            },
+            {
+              "after": {
+                "Anonymous": 8212480,
+                "Private_Clean": 0,
+                "Private_Dirty": 8253440,
+                "Pss": 9030656,
+                "Rss": 25964544,
+                "allocatorArenaBytes": 8589312,
+                "allocatorFreeBytes": 8220736,
+                "allocatorLiveBytes": 368576,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1785856,
+                "Private_Clean": 0,
+                "Private_Dirty": 1826816,
+                "Pss": 2604032,
+                "Rss": 19537920,
+                "allocatorArenaBytes": 974848,
+                "allocatorFreeBytes": 674128,
+                "allocatorLiveBytes": 300720,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 5328896,
+                "Private_Clean": 0,
+                "Private_Dirty": 5369856,
+                "Pss": 6147072,
+                "Rss": 23080960,
+                "allocatorArenaBytes": 4558848,
+                "allocatorFreeBytes": 4187920,
+                "allocatorLiveBytes": 370928,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 13750272,
+                "Private_Clean": 0,
+                "Private_Dirty": 13791232,
+                "Pss": 14568448,
+                "Rss": 31502336,
+                "allocatorArenaBytes": 13295616,
+                "allocatorFreeBytes": 12919360,
+                "allocatorLiveBytes": 376256,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 5341184,
+                "Private_Clean": 0,
+                "Private_Dirty": 5382144,
+                "Pss": 6159360,
+                "Rss": 23093248,
+                "allocatorArenaBytes": 4558848,
+                "allocatorFreeBytes": 4250480,
+                "allocatorLiveBytes": 308368,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 5885952,
+                "Private_Clean": 0,
+                "Private_Dirty": 5926912,
+                "Pss": 6704128,
+                "Rss": 23638016,
+                "allocatorArenaBytes": 5070848,
+                "allocatorFreeBytes": 4692192,
+                "allocatorLiveBytes": 378656,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            }
+          ],
+          "syntheticOnly": true
+        },
+        "durationSeconds": null,
+        "requiredTimeoutSeconds": 15,
+        "timeoutProvenance": "Original retained 09.stdin subprocess.run(timeout=15), serial fresh children; aggregate command succeeded"
+      },
+      {
+        "mode": "dynamic",
+        "zeroBasedIndex": 1,
+        "exitCode": 0,
+        "originalStdout": "{\"appOwnedUnixSockets\":[],\"before\":{\"Anonymous\":1376256,\"Private_Clean\":4096,\"Private_Dirty\":1417216,\"Pss\":1992704,\"Rss\":15982592,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":108336,\"allocatorLiveBytes\":186576,\"allocatorMmapBytes\":0},\"environmentChanged\":false,\"final\":{\"Anonymous\":5898240,\"Private_Clean\":4096,\"Private_Dirty\":5939200,\"Pss\":6723584,\"Rss\":23515136,\"allocatorArenaBytes\":5070848,\"allocatorFreeBytes\":4754672,\"allocatorLiveBytes\":316176,\"allocatorMmapBytes\":0},\"glibcVersion\":\"2.43\",\"mode\":\"dynamic\",\"payloadExported\":false,\"policyResult\":0,\"qtVersion\":\"6.10.2\",\"schemaVersion\":1,\"stages\":[{\"after\":{\"Anonymous\":4198400,\"Private_Clean\":4096,\"Private_Dirty\":4239360,\"Pss\":5023744,\"Rss\":21815296,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3061680,\"allocatorLiveBytes\":350288,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1388544,\"Private_Clean\":4096,\"Private_Dirty\":1429504,\"Pss\":2016256,\"Rss\":16257024,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":106048,\"allocatorLiveBytes\":188864,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":4177920,\"Private_Clean\":4096,\"Private_Dirty\":4218880,\"Pss\":5003264,\"Rss\":21794816,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3059440,\"allocatorLiveBytes\":352528,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":5541888,\"Private_Clean\":4096,\"Private_Dirty\":5582848,\"Pss\":6367232,\"Rss\":23158784,\"allocatorArenaBytes\":5005312,\"allocatorFreeBytes\":4645280,\"allocatorLiveBytes\":360032,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":4190208,\"Private_Clean\":4096,\"Private_Dirty\":4231168,\"Pss\":5015552,\"Rss\":21807104,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3121776,\"allocatorLiveBytes\":290192,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1777664,\"Private_Clean\":4096,\"Private_Dirty\":1818624,\"Pss\":2603008,\"Rss\":19394560,\"allocatorArenaBytes\":974848,\"allocatorFreeBytes\":611936,\"allocatorLiveBytes\":362912,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280},{\"after\":{\"Anonymous\":8212480,\"Private_Clean\":4096,\"Private_Dirty\":8253440,\"Pss\":9037824,\"Rss\":25829376,\"allocatorArenaBytes\":8589312,\"allocatorFreeBytes\":8220864,\"allocatorLiveBytes\":368448,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1785856,\"Private_Clean\":4096,\"Private_Dirty\":1826816,\"Pss\":2611200,\"Rss\":19402752,\"allocatorArenaBytes\":974848,\"allocatorFreeBytes\":674336,\"allocatorLiveBytes\":300512,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":5328896,\"Private_Clean\":4096,\"Private_Dirty\":5369856,\"Pss\":6154240,\"Rss\":22945792,\"allocatorArenaBytes\":4558848,\"allocatorFreeBytes\":4188048,\"allocatorLiveBytes\":370800,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":13750272,\"Private_Clean\":4096,\"Private_Dirty\":13791232,\"Pss\":14575616,\"Rss\":31367168,\"allocatorArenaBytes\":13295616,\"allocatorFreeBytes\":12919424,\"allocatorLiveBytes\":376192,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":5341184,\"Private_Clean\":4096,\"Private_Dirty\":5382144,\"Pss\":6166528,\"Rss\":22958080,\"allocatorArenaBytes\":4558848,\"allocatorFreeBytes\":4250608,\"allocatorLiveBytes\":308240,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":5885952,\"Private_Clean\":4096,\"Private_Dirty\":5926912,\"Pss\":6711296,\"Rss\":23502848,\"allocatorArenaBytes\":5070848,\"allocatorFreeBytes\":4692256,\"allocatorLiveBytes\":378592,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280}],\"syntheticOnly\":true}\n",
+        "originalStderr": "",
+        "parsedResult": {
+          "appOwnedUnixSockets": [],
+          "before": {
+            "Anonymous": 1376256,
+            "Private_Clean": 4096,
+            "Private_Dirty": 1417216,
+            "Pss": 1992704,
+            "Rss": 15982592,
+            "allocatorArenaBytes": 294912,
+            "allocatorFreeBytes": 108336,
+            "allocatorLiveBytes": 186576,
+            "allocatorMmapBytes": 0
+          },
+          "environmentChanged": false,
+          "final": {
+            "Anonymous": 5898240,
+            "Private_Clean": 4096,
+            "Private_Dirty": 5939200,
+            "Pss": 6723584,
+            "Rss": 23515136,
+            "allocatorArenaBytes": 5070848,
+            "allocatorFreeBytes": 4754672,
+            "allocatorLiveBytes": 316176,
+            "allocatorMmapBytes": 0
+          },
+          "glibcVersion": "2.43",
+          "mode": "dynamic",
+          "payloadExported": false,
+          "policyResult": 0,
+          "qtVersion": "6.10.2",
+          "schemaVersion": 1,
+          "stages": [
+            {
+              "after": {
+                "Anonymous": 4198400,
+                "Private_Clean": 4096,
+                "Private_Dirty": 4239360,
+                "Pss": 5023744,
+                "Rss": 21815296,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3061680,
+                "allocatorLiveBytes": 350288,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1388544,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1429504,
+                "Pss": 2016256,
+                "Rss": 16257024,
+                "allocatorArenaBytes": 294912,
+                "allocatorFreeBytes": 106048,
+                "allocatorLiveBytes": 188864,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 4177920,
+                "Private_Clean": 4096,
+                "Private_Dirty": 4218880,
+                "Pss": 5003264,
+                "Rss": 21794816,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3059440,
+                "allocatorLiveBytes": 352528,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 5541888,
+                "Private_Clean": 4096,
+                "Private_Dirty": 5582848,
+                "Pss": 6367232,
+                "Rss": 23158784,
+                "allocatorArenaBytes": 5005312,
+                "allocatorFreeBytes": 4645280,
+                "allocatorLiveBytes": 360032,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 4190208,
+                "Private_Clean": 4096,
+                "Private_Dirty": 4231168,
+                "Pss": 5015552,
+                "Rss": 21807104,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3121776,
+                "allocatorLiveBytes": 290192,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1777664,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1818624,
+                "Pss": 2603008,
+                "Rss": 19394560,
+                "allocatorArenaBytes": 974848,
+                "allocatorFreeBytes": 611936,
+                "allocatorLiveBytes": 362912,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            },
+            {
+              "after": {
+                "Anonymous": 8212480,
+                "Private_Clean": 4096,
+                "Private_Dirty": 8253440,
+                "Pss": 9037824,
+                "Rss": 25829376,
+                "allocatorArenaBytes": 8589312,
+                "allocatorFreeBytes": 8220864,
+                "allocatorLiveBytes": 368448,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1785856,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1826816,
+                "Pss": 2611200,
+                "Rss": 19402752,
+                "allocatorArenaBytes": 974848,
+                "allocatorFreeBytes": 674336,
+                "allocatorLiveBytes": 300512,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 5328896,
+                "Private_Clean": 4096,
+                "Private_Dirty": 5369856,
+                "Pss": 6154240,
+                "Rss": 22945792,
+                "allocatorArenaBytes": 4558848,
+                "allocatorFreeBytes": 4188048,
+                "allocatorLiveBytes": 370800,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 13750272,
+                "Private_Clean": 4096,
+                "Private_Dirty": 13791232,
+                "Pss": 14575616,
+                "Rss": 31367168,
+                "allocatorArenaBytes": 13295616,
+                "allocatorFreeBytes": 12919424,
+                "allocatorLiveBytes": 376192,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 5341184,
+                "Private_Clean": 4096,
+                "Private_Dirty": 5382144,
+                "Pss": 6166528,
+                "Rss": 22958080,
+                "allocatorArenaBytes": 4558848,
+                "allocatorFreeBytes": 4250608,
+                "allocatorLiveBytes": 308240,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 5885952,
+                "Private_Clean": 4096,
+                "Private_Dirty": 5926912,
+                "Pss": 6711296,
+                "Rss": 23502848,
+                "allocatorArenaBytes": 5070848,
+                "allocatorFreeBytes": 4692256,
+                "allocatorLiveBytes": 378592,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            }
+          ],
+          "syntheticOnly": true
+        },
+        "durationSeconds": null,
+        "requiredTimeoutSeconds": 15,
+        "timeoutProvenance": "Original retained 09.stdin subprocess.run(timeout=15), serial fresh children; aggregate command succeeded"
+      },
+      {
+        "mode": "dynamic",
+        "zeroBasedIndex": 2,
+        "exitCode": 0,
+        "originalStdout": "{\"appOwnedUnixSockets\":[],\"before\":{\"Anonymous\":1380352,\"Private_Clean\":8192,\"Private_Dirty\":1421312,\"Pss\":2004992,\"Rss\":16162816,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":108336,\"allocatorLiveBytes\":186576,\"allocatorMmapBytes\":0},\"environmentChanged\":false,\"final\":{\"Anonymous\":5902336,\"Private_Clean\":8192,\"Private_Dirty\":5943296,\"Pss\":6734848,\"Rss\":23674880,\"allocatorArenaBytes\":5070848,\"allocatorFreeBytes\":4754080,\"allocatorLiveBytes\":316768,\"allocatorMmapBytes\":0},\"glibcVersion\":\"2.43\",\"mode\":\"dynamic\",\"payloadExported\":false,\"policyResult\":0,\"qtVersion\":\"6.10.2\",\"schemaVersion\":1,\"stages\":[{\"after\":{\"Anonymous\":4202496,\"Private_Clean\":8192,\"Private_Dirty\":4243456,\"Pss\":5035008,\"Rss\":21975040,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3061680,\"allocatorLiveBytes\":350288,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1392640,\"Private_Clean\":8192,\"Private_Dirty\":1433600,\"Pss\":2028544,\"Rss\":16437248,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":106048,\"allocatorLiveBytes\":188864,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":4182016,\"Private_Clean\":8192,\"Private_Dirty\":4222976,\"Pss\":5014528,\"Rss\":21954560,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3059440,\"allocatorLiveBytes\":352528,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":5545984,\"Private_Clean\":8192,\"Private_Dirty\":5586944,\"Pss\":6378496,\"Rss\":23318528,\"allocatorArenaBytes\":5005312,\"allocatorFreeBytes\":4645264,\"allocatorLiveBytes\":360048,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":4194304,\"Private_Clean\":8192,\"Private_Dirty\":4235264,\"Pss\":5026816,\"Rss\":21966848,\"allocatorArenaBytes\":3411968,\"allocatorFreeBytes\":3121776,\"allocatorLiveBytes\":290192,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1781760,\"Private_Clean\":8192,\"Private_Dirty\":1822720,\"Pss\":2614272,\"Rss\":19554304,\"allocatorArenaBytes\":974848,\"allocatorFreeBytes\":611920,\"allocatorLiveBytes\":362928,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280},{\"after\":{\"Anonymous\":8216576,\"Private_Clean\":8192,\"Private_Dirty\":8257536,\"Pss\":9049088,\"Rss\":25989120,\"allocatorArenaBytes\":8589312,\"allocatorFreeBytes\":8220416,\"allocatorLiveBytes\":368896,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1789952,\"Private_Clean\":8192,\"Private_Dirty\":1830912,\"Pss\":2622464,\"Rss\":19562496,\"allocatorArenaBytes\":974848,\"allocatorFreeBytes\":674048,\"allocatorLiveBytes\":300800,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":5337088,\"Private_Clean\":8192,\"Private_Dirty\":5378048,\"Pss\":6169600,\"Rss\":23109632,\"allocatorArenaBytes\":4558848,\"allocatorFreeBytes\":4187600,\"allocatorLiveBytes\":371248,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":13754368,\"Private_Clean\":8192,\"Private_Dirty\":13795328,\"Pss\":14586880,\"Rss\":31526912,\"allocatorArenaBytes\":13295616,\"allocatorFreeBytes\":12919104,\"allocatorLiveBytes\":376512,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":5349376,\"Private_Clean\":8192,\"Private_Dirty\":5390336,\"Pss\":6181888,\"Rss\":23121920,\"allocatorArenaBytes\":4558848,\"allocatorFreeBytes\":4250304,\"allocatorLiveBytes\":308544,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":5890048,\"Private_Clean\":8192,\"Private_Dirty\":5931008,\"Pss\":6722560,\"Rss\":23662592,\"allocatorArenaBytes\":5070848,\"allocatorFreeBytes\":4691648,\"allocatorLiveBytes\":379200,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280}],\"syntheticOnly\":true}\n",
+        "originalStderr": "",
+        "parsedResult": {
+          "appOwnedUnixSockets": [],
+          "before": {
+            "Anonymous": 1380352,
+            "Private_Clean": 8192,
+            "Private_Dirty": 1421312,
+            "Pss": 2004992,
+            "Rss": 16162816,
+            "allocatorArenaBytes": 294912,
+            "allocatorFreeBytes": 108336,
+            "allocatorLiveBytes": 186576,
+            "allocatorMmapBytes": 0
+          },
+          "environmentChanged": false,
+          "final": {
+            "Anonymous": 5902336,
+            "Private_Clean": 8192,
+            "Private_Dirty": 5943296,
+            "Pss": 6734848,
+            "Rss": 23674880,
+            "allocatorArenaBytes": 5070848,
+            "allocatorFreeBytes": 4754080,
+            "allocatorLiveBytes": 316768,
+            "allocatorMmapBytes": 0
+          },
+          "glibcVersion": "2.43",
+          "mode": "dynamic",
+          "payloadExported": false,
+          "policyResult": 0,
+          "qtVersion": "6.10.2",
+          "schemaVersion": 1,
+          "stages": [
+            {
+              "after": {
+                "Anonymous": 4202496,
+                "Private_Clean": 8192,
+                "Private_Dirty": 4243456,
+                "Pss": 5035008,
+                "Rss": 21975040,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3061680,
+                "allocatorLiveBytes": 350288,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1392640,
+                "Private_Clean": 8192,
+                "Private_Dirty": 1433600,
+                "Pss": 2028544,
+                "Rss": 16437248,
+                "allocatorArenaBytes": 294912,
+                "allocatorFreeBytes": 106048,
+                "allocatorLiveBytes": 188864,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 4182016,
+                "Private_Clean": 8192,
+                "Private_Dirty": 4222976,
+                "Pss": 5014528,
+                "Rss": 21954560,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3059440,
+                "allocatorLiveBytes": 352528,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 5545984,
+                "Private_Clean": 8192,
+                "Private_Dirty": 5586944,
+                "Pss": 6378496,
+                "Rss": 23318528,
+                "allocatorArenaBytes": 5005312,
+                "allocatorFreeBytes": 4645264,
+                "allocatorLiveBytes": 360048,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 4194304,
+                "Private_Clean": 8192,
+                "Private_Dirty": 4235264,
+                "Pss": 5026816,
+                "Rss": 21966848,
+                "allocatorArenaBytes": 3411968,
+                "allocatorFreeBytes": 3121776,
+                "allocatorLiveBytes": 290192,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1781760,
+                "Private_Clean": 8192,
+                "Private_Dirty": 1822720,
+                "Pss": 2614272,
+                "Rss": 19554304,
+                "allocatorArenaBytes": 974848,
+                "allocatorFreeBytes": 611920,
+                "allocatorLiveBytes": 362928,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            },
+            {
+              "after": {
+                "Anonymous": 8216576,
+                "Private_Clean": 8192,
+                "Private_Dirty": 8257536,
+                "Pss": 9049088,
+                "Rss": 25989120,
+                "allocatorArenaBytes": 8589312,
+                "allocatorFreeBytes": 8220416,
+                "allocatorLiveBytes": 368896,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1789952,
+                "Private_Clean": 8192,
+                "Private_Dirty": 1830912,
+                "Pss": 2622464,
+                "Rss": 19562496,
+                "allocatorArenaBytes": 974848,
+                "allocatorFreeBytes": 674048,
+                "allocatorLiveBytes": 300800,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 5337088,
+                "Private_Clean": 8192,
+                "Private_Dirty": 5378048,
+                "Pss": 6169600,
+                "Rss": 23109632,
+                "allocatorArenaBytes": 4558848,
+                "allocatorFreeBytes": 4187600,
+                "allocatorLiveBytes": 371248,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 13754368,
+                "Private_Clean": 8192,
+                "Private_Dirty": 13795328,
+                "Pss": 14586880,
+                "Rss": 31526912,
+                "allocatorArenaBytes": 13295616,
+                "allocatorFreeBytes": 12919104,
+                "allocatorLiveBytes": 376512,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 5349376,
+                "Private_Clean": 8192,
+                "Private_Dirty": 5390336,
+                "Pss": 6181888,
+                "Rss": 23121920,
+                "allocatorArenaBytes": 4558848,
+                "allocatorFreeBytes": 4250304,
+                "allocatorLiveBytes": 308544,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 5890048,
+                "Private_Clean": 8192,
+                "Private_Dirty": 5931008,
+                "Pss": 6722560,
+                "Rss": 23662592,
+                "allocatorArenaBytes": 5070848,
+                "allocatorFreeBytes": 4691648,
+                "allocatorLiveBytes": 379200,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            }
+          ],
+          "syntheticOnly": true
+        },
+        "durationSeconds": null,
+        "requiredTimeoutSeconds": 15,
+        "timeoutProvenance": "Original retained 09.stdin subprocess.run(timeout=15), serial fresh children; aggregate command succeeded"
+      },
+      {
+        "mode": "static128k",
+        "zeroBasedIndex": 0,
+        "exitCode": 0,
+        "originalStdout": "{\"appOwnedUnixSockets\":[],\"before\":{\"Anonymous\":1376256,\"Private_Clean\":0,\"Private_Dirty\":1417216,\"Pss\":1979392,\"Rss\":15990784,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":108336,\"allocatorLiveBytes\":186576,\"allocatorMmapBytes\":0},\"environmentChanged\":false,\"final\":{\"Anonymous\":1802240,\"Private_Clean\":0,\"Private_Dirty\":1843200,\"Pss\":2615296,\"Rss\":19431424,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":560176,\"allocatorLiveBytes\":316368,\"allocatorMmapBytes\":0},\"glibcVersion\":\"2.43\",\"mode\":\"static128k\",\"payloadExported\":false,\"policyResult\":1,\"qtVersion\":\"6.10.2\",\"schemaVersion\":1,\"stages\":[{\"after\":{\"Anonymous\":1789952,\"Private_Clean\":0,\"Private_Dirty\":1830912,\"Pss\":2603008,\"Rss\":19419136,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":591792,\"allocatorLiveBytes\":350288,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1388544,\"Private_Clean\":0,\"Private_Dirty\":1429504,\"Pss\":2002944,\"Rss\":16265216,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":106048,\"allocatorLiveBytes\":188864,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1769472,\"Private_Clean\":0,\"Private_Dirty\":1810432,\"Pss\":2582528,\"Rss\":19398656,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":589552,\"allocatorLiveBytes\":352528,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":1802240,\"Private_Clean\":0,\"Private_Dirty\":1843200,\"Pss\":2615296,\"Rss\":19431424,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":516304,\"allocatorLiveBytes\":360240,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1781760,\"Private_Clean\":0,\"Private_Dirty\":1822720,\"Pss\":2594816,\"Rss\":19410944,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":586352,\"allocatorLiveBytes\":290192,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1777664,\"Private_Clean\":0,\"Private_Dirty\":1818624,\"Pss\":2590720,\"Rss\":19406848,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":578960,\"allocatorLiveBytes\":363120,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280},{\"after\":{\"Anonymous\":1810432,\"Private_Clean\":0,\"Private_Dirty\":1851392,\"Pss\":2623488,\"Rss\":19439616,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":507968,\"allocatorLiveBytes\":368576,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1785856,\"Private_Clean\":0,\"Private_Dirty\":1826816,\"Pss\":2598912,\"Rss\":19415040,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":575824,\"allocatorLiveBytes\":300720,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1781760,\"Private_Clean\":0,\"Private_Dirty\":1822720,\"Pss\":2594816,\"Rss\":19410944,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":571152,\"allocatorLiveBytes\":370928,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":1814528,\"Private_Clean\":0,\"Private_Dirty\":1855488,\"Pss\":2627584,\"Rss\":19443712,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":500288,\"allocatorLiveBytes\":376256,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1794048,\"Private_Clean\":0,\"Private_Dirty\":1835008,\"Pss\":2607104,\"Rss\":19423232,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":568176,\"allocatorLiveBytes\":308368,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1789952,\"Private_Clean\":0,\"Private_Dirty\":1830912,\"Pss\":2603008,\"Rss\":19419136,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":563424,\"allocatorLiveBytes\":378656,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280}],\"syntheticOnly\":true}\n",
+        "originalStderr": "",
+        "parsedResult": {
+          "appOwnedUnixSockets": [],
+          "before": {
+            "Anonymous": 1376256,
+            "Private_Clean": 0,
+            "Private_Dirty": 1417216,
+            "Pss": 1979392,
+            "Rss": 15990784,
+            "allocatorArenaBytes": 294912,
+            "allocatorFreeBytes": 108336,
+            "allocatorLiveBytes": 186576,
+            "allocatorMmapBytes": 0
+          },
+          "environmentChanged": false,
+          "final": {
+            "Anonymous": 1802240,
+            "Private_Clean": 0,
+            "Private_Dirty": 1843200,
+            "Pss": 2615296,
+            "Rss": 19431424,
+            "allocatorArenaBytes": 876544,
+            "allocatorFreeBytes": 560176,
+            "allocatorLiveBytes": 316368,
+            "allocatorMmapBytes": 0
+          },
+          "glibcVersion": "2.43",
+          "mode": "static128k",
+          "payloadExported": false,
+          "policyResult": 1,
+          "qtVersion": "6.10.2",
+          "schemaVersion": 1,
+          "stages": [
+            {
+              "after": {
+                "Anonymous": 1789952,
+                "Private_Clean": 0,
+                "Private_Dirty": 1830912,
+                "Pss": 2603008,
+                "Rss": 19419136,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 591792,
+                "allocatorLiveBytes": 350288,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1388544,
+                "Private_Clean": 0,
+                "Private_Dirty": 1429504,
+                "Pss": 2002944,
+                "Rss": 16265216,
+                "allocatorArenaBytes": 294912,
+                "allocatorFreeBytes": 106048,
+                "allocatorLiveBytes": 188864,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1769472,
+                "Private_Clean": 0,
+                "Private_Dirty": 1810432,
+                "Pss": 2582528,
+                "Rss": 19398656,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 589552,
+                "allocatorLiveBytes": 352528,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 1802240,
+                "Private_Clean": 0,
+                "Private_Dirty": 1843200,
+                "Pss": 2615296,
+                "Rss": 19431424,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 516304,
+                "allocatorLiveBytes": 360240,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1781760,
+                "Private_Clean": 0,
+                "Private_Dirty": 1822720,
+                "Pss": 2594816,
+                "Rss": 19410944,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 586352,
+                "allocatorLiveBytes": 290192,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1777664,
+                "Private_Clean": 0,
+                "Private_Dirty": 1818624,
+                "Pss": 2590720,
+                "Rss": 19406848,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 578960,
+                "allocatorLiveBytes": 363120,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            },
+            {
+              "after": {
+                "Anonymous": 1810432,
+                "Private_Clean": 0,
+                "Private_Dirty": 1851392,
+                "Pss": 2623488,
+                "Rss": 19439616,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 507968,
+                "allocatorLiveBytes": 368576,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1785856,
+                "Private_Clean": 0,
+                "Private_Dirty": 1826816,
+                "Pss": 2598912,
+                "Rss": 19415040,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 575824,
+                "allocatorLiveBytes": 300720,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1781760,
+                "Private_Clean": 0,
+                "Private_Dirty": 1822720,
+                "Pss": 2594816,
+                "Rss": 19410944,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 571152,
+                "allocatorLiveBytes": 370928,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 1814528,
+                "Private_Clean": 0,
+                "Private_Dirty": 1855488,
+                "Pss": 2627584,
+                "Rss": 19443712,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 500288,
+                "allocatorLiveBytes": 376256,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1794048,
+                "Private_Clean": 0,
+                "Private_Dirty": 1835008,
+                "Pss": 2607104,
+                "Rss": 19423232,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 568176,
+                "allocatorLiveBytes": 308368,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1789952,
+                "Private_Clean": 0,
+                "Private_Dirty": 1830912,
+                "Pss": 2603008,
+                "Rss": 19419136,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 563424,
+                "allocatorLiveBytes": 378656,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            }
+          ],
+          "syntheticOnly": true
+        },
+        "durationSeconds": null,
+        "requiredTimeoutSeconds": 15,
+        "timeoutProvenance": "Original retained 09.stdin subprocess.run(timeout=15), serial fresh children; aggregate command succeeded"
+      },
+      {
+        "mode": "static128k",
+        "zeroBasedIndex": 1,
+        "exitCode": 0,
+        "originalStdout": "{\"appOwnedUnixSockets\":[],\"before\":{\"Anonymous\":1376256,\"Private_Clean\":0,\"Private_Dirty\":1417216,\"Pss\":1984512,\"Rss\":16068608,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":108336,\"allocatorLiveBytes\":186576,\"allocatorMmapBytes\":0},\"environmentChanged\":false,\"final\":{\"Anonymous\":1802240,\"Private_Clean\":0,\"Private_Dirty\":1843200,\"Pss\":2619392,\"Rss\":19484672,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":560256,\"allocatorLiveBytes\":316288,\"allocatorMmapBytes\":0},\"glibcVersion\":\"2.43\",\"mode\":\"static128k\",\"payloadExported\":false,\"policyResult\":1,\"qtVersion\":\"6.10.2\",\"schemaVersion\":1,\"stages\":[{\"after\":{\"Anonymous\":1789952,\"Private_Clean\":0,\"Private_Dirty\":1830912,\"Pss\":2607104,\"Rss\":19472384,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":591792,\"allocatorLiveBytes\":350288,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1388544,\"Private_Clean\":0,\"Private_Dirty\":1429504,\"Pss\":2008064,\"Rss\":16343040,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":106048,\"allocatorLiveBytes\":188864,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1769472,\"Private_Clean\":0,\"Private_Dirty\":1810432,\"Pss\":2586624,\"Rss\":19451904,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":589552,\"allocatorLiveBytes\":352528,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":1802240,\"Private_Clean\":0,\"Private_Dirty\":1843200,\"Pss\":2619392,\"Rss\":19484672,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":516304,\"allocatorLiveBytes\":360240,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1781760,\"Private_Clean\":0,\"Private_Dirty\":1822720,\"Pss\":2598912,\"Rss\":19464192,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":586352,\"allocatorLiveBytes\":290192,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1777664,\"Private_Clean\":0,\"Private_Dirty\":1818624,\"Pss\":2594816,\"Rss\":19460096,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":578960,\"allocatorLiveBytes\":363120,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280},{\"after\":{\"Anonymous\":1810432,\"Private_Clean\":0,\"Private_Dirty\":1851392,\"Pss\":2627584,\"Rss\":19492864,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":507968,\"allocatorLiveBytes\":368576,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1785856,\"Private_Clean\":0,\"Private_Dirty\":1826816,\"Pss\":2603008,\"Rss\":19468288,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":575824,\"allocatorLiveBytes\":300720,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1781760,\"Private_Clean\":0,\"Private_Dirty\":1822720,\"Pss\":2598912,\"Rss\":19464192,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":571152,\"allocatorLiveBytes\":370928,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":1814528,\"Private_Clean\":0,\"Private_Dirty\":1855488,\"Pss\":2631680,\"Rss\":19496960,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":500224,\"allocatorLiveBytes\":376320,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1794048,\"Private_Clean\":0,\"Private_Dirty\":1835008,\"Pss\":2611200,\"Rss\":19476480,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":568176,\"allocatorLiveBytes\":308368,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1789952,\"Private_Clean\":0,\"Private_Dirty\":1830912,\"Pss\":2607104,\"Rss\":19472384,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":563360,\"allocatorLiveBytes\":378720,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280}],\"syntheticOnly\":true}\n",
+        "originalStderr": "",
+        "parsedResult": {
+          "appOwnedUnixSockets": [],
+          "before": {
+            "Anonymous": 1376256,
+            "Private_Clean": 0,
+            "Private_Dirty": 1417216,
+            "Pss": 1984512,
+            "Rss": 16068608,
+            "allocatorArenaBytes": 294912,
+            "allocatorFreeBytes": 108336,
+            "allocatorLiveBytes": 186576,
+            "allocatorMmapBytes": 0
+          },
+          "environmentChanged": false,
+          "final": {
+            "Anonymous": 1802240,
+            "Private_Clean": 0,
+            "Private_Dirty": 1843200,
+            "Pss": 2619392,
+            "Rss": 19484672,
+            "allocatorArenaBytes": 876544,
+            "allocatorFreeBytes": 560256,
+            "allocatorLiveBytes": 316288,
+            "allocatorMmapBytes": 0
+          },
+          "glibcVersion": "2.43",
+          "mode": "static128k",
+          "payloadExported": false,
+          "policyResult": 1,
+          "qtVersion": "6.10.2",
+          "schemaVersion": 1,
+          "stages": [
+            {
+              "after": {
+                "Anonymous": 1789952,
+                "Private_Clean": 0,
+                "Private_Dirty": 1830912,
+                "Pss": 2607104,
+                "Rss": 19472384,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 591792,
+                "allocatorLiveBytes": 350288,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1388544,
+                "Private_Clean": 0,
+                "Private_Dirty": 1429504,
+                "Pss": 2008064,
+                "Rss": 16343040,
+                "allocatorArenaBytes": 294912,
+                "allocatorFreeBytes": 106048,
+                "allocatorLiveBytes": 188864,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1769472,
+                "Private_Clean": 0,
+                "Private_Dirty": 1810432,
+                "Pss": 2586624,
+                "Rss": 19451904,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 589552,
+                "allocatorLiveBytes": 352528,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 1802240,
+                "Private_Clean": 0,
+                "Private_Dirty": 1843200,
+                "Pss": 2619392,
+                "Rss": 19484672,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 516304,
+                "allocatorLiveBytes": 360240,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1781760,
+                "Private_Clean": 0,
+                "Private_Dirty": 1822720,
+                "Pss": 2598912,
+                "Rss": 19464192,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 586352,
+                "allocatorLiveBytes": 290192,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1777664,
+                "Private_Clean": 0,
+                "Private_Dirty": 1818624,
+                "Pss": 2594816,
+                "Rss": 19460096,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 578960,
+                "allocatorLiveBytes": 363120,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            },
+            {
+              "after": {
+                "Anonymous": 1810432,
+                "Private_Clean": 0,
+                "Private_Dirty": 1851392,
+                "Pss": 2627584,
+                "Rss": 19492864,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 507968,
+                "allocatorLiveBytes": 368576,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1785856,
+                "Private_Clean": 0,
+                "Private_Dirty": 1826816,
+                "Pss": 2603008,
+                "Rss": 19468288,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 575824,
+                "allocatorLiveBytes": 300720,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1781760,
+                "Private_Clean": 0,
+                "Private_Dirty": 1822720,
+                "Pss": 2598912,
+                "Rss": 19464192,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 571152,
+                "allocatorLiveBytes": 370928,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 1814528,
+                "Private_Clean": 0,
+                "Private_Dirty": 1855488,
+                "Pss": 2631680,
+                "Rss": 19496960,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 500224,
+                "allocatorLiveBytes": 376320,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1794048,
+                "Private_Clean": 0,
+                "Private_Dirty": 1835008,
+                "Pss": 2611200,
+                "Rss": 19476480,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 568176,
+                "allocatorLiveBytes": 308368,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1789952,
+                "Private_Clean": 0,
+                "Private_Dirty": 1830912,
+                "Pss": 2607104,
+                "Rss": 19472384,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 563360,
+                "allocatorLiveBytes": 378720,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            }
+          ],
+          "syntheticOnly": true
+        },
+        "durationSeconds": null,
+        "requiredTimeoutSeconds": 15,
+        "timeoutProvenance": "Original retained 09.stdin subprocess.run(timeout=15), serial fresh children; aggregate command succeeded"
+      },
+      {
+        "mode": "static128k",
+        "zeroBasedIndex": 2,
+        "exitCode": 0,
+        "originalStdout": "{\"appOwnedUnixSockets\":[],\"before\":{\"Anonymous\":1376256,\"Private_Clean\":4096,\"Private_Dirty\":1417216,\"Pss\":1997824,\"Rss\":16048128,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":108336,\"allocatorLiveBytes\":186576,\"allocatorMmapBytes\":0},\"environmentChanged\":false,\"final\":{\"Anonymous\":1802240,\"Private_Clean\":4096,\"Private_Dirty\":1843200,\"Pss\":2632704,\"Rss\":19484672,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":560256,\"allocatorLiveBytes\":316288,\"allocatorMmapBytes\":0},\"glibcVersion\":\"2.43\",\"mode\":\"static128k\",\"payloadExported\":false,\"policyResult\":1,\"qtVersion\":\"6.10.2\",\"schemaVersion\":1,\"stages\":[{\"after\":{\"Anonymous\":1789952,\"Private_Clean\":4096,\"Private_Dirty\":1830912,\"Pss\":2620416,\"Rss\":19472384,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":591792,\"allocatorLiveBytes\":350288,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1388544,\"Private_Clean\":4096,\"Private_Dirty\":1429504,\"Pss\":2021376,\"Rss\":16322560,\"allocatorArenaBytes\":294912,\"allocatorFreeBytes\":106048,\"allocatorLiveBytes\":188864,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1769472,\"Private_Clean\":4096,\"Private_Dirty\":1810432,\"Pss\":2599936,\"Rss\":19451904,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":589552,\"allocatorLiveBytes\":352528,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":1802240,\"Private_Clean\":4096,\"Private_Dirty\":1843200,\"Pss\":2632704,\"Rss\":19484672,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":516304,\"allocatorLiveBytes\":360240,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1781760,\"Private_Clean\":4096,\"Private_Dirty\":1822720,\"Pss\":2612224,\"Rss\":19464192,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":586352,\"allocatorLiveBytes\":290192,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1777664,\"Private_Clean\":4096,\"Private_Dirty\":1818624,\"Pss\":2608128,\"Rss\":19460096,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":578960,\"allocatorLiveBytes\":363120,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280},{\"after\":{\"Anonymous\":1810432,\"Private_Clean\":4096,\"Private_Dirty\":1851392,\"Pss\":2640896,\"Rss\":19492864,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":507968,\"allocatorLiveBytes\":368576,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1785856,\"Private_Clean\":4096,\"Private_Dirty\":1826816,\"Pss\":2616320,\"Rss\":19468288,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":575824,\"allocatorLiveBytes\":300720,\"allocatorMmapBytes\":0},\"height\":448,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1781760,\"Private_Clean\":4096,\"Private_Dirty\":1822720,\"Pss\":2612224,\"Rss\":19464192,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":571152,\"allocatorLiveBytes\":370928,\"allocatorMmapBytes\":0},\"rawBytes\":1146880,\"rawCapacityBytes\":2097134,\"trimResult\":1,\"width\":640},{\"after\":{\"Anonymous\":1814528,\"Private_Clean\":4096,\"Private_Dirty\":1855488,\"Pss\":2644992,\"Rss\":19496960,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":500224,\"allocatorLiveBytes\":376320,\"allocatorMmapBytes\":0},\"before\":{\"Anonymous\":1794048,\"Private_Clean\":4096,\"Private_Dirty\":1835008,\"Pss\":2624512,\"Rss\":19476480,\"allocatorArenaBytes\":876544,\"allocatorFreeBytes\":568176,\"allocatorLiveBytes\":308368,\"allocatorMmapBytes\":0},\"height\":800,\"pngStagePassed\":true,\"postTrim\":{\"Anonymous\":1789952,\"Private_Clean\":4096,\"Private_Dirty\":1830912,\"Pss\":2620416,\"Rss\":19472384,\"allocatorArenaBytes\":942080,\"allocatorFreeBytes\":563360,\"allocatorLiveBytes\":378720,\"allocatorMmapBytes\":0},\"rawBytes\":4096000,\"rawCapacityBytes\":4194286,\"trimResult\":1,\"width\":1280}],\"syntheticOnly\":true}\n",
+        "originalStderr": "",
+        "parsedResult": {
+          "appOwnedUnixSockets": [],
+          "before": {
+            "Anonymous": 1376256,
+            "Private_Clean": 4096,
+            "Private_Dirty": 1417216,
+            "Pss": 1997824,
+            "Rss": 16048128,
+            "allocatorArenaBytes": 294912,
+            "allocatorFreeBytes": 108336,
+            "allocatorLiveBytes": 186576,
+            "allocatorMmapBytes": 0
+          },
+          "environmentChanged": false,
+          "final": {
+            "Anonymous": 1802240,
+            "Private_Clean": 4096,
+            "Private_Dirty": 1843200,
+            "Pss": 2632704,
+            "Rss": 19484672,
+            "allocatorArenaBytes": 876544,
+            "allocatorFreeBytes": 560256,
+            "allocatorLiveBytes": 316288,
+            "allocatorMmapBytes": 0
+          },
+          "glibcVersion": "2.43",
+          "mode": "static128k",
+          "payloadExported": false,
+          "policyResult": 1,
+          "qtVersion": "6.10.2",
+          "schemaVersion": 1,
+          "stages": [
+            {
+              "after": {
+                "Anonymous": 1789952,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1830912,
+                "Pss": 2620416,
+                "Rss": 19472384,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 591792,
+                "allocatorLiveBytes": 350288,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1388544,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1429504,
+                "Pss": 2021376,
+                "Rss": 16322560,
+                "allocatorArenaBytes": 294912,
+                "allocatorFreeBytes": 106048,
+                "allocatorLiveBytes": 188864,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1769472,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1810432,
+                "Pss": 2599936,
+                "Rss": 19451904,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 589552,
+                "allocatorLiveBytes": 352528,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 1802240,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1843200,
+                "Pss": 2632704,
+                "Rss": 19484672,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 516304,
+                "allocatorLiveBytes": 360240,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1781760,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1822720,
+                "Pss": 2612224,
+                "Rss": 19464192,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 586352,
+                "allocatorLiveBytes": 290192,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1777664,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1818624,
+                "Pss": 2608128,
+                "Rss": 19460096,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 578960,
+                "allocatorLiveBytes": 363120,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            },
+            {
+              "after": {
+                "Anonymous": 1810432,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1851392,
+                "Pss": 2640896,
+                "Rss": 19492864,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 507968,
+                "allocatorLiveBytes": 368576,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1785856,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1826816,
+                "Pss": 2616320,
+                "Rss": 19468288,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 575824,
+                "allocatorLiveBytes": 300720,
+                "allocatorMmapBytes": 0
+              },
+              "height": 448,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1781760,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1822720,
+                "Pss": 2612224,
+                "Rss": 19464192,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 571152,
+                "allocatorLiveBytes": 370928,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 1146880,
+              "rawCapacityBytes": 2097134,
+              "trimResult": 1,
+              "width": 640
+            },
+            {
+              "after": {
+                "Anonymous": 1814528,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1855488,
+                "Pss": 2644992,
+                "Rss": 19496960,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 500224,
+                "allocatorLiveBytes": 376320,
+                "allocatorMmapBytes": 0
+              },
+              "before": {
+                "Anonymous": 1794048,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1835008,
+                "Pss": 2624512,
+                "Rss": 19476480,
+                "allocatorArenaBytes": 876544,
+                "allocatorFreeBytes": 568176,
+                "allocatorLiveBytes": 308368,
+                "allocatorMmapBytes": 0
+              },
+              "height": 800,
+              "pngStagePassed": true,
+              "postTrim": {
+                "Anonymous": 1789952,
+                "Private_Clean": 4096,
+                "Private_Dirty": 1830912,
+                "Pss": 2620416,
+                "Rss": 19472384,
+                "allocatorArenaBytes": 942080,
+                "allocatorFreeBytes": 563360,
+                "allocatorLiveBytes": 378720,
+                "allocatorMmapBytes": 0
+              },
+              "rawBytes": 4096000,
+              "rawCapacityBytes": 4194286,
+              "trimResult": 1,
+              "width": 1280
+            }
+          ],
+          "syntheticOnly": true
+        },
+        "durationSeconds": null,
+        "requiredTimeoutSeconds": 15,
+        "timeoutProvenance": "Original retained 09.stdin subprocess.run(timeout=15), serial fresh children; aggregate command succeeded"
+      }
+    ],
+    "complete": {
+      "sourceCommit": "a7a3aa02d3ea7fc26fbd290007dcd8671e906080",
+      "sourceCount": 62,
+      "probeManifestSha256": "d38a38788f4f339af876e1e1752a65668051ff87514189f45c1a4ec108ca8b69",
+      "resultSha256": "289d770aecbb7f0f6e863c4ad35d276ba6a23abc210e5cdad02af8371d10cf70",
+      "residentUnchanged": {
+        "pid": 102528,
+        "startTicks": 2746709,
+        "uid": 1000,
+        "executable": "/usr/bin/putgd",
+        "sha256": "fc7c50e8309a9cfc451f26a98463a71a26cac1c92852df400448d94ac3033818",
+        "parentPid": 1,
+        "state": "S",
+        "comm": "putgd"
+      },
+      "dependencyDiagnosisOnly": true,
+      "nativeParityProof": false,
+      "memoryAcceptance": false,
+      "productInput": false
+    },
+    "timingProvenance": {
+      "childDurationRecorded": false,
+      "wrapperContractConformance": false,
+      "summarySha256": "084a1d5f0648bee18924f0fa028c5f743b452b7e6f628d64bb1d41995358ff96",
+      "aggregateDriverCommand": {
+        "commandReceipt": "originals/09.command.json",
+        "commandReceiptSha256": "baf7c15add58b51bf4f5b750e32fe747763d48fa2987bf36b68561804dc82ba7",
+        "commandWallSeconds": 2.420927,
+        "durationMethod": "Difference of original UTC receipt timestamps, includes SSH/transport; not monotonic child timing",
+        "exitCode": 0,
+        "finishedUtc": "2026-10-10T23:51:41.409561+00:00",
+        "ordinal": 9,
+        "resultReceipt": "originals/09.result.json",
+        "resultReceiptSha256": "d73c7070454ad534f6efbcd9648b7cac86af0eb15e14cee50d0fa5b7483877f1",
+        "startedUtc": "2026-10-10T23:51:38.988634+00:00"
+      },
+      "qualification": "Numeric executable stdout meets required source/result fields; historical wrapper has no per-child duration. Original UTC aggregate execution command duration is preserved separately. No rerun or fabricated timing."
+    }
+  },
+  "primarySources": [
+    {
+      "url": "https://sourceware.org/glibc/manual/latest/html_node/Memory-Allocation-Tunables.html",
+      "qualification": "Dynamic threshold and explicit-threshold policy documentation; not measured product proof."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.39/malloc/malloc.c",
+      "sha256": "5c2e41a83c1c4d1ddaaad761088b93469110a79067ba6485eb594a0423048663",
+      "qualification": "Host source mechanism only."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/bminor/glibc/glibc-2.42/malloc/malloc.c",
+      "sha256": "c99c129727fc9fb881457d71468146e7e1853180b9c969af612bb079709a2221",
+      "qualification": "Source-level mechanism only, not exact guest2.43 source."
+    }
+  ],
+  "guestSourceQualification": "Actual glibc2.43 metadata is separate from inspected2.39/2.42 sources. Exact2.43 source URL returned404; no exact-source claim.",
+  "requiredProductFollowup": [
+    "Versioned candidate KDE functional/UI/clipboard/capture/helper parity",
+    "Frozen post-native and fresh-cold 300-second RSS/CPU gates",
+    "Current Cinnamon/GNOME regressions after satisfactory KDE"
+  ],
+  "accepted": false
+}

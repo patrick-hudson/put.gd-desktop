@@ -1,0 +1,23 @@
+{
+  "head": "9d142919e5e6365227a4424212380e92f85285fe",
+  "tree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+  "archiveSha256": "599944d11b564f79f81dd436a62bb83f29580b83c783dafecde60ccb852c1c73",
+  "build": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.45+g9d142919e5e6",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.45+g9d142919e5e6",
+    "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "commitCount": 45,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "binaries": {
+    "putgd": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+    "putgd-cli": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+    "putgd-ui": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+    "libputgd-s3.so": "cba3b730ecc13780c3db3f90fb2f2e83ff53e2f62b8ba9633b206d6494744762"
+  },
+  "scope": "Matched unmodified source45 runtime reference; no display or measurement executed."
+}

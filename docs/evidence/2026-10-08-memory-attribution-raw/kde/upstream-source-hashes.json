@@ -1,0 +1,40 @@
+{
+  "scope": "Official Qt6.10.2 sources inspected locally; vendor source remains outside this evidence bundle. Distro patches were not audited.",
+  "files": [
+    {
+      "localPath": "work/memory-next/kde/upstream/manifest.json",
+      "bytes": 2413,
+      "sha256": "0edf37a66043febb8f12c71dffb38a82285bdedd2e887563a7b35e73adf24ddb"
+    },
+    {
+      "localPath": "work/memory-next/kde/upstream/qimagereader.cpp",
+      "bytes": 50666,
+      "sha256": "0e8af9a81ada5c928e84f9912fb9719baff94eea5ecc83b7ac23fd97ab5e1b9e"
+    },
+    {
+      "localPath": "work/memory-next/kde/upstream/qimagereaderwriterhelpers.cpp",
+      "bytes": 5164,
+      "sha256": "1fbb176d5159c7deacad6d7774ab002c934e8669a76d90a39160b93a5025f63c"
+    },
+    {
+      "localPath": "work/memory-next/kde/upstream/qwaylandshmbackingstore.cpp",
+      "bytes": 18338,
+      "sha256": "9b8714f6036042343a3f7604699f4cb6f41061f0cde6e07b31477676faef5a56"
+    },
+    {
+      "localPath": "work/memory-next/kde/upstream/qwaylandwindow.cpp",
+      "bytes": 67443,
+      "sha256": "c0541d57f39ea54e87bf7fcbee7bd9b4b852eb6072d9657d10cb885824662129"
+    },
+    {
+      "localPath": "work/memory-next/kde/upstream/qwidget.cpp",
+      "bytes": 462754,
+      "sha256": "8cd5454ab536aa2c07872194654b830a994a41af5df4bf7d1b232fd6298bd342"
+    },
+    {
+      "localPath": "work/memory-next/kde/upstream/qwidgetwindow.cpp",
+      "bytes": 47078,
+      "sha256": "386cc3115e561dffb3678442e37de4a69ba60eb3d14de67ed2810e0bda60533c"
+    }
+  ]
+}

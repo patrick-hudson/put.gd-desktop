@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T04:28:01.388305+00:00",
+  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/views/configured-wide-shortcuts-tab.png",
+  "sha256": "7ed165e6f888f892da23512b6f397d743b3bfb6cc069a34e485a2de79656b53e",
+  "nativeQmp": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-lazy-exp001-native-configured-wide-shortcuts-tab-head0.ppm",
+    "sha256": "56166e755069cb009fd1fab27bce21fedd180509e1ffe2f43388221db25eed1f"
+  },
+  "desktopPixels": [
+    1280,
+    800
+  ],
+  "vncPort": 5938,
+  "visualReview": "pending"
+}

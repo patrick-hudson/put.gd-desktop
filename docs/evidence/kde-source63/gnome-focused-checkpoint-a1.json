@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "status": "partial_regression_stopped_at_approved_deadline",
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "sourceCount": 63,
+  "native12Passed": true,
+  "registeredTestsPassed": 52,
+  "settingsSaveCancelReloadFullRestorationPassed": true,
+  "nativeGtkFolderChooserVisuallyVerified": true,
+  "localHistoryEntriesShown": 11,
+  "actualSyntheticImagePreviewVisuallyVerified": true,
+  "normalSettingsExitGeneration": 3,
+  "normalHistoryExitGeneration": 4,
+  "residentPreserved": {
+    "pid": 14107,
+    "startTicks": 237790,
+    "sha256": "9e40f493557a051172df632a4745bbe6ea0444644f5bfecf7944050682cf1f57"
+  },
+  "uiAfter": {
+    "checkpointBytes": 2392,
+    "lastExit": {
+      "code": 0,
+      "generation": 4,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "activeOperationsAfter": 0,
+  "journalReadyAfter": true,
+  "trayAvailableAfter": true,
+  "originalDocumentRestored": true,
+  "sameGuestAndResidentPreservedForContinuation": true,
+  "visualWitnesses": [
+    {
+      "role": "settings_initial",
+      "sha256": "117913eb025395b4b838c57c29317a0bb0422252b92bc2bb9f06f6eb9402a42c",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "preferences_initial",
+      "sha256": "a6b7d660c6742aa41605fb19c6b4573440d07ab173e16ada0e331dfbb7ed4d3c",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "settings_unsaved_notifications",
+      "sha256": "4518bdc95dacb0a97e4db2dadbdcb54ea0bcb5a79f3d296421b7febecb9775c5",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "settings_cancel_normal_exit",
+      "sha256": "738a14997bed732f828c1c89fec0afcc855e745bae3a607e314b761887af662c",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "settings_save_toggle",
+      "sha256": "98e60ee95643afdde3ae5455658be4c30f6c367e11c864026108c5b1067a1ed9",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "settings_saved_feedback",
+      "sha256": "2671e783a6c2376859837e9dcfb284dfd8724743d9b2a3840c2423ec4676052a",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "settings_reload_saved_state",
+      "sha256": "47e759bbefb31d0068a0186898ab724a735c91805474b1cccb18c7a79fe6885d",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "settings_local_folders_and_naming",
+      "sha256": "b3219747f0e62a629033b92534c3f22fad92d415455b567e88a48db9f277b15b",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "native_gtk_folder_dialog",
+      "sha256": "b7befa86fcb9c0ed67137b35e3d6c227fe4a630c6a75e893870bfc33e8879e96",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "local_history_rows",
+      "sha256": "d7a25098126897665abd5ab44a0d884cc43c6d11b40ee2e93cbd1f058083f6f7",
+      "personallyViewedByRoot": true
+    },
+    {
+      "role": "local_history_actual_image_preview",
+      "sha256": "ca046403b30c3d85253b66ceb813245babb9d9fcaa3d98b00e3a6a706fc3baf1",
+      "personallyViewedByRoot": true
+    }
+  ],
+  "originalFinalSnapshotSha256": "ff912c9f9d24115fb61461ef2cf52ce9ad4a6e2844fe3f2a4e271bc8e8a4e5cb",
+  "originalSafeProofSha256": "27db5a8cbb59ca53499ac2bf445800b3f50d1a44f072bed12dfba68c79509bfe",
+  "approvedDeadlineUtc": "2026-10-11T05:28:20.881985Z",
+  "requestedAdditionalMinutes": 30,
+  "additionalMinutesApproved": false,
+  "remaining": [
+    "Activity exact parent/item independent poisoned clipboard copy",
+    "Live region clock/native cursor/normal cancellation",
+    "Final six-gate local native packet",
+    "Two original300-second post-native windows",
+    "One original300-second fresh-cold window"
+  ],
+  "memoryAccepted": false,
+  "fullLocalRegressionAccepted": false,
+  "remoteAccepted": false,
+  "keeperAccepted": false,
+  "payloadOrRawConfigurationExported": false,
+  "qualification": "Current-version actual partial graphical evidence; do not infer the absent Activity/live/memory gates or a current GNOME RSS from previous versions. Native GNOME diagnostics have no captureHelper field. Matrix fixtures drained; focused fixture was never launched. No guest test action continued beyond the approved deadline."
+}

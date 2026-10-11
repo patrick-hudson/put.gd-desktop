@@ -1,0 +1,44 @@
+{
+  "utc": "2026-10-09T04:15:03.513430+00:00",
+  "sourceCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+  "version": "0.1.1-dev.43+gf56dc72de4fe",
+  "resident": {
+    "pid": 153788,
+    "startTicks": 2554644,
+    "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+  },
+  "memory": {
+    "identity": {
+      "pid": 153788,
+      "startTicks": 2554644,
+      "sha256": "04e81e1711e3347ca426aa63a36c7c6071180f69f8a0910963580ce2f3a1e608"
+    },
+    "units": "KiB",
+    "smapsRollup": {
+      "Rss": 141872,
+      "Pss": 39671,
+      "Shared_Clean": 114616,
+      "Shared_Dirty": 0,
+      "Private_Clean": 8976,
+      "Private_Dirty": 18280,
+      "Private_Hugetlb": 0,
+      "Swap": 0,
+      "SwapPss": 0
+    },
+    "privateKiB": 27256,
+    "sharedKiB": 114616
+  },
+  "activeOperations": 0,
+  "helperPid": 0,
+  "trayAvailable": true,
+  "fullMatrixCases": 12,
+  "fullMatrixPassed": 12,
+  "continuationCases": 9,
+  "scope": "Post-build post-native-suite attribution snapshot only; not quiet/cold 40 MiB acceptance; no timing measurement",
+  "selectedHistoryId": "5c226b7b-0e69-4a9d-b0ff-c08bbde5a578",
+  "selectedHistoryName": "Screen-Capture-2026-10-08-23-05-16.png",
+  "selectedHistoryOperationId": "5cd9ad84-d73d-4304-a676-132c7f6880c6",
+  "copiedOperationId": "67df7fcf-9d5a-44ca-8aa5-e989b9eaf6b1",
+  "remoteMeasurementAttempt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/source43-attempt1/kde/attempts/20261009T041412298617-final-readonly-attribution",
+  "diagnosticShapeRecovery": "Initial metadata assembly requested trayAvailable from diagnostics rather than ui.snapshot diagnostics; corrected using already captured read-only receipt; no repeated memory measurement"
+}

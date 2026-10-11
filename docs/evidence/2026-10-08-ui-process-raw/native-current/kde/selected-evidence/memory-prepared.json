@@ -1,0 +1,101 @@
+{
+  "timestampUtc": "2026-10-09T01:49:17.432163+00:00",
+  "status": "prepared; not executed; root quiescence signal required",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "resident": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "ui": {
+    "checkpointBytes": 2510,
+    "lastExit": {
+      "code": 0,
+      "generation": 10,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "acceptanceReceiptSha256": "c9bc36a9f77aefd05f09622f42dc9211c7083c1a6d91237f94f7cd017f7977f1",
+  "benchmarkSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "guestCommand": [
+    "python3",
+    "/home/lab/putgd-u11-97ca3a521714/source/tests/performance/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--app",
+    "/usr/bin/putgd",
+    "--helper",
+    "/usr/bin/putgd-ui",
+    "--cli",
+    "/usr/bin/putgd-cli",
+    "--socket",
+    "/run/user/1000/putgd/session.sock",
+    "--source-revision",
+    "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "--source-archive",
+    "/home/lab/putgd-u11-97ca3a521714/source.tar",
+    "--acceptance-receipt",
+    "/home/lab/putgd-u11-97ca3a521714/native-acceptance.json",
+    "--pid",
+    "105866",
+    "--start-ticks",
+    "1779397",
+    "--seconds",
+    "120",
+    "--interval",
+    "5",
+    "--label",
+    "kde-after-u11-functional-wave",
+    "--output",
+    "/home/lab/putgd-u11-97ca3a521714/memory-observation"
+  ],
+  "sshCommand": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+    "-p",
+    "22234",
+    "lab@127.0.0.1",
+    "python3 /home/lab/putgd-u11-97ca3a521714/monitor-quiet.py --plan /home/lab/putgd-u11-97ca3a521714/memory-plan.json"
+  ],
+  "guestOutput": "/home/lab/putgd-u11-97ca3a521714/memory-observation",
+  "parameters": {
+    "durationSeconds": 120,
+    "intervalSeconds": 5,
+    "identity": "PID/start ticks, executable SHA, source revision and socket SO_PEERCRED",
+    "scope": "Total observed process family; quiet post-functional wave, not physical-machine budget proof",
+    "operationGuard": "Operation IDs/count/terminal/copy states before, every 5 seconds and after; changes invalidate only this observation; app and GUI stay running"
+  },
+  "postObservationMappingCommand": [
+    "python3",
+    "/home/lab/putgd-u11-97ca3a521714/mapping-after-sample.py",
+    "--results",
+    "/home/lab/putgd-u11-97ca3a521714/memory-observation/results.json",
+    "--bench-idle",
+    "/home/lab/putgd-u11-97ca3a521714/source/tests/performance/bench_idle.py",
+    "--bench-idle-sha256",
+    "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "--output",
+    "/home/lab/putgd-u11-97ca3a521714/resident-mappings.json"
+  ],
+  "postObservationMappingScriptSha256": "83cc7d7c5dfaa42ee9363325d071fdc5dc50ea5bcbd4f9250d35e057dc6b91fa",
+  "quietMonitorScriptSha256": "4b195099253fab835422d312e2251a963e56fdc186d6f559d2dc03e7ad41c258",
+  "quietMonitorCommand": [
+    "python3",
+    "/home/lab/putgd-u11-97ca3a521714/monitor-quiet.py",
+    "--plan",
+    "/home/lab/putgd-u11-97ca3a521714/memory-plan.json"
+  ]
+}

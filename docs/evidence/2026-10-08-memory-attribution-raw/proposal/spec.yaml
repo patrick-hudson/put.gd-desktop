@@ -1,0 +1,273 @@
+{
+  "name": "resident-view-surfaces",
+  "description": "Reduce hidden-window drawing resource retention on Cinnamon, GNOME and KDE, preserving native integration and logical window state. Separate cold-start attribution continues toward approximately40MiB.",
+  "metric": {
+    "primary": {
+      "type": "hard",
+      "name": "finalHiddenRssBytes",
+      "direction": "minimize"
+    },
+    "degenerate_gates": [
+      {
+        "name": "allProfilesPassed",
+        "check": "== 1"
+      },
+      {
+        "name": "physicalViewsReopened",
+        "check": "== 1"
+      },
+      {
+        "name": "operationCount",
+        "check": "== 0"
+      }
+    ],
+    "diagnostics": [
+      {
+        "name": "coldSnapshotRssBytes"
+      },
+      {
+        "name": "gnomePssBytes"
+      },
+      {
+        "name": "kdePssBytes"
+      }
+    ],
+    "objectives": [
+      {
+        "name": "gnomePostFunctionalRssBytes",
+        "type": "hard",
+        "direction": "minimize",
+        "role": "required",
+        "max_regression": {
+          "type": "absolute",
+          "value": 1048576
+        }
+      },
+      {
+        "name": "kdePostFunctionalRssBytes",
+        "type": "hard",
+        "direction": "minimize",
+        "role": "required",
+        "max_regression": {
+          "type": "absolute",
+          "value": 1048576
+        }
+      }
+    ]
+  },
+  "measurement": {
+    "command": "python3 /home/patrick/work/put.gd/work/memory-next/score-surfaces.py --physical \"$PUTGD_PHYSICAL_1\" \"$PUTGD_PHYSICAL_2\" --wave \"$PUTGD_DESKTOP_WAVE\"",
+    "timeout_seconds": 60,
+    "output_format": "json",
+    "working_directory": ".",
+    "stability": {
+      "mode": "stable",
+      "noise_threshold": 1048576,
+      "comparison": {
+        "method": "absolute"
+      }
+    },
+    "protocol": "Aggregation only after actual execution: two serial unchanged physical3-cycle/30sec-hidden runs; same12-native-case+2view-cycle Wayland workflow and quiet120sec/5sec-interval sampler, same resident verified. Retain all source, package, process and script hashes. Validate full view smoke separately, not from memory counters."
+  },
+  "scope": {
+    "mutable": [
+      "src/ui/RetainedWindow.h",
+      "src/ui/SettingsWindow.h",
+      "src/ui/SettingsWindow.cpp",
+      "src/ui/HistoryWindow.h",
+      "src/ui/HistoryWindow.cpp",
+      "src/ui/RecentOperations.h",
+      "src/ui/RecentOperations.cpp",
+      "tests/gui/test_settings.cpp",
+      "tests/gui/test_history_view.cpp",
+      "tests/gui/test_operations_view.cpp"
+    ],
+    "immutable": [
+      "CMakeLists.txt",
+      "CMakePresets.json",
+      "cmake/Dependencies.cmake",
+      "cmake/dependency-lock.json",
+      "src/app/HistoryService.cpp",
+      "src/app/HistoryService.h",
+      "src/app/LocalIpc.cpp",
+      "src/app/LocalIpc.h",
+      "src/app/LocalServer.cpp",
+      "src/app/LocalServer.h",
+      "src/app/LoginStartup.cpp",
+      "src/app/LoginStartup.h",
+      "src/app/OperationService.cpp",
+      "src/app/OperationService.h",
+      "src/cli/main.cpp",
+      "src/core/ArtifactStore.cpp",
+      "src/core/ArtifactStore.h",
+      "src/core/ClipboardPayload.cpp",
+      "src/core/ClipboardPayload.h",
+      "src/core/Error.h",
+      "src/core/HistoryStore.cpp",
+      "src/core/HistoryStore.h",
+      "src/core/LocalArchive.cpp",
+      "src/core/LocalArchive.h",
+      "src/core/Operation.cpp",
+      "src/core/Operation.h",
+      "src/core/Settings.cpp",
+      "src/core/Settings.h",
+      "src/core/SettingsService.cpp",
+      "src/core/SettingsService.h",
+      "src/core/StorageProvider.cpp",
+      "src/core/StorageProvider.h",
+      "src/core/StorageReceipt.cpp",
+      "src/core/StorageReceipt.h",
+      "src/core/UploadNaming.cpp",
+      "src/core/UploadNaming.h",
+      "src/main.cpp",
+      "src/platform/Geometry.cpp",
+      "src/platform/Geometry.h",
+      "src/platform/gnome/GnomeAdapter.cpp",
+      "src/platform/gnome/GnomeAdapter.h",
+      "src/platform/gnome/GnomeProtocol.cpp",
+      "src/platform/gnome/GnomeProtocol.h",
+      "src/platform/kde/DataControlClipboard.cpp",
+      "src/platform/kde/DataControlClipboard.h",
+      "src/platform/kde/KWinCapture.cpp",
+      "src/platform/kde/KWinCapture.h",
+      "src/platform/kde/KWinTransfer.cpp",
+      "src/platform/kde/KWinTransfer.h",
+      "src/platform/kde/KdeRegionOverlay.cpp",
+      "src/platform/kde/KdeRegionOverlay.h",
+      "src/platform/kde/KdeShortcuts.cpp",
+      "src/platform/kde/KdeShortcuts.h",
+      "src/platform/kde/KdeSourceAdapter.cpp",
+      "src/platform/kde/KdeSourceAdapter.h",
+      "src/platform/kde/protocols/ext-data-control-v1.xml",
+      "src/platform/x11/CinnamonRegionCapture.cpp",
+      "src/platform/x11/CinnamonRegionCapture.h",
+      "src/platform/x11/X11Capture.cpp",
+      "src/platform/x11/X11Capture.h",
+      "src/platform/x11/X11Clipboard.cpp",
+      "src/platform/x11/X11Clipboard.h",
+      "src/platform/x11/X11Reply.h",
+      "src/platform/x11/X11Shortcuts.cpp",
+      "src/platform/x11/X11Shortcuts.h",
+      "src/platform/x11/X11SourceAdapter.cpp",
+      "src/platform/x11/X11SourceAdapter.h",
+      "src/secrets/CredentialStore.cpp",
+      "src/secrets/CredentialStore.h",
+      "src/storage/s3/IpAddress.cpp",
+      "src/storage/s3/IpAddress.h",
+      "src/storage/s3/PublicUrl.cpp",
+      "src/storage/s3/PublicUrl.h",
+      "src/storage/s3/S3Driver.cpp",
+      "src/storage/s3/S3Driver.h",
+      "src/storage/s3/S3Module.cpp",
+      "src/storage/s3/S3Module.h",
+      "src/storage/s3/S3Provider.cpp",
+      "src/storage/s3/S3Provider.h",
+      "src/storage/s3/S3SdkContext.cpp",
+      "src/storage/s3/S3SdkContext.h",
+      "src/storage/s3/SdkRuntime.cpp",
+      "src/storage/s3/SdkRuntime.h",
+      "src/ui/ByteSize.h",
+      "src/ui/HistoryModel.cpp",
+      "src/ui/HistoryModel.h",
+      "src/ui/RegionOverlay.cpp",
+      "src/ui/RegionOverlay.h",
+      "src/ui/ShortcutEditor.cpp",
+      "src/ui/ShortcutEditor.h",
+      "src/ui/TrayController.cpp",
+      "src/ui/TrayController.h",
+      "src/ui/VisualStyle.cpp",
+      "src/ui/VisualStyle.h",
+      "tests/desktop/cinnamon.yaml",
+      "tests/desktop/common.yaml",
+      "tests/desktop/gnome.yaml",
+      "tests/desktop/kde.yaml",
+      "tests/desktop/test_lab.py",
+      "tests/desktop/test_windows_lab.py",
+      "tests/desktop/x11/test_x11.cpp",
+      "tests/fixtures/S3Fixture.h",
+      "tests/fixtures/U2Fixtures.h",
+      "tests/fixtures/X11DesktopFixture.h",
+      "tests/fixtures/X11SelectionFixture.h",
+      "tests/fixtures/desktop_fixture.cpp",
+      "tests/fixtures/s3_server.py",
+      "tests/integration/test_cli.cpp",
+      "tests/integration/test_collision_policy.cpp",
+      "tests/integration/test_config_reload.cpp",
+      "tests/integration/test_config_schema.py",
+      "tests/integration/test_gnome_bridge.cpp",
+      "tests/integration/test_keychain.cpp",
+      "tests/integration/test_keychain_backend.cpp",
+      "tests/integration/test_kwin_transfer.cpp",
+      "tests/integration/test_local_ipc.cpp",
+      "tests/integration/test_mcp.py",
+      "tests/integration/test_s3.cpp",
+      "tests/integration/test_s3_delete.cpp",
+      "tests/integration/test_s3_module.cpp",
+      "tests/integration/test_storage_contract.cpp",
+      "tests/performance/bench_capture.cpp",
+      "tests/performance/bench_idle.py",
+      "tests/performance/bench_payload_lab.py",
+      "tests/performance/bench_views.py",
+      "tests/performance/observe_idle.py",
+      "tests/performance/run_capture.py",
+      "tests/sanitizer/probes/CMakeLists.txt",
+      "tests/sanitizer/probes/known_deadlock.cpp",
+      "tests/sanitizer/probes/known_race.cpp",
+      "tests/sanitizer/probes/qt_dbus.cpp",
+      "tests/sanitizer/probes/qt_queue.cpp",
+      "tests/sanitizer/tsan.supp",
+      "tests/storage/s3/test_sdk_contract.cpp",
+      "tests/unit/test_archive.cpp",
+      "tests/unit/test_build_contract.cpp",
+      "tests/unit/test_geometry.cpp",
+      "tests/unit/test_history.cpp",
+      "tests/unit/test_ip_address.cpp",
+      "tests/unit/test_login_startup.cpp",
+      "tests/unit/test_operations.cpp",
+      "tests/unit/test_payload.cpp",
+      "tests/unit/test_public_url.cpp",
+      "tests/unit/test_settings.cpp",
+      "tests/unit/test_upload_naming.cpp",
+      "work/memory-next/measure-views.py",
+      "credentials.txt",
+      "work/memory-next/score-surfaces.py"
+    ]
+  },
+  "execution": {
+    "mode": "serial",
+    "backend": "worktree",
+    "max_concurrent": 1
+  },
+  "parallel": {
+    "port_strategy": "none",
+    "exclusive_resources": [
+      "physical-cinnamon-session"
+    ]
+  },
+  "dependencies": {
+    "approved": []
+  },
+  "constraints": [
+    "Keep native Cinnamon fonts and dialogs, all features/custom visuals, dirty settings/conflicts, history state and operation behavior. No deletion of logical views, no new product dependencies or allocator policy. The existing documented build packages and pinned SDK may be provisioned in current disposable test guests with their normal package managers/CMake.",
+    "Release native drawing resources only after explicit hiding, with lifetime/reopen/minimize guards. Verify repeated complete paint, rapid show/hide, minimize/restore, teardown, retained drafts and preview lifecycle.",
+    "Use two serial physical samples and their median; each Wayland profile uses its own frozen post-functional workflow and120second observation. Require >1MiB improvement in a required metric without >1MiB regression in another. Do not compare physical and VM workload values as interchangeable. Cold five-minute observer and all three desktop graphical scenarios must pass before integration.",
+    "No paid infrastructure or new dependencies. Ordinary model usage is uncapped in dollars as previously requested; time/variant limits apply.",
+    "Read-only cold attribution may continue independently but a different product scope requires a separate specification. Preserve all failed attempts and exact source/binary/runner identities.",
+    "User explicitly requires measured GNOME and KDE optimization. They are required comparison objectives, not merely optional smoke tests. Capture current attribution and first-reopen behavior; preserve Wayland native painting/clipboard. Do not disable desktop integration to meet a number."
+  ],
+  "stopping": {
+    "max_iterations": 2,
+    "max_hours": 2,
+    "plateau_iterations": 2,
+    "target_reached": false
+  },
+  "reference": {
+    "revision": "dac46af06feb0e8326d472c77bdf96cff117be51",
+    "priorHiddenRssBytes": 77410304,
+    "priorColdRssBytes": 47149056,
+    "priorEvidence": "docs/evidence/2026-10-08-startup-reclaim-raw/hidden-views-attribution.json",
+    "freshBaselinePending": true,
+    "desktopWave": "work/cross-desktop-current/memory-wave.json",
+    "desktopProductSource": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2; src unchanged through dac46af"
+  }
+}

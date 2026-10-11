@@ -1,0 +1,21 @@
+{
+  "utc": "2026-10-09T09:07:15.779076+00:00",
+  "resident": {
+    "pid": 144260,
+    "startTicks": 2736736,
+    "sha256": "fa82fbd73f43032d28bca200698912cd79297c7046bc3105c14cf1275a8728fb"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 49,
+    "dirty": null,
+    "gitCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "gitTree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+    "packageVersion": "0.1.1~dev.49+g676f6e6d6e0b",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.49+g676f6e6d6e0b"
+  },
+  "session": "visible native gnome-wayland",
+  "vncPort": 5936
+}

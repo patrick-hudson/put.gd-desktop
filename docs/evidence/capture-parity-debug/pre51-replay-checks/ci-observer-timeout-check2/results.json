@@ -1,0 +1,22 @@
+{
+  "authoredStepCodeSha256": "80644164de854f8baadf3e7f2a58d56687534d866efbc2095bbb84fd0557249a",
+  "injectedDeadlineSeconds": 0.5,
+  "selectedTest": "ColdFamilyTests.test_real_fork_exec_reparent_cleanup",
+  "exitCode": 124,
+  "passed": true,
+  "scope": "forced synthetic CI timeout cleanup only; no application/display/VM/physical acceptance",
+  "owned": {
+    "command": [
+      "python3",
+      "tests/performance/test_observe_cold_family.py",
+      "ColdFamilyTests.test_real_fork_exec_reparent_cleanup"
+    ],
+    "exitCode": 124,
+    "timeoutSeconds": 45,
+    "failureType": "TimeoutError",
+    "cleanupErrorType": null,
+    "observedOwnedGenerations": 3,
+    "knownOwnedCleanupComplete": true,
+    "scope": "Synthetic Linux process/observer contracts only; no application or physical memory acceptance"
+  }
+}

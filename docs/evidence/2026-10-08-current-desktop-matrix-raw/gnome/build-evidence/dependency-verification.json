@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "argv": [
+    "python3",
+    "tools/verify_dependencies.py",
+    "/home/lab/putgd-native/build/dependencies/aws-sdk-cpp"
+  ],
+  "exitCode": 0,
+  "exitCodeEvidence": "set -eu build script continued through successful configure/build/CTest/package; verifier stdout preserved verbatim",
+  "stdout": "Verified AWS SDK 1.11.907 and 15 submodules\n",
+  "rawStdout": "dependency-verification.stdout.txt"
+}

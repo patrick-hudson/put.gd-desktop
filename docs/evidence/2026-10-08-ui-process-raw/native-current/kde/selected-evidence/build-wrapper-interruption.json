@@ -1,0 +1,8 @@
+{
+  "timestampUtc": "2026-10-09T01:26:34.445795+00:00",
+  "hostSessionExit": 143,
+  "buildLog": "build.log",
+  "guestBuildProcessesAfterInterruption": [],
+  "candidateTestFailure": false,
+  "cause": "Host wrapper terminated after recorded successful Dev tests and package generation; orchestration result unconfirmed; explicit recovery pending"
+}

@@ -1,0 +1,9 @@
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/asan
+    Start 2: ui_control_integration
+1/2 Test #2: ui_control_integration ...........   Passed    0.80 sec
+    Start 3: session_client_integration
+2/2 Test #3: session_client_integration .......   Passed   18.49 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =  19.29 sec

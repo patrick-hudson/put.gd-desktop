@@ -1,0 +1,19 @@
+{
+  "utc": "2026-10-09T09:04:15.106176+00:00",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.49+g676f6e6d6e0b",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.49+g676f6e6d6e0b",
+    "gitCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "gitTree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+    "commitCount": 49,
+    "dirty": null,
+    "sourceProvenance": "supplied"
+  },
+  "guestDirectory": "/home/lab/putgd-ui-refinement-nativecore-exp001-c49-cross",
+  "package": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/putgd_0.1.1~dev.49+g676f6e6d6e0b_amd64.deb",
+  "packageSha256": "faf811d046b546edd734cac8406c3764754577adaaa53e666847bca65d2f83b9",
+  "nativeAcceptance": "pending"
+}

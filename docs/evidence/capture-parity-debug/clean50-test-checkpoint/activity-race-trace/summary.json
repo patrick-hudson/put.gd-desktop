@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "scope": "Supplemental single-case trace attempt; passed and did not reproduce prior failure",
+  "case": "narrowFileDetailsKeepSizeAndOutcomesOnSeparateVisibleLines",
+  "exitCode": 0,
+  "callerReportedActiveOperationsBeforeClick": 0,
+  "callerReportedCasePassed": true,
+  "reproducer": false,
+  "source50FailureCauseProvedByTrace": false,
+  "observationProvenance": "Caller reported fixed numeric trace observation. Command/result archived; no JUnit was produced by this invocation and raw stdout/stderr excluded.",
+  "acceptance": false
+}

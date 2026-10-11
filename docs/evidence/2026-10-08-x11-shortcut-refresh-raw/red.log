@@ -1,0 +1,19 @@
+dbus-daemon[2307648]: [session uid=1000 pid=2307648] Activating service name='org.gtk.vfs.Daemon' requested by ':1.0' (uid=1000 pid=2307666 comm="build/dev/test_x11 mappingRefreshKeepsUnchangedCho" label="chatgpt (unconfined)")
+dbus-daemon[2307648]: [session uid=1000 pid=2307648] Successfully activated service 'org.gtk.vfs.Daemon'
+dbus-daemon[2307648]: [session uid=1000 pid=2307648] Activating service name='org.a11y.Bus' requested by ':1.2' (uid=1000 pid=2307666 comm="build/dev/test_x11 mappingRefreshKeepsUnchangedCho" label="chatgpt (unconfined)")
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[2307648]: [session uid=1000 pid=2307648] Successfully activated service 'org.a11y.Bus'
+********* Start testing of X11Test *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : X11Test::initTestCase()
+dbus-daemon[2307689]: Activating service name='org.a11y.atspi.Registry' requested by ':1.0' (uid=1000 pid=2307666 comm="build/dev/test_x11 mappingRefreshKeepsUnchangedCho" label="chatgpt (unconfined)")
+dbus-daemon[2307689]: Successfully activated service 'org.a11y.atspi.Registry'
+SpiRegistry daemon is running with well-known name - org.a11y.atspi.Registry
+FAIL!  : X11Test::mappingRefreshKeepsUnchangedChordGrabbed() Compared values are not the same
+   Actual   (activated): 0
+   Expected (1)        : 1
+   Loc: [/home/patrick/work/put.gd/tests/desktop/x11/test_x11.cpp(204)]
+PASS   : X11Test::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 15189ms
+********* Finished testing of X11Test *********
+A connection to the bus can't be made

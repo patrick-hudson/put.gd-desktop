@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "executedCommand": [
+    "python3",
+    "tests/performance/run_capture.py",
+    "--app",
+    "/tmp/putgd-live-outline-latency-probe/build/putgd",
+    "--cli",
+    "/tmp/putgd-live-outline-latency-probe/build/putgd-cli",
+    "--driver",
+    "/tmp/putgd-live-outline-latency-probe/build/putgd-bench-capture",
+    "--live-outline",
+    "--output",
+    "/tmp/putgd-live-outline-latency-trace"
+  ],
+  "executionSession": 49030,
+  "exitCode": 1,
+  "runRoot": "/tmp/putgd-live-outline-latency-trace",
+  "artifactSha256": {
+    "identity.json": "c78ea9468677f952769f419cde1cf0514005380d9c6ca661455a75262cab2599",
+    "latency-attribution.json": "27d4a9ba5cd01f5cde59055ed06c8cef76c249fead4b35b695a07ff5f0cca737",
+    "analyze_trace.py": "6240a5ddab63f774dc616f0a1809bc36f9a9fa3870ba948f6c4d69e5b0b1c283",
+    "findings-and-next-evidence.json": "c8e203b0aa40bd6315063368e34e92b527d642451cb1db84b6b67572aacf3d50",
+    "runtime-parameters.json": "2bc144d7a9bf379a39eff0f69bd80fa291468d07438fa265e4f977d4b515412a",
+    "runtime-results.json": "f800c3bc7e4f0525efab82f80cd8f98657c36e207e97eda25e548b5a0bdfdb38",
+    "runtime-operations.json": "e1612859f6bac1a79306239949b4f9ab76ef08036b8962e0fd2bd9f6a9919545",
+    "runtime-driver.log": "d280e568f87ef68bb841b2e8cbd8c652817b2d03a3dbe6033c84d0e96d0123f8",
+    "runtime-resident.log": "9f160b721ff2cf9965026e7dd9a8f47b4630b2275ba874c5eb46db05467ccc40"
+  },
+  "allOperationsCancelled": true,
+  "operationCount": 35,
+  "sourceChanges": false,
+  "buildActivity": false,
+  "clipboardAction": false,
+  "desktopPixelsPersisted": false,
+  "quiet": true
+}

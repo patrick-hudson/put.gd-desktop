@@ -1,0 +1,12 @@
+[
+  {
+    "id": "cdd1978c-30dd-419c-a113-472678e4f958",
+    "state": "failed",
+    "error": {
+      "code": "capture_unavailable",
+      "details": {},
+      "message": "The capture helper could not complete source acquisition"
+    },
+    "copyStatus": "no_result"
+  }
+]

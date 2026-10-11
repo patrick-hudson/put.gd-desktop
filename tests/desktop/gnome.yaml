@@ -1,0 +1,52 @@
+profile: gnome-wayland
+baseline:
+  distribution: Ubuntu 26.04 LTS
+  compositor: GNOME Shell 50 / Mutter 50
+  session: Wayland
+  qt_platform: wayland
+status: awaiting-real-session-acceptance
+required_environments:
+  - disposable-qemu-guest
+safety:
+  payloads: synthetic-only
+  destination: isolated-test-destination
+  host_guest_clipboard: disabled
+metadata_required:
+  - authenticated-iso-sha256
+  - gnome-shell-mutter-gjs-extension-version
+  - portal-and-native-interface-version
+  - qt-version-platform-and-wayland-protocols
+  - app-build-identity-and-installed-package
+  - display-layout-native-logical-scale-rotation
+  - acceleration
+scenarios:
+  - unfocused-region-window-desktop-shortcuts-without-per-capture-picker
+  - region-known-pixels-and-crosshair-rubberband-independent-image-paste
+  - region-half-open-drag-dimensions-reverse-drag-and-zero-area-cancellation
+  - region-escape-and-explicit-cancel-publish-nothing-preserve-clipboard
+  - external-window-frozen-before-persistence-focus-change-and-target-disappearance
+  - full-desktop-all-enabled-monitor-panels-transparent-layout-gaps
+  - mixed-fractional-density-negative-origin-rotation-single-and-spanning-crops
+  - display-change-invalidates-selection
+  - background-gtk-clipboard-text-image-two-local-files-exact-bytes
+  - local-only-image-text-file-uri-results-paste-in-independent-gtk-and-qt-apps
+  - url-result-paste-with-resident-app-unfocused
+  - disabled-missing-incompatible-helper-precise-capability-errors-no-substitution
+  - helper-disable-reenable-shell-session-restart-single-binding-and-endpoint
+  - unset-clipboard-shortcut-user-assignment-conflict-reported-without-stealing
+  - forged-stale-request-ids-oversized-offers-timeout-bounded-failures
+  - source-owner-change-during-import-actionable-failure
+  - source-owner-change-during-upload-and-new-invocation-suppress-auto-copy
+  - upload-copy-enabled-disabled-routing-naming-all-skipped-preserve-clipboard
+  - offline-upload-preserve-source-and-local-copy-explicit-retry
+  - persisted-offline-history-restart-search-preview-link-copy-synthetic-delete
+  - config-valid-invalid-dirty-conflict-and-actual-shortcut-rebind
+  - installed-package-login-startup-and-clean-helper-removal
+artifacts_required:
+  - results-json-and-junit
+  - expected-actual-fixture-dimensions-pixels-and-sha256
+  - independent-gtk-qt-paste-bytes-and-uri-evidence
+  - synthetic-upload-receipts-public-get-hashes-and-cleanup
+  - sanitized-shell-and-app-errors
+  - qmp-witness-frames-per-display-head
+  - exact-installed-package-and-helper-version-manifest

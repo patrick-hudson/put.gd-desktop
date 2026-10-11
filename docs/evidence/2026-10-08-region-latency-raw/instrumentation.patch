@@ -1,0 +1,268 @@
+--- a/src/app/OperationService.cpp
++++ b/src/app/OperationService.cpp
+@@ -1,5 +1,6 @@
++#include "/tmp/putgd-live-outline-latency-probe/trace.h"
+ #include "OperationService.h"
+ #include <QElapsedTimer>
+ #ifdef __GLIBC__
+ #include <malloc.h>
+ #endif
+@@ -84,21 +85,25 @@
+  if(route.destination=="upload") {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
+  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(action!="clipboard")selectingId_=op.id;
+ #ifdef __GLIBC__
+  heapReclamationPending_=true;
+ #endif
+- auto acquisition=source_.prepareAcquisition(action);
+- const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition](Error e,QJsonObject result) mutable {
++ putgd_capture_probe::setOperation(qPrintable(op.id));putgd_capture_probe::trace("invoke.target_freeze.begin");
++ auto acquisition=source_.prepareAcquisition(action);putgd_capture_probe::trace("invoke.target_freeze.end");putgd_capture_probe::trace("accepted.worker.queued");
++ const auto path=databasePath();background([path,op](Error& e) {putgd_capture_probe::setOperation(qPrintable(op.id));putgd_capture_probe::Span span("accepted.worker.begin","accepted.worker.end");HistoryStore store(path);putgd_capture_probe::trace("accepted.store.opened");e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition](Error e,QJsonObject result) mutable {
++  putgd_capture_probe::setOperation(qPrintable(op.id));putgd_capture_probe::trace("accepted.callback.begin");
+   if(e) {active_.remove(op.id);if(selectingId_==op.id)selectingId_.clear();reply(e,{});return;}
+   reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);
+   // Acceptance is durable and observable before a selector starts.
+   QTimer::singleShot(0,this,[this,op,flag,acquisition]() mutable {
++   putgd_capture_probe::setOperation(qPrintable(op.id));putgd_capture_probe::trace("accepted.selector.continuation");
+    if(flag->load()) {op.state="cancelled";op.cancelled=true;finish(op);return;}
+-   op.state="acquiring";const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition](Error e,QJsonObject) mutable {
++   op.state="acquiring";const auto path=databasePath();putgd_capture_probe::trace("acquiring.worker.queued");background([path,op](Error& e) {putgd_capture_probe::setOperation(qPrintable(op.id));putgd_capture_probe::Span span("acquiring.worker.begin","acquiring.worker.end");HistoryStore store(path);putgd_capture_probe::trace("acquiring.store.opened");e=store.saveOperation(op);return QJsonObject{};},[this,op,flag,acquisition](Error e,QJsonObject) mutable {
++    putgd_capture_probe::setOperation(qPrintable(op.id));putgd_capture_probe::trace("acquiring.callback.begin");
+     if(e) {op.error=e;op.state="failed";finish(op);return;}
+     QPointer<OperationService> guarded(this);
+-    acquisition(op.settings.limits,[guarded,op,flag](PayloadResult r) {
++    putgd_capture_probe::trace("native.acquisition.call");acquisition(op.settings.limits,[guarded,op,flag](PayloadResult r) {
+      if(!guarded)return;
+      QMetaObject::invokeMethod(guarded,[guarded,op,flag,r=std::move(r)]() mutable {
+       if(!guarded||guarded->stopping_)return;
+       if(guarded->selectingId_==op.id)guarded->selectingId_.clear();
+       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code=="cancelled"||r.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";guarded->finish(op);return;}
+--- a/src/core/HistoryStore.cpp
++++ b/src/core/HistoryStore.cpp
+@@ -1,5 +1,6 @@
++#include "/tmp/putgd-live-outline-latency-probe/trace.h"
+ #include "HistoryStore.h"
+ #include <QDir>
+ #include <QFile>
+ #include <QFileInfo>
+ #include <QJsonDocument>
+@@ -24,13 +25,14 @@
+ }
+ QString createHistory(const QString& table) {return "CREATE TABLE "+table+"(id TEXT PRIMARY KEY, operation_id TEXT NOT NULL,item_id TEXT NOT NULL,created TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,category TEXT NOT NULL,profile_id TEXT NOT NULL,upload_status TEXT NOT NULL,local_status TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,UNIQUE(operation_id,item_id))";}
+ }
+ QJsonObject HistoryPage::toJson() const {return {{"records",records},{"total",double(total)}};}
+ HistoryStore::HistoryStore(QString path) {
++ putgd_capture_probe::Span span("history.open.begin","history.open.end");
+  QDir().mkpath(QFileInfo(path).absolutePath()); QFile::setPermissions(QFileInfo(path).absolutePath(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
+  connection_=QUuid::createUuid().toString();db_=QSqlDatabase::addDatabase("QSQLITE",connection_);db_.setDatabaseName(path);db_.setConnectOptions("QSQLITE_BUSY_TIMEOUT=10000");
+- if(!db_.open()) {error_=sqlError();return;} QFile::setPermissions(path,QFile::ReadOwner|QFile::WriteOwner);error_=initialize();
++ putgd_capture_probe::trace("history.sqlite_open.begin");const bool opened=db_.open();putgd_capture_probe::trace("history.sqlite_open.end");if(!opened) {error_=sqlError();return;} QFile::setPermissions(path,QFile::ReadOwner|QFile::WriteOwner);error_=initialize();
+ }
+ HistoryStore::~HistoryStore() {db_.close();db_=QSqlDatabase{};QSqlDatabase::removeDatabase(connection_);}
+ Error HistoryStore::initialize() {
+  QSqlQuery q(db_);if(!q.exec("PRAGMA foreign_keys=ON")||!q.exec("PRAGMA user_version")||!q.next()) return sqlError(); const int version=q.value(0).toInt();
+  if(version>4) return {"history_version","Unsupported history schema version",{}};
+@@ -49,12 +51,13 @@
+  if(ok)ok=exec("ALTER TABLE history ADD COLUMN publication_identity TEXT NOT NULL DEFAULT ''")&&exec("CREATE INDEX history_publication ON history(publication_identity,upload_status)")&&exec("PRAGMA user_version=4");
+  if(!ok||!db_.commit()) {db_.rollback();return {"history_migration","History migration failed; original records preserved",{}};}
+  return {};
+ }
+ Error HistoryStore::saveOperation(const Operation& op,const ProviderRegistry* providers) {
++ putgd_capture_probe::Span span("history.save.begin","history.save.end",qPrintable(op.id));
+  if(error_) return error_;
+- if(!db_.transaction()) return sqlError();
++ putgd_capture_probe::trace("history.transaction.begin",qPrintable(op.id));if(!db_.transaction()) return sqlError();putgd_capture_probe::trace("history.transaction.started",qPrintable(op.id));
+  QSqlQuery q(db_);
+  q.prepare("INSERT INTO operations VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(op.id);q.addBindValue(encode(op.toJson()));bool ok=q.exec();
+  for(const auto& item:op.items) {
+   if(!ok) break;
+   q.prepare("SELECT 1 FROM cleared_history WHERE id=?");q.addBindValue(item.artifact.id);if(!q.exec()) {ok=false;break;}if(q.next())continue;
+@@ -70,11 +73,11 @@
+    QSqlQuery older(db_);older.prepare("SELECT id,data FROM history WHERE publication_identity=? AND id<>? AND upload_status='uploaded' AND remote_status NOT IN ('removed','already_missing','changed','hidden_version_retained','superseded')");older.addBindValue(identity);older.addBindValue(item.artifact.id);ok=older.exec();
+    while(ok&&older.next()) {auto previous=decode(older.value(1));previous["remoteStatus"]="superseded";previous["supersededBy"]=item.artifact.id;QSqlQuery update(db_);update.prepare("UPDATE history SET remote_status='superseded',data=? WHERE id=?");update.addBindValue(encode(previous));update.addBindValue(older.value(0));ok=update.exec();}
+   }
+ 
+  }
+- if(!ok||!db_.commit()) {db_.rollback();return sqlError();}return {};
++ putgd_capture_probe::trace("history.commit.begin",qPrintable(op.id));const bool committed=ok&&db_.commit();putgd_capture_probe::trace("history.commit.end",qPrintable(op.id));if(!committed) {db_.rollback();return sqlError();}return {};
+ }
+ Error HistoryStore::indexPublications(const ProviderRegistry& providers) {
+  if(error_)return error_;
+  // Stream bounded pages; unknown/unavailable providers remain unindexed until restored.
+  QString after=QStringLiteral("");
+--- a/src/platform/x11/X11SourceAdapter.cpp
++++ b/src/platform/x11/X11SourceAdapter.cpp
+@@ -1,5 +1,6 @@
++#include "/tmp/putgd-live-outline-latency-probe/trace.h"
+ #include "X11SourceAdapter.h"
+ #include "CinnamonRegionCapture.h"
+ #include <QThread>
+ #include <QJsonArray>
+ #include <QGuiApplication>
+@@ -27,21 +28,22 @@
+  Error error;const auto target=capture_.freeze(action,error);
+  return [guard,target,error](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(error){cb({{},error});return;}if(guard)guard->capture(target,limits,std::move(cb));else cb({{},{"source_unavailable","Desktop adapter closed",{}}});};
+ }
+ void X11SourceAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){prepareAcquisition(action)(limits,std::move(cb));}
+ void X11SourceAdapter::capture(const X11Target& target,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
++ putgd_capture_probe::trace("native.capture.begin");
+  if(overlay_){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
+  qint64 pixels=0;for(const auto& frame:target.layout){const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();if(count>limits.imagePixels-pixels){cb({{},{"image_limit","Monitor snapshot exceeds resource limits",{}}});return;}pixels+=count;}
+- Error error;if(!capture_.unchanged(target,error)){cb({{},error});return;}
++ putgd_capture_probe::trace("native.layout_validation.begin");Error error;if(!capture_.unchanged(target,error)){cb({{},error});return;}putgd_capture_probe::trace("native.layout_validation.end");
+  if(target.action!="region"){auto frames=capture_.frames(target,error);if(error){cb({{},error});return;}compose(std::move(frames),target.logicalSelection,limits,std::move(cb));return;}
+- auto* overlay=new RegionOverlay(target.layout,this);overlay_=overlay;auto callback=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));const auto generation=generation_;
++ putgd_capture_probe::trace("native.selector_construct.begin");auto* overlay=new RegionOverlay(target.layout,this);putgd_capture_probe::trace("native.selector_construct.end");overlay_=overlay;auto callback=std::make_shared<std::function<void(PayloadResult)>>(std::move(cb));const auto generation=generation_;
+  connect(overlay,&RegionOverlay::selected,this,[this,overlay,target,limits,callback,generation](const QRectF& selection){
+   overlay_=nullptr;
+   connect(overlay,&QObject::destroyed,this,[this,target,selection,limits,callback,generation]{captureSelected(target,selection,limits,std::move(*callback),generation);});
+   overlay->deleteLater();
+  });
+- connect(overlay,&RegionOverlay::cancelled,this,[this,overlay,callback](const Error& error){overlay_=nullptr;overlay->deleteLater();(*callback)({{},error});});overlay->start();
++ connect(overlay,&RegionOverlay::cancelled,this,[this,overlay,callback](const Error& error){overlay_=nullptr;overlay->deleteLater();(*callback)({{},error});});putgd_capture_probe::trace("native.selector_start.begin");overlay->start();putgd_capture_probe::trace("native.selector_start.end");
+ }
+ void X11SourceAdapter::captureSelected(const X11Target& target,QRectF selection,const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 generation){
+  if(generation!=generation_){cb({{},{"cancelled","Capture acquisition cancelled",{}}});return;}
+  Error error;if(!capture_.unchanged(target,error)){cb({{},error});return;}
+  if(!capture_.cinnamonCompositor()){auto frames=capture_.frames(target,error);if(error){cb({{},error});return;}compose(std::move(frames),selection,limits,std::move(cb));return;}
+--- a/src/platform/x11/X11Shortcuts.cpp
++++ b/src/platform/x11/X11Shortcuts.cpp
+@@ -1,5 +1,6 @@
++#include "/tmp/putgd-live-outline-latency-probe/trace.h"
+ #include "X11Shortcuts.h"
+ #include "X11Reply.h"
+ #include <QGuiApplication>
+ #include <QKeySequence>
+ #include <QSet>
+@@ -51,11 +52,11 @@
+  xcb_flush(connection_);emit bindingsChanged();
+ }
+ void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){const auto type=raw->response_type&127;if(type==XCB_KEY_PRESS){const auto* key=reinterpret_cast<xcb_key_press_event_t*>(raw);for(const auto& grab:grabs_)if(grab.code==key->detail&&grab.modifiers==(key->state&255)){// Release this connection's active passive-key grab before the selector
+  // requests its own keyboard grab. Roundtrip to establish cross-connection
+  // ordering even while the user's trigger keys remain physically held.
+- xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
++ const auto ordinal=++putgd_capture_probe::nextHotkey;putgd_capture_probe::trace("shortcut.key_received","",ordinal);xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
+  auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);free(sync);
+- emit activated(grab.action);break;}}
++ putgd_capture_probe::trace("shortcut.grab_released","",ordinal);emit activated(grab.action);putgd_capture_probe::trace("shortcut.activation_returned","",ordinal);break;}}
+  else if(type==XCB_MAPPING_NOTIFY){auto* mapping=reinterpret_cast<xcb_mapping_notify_event_t*>(raw);xcb_refresh_keyboard_mapping(symbols_,mapping);free(raw);bind(requested_);continue;}
+  free(raw);}}
+ }
+--- a/src/ui/RegionOverlay.cpp
++++ b/src/ui/RegionOverlay.cpp
+@@ -1,5 +1,6 @@
++#include "/tmp/putgd-live-outline-latency-probe/trace.h"
+ #include "RegionOverlay.h"
+ #include <QPainter>
+ #include <QMouseEvent>
+ #include <QKeyEvent>
+ #include <QGuiApplication>
+@@ -10,32 +11,34 @@
+ class RegionOverlay::Surface final:public QWidget {
+ public:
+  Surface(RegionOverlay& owner,const CaptureFrame& frame):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint|Qt::X11BypassWindowManagerHint|Qt::WindowDoesNotAcceptFocus),owner_(owner),logicalRect_(frame.logicalRect){setObjectName("putgd-region-overlay");setAttribute(Qt::WA_TranslucentBackground);for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){setScreen(screen);break;}setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);}
+  void updateSelection(const QRectF& previous){const auto changed=outlineRegion(previous)|outlineRegion(owner_.selection_);if(!changed.isEmpty())update(changed);}
+ protected:
+- void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());painter.setPen(QPen(Qt::white,1));painter.drawRect(local.adjusted(0,0,-1,-1));}}
+- void mousePressEvent(QMouseEvent* e) override {if(e->button()==Qt::RightButton){owner_.cancel();return;}if(e->button()==Qt::LeftButton){owner_.press(e->globalPosition());grabMouse();}}
+- void mouseMoveEvent(QMouseEvent* e) override {owner_.move(e->globalPosition());}
++ bool event(QEvent* event)override{if(event->type()!=QEvent::UpdateRequest)return QWidget::event(event);putgd_capture_probe::Span span("surface.update_request.begin","surface.update_request.end",operation_.c_str(),ordinal_);return QWidget::event(event);}
++ void paintEvent(QPaintEvent*) override {putgd_capture_probe::Span span(owner_.dragging_?"surface.drag_paint.begin":"surface.initial_paint.begin",owner_.dragging_?"surface.drag_paint.end":"surface.initial_paint.end",operation_.c_str(),ordinal_);QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());painter.setPen(QPen(Qt::white,1));painter.drawRect(local.adjusted(0,0,-1,-1));}}
++ void mousePressEvent(QMouseEvent* e) override {putgd_capture_probe::trace("surface.press_received",operation_.c_str(),ordinal_);if(e->button()==Qt::RightButton){owner_.cancel();return;}if(e->button()==Qt::LeftButton){owner_.press(e->globalPosition());grabMouse();}}
++ void mouseMoveEvent(QMouseEvent* e) override {putgd_capture_probe::trace("surface.move_received",operation_.c_str(),ordinal_);owner_.move(e->globalPosition());}
+  void mouseReleaseEvent(QMouseEvent* e) override {if(e->button()==Qt::LeftButton){releaseMouse();owner_.release(e->globalPosition());}}
+  void keyPressEvent(QKeyEvent* e) override {if(e->key()==Qt::Key_Escape)owner_.cancel();}
+ private:
+  QRegion outlineRegion(const QRectF& selection)const {
+   const auto clipped=selection.intersected(logicalRect_);if(clipped.isEmpty())return {};
+   const auto local=clipped.translated(-logicalRect_.topLeft()).toAlignedRect();
+   // Include pen/raster rounding at either edge, while leaving the transparent
+   // interior out of backing-store clears and uploads on each pointer move.
+   return QRegion(local.adjusted(-1,-1,1,1)).subtracted(QRegion(local.adjusted(2,2,-2,-2)));
+  }
++ const std::string operation_=putgd_capture_probe::operation;const unsigned long long ordinal_=++putgd_capture_probe::nextSurface;
+  RegionOverlay& owner_;
+  QRectF logicalRect_;
+ };
+ RegionOverlay::RegionOverlay(QList<CaptureFrame> frames,QObject* parent):QObject(parent),frames_(std::move(frames)){}
+ RegionOverlay::~RegionOverlay(){finish();for(auto* s:surfaces_)delete s;}
+ void RegionOverlay::start(){
+- for(const auto& frame:frames_){auto* surface=new Surface(*this,frame);surfaces_.append(surface);surface->show();surface->raise();}
++ for(const auto& frame:frames_){auto* surface=new Surface(*this,frame);surfaces_.append(surface);putgd_capture_probe::trace("surface.show.begin");surface->show();surface->raise();putgd_capture_probe::trace("surface.show.end");}
+  Surface* focus=surfaces_.isEmpty()?nullptr:surfaces_.first();for(auto* s:surfaces_)if(s->geometry().contains(QCursor::pos()))focus=s;
+- if(focus)focus->grabKeyboard();
++ putgd_capture_probe::trace("selector.keyboard_grab.begin");if(focus)focus->grabKeyboard();putgd_capture_probe::trace("selector.keyboard_grab.end");
+  connect(qGuiApp,&QGuiApplication::screenAdded,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});connect(qGuiApp,&QGuiApplication::screenRemoved,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});
+  for(auto* screen:QGuiApplication::screens()) {connect(screen,&QScreen::geometryChanged,this,[this]{cancel({"display_changed","Display geometry changed during region selection",{}});});connect(screen,&QScreen::logicalDotsPerInchChanged,this,[this]{cancel({"display_changed","Display scale changed during region selection",{}});});connect(screen,&QScreen::orientationChanged,this,[this]{cancel({"display_changed","Display rotation changed during region selection",{}});});}
+ }
+ void RegionOverlay::press(QPointF point){if(finished_)return;anchor_=point;dragging_=true;selection_=QRectF(point,QSizeF{});}
+ void RegionOverlay::move(QPointF point){if(!dragging_||finished_)return;const auto previous=selection_;selection_=QRectF(anchor_,point).normalized();for(auto* s:surfaces_)s->updateSelection(previous);}
+--- a/tests/performance/bench_capture.cpp
++++ b/tests/performance/bench_capture.cpp
+@@ -1,5 +1,6 @@
++#include "/tmp/putgd-live-outline-latency-probe/trace.h"
+ // Independent physical X11 hotkey/paint witness. Never saves desktop pixels.
+ #include <QApplication>
+ #include <QCommandLineParser>
+ #include <QElapsedTimer>
+ #include <QFile>
+@@ -39,21 +40,21 @@
+  auto* r=xcb_get_image_reply(c,xcb_get_image(c,XCB_IMAGE_FORMAT_Z_PIXMAP,w,20,20,1,1,~0u),nullptr);
+  if(!r)return false;
+  const auto* p=xcb_get_image_data(r);const bool ok=xcb_get_image_data_length(r)>=4 &&
+   (shaded?(p[2]>=50&&p[2]<=53&&p[1]>=57&&p[1]<=60&&p[0]>=63&&p[0]<=66):(p[2]==80&&p[1]==90&&p[0]==100));free(r);return ok;
+  }
+-bool outlinePainted(xcb_connection_t* c,xcb_window_t root,xcb_window_t window,const QRectF& selection){
+- auto* position=xcb_translate_coordinates_reply(c,xcb_translate_coordinates(c,window,root,0,0),nullptr);
+- auto* geometry=xcb_get_geometry_reply(c,xcb_get_geometry(c,window),nullptr);
+- if(!position||!geometry){free(position);free(geometry);return false;}
++bool outlinePainted(xcb_connection_t* c,xcb_window_t root,xcb_window_t window,const QRectF& selection,unsigned long long ordinal){
++ putgd_capture_probe::trace("driver.translate.begin","",ordinal);auto* position=xcb_translate_coordinates_reply(c,xcb_translate_coordinates(c,window,root,0,0),nullptr);
++ putgd_capture_probe::trace("driver.translate.end","",ordinal);putgd_capture_probe::trace("driver.geometry.begin","",ordinal);auto* geometry=xcb_get_geometry_reply(c,xcb_get_geometry(c,window),nullptr);
++ putgd_capture_probe::trace("driver.geometry.end","",ordinal);if(!position||!geometry){free(position);free(geometry);return false;}
+  const QPointF origin(position->dst_x,position->dst_y);
+  const auto clipped=selection.intersected(QRectF(origin,QSizeF(geometry->width,geometry->height)));
+  free(position);free(geometry);
+  if(clipped.width()<4||clipped.height()<4)return false;
+  const auto local=clipped.translated(-origin);
+- auto* pixels=xcb_get_image_reply(c,xcb_get_image(c,XCB_IMAGE_FORMAT_Z_PIXMAP,window,qRound(local.x())+2,qRound(local.y()),1,1,~0u),nullptr);
+- if(!pixels)return false;
++ putgd_capture_probe::trace("driver.get_image.begin","",ordinal);auto* pixels=xcb_get_image_reply(c,xcb_get_image(c,XCB_IMAGE_FORMAT_Z_PIXMAP,window,qRound(local.x())+2,qRound(local.y()),1,1,~0u),nullptr);
++ putgd_capture_probe::trace("driver.get_image.end","",ordinal);if(!pixels)return false;
+  const auto* bytes=xcb_get_image_data(pixels);
+  const bool white=xcb_get_image_data_length(pixels)>=4&&bytes[0]==255&&bytes[1]==255&&bytes[2]==255;
+  free(pixels);return white;
+ }
+ bool visibleCanvas(xcb_connection_t* c,xcb_window_t root,xcb_window_t canvas){
+@@ -108,13 +109,13 @@
+    while(!std::all_of(canvases.cbegin(),canvases.cend(),[&](const auto& canvas){return visibleCanvas(connection,root,canvas->winId());})){
+     if(ready.elapsed()>2000)throw std::runtime_error("Synthetic covering windows are not visibly ready on every display");
+     settle(5);
+    }
+    while(auto* event=xcb_poll_for_event(connection))free(event);
+-   QElapsedTimer timer;timer.start();auto elapsedMs=[&]{return timer.nsecsElapsed()/1000000.0;};
++   QElapsedTimer timer;timer.start();putgd_capture_probe::trace("driver.hotkey.begin","",iteration+1);auto elapsedMs=[&]{return timer.nsecsElapsed()/1000000.0;};
+    input(0xffe3,true);input(0xffe1,true);input(0xffc9,true);input(0xffc9,false);input(0xffe1,false);input(0xffe3,false);xcb_flush(connection);
+-   const double hotkeyIssuedMs=elapsedMs();
++   const double hotkeyIssuedMs=elapsedMs();putgd_capture_probe::trace("driver.hotkey.issued","",iteration+1);
+    QList<xcb_window_t> overlays;double mappedMs=-1,paintedMs=-1,inputIssuedMs=-1;
+    QHash<xcb_window_t,WindowWitness> witnesses;double eventDrainMs=0,mapOwnershipQueriesMs=0,paintQueriesMs=0,eventProcessingMs=0,pollSleepMs=0;int pollIterations=0;
+    while(timer.elapsed()<5000){
+     ++pollIterations;const auto drainStart=elapsedMs();
+     while(auto* event=xcb_poll_for_event(connection)){
+@@ -136,13 +137,13 @@
+      if(liveOutline&&inputIssuedMs<0){
+       motion(start);button(true);
+       auto* pointer=xcb_query_pointer_reply(connection,xcb_query_pointer(connection,root),nullptr);
+       const bool pressed=pointer&&(pointer->mask&XCB_BUTTON_MASK_1);free(pointer);
+       if(!pressed)throw std::runtime_error("Synthetic mouse press was not acknowledged");
+-      motion(end);xcb_flush(connection);inputIssuedMs=elapsedMs();
++      motion(end);xcb_flush(connection);inputIssuedMs=elapsedMs();putgd_capture_probe::trace("driver.drag.issued","",iteration+1);
+      }
+-     if(std::all_of(overlays.cbegin(),overlays.cend(),[&](auto w){const auto before=elapsedMs();const bool painted=liveOutline?outlinePainted(connection,root,w,selection):color(connection,w,true);const auto after=elapsedMs();const auto cost=after-before;paintQueriesMs+=cost;auto& witness=witnesses[w];++witness.probeCount;witness.probeTotalMs+=cost;witness.probeMaxMs=std::max(witness.probeMaxMs,cost);if(painted&&witness.firstWhiteObservedMs<0)witness.firstWhiteObservedMs=after;return painted;})){paintedMs=elapsedMs();break;}
++     if(std::all_of(overlays.cbegin(),overlays.cend(),[&](auto w){const auto before=elapsedMs();const bool painted=liveOutline?outlinePainted(connection,root,w,selection,iteration+1):color(connection,w,true);const auto after=elapsedMs();const auto cost=after-before;paintQueriesMs+=cost;auto& witness=witnesses[w];++witness.probeCount;witness.probeTotalMs+=cost;witness.probeMaxMs=std::max(witness.probeMaxMs,cost);if(painted&&witness.firstWhiteObservedMs<0)witness.firstWhiteObservedMs=after;return painted;})){paintedMs=elapsedMs();break;}
+     }
+     const auto processingStart=elapsedMs();QCoreApplication::processEvents();const auto sleepStart=elapsedMs();eventProcessingMs+=sleepStart-processingStart;QThread::msleep(1);pollSleepMs+=elapsedMs()-sleepStart;
+    }
+    escape();if(mouseDown)button(false);settle(100);
+    if(paintedMs<0)throw std::runtime_error("Actual resident selector did not map/paint on every display");

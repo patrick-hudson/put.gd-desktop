@@ -1,0 +1,10 @@
+{
+  "argv": [
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/test_operations",
+    "explicitCancelOverridesEarlyDisplayErrorWhileAcquiringIsBlocked",
+    "-o",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/cancel-priority-green.xml,junitxml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:08:34.884967+00:00"
+}

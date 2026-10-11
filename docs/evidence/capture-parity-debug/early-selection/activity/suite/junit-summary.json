@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "sourceSha256": "2255242826202c6aeb9d36239f2237195d5f06619817ee0b60f48d4948012a43",
+  "sourceBytes": 1320,
+  "scope": "Existing Activity offscreen GUI suite after renderer fix; before later actual-row-height test strengthening.",
+  "suite": {
+    "name": "Linux-c++",
+    "tests": "1",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "1",
+    "timestamp": "2026-10-09T14:00:29"
+  },
+  "testcases": [
+    {
+      "name": "gui_operations_view",
+      "classname": "gui_operations_view",
+      "time": "1.39422",
+      "status": "run",
+      "failures": [],
+      "errors": []
+    }
+  ],
+  "acceptance": false,
+  "excluded": "system-out/system-err, stdout/stderr, configuration, databases and synthetic payload bytes"
+}

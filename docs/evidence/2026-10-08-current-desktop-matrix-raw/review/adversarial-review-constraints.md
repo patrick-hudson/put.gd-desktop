@@ -1,0 +1,1 @@
+Use normal Python/SSH/QMP lab tools and existing package identity receipts. Preserve immutable VM bases, visible VNC and private test data. A host protocol pass never certifies a desktop. Review only the three changed files in this isolated checkout. No product or external service mutation.

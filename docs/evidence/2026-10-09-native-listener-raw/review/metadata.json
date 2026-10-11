@@ -1,0 +1,83 @@
+{
+  "branch": "codex/optimize-resident-native-boundary",
+  "completed_at": "2026-10-09T08:04:45.798084+00:00",
+  "cost": {
+    "host": "codex",
+    "scope": {
+      "changed_lines": 358,
+      "depth": "full",
+      "exec_nontest_lines": 252,
+      "size_band": "large",
+      "unclassified_lines": 100
+    },
+    "stages": [
+      {
+        "elapsed_seconds": 0.034,
+        "ended_at": "2026-10-09T07:10:48.426282+00:00",
+        "facts": {
+          "changed_lines": 358,
+          "depth": "full",
+          "exec_nontest_lines": 252,
+          "size_band": "large",
+          "unclassified_lines": 100
+        },
+        "stage": "scope",
+        "started_at": "2026-10-09T07:10:48.392681+00:00"
+      },
+      {
+        "elapsed_seconds": 288.368,
+        "ended_at": "2026-10-09T07:15:36.794720+00:00",
+        "reviewers": 8,
+        "stage": "select",
+        "started_at": "2026-10-09T07:10:48.426282+00:00"
+      },
+      {
+        "elapsed_seconds": 2893.324,
+        "ended_at": "2026-10-09T07:59:19.790975+00:00",
+        "stage": "peer",
+        "started_at": "2026-10-09T07:11:06.467326+00:00"
+      },
+      {
+        "candidates": 2,
+        "elapsed_seconds": 2622.996,
+        "ended_at": "2026-10-09T07:59:19.791013+00:00",
+        "reviewers": 9,
+        "stage": "dispatch",
+        "started_at": "2026-10-09T07:15:36.794720+00:00"
+      },
+      {
+        "candidates": 1,
+        "elapsed_seconds": 43.556,
+        "ended_at": "2026-10-09T08:00:57.850303+00:00",
+        "stage": "merge",
+        "started_at": "2026-10-09T08:00:14.294355+00:00"
+      },
+      {
+        "candidates": 1,
+        "elapsed_seconds": 62.29,
+        "ended_at": "2026-10-09T08:03:23.176287+00:00",
+        "reviewers": 1,
+        "stage": "validate",
+        "started_at": "2026-10-09T08:02:20.886326+00:00"
+      },
+      {
+        "candidates": 1,
+        "elapsed_seconds": 0.034,
+        "ended_at": "2026-10-09T08:04:45.827682+00:00",
+        "stage": "report",
+        "started_at": "2026-10-09T08:04:45.793779+00:00"
+      }
+    ],
+    "status": "complete",
+    "totals": {
+      "artifact_bytes": 907148,
+      "candidates": 2,
+      "elapsed_seconds": 5910.602,
+      "reviewers": 18
+    },
+    "truncated_events": 0
+  },
+  "head_sha": "b6e987ca9097ac6ebdd82101acac5aea664d1071",
+  "run_id": "native-boundary-20261009-0710",
+  "verdict": "Ready with fixes"
+}

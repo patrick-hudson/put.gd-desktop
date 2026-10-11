@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:35:48.557683+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "scope": "Normal GNOME window-manager close/reopen for Settings, History, Activity and About; activation through production CLI. Actual tray clicks are separate evidence.",
+  "runnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "scriptSha256": "ba00706a32e5174137720b60b09d59054e97aec5b908621a9c966f7ea79f8319",
+  "cases": [
+    {
+      "cycle": 1,
+      "view": "settings",
+      "show": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 16384,
+        "startTicks": 28384,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 1934,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-settings-open.png",
+        "sha256": "d362ecc6eef58ab51b4e70c228d90d8a8cd434c6d344a7ec13edb4646691dd79"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-settings-closed.png",
+        "sha256": "0adeac51cfae641e210d44a268ca73e70a3d0cc8728edb6ea0304d891641749d"
+      },
+      "seconds": 3.304453948047012
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "show": {
+        "shown": "history"
+      },
+      "helper": {
+        "pid": 16692,
+        "startTicks": 28714,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 2354,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-history-open.png",
+        "sha256": "b20c76678244293b3a4b7574a15becbec3e46a08491984919cd1c83776a5a5b2"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-history-closed.png",
+        "sha256": "0adeac51cfae641e210d44a268ca73e70a3d0cc8728edb6ea0304d891641749d"
+      },
+      "seconds": 3.149427814001683
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "show": {
+        "shown": "activity"
+      },
+      "helper": {
+        "pid": 17004,
+        "startTicks": 29032,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 4,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-activity-open.png",
+        "sha256": "482980ad368b6d6a7e130ec892b282f61dabb4c2dbb0ce01bf509cffd6af535a"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-activity-closed.png",
+        "sha256": "0adeac51cfae641e210d44a268ca73e70a3d0cc8728edb6ea0304d891641749d"
+      },
+      "seconds": 3.1507205750094727
+    },
+    {
+      "cycle": 1,
+      "view": "about",
+      "show": {
+        "shown": "about"
+      },
+      "helper": {
+        "pid": 17315,
+        "startTicks": 29344,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 5,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-about-open.png",
+        "sha256": "1b2f3b4f064807423d105f7208452b7fdaf8af9215aee7d3f76528d74ada0e15"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/1-about-closed.png",
+        "sha256": "dda7c062cc8c780a6a527f0d3c143121cdf54441f2b573fb1be6aae57754cf84"
+      },
+      "seconds": 3.3681714750127867
+    },
+    {
+      "cycle": 2,
+      "view": "settings",
+      "show": {
+        "shown": "settings"
+      },
+      "helper": {
+        "pid": 17619,
+        "startTicks": 29679,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 6,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-settings-open.png",
+        "sha256": "7b8daaf4097756e40c44f9a21366ffb50182494e1743dd706a7ab76d9bc47e48"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-settings-closed.png",
+        "sha256": "dda7c062cc8c780a6a527f0d3c143121cdf54441f2b573fb1be6aae57754cf84"
+      },
+      "seconds": 3.139132456970401
+    },
+    {
+      "cycle": 2,
+      "view": "history",
+      "show": {
+        "shown": "history"
+      },
+      "helper": {
+        "pid": 17928,
+        "startTicks": 29993,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 7,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-history-open.png",
+        "sha256": "7a8de6506c378575d65f62ea90c35133192b0c4b5a28e9c47c5940f83130b94e"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-history-closed.png",
+        "sha256": "dda7c062cc8c780a6a527f0d3c143121cdf54441f2b573fb1be6aae57754cf84"
+      },
+      "seconds": 3.1112390179769136
+    },
+    {
+      "cycle": 2,
+      "view": "activity",
+      "show": {
+        "shown": "activity"
+      },
+      "helper": {
+        "pid": 18242,
+        "startTicks": 30310,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 8,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-activity-open.png",
+        "sha256": "dd08ef6278cda25d9c7eb5152a35acaf64873670d5badc192466d3c1b80d7141"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-activity-closed.png",
+        "sha256": "dda7c062cc8c780a6a527f0d3c143121cdf54441f2b573fb1be6aae57754cf84"
+      },
+      "seconds": 3.1735120720113628
+    },
+    {
+      "cycle": 2,
+      "view": "about",
+      "show": {
+        "shown": "about"
+      },
+      "helper": {
+        "pid": 18560,
+        "startTicks": 30622,
+        "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+        "comm": "putgd-ui"
+      },
+      "afterClose": {
+        "checkpointBytes": 2447,
+        "lastExit": {
+          "code": 0,
+          "generation": 9,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "openedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-about-open.png",
+        "sha256": "1b2f3b4f064807423d105f7208452b7fdaf8af9215aee7d3f76528d74ada0e15"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/u11/native/gnome/views/2-about-closed.png",
+        "sha256": "dda7c062cc8c780a6a527f0d3c143121cdf54441f2b573fb1be6aae57754cf84"
+      },
+      "seconds": 3.3295495199854486
+    }
+  ],
+  "passed": true,
+  "resident": {
+    "pid": 2848,
+    "startTicks": 3939,
+    "sha256": "67a7513d137fe9f4cde00e3b6fbf15b1671d2a069148844958313a44e50b0bf8"
+  },
+  "visualReview": "Reviewed first-cycle Settings, populated History, Activity and About witnesses and final desktop. Second-cycle witnesses retained; procedural PID/exit assertions cover all eight cases.",
+  "finishedUtc": "2026-10-09T01:36:14.917590+00:00"
+}

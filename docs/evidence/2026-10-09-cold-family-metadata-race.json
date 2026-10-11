@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "c19553b9e69e2c21fccf5e10ff6054d0c3819e42",
+  "version": "0.1.1-dev.52+gc19553b9e69e",
+  "applicationSourceChanged": false,
+  "nativeCinnamonPassed": true,
+  "nativeReceiptSha256": "c7c95bdf0eb3528b7b1442390c335655349cbe0e17b5f069e1a8dc74b8b72520",
+  "physicalTiming": {
+    "samples": 30,
+    "p95PaintMs": 124.812303,
+    "limitMs": 150,
+    "passed": true
+  },
+  "originalColdAttemptAccepted": false,
+  "originalColdErrorType": "ProcessLookupError",
+  "originalPhysicalFailingCallKnown": false,
+  "originalSampleCount": 62,
+  "originalSampleSpanSeconds": 64.23863141401671,
+  "cause": "Actual bounded synthetic process churn reproduces Linux ESRCH in unchanged OwnedSubtree.discover->current->identity(stat), and children(task children open). Existing metadata disappearance catches handled ENOENT but not ESRCH. These escapes interrupt inner measurement cleanup. Original physical call was not recorded, so its exact location is unknown.",
+  "additionalConfirmedRace": "After ESRCH-only correction, synthetic churn exposed EACCES at identity(exe.stat); fresh exact process directory/stat were already absent. No blanket permission catch selected.",
+  "fix": "Handle ESRCH only at existing OwnedSubtree metadata disappearance sites; classify identity EACCES as missing only after fresh exact /proc/PID directory stat confirms absence. Live/zombie/reused/inaccessible directory failures stay fatal. Measured ProcessFamily/root-memory and terminal normalizer unchanged.",
+  "diagnostics": "Allowlisted trusted source module/function/line frames <=8 plus numeric errno; no raw exception message/path/args, source lines, locals or process arguments.",
+  "regressions": {
+    "esrchRedTests": 3,
+    "esrchRedFailures": 2,
+    "strictSamplingInitiallyPassed": true,
+    "diagnosticsRedFailed": true,
+    "permissionRedFailed": true,
+    "finalContracts": 18,
+    "finalFailures": 0,
+    "fullGreenSeconds": 15.761,
+    "greenLogSha256": "88b63731941f8e2ff8f65d7b2b109cf2d72853cc54e9ff87daf9437d63e00981",
+    "recipeDeadlineInterruptionRedFailures": 1,
+    "recipeRedLogSha256": "75a6afd132003ed9d0969469e5a38c114bf3b823b9d31dbb1ba85c04a731ca0a",
+    "recipePriorVerifiedSha256": "c5ee4474068799ab7cb58531e6a65e4e4c54d4c6545467ffd29b839f3487bf6f"
+  },
+  "stress": {
+    "cohorts": 20,
+    "childLaunches": 8000,
+    "failures": 0,
+    "knownOwnedResidueAfterCleanup": 0,
+    "physicalAcceptance": false
+  },
+  "exports": [
+    {
+      "file": "evidence/cold-family-metadata-race/failed-family.json",
+      "originalSha256": "8a7b0162a1ed62c6fb383475dc83c1f9015b3c21977203a1bab5ed6cb83d96a3",
+      "exportSha256": "4e437bf66e44bad5c68c3be082a323af93cf7cbe650a9f59534587b76406314d"
+    },
+    {
+      "file": "evidence/cold-family-metadata-race/interrupted-window-observer.json",
+      "originalSha256": "98097006fef3a8328385d777debfd30a4e627c50821bc243284d253941f17a6d",
+      "exportSha256": "c887f458868f66c3f7962de28097e040f93faa05304254bffba1263ed9e8c8ca"
+    },
+    {
+      "file": "evidence/cold-family-metadata-race/owned-esrch-diagnostic.json",
+      "originalSha256": "189d5ad528c12df9110c9ba4e084a4e87c5a9c40c6b79698f18d1d810bdfa773",
+      "exportSha256": "189d5ad528c12df9110c9ba4e084a4e87c5a9c40c6b79698f18d1d810bdfa773"
+    },
+    {
+      "file": "evidence/cold-family-metadata-race/children-esrch-diagnostic.json",
+      "originalSha256": "a69cf6ab48b864d92dc03cf73e222b5679c55318f7e4b84dcddd7a6d711365f1",
+      "exportSha256": "a69cf6ab48b864d92dc03cf73e222b5679c55318f7e4b84dcddd7a6d711365f1"
+    },
+    {
+      "file": "evidence/cold-family-metadata-race/intermediate-permission-failure.json",
+      "originalSha256": "a969c6785ff12620a695c6a01c50990893927ffdcc390ab51b0d2a9ac6a53793",
+      "exportSha256": "a969c6785ff12620a695c6a01c50990893927ffdcc390ab51b0d2a9ac6a53793"
+    },
+    {
+      "file": "evidence/cold-family-metadata-race/permission-exit-diagnostic.json",
+      "originalSha256": "8569bd33241020f19bf64adf8c1b7d40614de5f0fdf9d528b9e8129677d5d9d3",
+      "exportSha256": "8569bd33241020f19bf64adf8c1b7d40614de5f0fdf9d528b9e8129677d5d9d3"
+    },
+    {
+      "file": "evidence/cold-family-metadata-race/final-churn.json",
+      "originalSha256": "5b58ed95d8d9137c7ebaea82d7962bc2971e62b2e7e533902aab2c57c813a635",
+      "exportSha256": "5b58ed95d8d9137c7ebaea82d7962bc2971e62b2e7e533902aab2c57c813a635"
+    }
+  ],
+  "sourceHashes": {
+    "tests/performance/observe_cold_family.py": "f6bb487484659499378983ac04aa3f63df8e692809753939d435014e197cb65a",
+    "tests/performance/test_observe_cold_family.py": "8273a911637ea2a3b6e67a7e5172e6c960edf2952b603c9cedccac32686437e3"
+  },
+  "remaining": "Review/clean version/build/native gate then entire new serial physical attempt. No valid source52 five-minute memory result, closed result or GNOME/KDE current acceptance.",
+  "review": {
+    "receiptSha256": "d6f8655179c5688d6aea8e4012bc44dd3cc0793ae65716ae3883ffdd4cd600a5",
+    "actionableFindings": 0,
+    "reviewer": "review_capture_policy",
+    "scope": "Two-file collector/contracts static review"
+  },
+  "standaloneRecipe": {
+    "file": "docs/evidence/cold-family-metadata-race/metadata_churn.py",
+    "sha256": "7dc737e404b195a2a7f818cff929f2eec7b7057b3b57c1be69539d6444c69474",
+    "resultSha256": "923954c9504efb57973773398775a8aa41ca3e992a6f9dac376f1440c4646f8d",
+    "cohorts": 20,
+    "childLaunches": 8000,
+    "passed": true,
+    "cohortDeadlineSeconds": 20,
+    "timeoutAndKeyboardInterruptFailedReceiptsTested": true,
+    "initialPreflightRejectedNonprivateParent": true
+  },
+  "originalLastSampleElapsedSeconds": 70.21579872100847,
+  "finalReview": {
+    "receiptSha256": "1cc05842fea2743df16c149956425e514b0ec5baeac61023e40736f05e360056",
+    "actionableFindings": 0,
+    "reviewer": "review_capture_policy",
+    "scope": "Collector/contracts/recipe plus evidenceprivacy and documentedlimits",
+    "runtimeExecutedByReviewer": false
+  }
+}

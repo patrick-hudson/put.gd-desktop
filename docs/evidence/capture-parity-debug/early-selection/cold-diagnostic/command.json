@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "python3",
+    "work/resident-native-boundary/cold_family.py",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "--helper",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+    "--output",
+    "/tmp/pg-cp-cold",
+    "--receipt",
+    "/home/patrick/work/put.gd/work/capture-parity/cursor-memory-diagnostic/family"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "startedUtc": "2026-10-09T18:50:06.206037+00:00"
+}

@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd/work/u11/native/gnome/install.py", line 63, in <module>
+    if time.monotonic()>end:raise RuntimeError('Fresh GNOME session/extension not ready after bounded reboot')
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Fresh GNOME session/extension not ready after bounded reboot

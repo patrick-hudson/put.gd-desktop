@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-09T01:23:04.679658+00:00",
+  "payload": {
+    "path": "/home/lab/putgd-lab/fixture/synthetic-1.txt",
+    "size": 536870912,
+    "sha256": "23bd4da48450e844221b7a1217e0ab57b82a2b0f3be2480e22914a9515540afc",
+    "freeBeforeBytes": 21230465024,
+    "streamBlockBytes": 1048576,
+    "blockPattern": "putgd U11 synthetic continuity newline"
+  },
+  "limits": {
+    "clipboardTextBytes": 16777216,
+    "concurrentUploads": 1,
+    "imageBytes": 536870912,
+    "imagePixels": 100000000,
+    "maxBatchBytes": 2147483648,
+    "maxFileBytes": 2147483648,
+    "maxFiles": 100,
+    "pendingArtifactBytes": 2147483648,
+    "pendingImageBytes": 67108864,
+    "pendingOperations": 8
+  },
+  "archive": {
+    "folders": {
+      "images": null,
+      "other": null,
+      "text": null,
+      "videos": null
+    },
+    "keepUploads": true,
+    "root": "/home/lab/putgd-lab/archive"
+  },
+  "resident": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef"
+  },
+  "helperPid": 55955,
+  "operationIdsBefore": [
+    "014dd418-db30-443d-be55-cc70293e482c",
+    "022df18f-0b29-4a66-8e8a-68203d6a2522",
+    "097b11ba-c142-4fe7-be80-64a7d38ca553",
+    "30c380b2-a9b2-4d85-94b5-528d5b6866a5",
+    "3792fc81-0086-4a7b-8222-c7515c5bd77c",
+    "6b5a1a65-e49f-4270-aca0-4b568f9c3b7e",
+    "6b6406ff-da72-4491-bda0-77d3f0d14915",
+    "714d5589-76ec-4d9f-b14e-b0aed3c195ab",
+    "79721293-d8cc-441e-9739-d5a2bc8b82c9",
+    "7d6719fb-a3ad-4864-98cb-7062eb52e909",
+    "9ca4e0d1-67df-494b-9903-e487af7b91e0",
+    "9fb98cfa-b1c6-43d5-bc93-1b115225972f",
+    "a20ef173-e5c9-4e4a-9fbe-807f682bbd5b",
+    "aba08cd3-2a7e-4a07-b9c5-389308c1e470",
+    "ae33e314-6c18-45a1-9dc4-e979dfb15321",
+    "b0417aed-6b91-4f4b-8dd5-2258371449e6",
+    "ccbb7751-778b-4cd2-aec5-a19b18fafe8a",
+    "d68c8d36-2f03-4527-9d5a-df7092ec57f4",
+    "dd781659-119c-4f06-9233-3c69afdff0f4",
+    "dd90270b-3518-413b-b4cb-96f9b73718ab",
+    "f0fa1e9d-2b05-4c2b-abe5-e9fb0c201f8c"
+  ],
+  "scope": "Real synthetic local-file copy only, not slow S3 or memory acceptance."
+}

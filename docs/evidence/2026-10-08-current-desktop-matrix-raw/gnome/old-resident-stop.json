@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:34:45.153609+00:00",
+  "pid": 10255,
+  "scope": "Stop only stale synthetic test resident; preserve active CMake build and SDK cache",
+  "startTicks": "114619",
+  "stopped": true
+}

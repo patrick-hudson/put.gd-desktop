@@ -1,0 +1,17 @@
+{
+  "timestampUtc": "2026-10-08T22:59:42.745211+00:00",
+  "perWindowForegroundConfirmedBeforeClose": true,
+  "allThreeViewsCompletelyPainted": true,
+  "allCloseWitnessesDesktopOnly": true,
+  "acceptedExtraCycles": 2,
+  "acceptedPrimaryCycles": 2,
+  "attemptedActivations": "Locked six activations and imperfect first visible pass are retained separately and excluded from accepted cycle counts. This successful conservative repeat is in addition to the accepted second cycle in extra-views.json.",
+  "witnesses": {
+    "native-verified-cycle-settings-open.png": "ad313289b25f6b7064243dd5eebf687c1d04c018cc569ff91ab18e34d4358410",
+    "native-verified-cycle-settings-close.png": "c9e070e7e936618e4131db745d557f5ae07802fdbf67e55240d3c4980c263c06",
+    "native-verified-cycle-history-open.png": "ba81d79db9d7ab9a7af365549700bf1179c2e44333bbc0be4cce2333fe3b53c1",
+    "native-verified-cycle-history-close.png": "c9e070e7e936618e4131db745d557f5ae07802fdbf67e55240d3c4980c263c06",
+    "native-verified-cycle-activity-open.png": "0540b9a824397f489d22257727ae63ce12c88eeade41a63865f287f8eb3d1e6c",
+    "native-verified-cycle-activity-close.png": "c9e070e7e936618e4131db745d557f5ae07802fdbf67e55240d3c4980c263c06"
+  }
+}

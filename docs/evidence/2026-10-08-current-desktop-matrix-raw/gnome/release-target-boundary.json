@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:40:57.958237+00:00",
+  "reason": "Full Dev28/28 passed. Bound Release build to ordinary installed product targets, avoiding unused duplicate test executable compilation. Standard incremental CMake/Ninja resume; source and toolchain unchanged.",
+  "processes": [
+    {
+      "pid": 19919,
+      "comm": "sh",
+      "startTicks": "4482501"
+    },
+    {
+      "pid": 23896,
+      "comm": "cmake",
+      "startTicks": "4539557"
+    },
+    {
+      "pid": 23897,
+      "comm": "ninja",
+      "startTicks": "4539558"
+    },
+    {
+      "pid": 24263,
+      "comm": "sh",
+      "startTicks": "4545800"
+    },
+    {
+      "pid": 24279,
+      "comm": "sh",
+      "startTicks": "4547265"
+    },
+    {
+      "pid": 24264,
+      "comm": "c++",
+      "startTicks": "4545800"
+    },
+    {
+      "pid": 24280,
+      "comm": "c++",
+      "startTicks": "4547265"
+    },
+    {
+      "pid": 24265,
+      "comm": "cc1plus",
+      "startTicks": "4545800"
+    },
+    {
+      "pid": 24281,
+      "comm": "cc1plus",
+      "startTicks": "4547266"
+    }
+  ],
+  "signalledNinjaPid": 23897,
+  "signal": "SIGINT",
+  "ninjaExited": true
+}

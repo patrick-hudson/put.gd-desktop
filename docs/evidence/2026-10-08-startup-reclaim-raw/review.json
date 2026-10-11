@@ -1,0 +1,103 @@
+{
+  "status": "complete",
+  "verdict": "No actionable findings",
+  "scope": {
+    "kind": "focused post-review source delta",
+    "base_commit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+    "head_commit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+    "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-startup-reclaim-exp-001",
+    "files": {
+      "src/app/OperationService.cpp": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8",
+      "tests/unit/test_operations.cpp": "7bac570f50e0a075c945c2d16fcd8719c814851ddfb33787a1a000062f3dba65"
+    },
+    "changed_lines": {
+      "added": 66,
+      "deleted": 1
+    },
+    "diff_sha256": "fad7f1e731f38b45eb5a576a03b3dd130233604fee0c106e68172117f7b9c70a",
+    "diff_format": "git diff --no-ext-diff --no-color -U10 BASE -- the two named files",
+    "approved_spec": "/home/patrick/work/put.gd/.context/compound-engineering/ce-optimize/resident-startup-reclaim/spec.yaml",
+    "approved_spec_sha256": "fab2e53eb86ce52ba863a33cb61863a379ffbc813c1e7dbd468a6b65d809963f",
+    "all_changed_paths_match_authorized_scope": true
+  },
+  "findings": [],
+  "source_checks": [
+    {
+      "topic": "startup callback and worker-finished ordering",
+      "evidence": [
+        "src/app/OperationService.cpp:46-51",
+        "src/app/OperationService.cpp:56-65"
+      ],
+      "conclusion": "The successful GUI-thread callback marks pending and attempts scheduling. If the startup thread is still registered, its finished handler removes it and tries again; if finished was handled first, the callback supplies the pending mark and schedules. Both paths retain the same idle predicate."
+    },
+    {
+      "topic": "work admission and first action",
+      "evidence": [
+        "src/app/OperationService.cpp:57",
+        "src/app/OperationService.cpp:62-65",
+        "src/app/OperationService.cpp:81-96",
+        "src/app/OperationService.cpp:134-135",
+        "tests/unit/test_operations.cpp:105-157"
+      ],
+      "conclusion": "Background admission stops the pending timer. Active operations, selector identity, queue, running workers and leased payload bytes prevent reclamation. A synchronous initialized receiver can start an action through the unchanged admission path, which stops/coalesces the startup timer instead of trimming during acquisition or upload."
+    },
+    {
+      "topic": "single pass and shutdown",
+      "evidence": [
+        "src/app/OperationService.cpp:25-36",
+        "src/app/OperationService.cpp:49",
+        "src/app/OperationService.cpp:55-65",
+        "tests/unit/test_operations.cpp:10-23",
+        "tests/unit/test_operations.cpp:39-49"
+      ],
+      "conclusion": "The existing single-shot timeout clears the pending flag after one attempt. Initialization has one callback; later reclamation still requires an existing action/copy mark. Shutdown stops the timer, makes the idle predicate false and suppresses queued replies. The new tests assert no repeat and no post-shutdown attempt."
+    },
+    {
+      "topic": "failure and non-glibc behavior",
+      "evidence": [
+        "src/app/OperationService.cpp:47-51",
+        "tests/unit/test_operations.cpp:25-37"
+      ],
+      "conclusion": "Failed initialization leaves pending false and preserves its existing error/initialized signal behavior. The only new product behavior is inside __GLIBC__; other platforms retain the existing callback behavior."
+    },
+    {
+      "topic": "test coverage and teardown",
+      "evidence": [
+        "tests/unit/test_operations.cpp:10-67",
+        "tests/unit/test_operations.cpp:105-157",
+        "tests/unit/test_operations.cpp:237-253"
+      ],
+      "conclusion": "Four added tests cover successful one-pass startup, failed initialization, shutdown and a deliberately held background worker. Existing tests cover pending upload, selector, post-use cleanup and cancellation. The held-worker scope guard releases its promise before OperationService destruction even when an assertion returns early. These assertions verify attempted cleanup and scheduling, not an RSS saving."
+    },
+    {
+      "topic": "approved constraints",
+      "evidence": [
+        "approved spec mutable_paths and constraints",
+        "src/app/OperationService.cpp:46-51"
+      ],
+      "conclusion": "Only the two approved files differ from the reviewed baseline. The product change reuses the existing two-second quiet timer and allocator call; it adds no recurring timer, allocator configuration, cache teardown, provider change or native UI change."
+    }
+  ],
+  "reviewer": {
+    "identity": "/root/cinnamon_capture_sync_audit",
+    "implementation_author": false,
+    "context_reused": true,
+    "fresh_context": false,
+    "independence": "Non-author source inspection in a reused registered context; no claim of a fresh independent context.",
+    "external_peer_started": false,
+    "external_peer_note": "No new external review requested for this bounded post-review delta."
+  },
+  "proof_limits": {
+    "source_only": true,
+    "tests_or_builds_run_by_reviewer": false,
+    "runtime_or_physical_measurement_by_reviewer": false,
+    "root_reported_evidence": "Test-first red: three missing-pending failures and the expected failure-initialization pass. Green and physical measurement were ongoing at review dispatch; not certified here.",
+    "performance_acceptance": "No source review can establish RSS reduction, the fixed idle CPU/RSS budget, first-action latency, graphical acceptance or the 40 MiB target."
+  },
+  "mutations": {
+    "product_source": false,
+    "git_index_or_refs": false,
+    "artifact_only": "/tmp/putgd-startup-reclaim-review.json"
+  },
+  "excluded_inputs": "No credentials, private configuration, payloads, VM logs or screen/clipboard data read."
+}

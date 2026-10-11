@@ -1,0 +1,33 @@
+{
+  "guestBinarySha256": {
+    "putgd": "1910d94f8bbfc66a256a4c12f98b8f3a71977ac66ba5eaed1669d55a0a746b72",
+    "putgd-cli": "d2e4f90efa8a9987a33c0569636ad2442ed8c5854df01eb06380838a2ad4a715",
+    "putgd-desktop-fixture": "e1ef38b161a6545d65afb1b8aa6629485909aa13d3a7a6802b8e52c7969c03e1"
+  },
+  "probePid": 24009,
+  "probeStillRunning": false,
+  "fixturePid": 24010,
+  "fixtureStillRunning": false,
+  "restoredResident": [
+    {
+      "pid": 25946,
+      "executableBasename": "putgd"
+    }
+  ],
+  "configMetadata": {
+    "acceptedRevision": "1cdf6dc83362403a16f9da128e65cbad14f7c9da013779ffc944b14d0efddf19",
+    "fallbackRescanMs": 2000,
+    "observedRevision": "1cdf6dc83362403a16f9da128e65cbad14f7c9da013779ffc944b14d0efddf19",
+    "path": "/home/lab/putgd-lab/config/putgd/putgd/config.json",
+    "schemaVersion": 1,
+    "validation": {
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "ok": true
+    },
+    "watching": true
+  }
+}

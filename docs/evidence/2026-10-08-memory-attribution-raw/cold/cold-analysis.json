@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "scope": "Cold physical Cinnamon RSS attribution and standalone native Qt locating probe. Product code unchanged. Post-view resource teardown belongs to root.",
+  "sourceHead": "dac46af06feb0e8326d472c77bdf96cff117be51",
+  "evidence": [
+    {
+      "path": "/home/patrick/work/put.gd/docs/evidence/2026-10-08-startup-reclaim-raw/candidate-idle.json",
+      "sha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/docs/evidence/2026-10-08-startup-reclaim-raw/footprint-comparison.json",
+      "sha256": "6ccf8800ac36d5d3a8b53d34a8ee81c0e724bde6a5467e0cb9908a0e24d0e159"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/native-qt-cold-probe/results.json",
+      "sha256": "645cd25915c70fd3a14b70788bef0d388b20830363582a124bbd2c32b1aa1026"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/docs/testing-memory.md",
+      "sha256": "e9b88d33f6db77ae26ee4ca5a2453c450b60337cf48647b7d5189180dc6aeb5b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/src/main.cpp",
+      "sha256": "c468680408500bbe69c86301afa19b2ae4be151cfbfc2ae57b59e643513fde1d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/src/ui/TrayController.cpp",
+      "sha256": "f931d1061e173ec193131cd0eee00d2afa8ba5bce7c0f40279a8d917b28340eb"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/src/ui/VisualStyle.cpp",
+      "sha256": "b1d5a0662916b3899245e72ab65f5b8c0c1d8c2b00df1335fa0493f9dc3f56e8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/src/core/HistoryStore.cpp",
+      "sha256": "a92f1558ea55676ef3ee4ef7b7cba0654fed7b35138378ba6e7e65f86fef29ef"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/src/app/OperationService.cpp",
+      "sha256": "e5e1344f2359baa157a3e40294873c361ae22faec185b7bc5c451be982cc96f8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/CMakeLists.txt",
+      "sha256": "db29858a9ba57a554f1c24272fd52be3dca5eb36eb59fdce23fef586ccf3bd9f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/run-001.json",
+      "sha256": "0144ed5a1101415c128f194a010bd56b4aecf2b80c2b922ea4481582c3f77c70"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/memory-next/cold-probe/build-identity.json",
+      "sha256": "7d65da1d9d4ac90316d6440bf44b028eb2ac44f1ee0ff20974ba12f6a528d1a5"
+    }
+  ],
+  "accounting": {
+    "coldProduct": {
+      "binarySha256": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+      "rssBytes": 47149056,
+      "rssMiB": 44.96484375,
+      "elapsedSeconds": 300.2193430539919,
+      "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+      "residentExecutableRssBytes": 1437696,
+      "sqlClosureRssBytes": 1691648,
+      "heapRssBytes": 3031040,
+      "anonymousRssBytes": 1208320,
+      "noMappedFamilies": [
+        "AWS SDK/CRT/s2n",
+        "curl",
+        "libcrypto/libgnutls",
+        "QtNetwork",
+        "LLVM"
+      ],
+      "keychainRssBytes": 114688,
+      "imagePluginsRssBytes": 135168
+    },
+    "productMinusTrimmedFullTrayProbeBytes": 3772416,
+    "productMinusTrimmedFullTrayProbeMiB": 3.59765625,
+    "majorRemainingMappings": [
+      "putgd 1,437,696 bytes (includes resident pages from all static UI/app/core code)",
+      "SQLite + QtSql + QSQLITE plugin 1,691,648 bytes",
+      "small anonymous/thread/data/library-page differences"
+    ],
+    "liveVsAccountingCaveats": [
+      "RSS counts shared clean native Qt/GTK/font pages even if also resident elsewhere; PSS explains sharing but cannot replace the approved RSS objective.",
+      "smaps [heap]/anonymous totals mix live allocations, free allocator pages and other owners. mallinfo2 allocated is allocator accounting, not resident-page ownership, and excludes mmap allocations recorded separately.",
+      "Current product heap RSS is about 0.99 MiB below the earlier untrimmed minimal native Qt probe. That minimal probe is not a lower-bound proof.",
+      "The new full-menu probe final trim reduces RSS 1,155,072 bytes while allocated arena rises 7,776 bytes; reclaiming free pages does not destroy the live menu. Product already performs one guarded startup trim.",
+      "Sequential stage deltas are locating observations, not paired production saving predictions.",
+      "Arbitrary mapped files are [other-file]; differences from older named-locale receipts must not be attributed to product payloads.",
+      "No helper is proposed; any later helper design must report simultaneous total process RSS/PSS and startup/latency costs."
+    ]
+  },
+  "probe": {
+    "receipt": "/home/patrick/work/put.gd/work/memory-next/cold-probe/run-001.json",
+    "status": "complete",
+    "exitCode": 0,
+    "elapsedSeconds": 35.157944398000836,
+    "nativeGtkMappedEveryStage": true,
+    "qtNetworkMappedAnyStage": false,
+    "menuNeverOpened": true,
+    "stages": [
+      {
+        "stage": "native-empty",
+        "rssBytes": 41627648,
+        "rssMiB": 39.69921875,
+        "pssBytes": 22713344,
+        "privateBytes": 20119552,
+        "allocatedArenaBytes": 1983472,
+        "freeArenaBytes": 2964496,
+        "mmapAllocatedBytes": 364544,
+        "rssDeltaFromPreviousBytes": null,
+        "heapRssBytes": 4071424,
+        "anonymousRssBytes": 860160,
+        "qtGuiRssBytes": 4153344,
+        "qtWidgetsRssBytes": 2502656
+      },
+      {
+        "stage": "visual-style",
+        "rssBytes": 41885696,
+        "rssMiB": 39.9453125,
+        "pssBytes": 22971392,
+        "privateBytes": 20377600,
+        "allocatedArenaBytes": 1990544,
+        "freeArenaBytes": 2957424,
+        "mmapAllocatedBytes": 364544,
+        "rssDeltaFromPreviousBytes": 258048,
+        "heapRssBytes": 4071424,
+        "anonymousRssBytes": 860160,
+        "qtGuiRssBytes": 4218880,
+        "qtWidgetsRssBytes": 2695168
+      },
+      {
+        "stage": "brand-icon",
+        "rssBytes": 42602496,
+        "rssMiB": 40.62890625,
+        "pssBytes": 23623680,
+        "privateBytes": 21028864,
+        "allocatedArenaBytes": 2059744,
+        "freeArenaBytes": 2888224,
+        "mmapAllocatedBytes": 364544,
+        "rssDeltaFromPreviousBytes": 716800,
+        "heapRssBytes": 4071424,
+        "anonymousRssBytes": 860160,
+        "qtGuiRssBytes": 4870144,
+        "qtWidgetsRssBytes": 2695168
+      },
+      {
+        "stage": "tray-icon",
+        "rssBytes": 42864640,
+        "rssMiB": 40.87890625,
+        "pssBytes": 23885824,
+        "privateBytes": 21291008,
+        "allocatedArenaBytes": 2144416,
+        "freeArenaBytes": 2803552,
+        "mmapAllocatedBytes": 364544,
+        "rssDeltaFromPreviousBytes": 262144,
+        "heapRssBytes": 4071424,
+        "anonymousRssBytes": 925696,
+        "qtGuiRssBytes": 4935680,
+        "qtWidgetsRssBytes": 2760704
+      },
+      {
+        "stage": "empty-tray-menu",
+        "rssBytes": 44036096,
+        "rssMiB": 41.99609375,
+        "pssBytes": 25057280,
+        "privateBytes": 22462464,
+        "allocatedArenaBytes": 2439792,
+        "freeArenaBytes": 2520464,
+        "mmapAllocatedBytes": 364544,
+        "rssDeltaFromPreviousBytes": 1171456,
+        "heapRssBytes": 4071424,
+        "anonymousRssBytes": 937984,
+        "qtGuiRssBytes": 5324800,
+        "qtWidgetsRssBytes": 3530752
+      },
+      {
+        "stage": "populated-tray-menu",
+        "rssBytes": 44531712,
+        "rssMiB": 42.46875,
+        "pssBytes": 25263104,
+        "privateBytes": 22654976,
+        "allocatedArenaBytes": 3109920,
+        "freeArenaBytes": 1850336,
+        "mmapAllocatedBytes": 364544,
+        "rssDeltaFromPreviousBytes": 495616,
+        "heapRssBytes": 4071424,
+        "anonymousRssBytes": 937984,
+        "qtGuiRssBytes": 5382144,
+        "qtWidgetsRssBytes": 3530752
+      },
+      {
+        "stage": "after-one-trim",
+        "rssBytes": 43376640,
+        "rssMiB": 41.3671875,
+        "pssBytes": 24108032,
+        "privateBytes": 21499904,
+        "allocatedArenaBytes": 3117696,
+        "freeArenaBytes": 1760640,
+        "mmapAllocatedBytes": 364544,
+        "rssDeltaFromPreviousBytes": -1155072,
+        "heapRssBytes": 2928640,
+        "anonymousRssBytes": 925696,
+        "qtGuiRssBytes": 5382144,
+        "qtWidgetsRssBytes": 3530752
+      }
+    ],
+    "keyObservations": [
+      {
+        "trigger": "Create empty QMenu and assign it to the tray",
+        "rssIncrementBytes": 1171456,
+        "rssIncrementMiB": 1.1171875,
+        "allocatedIncrementBytes": 295376,
+        "mappingDeltasBytes": {
+          "libQt6Widgets.so.6.4.2": 770048,
+          "libQt6Gui.so.6.4.2": 389120,
+          "[anonymous]": 12288
+        },
+        "meaning": "The first menu/widget/native-menu preparation touches substantially more Qt code than the actions themselves."
+      },
+      {
+        "trigger": "Populate menu with current icons/action labels",
+        "rssIncrementBytes": 495616,
+        "rssIncrementMiB": 0.47265625,
+        "allocatedIncrementBytes": 670128,
+        "meaning": "Keeping an empty QMenu eager and only deferring its contents is a sub-MiB locating result."
+      },
+      {
+        "trigger": "Entire menu vs tray icon only",
+        "rssIncrementBytes": 1667072,
+        "rssIncrementMiB": 1.58984375,
+        "allocatedIncrementBytes": 965504,
+        "meaning": "Worth an independent once-trimmed comparison; cannot directly subtract this pre-trim increment from the already-trimmed product."
+      },
+      {
+        "trigger": "Exactly one final glibc trim",
+        "rssReleasedBytes": 1155072,
+        "rssReleasedMiB": 1.1015625,
+        "allocatedDeltaBytes": 7776,
+        "trimReturned": 1,
+        "trimUsec": 239,
+        "meaning": "Confirms free allocator pages remain in standalone startup; does not support adding repeat trimming to product."
+      }
+    ],
+    "mappingMatch": "Trimmed probe QtGui 5,382,144 bytes vs product 5,386,240; QtWidgets 3,530,752 vs product 3,526,656. Tray/menu sequence largely explains the extra GUI code over an empty QApplication."
+  },
+  "cheapestNextMeasurements": [
+    {
+      "priority": 1,
+      "name": "Independent native tray-only versus full-menu once-trimmed control",
+      "method": "Two fresh standalone processes with identical QApplication, VisualStyle, brand and QSystemTrayIcon; each settles and trims exactly once at the same age, one never constructs QMenu and one creates the full current menu. Root must schedule quiet runs; no run was started.",
+      "answers": "How much of the observed 1.590 MiB whole-menu increment survives the existing startup trim?",
+      "acceptanceNeededBeforeProduction": "Native first right-click menu opens once at correct position with every action; default trigger/double-click remains activity; native exported menu behavior on GNOME/KDE remains intact."
+    },
+    {
+      "priority": 2,
+      "name": "Mapped segment permissions plus same-toolchain size/IPO build comparison",
+      "method": "Read-only readelf/stat already verified original measured binary SHA. Root can later record per-permission smaps for the resident executable and compare a standard Release -Os/IPO build under unchanged physical observer and contract/latency gates.",
+      "answers": "Does shrinking reachable resident code/rodata recover meaningful RSS rather than disk-only symbol bytes?",
+      "currentStaticEvidence": "Original measured binary .text size 0x191a0e; .bss only 0x268 bytes. Resident executable RSS 1.371 MiB is a ceiling, not predicted savings."
+    }
+  ],
+  "candidates": [
+    {
+      "rank": 1,
+      "name": "Defer whole tray QMenu until its first actual request",
+      "status": "most grounded cold candidate; production experiment not authorized",
+      "evidence": "1.590 MiB standalone pre-trim menu increment; 1.117 MiB from constructing empty menu alone.",
+      "benefitForecastMiB": null,
+      "limits": "Native APIs differ: Qt6.4.2 X11 mousePressEvent calls menu->popup before activated(Context), so merely assigning a menu in that signal misses first opening. Would need explicit native-supported popup for this route and retention after creation, with existing behavior on other routes. No backend or first-click runtime proof performed.",
+      "nativeQtSource": [
+        "work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/util/qsystemtrayicon_x11.cpp:87",
+        "work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/widgets/util/qsystemtrayicon.cpp:162",
+        "work/sanitizer-diagnosis/qtbase-everywhere-src-6.4.2/src/gui/platform/unix/dbustray/qstatusnotifieritemadaptor.cpp:133"
+      ]
+    },
+    {
+      "rank": 2,
+      "name": "Standard Release size optimization and IPO for owned code",
+      "status": "realistic small same-toolchain candidate; unmeasured",
+      "evidence": "1.371 MiB resident executable pages; current CMake uses default -O3 and no IPO. Exact measured binary hash was checked before readelf.",
+      "benefitForecastMiB": null,
+      "limits": "Cannot save more than owned resident pages and will usually save much less. Keep distro Qt dynamic, official SDK pinning/module ABI build identity, C++20, contracts and measured latency. Debug/symbol stripping on disk does not imply RSS savings."
+    },
+    {
+      "rank": 3,
+      "name": "Preserve exact brand/custom icons with less eager painting or scale allocation",
+      "status": "small conditional locator only; below main target",
+      "evidence": "Brand icon stage touches 716,800 bytes (0.684 MiB), mostly QtGui code, for 69,200 additional allocated bytes. Menu icons are already included in candidate1.",
+      "benefitForecastMiB": null,
+      "limits": "An exact pre-rendered brand asset or actual-DPR-only construction could avoid some first QPainter work, but QPixmap/native tray can touch the same code and decoder plugins. Avoid visual/DPR regression or new dependencies. No generated asset, product change or comparison was made; benefit may be zero. Do not add its menu savings to candidate1 twice."
+    }
+  ],
+  "rejectedOrLowPriority": [
+    {
+      "name": "Integer aliases or narrow operation/history IDs/counters",
+      "reason": "Aliases have identical widths; toy narrowing retained padding and empty cold has no dense data. Signed32 conflicts with existing2GiB limit. Prior evidence disproved a cold opportunity."
+    },
+    {
+      "name": "Drop or globally replace native style/fonts/dialogs",
+      "reason": "Explicitly disallowed. Existing same-binary style skip saved only753,664bytes and was rejected; preserve custom visuals."
+    },
+    {
+      "name": "More idle trim / allocator policy changes",
+      "reason": "Product already performs guarded successful startup trim. Previous post-view trim reclaimed only126,976bytes of mostly live widgets; no new product-free-page proof."
+    },
+    {
+      "name": "Defer journal initialization or unload QtSql after startup",
+      "reason": "Recovery/readiness/indexing are mandatory startup contracts. The entire current SQL closure is only1.613MiB and Qt plugin lifetime is not safely reducible by unloading an ordinary app object. Direct SQLite replacing QtSql alone would still keepSQLite and at most target0.383MiB of QtSql/plugin pages."
+    },
+    {
+      "name": "Late keychain/image-plugin cleanup",
+      "reason": "Keychain0.109MiB and allthreeimageplugins0.129MiB; too small for5MiB and tied to preserved capabilities."
+    },
+    {
+      "name": "Post-view native surfaces",
+      "reason": "Important separate root-owned work but allthreeviews are lazily absent in this cold workload; cannot claim their8MiBXorg/27MiBWayland allocations as cold saving."
+    },
+    {
+      "name": "Paid/new dependency/toolchain or moving cost to a helper",
+      "reason": "Outside constraints; no helper savings may ignore total memory."
+    }
+  ],
+  "recommendation": "Prioritize the once-trimmed whole-menu control, then owned Release size/IPO if root approves. This evidence does not support a cheap5MiB forecast or40MiB achievement; menu+executable accounting ceilings are below3MiB before overlap/realization. Do not invent another architecture change to fill the target.",
+  "productionChanges": [],
+  "newProductMeasurements": false,
+  "furtherProbeRuns": "None; quiet window released immediately after run001; root must schedule any repeat."
+}

@@ -1,0 +1,17 @@
+cmake_minimum_required(VERSION 3.24)
+project(putgd_native_cold_stages LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Widgets)
+get_filename_component(PUTGD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
+file(SHA256 "${PUTGD_ROOT}/src/ui/VisualStyle.cpp" STYLE_CPP_SHA)
+file(SHA256 "${PUTGD_ROOT}/src/ui/VisualStyle.h" STYLE_H_SHA)
+file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp" PROBE_CPP_SHA)
+add_executable(native-cold-stages main.cpp "${PUTGD_ROOT}/src/ui/VisualStyle.cpp")
+target_include_directories(native-cold-stages PRIVATE "${PUTGD_ROOT}/src")
+target_link_libraries(native-cold-stages PRIVATE Qt6::Widgets)
+target_compile_definitions(native-cold-stages PRIVATE
+  STYLE_CPP_SHA="${STYLE_CPP_SHA}" STYLE_H_SHA="${STYLE_H_SHA}"
+  PROBE_CPP_SHA="${PROBE_CPP_SHA}")
+target_compile_options(native-cold-stages PRIVATE -Wall -Wextra -Wpedantic)

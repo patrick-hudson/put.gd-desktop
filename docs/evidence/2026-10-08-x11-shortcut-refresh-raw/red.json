@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "dbus-run-session",
+    "--",
+    "xvfb-run",
+    "-a",
+    "env",
+    "QT_QPA_PLATFORM=xcb",
+    "build/dev/test_x11",
+    "mappingRefreshKeepsUnchangedChordGrabbed",
+    "-o",
+    "work/memory-surfaces/x11-grab-fix/red.xml,junitxml",
+    "-o",
+    "-,txt"
+  ],
+  "exitCode": 1,
+  "elapsedSeconds": 15.62407947803149
+}

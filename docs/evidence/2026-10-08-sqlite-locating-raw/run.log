@@ -1,0 +1,14 @@
+runRoot=/tmp/putgd-sqlite-latency-rollback-20261008T193548Z-ee5c51ea
+case=01 repeat=1 mode=reopen cache=2000 exit=0 valid=True wall=1.308s
+case=02 repeat=1 mode=connection cache=2000 exit=0 valid=True wall=1.172s
+case=03 repeat=1 mode=statements cache=2000 exit=0 valid=True wall=0.989s
+case=04 repeat=1 mode=reopen cache=512 exit=0 valid=True wall=0.515s
+case=05 repeat=1 mode=connection cache=512 exit=0 valid=True wall=1.067s
+case=06 repeat=1 mode=statements cache=512 exit=0 valid=True wall=1.149s
+case=07 repeat=2 mode=statements cache=512 exit=0 valid=True wall=1.033s
+case=08 repeat=2 mode=connection cache=512 exit=0 valid=True wall=1.038s
+case=09 repeat=2 mode=reopen cache=512 exit=0 valid=True wall=1.165s
+case=10 repeat=2 mode=statements cache=2000 exit=0 valid=True wall=1.175s
+case=11 repeat=2 mode=connection cache=2000 exit=0 valid=True wall=0.565s
+case=12 repeat=2 mode=reopen cache=2000 exit=0 valid=True wall=0.979s
+terminal=completed

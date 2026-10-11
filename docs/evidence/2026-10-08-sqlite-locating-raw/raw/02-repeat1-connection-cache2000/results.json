@@ -1,0 +1,1224 @@
+{
+    "actualJournal": "delete",
+    "cacheKiB": 2000,
+    "case": "connection",
+    "compileOptions": [
+        "ATOMIC_INTRINSICS=1",
+        "COMPILER=gcc-13.3.0",
+        "DEFAULT_AUTOVACUUM",
+        "DEFAULT_CACHE_SIZE=-2000",
+        "DEFAULT_FILE_FORMAT=4",
+        "DEFAULT_JOURNAL_SIZE_LIMIT=-1",
+        "DEFAULT_MMAP_SIZE=0",
+        "DEFAULT_PAGE_SIZE=4096",
+        "DEFAULT_PCACHE_INITSZ=20",
+        "DEFAULT_RECURSIVE_TRIGGERS",
+        "DEFAULT_SECTOR_SIZE=4096",
+        "DEFAULT_SYNCHRONOUS=2",
+        "DEFAULT_WAL_AUTOCHECKPOINT=1000",
+        "DEFAULT_WAL_SYNCHRONOUS=2",
+        "DEFAULT_WORKER_THREADS=0",
+        "DIRECT_OVERFLOW_READ",
+        "ENABLE_COLUMN_METADATA",
+        "ENABLE_DBSTAT_VTAB",
+        "ENABLE_FTS3",
+        "ENABLE_FTS3_PARENTHESIS",
+        "ENABLE_FTS3_TOKENIZER",
+        "ENABLE_FTS4",
+        "ENABLE_FTS5",
+        "ENABLE_LOAD_EXTENSION",
+        "ENABLE_MATH_FUNCTIONS",
+        "ENABLE_PREUPDATE_HOOK",
+        "ENABLE_RTREE",
+        "ENABLE_SESSION",
+        "ENABLE_STMTVTAB",
+        "ENABLE_UNLOCK_NOTIFY",
+        "ENABLE_UPDATE_DELETE_LIMIT",
+        "HAVE_ISNAN",
+        "LIKE_DOESNT_MATCH_BLOBS",
+        "MALLOC_SOFT_LIMIT=1024",
+        "MAX_ATTACHED=10",
+        "MAX_COLUMN=2000",
+        "MAX_COMPOUND_SELECT=500",
+        "MAX_DEFAULT_PAGE_SIZE=32768",
+        "MAX_EXPR_DEPTH=1000",
+        "MAX_FUNCTION_ARG=127",
+        "MAX_LENGTH=1000000000",
+        "MAX_LIKE_PATTERN_LENGTH=50000",
+        "MAX_MMAP_SIZE=0x7fff0000",
+        "MAX_PAGE_COUNT=0xfffffffe",
+        "MAX_PAGE_SIZE=65536",
+        "MAX_SCHEMA_RETRY=25",
+        "MAX_SQL_LENGTH=1000000000",
+        "MAX_TRIGGER_DEPTH=1000",
+        "MAX_VARIABLE_NUMBER=250000",
+        "MAX_VDBE_OP=250000000",
+        "MAX_WORKER_THREADS=8",
+        "MUTEX_PTHREADS",
+        "SECURE_DELETE",
+        "SOUNDEX",
+        "SYSTEM_MALLOC",
+        "TEMP_STORE=1",
+        "THREADSAFE=1",
+        "USE_URI"
+    ],
+    "controlledLock": {
+        "injectedHoldMs": 100,
+        "limit": "Deliberately held BEGIN EXCLUSIVE models lock overlap, not measured fsync latency or the product commit.",
+        "readerThenWriter": {
+            "beginNs": 10761,
+            "bindNs": 14384,
+            "commitNs": 3996189,
+            "connectionSetupNs": 6981,
+            "endNs": 261283508804224,
+            "executeNs": 272828,
+            "foreignKeysNs": 18011,
+            "openNs": 83280,
+            "permissionsNs": 15053,
+            "policyNs": 283531,
+            "prepareNs": 78101,
+            "userVersionNs": 179213288
+        },
+        "writer": {
+            "commitNs": 76647254,
+            "commitStartNs": 261283424789766,
+            "connectionSetupNs": 29900,
+            "foreignKeysNs": 20671,
+            "heldStartNs": 261283324639569,
+            "openNs": 122589,
+            "permissionsNs": 21342,
+            "policyNs": 132512,
+            "releasedNs": 261283501468380,
+            "userVersionNs": 112231
+        }
+    },
+    "integrityVerified": true,
+    "memory": {
+        "cacheKiBSetting": -2000,
+        "limit": "Process RSS is not SQLite allocation accounting; no glibc trim. Synthetic 10000-row scan only.",
+        "pageBytes": 4096,
+        "pageCount": 678,
+        "rssAfterRescanKiB": 18016,
+        "rssAfterScanKiB": 14820,
+        "rssAfterShrinkKiB": 14820,
+        "rssBeforeKiB": 12728,
+        "scanAfterShrinkNs": 15987282,
+        "scanBeforeShrinkNs": 17008592,
+        "shrinkNs": 169503
+    },
+    "persistentClose": {
+        "closeNs": 23046
+    },
+    "persistentOpen": {
+        "connectionSetupNs": 18381,
+        "foreignKeysNs": 33582,
+        "openNs": 183407,
+        "permissionsNs": 28634,
+        "policyNs": 313020,
+        "userVersionNs": 78765
+    },
+    "qtVersion": "6.4.2",
+    "requestedJournal": "DELETE",
+    "samples": [
+        {
+            "ordinal": 1,
+            "phases": [
+                {
+                    "beginNs": 11796,
+                    "bindNs": 19427,
+                    "commitNs": 2523614,
+                    "executeNs": 313143,
+                    "prepareNs": 109565,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 26682,
+                    "bindNs": 11792,
+                    "commitNs": 2281224,
+                    "executeNs": 244857,
+                    "prepareNs": 121374,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 22706,
+                    "bindNs": 14335,
+                    "commitNs": 2452008,
+                    "executeNs": 268322,
+                    "prepareNs": 88660,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8818274,
+            "warmup": true
+        },
+        {
+            "ordinal": 2,
+            "phases": [
+                {
+                    "beginNs": 29698,
+                    "bindNs": 35962,
+                    "commitNs": 2631364,
+                    "executeNs": 323371,
+                    "prepareNs": 91853,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 26058,
+                    "bindNs": 12365,
+                    "commitNs": 2309256,
+                    "executeNs": 261800,
+                    "prepareNs": 88541,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 21508,
+                    "bindNs": 9862,
+                    "commitNs": 2526118,
+                    "executeNs": 238868,
+                    "prepareNs": 75752,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8947645,
+            "warmup": true
+        },
+        {
+            "ordinal": 3,
+            "phases": [
+                {
+                    "beginNs": 27982,
+                    "bindNs": 11782,
+                    "commitNs": 2448476,
+                    "executeNs": 295326,
+                    "prepareNs": 88988,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 28420,
+                    "bindNs": 11390,
+                    "commitNs": 2575055,
+                    "executeNs": 292198,
+                    "prepareNs": 90567,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 24411,
+                    "bindNs": 13884,
+                    "commitNs": 2522108,
+                    "executeNs": 331770,
+                    "prepareNs": 96284,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 9128552,
+            "warmup": true
+        },
+        {
+            "ordinal": 4,
+            "phases": [
+                {
+                    "beginNs": 44963,
+                    "bindNs": 18090,
+                    "commitNs": 2593601,
+                    "executeNs": 309049,
+                    "prepareNs": 117494,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 81168,
+                    "bindNs": 17886,
+                    "commitNs": 3499594,
+                    "executeNs": 363142,
+                    "prepareNs": 138653,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 26664,
+                    "bindNs": 10610,
+                    "commitNs": 5338013,
+                    "executeNs": 237683,
+                    "prepareNs": 88112,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 13275781,
+            "warmup": true
+        },
+        {
+            "ordinal": 5,
+            "phases": [
+                {
+                    "beginNs": 31797,
+                    "bindNs": 11340,
+                    "commitNs": 4530619,
+                    "executeNs": 255217,
+                    "prepareNs": 95545,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 31870,
+                    "bindNs": 16967,
+                    "commitNs": 3099269,
+                    "executeNs": 363329,
+                    "prepareNs": 126925,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 35710,
+                    "bindNs": 11383,
+                    "commitNs": 2260694,
+                    "executeNs": 265705,
+                    "prepareNs": 149110,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 11613328,
+            "warmup": true
+        },
+        {
+            "ordinal": 6,
+            "phases": [
+                {
+                    "beginNs": 30759,
+                    "bindNs": 15289,
+                    "commitNs": 2604994,
+                    "executeNs": 349182,
+                    "prepareNs": 110563,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 28585,
+                    "bindNs": 12948,
+                    "commitNs": 2358867,
+                    "executeNs": 277504,
+                    "prepareNs": 135782,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 20208,
+                    "bindNs": 8819,
+                    "commitNs": 2222365,
+                    "executeNs": 346194,
+                    "prepareNs": 66136,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8869083,
+            "warmup": false
+        },
+        {
+            "ordinal": 7,
+            "phases": [
+                {
+                    "beginNs": 42954,
+                    "bindNs": 12183,
+                    "commitNs": 2299949,
+                    "executeNs": 276773,
+                    "prepareNs": 117962,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 22118,
+                    "bindNs": 7638,
+                    "commitNs": 1834512,
+                    "executeNs": 171210,
+                    "prepareNs": 78271,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 11717,
+                    "bindNs": 5697,
+                    "commitNs": 1753439,
+                    "executeNs": 121881,
+                    "prepareNs": 49888,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 6983518,
+            "warmup": false
+        },
+        {
+            "ordinal": 8,
+            "phases": [
+                {
+                    "beginNs": 9506,
+                    "bindNs": 4173,
+                    "commitNs": 1754479,
+                    "executeNs": 99282,
+                    "prepareNs": 34135,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 8773,
+                    "bindNs": 3873,
+                    "commitNs": 1706606,
+                    "executeNs": 95119,
+                    "prepareNs": 32625,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 21154,
+                    "bindNs": 6696,
+                    "commitNs": 1741888,
+                    "executeNs": 132561,
+                    "prepareNs": 60587,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 5847951,
+            "warmup": false
+        },
+        {
+            "ordinal": 9,
+            "phases": [
+                {
+                    "beginNs": 13608,
+                    "bindNs": 4812,
+                    "commitNs": 1932829,
+                    "executeNs": 102925,
+                    "prepareNs": 40891,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 10632,
+                    "bindNs": 4893,
+                    "commitNs": 1745135,
+                    "executeNs": 95239,
+                    "prepareNs": 38111,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 7956,
+                    "bindNs": 3044,
+                    "commitNs": 1663017,
+                    "executeNs": 78455,
+                    "prepareNs": 25609,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 5862321,
+            "warmup": false
+        },
+        {
+            "ordinal": 10,
+            "phases": [
+                {
+                    "beginNs": 8321,
+                    "bindNs": 3142,
+                    "commitNs": 1772287,
+                    "executeNs": 83184,
+                    "prepareNs": 26388,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 7856,
+                    "bindNs": 3063,
+                    "commitNs": 1931841,
+                    "executeNs": 76881,
+                    "prepareNs": 25522,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 7580,
+                    "bindNs": 3138,
+                    "commitNs": 1722432,
+                    "executeNs": 73605,
+                    "prepareNs": 25410,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 5848217,
+            "warmup": false
+        },
+        {
+            "ordinal": 11,
+            "phases": [
+                {
+                    "beginNs": 6914,
+                    "bindNs": 3027,
+                    "commitNs": 1713967,
+                    "executeNs": 68462,
+                    "prepareNs": 22899,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 7285,
+                    "bindNs": 2906,
+                    "commitNs": 1879657,
+                    "executeNs": 71939,
+                    "prepareNs": 24765,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 13287,
+                    "bindNs": 7095,
+                    "commitNs": 1948484,
+                    "executeNs": 159675,
+                    "prepareNs": 41367,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 6075842,
+            "warmup": false
+        },
+        {
+            "ordinal": 12,
+            "phases": [
+                {
+                    "beginNs": 25154,
+                    "bindNs": 6812,
+                    "commitNs": 2347942,
+                    "executeNs": 134004,
+                    "prepareNs": 65051,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 7025,
+                    "bindNs": 3016,
+                    "commitNs": 1726507,
+                    "executeNs": 88148,
+                    "prepareNs": 26813,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 8357,
+                    "bindNs": 3478,
+                    "commitNs": 1557973,
+                    "executeNs": 79033,
+                    "prepareNs": 32353,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 6207510,
+            "warmup": false
+        },
+        {
+            "ordinal": 13,
+            "phases": [
+                {
+                    "beginNs": 6822,
+                    "bindNs": 3110,
+                    "commitNs": 1710402,
+                    "executeNs": 70200,
+                    "prepareNs": 22721,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 6452,
+                    "bindNs": 2947,
+                    "commitNs": 1627493,
+                    "executeNs": 66744,
+                    "prepareNs": 21706,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 16083,
+                    "bindNs": 5855,
+                    "commitNs": 1673345,
+                    "executeNs": 94260,
+                    "prepareNs": 52951,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 5471399,
+            "warmup": false
+        },
+        {
+            "ordinal": 14,
+            "phases": [
+                {
+                    "beginNs": 8703,
+                    "bindNs": 3765,
+                    "commitNs": 2017988,
+                    "executeNs": 77344,
+                    "prepareNs": 40918,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 6757,
+                    "bindNs": 2855,
+                    "commitNs": 1752992,
+                    "executeNs": 70286,
+                    "prepareNs": 23727,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 6856,
+                    "bindNs": 2944,
+                    "commitNs": 1831153,
+                    "executeNs": 67006,
+                    "prepareNs": 22835,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 6010206,
+            "warmup": false
+        },
+        {
+            "ordinal": 15,
+            "phases": [
+                {
+                    "beginNs": 6280,
+                    "bindNs": 3046,
+                    "commitNs": 1820379,
+                    "executeNs": 68568,
+                    "prepareNs": 33189,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 6234,
+                    "bindNs": 2766,
+                    "commitNs": 1905070,
+                    "executeNs": 74715,
+                    "prepareNs": 21494,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 6047,
+                    "bindNs": 2906,
+                    "commitNs": 1564611,
+                    "executeNs": 68893,
+                    "prepareNs": 26213,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 5678124,
+            "warmup": false
+        },
+        {
+            "ordinal": 16,
+            "phases": [
+                {
+                    "beginNs": 6692,
+                    "bindNs": 2857,
+                    "commitNs": 1451933,
+                    "executeNs": 66627,
+                    "prepareNs": 21609,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 5877,
+                    "bindNs": 2569,
+                    "commitNs": 1947863,
+                    "executeNs": 64532,
+                    "prepareNs": 20595,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 7184,
+                    "bindNs": 2997,
+                    "commitNs": 2773662,
+                    "executeNs": 74763,
+                    "prepareNs": 23513,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 6545294,
+            "warmup": false
+        },
+        {
+            "ordinal": 17,
+            "phases": [
+                {
+                    "beginNs": 12946,
+                    "bindNs": 4342,
+                    "commitNs": 2851289,
+                    "executeNs": 99325,
+                    "prepareNs": 34784,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 23966,
+                    "bindNs": 6063,
+                    "commitNs": 2880825,
+                    "executeNs": 143552,
+                    "prepareNs": 65105,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 16263,
+                    "bindNs": 5975,
+                    "commitNs": 1962540,
+                    "executeNs": 129804,
+                    "prepareNs": 49263,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8422878,
+            "warmup": false
+        },
+        {
+            "ordinal": 18,
+            "phases": [
+                {
+                    "beginNs": 27435,
+                    "bindNs": 5276,
+                    "commitNs": 1745865,
+                    "executeNs": 110477,
+                    "prepareNs": 44102,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 11181,
+                    "bindNs": 4864,
+                    "commitNs": 1905791,
+                    "executeNs": 113153,
+                    "prepareNs": 39085,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 12750,
+                    "bindNs": 5498,
+                    "commitNs": 1900845,
+                    "executeNs": 129943,
+                    "prepareNs": 45975,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 6243976,
+            "warmup": false
+        },
+        {
+            "ordinal": 19,
+            "phases": [
+                {
+                    "beginNs": 32379,
+                    "bindNs": 6805,
+                    "commitNs": 2245813,
+                    "executeNs": 137744,
+                    "prepareNs": 86651,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 18050,
+                    "bindNs": 6769,
+                    "commitNs": 1927861,
+                    "executeNs": 167333,
+                    "prepareNs": 57240,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 15866,
+                    "bindNs": 6275,
+                    "commitNs": 2107796,
+                    "executeNs": 149506,
+                    "prepareNs": 53097,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 7188487,
+            "warmup": false
+        },
+        {
+            "ordinal": 20,
+            "phases": [
+                {
+                    "beginNs": 22907,
+                    "bindNs": 26087,
+                    "commitNs": 2339218,
+                    "executeNs": 224517,
+                    "prepareNs": 84788,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 17667,
+                    "bindNs": 7861,
+                    "commitNs": 2077243,
+                    "executeNs": 187460,
+                    "prepareNs": 60463,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 19325,
+                    "bindNs": 7648,
+                    "commitNs": 2272478,
+                    "executeNs": 197536,
+                    "prepareNs": 63683,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 7824077,
+            "warmup": false
+        },
+        {
+            "ordinal": 21,
+            "phases": [
+                {
+                    "beginNs": 19675,
+                    "bindNs": 7534,
+                    "commitNs": 2528699,
+                    "executeNs": 202710,
+                    "prepareNs": 70652,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 25538,
+                    "bindNs": 14221,
+                    "commitNs": 2537133,
+                    "executeNs": 265812,
+                    "prepareNs": 113135,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 48561,
+                    "bindNs": 9375,
+                    "commitNs": 2420449,
+                    "executeNs": 224443,
+                    "prepareNs": 84856,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8876781,
+            "warmup": false
+        },
+        {
+            "ordinal": 22,
+            "phases": [
+                {
+                    "beginNs": 24026,
+                    "bindNs": 16973,
+                    "commitNs": 2248261,
+                    "executeNs": 302982,
+                    "prepareNs": 72332,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 25414,
+                    "bindNs": 9405,
+                    "commitNs": 2019274,
+                    "executeNs": 239541,
+                    "prepareNs": 86750,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 23808,
+                    "bindNs": 8639,
+                    "commitNs": 2106502,
+                    "executeNs": 204482,
+                    "prepareNs": 82811,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 7732742,
+            "warmup": false
+        },
+        {
+            "ordinal": 23,
+            "phases": [
+                {
+                    "beginNs": 20592,
+                    "bindNs": 8815,
+                    "commitNs": 3120155,
+                    "executeNs": 258522,
+                    "prepareNs": 70119,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 24176,
+                    "bindNs": 9782,
+                    "commitNs": 2293942,
+                    "executeNs": 218129,
+                    "prepareNs": 86537,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 19907,
+                    "bindNs": 8734,
+                    "commitNs": 2363896,
+                    "executeNs": 188821,
+                    "prepareNs": 96957,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 9024557,
+            "warmup": false
+        },
+        {
+            "ordinal": 24,
+            "phases": [
+                {
+                    "beginNs": 20702,
+                    "bindNs": 11192,
+                    "commitNs": 2226112,
+                    "executeNs": 221446,
+                    "prepareNs": 75666,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 18496,
+                    "bindNs": 7329,
+                    "commitNs": 1982525,
+                    "executeNs": 179884,
+                    "prepareNs": 64089,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 19986,
+                    "bindNs": 7984,
+                    "commitNs": 2560201,
+                    "executeNs": 203225,
+                    "prepareNs": 65242,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 7882161,
+            "warmup": false
+        },
+        {
+            "ordinal": 25,
+            "phases": [
+                {
+                    "beginNs": 22387,
+                    "bindNs": 8620,
+                    "commitNs": 2371418,
+                    "executeNs": 220565,
+                    "prepareNs": 73311,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 30834,
+                    "bindNs": 12822,
+                    "commitNs": 2357462,
+                    "executeNs": 308469,
+                    "prepareNs": 103884,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 20956,
+                    "bindNs": 8342,
+                    "commitNs": 2341931,
+                    "executeNs": 194104,
+                    "prepareNs": 72735,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8402537,
+            "warmup": false
+        },
+        {
+            "ordinal": 26,
+            "phases": [
+                {
+                    "beginNs": 30963,
+                    "bindNs": 14063,
+                    "commitNs": 2461419,
+                    "executeNs": 275683,
+                    "prepareNs": 112399,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 29771,
+                    "bindNs": 8818,
+                    "commitNs": 2194294,
+                    "executeNs": 229111,
+                    "prepareNs": 86652,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 18411,
+                    "bindNs": 7772,
+                    "commitNs": 2117759,
+                    "executeNs": 208020,
+                    "prepareNs": 70071,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8163625,
+            "warmup": false
+        },
+        {
+            "ordinal": 27,
+            "phases": [
+                {
+                    "beginNs": 17751,
+                    "bindNs": 7535,
+                    "commitNs": 2116412,
+                    "executeNs": 177395,
+                    "prepareNs": 61366,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 24847,
+                    "bindNs": 8459,
+                    "commitNs": 2346483,
+                    "executeNs": 202640,
+                    "prepareNs": 75593,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 23608,
+                    "bindNs": 10871,
+                    "commitNs": 2038828,
+                    "executeNs": 191162,
+                    "prepareNs": 62321,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 7605032,
+            "warmup": false
+        },
+        {
+            "ordinal": 28,
+            "phases": [
+                {
+                    "beginNs": 17488,
+                    "bindNs": 6979,
+                    "commitNs": 2223682,
+                    "executeNs": 201567,
+                    "prepareNs": 61125,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 24132,
+                    "bindNs": 8883,
+                    "commitNs": 2213797,
+                    "executeNs": 218880,
+                    "prepareNs": 73680,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 46502,
+                    "bindNs": 10355,
+                    "commitNs": 2448181,
+                    "executeNs": 189756,
+                    "prepareNs": 88435,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8072589,
+            "warmup": false
+        },
+        {
+            "ordinal": 29,
+            "phases": [
+                {
+                    "beginNs": 23548,
+                    "bindNs": 9687,
+                    "commitNs": 2671873,
+                    "executeNs": 227979,
+                    "prepareNs": 98870,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 22540,
+                    "bindNs": 9219,
+                    "commitNs": 3494752,
+                    "executeNs": 211773,
+                    "prepareNs": 66650,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 29460,
+                    "bindNs": 11609,
+                    "commitNs": 3533036,
+                    "executeNs": 226218,
+                    "prepareNs": 134514,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 11035434,
+            "warmup": false
+        },
+        {
+            "ordinal": 30,
+            "phases": [
+                {
+                    "beginNs": 86162,
+                    "bindNs": 12322,
+                    "commitNs": 3385795,
+                    "executeNs": 260441,
+                    "prepareNs": 124227,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 22620,
+                    "bindNs": 9639,
+                    "commitNs": 2254446,
+                    "executeNs": 198395,
+                    "prepareNs": 111682,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 27545,
+                    "bindNs": 8726,
+                    "commitNs": 2311413,
+                    "executeNs": 197688,
+                    "prepareNs": 85038,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 9344209,
+            "warmup": false
+        },
+        {
+            "ordinal": 31,
+            "phases": [
+                {
+                    "beginNs": 25099,
+                    "bindNs": 11904,
+                    "commitNs": 2388540,
+                    "executeNs": 252148,
+                    "prepareNs": 106288,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 20171,
+                    "bindNs": 8356,
+                    "commitNs": 2282561,
+                    "executeNs": 195531,
+                    "prepareNs": 69710,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 19292,
+                    "bindNs": 7492,
+                    "commitNs": 2429441,
+                    "executeNs": 304455,
+                    "prepareNs": 66590,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8412210,
+            "warmup": false
+        },
+        {
+            "ordinal": 32,
+            "phases": [
+                {
+                    "beginNs": 25430,
+                    "bindNs": 31477,
+                    "commitNs": 2296303,
+                    "executeNs": 194870,
+                    "prepareNs": 92849,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 21492,
+                    "bindNs": 11486,
+                    "commitNs": 2613999,
+                    "executeNs": 247353,
+                    "prepareNs": 70834,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 24178,
+                    "bindNs": 10347,
+                    "commitNs": 2383833,
+                    "executeNs": 271709,
+                    "prepareNs": 101733,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 8664251,
+            "warmup": false
+        },
+        {
+            "ordinal": 33,
+            "phases": [
+                {
+                    "beginNs": 30066,
+                    "bindNs": 12827,
+                    "commitNs": 2318249,
+                    "executeNs": 360809,
+                    "prepareNs": 97222,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 37234,
+                    "bindNs": 10395,
+                    "commitNs": 168797301,
+                    "executeNs": 281258,
+                    "prepareNs": 85629,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 14296,
+                    "bindNs": 3939,
+                    "commitNs": 1827745,
+                    "executeNs": 82499,
+                    "prepareNs": 36375,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 174219601,
+            "warmup": false
+        },
+        {
+            "ordinal": 34,
+            "phases": [
+                {
+                    "beginNs": 5971,
+                    "bindNs": 2273,
+                    "commitNs": 2353959,
+                    "executeNs": 58480,
+                    "prepareNs": 19147,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 5237,
+                    "bindNs": 2148,
+                    "commitNs": 1762209,
+                    "executeNs": 51251,
+                    "prepareNs": 17255,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 5559,
+                    "bindNs": 2160,
+                    "commitNs": 2014904,
+                    "executeNs": 53797,
+                    "prepareNs": 18687,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 6490846,
+            "warmup": false
+        },
+        {
+            "ordinal": 35,
+            "phases": [
+                {
+                    "beginNs": 36487,
+                    "bindNs": 7885,
+                    "commitNs": 1720787,
+                    "executeNs": 108235,
+                    "prepareNs": 60632,
+                    "state": "accepted"
+                },
+                {
+                    "beginNs": 5118,
+                    "bindNs": 1978,
+                    "commitNs": 1871778,
+                    "executeNs": 49791,
+                    "prepareNs": 16800,
+                    "state": "acquiring"
+                },
+                {
+                    "beginNs": 4964,
+                    "bindNs": 1941,
+                    "commitNs": 1932120,
+                    "executeNs": 48567,
+                    "prepareNs": 16570,
+                    "state": "cancelled"
+                }
+            ],
+            "wallNs": 5959968,
+            "warmup": false
+        }
+    ],
+    "schemaVersion": 1,
+    "scope": "Standalone Qt SQL synthetic locating; no production services/desktop/clipboard/network. Not a product memory/timing gate.",
+    "scoredSamples": 30,
+    "setup": {
+        "connectionSetupNs": 1126916,
+        "foreignKeysNs": 50824,
+        "openNs": 297230,
+        "permissionsNs": 11891,
+        "policyNs": 180596
+    },
+    "sqliteSourceId": "2024-01-30 16:01:20 e876e51a0ed5c5b3126f52e532044363a014bc594cfefa87ffb5b82257ccalt1",
+    "sqliteVersion": "3.45.1",
+    "state": "completed",
+    "synchronous": 2,
+    "warmups": 5
+}

@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="desktop-lab" tests="1" failures="1"><testcase name="clipboard-text-independent-paste" classname="cinnamon-x11" time="14.270621925999876"><failure message="Independent fixture is obscured; focus witnesses preserved" /></testcase></testsuite>

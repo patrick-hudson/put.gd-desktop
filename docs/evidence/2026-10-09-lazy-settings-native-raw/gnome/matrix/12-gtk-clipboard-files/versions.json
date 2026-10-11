@@ -1,0 +1,18 @@
+{
+  "kernel": "7.0.0-38-generic",
+  "packages": [
+    "cinnamon ",
+    "gjs 1.88.0-1",
+    "gnome-shell 50.1-0ubuntu1.2",
+    "libqt6core6 ",
+    "libqt6core6t64 6.10.2+dfsg-7",
+    "mutter ",
+    "mutter-common 50.1-0ubuntu2.2",
+    "mutter-common-bin 50.1-0ubuntu2.2",
+    "putgd 0.1.1~dev.45+g9d142919e5e6.dirty",
+    "xdg-desktop-portal 1.21.1+ds-1ubuntu3.1",
+    "xdg-desktop-portal-backend ",
+    "xdg-desktop-portal-gnome 50.0-0ubuntu1",
+    "xdg-desktop-portal-gtk 1.15.3-2ubuntu1"
+  ]
+}

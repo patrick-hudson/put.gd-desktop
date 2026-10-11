@@ -1,0 +1,1863 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T04:10:11.514188+00:00",
+  "compositor": "Cinnamon/X11",
+  "candidateCommit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+  "candidateTree": "1d52541f244a281c9789f06e3c5793e67b9d928d",
+  "version": "0.1.1-dev.43+gf56dc72de4fe",
+  "archiveSha256": "9044b524edcdff27d3839334fccb56b6edc0caa9f77b43257620474a3f621505",
+  "packageSha256": "976d6f3448e2a2358fd2cd9c703f5a6aa8be48e75631f31f4869498dad862c9e",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b",
+    "/usr/bin/putgd-cli": "8b6bdd5b0c2a83053fe631b1fa428e56616fa2523dc479c73ab1b13805988dca",
+    "/usr/bin/putgd-ui": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+  },
+  "resident": {
+    "pid": 58975,
+    "startTicks": 2551462,
+    "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+  },
+  "helperIdentities": [
+    {
+      "attempt": "attempts/20261009T034642921403-show",
+      "view": "settings",
+      "helper": {
+        "pid": 67700,
+        "startTicks": 2608316,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T034855643015-show",
+      "view": "settings",
+      "helper": {
+        "pid": 68472,
+        "startTicks": 2621572,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T034905204301-show",
+      "view": "settings",
+      "helper": {
+        "pid": 69063,
+        "startTicks": 2622523,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035147398530-show",
+      "view": "history",
+      "helper": {
+        "pid": 70484,
+        "startTicks": 2638760,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035612342484-show",
+      "view": "history",
+      "helper": {
+        "pid": 71512,
+        "startTicks": 2665244,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035624150133-show",
+      "view": "activity",
+      "helper": {
+        "pid": 72073,
+        "startTicks": 2666424,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      }
+    }
+  ],
+  "nativeMatrix": {
+    "passedCases": 12,
+    "caseCount": 12,
+    "cases": [
+      {
+        "client": "qt",
+        "scenario": "region",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "885c9a6bd4544e9996a66eea0b5980c5",
+          "profile": "cinnamon-x11",
+          "scenario": "region-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "06e4f35a-b4b2-4418-adbc-024ffe1b8d73",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "TARGETS",
+              "MULTIPLE",
+              "TIMESTAMP",
+              "SAVE_TARGETS",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 60,
+              "saved": true,
+              "width": 80
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 80,
+            "height": 60,
+            "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-1/final-head0.ppm",
+            "sha256": "6e1064fb3e051b36d33be91b6c36c5c6b8b749aefdaabff31a4295ef4b8b0192"
+          },
+          "elapsedSeconds": 8.532676495029591,
+          "evidenceDirectory": "tests/885c9a6bd4544e9996a66eea0b5980c5"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-1"
+      },
+      {
+        "client": "qt",
+        "scenario": "window",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "90d553b6b9d74344b1422956a5962a4d",
+          "profile": "cinnamon-x11",
+          "scenario": "window-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "5ac337f5-1e9c-4327-bc1c-6766b006daf0",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 640,
+            "height": 452,
+            "sha256": "09b5555c6eeabbc4875827438467418bafd1bfa1cd0cf8f9ef6678f27d19b06c"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "TARGETS",
+              "MULTIPLE",
+              "TIMESTAMP",
+              "SAVE_TARGETS",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 452,
+              "saved": true,
+              "width": 640
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 640,
+            "height": 452,
+            "sha256": "09b5555c6eeabbc4875827438467418bafd1bfa1cd0cf8f9ef6678f27d19b06c"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-2/final-head0.ppm",
+            "sha256": "be4cd68e31996fff3cca7752ecfb92643761c6ec2c07506e55b29d1763e05263"
+          },
+          "elapsedSeconds": 7.549655769020319,
+          "evidenceDirectory": "tests/90d553b6b9d74344b1422956a5962a4d"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-2"
+      },
+      {
+        "client": "qt",
+        "scenario": "desktop",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "ba89d8f617e844f59e08f815cea6baba",
+          "profile": "cinnamon-x11",
+          "scenario": "desktop-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "b7160913-3cf0-4567-9855-1f81aff9d82e",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 1280,
+            "height": 800,
+            "sha256": "1e6518541083ac8c1d2205f8c449554b3f52d3eb26ff33d1741ba8c1a7057829"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "TARGETS",
+              "MULTIPLE",
+              "TIMESTAMP",
+              "SAVE_TARGETS",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 800,
+              "saved": true,
+              "width": 1280
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 1280,
+            "height": 800,
+            "sha256": "1e6518541083ac8c1d2205f8c449554b3f52d3eb26ff33d1741ba8c1a7057829"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-3/final-head0.ppm",
+            "sha256": "be4cd68e31996fff3cca7752ecfb92643761c6ec2c07506e55b29d1763e05263"
+          },
+          "elapsedSeconds": 8.050831265980378,
+          "evidenceDirectory": "tests/ba89d8f617e844f59e08f815cea6baba"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-3"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-text",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "68ddf7c3b03d4aa0931ea26d861034aa",
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-text-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "186430a3-c843-4d16-a492-23f613f004f3",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "formats": [
+              "text/plain",
+              "TARGETS",
+              "MULTIPLE",
+              "TIMESTAMP",
+              "SAVE_TARGETS"
+            ],
+            "schemaVersion": 1,
+            "text": "putgd synthetic clipboard text"
+          },
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain",
+                "TARGETS",
+                "MULTIPLE",
+                "TIMESTAMP",
+                "SAVE_TARGETS"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-4/final-head0.ppm",
+            "sha256": "be4cd68e31996fff3cca7752ecfb92643761c6ec2c07506e55b29d1763e05263"
+          },
+          "elapsedSeconds": 7.066666796046775,
+          "evidenceDirectory": "tests/68ddf7c3b03d4aa0931ea26d861034aa"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-4"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-image",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "fa4be2fea4a84bec859a11becdd2b87f",
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-image-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "dd7c69ce-708a-4c4d-88b1-d85abf4738c4",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "pasteMetadata": {
+            "formats": [
+              "image/png",
+              "TARGETS",
+              "MULTIPLE",
+              "TIMESTAMP",
+              "SAVE_TARGETS",
+              "application/x-qt-image"
+            ],
+            "image": {
+              "height": 64,
+              "saved": true,
+              "width": 96
+            },
+            "schemaVersion": 1
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-5/final-head0.ppm",
+            "sha256": "be4cd68e31996fff3cca7752ecfb92643761c6ec2c07506e55b29d1763e05263"
+          },
+          "elapsedSeconds": 8.570273777004331,
+          "evidenceDirectory": "tests/fa4be2fea4a84bec859a11becdd2b87f"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-5"
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-files",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "83dff96b1b3143b4b59f5b942fed9dd4",
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-files-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "5ed52c1d-5e0b-4cce-aa21-1842f01616cf",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            },
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "formats": [
+              "text/uri-list",
+              "text/plain",
+              "TARGETS",
+              "MULTIPLE",
+              "TIMESTAMP",
+              "SAVE_TARGETS"
+            ],
+            "schemaVersion": 1,
+            "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\n",
+            "urls": [
+              "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+              "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+            ]
+          },
+          "paste": {
+            "ok": true
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-6/final-head0.ppm",
+            "sha256": "be4cd68e31996fff3cca7752ecfb92643761c6ec2c07506e55b29d1763e05263"
+          },
+          "elapsedSeconds": 7.632866576954257,
+          "evidenceDirectory": "tests/83dff96b1b3143b4b59f5b942fed9dd4"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-6"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-escape",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "761da57c07b5482fbd8f7c0b6276356a",
+          "profile": "cinnamon-x11",
+          "scenario": "region-cancel-escape-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "13d7dde0-1ec6-45ee-8d94-b5d3967178dd",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-7/final-head0.ppm",
+            "sha256": "be4cd68e31996fff3cca7752ecfb92643761c6ec2c07506e55b29d1763e05263"
+          },
+          "elapsedSeconds": 7.424183939001523,
+          "evidenceDirectory": "tests/761da57c07b5482fbd8f7c0b6276356a"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-7"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-right-click",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "4520ce4973e547789cf54442a87b3618",
+          "profile": "cinnamon-x11",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "ba912552-85c0-44a3-a8c7-a790cff42e58",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-8/final-head0.ppm",
+            "sha256": "002b5f462509124b0b3756c56ea3736a3260a5de1da8720f64e97d3ef42d8afc"
+          },
+          "elapsedSeconds": 7.505815821990836,
+          "evidenceDirectory": "tests/4520ce4973e547789cf54442a87b3618"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-8"
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-zero-area",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "c6aeeed72e4741218d8e4334c0454dc3",
+          "profile": "cinnamon-x11",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "qt",
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "parameters": "parameters.json",
+          "operationId": "04ace351-72be-4c8c-ba23-a37f5227646c",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "itemOutcomes": [],
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "formats": [
+                "text/plain"
+              ],
+              "schemaVersion": 1,
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-9/final-head0.ppm",
+            "sha256": "002b5f462509124b0b3756c56ea3736a3260a5de1da8720f64e97d3ef42d8afc"
+          },
+          "elapsedSeconds": 7.239641369029414,
+          "evidenceDirectory": "tests/c6aeeed72e4741218d8e4334c0454dc3"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-9"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-text",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "96ea57c6a7dd441db5fc71f5ee43c5d2",
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-text-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.14",
+            "displayBackend": "X11Display"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 50,
+            "y": 82,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "8deb495a-9643-410d-aadb-c2df8c0623e2",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/plain;charset=utf-8"
+            ],
+            "text": "putgd synthetic clipboard text"
+          },
+          "paste": {
+            "ok": true,
+            "expected": {
+              "text": "putgd synthetic clipboard text"
+            },
+            "actual": {
+              "schemaVersion": 1,
+              "client": "GTK",
+              "formats": [
+                "text/plain;charset=utf-8"
+              ],
+              "text": "putgd synthetic clipboard text"
+            }
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-10/final-head0.ppm",
+            "sha256": "f0523ea54ee5236a2f296e30b8f5111af2e2dae10d56c33311f37fa686059d93"
+          },
+          "elapsedSeconds": 8.261258792015724,
+          "evidenceDirectory": "tests/96ea57c6a7dd441db5fc71f5ee43c5d2"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-10"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-image",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "e88285662ed941ebac046aab8eca4157",
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-image-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.14",
+            "displayBackend": "X11Display"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 50,
+            "y": 82,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "f8238f16-91a2-4c8e-a150-ee07c746f87e",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "image/png"
+            ],
+            "image": {
+              "width": 96,
+              "height": 64,
+              "saved": true
+            }
+          },
+          "paste": {
+            "ok": true,
+            "errors": [],
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-11/final-head0.ppm",
+            "sha256": "f0523ea54ee5236a2f296e30b8f5111af2e2dae10d56c33311f37fa686059d93"
+          },
+          "elapsedSeconds": 9.464987531013321,
+          "evidenceDirectory": "tests/e88285662ed941ebac046aab8eca4157"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-11"
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-files",
+        "result": {
+          "schemaVersion": 1,
+          "testId": "b4c8ad653ab84ec88da4ea60e49335d5",
+          "profile": "cinnamon-x11",
+          "scenario": "clipboard-files-independent-paste",
+          "ok": true,
+          "acceptanceScope": "single-head named action; no full profile certification",
+          "runningApp": {
+            "pid": 58975,
+            "startTicks": 2551462,
+            "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+          },
+          "evidence_class": "graphical-kvm",
+          "performance_eligible": false,
+          "clipboardClient": "gtk",
+          "gtkClient": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "version": "4.14",
+            "displayBackend": "X11Display"
+          },
+          "shortcutBindings": {
+            "clipboard": {
+              "actual": "Ctrl+Shift+4",
+              "bound": true,
+              "requested": "Ctrl+Shift+4"
+            },
+            "desktop": {
+              "actual": "Ctrl+Shift+3",
+              "bound": true,
+              "requested": "Ctrl+Shift+3"
+            },
+            "region": {
+              "actual": "Ctrl+Shift+1",
+              "bound": true,
+              "requested": "Ctrl+Shift+1"
+            },
+            "window": {
+              "actual": "Ctrl+Shift+2",
+              "bound": true,
+              "requested": "Ctrl+Shift+2"
+            }
+          },
+          "independentPaintGeometry": {
+            "x": 50,
+            "y": 82,
+            "width": 640,
+            "height": 320
+          },
+          "parameters": "parameters.json",
+          "operationId": "1bc9d050-1286-46be-b7ff-f6da47e61a36",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "itemOutcomes": [
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            },
+            {
+              "uploadStatus": "local_only",
+              "localStatus": "saved",
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              }
+            }
+          ],
+          "artifact": {
+            "ok": true
+          },
+          "pasteMetadata": {
+            "schemaVersion": 1,
+            "client": "GTK",
+            "formats": [
+              "text/uri-list"
+            ],
+            "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1-ca85fb83-0c8c-4735-a5fa-915e2fa808e8.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2-28f237ce-bf8b-4eba-a468-acb6d0371b4d.txt\r\n",
+            "urls": [
+              "file:///home/lab/putgd-lab/archive/text/synthetic-1-ca85fb83-0c8c-4735-a5fa-915e2fa808e8.txt",
+              "file:///home/lab/putgd-lab/archive/text/synthetic-2-28f237ce-bf8b-4eba-a468-acb6d0371b4d.txt"
+            ]
+          },
+          "paste": {
+            "ok": true
+          },
+          "witness": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-12/final-head0.ppm",
+            "sha256": "f0523ea54ee5236a2f296e30b8f5111af2e2dae10d56c33311f37fa686059d93"
+          },
+          "elapsedSeconds": 9.131252217979636,
+          "evidenceDirectory": "tests/b4c8ad653ab84ec88da4ea60e49335d5"
+        },
+        "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T034247829464-12"
+      }
+    ],
+    "visualReview": "Native synthetic fixture captures/pastes and cancellation output inspected; twelve passed. Original deep QMP pathname failure retained."
+  },
+  "clientSizes": [
+    {
+      "label": "settings-empty-wide.png",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "settings-add-compact.png",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "settings-empty-compact.png",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "settings-configured-simple-wide.png",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "settings-configured-simple-compact.png",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "settings-advanced-wide.png",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "history-unselected-wide.png",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "history-selected-compact.png",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "history-selected-wide-again.png",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "history-selected-compact-again.png",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "activity-wide.png",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "activity-parent-compact.png",
+      "logicalClientSize": [
+        1024,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    },
+    {
+      "label": "activity-child-wide.png",
+      "logicalClientSize": [
+        1200,
+        700
+      ],
+      "method": "Native EWMH resize of already discovered PID-owned helper window"
+    }
+  ],
+  "settings": {
+    "empty": "Prominent Add S3 destination; inactive editor hidden. Wide/compact Add opens draft; Cancel leaves accepted empty profile list/revision unchanged. Reopen rechecked.",
+    "configured": "Synthetic profile simple and Advanced wide/compact. Draft bucket suffix d retained through expand/collapse; Cancel discards unsaved edit. Region/help/footer inspected."
+  },
+  "history": {
+    "selectedId": "7aa851e9-3138-4cff-a80a-d973a4b4edbe",
+    "selectedName": "Screen-Capture-2026-10-08-22-51-45.png",
+    "review": "Known synthetic image selected; wide side inspector/compact stacked inspector and wide-compact repeat stable; normal close/reopen. No remote deletion performed."
+  },
+  "activity": {
+    "utc": "2026-10-09T03:56:23.933579+00:00",
+    "operationId": "9f43c81b-9086-49db-90a5-f11bec723996",
+    "itemId": "445f96ab-dee5-4bc8-a89c-ed19cefb8d1d",
+    "state": "completed",
+    "copyStatus": "copied",
+    "expectedClipboardText": "putgd synthetic clipboard text",
+    "scope": "Known synthetic Qt clipboard text \u2192 production native import \u2192 local archive"
+  },
+  "copyResult": {
+    "parent": "Actual button clicked; native independent fixture paste matched known synthetic text; operation copyStatus copied.",
+    "child": "Actual button clicked; independent paste marker deleted before native Ctrl+V and fresh result matched known synthetic text; copyStatus copied.",
+    "limitations": "Parent paste preceded explicit marker freshness guard; parent visible input/paste and exact result inspected. Full item ID retained in production receipt; child row has no full-ID tooltip."
+  },
+  "normalCloseEvents": [
+    {
+      "attempt": "attempts/20261009T034900979160-close",
+      "helperBefore": {
+        "pid": 68472,
+        "startTicks": 2621572,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      },
+      "helperAfter": {
+        "checkpointBytes": 1888,
+        "lastExit": {
+          "code": 0,
+          "generation": 3,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 58975,
+        "startTicks": 2551462,
+        "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035610087979-close",
+      "helperBefore": {
+        "pid": 70484,
+        "startTicks": 2638760,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3796,
+        "lastExit": {
+          "code": 0,
+          "generation": 5,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 58975,
+        "startTicks": 2551462,
+        "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T035615321530-close",
+      "helperBefore": {
+        "pid": 71512,
+        "startTicks": 2665244,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3796,
+        "lastExit": {
+          "code": 0,
+          "generation": 6,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 58975,
+        "startTicks": 2551462,
+        "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+      }
+    },
+    {
+      "attempt": "attempts/20261009T040212477490-close",
+      "helperBefore": {
+        "pid": 72073,
+        "startTicks": 2666424,
+        "parentPid": 58975,
+        "sha256": "c07923ca890713b42a6c39ed03ce207b780bc19e0e5e63b3d28bc2a29b9fcc89"
+      },
+      "helperAfter": {
+        "checkpointBytes": 3961,
+        "lastExit": {
+          "code": 0,
+          "generation": 7,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "residentUnchanged": {
+        "pid": 58975,
+        "startTicks": 2551462,
+        "sha256": "22e7e0597c5fc92e2e1c74122320c613a26ee5f6385e1c44970e744efe85401b"
+      }
+    }
+  ],
+  "finalState": {
+    "helperPid": 0,
+    "activeOperations": 0,
+    "residentUnchanged": true,
+    "trayRendered": true,
+    "trayWitness": "views/activity-final-normal-close.png",
+    "trayPixelCenter": [
+      1049,
+      779
+    ]
+  },
+  "witnesses": [
+    {
+      "label": "activity-child-compact",
+      "sha256": "b3c3b9758def005da8dce53fcac9215eade3369cf7aabac275dc0d985533a4a1",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-child-copy",
+      "sha256": "e008533f2e6fe236ca600f6aab0e6995f9e7807119eda830db3906e4b6ef50d7",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-child-fixture-focus",
+      "sha256": "205474800fc65590d0788d1bece220c2731930f95e7bb3f1607a60a500d42549",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-child-paste-verified",
+      "sha256": "205474800fc65590d0788d1bece220c2731930f95e7bb3f1607a60a500d42549",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-child-result-paste",
+      "sha256": "205474800fc65590d0788d1bece220c2731930f95e7bb3f1607a60a500d42549",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-child-wide",
+      "sha256": "b07444ff9f179f55b6ff2ccabfa73e67b911209074da503e95706da5d42856c2",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-final-normal-close",
+      "sha256": "2e3cb183c913943de652b974c63844454d51517ca71e347056e452d4a2b8eeee",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-fixture-normal-close",
+      "sha256": "19a2770dc94b9db7f945d2746290f14cbb3bd7c407c07e992b4aa7b5498f4ea9",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-fixture-ready",
+      "sha256": "d6b4b344eef2a4a9624c274e1e9112c009a3e720e0c56087f5396f60593ddb5c",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-fixture-source",
+      "sha256": "d6b4b344eef2a4a9624c274e1e9112c009a3e720e0c56087f5396f60593ddb5c",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-open",
+      "sha256": "547162ae229ce78721b60e171520cebb30c262ce3c26214d1a7ab8a3bdd09873",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-parent-compact",
+      "sha256": "89c2c29eeb55a516a07685d0891dca4dae1984b5b182bf52674fb8cd906020b7",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-parent-copy",
+      "sha256": "f3883159867d264a71ee647cc623b460b1c23c79df0736e35901f9cf1f5e90fe",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-parent-fixture-focus",
+      "sha256": "2c32214dbe24ba69016a1195b191439590a6323c3879d63ee1bb34b5a342de49",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-parent-id",
+      "sha256": "b4c2e7258b4dc180053c6c4775404fa4a8ea55212dae0b2219650fd39707bd71",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-parent-paste-verified",
+      "sha256": "d5241557a3346ad1579f9252fbe50ad8699190493b352a328e7df69514e6bbea",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-parent-result-paste",
+      "sha256": "d5241557a3346ad1579f9252fbe50ad8699190493b352a328e7df69514e6bbea",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-parent-return",
+      "sha256": "f3883159867d264a71ee647cc623b460b1c23c79df0736e35901f9cf1f5e90fe",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-text-completed",
+      "sha256": "d6b4b344eef2a4a9624c274e1e9112c009a3e720e0c56087f5396f60593ddb5c",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "activity-wide",
+      "sha256": "0f9767a39ef943c045a51a4383000332bdefbe3f699e5d5a910a4aabf9278e88",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-normal-close",
+      "sha256": "3a38ca4529a4b432f0bc03a99ae023bc2adf23d2ae7e9bf2b4563f4461770852",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-open",
+      "sha256": "bc39c8e82efad8b67e5d418390afb0e26b02d6c2b155ff07be10a9dc90ac274c",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-reopen-closed",
+      "sha256": "3a38ca4529a4b432f0bc03a99ae023bc2adf23d2ae7e9bf2b4563f4461770852",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-reopened",
+      "sha256": "6005b0606deb91dbd039cbb91cbc8b5a5e08a914f4c72a63dc198c4837830e20",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-selected-compact-again",
+      "sha256": "834af1507dfaa91b6211920e7e4eeb4b358096a5c05a0062530afabcdb1dae22",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-selected-compact",
+      "sha256": "834af1507dfaa91b6211920e7e4eeb4b358096a5c05a0062530afabcdb1dae22",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-selected-wide-again",
+      "sha256": "3b3bab821fee77d1dd4a97334627ab274dc626d2c00c35422d096edd2d5ce5d7",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-selected-wide",
+      "sha256": "3b3bab821fee77d1dd4a97334627ab274dc626d2c00c35422d096edd2d5ce5d7",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "history-unselected-wide",
+      "sha256": "0cf0971496b71d1fabf1a8db64d55fb8573067a20d9b1a28b7326e22a41211f1",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-add-cancel",
+      "sha256": "d1d22df1589521259e72930a9e59de5c687c85cc7cd4ad2ff51d9c02c7a17a36",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-add-compact",
+      "sha256": "0c27ca64dbd569321c1acfb455774de0d4d75c3893ab3881118a92898ab54483",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-add-wide",
+      "sha256": "e28f3dc2ff16ad660f886c8c17becf76409d714a1947cc657298a7fd34264a37",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-advanced-compact",
+      "sha256": "bc008803a217ec437260f7ce727012b596d2a9e5506f1306e1bb62780a70b4e2",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-advanced-wide",
+      "sha256": "4d09afebb5e14c071b60843fe7c058c76aaf73c1a3dfe2145380baffb9ad924a",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-bucket-end",
+      "sha256": "1f05eac68969db568d4597aca05a06e1445d170913ff86524d126e79acb7518d",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-bucket-focused",
+      "sha256": "1f05eac68969db568d4597aca05a06e1445d170913ff86524d126e79acb7518d",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-bucket-help",
+      "sha256": "8741de30775276a7eacff655459f76e073df4b94e061b4379ed5b95bd20260ba",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-collapsed-draft",
+      "sha256": "54cd47471f64bb591d7d830f3d64a421dded422c8b49fe7e0410079b01a3cc52",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-configured-cancel",
+      "sha256": "65dfe34f90abed06e4796b8620661a439d50fd7fca4e65f1534fd5562d1ff8c5",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-configured-open",
+      "sha256": "0df696626b6b1043ba3fe3a9c60f627d83b39537f619a2d19a76e97a2b1f83b9",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-configured-simple-compact",
+      "sha256": "ad615cfedaedd8a496395f6f7d9094b349b6b24de90a3f92d9e7836263f91329",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-configured-simple-wide",
+      "sha256": "144261399c3eed381aa799859512257de49a5ef36036fb77580e3931a646fde7",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-empty-closed",
+      "sha256": "af95ac2550e65e2a171ae3cfa9257ae4921bbb70828a0ce622a380f24e0f6192",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-empty-compact",
+      "sha256": "d195c4a842ac8b29ef0b6a50af4fd3647112f25c1cd70f088189df3362ed52a7",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-empty-open",
+      "sha256": "bb8d523786214dda03c64869d5d5979df28d20251b2e55fd2fa7c24e6bdd0346",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-empty-reopen",
+      "sha256": "fcd1e4431a6dc2704fdb6175309b0ebfb52e0de9cddf73051969607a49951923",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-empty-wide",
+      "sha256": "2127c4eaf47b7a43fde64b78e7a593afa9d6dede22d4d3ec06fabd996e295cbb",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-help-closed",
+      "sha256": "cccafb8646c0672c86242ac964137bf18c9e7932218659d73d62c810427dc4d9",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    },
+    {
+      "label": "settings-unsaved-bucket",
+      "sha256": "21f1be05b98bb66b9935b1a5929b6bc87ac032463ad611a6586c0aac27d9e337",
+      "desktopPixels": [
+        1280,
+        800
+      ],
+      "reviewed": "Actual image inspected by root during native replay."
+    }
+  ],
+  "postSuiteAttribution": {
+    "receipt": "post-suite-resident-memory.json",
+    "rssKiB": 56476,
+    "pssKiB": 35803,
+    "privateKiB": 34420,
+    "operationCounts": {
+      "completed": 13,
+      "cancelled": 3
+    },
+    "scope": "Single post-suite resident attribution snapshot; no quiet/cold/performance-budget claim."
+  },
+  "preservedFailures": [
+    "attempts/20261009T032824046127-install/failed.json",
+    "attempts/20261009T032852539331-start/failed.json",
+    "attempts/20261009T033338543472-install/failed.json",
+    "attempts/20261009T034106290333-matrix/failed.json"
+  ],
+  "blockedGates": [],
+  "overall": "Bounded source43 native capture/clipboard and UI refinement checks pass. No quiet memory or startup-performance claim.",
+  "scope": "Existing overlay, visible VNC5938; synthetic local payloads only. No cloud credentials/requests, bucket/object changes, base disk or VM lifecycle changes."
+}

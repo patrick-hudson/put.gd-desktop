@@ -1,0 +1,513 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:53:13.945227+00:00",
+  "command": [
+    "/usr/bin/python3",
+    "/home/lab/putgd-u11-97ca3a521714/source/tests/performance/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--app",
+    "/usr/bin/putgd",
+    "--helper",
+    "/usr/bin/putgd-ui",
+    "--cli",
+    "/usr/bin/putgd-cli",
+    "--socket",
+    "/run/user/1000/putgd/session.sock",
+    "--source-revision",
+    "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "--source-archive",
+    "/home/lab/putgd-u11-97ca3a521714/source.tar",
+    "--acceptance-receipt",
+    "/home/lab/putgd-u11-97ca3a521714/native-acceptance.json",
+    "--pid",
+    "105866",
+    "--start-ticks",
+    "1779397",
+    "--seconds",
+    "120",
+    "--interval",
+    "5",
+    "--label",
+    "kde-after-u11-functional-wave",
+    "--output",
+    "/home/lab/putgd-u11-97ca3a521714/memory-observation"
+  ],
+  "workingDirectory": "/home/lab",
+  "mode": "split",
+  "scope": "existing-process observation",
+  "parameters": {
+    "mode": "split",
+    "app": "/usr/bin/putgd",
+    "cli": "/usr/bin/putgd-cli",
+    "helper": "/usr/bin/putgd-ui",
+    "source_revision": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "source_archive": "/home/lab/putgd-u11-97ca3a521714/source.tar",
+    "output": "/home/lab/putgd-u11-97ca3a521714/memory-observation",
+    "allow_dirty": false,
+    "acceptance_receipt": [
+      "/home/lab/putgd-u11-97ca3a521714/native-acceptance.json"
+    ],
+    "pid": 105866,
+    "start_ticks": 1779397,
+    "socket": "/run/user/1000/putgd/session.sock",
+    "label": "kde-after-u11-functional-wave",
+    "seconds": 120.0,
+    "interval": 5.0,
+    "fixture": null,
+    "cycles": 3,
+    "views": [
+      "settings",
+      "history",
+      "activity",
+      "about"
+    ],
+    "warmup_seconds": 5,
+    "visible_seconds": 2,
+    "quiet_seconds": 30,
+    "timeout": 20
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceRevision": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "binaries": {
+    "app": {
+      "path": "/usr/bin/putgd",
+      "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "cli": {
+      "path": "/usr/bin/putgd-cli",
+      "sha256": "f979812e68ffd8fa039dd0322b2056e8d0e771de33f1f9562c6bec7b4ca55549",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "helper": {
+      "path": "/usr/bin/putgd-ui",
+      "sha256": "5d3ccde4e29609ca374df4b3b66d0ba039203378e784dff9b4d372e33f20d909",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    }
+  },
+  "sampleCount": 25,
+  "sampleFile": "samples.jsonl",
+  "samples": [
+    {
+      "label": "kde-after-u11-functional-wave-0",
+      "elapsedSeconds": 0.7996260580002854,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.012087661001714878
+    },
+    {
+      "label": "kde-after-u11-functional-wave-1",
+      "elapsedSeconds": 5.812890364999475,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.023918017999676522
+    },
+    {
+      "label": "kde-after-u11-functional-wave-2",
+      "elapsedSeconds": 10.837838814997667,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.016080296998552512
+    },
+    {
+      "label": "kde-after-u11-functional-wave-3",
+      "elapsedSeconds": 15.855005319997872,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.013884983000025386
+    },
+    {
+      "label": "kde-after-u11-functional-wave-4",
+      "elapsedSeconds": 20.86976152599891,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.022526409000420244
+    },
+    {
+      "label": "kde-after-u11-functional-wave-5",
+      "elapsedSeconds": 25.893264256999828,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.016118249001010554
+    },
+    {
+      "label": "kde-after-u11-functional-wave-6",
+      "elapsedSeconds": 30.91057858699787,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02089925600012066
+    },
+    {
+      "label": "kde-after-u11-functional-wave-7",
+      "elapsedSeconds": 35.9326781009986,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.025723434002429713
+    },
+    {
+      "label": "kde-after-u11-functional-wave-8",
+      "elapsedSeconds": 40.95955487699757,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.012710713999695145
+    },
+    {
+      "label": "kde-after-u11-functional-wave-9",
+      "elapsedSeconds": 45.97310104200005,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.02232626499971957
+    },
+    {
+      "label": "kde-after-u11-functional-wave-10",
+      "elapsedSeconds": 50.997494089999236,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.012524317000497831
+    },
+    {
+      "label": "kde-after-u11-functional-wave-11",
+      "elapsedSeconds": 56.012062698999216,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.015287199999875156
+    },
+    {
+      "label": "kde-after-u11-functional-wave-12",
+      "elapsedSeconds": 61.028596277999895,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.012396396999974968
+    },
+    {
+      "label": "kde-after-u11-functional-wave-13",
+      "elapsedSeconds": 66.04233070400005,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.012667899998632492
+    },
+    {
+      "label": "kde-after-u11-functional-wave-14",
+      "elapsedSeconds": 71.05581344699749,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.012623025999346282
+    },
+    {
+      "label": "kde-after-u11-functional-wave-15",
+      "elapsedSeconds": 76.06947324499924,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 45959168,
+        "privateBytes": 31887360
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.016309253998770146
+    },
+    {
+      "label": "kde-after-u11-functional-wave-16",
+      "elapsedSeconds": 81.08796044799965,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.017026921999786282
+    },
+    {
+      "label": "kde-after-u11-functional-wave-17",
+      "elapsedSeconds": 86.10606904699671,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.013899745001253905
+    },
+    {
+      "label": "kde-after-u11-functional-wave-18",
+      "elapsedSeconds": 91.12206668599902,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.01976612599901273
+    },
+    {
+      "label": "kde-after-u11-functional-wave-19",
+      "elapsedSeconds": 96.14373545499984,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03327984900170122
+    },
+    {
+      "label": "kde-after-u11-functional-wave-20",
+      "elapsedSeconds": 101.17894732899731,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.03740644099889323
+    },
+    {
+      "label": "kde-after-u11-functional-wave-21",
+      "elapsedSeconds": 106.21822053099822,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.042739620999782346
+    },
+    {
+      "label": "kde-after-u11-functional-wave-22",
+      "elapsedSeconds": 111.26289332899978,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.0425562339987664
+    },
+    {
+      "label": "kde-after-u11-functional-wave-23",
+      "elapsedSeconds": 116.30696898799943,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.018580317999294493
+    },
+    {
+      "label": "kde-after-u11-functional-wave-24",
+      "elapsedSeconds": 120.79977974299982,
+      "totals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.013828483002725989
+    }
+  ],
+  "events": [
+    {
+      "elapsedSeconds": 0.7990782449996914,
+      "kind": "diagnostics-identity-checked",
+      "ui": {
+        "checkpointBytes": 2510,
+        "lastExit": {
+          "code": 0,
+          "generation": 10,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "trayAvailable": true
+    }
+  ],
+  "status": "complete",
+  "passed": true,
+  "acceptanceReceipts": [
+    {
+      "path": "/home/lab/putgd-u11-97ca3a521714/native-acceptance.json",
+      "sha256": "c9bc36a9f77aefd05f09622f42dc9211c7083c1a6d91237f94f7cd017f7977f1"
+    }
+  ],
+  "limitations": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "environment": {
+    "kernel": "7.0.0-30-generic",
+    "machine": "x86_64",
+    "python": "3.14.4",
+    "desktop": "",
+    "session": "tty",
+    "packages": [
+      "cinnamon ",
+      "gnome-shell ",
+      "kwin-wayland 4:6.6.6-0ubuntu0.1",
+      "libc6 2.43-2ubuntu2.4",
+      "libqt6core6 ",
+      "libqt6core6t64 6.10.2+dfsg-7",
+      "libqt6widgets6 6.10.2+dfsg-7",
+      "libqt6widgets6t64 "
+    ],
+    "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "logicalCpus": 2,
+    "virtualization": "kvm"
+  },
+  "sourceArchive": {
+    "path": "/home/lab/putgd-u11-97ca3a521714/source.tar",
+    "sha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1"
+  },
+  "residentIdentity": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "uid": 1000,
+    "executable": "/usr/bin/putgd",
+    "device": 64769,
+    "inode": 1313440
+  },
+  "residentBuild": {
+    "baseVersion": "0.1.1",
+    "commitCount": 41,
+    "dirty": null,
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.41+g97ca3a521714"
+  },
+  "exitedProcesses": [],
+  "summary": {
+    "finalTotals": {
+      "rssBytes": 152563712,
+      "pssBytes": 47365120,
+      "privateBytes": 34349056
+    },
+    "peakSampledTotals": {
+      "rssBytes": 152563712,
+      "pssBytes": 47365120,
+      "privateBytes": 34349056
+    },
+    "finalTotalRssAtOrBelow40MiB": false,
+    "coldIdleBudgetEstablished": false,
+    "cold40MiBTargetEstablished": false,
+    "renderedTrayAcceptanceEstablished": false,
+    "peakOpenTotals": null,
+    "finalClosedTotals": null,
+    "medianActivationAcknowledgementMilliseconds": null
+  },
+  "elapsedSeconds": 120.81447019400002
+}

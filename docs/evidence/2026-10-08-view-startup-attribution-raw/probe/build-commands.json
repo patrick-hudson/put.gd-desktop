@@ -1,0 +1,39 @@
+[
+  {
+    "label": "configure",
+    "argv": [
+      "cmake",
+      "--preset",
+      "release",
+      "-DCMAKE_PREFIX_PATH=/home/patrick/work/put.gd/build/sdk",
+      "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+      "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp",
+      "-DPUTGD_LAB_FIXTURE=ON",
+      "-DCMAKE_INSTALL_PREFIX=/usr",
+      "-DPUTGD_SOURCE_COMMIT=97ca3a521714e2717cedc1139976130627bfb8a8",
+      "-DPUTGD_SOURCE_TREE=888460466ff1d240bd8e3c61189f36f407fb3485",
+      "-DPUTGD_SOURCE_COMMIT_COUNT=41"
+    ],
+    "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/probe/source",
+    "exitCode": 0,
+    "elapsedSeconds": 4.633441195997875
+  },
+  {
+    "label": "build",
+    "argv": [
+      "cmake",
+      "--build",
+      "--preset",
+      "release",
+      "--target",
+      "putgd",
+      "putgd-cli",
+      "putgd-ui",
+      "putgd_s3_module",
+      "putgd-desktop-fixture"
+    ],
+    "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/probe/source",
+    "exitCode": 0,
+    "elapsedSeconds": 204.51543530303752
+  }
+]

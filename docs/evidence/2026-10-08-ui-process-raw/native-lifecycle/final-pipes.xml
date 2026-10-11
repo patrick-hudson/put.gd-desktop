@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Linux-c++"
+	tests="4"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="patrick-Precision-5540"
+	time="19"
+	timestamp="2026-10-08T19:35:51"
+	>
+	<testcase name="ui_split_services_integration" classname="ui_split_services_integration" time="0.690406" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiSplitServices *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiSplitServices::initTestCase()
+PASS   : UiSplitServices::helperCrashDoesNotCancelAnAcceptedUploadOrSetupJob()
+PASS   : UiSplitServices::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 671ms
+********* Finished testing of UiSplitServices *********
+</system-out>
+	</testcase>
+	<testcase name="ui_process_integration" classname="ui_process_integration" time="14.2866" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiProcessTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiProcessTest::initTestCase()
+PASS   : UiProcessTest::confirmedCloseStillReportsAnAbnormalExit()
+PASS   : UiProcessTest::stalledActivationFailsBeforeTheClientsDeadline()
+PASS   : UiProcessTest::missingHelperFailsWithoutRestarting()
+PASS   : UiProcessTest::helperProtocolFloodIsBounded()
+PASS   : UiProcessTest::failureCallbackCanImmediatelyReopenTheUi()
+PASS   : UiProcessTest::cancelCloseResumesPendingViewsAndInvalidations()
+PASS   : UiProcessTest::startsOneHelperAndShowsAllRequestedViews()
+PASS   : UiProcessTest::closeRetainsDraftAndActivationDuringExitStartsFresh()
+PASS   : UiProcessTest::crashRequiresNewActivationAndMismatchFails()
+PASS   : UiProcessTest::rejectedCheckpointKeepsHelperAlive()
+PASS   : UiProcessTest::cleanupTestCase()
+Totals: 12 passed, 0 failed, 0 skipped, 0 blacklisted, 14279ms
+********* Finished tes...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+	<testcase name="ui_control_integration" classname="ui_control_integration" time="1.0243" status="run">
+		<properties/>
+		<system-out>********* Start testing of UiControlTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiControlTest::initTestCase()
+PASS   : UiControlTest::fragmentedFramesAndPartialWrites()
+PASS   : UiControlTest::rejectsUnboundedAndInvalidFrames()
+PASS   : UiControlTest::actualHelperPipesCarryLargeFrameWithoutBlocking()
+PASS   : UiControlTest::validSequenceAndStop()
+PASS   : UiControlTest::cleanupTestCase()
+Totals: 6 passed, 0 failed, 0 skipped, 0 blacklisted, 1017ms
+********* Finished testing of UiControlTest *********
+</system-out>
+	</testcase>
+	<testcase name="ui_native_lifecycle_integration" classname="ui_native_lifecycle_integration" time="3.3003" status="run">
+		<properties/>
+		<system-out>dbus-daemon[2464233]: [session uid=1000 pid=2464233] Activating service name='org.gtk.vfs.Daemon' requested by ':1.0' (uid=1000 pid=2464258 comm="/home/patrick/.codex/worktrees/ui-process-split/pu" label="chatgpt (unconfined)")
+dbus-daemon[2464233]: [session uid=1000 pid=2464233] Successfully activated service 'org.gtk.vfs.Daemon'
+dbus-daemon[2464233]: [session uid=1000 pid=2464233] Activating service name='org.a11y.Bus' requested by ':1.2' (uid=1000 pid=2464258 comm="/home/patrick/.codex/worktrees/ui-process-split/pu" label="chatgpt (unconfined)")
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+dbus-daemon[2464233]: [session uid=1000 pid=2464233] Successfully activated service 'org.a11y.Bus'
+********* Start testing of UiNativeLifecycleTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiNativeLifecycleTest::initTestCase()
+dbus-daemon[2464357]: Activating service name='or...
+[This part of the test output was removed since it exceeds the threshold of 1024 bytes.]
+</system-out>
+	</testcase>
+</testsuite>

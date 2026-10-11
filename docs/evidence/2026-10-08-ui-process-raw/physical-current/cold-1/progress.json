@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:55:35.081162+00:00",
+  "command": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/work/u11/memory/cold_family.py",
+    "--output",
+    "/home/patrick/work/put.gd/work/u11/memory/cold-1",
+    "--seconds",
+    "300",
+    "--acceptance-receipt",
+    "/home/patrick/work/put.gd/work/u11/native/cinnamon/receipt.json",
+    "--acceptance-receipt",
+    "/home/patrick/work/put.gd/work/u11/native/gnome/receipt.json",
+    "--acceptance-receipt",
+    "/home/patrick/work/put.gd/work/u11/native/kde/receipt.json"
+  ],
+  "workingDirectory": "/home/patrick/work/put.gd",
+  "mode": "split",
+  "scope": "cold physical Cinnamon; full process family; no views, captures, clipboard or networking",
+  "parameters": {
+    "mode": "split",
+    "app": "/home/patrick/work/put.gd/work/u11/native/host/source/build/release/putgd",
+    "cli": "/home/patrick/work/put.gd/work/u11/native/host/source/build/release/putgd-cli",
+    "helper": "/home/patrick/work/put.gd/work/u11/native/host/source/build/release/putgd-ui",
+    "source_revision": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "source_archive": "/home/patrick/work/put.gd/work/u11/native/source.tar",
+    "output": "/home/patrick/work/put.gd/work/u11/memory/cold-1",
+    "allow_dirty": false,
+    "acceptance_receipt": [
+      "/home/patrick/work/put.gd/work/u11/native/cinnamon/receipt.json",
+      "/home/patrick/work/put.gd/work/u11/native/gnome/receipt.json",
+      "/home/patrick/work/put.gd/work/u11/native/kde/receipt.json"
+    ],
+    "pid": null,
+    "start_ticks": null,
+    "socket": null,
+    "label": "cold-idle",
+    "seconds": 300.0,
+    "interval": 5.0,
+    "fixture": "/tmp/putgd-startup-reclaim-exp001",
+    "cycles": 3,
+    "views": null,
+    "warmup_seconds": 5,
+    "visible_seconds": 2,
+    "quiet_seconds": 30,
+    "timeout": 20
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceRevision": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "binaries": {
+    "app": {
+      "path": "/home/patrick/work/put.gd/work/u11/native/host/source/build/release/putgd",
+      "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "cli": {
+      "path": "/home/patrick/work/put.gd/work/u11/native/host/source/build/release/putgd-cli",
+      "sha256": "fe68622526ff25a3867e3d32078b0cc332e4ae53f3f5c8e28770275def7c37b2",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    },
+    "helper": {
+      "path": "/home/patrick/work/put.gd/work/u11/native/host/source/build/release/putgd-ui",
+      "sha256": "e5cb88d8d6f022adea2b4d8c7189e2affff680a736b8432b95341dc92313b1c2",
+      "version": "0.1.1-dev.41+g97ca3a521714"
+    }
+  },
+  "sampleCount": 58,
+  "sampleFile": "samples.jsonl",
+  "samples": [
+    {
+      "label": "cold-idle",
+      "elapsedSeconds": 306.7539244640502,
+      "totals": {
+        "rssBytes": 46546944,
+        "pssBytes": 25986048,
+        "privateBytes": 23371776
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.010254299966618419
+    }
+  ],
+  "events": [],
+  "status": "starting",
+  "passed": false,
+  "acceptanceReceipts": [
+    {
+      "path": "/home/patrick/work/put.gd/work/u11/native/cinnamon/receipt.json",
+      "sha256": "b210ca25dd320ccccc275ec50b74388eac680beac3e751bd98e6ae2bbfd6e5d0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/u11/native/gnome/receipt.json",
+      "sha256": "36682ace9beb525103521ee7c71977844588886841e0ef7e46134198e2d8cb78"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/u11/native/kde/receipt.json",
+      "sha256": "c9bc36a9f77aefd05f09622f42dc9211c7083c1a6d91237f94f7cd017f7977f1"
+    }
+  ],
+  "limitations": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "workloadSha256": "a2990fde089422e53bab1dfdbc8db230a9c9f27a21dcdc4e37a0a679f2fbecd7",
+  "durationSeconds": 300.0,
+  "environment": {
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "desktop": "X-Cinnamon",
+    "session": "x11",
+    "packages": [
+      "cinnamon 6.6.4+zena",
+      "gnome-shell ",
+      "libc6 2.39-0ubuntu8.9",
+      "libc6 2.39-0ubuntu8.9",
+      "libqt6core6 ",
+      "libqt6core6t64 6.4.2+dfsg-21.1build5",
+      "libqt6widgets6 ",
+      "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+      "muffin 6.6.1+zena"
+    ],
+    "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "logicalCpus": 16,
+    "virtualization": "none"
+  },
+  "sourceArchive": {
+    "path": "/home/patrick/work/put.gd/work/u11/native/source.tar",
+    "sha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1"
+  },
+  "fixture": {
+    "fixtureName": "putgd-startup-reclaim-exp001",
+    "resultsSha256": "d99caf9e6086f203c96c9845ea4f1d11390a306ad678f08b2c3ad4fad370facb",
+    "configSha256": "3df279b24e87a3587cffc3b63c8169f8fd15e435c67e4236ddcb2394d9f3afeb",
+    "idleAppSha256": "d00905ec1511eabfd4d3292e021b72cf019fb1eea8837d2c80a3b9a7ecb1d980",
+    "idlePeakSampledRssBytes": 47149056
+  },
+  "dependencies": {
+    "bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652"
+  },
+  "residentIdentity": {
+    "pid": 2543118,
+    "startTicks": 28406799,
+    "uid": 1000,
+    "executable": "/home/patrick/work/put.gd/work/u11/native/host/source/build/release/putgd",
+    "device": 66306,
+    "inode": 27934690
+  },
+  "residentBuild": {
+    "baseVersion": "0.1.1",
+    "commitCount": 41,
+    "dirty": null,
+    "gitCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+    "gitTree": "888460466ff1d240bd8e3c61189f36f407fb3485",
+    "packageVersion": "0.1.1~dev.41+g97ca3a521714",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.41+g97ca3a521714"
+  },
+  "progressIncludesLatestSampleOnly": true
+}

@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-09T09:05:58.441248+00:00",
+  "actual": {
+    "sha256": "e75a843ac7041641f80c746c192c9c7fc0c738b39a129b28deef8be371bce7c4",
+    "version": "putgd-capture 0.1.1-dev.49+g676f6e6d6e0b"
+  },
+  "expectedPackageSha256": "e75a843ac7041641f80c746c192c9c7fc0c738b39a129b28deef8be371bce7c4",
+  "scope": "Installed version proof only; fallback capture does not launch this helper"
+}

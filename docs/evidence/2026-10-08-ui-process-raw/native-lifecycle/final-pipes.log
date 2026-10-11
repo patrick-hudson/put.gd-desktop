@@ -1,0 +1,13 @@
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev
+    Start  3: ui_split_services_integration
+1/4 Test  #3: ui_split_services_integration .....   Passed    0.69 sec
+    Start  4: ui_process_integration
+2/4 Test  #4: ui_process_integration ............   Passed   14.29 sec
+    Start  6: ui_control_integration
+3/4 Test  #6: ui_control_integration ............   Passed    1.02 sec
+    Start 13: ui_native_lifecycle_integration
+4/4 Test #13: ui_native_lifecycle_integration ...   Passed    3.30 sec
+
+100% tests passed, 0 tests failed out of 4
+
+Total Test time (real) =  19.31 sec

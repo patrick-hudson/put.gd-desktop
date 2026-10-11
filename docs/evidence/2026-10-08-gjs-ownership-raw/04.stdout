@@ -1,0 +1,5 @@
+PASS resident PID rejection before layout
+PASS registered helper PID rejection before layout
+PASS foreign caller cannot replace helper identity
+PASS helper exit clears exclusion
+PASS helper registration/focus changes do not replace frozen target

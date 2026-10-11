@@ -1,0 +1,32 @@
+(test_ui_native_lifecycle:2460200): GLib-GIO-DEBUG: 19:33:38.514: Using cross-namespace EXTERNAL authentication (this will deadlock if server is GDBus < 2.73.3)
+dbus-daemon[2460181]: [session uid=1000 pid=2460181] Activating service name='org.gtk.vfs.Daemon' requested by ':1.0' (uid=1000 pid=2460200 comm="build/dev/test_ui_native_lifecycle normalCloseChec" label="chatgpt (unconfined)")
+(gvfsd:2460209): GLib-GIO-DEBUG: 19:33:38.522: Using cross-namespace EXTERNAL authentication (this will deadlock if server is GDBus < 2.73.3)
+dbus-daemon[2460181]: [session uid=1000 pid=2460181] Successfully activated service 'org.gtk.vfs.Daemon'
+(test_ui_native_lifecycle:2460200): GLib-GIO-DEBUG: 19:33:38.528: _g_io_module_get_default: Found default implementation gvfs (GDaemonVfs) for ‘gio-vfs’
+dbus-daemon[2460181]: [session uid=1000 pid=2460181] Activating service name='org.a11y.Bus' requested by ':1.2' (uid=1000 pid=2460200 comm="build/dev/test_ui_native_lifecycle normalCloseChec" label="chatgpt (unconfined)")
+fusermount3: failed to access mountpoint /run/user/1000/gvfs: Permission denied
+(process:2460219): GLib-GIO-DEBUG: 19:33:38.539: _g_io_module_get_default: Found default implementation dconf (DConfSettingsBackend) for ?gsettings-backend?
+(process:2460219): dconf-DEBUG: 19:33:38.539: watch_fast: "/org/gnome/desktop/interface/" (establishing: 0, active: 0)
+(process:2460219): dconf-DEBUG: 19:33:38.540: watch_fast: "/org/gnome/desktop/a11y/applications/" (establishing: 0, active: 0)
+(process:2460219): GLib-GIO-DEBUG: 19:33:38.540: Using cross-namespace EXTERNAL authentication (this will deadlock if server is GDBus < 2.73.3)
+(process:2460219): dconf-DEBUG: 19:33:38.541: watch_established: "/org/gnome/desktop/interface/" (establishing: 1)
+dbus-daemon[2460181]: [session uid=1000 pid=2460181] Successfully activated service 'org.a11y.Bus'
+(process:2460219): dconf-DEBUG: 19:33:38.541: watch_established: "/org/gnome/desktop/a11y/applications/" (establishing: 1)
+(process:2460226): GLib-DEBUG: 19:33:38.542: setenv()/putenv() are not thread-safe and should not be used after threads are created
+(process:2460226): GLib-DEBUG: 19:33:38.543: setenv()/putenv() are not thread-safe and should not be used after threads are created
+** (process:2460219): DEBUG: 19:33:38.543: Launched a11y bus, child is 2460227
+** (process:2460219): DEBUG: 19:33:38.547: a11y bus address: unix:path=/run/user/1000/at-spi/bus_0,guid=87f2471040cf4fffc6cfa38a6ac83662
+********* Start testing of UiNativeLifecycleTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : UiNativeLifecycleTest::initTestCase()
+dbus-daemon[2460227]: Activating service name='org.a11y.atspi.Registry' requested by ':1.0' (uid=1000 pid=2460200 comm="build/dev/test_ui_native_lifecycle normalCloseChec" label="chatgpt (unconfined)")
+dbus-daemon[2460227]: Successfully activated service 'org.a11y.atspi.Registry'
+SpiRegistry daemon is running with well-known name - org.a11y.atspi.Registry
+(at-spi2-registryd:2460235): GLib-GIO-DEBUG: 19:33:38.687: Using cross-namespace EXTERNAL authentication (this will deadlock if server is GDBus < 2.73.3)
+FAIL!  : UiNativeLifecycleTest::normalCloseCheckpointsDirtyDraftAndRelaunchesCleanly() '!helper.failure' returned FALSE. (ui_protocol)
+   Loc: [/home/patrick/.codex/worktrees/ui-process-split/put.gd/tests/integration/test_ui_native_lifecycle.cpp(188)]
+PASS   : UiNativeLifecycleTest::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 293ms
+********* Finished testing of UiNativeLifecycleTest *********
+A connection to the bus can't be made
+(process:2460219): dconf-DEBUG: 19:33:38.930: D-Bus connection closed, invalidating cache: Underlying GIOStream returned 0 bytes on an async read

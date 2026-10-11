@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "createdUtc": "2026-10-09T02:04:02.454336+00:00",
+  "sourceRevision": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "testedVersion": "0.1.1-dev.41+g97ca3a521714",
+  "activity": "Read-only saved-result and source attribution. No probes/apps/builds/SSH/display interactions/config changes/packages/Anthropic/commits executed.",
+  "evidence": [
+    {
+      "path": "work/u11/memory/cold-1/results.json",
+      "sha256": "e5718271bf8e14ad0ac9e3edb1c3d4f03bc95e393ba53dc6d578dce94330085b"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/results.json",
+      "sha256": "ad0f84a14db311caafcabe9d90a066b180bd3b76210a1a421d6981097e750711"
+    },
+    {
+      "path": "work/u11/native/cinnamon/memory/footprint.json",
+      "sha256": "04548c6b3a38366d78abef88cdafb4dadf9d44c6885be67efa962b7008e1d012"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/results.json",
+      "sha256": "e7f69b2e1fae29b402828c9e21a2dcc66e49774b19c5a3d5bd11d7feae7c22f5"
+    },
+    {
+      "path": "work/u11/native/gnome/memory/footprint.json",
+      "sha256": "be2f9c3d4d652eb8c1af1b401232613c97d1b560f717889b58d03c4fa344a4b7"
+    },
+    {
+      "path": "work/u11/native/kde/memory/results.json",
+      "sha256": "36594188686a8357874584d234b32d5d9ff28a4c5950ad217028c33f7709fa0f"
+    },
+    {
+      "path": "work/u11/native/kde/memory/footprint.json",
+      "sha256": "107e4e069f1ee3f1d0e21b7141b108e1b7333d70d4e9a7c3f267c350b46c0175"
+    }
+  ],
+  "scopes": [
+    {
+      "name": "physical Cinnamon cold",
+      "scope": "300-second empty local fixture; helper absent; no views/captures/operations",
+      "sampledTotals": {
+        "rssBytes": 46546944,
+        "pssBytes": 25986048,
+        "privateBytes": 23371776
+      },
+      "peakRssBytes": 46546944,
+      "target40MiBEstablished": false,
+      "mappingHeapBytes": 3055616,
+      "mappingAnonymousBytes": 1114112
+    },
+    {
+      "name": "cinnamon VM post-use",
+      "scope": "120-second quiet observation after native actions/views and one 512 MiB + 23 byte local copy; Cinnamon additionally includes user manual region capture. Separate post-interval mapping snapshot. Not cold or matched old/new desktop causal comparison.",
+      "sampledTotals": {
+        "rssBytes": 60452864,
+        "pssBytes": 39129088,
+        "privateBytes": 37654528
+      },
+      "selectedMappings": [
+        {
+          "mapping": "[anonymous]",
+          "rssBytes": 14602240,
+          "pssBytes": 14602240,
+          "privateBytes": 14602240
+        },
+        {
+          "mapping": "libQt6Gui.so.6.4.2",
+          "rssBytes": 5496832,
+          "pssBytes": 5496832,
+          "privateBytes": 5496832
+        },
+        {
+          "mapping": "libQt6Core.so.6.4.2",
+          "rssBytes": 4206592,
+          "pssBytes": 4206592,
+          "privateBytes": 4206592
+        },
+        {
+          "mapping": "libQt6Widgets.so.6.4.2",
+          "rssBytes": 3731456,
+          "pssBytes": 3731456,
+          "privateBytes": 3731456
+        },
+        {
+          "mapping": "libgtk-3.so.0.2409.32",
+          "rssBytes": 3264512,
+          "pssBytes": 200704,
+          "privateBytes": 73728
+        },
+        {
+          "mapping": "[heap]",
+          "rssBytes": 3121152,
+          "pssBytes": 3121152,
+          "privateBytes": 3121152
+        },
+        {
+          "mapping": "libc.so.6",
+          "rssBytes": 1744896,
+          "pssBytes": 40960,
+          "privateBytes": 24576
+        },
+        {
+          "mapping": "libgio-2.0.so.0.8000.0",
+          "rssBytes": 1679360,
+          "pssBytes": 58368,
+          "privateBytes": 36864
+        }
+      ]
+    },
+    {
+      "name": "gnome VM post-use",
+      "scope": "120-second quiet observation after native actions/views and one 512 MiB + 23 byte local copy; Cinnamon additionally includes user manual region capture. Separate post-interval mapping snapshot. Not cold or matched old/new desktop causal comparison.",
+      "sampledTotals": {
+        "rssBytes": 68489216,
+        "pssBytes": 40652800,
+        "privateBytes": 36933632
+      },
+      "selectedMappings": [
+        {
+          "mapping": "[anonymous]",
+          "rssBytes": 9334784,
+          "pssBytes": 9334784,
+          "privateBytes": 9334784
+        },
+        {
+          "mapping": "libQt6Gui.so.6.10.2",
+          "rssBytes": 5980160,
+          "pssBytes": 5980160,
+          "privateBytes": 5980160
+        },
+        {
+          "mapping": "libgtk-3.so.0.2420.32",
+          "rssBytes": 5390336,
+          "pssBytes": 1367040,
+          "privateBytes": 212992
+        },
+        {
+          "mapping": "[heap]",
+          "rssBytes": 4898816,
+          "pssBytes": 4898816,
+          "privateBytes": 4898816
+        },
+        {
+          "mapping": "libQt6Core.so.6.10.2",
+          "rssBytes": 4620288,
+          "pssBytes": 4620288,
+          "privateBytes": 4620288
+        },
+        {
+          "mapping": "libQt6Widgets.so.6.10.2",
+          "rssBytes": 3719168,
+          "pssBytes": 3719168,
+          "privateBytes": 3719168
+        },
+        {
+          "mapping": "libc.so.6",
+          "rssBytes": 1912832,
+          "pssBytes": 40960,
+          "privateBytes": 24576
+        },
+        {
+          "mapping": "libgio-2.0.so.0.8800.0",
+          "rssBytes": 1740800,
+          "pssBytes": 63488,
+          "privateBytes": 40960
+        }
+      ]
+    },
+    {
+      "name": "kde VM post-use",
+      "scope": "120-second quiet observation after native actions/views and one 512 MiB + 23 byte local copy; Cinnamon additionally includes user manual region capture. Separate post-interval mapping snapshot. Not cold or matched old/new desktop causal comparison.",
+      "sampledTotals": {
+        "rssBytes": 152563712,
+        "pssBytes": 47365120,
+        "privateBytes": 34349056
+      },
+      "selectedMappings": [
+        {
+          "mapping": "libLLVM.so.21.1",
+          "rssBytes": 50622464,
+          "pssBytes": 6275072,
+          "privateBytes": 2244608
+        },
+        {
+          "mapping": "[anonymous]",
+          "rssBytes": 11976704,
+          "pssBytes": 11976704,
+          "privateBytes": 11976704
+        },
+        {
+          "mapping": "libgallium-26.0.8-1ubuntu0.3.so",
+          "rssBytes": 10616832,
+          "pssBytes": 1821696,
+          "privateBytes": 1019904
+        },
+        {
+          "mapping": "libQt6Gui.so.6.10.2",
+          "rssBytes": 6258688,
+          "pssBytes": 879616,
+          "privateBytes": 167936
+        },
+        {
+          "mapping": "libQt6Core.so.6.10.2",
+          "rssBytes": 4644864,
+          "pssBytes": 368640,
+          "privateBytes": 98304
+        },
+        {
+          "mapping": "[heap]",
+          "rssBytes": 4173824,
+          "pssBytes": 4173824,
+          "privateBytes": 4173824
+        },
+        {
+          "mapping": "libQt6Widgets.so.6.10.2",
+          "rssBytes": 3731456,
+          "pssBytes": 1030144,
+          "privateBytes": 618496
+        },
+        {
+          "mapping": "libQt6Quick.so.6.10.2",
+          "rssBytes": 3203072,
+          "pssBytes": 590848,
+          "privateBytes": 372736
+        }
+      ]
+    }
+  ],
+  "hypotheses": [
+    {
+      "rank": 1,
+      "id": "resident-style-scope",
+      "scope": "physical cold and all resident desktops",
+      "confidence": "Direct source call site; saving unmeasured",
+      "evidence": [
+        "src/main.cpp:88 calls VisualStyle::apply before tray/adapter creation",
+        "src/ui/VisualStyle.cpp:72-145 applies full settings/history QSS to resident; helper independently applies it",
+        "Cold libpcre2-16 RSS 495616 bytes and Widgets RSS 3432448 bytes are attribution clues, not removable-byte estimates"
+      ],
+      "probe": "In isolated normal CMake build, separate only resident theme application into identical palette plus existing QMenu/QToolTip style, leaving full helper style unchanged. Compare application-construction, style-application, icon/tray and idle stages with unchanged distro Qt/theme/env. Run alternating baseline/candidate cold 300-second family measurements and native tray/capture/modal tests. First record staged counters without changing behavior to establish whether full QSS is material.",
+      "acceptance": [
+        "Native fonts/dialogs unchanged",
+        "Tray has same readable custom menu/colors/icons, all four actions and four view launchers",
+        "Live transparent X11/KDE selectors unchanged",
+        "No unbounded timers or cache purging; keep only replicated whole-family saving"
+      ],
+      "noPredictedSaving": true
+    },
+    {
+      "rank": 2,
+      "id": "kde-first-load-driver-cost",
+      "scope": "KDE VM cold-to-post-use progression only",
+      "confidence": "Large observed LLVM/Gallium/Quick/Qml/theme footprint; trigger unknown",
+      "evidence": [
+        "KDE LLVM 50622464 RSS / 6275072 PSS / 2244608 private bytes; Gallium 10616832 RSS / 1821696 PSS / 1019904 private",
+        "KDE has QtQuick/Qml/QuickTemplates2 and KDEPlasmaPlatformTheme6 mappings despite app being Widgets",
+        "src/platform/kde/KdeRegionOverlay.cpp creates translucent QWidget layer surfaces only on capture; no QQuick/OpenGL request in this source"
+      ],
+      "probe": "Fresh isolated KDE test profile/current exact package; visible console awake and VNC intact. Record basename mappings and family RSS/PSS/private after resident readiness before actions, after tray menu, helper Settings close, native chooser close, desktop/window captures, cancelled selector and accepted selector, each followed by two-second cleanup and fixed 30-second quiet. Retain operation IDs, helper generations, native ownership, Qt/plugin/Mesa version and VM graphics identity. Attribute first appearance and subsequent resident growth. Do not assume QtQuick or LLVM were explicitly instantiated by app.",
+      "acceptance": [
+        "Do not disable native platform theme/font/dialog integration to manufacture low RSS",
+        "No global Qt/Wayland/Mesa environment override in shipped app without proven feature parity",
+        "Report driver file-backed shared RSS separately but preserve user-facing total RSS"
+      ],
+      "noPredictedSaving": true
+    },
+    {
+      "rank": 3,
+      "id": "post-capture-anonymous-lifetime",
+      "scope": "each desktop post-use compared against its own fresh current-build baseline",
+      "confidence": "Private anonymous post-use footprint observed; payload leak not established",
+      "evidence": [
+        "VM anonymous: Cinnamon14602240, GNOME9334784, KDE11976704 bytes",
+        "Physical cold anonymous1114112 bytes is a different machine/workload, not a causal baseline",
+        "src/app/OperationService.cpp:123-143 clears payload and leases after disk artifact acquisition; startup/post-work idle gate already malloc_trim(0)",
+        "X11/KDE selector destructors delete surfaces; KDE image worker callbacks release completed objects",
+        "VM UI checkpoints only 2485-2522 serialized bytes, not near 8 MiB limit"
+      ],
+      "probe": "On each exact current guest build, instrument synthetic small/big image operations and cancelled/accepted region in separate fresh profiles. Fixed stages: before capture, acquired, encoded-to-disk, terminal copy, idle cleanup, external clipboard ownership replacement. Record aggregate live payload lease bytes, worker count, selector/surface count, UI checkpoint bytes, allocator arena/free/allocated totals and per-VMA anonymous RSS with identity hashes; no addresses/paths/payload data in durable export. Separate live clipboard bytes from dead allocations. Repeat N identical cycles to distinguish plateau from monotonic growth; same final synthetic clipboard content for comparisons. Do not clear user manual payload.",
+      "acceptance": [
+        "Clipboard must still paste after helper exit",
+        "Capture background stays live",
+        "Terminal operation state, hashes/sizes, retries and cancellation unchanged",
+        "Free allocator pages only after existing idle guards; no freeing live clipboard MIME"
+      ],
+      "noPredictedSaving": true,
+      "repeatProtocol": {
+        "perDesktop": "Compare fresh current exact package against its own identical-display baseline; separate processes/profiles for control, cancelled selector and accepted capture variants.",
+        "syntheticPayload": "Fixed resolution and deterministic image content; same final synthetic clipboard state across variants. Never manipulate user manual payload.",
+        "cycles": 10,
+        "quietSecondsAfterEachCycle": 30,
+        "records": "Each cycle before invocation, after acquisition, after immutable disk artifact encode, after terminal clipboard acknowledgement, after helper/selector worker exit and idle reclamation; record raw identity-guarded total family RSS/PSS/private and aggregate payload/frame/image/selector/worker/cache/clipboard-byte ownership counts.",
+        "outcome": "Report per-cycle settled sequence, earliest plateau and final-minus-first within that desktop. If rising, attribute live object counts versus allocator free/retained totals before changing ownership. No monotonic growth claim from one post-use snapshot.",
+        "controls": "Run a no-capture operation/diagnostic control with same observation/cleanup timing; record pixel formats/DPR/screen size, Qt/plugin/Mesa versions, operation IDs, terminal states, helper generation and clipboard revision. Do not change live-background transparency or tray/native dialogs."
+      }
+    },
+    {
+      "rank": 4,
+      "id": "sqlite-worker-lifetime",
+      "scope": "history latency/populated journal post-use; not leading cold 40 MiB hypothesis",
+      "confidence": "Connections already close per worker; persistent page cache claim unsupported",
+      "evidence": [
+        "src/app/HistoryService.cpp constructs local HistoryStore per background query",
+        "src/core/HistoryStore.cpp:33 closes database/removes connection in destructor",
+        "Bounded 200-row pages and QSqlQuery prepare bindings already present",
+        "OperationService creates a new QThread per background call; no persistent worker pool"
+      ],
+      "probe": "Use synthetic bounded journal sizes and fixed search/filter/page request sequence; record per-request wall time, worker create/finish, SQLite connection lifetime, prepare/exec counts and query plan, plus before/after family memory. Evaluate bounded statement reuse only if time attribution shows prepare/open costs dominate; evaluate a persistent thread-owned connection only together with idle connection disposal/retention measurement. Never share QSqlDatabase across threads or disable safe transactions.",
+      "acceptance": [
+        "Deletion/publication acknowledgement/transaction rollback tests stay intact",
+        "Bounded history data, no bulk preload",
+        "Connection reuse may increase idle memory; compare latency and retained footprint together"
+      ],
+      "noPredictedSaving": true
+    }
+  ],
+  "nonStarters": [
+    {
+      "proposal": "Switch to cstdint / use smaller variables throughout",
+      "reason": "Type spelling changes no size. Narrowing tiny bounded resident structs lacks measured multiplicity and risks overflow/ABI/alignment. Only investigate a named hot allocation with object-size and count evidence; no blanket packing."
+    },
+    {
+      "proposal": "More blind malloc_trim or free Qt caches periodically",
+      "reason": "Startup and post-work gated malloc_trim already exist. Cold heap+anonymous is ~3.98 MiB live+free combined; this is not evidence any specific amount can be reclaimed. Trimming every idle tick risks latency/CPU with no attribution."
+    },
+    {
+      "proposal": "Treat libLLVM 48.28 MiB RSS as 48.28 MiB heap leak or removable saving",
+      "reason": "Separate footprint reports only 5.98 MiB PSS and 2.14 MiB private for that mapping. Presence does not identify trigger/lifetime, and mapped code cannot safely be manually unloaded while plugin users remain."
+    },
+    {
+      "proposal": "Disable GTK/KDE theme or app fonts/dialogs",
+      "reason": "User specifically requires Cinnamon-native fonts/dialogs. Platform integration regression would invalidate the target. Helper-native UI must be retained."
+    },
+    {
+      "proposal": "Replace QApplication with QGuiApplication or unload QtWidgets as a small patch",
+      "reason": "Persistent QSystemTrayIcon/QMenu and X11/KDE QWidget capture overlays require Widgets today; compiled dependency remains. Native tray plus alternate surfaces is a separate major integration project with new acceptance burden, not known 3.27 MiB saving."
+    },
+    {
+      "proposal": "Clear clipboard to shrink post-use numbers",
+      "reason": "Resident ownership is required for paste after helper exit. Only synthetic external clipboard replacement is a labeled diagnostic workload, not product behavior."
+    },
+    {
+      "proposal": "Global software/raster/Wayland EGL overrides based on KDE mappings",
+      "reason": "No trigger evidence yet; could break translucent layer overlays, rendering or native theme. Cost locating comes first; any bounded diagnostic override must never be confused with production acceptance."
+    }
+  ],
+  "nextExecutionStatus": "Proposed cost-locating probes only; no candidate saving measured. Parent owns experiment scope, measurements and durable export."
+}

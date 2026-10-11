@@ -1,0 +1,24 @@
+{
+  "manifest": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.45+g9d142919e5e6.dirty",
+    "gitCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "gitTree": "312cfe7e778d3865668d54b9c9a55740852344c9",
+    "commitCount": 45,
+    "dirty": true,
+    "sourceProvenance": "git"
+  },
+  "binarySha256": {
+    "/usr/bin/putgd": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009",
+    "/usr/bin/putgd-cli": "b79cc2f78ca24f6cf746a841d7997314a990d584c510bb5ca405d23be23b27d7",
+    "/usr/bin/putgd-ui": "99a992f0de2b428209fe9d35e57c6d27f35fa9dc5d3cae208e65047b76fdd545"
+  },
+  "versions": {
+    "/usr/bin/putgd": "putgd 0.1.1-dev.45+g9d142919e5e6.dirty",
+    "/usr/bin/putgd-cli": "putgd-cli 0.1.1-dev.45+g9d142919e5e6.dirty",
+    "/usr/bin/putgd-ui": "putgd-ui 0.1.1-dev.45+g9d142919e5e6.dirty"
+  },
+  "extensionSha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+}

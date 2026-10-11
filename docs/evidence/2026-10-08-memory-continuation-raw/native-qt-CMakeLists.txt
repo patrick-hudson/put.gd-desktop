@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.24)
+project(putgd_native_qt_cold_probe LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Widgets)
+add_executable(native-qt-cold probe.cpp)
+target_link_libraries(native-qt-cold PRIVATE Qt6::Widgets)

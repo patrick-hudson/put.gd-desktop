@@ -1,0 +1,42 @@
+{
+  "cwd": "/home/patrick/work/put.gd",
+  "run_directory": "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf",
+  "commands": [
+    [
+      "cmake",
+      "-S",
+      "/home/patrick/work/put.gd/tools/diagnostics/layout",
+      "-B",
+      "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf/build",
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+    ],
+    [
+      "cmake",
+      "--build",
+      "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf/build"
+    ],
+    [
+      "/home/patrick/work/put.gd/work/layout-inspection/run-1jgz2hpf/build/putgd-layout-inspect"
+    ]
+  ],
+  "completed": [
+    {
+      "step": 0,
+      "exit_code": 0,
+      "log": "configure.log"
+    },
+    {
+      "step": 1,
+      "exit_code": 0,
+      "log": "build.log"
+    },
+    {
+      "step": 2,
+      "exit_code": 0,
+      "log": "layout.json"
+    }
+  ]
+}

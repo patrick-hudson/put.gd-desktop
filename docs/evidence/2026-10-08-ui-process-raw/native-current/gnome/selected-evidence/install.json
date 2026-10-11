@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T01:26:40.245211+00:00",
+  "argv": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tools/lab/lab.py",
+    "install",
+    "--run",
+    "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc",
+    "--deb",
+    "/home/patrick/work/put.gd/work/u11/native/gnome/putgd_0.1.1~dev.41+g97ca3a521714_amd64.deb"
+  ],
+  "exitCode": 0,
+  "stdout": "{\"status\": \"installed\"}\n",
+  "stderr": ""
+}

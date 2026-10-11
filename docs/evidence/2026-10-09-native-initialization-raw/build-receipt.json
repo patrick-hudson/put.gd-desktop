@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Diagnostic scaffolding only; no product implementation or memory win",
+  "commands": [
+    {
+      "argv": [
+        "cmake",
+        "--preset",
+        "dev"
+      ],
+      "exitCode": 0,
+      "stdoutArchived": false,
+      "configurationLog": "build/CMakeFiles/CMakeConfigureLog.yaml"
+    },
+    {
+      "argv": [
+        "cmake",
+        "--build",
+        "--preset",
+        "dev"
+      ],
+      "exitCode": 0,
+      "output": "[1/6] Building CXX object CMakeFiles/init-gui.dir/locator.cpp.o\n[2/6] Building CXX object CMakeFiles/init-core.dir/locator.cpp.o\n[3/6] Linking CXX executable init-core\n[4/6] Linking CXX executable init-gui\n[5/6] Building CXX object CMakeFiles/init-widgets.dir/locator.cpp.o\n[6/6] Linking CXX executable init-widgets\n"
+    }
+  ],
+  "workingDirectory": "/home/patrick/work/put.gd/work/resident-native-init-locator",
+  "tooling": "System C++20 compiler, CMake presets, Ninja, dynamically linked distro Qt"
+}

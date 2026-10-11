@@ -1,0 +1,60 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+python3-gi is already the newest version (3.48.2-1).
+python3-gi-cairo is already the newest version (3.48.2-1).
+Recommended packages:
+  libgtk-4-bin libgtk-4-media-gstreamer
+The following NEW packages will be installed:
+  gir1.2-gtk-4.0
+The following packages will be upgraded:
+  libgtk-4-1 libgtk-4-common
+2 upgraded, 1 newly installed, 0 to remove and 467 not upgraded.
+Need to get 5015 kB of archives.
+After this operation, 903 kB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgtk-4-common all 4.14.5+ds-0ubuntu0.10 [1497 kB]
+Get:2 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 libgtk-4-1 amd64 4.14.5+ds-0ubuntu0.10 [3295 kB]
+Get:3 http://archive.ubuntu.com/ubuntu noble-updates/main amd64 gir1.2-gtk-4.0 amd64 4.14.5+ds-0ubuntu0.10 [223 kB]
+Fetched 5015 kB in 2s (3296 kB/s)
+(Reading database ... 
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 463266 files and directories currently installed.)
+Preparing to unpack .../libgtk-4-common_4.14.5+ds-0ubuntu0.10_all.deb ...
+Unpacking libgtk-4-common (4.14.5+ds-0ubuntu0.10) over (4.14.5+ds-0ubuntu0.7) ...
+Preparing to unpack .../libgtk-4-1_4.14.5+ds-0ubuntu0.10_amd64.deb ...
+Unpacking libgtk-4-1:amd64 (4.14.5+ds-0ubuntu0.10) over (4.14.5+ds-0ubuntu0.7) ...
+Selecting previously unselected package gir1.2-gtk-4.0:amd64.
+Preparing to unpack .../gir1.2-gtk-4.0_4.14.5+ds-0ubuntu0.10_amd64.deb ...
+Unpacking gir1.2-gtk-4.0:amd64 (4.14.5+ds-0ubuntu0.10) ...
+Setting up libgtk-4-common (4.14.5+ds-0ubuntu0.10) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.6) ...
+Processing triggers for libglib2.0-0t64:amd64 (2.80.0-6ubuntu3.6) ...
+Setting up libgtk-4-1:amd64 (4.14.5+ds-0ubuntu0.10) ...
+Setting up gir1.2-gtk-4.0:amd64 (4.14.5+ds-0ubuntu0.10) ...
+Processing triggers for libc-bin (2.39-0ubuntu8.6) ...
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin: 

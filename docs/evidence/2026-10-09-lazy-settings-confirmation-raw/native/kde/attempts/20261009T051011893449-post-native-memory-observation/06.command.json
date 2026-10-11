@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "scp",
+    "-q",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+    "-P",
+    "22234",
+    "/home/patrick/work/put.gd/tests/performance/bench_idle.py",
+    "lab@127.0.0.1:/home/lab/putgd-frozen46-memory/bench_idle.py"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T05:10:13.906819+00:00"
+}

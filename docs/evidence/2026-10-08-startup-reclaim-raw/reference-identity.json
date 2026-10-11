@@ -1,0 +1,8 @@
+{
+  "sourceCommit": "2e789b8feedb974f04984dc460a9ffb52c8a16cb",
+  "appPath": "/home/patrick/work/put.gd/work/startup-reclaim/reference-putgd",
+  "appSha256": "4810b2413b1a8f8705fc127d884f32beb1f58057a3c67461b619289c2dbc3725",
+  "raw": "/tmp/putgd-ipc-combined-idle/results.json",
+  "observer": "/tmp/putgd-ipc-combined-idle-windows.json",
+  "note": "Original baseline app preserved before canonical source integration/build; separately measure candidate with its matching build module if necessary."
+}

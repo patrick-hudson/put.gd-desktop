@@ -1,0 +1,88 @@
+{
+  "reviewer": "adversarial-claude",
+  "cross_model_route": "claude",
+  "cross_model_target": "claude",
+  "cross_model_harness": "claude",
+  "serving_family": "claude",
+  "independence_verified": true,
+  "model_requested": "claude-opus-5-5",
+  "model_actual": "claude-opus-5-5",
+  "effort_requested": "high",
+  "effort_actual": "unverified",
+  "receipt_supported": true,
+  "findings": [
+    {
+      "title": "Binary upgrade leaves every window unopenable until resident restart",
+      "severity": "P2",
+      "file": "src/app/UiProcessController.cpp",
+      "line": 106,
+      "why_it_matters": "The helper is looked up on disk each time a view opens, but the resident keeps running the old build. Any package upgrade or local rebuild while the resident runs changes the build manifest, and the helper then refuses that mismatched resident. Settings, History, Activity and About stay unavailable until the resident restarts. The only guidance users get is a generic 'Try opening it again from the tray', and retrying can never work. Launching from the app menu exits 0 without reporting anything. On a desktop with no tray, notifyFailure shows nothing, and the Settings 'Quit put.gd' button cannot be reached because Settings itself fails. The user is left with no way to recover from the UI.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "Handle ui_incompatible as its own case. Give it a message such as 'put.gd was updated; restart put.gd to open this window.' Remember the mismatch so later activations fail fast instead of spawning a new helper each time. Have activateResident in main.cpp check the ui.show reply, print the error, and exit non-zero. You could also let the tray offer restart: quit, then exec the on-disk putgd. Assumption: an in-place resident restart is acceptable because running operations already have their own shutdown path.",
+      "confidence": 75,
+      "evidence": [
+        "src/app/UiProcessController.cpp:106: if(type==\"incompatible\"){fail(unavailable(\"ui_incompatible\"));return;}",
+        "src/app/UiProcessController.cpp:8-9: Error unavailable(const QString& code=\"ui_unavailable\") { return {code,\"The window could not be opened. Try opening it again from the tray.\",{}}; }",
+        "src/main.cpp:137: helperPath = applicationDirPath()/putgd-ui, so the current on-disk helper is used for every launch; src/ui/main.cpp:33: payload[\"build\"].toObject()!=build -> control.send(\"incompatible\"); app.exit(4)",
+        "src/main.cpp:39-42: activateResident returns true once connected; it only warns when there is no response and ignores an ok:false error reply, so `putgd` from the launcher exits 0 without saying anything",
+        "src/ui/TrayController.cpp:78: notifyFailure does nothing when !available(); TrayController.cpp:20-23: a capture failure also calls showActivity(), so each failed capture spawns a helper that will be rejected, and its 'could not be opened' message can replace the capture error notification",
+        "Scenario: resident running v0.1.1+A, apt upgrades to +B, user clicks Settings, B-helper gets A's bootstrap, sends 'incompatible', resident shows the 'try again from the tray' message, and every retry repeats this"
+      ],
+      "pre_existing": false,
+      "first_evidence": "src/app/UiProcessController.cpp:106: if(type==\"incompatible\"){fail(unavailable(\"ui_incompatible\"));return;}"
+    },
+    {
+      "title": "Any stdout write in helper corrupts the control pipe and kills it",
+      "severity": "P2",
+      "file": "src/ui/StdioDevice.cpp",
+      "line": 13,
+      "why_it_matters": "The private control protocol runs over the helper's real fd 1. Anything else in the process that writes to stdout injects a non-JSON line. Examples are a Qt platform-theme or style plugin, GTK and GLib under the gtk3 theme, or input-method modules. With G_MESSAGES_DEBUG set, GLib's standard-streams writer sends debug and info output to stdout. The resident's UiControl then fails with ui_protocol and kills the helper. The window never opens, or it vanishes and loses edits made since the last checkpoint. Headless tests do not load desktop theme plugins, so they cannot catch this.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "At helper startup, before QApplication is constructed: dup() fd 0 and fd 1 into private CLOEXEC descriptors, have StdioDevice use them, then dup2 stderr (or /dev/null) onto fd 1 so stray stdout writes cannot reach the protocol. You could also have QProcess pass a dedicated pipe fd instead of stdin/stdout.",
+      "confidence": 50,
+      "evidence": [
+        "src/ui/StdioDevice.cpp:13: fcntl(STDOUT_FILENO,F_SETFL,outputFlags_|O_NONBLOCK) ... writeData uses ::write(STDOUT_FILENO,...) for every protocol frame",
+        "src/ui/main.cpp:16-21: QApplication (and with it platform-theme and style plugins) is constructed before StdioDevice, and fd 1 stays shared with the whole process",
+        "src/app/UiControl.cpp:61: any line that is not a 4-field versioned JSON object with the next sequence number triggers fail(\"ui_protocol\"), and UiProcessController::fail kills the helper (UiProcessController.cpp:171)",
+        "Scenario: user exports G_MESSAGES_DEBUG=all with QT_QPA_PLATFORMTHEME=gtk3. GTK debug output goes to stdout in the helper, the resident sees an invalid frame, kills the helper, and shows 'could not be opened'."
+      ],
+      "pre_existing": false,
+      "first_evidence": "src/ui/StdioDevice.cpp:13: fcntl(STDOUT_FILENO,F_SETFL,outputFlags_|O_NONBLOCK) ... writeData uses ::write(STDOUT_FILENO,...) for every protocol frame"
+    },
+    {
+      "title": "Failed SetUiProcess(0) on helper exit disables window capture indefinitely",
+      "severity": "P3",
+      "file": "src/platform/gnome/GnomeAdapter.cpp",
+      "line": 81,
+      "why_it_matters": "When the helper exits, the resident clears the registered PID with a blocking 1 s D-Bus call. If that call times out or errors, for example while GNOME Shell is stalled, the error stays in uiProcessError_ even though no helper is running. Window capture, including Shell hotkey tickets, keeps failing with that error. The state clears only at the next setUiProcess call (next helper launch) or a Shell rediscovery. The extension also keeps the dead PID registered.",
+      "autofix_class": "manual",
+      "owner": "downstream-resolver",
+      "requires_verification": true,
+      "suggested_fix": "When pid==0, don't let a failed clear block capture. Either ignore the error for the clear call, since the stale PID only excludes a dead process, or schedule a retry such as QTimer::singleShot on probe_ until the clear succeeds. Keep fail-closed behaviour only for nonzero PID registration.",
+      "confidence": 50,
+      "evidence": [
+        "src/platform/gnome/GnomeAdapter.cpp:81: sync(\"SetUiProcess\",{quint32(uiProcess_)},uiProcessError_);",
+        "src/platform/gnome/GnomeAdapter.cpp:116: else if(action==\"window\"&&uiProcessError_){error=uiProcessError_;...} and line 108 marks window capture unavailable",
+        "src/app/UiProcessController.cpp:192: emit helperPidChanged(0) in finished(), and src/main.cpp:139 forwards it to source->setUiProcess(pid). Nothing retries a failed clear."
+      ],
+      "pre_existing": false,
+      "first_evidence": "src/platform/gnome/GnomeAdapter.cpp:81: sync(\"SetUiProcess\",{quint32(uiProcess_)},uiProcessError_);"
+    }
+  ],
+  "residual_risks": [
+    "UiControl::send rejects a frame when output_ + new frame > 10 MiB + 64 KiB. If a large checkpoint (more than about 5 MiB of state) is still queued in the helper's output_ when the user closes the last view, closeRequested fails locally with ui_control_limit. The helper then exits with code 3, losing edits made since the last accepted checkpoint and skipping the close handshake. Current drafts are far below this size, but the 8 MiB state limit allows it.",
+    "SettingsWindow::pollSetup stops the timer on any request error (including a transient client_timeout) but keeps the job in setupJobs_. SetupService also evicts completed jobs after 64 completions. A persisted setupId can therefore become permanently unpollable ('setup_not_found'). Because only setupJobs_.first() is polled, it blocks polling of later jobs, and a disabled 'Test saved destination' button may stay disabled.",
+    "When the helper is launched outside the supervisor (e.g. `putgd-ui` from a terminal), StdioDevice sets O_NONBLOCK on the shared TTY file description and restores it only in its destructor, so a crash or SIGKILL leaves the user's shell with a non-blocking terminal.",
+    "QProcess on Qt 6.4 does not close inherited non-CLOEXEC descriptors, so any fd the resident's libraries opened without CLOEXEC leaks into every helper instance."
+  ],
+  "testing_gaps": [
+    "No test covers build skew between a running resident and a newer on-disk putgd-ui: the error code and message the user sees, the exit status of a second `putgd` launch, and the behaviour when no tray is available.",
+    "No test shows the helper surviving third-party stdout output (e.g. a line printed to fd 1 before or after 'ready'). Headless tests never load the desktop platform-theme plugins that might write there.",
+    "No test covers a GNOME SetUiProcess call failing on helper exit (pid 0), or checks that window capture becomes available again afterwards.",
+    "Helper-window exclusion from window capture is only checked by headless or synthetic tests. Real GNOME, KDE and X11 focus-race behaviour still has to be confirmed on a desktop."
+  ]
+}

@@ -1,0 +1,10 @@
+********* Start testing of OperationsTest *********
+Config: Using QtTest library 6.4.2, Qt 6.4.2 (x86_64-little_endian-lp64 shared (dynamic) release build; by GCC 13.2.0), linuxmint 22.3
+PASS   : OperationsTest::initTestCase()
+FAIL!  : OperationsTest::selectorCancellationIsTerminalWithoutPublication() Compared values are not the same
+   Actual   (operations.diagnostics()["memory"].toObject()["allocatorReclamationCount"].toInt()): 0
+   Expected (1)                                                                                 : 1
+   Loc: [/home/patrick/work/put.gd/tests/unit/test_operations.cpp(193)]
+PASS   : OperationsTest::cleanupTestCase()
+Totals: 2 passed, 1 failed, 0 skipped, 0 blacklisted, 15355ms
+********* Finished testing of OperationsTest *********

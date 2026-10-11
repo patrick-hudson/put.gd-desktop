@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "ctest",
+    "--preset",
+    "asan",
+    "-R",
+    "^gui_operations_view$",
+    "--output-junit",
+    "/home/patrick/work/put.gd/work/capture-parity/clean50/activity-race-fixed.xml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:54:12.424084+00:00"
+}

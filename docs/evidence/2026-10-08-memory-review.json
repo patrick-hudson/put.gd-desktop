@@ -1,0 +1,79 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "scope": {
+    "base": "1e3735dbb3bc2cec444adbf61b475784ef3ee48d",
+    "branch": "optimize/resident-memory",
+    "head_sha": "016edb8283c99dddd540889d391d42dafd588722",
+    "pr_url": null,
+    "files_changed": 6,
+    "scope_mode": "local-aligned",
+    "limitation": "Verdict covers only the incremental memory optimization diff; it does not establish whole-product release readiness."
+  },
+  "intent": "Reduce cold background resident memory and idle CPU by deferring AWS setup until real S3 work and creating persistent settings/history/activity views on first activation. Preserve existing features, drafts, selections, diagnostics and safe teardown.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "adversarial-claude"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan": "docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+    "plan_source": "explicit",
+    "status": "intentional incremental slice",
+    "checked": [
+      "R11/R12/R15: all views/actions and actual capability refresh remain reachable.",
+      "R20 and Success Criteria: deferral addresses cold background residency without disabling features; first-use latency remains a measurement gate.",
+      "R31/R34/R35: retained views keep state and existing services/visuals.",
+      "U3 SDK lifetime: owning runtime survives provider/client drain, with synchronized initialization/shutdown."
+    ],
+    "unaddressed_requirements": [],
+    "unrequested_behavior_rules": [],
+    "scope_note": "U1-U10 are the broader product plan, not a claim of completion by this diff. The roughly 40 MiB target is unmet: caller reports 58,671,104-byte final cold background RSS versus 91,238,400-byte baseline and 0.003331% CPU over 300 seconds. Full desktop, S3 permission, capture latency, U9/U10 and visual acceptance remain outside this slice."
+  },
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "AWS initialization adds work to the first actual S3 request; no first-use capture-to-link latency was measured by this review. The SDK remains initialized thereafter.",
+    "Memory benefit is limited to cold background operation before first views and S3 use; retained windows continue their existing update work after activation.",
+    "The SDK owner contract remains required: all SDK objects and provider work must drain before owner destruction. This diff preserves main ordering; SDK/OpenSSL/Curl dependencies are uninstrumented in caller-reported sanitizer coverage.",
+    "Reported RSS improvement does not meet the roughly 40 MiB target and does not prove complete U10 performance or release acceptance."
+  ],
+  "testing_gaps": [
+    "The exact reviewed HEAD changes six source files and adds no permanent tests. Its existing S3 fixtures use immediate initialization, leaving this exact tree without deferred lifecycle/concurrency and lazy-view regression coverage. Caller reports permanent SDK lifecycle/concurrent ensure tests in later canonical integration commits and green Dev/ASan/instrumented-Qt TSan runs; those distinct commits were not reviewed here.",
+    "Dedicated tests for source capability signals before view creation and during view teardown are absent in the exact reviewed tree.",
+    "No tests were executed during this review; reported Release suite and physical Cinnamon window mapping/reuse evidence were supplied by the caller. Offscreen results are not desktop acceptance."
+  ],
+  "coverage": {
+    "depth": "focused",
+    "criteria_files": [
+      "AGENTS.md"
+    ],
+    "criteria_kind": "instruction-file fallback; no CODING_STANDARDS.md or CLAUDE.md governs changed paths",
+    "criteria_checked": "All six changed files reviewed against applicable AGENTS.md instructions.",
+    "independent_read": "Fixed Claude cross-model adversarial pass returned terminal normalized artifact with zero findings; no local fallback or validator dispatched.",
+    "cross_model_route": "claude",
+    "model_requested": "claude-opus-5-5",
+    "effort_requested": "high",
+    "receipt_supported": true,
+    "model_actual": "claude-opus-5-5",
+    "effort_actual": "unverified",
+    "independence_verified": true,
+    "peer_candidates": 0,
+    "not_assessed": [
+      "learnings",
+      "agent-native gaps",
+      "deployment notes",
+      "whole-product readiness"
+    ],
+    "compound_packs": "none declared; not applied",
+    "excluded": "Ignored .context/.worktrees and all secrets/payloads were outside code review scope. No untracked source files.",
+    "peer_residual_reconciliation": "Retained concrete first-use latency, post-activation memory and test-coverage limits. Did not adopt the speculative leak/owner misuse scenario as a defect. Startup journal recovery does not automatically resume S3 publication in inspected main/OperationService, so no claim that pending journals alone initialize AWS was retained."
+  },
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/memory-20261008-052124",
+  "run_id": "memory-20261008-052124"
+}

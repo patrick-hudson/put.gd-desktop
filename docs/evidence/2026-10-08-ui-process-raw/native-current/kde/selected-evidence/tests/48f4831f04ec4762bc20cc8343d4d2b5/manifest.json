@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "testId": "48f4831f04ec4762bc20cc8343d4d2b5",
+  "profile": "kde-wayland",
+  "scenario": "clipboard-image",
+  "files": {
+    "parameters.json": "a4096020fbb4dfb3d2206dbcc82b252804f95aec2ee5a17ca8872b5dca33e133",
+    "results.json": "810342ae4ba9a637d177303552371b28066dba94d16e3e314ceab93657634c89",
+    "results.xml": "db2c8856f6f0583475250334f4fa082314d4c7b8d5b87bd4ee057bb83ff736cd",
+    "ready.json": "b4b33876792011b02ad63f8f1b23dd8b4af2639edecda6638963331fc5b0c53c",
+    "paste.json": "9d54616d6029209973a208c52c0a52e86ebd6840bb2f304b6806a416f32d8642",
+    "paste.ppm": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+    "artifact.ppm": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849",
+    "before-head0.ppm": "9cf5d8078a359301bd79f344af69254ccc63baba2d999139930417742433e8de",
+    "final-head0.ppm": "64aa4f7aaef9ef58d91140c9c2108a2253a21b794acc23cc7230353ca12afca4",
+    "versions.json": "9a0adfdb5fe31ba31383fc3288260929c0cde1a85439705d7a8be8032469b955",
+    "package.json": "ab72569f5415608a3645a43d33764b7e707317196881695cc46f29ea689cbcd3",
+    "diagnostics.json": "75d2474f90fd10f0af1a414a089e18f14560de1fafb518a96bbf7392edf4b6a6",
+    "artifact-0": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316"
+  }
+}

@@ -1,0 +1,1599 @@
+{
+  "classification": "BASE41 + diagnostic overlay attribution only; no product saving or native certification",
+  "rawLogSha256": "af6a54251b09bfa74115b4e868370417e2ab922b745766a3f76ddc34149e1523",
+  "rawResultsSha256": "aebfb69aa99b6e176bb91af6e773bc84e25bc6d087ae0a7ddac06ec4b895bb79",
+  "trace": [
+    {
+      "pid": 2644816,
+      "monotonicNs": 289972677576828,
+      "stage": "resident-launch-pre"
+    },
+    {
+      "pid": 2644816,
+      "monotonicNs": 289972678248779,
+      "stage": "resident-process-started"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972696285854,
+      "stage": "main-entry"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972696318643,
+      "stage": "qapplication-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972765124179,
+      "stage": "qapplication-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972765439827,
+      "stage": "visual-style-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972767403928,
+      "stage": "bootstrap-accepted"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972767411793,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770499761,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770524727,
+      "stage": "snapshot-accepted"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770537689,
+      "stage": "ready-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770575797,
+      "stage": "ready-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770712162,
+      "stage": "settings-activate-enter"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770776986,
+      "stage": "settings-constructor-enter"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972772380475,
+      "stage": "settings-page-capture-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972795606876,
+      "stage": "settings-page-capture-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972795612374,
+      "stage": "settings-page-destinations-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972808173593,
+      "stage": "settings-page-destinations-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972808187054,
+      "stage": "settings-page-shortcuts-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972811814793,
+      "stage": "settings-page-shortcuts-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972811821240,
+      "stage": "settings-page-preferences-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972815021184,
+      "stage": "settings-page-preferences-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972815025318,
+      "stage": "settings-wiring-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972815828838,
+      "stage": "settings-wiring-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972815832906,
+      "stage": "settings-refresh-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817231335,
+      "stage": "settings-refresh-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817258939,
+      "stage": "settings-constructor-exit"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817314379,
+      "stage": "settings-show-pre"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886344878,
+      "stage": "settings-show-post"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886417307,
+      "stage": "settings-shown-sent"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886447004,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972900627814,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2644816,
+      "monotonicNs": 290010443645173,
+      "stage": "resident-launch-pre"
+    },
+    {
+      "pid": 2644816,
+      "monotonicNs": 290010451464258,
+      "stage": "resident-process-started"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010463918877,
+      "stage": "main-entry"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010463941011,
+      "stage": "qapplication-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010527146733,
+      "stage": "qapplication-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010527507593,
+      "stage": "visual-style-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010530180571,
+      "stage": "bootstrap-accepted"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010530194671,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533278718,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533318727,
+      "stage": "snapshot-accepted"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533341291,
+      "stage": "ready-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533384777,
+      "stage": "ready-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533688640,
+      "stage": "settings-activate-enter"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533757876,
+      "stage": "settings-constructor-enter"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010535509813,
+      "stage": "settings-page-capture-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010561365430,
+      "stage": "settings-page-capture-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010561374216,
+      "stage": "settings-page-destinations-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010573993774,
+      "stage": "settings-page-destinations-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010574009332,
+      "stage": "settings-page-shortcuts-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010577462346,
+      "stage": "settings-page-shortcuts-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010577470285,
+      "stage": "settings-page-preferences-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010580797792,
+      "stage": "settings-page-preferences-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010580812599,
+      "stage": "settings-wiring-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010582087179,
+      "stage": "settings-wiring-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010582093300,
+      "stage": "settings-refresh-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010583896014,
+      "stage": "settings-refresh-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010583910154,
+      "stage": "settings-constructor-exit"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010584640987,
+      "stage": "settings-show-pre"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648203381,
+      "stage": "settings-show-post"
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648248444,
+      "stage": "settings-shown-sent"
+    },
+    {
+      "pid": 2644816,
+      "monotonicNs": 290048124020955,
+      "stage": "resident-launch-pre"
+    },
+    {
+      "pid": 2644816,
+      "monotonicNs": 290048124350405,
+      "stage": "resident-process-started"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048136326337,
+      "stage": "main-entry"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048136345744,
+      "stage": "qapplication-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048194269717,
+      "stage": "qapplication-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048194591350,
+      "stage": "visual-style-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048197020028,
+      "stage": "bootstrap-accepted"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048197086515,
+      "stage": "snapshot-request"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200137335,
+      "stage": "snapshot-reply"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200150279,
+      "stage": "snapshot-accepted"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200174322,
+      "stage": "ready-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200198758,
+      "stage": "ready-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200352499,
+      "stage": "settings-activate-enter"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200389429,
+      "stage": "settings-constructor-enter"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048202185903,
+      "stage": "settings-page-capture-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048226028371,
+      "stage": "settings-page-capture-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048226035498,
+      "stage": "settings-page-destinations-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048237422093,
+      "stage": "settings-page-destinations-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048237428424,
+      "stage": "settings-page-shortcuts-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048240453308,
+      "stage": "settings-page-shortcuts-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048240456869,
+      "stage": "settings-page-preferences-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048243620053,
+      "stage": "settings-page-preferences-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048243623734,
+      "stage": "settings-wiring-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048244362417,
+      "stage": "settings-wiring-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048244365949,
+      "stage": "settings-refresh-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048245446740,
+      "stage": "settings-refresh-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048245456978,
+      "stage": "settings-constructor-exit"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048246055862,
+      "stage": "settings-show-pre"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302400084,
+      "stage": "settings-show-post"
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302423794,
+      "stage": "settings-shown-sent"
+    }
+  ],
+  "polishSnapshots": [
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770782945,
+      "phase": "ctor-enter",
+      "page": "shell",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770782945,
+      "phase": "ctor-enter",
+      "page": "capture",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770782945,
+      "phase": "ctor-enter",
+      "page": "destinations",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770782945,
+      "phase": "ctor-enter",
+      "page": "shortcuts",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972770782945,
+      "phase": "ctor-enter",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817252976,
+      "phase": "ctor-exit",
+      "page": "shell",
+      "exclusiveNs": 1285118,
+      "count": 31
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817252976,
+      "phase": "ctor-exit",
+      "page": "capture",
+      "exclusiveNs": 650193,
+      "count": 28
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817252976,
+      "phase": "ctor-exit",
+      "page": "destinations",
+      "exclusiveNs": 681287,
+      "count": 21
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817252976,
+      "phase": "ctor-exit",
+      "page": "shortcuts",
+      "exclusiveNs": 30007,
+      "count": 1
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817252976,
+      "phase": "ctor-exit",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817310107,
+      "phase": "show-pre",
+      "page": "shell",
+      "exclusiveNs": 1285118,
+      "count": 31
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817310107,
+      "phase": "show-pre",
+      "page": "capture",
+      "exclusiveNs": 650193,
+      "count": 28
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817310107,
+      "phase": "show-pre",
+      "page": "destinations",
+      "exclusiveNs": 681287,
+      "count": 21
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817310107,
+      "phase": "show-pre",
+      "page": "shortcuts",
+      "exclusiveNs": 30007,
+      "count": 1
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972817310107,
+      "phase": "show-pre",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886317778,
+      "phase": "show-post",
+      "page": "shell",
+      "exclusiveNs": 2109513,
+      "count": 50
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886317778,
+      "phase": "show-post",
+      "page": "capture",
+      "exclusiveNs": 7029664,
+      "count": 166
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886317778,
+      "phase": "show-post",
+      "page": "destinations",
+      "exclusiveNs": 5436083,
+      "count": 130
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886317778,
+      "phase": "show-post",
+      "page": "shortcuts",
+      "exclusiveNs": 1747139,
+      "count": 42
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886317778,
+      "phase": "show-post",
+      "page": "preferences",
+      "exclusiveNs": 3003259,
+      "count": 70
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886405466,
+      "phase": "shown-sent",
+      "page": "shell",
+      "exclusiveNs": 2109513,
+      "count": 50
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886405466,
+      "phase": "shown-sent",
+      "page": "capture",
+      "exclusiveNs": 7029664,
+      "count": 166
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886405466,
+      "phase": "shown-sent",
+      "page": "destinations",
+      "exclusiveNs": 5436083,
+      "count": 130
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886405466,
+      "phase": "shown-sent",
+      "page": "shortcuts",
+      "exclusiveNs": 1747139,
+      "count": 42
+    },
+    {
+      "pid": 2644904,
+      "monotonicNs": 289972886405466,
+      "phase": "shown-sent",
+      "page": "preferences",
+      "exclusiveNs": 3003259,
+      "count": 70
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533766712,
+      "phase": "ctor-enter",
+      "page": "shell",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533766712,
+      "phase": "ctor-enter",
+      "page": "capture",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533766712,
+      "phase": "ctor-enter",
+      "page": "destinations",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533766712,
+      "phase": "ctor-enter",
+      "page": "shortcuts",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010533766712,
+      "phase": "ctor-enter",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010583904437,
+      "phase": "ctor-exit",
+      "page": "shell",
+      "exclusiveNs": 1440559,
+      "count": 31
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010583904437,
+      "phase": "ctor-exit",
+      "page": "capture",
+      "exclusiveNs": 667113,
+      "count": 28
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010583904437,
+      "phase": "ctor-exit",
+      "page": "destinations",
+      "exclusiveNs": 727667,
+      "count": 21
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010583904437,
+      "phase": "ctor-exit",
+      "page": "shortcuts",
+      "exclusiveNs": 31179,
+      "count": 1
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010583904437,
+      "phase": "ctor-exit",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010584631984,
+      "phase": "show-pre",
+      "page": "shell",
+      "exclusiveNs": 1440559,
+      "count": 31
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010584631984,
+      "phase": "show-pre",
+      "page": "capture",
+      "exclusiveNs": 667113,
+      "count": 28
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010584631984,
+      "phase": "show-pre",
+      "page": "destinations",
+      "exclusiveNs": 727667,
+      "count": 21
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010584631984,
+      "phase": "show-pre",
+      "page": "shortcuts",
+      "exclusiveNs": 31179,
+      "count": 1
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010584631984,
+      "phase": "show-pre",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648183637,
+      "phase": "show-post",
+      "page": "shell",
+      "exclusiveNs": 2442518,
+      "count": 50
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648183637,
+      "phase": "show-post",
+      "page": "capture",
+      "exclusiveNs": 7586779,
+      "count": 166
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648183637,
+      "phase": "show-post",
+      "page": "destinations",
+      "exclusiveNs": 5679207,
+      "count": 130
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648183637,
+      "phase": "show-post",
+      "page": "shortcuts",
+      "exclusiveNs": 1617205,
+      "count": 42
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648183637,
+      "phase": "show-post",
+      "page": "preferences",
+      "exclusiveNs": 2970860,
+      "count": 70
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648245114,
+      "phase": "shown-sent",
+      "page": "shell",
+      "exclusiveNs": 2442518,
+      "count": 50
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648245114,
+      "phase": "shown-sent",
+      "page": "capture",
+      "exclusiveNs": 7586779,
+      "count": 166
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648245114,
+      "phase": "shown-sent",
+      "page": "destinations",
+      "exclusiveNs": 5679207,
+      "count": 130
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648245114,
+      "phase": "shown-sent",
+      "page": "shortcuts",
+      "exclusiveNs": 1617205,
+      "count": 42
+    },
+    {
+      "pid": 2645815,
+      "monotonicNs": 290010648245114,
+      "phase": "shown-sent",
+      "page": "preferences",
+      "exclusiveNs": 2970860,
+      "count": 70
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200394247,
+      "phase": "ctor-enter",
+      "page": "shell",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200394247,
+      "phase": "ctor-enter",
+      "page": "capture",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200394247,
+      "phase": "ctor-enter",
+      "page": "destinations",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200394247,
+      "phase": "ctor-enter",
+      "page": "shortcuts",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048200394247,
+      "phase": "ctor-enter",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048245452186,
+      "phase": "ctor-exit",
+      "page": "shell",
+      "exclusiveNs": 1277119,
+      "count": 31
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048245452186,
+      "phase": "ctor-exit",
+      "page": "capture",
+      "exclusiveNs": 663675,
+      "count": 28
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048245452186,
+      "phase": "ctor-exit",
+      "page": "destinations",
+      "exclusiveNs": 568671,
+      "count": 21
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048245452186,
+      "phase": "ctor-exit",
+      "page": "shortcuts",
+      "exclusiveNs": 32941,
+      "count": 1
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048245452186,
+      "phase": "ctor-exit",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048246048838,
+      "phase": "show-pre",
+      "page": "shell",
+      "exclusiveNs": 1277119,
+      "count": 31
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048246048838,
+      "phase": "show-pre",
+      "page": "capture",
+      "exclusiveNs": 663675,
+      "count": 28
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048246048838,
+      "phase": "show-pre",
+      "page": "destinations",
+      "exclusiveNs": 568671,
+      "count": 21
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048246048838,
+      "phase": "show-pre",
+      "page": "shortcuts",
+      "exclusiveNs": 32941,
+      "count": 1
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048246048838,
+      "phase": "show-pre",
+      "page": "preferences",
+      "exclusiveNs": 0,
+      "count": 0
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302391573,
+      "phase": "show-post",
+      "page": "shell",
+      "exclusiveNs": 2037851,
+      "count": 50
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302391573,
+      "phase": "show-post",
+      "page": "capture",
+      "exclusiveNs": 7374657,
+      "count": 166
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302391573,
+      "phase": "show-post",
+      "page": "destinations",
+      "exclusiveNs": 5752785,
+      "count": 130
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302391573,
+      "phase": "show-post",
+      "page": "shortcuts",
+      "exclusiveNs": 1643015,
+      "count": 42
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302391573,
+      "phase": "show-post",
+      "page": "preferences",
+      "exclusiveNs": 2974838,
+      "count": 70
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302420015,
+      "phase": "shown-sent",
+      "page": "shell",
+      "exclusiveNs": 2037851,
+      "count": 50
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302420015,
+      "phase": "shown-sent",
+      "page": "capture",
+      "exclusiveNs": 7374657,
+      "count": 166
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302420015,
+      "phase": "shown-sent",
+      "page": "destinations",
+      "exclusiveNs": 5752785,
+      "count": 130
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302420015,
+      "phase": "shown-sent",
+      "page": "shortcuts",
+      "exclusiveNs": 1643015,
+      "count": 42
+    },
+    {
+      "pid": 2646710,
+      "monotonicNs": 290048302420015,
+      "phase": "shown-sent",
+      "page": "preferences",
+      "exclusiveNs": 2974838,
+      "count": 70
+    }
+  ],
+  "rejectedTraceLineCount": 0,
+  "settingsReopens": [
+    {
+      "cycle": 1,
+      "workloadKind": "cold first open",
+      "helperPid": 2644904,
+      "stageMilliseconds": {
+        "nativeQApplication": 68.805536,
+        "styleAndBranding": 0.315648,
+        "controlSetupAndBootstrap": 1.964101,
+        "snapshotRequestReply": 3.087968,
+        "snapshotValidation": 0.024966,
+        "controllerAndReadySend": 0.05107,
+        "readyToActivation": 0.136365,
+        "settingsConstructor": 46.481953,
+        "restoreAndShowPreparation": 0.05544,
+        "showCall": 69.030499,
+        "raiseActivateAndShownSend": 0.072429,
+        "mainToShownSent": 190.131453,
+        "constructPreferences": 3.199944,
+        "constructDestinations": 12.561219,
+        "constructShortcuts": 3.627739,
+        "constructCapture": 23.226401,
+        "settingsWiring": 0.80352,
+        "settingsRefresh": 1.398429,
+        "launchToMain": 18.709026,
+        "launchToProcessStarted": 0.671951
+      },
+      "constructorAccounting": {
+        "measuredSectionMilliseconds": 44.817251999999996,
+        "unassignedShellAndTraceMilliseconds": 1.6647010000000009,
+        "completeSections": true
+      },
+      "polishAttribution": {
+        "intervals": {
+          "constructor": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.650193,
+                "eventCount": 28
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.681287,
+                "eventCount": 21
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 1.285118,
+                "eventCount": 31
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.030007,
+                "eventCount": 1
+              }
+            },
+            "exclusiveTotalMilliseconds": 2.646605,
+            "eventCount": 81
+          },
+          "restoreAndShowPreparation": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              }
+            },
+            "exclusiveTotalMilliseconds": 0.0,
+            "eventCount": 0
+          },
+          "showCall": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 6.379471,
+                "eventCount": 138
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 4.754796,
+                "eventCount": 109
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 3.003259,
+                "eventCount": 70
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.824395,
+                "eventCount": 19
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 1.717132,
+                "eventCount": 41
+              }
+            },
+            "exclusiveTotalMilliseconds": 16.679053,
+            "eventCount": 377
+          },
+          "raiseActivateAndShownSend": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              }
+            },
+            "exclusiveTotalMilliseconds": 0.0,
+            "eventCount": 0
+          },
+          "constructorThroughShownSend": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 7.029664,
+                "eventCount": 166
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 5.436083,
+                "eventCount": 130
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 3.003259,
+                "eventCount": 70
+              },
+              "shell": {
+                "exclusiveMilliseconds": 2.109513,
+                "eventCount": 50
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 1.747139,
+                "eventCount": 42
+              }
+            },
+            "exclusiveTotalMilliseconds": 19.325658,
+            "eventCount": 458
+          }
+        },
+        "missingSnapshots": [],
+        "invalidCounterIntervals": []
+      },
+      "cliShownAcknowledgementMilliseconds": 255.1838089711964,
+      "independentlyObservedMappedMilliseconds": 394.1643809666857,
+      "mappedAfterCliOverheadMilliseconds": 138.9805719954893,
+      "missingStages": []
+    },
+    {
+      "cycle": 2,
+      "workloadKind": "closed-view reopen",
+      "helperPid": 2645815,
+      "stageMilliseconds": {
+        "nativeQApplication": 63.205722,
+        "styleAndBranding": 0.36086,
+        "controlSetupAndBootstrap": 2.672978,
+        "snapshotRequestReply": 3.084047,
+        "snapshotValidation": 0.040009,
+        "controllerAndReadySend": 0.06605,
+        "readyToActivation": 0.303863,
+        "settingsConstructor": 50.152278,
+        "restoreAndShowPreparation": 0.730833,
+        "showCall": 63.562394,
+        "raiseActivateAndShownSend": 0.045063,
+        "mainToShownSent": 184.329567,
+        "constructPreferences": 3.327507,
+        "constructDestinations": 12.619558,
+        "constructShortcuts": 3.453014,
+        "constructCapture": 25.855617,
+        "settingsWiring": 1.27458,
+        "settingsRefresh": 1.802714,
+        "launchToMain": 20.273704,
+        "launchToProcessStarted": 7.819085
+      },
+      "constructorAccounting": {
+        "measuredSectionMilliseconds": 48.332989999999995,
+        "unassignedShellAndTraceMilliseconds": 1.8192880000000073,
+        "completeSections": true
+      },
+      "polishAttribution": {
+        "intervals": {
+          "constructor": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.667113,
+                "eventCount": 28
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.727667,
+                "eventCount": 21
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 1.440559,
+                "eventCount": 31
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.031179,
+                "eventCount": 1
+              }
+            },
+            "exclusiveTotalMilliseconds": 2.8665179999999997,
+            "eventCount": 81
+          },
+          "restoreAndShowPreparation": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              }
+            },
+            "exclusiveTotalMilliseconds": 0.0,
+            "eventCount": 0
+          },
+          "showCall": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 6.919666,
+                "eventCount": 138
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 4.95154,
+                "eventCount": 109
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 2.97086,
+                "eventCount": 70
+              },
+              "shell": {
+                "exclusiveMilliseconds": 1.001959,
+                "eventCount": 19
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 1.586026,
+                "eventCount": 41
+              }
+            },
+            "exclusiveTotalMilliseconds": 17.430051,
+            "eventCount": 377
+          },
+          "raiseActivateAndShownSend": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              }
+            },
+            "exclusiveTotalMilliseconds": 0.0,
+            "eventCount": 0
+          },
+          "constructorThroughShownSend": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 7.586779,
+                "eventCount": 166
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 5.679207,
+                "eventCount": 130
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 2.97086,
+                "eventCount": 70
+              },
+              "shell": {
+                "exclusiveMilliseconds": 2.442518,
+                "eventCount": 50
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 1.617205,
+                "eventCount": 42
+              }
+            },
+            "exclusiveTotalMilliseconds": 20.296569,
+            "eventCount": 458
+          }
+        },
+        "missingSnapshots": [],
+        "invalidCounterIntervals": []
+      },
+      "cliShownAcknowledgementMilliseconds": 222.76878700358793,
+      "independentlyObservedMappedMilliseconds": 347.04432100988925,
+      "mappedAfterCliOverheadMilliseconds": 124.27553400630131,
+      "missingStages": []
+    },
+    {
+      "cycle": 3,
+      "workloadKind": "closed-view reopen",
+      "helperPid": 2646710,
+      "stageMilliseconds": {
+        "nativeQApplication": 57.923973,
+        "styleAndBranding": 0.321633,
+        "controlSetupAndBootstrap": 2.428678,
+        "snapshotRequestReply": 3.05082,
+        "snapshotValidation": 0.012944,
+        "controllerAndReadySend": 0.048479,
+        "readyToActivation": 0.153741,
+        "settingsConstructor": 45.067549,
+        "restoreAndShowPreparation": 0.598884,
+        "showCall": 56.344222,
+        "raiseActivateAndShownSend": 0.02371,
+        "mainToShownSent": 166.097457,
+        "constructPreferences": 3.163184,
+        "constructDestinations": 11.386595,
+        "constructShortcuts": 3.024884,
+        "constructCapture": 23.842468,
+        "settingsWiring": 0.738683,
+        "settingsRefresh": 1.080791,
+        "launchToMain": 12.305382,
+        "launchToProcessStarted": 0.32945
+      },
+      "constructorAccounting": {
+        "measuredSectionMilliseconds": 43.236605,
+        "unassignedShellAndTraceMilliseconds": 1.8309440000000023,
+        "completeSections": true
+      },
+      "polishAttribution": {
+        "intervals": {
+          "constructor": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.663675,
+                "eventCount": 28
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.568671,
+                "eventCount": 21
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 1.277119,
+                "eventCount": 31
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.032941,
+                "eventCount": 1
+              }
+            },
+            "exclusiveTotalMilliseconds": 2.5424059999999997,
+            "eventCount": 81
+          },
+          "restoreAndShowPreparation": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              }
+            },
+            "exclusiveTotalMilliseconds": 0.0,
+            "eventCount": 0
+          },
+          "showCall": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 6.710982,
+                "eventCount": 138
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 5.184114,
+                "eventCount": 109
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 2.974838,
+                "eventCount": 70
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.760732,
+                "eventCount": 19
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 1.610074,
+                "eventCount": 41
+              }
+            },
+            "exclusiveTotalMilliseconds": 17.24074,
+            "eventCount": 377
+          },
+          "raiseActivateAndShownSend": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shell": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 0.0,
+                "eventCount": 0
+              }
+            },
+            "exclusiveTotalMilliseconds": 0.0,
+            "eventCount": 0
+          },
+          "constructorThroughShownSend": {
+            "pages": {
+              "capture": {
+                "exclusiveMilliseconds": 7.374657,
+                "eventCount": 166
+              },
+              "destinations": {
+                "exclusiveMilliseconds": 5.752785,
+                "eventCount": 130
+              },
+              "preferences": {
+                "exclusiveMilliseconds": 2.974838,
+                "eventCount": 70
+              },
+              "shell": {
+                "exclusiveMilliseconds": 2.037851,
+                "eventCount": 50
+              },
+              "shortcuts": {
+                "exclusiveMilliseconds": 1.643015,
+                "eventCount": 42
+              }
+            },
+            "exclusiveTotalMilliseconds": 19.783146,
+            "eventCount": 458
+          }
+        },
+        "missingSnapshots": [],
+        "invalidCounterIntervals": []
+      },
+      "cliShownAcknowledgementMilliseconds": 193.58806795207784,
+      "independentlyObservedMappedMilliseconds": 317.53956800093874,
+      "mappedAfterCliOverheadMilliseconds": 123.95150004886091,
+      "missingStages": []
+    }
+  ],
+  "limitations": [
+    "Polish timings measure exclusive QApplication::notify dispatch only, excluding nested Polish dispatch; other Qt style/layout/font work is outside this attribution",
+    "Page ancestry is sampled at dispatch time; pre-reparenting work can be shell or untracked",
+    "Polish totals are subsets of constructor/show wall time and must not be added to them",
+    "Constructor shell remainder includes fixed trace overhead and setup; wiring interval includes visibility/footer setup",
+    "stderr instrumentation adds overhead",
+    "control.send return records queued frames rather than resident receipt",
+    "QWidget show return and CLI shown acknowledgement do not prove mapped or painted pixels",
+    "mapped observer includes process/window/diagnostic inspection overhead",
+    "not p95 or populated-history/post-upload memory evidence"
+  ]
+}

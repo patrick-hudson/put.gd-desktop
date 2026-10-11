@@ -1,0 +1,18 @@
+{
+  "timestampUtc": "2026-10-09T01:10:45.984614+00:00",
+  "processes": [],
+  "package": {
+    "sha256": "7ac76762aa4a3f168c1b7ec98588f30405cf8b4dfd665afb80a33513626f40d4",
+    "filename": "putgd_0.1.1~dev.37+gbcbe63f0d1e1_amd64.deb",
+    "installedBinarySha256": {
+      "/usr/bin/putgd": "e23fc1f7c81bf3de38a4d0e70e7718962cd4b135ae94793dfe98bcf17d3aae97",
+      "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+      "/usr/bin/putgd-cli": "5abf7f05a78e257f4c7d9d6b6609fcfc2303d05978707068f7545d4a05f96363",
+      "/usr/bin/putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/u11-install-preflight-failed-head0.ppm",
+    "sha256": "f808b69320684bff0213ee11fb625c0ef4e18bb737b429cc8c6b74d68904130e"
+  }
+}

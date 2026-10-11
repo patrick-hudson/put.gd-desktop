@@ -1,0 +1,5 @@
+{
+  "errorType": "KeyError",
+  "error": "trayAvailable looked up in wrong diagnostics shape after data capture",
+  "capturedReadOnlyDataPreserved": true
+}

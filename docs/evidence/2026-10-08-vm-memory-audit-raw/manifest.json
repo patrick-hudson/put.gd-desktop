@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "scope": "Explicit allowlist of sanitized measurement receipts and collector source. No private inputs, disks, payloads or config copied. Original bytes retained; original /tmp references resolve through this manifest.",
+  "files": [
+    {
+      "path": "guest-audit.json",
+      "originalPath": "/tmp/putgd-vm-memory-audit.json",
+      "bytes": 290770,
+      "sha256": "e439bf2b244eac4edeadd672c0211b135bffcaf0779274619340742bbe8db1cb"
+    },
+    {
+      "path": "dashboard-audit.json",
+      "originalPath": "/tmp/putgd-vm-dashboard-audit.json",
+      "bytes": 18497,
+      "sha256": "e749203c809dc1597082738bcfbeb9cb4b64bc7a3e6292f01ff478b1406f3f5a"
+    },
+    {
+      "path": "guest-collect-original.py",
+      "originalPath": "/tmp/putgd-vm-memory-collect.py",
+      "bytes": 9745,
+      "sha256": "122119a39db911593221f5a5c5bffa946767b83ccf293c42c42c55f9b289fb71"
+    },
+    {
+      "path": "guest-build-check.py",
+      "originalPath": "/tmp/putgd-vm-memory-build-check.py",
+      "bytes": 1943,
+      "sha256": "6b7d012beb5ad3b8863467c4af4634db287b5e91165132ab0232bcba843121ab"
+    },
+    {
+      "path": "guest-renderer-check.py",
+      "originalPath": "/tmp/putgd-vm-renderer-check.py",
+      "bytes": 1189,
+      "sha256": "cf658e6736d9b471487b9bd86f080872477cd64a5ea28ab9e3dfc2eaf1653e5a"
+    },
+    {
+      "path": "dashboard-readonly.py",
+      "originalPath": "/tmp/putgd-vm-dashboard-readonly.py",
+      "bytes": 3298,
+      "sha256": "b64ae75467faef797ed0f2ed46c47a6a925a040352dc430b5695fcae23737d84"
+    },
+    {
+      "path": "memory-dashboard-http.json",
+      "originalPath": "/tmp/putgd-memory-dashboard-http-inspection.json",
+      "bytes": 3311,
+      "sha256": "cad65fbb9540e9ede3d9aaade5c8b9428cca4ef5ebdb6ce87d5d51890ec3fc98"
+    },
+    {
+      "path": "display-wall-http.json",
+      "originalPath": "/tmp/putgd-vm-dashboard-http-inspection.json",
+      "bytes": 1530,
+      "sha256": "ecd236795906e219db67bea3056a35844ad5a89b0b082567eb608582251fe6b9"
+    },
+    {
+      "path": "display-wall-inventory.json",
+      "originalPath": "/tmp/putgd-vm-dashboard-inventory.json",
+      "bytes": 1650,
+      "sha256": "efbd94f0f6239264af9c33c1f9a9cdea80f38886a402123a9c3c7c515cbd07b8"
+    }
+  ]
+}

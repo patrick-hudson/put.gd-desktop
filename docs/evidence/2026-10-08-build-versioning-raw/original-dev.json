@@ -1,0 +1,55 @@
+{
+  "timestampUtc": "2026-10-08T22:26:21.890428+00:00",
+  "scope": "Versioning-only canonical source; frozen view-memory candidate and later X11 fix are separate",
+  "tests": {
+    "name": "Linux-c++",
+    "tests": "31",
+    "failures": "0",
+    "disabled": "0",
+    "skipped": "0",
+    "hostname": "patrick-Precision-5540",
+    "time": "156",
+    "timestamp": "2026-10-08T17:23:01"
+  },
+  "passed": 31,
+  "total": 31,
+  "exitCode": 0,
+  "build": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.33+g0862bdade829.dirty",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.33+g0862bdade829.dirty",
+    "gitCommit": "0862bdade82994da23f4a11cb32b9fd31d483c26",
+    "gitTree": "e69663d7e856c62416a18a5b1de14094b271272b",
+    "commitCount": 33,
+    "dirty": true,
+    "sourceProvenance": "git"
+  },
+  "binarySha256": {
+    "build/dev/putgd": "38409424e981b455a97d910f9f7534f243859348f519a8e64815ebe07a2a8bd5",
+    "build/dev/putgd-cli": "696fc4a9f4fc8b08356fbe743a06c142c3e01397d1b022ba049483628393244f",
+    "build/dev/test_version": "f8e8f165aeffb87460b5c6de326d2e8b4a0b48cd61b4b1512b5144ae25acd8df",
+    "build/dev/test_gui_version": "1238f09769aa67477222e054852b973b65e8413c7b6d6e4998766e5322e095f4"
+  },
+  "ownedSourceSha256": {
+    "CMakeLists.txt": "f67ab587f7b0c7a7d4d976c60fc66d0f7046d5bfb5303c5dacfeed8c3844cc1a",
+    "cmake/BuildVersion.cmake": "e91bb0e202ee2499788240dc77a96bf39cc61faeb28d18c82bc511cde1d40848",
+    "cmake/GenerateBuildInfo.cmake": "ad781aa08a90a6ba0242c93413992ea0771c16a3ccaef3b6de10a1b93dae9c3a",
+    "cmake/BuildInfo.cpp.in": "cba101ecddc06956ce66cea52c699b786b57474d56769d17bda2e6cbb35983b8",
+    "cmake/CheckBuildIdentity.cmake.in": "8509e647b46caf9d50fec0d4c510da1a8659deba8c7b592416619a9a2a6e65d1",
+    "cmake/PackageBuildIdentity.cmake.in": "559b533adc6d5b86e511a07f61cf0931c90593da5e4692d23f4653ab924c30d8",
+    "src/core/BuildInfo.h": "b180a71041ba17093566bf36a19ddec182d0d2c9d9b1035f9835ece077cb509f",
+    "src/main.cpp": "66d7cf2f64b6f3426fb34f6d974471521a33393abb2bc3ed4f51fa2466fd0be9",
+    "src/cli/main.cpp": "3c6e4fa2ae77e309e8707cba5d880629a66b8519b2f8a113e58d0eb271e37caf",
+    "src/app/OperationService.cpp": "e07f7e5809a9a05e19d9822efa9259e57b43b5c43775503139e246ca6809c5b2",
+    "src/ui/TrayController.cpp": "ce02ec92480e094b90632f6b21a63edc87cb4dffc465b96bef4955b082499f2d",
+    "src/ui/TrayController.h": "126c3d1e632bf1498e7a506dfdde9b88a6e2d749d8089765bc1d24d9b6e777e8",
+    "packaging/linux/CMakeLists.txt": "d79238427cf4294b992c2c067e93ccca7330769b70b5c6c55a613790e2a51502",
+    "tests/cmake/version_contract.cmake": "694423b899a0edc2734543bdf52d1c96b75942297cd9fdc04288e53ab99a7230",
+    "tests/integration/test_version.cpp": "a9884c903bf6c9b47657a26bc84493582b959478b1e6c062d0bde8d5da40dc86",
+    "tests/gui/test_version.cpp": "93b59d4386887094c3aff7d9a3c87375eeebbb9c06167d38d46ace3cd2ee06e6",
+    "docs/build.md": "79053378dbe8d4fda18ba35c0be5da36bddb5f4e302cc403e8b17f3395e4bde9",
+    "docs/versioning.md": "b20e91660c5489983b97d2bf7ec8315d78500754faea88710bd20a6910cf1fa4",
+    "docs/agents.md": "a0e7bb159b3114de00ff33ea08b37a0ce6808e04ffcef02a3b9a2897df34efc0"
+  }
+}

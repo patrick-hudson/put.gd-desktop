@@ -1,0 +1,1664 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T01:30:18.029839+00:00",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "runningApp": {
+    "pid": 105866,
+    "startTicks": 1779397,
+    "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+  },
+  "runnerSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89",
+  "vncPort": 5934,
+  "attempts": [
+    {
+      "schemaVersion": 1,
+      "testId": "ef79ffee77e348c4863b0f347fc83c9f",
+      "profile": "kde-wayland",
+      "scenario": "region-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "1d6b028f-6230-4f1d-971c-f66ff65e43bb",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true,
+        "errors": [],
+        "width": 80,
+        "height": 60,
+        "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+      },
+      "pasteMetadata": {
+        "formats": [
+          "image/png",
+          "application/x-putgd-result-9878d969ccc449839f70c0d70f32943a",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 60,
+          "saved": true,
+          "width": 80
+        },
+        "schemaVersion": 1
+      },
+      "paste": {
+        "ok": true,
+        "errors": [],
+        "width": 80,
+        "height": 60,
+        "sha256": "e2e481e63ed59ecb6c1b7ea263b0cec3e0f33ce420d350971c6f168f45aa6c0c"
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "16eabedca75785fcc5af50c06e7f4beeeb6a9de7b49eda34a0e2625ae61ddfbe"
+      },
+      "elapsedSeconds": 10.569922466005664,
+      "evidenceDirectory": "tests/ef79ffee77e348c4863b0f347fc83c9f",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "39a3f0146eef4407b1667b80973253c4",
+      "profile": "kde-wayland",
+      "scenario": "window-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320.0,
+        "y": 149.0,
+        "width": 640.0,
+        "height": 448.0,
+        "oracle": "pre-action KWin queryWindowInfo"
+      },
+      "parameters": "parameters.json",
+      "operationId": "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true,
+        "errors": [],
+        "width": 640,
+        "height": 448,
+        "sha256": "21989991f27f619d0d660b5dd5f79ef9aa789f9eb82da9afa256c30e21cdcde0"
+      },
+      "pasteMetadata": {
+        "formats": [
+          "application/x-putgd-result-4382f465eafc41a296d82ba5d9743e50",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 448,
+          "saved": true,
+          "width": 640
+        },
+        "schemaVersion": 1
+      },
+      "paste": {
+        "ok": true,
+        "errors": [],
+        "width": 640,
+        "height": 448,
+        "sha256": "21989991f27f619d0d660b5dd5f79ef9aa789f9eb82da9afa256c30e21cdcde0"
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "a8835e9233d3bf4252df737204ef89a40b3b2f6643a41fce998d512f969d941f"
+      },
+      "elapsedSeconds": 11.351355833990965,
+      "evidenceDirectory": "tests/39a3f0146eef4407b1667b80973253c4",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "f48e78b37dcc429abf59fd2407fca866",
+      "profile": "kde-wayland",
+      "scenario": "desktop-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true,
+        "errors": [],
+        "width": 1280,
+        "height": 800,
+        "sha256": "82502a33bea186c2b53549bc26a6ab64e860e55df9f6ccdd8e3cd89dc024d4b1"
+      },
+      "pasteMetadata": {
+        "formats": [
+          "application/x-putgd-result-5ee2b7b548d944ddbad753be3b015eed",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 800,
+          "saved": true,
+          "width": 1280
+        },
+        "schemaVersion": 1
+      },
+      "paste": {
+        "ok": true,
+        "errors": [],
+        "width": 1280,
+        "height": 800,
+        "sha256": "82502a33bea186c2b53549bc26a6ab64e860e55df9f6ccdd8e3cd89dc024d4b1"
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "e998e0f64673ca891c2637166efb06bc741b39416bd208e84900aee95c542d97"
+      },
+      "elapsedSeconds": 10.816490768978838,
+      "evidenceDirectory": "tests/f48e78b37dcc429abf59fd2407fca866",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "60cfc592a27e41a2a51a471e444f8cb3",
+      "profile": "kde-wayland",
+      "scenario": "clipboard-text-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true
+      },
+      "pasteMetadata": {
+        "formats": [
+          "text/plain",
+          "application/x-putgd-result-18054a36b8c84a3593d1fcbcdc9b3453",
+          "UTF8_STRING"
+        ],
+        "schemaVersion": 1,
+        "text": "putgd synthetic clipboard text"
+      },
+      "paste": {
+        "ok": true,
+        "expected": {
+          "text": "putgd synthetic clipboard text"
+        },
+        "actual": {
+          "formats": [
+            "text/plain",
+            "application/x-putgd-result-18054a36b8c84a3593d1fcbcdc9b3453",
+            "UTF8_STRING"
+          ],
+          "schemaVersion": 1,
+          "text": "putgd synthetic clipboard text"
+        }
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "05f5863fbc7f0a6d0d61e665bab9971c6e8e266214cdac73c282c0b2da297f51"
+      },
+      "elapsedSeconds": 8.935190682997927,
+      "evidenceDirectory": "tests/60cfc592a27e41a2a51a471e444f8cb3",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "66e6d99a64f7482e85013f50e45d1695",
+      "profile": "kde-wayland",
+      "scenario": "clipboard-image-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "254e5c26-62c8-497f-9c3e-714a13df8f18",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true,
+        "errors": [],
+        "width": 96,
+        "height": 64,
+        "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+      },
+      "pasteMetadata": {
+        "formats": [
+          "application/x-putgd-result-62f7ea669f154617b359e4e2d069b01d",
+          "image/png",
+          "application/x-qt-image"
+        ],
+        "image": {
+          "height": 64,
+          "saved": true,
+          "width": 96
+        },
+        "schemaVersion": 1
+      },
+      "paste": {
+        "ok": true,
+        "errors": [],
+        "width": 96,
+        "height": 64,
+        "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "a9235266df75ee02e2e152d75370eff58ff34e2a70ebbba246410424fbb48172"
+      },
+      "elapsedSeconds": 10.78225636103889,
+      "evidenceDirectory": "tests/66e6d99a64f7482e85013f50e45d1695",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "7efd37b66d394f69be847cc514109556",
+      "profile": "kde-wayland",
+      "scenario": "clipboard-files-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        },
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true
+      },
+      "pasteMetadata": {
+        "formats": [
+          "application/x-putgd-result-13efe0ecb2e84db0b8f6f7cde7086274",
+          "text/uri-list"
+        ],
+        "schemaVersion": 1,
+        "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\n",
+        "urls": [
+          "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+          "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+        ]
+      },
+      "paste": {
+        "ok": true
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "af07c6f0bbd247e555a82b278dde06c03820cfab3be3c0c6d3c7975ca1470c0d"
+      },
+      "elapsedSeconds": 11.917776076996233,
+      "evidenceDirectory": "tests/7efd37b66d394f69be847cc514109556",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "2da197951a9f4142a7bab4402ba5de37",
+      "profile": "kde-wayland",
+      "scenario": "region-cancel-escape-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+      "operationState": "cancelled",
+      "copyStatus": "no_result",
+      "itemOutcomes": [],
+      "paste": {
+        "ok": true,
+        "expected": {
+          "text": "putgd synthetic clipboard text"
+        },
+        "actual": {
+          "formats": [
+            "text/plain",
+            "text/plain;charset=utf-8"
+          ],
+          "schemaVersion": 1,
+          "text": "putgd synthetic clipboard text"
+        }
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "520c16bc0dfe447cbb5abdf76d655791b9ab5e33987c9aa1dccee573c55cfdac"
+      },
+      "elapsedSeconds": 10.207074806967285,
+      "evidenceDirectory": "tests/2da197951a9f4142a7bab4402ba5de37",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "738f00e00f5e447f90bcf376894a3a4b",
+      "profile": "kde-wayland",
+      "scenario": "region-cancel-right-click-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "ff0c4b13-c493-443c-9c21-d9f417814223",
+      "operationState": "cancelled",
+      "copyStatus": "no_result",
+      "itemOutcomes": [],
+      "paste": {
+        "ok": true,
+        "expected": {
+          "text": "putgd synthetic clipboard text"
+        },
+        "actual": {
+          "formats": [
+            "text/plain",
+            "text/plain;charset=utf-8"
+          ],
+          "schemaVersion": 1,
+          "text": "putgd synthetic clipboard text"
+        }
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "520c16bc0dfe447cbb5abdf76d655791b9ab5e33987c9aa1dccee573c55cfdac"
+      },
+      "elapsedSeconds": 8.823140116990544,
+      "evidenceDirectory": "tests/738f00e00f5e447f90bcf376894a3a4b",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "aae026b66fa4402f9214d2089fb0d47c",
+      "profile": "kde-wayland",
+      "scenario": "region-cancel-zero-area-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "qt",
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "independentWindowFrame": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 420
+      },
+      "parameters": "parameters.json",
+      "operationId": "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+      "operationState": "cancelled",
+      "copyStatus": "no_result",
+      "itemOutcomes": [],
+      "paste": {
+        "ok": true,
+        "expected": {
+          "text": "putgd synthetic clipboard text"
+        },
+        "actual": {
+          "formats": [
+            "text/plain",
+            "text/plain;charset=utf-8"
+          ],
+          "schemaVersion": 1,
+          "text": "putgd synthetic clipboard text"
+        }
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "8871a1b824cb6a2a30a57662a024e85e3520b0652ece926d43c957cb44a41641"
+      },
+      "elapsedSeconds": 9.600665328965988,
+      "evidenceDirectory": "tests/aae026b66fa4402f9214d2089fb0d47c",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "48f4831f04ec4762bc20cc8343d4d2b5",
+      "profile": "kde-wayland",
+      "scenario": "clipboard-image-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "gtk",
+      "gtkClient": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "version": "4.22",
+        "displayBackend": "GdkWaylandDisplay"
+      },
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "parameters": "parameters.json",
+      "operationId": "288231e2-ba52-4b3a-8c33-770b55db321d",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true,
+        "errors": [],
+        "width": 96,
+        "height": 64,
+        "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+      },
+      "pasteMetadata": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "image/png"
+        ],
+        "image": {
+          "width": 96,
+          "height": 64,
+          "saved": true
+        }
+      },
+      "paste": {
+        "ok": true,
+        "errors": [],
+        "width": 96,
+        "height": 64,
+        "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "64aa4f7aaef9ef58d91140c9c2108a2253a21b794acc23cc7230353ca12afca4"
+      },
+      "elapsedSeconds": 15.548921877983958,
+      "evidenceDirectory": "tests/48f4831f04ec4762bc20cc8343d4d2b5",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "e7c27f0e117a48f3912e732b28afd886",
+      "profile": "kde-wayland",
+      "scenario": "clipboard-files-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "gtk",
+      "gtkClient": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "version": "4.22",
+        "displayBackend": "GdkWaylandDisplay"
+      },
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "parameters": "parameters.json",
+      "operationId": "a02d0838-75c1-4217-a536-743b636f164c",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        },
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true
+      },
+      "pasteMetadata": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/uri-list"
+        ],
+        "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1-027769b3-610f-4951-b8c9-a13dacd1bb39.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2-6877154b-b4d3-4717-9713-69ae18c4447e.txt\r\n",
+        "urls": [
+          "file:///home/lab/putgd-lab/archive/text/synthetic-1-027769b3-610f-4951-b8c9-a13dacd1bb39.txt",
+          "file:///home/lab/putgd-lab/archive/text/synthetic-2-6877154b-b4d3-4717-9713-69ae18c4447e.txt"
+        ]
+      },
+      "paste": {
+        "ok": true
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "365b77a691b853deb2a240be57055aba27d603db0911662a724b2b718ac76fd5"
+      },
+      "elapsedSeconds": 11.343254572013393,
+      "evidenceDirectory": "tests/e7c27f0e117a48f3912e732b28afd886",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "testId": "1d29dd8011b8441988d6b8dd973662e9",
+      "profile": "kde-wayland",
+      "scenario": "clipboard-text-independent-paste",
+      "ok": true,
+      "acceptanceScope": "single-head named action; no full profile certification",
+      "runningApp": {
+        "pid": 105866,
+        "startTicks": 1779397,
+        "sha256": "cf0f6cec6a4d1bf79ef264d330c678037e0bddd35d8482d55d8ba2cbf676c34c"
+      },
+      "evidence_class": "graphical-kvm",
+      "performance_eligible": false,
+      "clipboardClient": "gtk",
+      "gtkClient": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "version": "4.22",
+        "displayBackend": "GdkWaylandDisplay"
+      },
+      "shortcutBindings": {
+        "clipboard": {
+          "actual": [
+            "Ctrl+Shift+F12"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F12",
+          "state": "bound"
+        },
+        "desktop": {
+          "actual": [
+            "Ctrl+Shift+F11"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F11",
+          "state": "bound"
+        },
+        "region": {
+          "actual": [
+            "Ctrl+Shift+F9"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F9",
+          "state": "bound"
+        },
+        "window": {
+          "actual": [
+            "Ctrl+Shift+F10"
+          ],
+          "bound": true,
+          "requested": "Ctrl+Shift+F10",
+          "state": "bound"
+        }
+      },
+      "independentPaintGeometry": {
+        "x": 320,
+        "y": 177,
+        "width": 640,
+        "height": 320
+      },
+      "parameters": "parameters.json",
+      "operationId": "414c2482-5f1f-4057-90ed-169ece7558a4",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "itemOutcomes": [
+        {
+          "uploadStatus": "local_only",
+          "localStatus": "saved",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          }
+        }
+      ],
+      "artifact": {
+        "ok": true
+      },
+      "pasteMetadata": {
+        "schemaVersion": 1,
+        "client": "GTK",
+        "formats": [
+          "text/plain;charset=utf-8"
+        ],
+        "text": "putgd synthetic clipboard text"
+      },
+      "paste": {
+        "ok": true,
+        "expected": {
+          "text": "putgd synthetic clipboard text"
+        },
+        "actual": {
+          "schemaVersion": 1,
+          "client": "GTK",
+          "formats": [
+            "text/plain;charset=utf-8"
+          ],
+          "text": "putgd synthetic clipboard text"
+        }
+      },
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/final-head0.ppm",
+        "sha256": "40b413b22ad0e80e5a1857ba5142919e1ef58bc4f4cca4d78a870164dc415ccf"
+      },
+      "elapsedSeconds": 11.65606586803915,
+      "evidenceDirectory": "tests/1d29dd8011b8441988d6b8dd973662e9",
+      "uiBefore": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "uiAfter": {
+        "checkpointBytes": 3027,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 0,
+        "state": "stopped"
+      },
+      "baselineParameterChecks": {
+        "profile": true,
+        "destination": true,
+        "hotkeys": true,
+        "displayLayout": true,
+        "qtVersion": true,
+        "acceleration": true,
+        "goldenSha256": true,
+        "timingSeconds": true,
+        "timeoutSeconds": true,
+        "selectionShape": true
+      }
+    }
+  ],
+  "ok": true,
+  "beforeOperationIds": [],
+  "afterOperationIds": [
+    "414c2482-5f1f-4057-90ed-169ece7558a4",
+    "a02d0838-75c1-4217-a536-743b636f164c",
+    "288231e2-ba52-4b3a-8c33-770b55db321d",
+    "f97c6654-9f66-4b6b-aa88-9ba9e4112857",
+    "ff0c4b13-c493-443c-9c21-d9f417814223",
+    "0b282ac5-22bb-4102-a2bb-49a0564cd75d",
+    "2598b738-6d2a-4425-ada1-f4262d1f14fe",
+    "254e5c26-62c8-497f-9c3e-714a13df8f18",
+    "4a8048dc-fd49-4025-980b-601d3ca2edcf",
+    "5c2074a3-40c6-43eb-9f0e-5b5f053d22b5",
+    "362c2b40-831c-40ce-8b29-9640bdd2c1a9",
+    "1d6b028f-6230-4f1d-971c-f66ff65e43bb"
+  ],
+  "finishedUtc": "2026-10-09T01:32:45.719876+00:00"
+}

@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd/work/u11/native/cinnamon/continuity.py", line 138, in <module>
+    main()
+  File "/home/patrick/work/put.gd/work/u11/native/cinnamon/continuity.py", line 56, in main
+    payload = json.loads(n.lab.guest_session(n.RUN, preparation))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd/tools/lab/lab.py", line 267, in guest_session
+    return ssh(run, script)
+           ^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd/tools/lab/lab.py", line 225, in ssh
+    return command(ssh_args(run, bootstrap) + ['sh', '-s'], timeout=timeout, input=script).stdout
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd/tools/lab/lab.py", line 59, in command
+    raise LabError(f'{Path(str(args[0])).name} failed (exit {result.returncode})')
+lab.LabError: ssh failed (exit 1)

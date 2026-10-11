@@ -1,0 +1,93 @@
+{
+  "timestampUtc": "2026-10-08T22:54:51.333266+00:00",
+  "runningApp": {
+    "pid": 58990,
+    "startTicks": 731554,
+    "sha256": "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426"
+  },
+  "actions": [
+    {
+      "cycle": 1,
+      "view": "settings",
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-1-settings-open-head0.ppm",
+        "sha256": "c1f84bc3292ec5fe93914e11f7e1a55aa0d9d108b734722813529b289990154e"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-1-settings-closed-head0.ppm",
+        "sha256": "40b17732b1fa4fdd5090cf64a558079f5d62d0c9bef694cf75f68e806e34a2d5"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-1-history-open-head0.ppm",
+        "sha256": "40b17732b1fa4fdd5090cf64a558079f5d62d0c9bef694cf75f68e806e34a2d5"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-1-history-closed-head0.ppm",
+        "sha256": "9e7c24f398c42fc1af18532942f44846fce62d42731d198e4bc0138ab5584cce"
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-1-activity-open-head0.ppm",
+        "sha256": "79c6bb6959a42f35165b2e9c5c7da6ecb78fa4508bf8b3c302e0c331333e3da8"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-1-activity-closed-head0.ppm",
+        "sha256": "9e7c24f398c42fc1af18532942f44846fce62d42731d198e4bc0138ab5584cce"
+      }
+    },
+    {
+      "cycle": 2,
+      "view": "settings",
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-2-settings-open-head0.ppm",
+        "sha256": "9e7c24f398c42fc1af18532942f44846fce62d42731d198e4bc0138ab5584cce"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-2-settings-closed-head0.ppm",
+        "sha256": "9995a1b9acbb6ce28c84841160dc2c8ee76bacc0d6b4a88d9b96f415d69f2a7d"
+      }
+    },
+    {
+      "cycle": 2,
+      "view": "history",
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-2-history-open-head0.ppm",
+        "sha256": "cfa1525de9b2388a3c458a65fdfcc81b111008ee4d22d2fd9ed1e6947b57d7ef"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-2-history-closed-head0.ppm",
+        "sha256": "9995a1b9acbb6ce28c84841160dc2c8ee76bacc0d6b4a88d9b96f415d69f2a7d"
+      }
+    },
+    {
+      "cycle": 2,
+      "view": "activity",
+      "opened": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-2-activity-open-head0.ppm",
+        "sha256": "df9cf074efb1c3f4290e201c7883d4d3f30483cb2c8315c80bf732257c34d6ca"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/extra-visible-2-activity-closed-head0.ppm",
+        "sha256": "9995a1b9acbb6ce28c84841160dc2c8ee76bacc0d6b4a88d9b96f415d69f2a7d"
+      }
+    }
+  ],
+  "limits": "Previous locked activations did not visibly close the three opened views. First visible pass raises and closes each existing view; second pass reopens/closes it. Locked attempt retained separately; this is additional-cycle observation, not quiet primary.",
+  "operationCount": 12,
+  "automatedOk": true,
+  "visualReview": {
+    "timestampUtc": "2026-10-08T22:57:31.580114+00:00",
+    "acceptedFullCycles": 1,
+    "failedFirstPass": "First intended Settings opening kept Activity foreground; first pass is not a full accepted cycle. History/Activity were visible and painted. All three final close witnesses in second pass show desktop.",
+    "acceptedCycle": 2,
+    "allImagesFullyPainted": true,
+    "primarySampleUntouched": true
+  }
+}

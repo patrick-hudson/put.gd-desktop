@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tools/diagnostics/check_socket_paths.py",
+    "--socket",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-1/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-2/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-3/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-4/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-5/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-6/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-7/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-8/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-9/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-10/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-11/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-gnome-20261009T091005679415-12/qmp.sock",
+    "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/qmp.sock",
+    "/run/user/1000/putgd/session.sock"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T09:10:06.464226+00:00"
+}

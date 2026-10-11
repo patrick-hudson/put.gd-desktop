@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "putgd-mcp"
+version = "0.1.0"
+description = "Local stdio MCP adapter for the resident put.gd CLI"
+requires-python = ">=3.12"
+dependencies = ["mcp>=1.26,<2", "jsonschema>=4.20,<5"]
+
+[project.scripts]
+putgd-mcp = "share_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["share_mcp"]

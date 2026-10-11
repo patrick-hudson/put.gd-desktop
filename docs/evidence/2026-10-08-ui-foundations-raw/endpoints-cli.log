@@ -1,0 +1,9 @@
+Test project /home/patrick/.codex/worktrees/ui-process-split/put.gd/build/dev
+    Start  4: session_client_integration
+1/2 Test  #4: session_client_integration .......   Passed   16.96 sec
+    Start 24: cli_integration
+2/2 Test #24: cli_integration ..................   Passed    1.02 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Total Test time (real) =  17.98 sec

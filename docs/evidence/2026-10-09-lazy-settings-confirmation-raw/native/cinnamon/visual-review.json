@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T05:08:38.815462+00:00",
+  "sourceCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+  "version": "0.1.1-dev.46+g6f6372e79d8b",
+  "dirty": false,
+  "sourceArchiveSha256": "0853b2b526e1b4e6a1d25b501a7b2c91ba86dbf86bb57272fee67a00e8bb690b",
+  "packageSha256": null,
+  "installed": {
+    "manifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.46+g6f6372e79d8b",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.46+g6f6372e79d8b",
+      "gitCommit": "6f6372e79d8bd81346924aacec7eac842db98725",
+      "gitTree": "9fa7213866aa82a8ae2e778d52de683dafd171ad",
+      "commitCount": 46,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "binarySha256": {
+      "/usr/bin/putgd": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8",
+      "/usr/bin/putgd-cli": "80f22369a2128d0fd0621ceef2b222ff71829bbfbd9559a5684d77fcac37e157",
+      "/usr/bin/putgd-ui": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239"
+    },
+    "versions": {
+      "/usr/bin/putgd": "putgd 0.1.1-dev.46+g6f6372e79d8b",
+      "/usr/bin/putgd-cli": "putgd-cli 0.1.1-dev.46+g6f6372e79d8b",
+      "/usr/bin/putgd-ui": "putgd-ui 0.1.1-dev.46+g6f6372e79d8b"
+    },
+    "extensionSha256": "b3bd772a7106f8b67a2defc6935bcd0fa01d08d64341ca8bb754dd8fbb945722"
+  },
+  "resident": {
+    "pid": 95529,
+    "startTicks": 3039122,
+    "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8"
+  },
+  "matrix": {
+    "passed": 12,
+    "total": 12,
+    "receipt": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/matrix.json",
+    "sha256": "8270ff7c74c51a595aa92cf4af7f4527f5c555299df830fc10d0cc55f0a481dc",
+    "review": "Root inspected actual complete12-frame contact sheet; per-case independent saved-artifact/paste results verified"
+  },
+  "boundedSettings": {
+    "passed": true,
+    "emptyAddVisible": true,
+    "lazyPages": [
+      "Capture",
+      "Shortcuts",
+      "Preferences"
+    ],
+    "nativeKeyboard": "Actual Tab enters selected page controls (Save locally, region help, notifications); Shift+Tab returns navigation; inspected9-framecontactsheet",
+    "scope": "Currentclean46identity smoke; prior45dirty identicaltrackedbytes full draft/geometry proof remains separate"
+  },
+  "lifecycle": {
+    "normalCloses": [
+      {
+        "utc": "2026-10-09T05:07:36.302668+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 104929,
+          "startTicks": 3093154,
+          "parentPid": 95529,
+          "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239"
+        },
+        "helperAfter": {
+          "checkpointBytes": 2356,
+          "lastExit": {
+            "code": 0,
+            "generation": 4,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 95529,
+          "startTicks": 3039122,
+          "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:07:36.416146+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/history-lifecycle-normal-close.png",
+          "sha256": "dfcb088df3192c251a665bde0d8311d1900ad22bb0da8c5892db79cfd58de531",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-frozen-exp001-source46-history-lifecycle-normal-close-head0.ppm",
+            "sha256": "3928d0ddd363df0e568afdfe9c8c18d53c87bed73fa1e4d46c4509a6ac6b643a"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5938,
+          "visualReview": "pending"
+        }
+      },
+      {
+        "utc": "2026-10-09T05:07:26.329353+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 103950,
+          "startTicks": 3084588,
+          "parentPid": 95529,
+          "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239"
+        },
+        "helperAfter": {
+          "checkpointBytes": 1935,
+          "lastExit": {
+            "code": 0,
+            "generation": 2,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 95529,
+          "startTicks": 3039122,
+          "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:07:26.438032+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-normal-close.png",
+          "sha256": "dfcb088df3192c251a665bde0d8311d1900ad22bb0da8c5892db79cfd58de531",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-frozen-exp001-source46-settings-normal-close-head0.ppm",
+            "sha256": "3928d0ddd363df0e568afdfe9c8c18d53c87bed73fa1e4d46c4509a6ac6b643a"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5938,
+          "visualReview": "pending"
+        }
+      },
+      {
+        "utc": "2026-10-09T05:07:41.401773+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 105187,
+          "startTicks": 3093657,
+          "parentPid": 95529,
+          "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239"
+        },
+        "helperAfter": {
+          "checkpointBytes": 2450,
+          "lastExit": {
+            "code": 0,
+            "generation": 5,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 95529,
+          "startTicks": 3039122,
+          "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:07:41.510213+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/activity-lifecycle-normal-close.png",
+          "sha256": "dfcb088df3192c251a665bde0d8311d1900ad22bb0da8c5892db79cfd58de531",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-frozen-exp001-source46-activity-lifecycle-normal-close-head0.ppm",
+            "sha256": "3928d0ddd363df0e568afdfe9c8c18d53c87bed73fa1e4d46c4509a6ac6b643a"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5938,
+          "visualReview": "pending"
+        }
+      },
+      {
+        "utc": "2026-10-09T05:07:31.359763+00:00",
+        "gesture": [
+          "alt",
+          "f4"
+        ],
+        "helperBefore": {
+          "pid": 104672,
+          "startTicks": 3092644,
+          "parentPid": 95529,
+          "sha256": "916ca54e04593ba9e457ae8bdc37bcdb5270849b31c5b1ed065772d5f1f45239"
+        },
+        "helperAfter": {
+          "checkpointBytes": 1935,
+          "lastExit": {
+            "code": 0,
+            "generation": 3,
+            "status": "normal"
+          },
+          "pid": 0,
+          "state": "stopped"
+        },
+        "residentUnchanged": {
+          "pid": 95529,
+          "startTicks": 3039122,
+          "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8"
+        },
+        "witness": {
+          "utc": "2026-10-09T05:07:31.472579+00:00",
+          "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-lifecycle-normal-close.png",
+          "sha256": "dfcb088df3192c251a665bde0d8311d1900ad22bb0da8c5892db79cfd58de531",
+          "nativeQmp": {
+            "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/ui-refinement-frozen-exp001-source46-settings-lifecycle-normal-close-head0.ppm",
+            "sha256": "3928d0ddd363df0e568afdfe9c8c18d53c87bed73fa1e4d46c4509a6ac6b643a"
+          },
+          "desktopPixels": [
+            1280,
+            800
+          ],
+          "vncPort": 5938,
+          "visualReview": "pending"
+        }
+      }
+    ],
+    "helperFinal": 0,
+    "activeOperationsFinal": 0,
+    "residentUnchanged": true,
+    "trayRendered": "Blueup-arrow bottomright final actual desktop image"
+  },
+  "reviewedWitnesses": [
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-open.png",
+      "sha256": "48460af5ba1c51c23522d20a8b5c5733f92f8a81a427a09134584e615e2f8c5e"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-advanced.png",
+      "sha256": "702a89fd74c61d63f9e81882b9b249c6e06bf24c9fedfa13886148a7bcf0bf65"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-capture-selected.png",
+      "sha256": "0f50b9cbb7a29022dfd12990e8ac3119d0e4e1ee2923f6a57829a9a00062d11f"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-capture-tab.png",
+      "sha256": "64138a02714a9261b5a7b3ba0d8a441c7494cc0c3e5bbf1ef17c34ee1b647ba6"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-capture-shift-tab.png",
+      "sha256": "0f50b9cbb7a29022dfd12990e8ac3119d0e4e1ee2923f6a57829a9a00062d11f"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-shortcuts-selected.png",
+      "sha256": "43581903ef154ef158d912620db04b4082c6712a33a0d601b9226c57b83fd74b"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-shortcuts-tab.png",
+      "sha256": "7a6426b67f4f54942aef9ce91dbb77fa827c18881df27eb19f337894779826c7"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-shortcuts-shift-tab.png",
+      "sha256": "43581903ef154ef158d912620db04b4082c6712a33a0d601b9226c57b83fd74b"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-preferences-selected.png",
+      "sha256": "98dc27e6db7a49a552cf3c10efd23207937f5ba7ad2c983101da18fbac119e23"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-preferences-tab.png",
+      "sha256": "63fb75e584c42a27b91146e706889e1458d659f54ea0418e239ae257f774177c"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-preferences-shift-tab.png",
+      "sha256": "98dc27e6db7a49a552cf3c10efd23207937f5ba7ad2c983101da18fbac119e23"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/settings-lifecycle-normal-close.png",
+      "sha256": "dfcb088df3192c251a665bde0d8311d1900ad22bb0da8c5892db79cfd58de531"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/history-lifecycle-open.png",
+      "sha256": "dc6cb393025703f472d9722ca6be836628b21821db49a2af1fb17d569587238c"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/history-lifecycle-normal-close.png",
+      "sha256": "dfcb088df3192c251a665bde0d8311d1900ad22bb0da8c5892db79cfd58de531"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/activity-lifecycle-open.png",
+      "sha256": "738771060ff957cc356eba06d0ce07396c9c11f5cf51c69dc56b4b0547579244"
+    },
+    {
+      "path": "work/ui-refinement/native-replay/frozen-exp001-source46/cinnamon/views/activity-lifecycle-normal-close.png",
+      "sha256": "dfcb088df3192c251a665bde0d8311d1900ad22bb0da8c5892db79cfd58de531"
+    }
+  ],
+  "final": {
+    "utc": "2026-10-09T05:07:42.583693+00:00",
+    "resident": {
+      "pid": 95529,
+      "startTicks": 3039122,
+      "sha256": "1ea7d5970e5f296a366d47b159d9a3e434b9fa500bfd556cdcef3a5e1f67d9d8"
+    },
+    "ui": {
+      "checkpointBytes": 2450,
+      "lastExit": {
+        "code": 0,
+        "generation": 5,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    },
+    "acceptedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+    "observedRevision": "6c68daf231872f2cb2201dd3f3b1b3480c333dff0a5619c99025a30d22d3dd78",
+    "profileIds": [],
+    "actionOutputs": {
+      "clipboard": "local",
+      "desktop": "local",
+      "region": "local",
+      "window": "local"
+    },
+    "activeOperations": 0
+  },
+  "preconditionFailures": "FirstSetupclick revealedlockedCinnamon; configure andfirstmatrix guardaborted BEFORE anycases. ProtectedoriginalVMlogin typedvisibly inmaskedfield, thenSetupCancel/helper0 verified; deliberatefreshmatrix passed12/12. No testfailure or screenshot is discarded.",
+  "limits": [
+    "No remoteupload/delete/currentliveAWS acceptance",
+    "No fullprofile/U9 certification",
+    "No memory/latency result yet",
+    "Currentexactnativecommit distinguished from earlier45dirtysourceequivalence"
+  ]
+}

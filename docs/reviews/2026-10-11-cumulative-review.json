@@ -1,0 +1,830 @@
+{
+  "status": "complete",
+  "verdict": "Ready with fixes",
+  "scope": {
+    "base": "cfb29542ffc28486cb876442373f1d40a20ce0c6",
+    "branch": "codex/optimize-kde-native-boundary",
+    "head_sha": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "pr_url": null,
+    "files_changed": 314
+  },
+  "intent": "Review the cumulative Linux sharing implementation and its memory optimizations: four capture/clipboard actions, configurable S3 uploads and naming, local archives, history, CLI/MCP, native Cinnamon/GNOME/KDE integration, and a lightweight resident with transient graphical helpers. Preserve approved behavior and durable operation semantics. Verify local memory claims while explicitly retaining pending current live-S3 and full release acceptance gates.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "correctness",
+    "security",
+    "reliability",
+    "project-standards",
+    "testing",
+    "maintainability",
+    "performance",
+    "api-contract",
+    "agent-native",
+    "adversarial"
+  ],
+  "findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 100,
+      "evidence": [
+        "cmake/CheckBuildIdentity.cmake.in:10 -- set(programs putgd putgd-cli putgd-ui)",
+        "cmake/CheckBuildIdentity.cmake.in:11-13 adds only putgd-kde-region before iterating this list; there is no capture-helper branch.",
+        "CMakeLists.txt:229 --   add_executable(putgd-capture src/capture/main.cpp src/platform/x11/X11CaptureResolution.cpp)",
+        "CMakeLists.txt:231 --   install(TARGETS putgd-capture RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})",
+        "src/platform/x11/CaptureProcessController.cpp:138 rejects the ready frame when payload[\"build\"].toObject()!=build(), returning capture_incompatible.",
+        "Scenario: build all targets at revision A; advance to B; rebuild putgd, putgd-cli, putgd-ui and putgd-kde-region but leave putgd-capture at A; install/CPack passes all listed versions and installs the stale capture helper; the B resident rejects every A capture-helper handshake.",
+        "tests/cmake/version_contract.cmake builds a synthetic fixture containing only the three original executables and optional KDE selector, so its mixed-build checks do not expose this production helper omission."
+      ],
+      "file": "cmake/CheckBuildIdentity.cmake.in",
+      "first_evidence": "cmake/CheckBuildIdentity.cmake.in:10 -- set(programs putgd putgd-cli putgd-ui)",
+      "independent_reviewers": [
+        "adversarial"
+      ],
+      "line": 10,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Add a PUTGD_PACKAGE_CAPTURE target-file expression guarded by TARGET_EXISTS:putgd-capture in BuildVersion.cmake, append putgd-capture and resolve its binary in CheckBuildIdentity.cmake.in when present, and extend version_contract.cmake with stale-capture install/CPack rejection and absent-X11 cases, matching the existing KDE helper checks.",
+      "title": "Stale Cinnamon helper passes package identity verification",
+      "why_it_matters": "A partial rebuild can produce a successfully installed package whose Cinnamon region, window and desktop actions all fail with capture_incompatible. The install guard checks the resident, CLI, UI and optional KDE selector, but never putgd-capture, even though that separately built executable is installed and must match the resident's exact build manifest. Adding it to the same optional-target check closes the green-package/red-capture gap.",
+      "validation_status": "confirmed",
+      "validation_reason": "For a partial rebuild leaving putgd-capture stale, CheckBuildIdentity.cmake.in:10-23 checks only the resident, CLI, UI and optional KDE helper while CMakeLists.txt:229-231 installs the capture helper and CaptureProcessController.cpp:138 rejects its mismatched manifest, establishing a reachable package/capture incompatibility introduced by this cumulative diff; actual package incidence was not measured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 2,
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "evidence": [
+        "src/core/HistoryStore.cpp:138 --  QSqlQuery q(db_);q.prepare(\"SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?\");q.addBindValue(limit);if(!q.exec()) {if(error)*error=sqlError();return result;}while(q.next())result.append(Operation::fromJson(decode(q.value(0))).publicJson());return result;",
+        "src/core/HistoryStore.cpp:100-101 -- operation() queries SELECT item_id,remote_status FROM history WHERE operation_id=? and replaces each matching item's remoteStatus before returning it.",
+        "src/core/HistoryStore.cpp:161-164 -- saveDeletion persists the deletion document and updates remote_status/data in history, but does not update operations.data.",
+        "src/core/HistoryStore.cpp:70-71 -- confirmed overwrite marks previous history rows superseded without rewriting their operations.data.",
+        "src/app/OperationService.cpp:266 -- operation.recent forwards HistoryStore::recent's public operation array unchanged.",
+        "src/ui/RecentOperations.cpp:23 --  auto second=\"Remote: \"+readableState(item[\"remoteStatus\"].toString());",
+        "src/ui/RecentOperations.cpp:57 -- Activity refresh requests operation.recent and passes its item JSON directly to fileDetails().",
+        "src/core/HistoryStore.cpp:138 -- QSqlQuery q(db_);q.prepare(\"SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?\");q.addBindValue(limit);if(!q.exec()) {if(error)*error=sqlError();return result;}while(q.next())result.append(Operation::fromJson(decode(q.value(0))).publicJson());return result;",
+        "src/core/HistoryStore.cpp:101 -- QHash<QString,QString> statuses;while(remote.next())statuses.insert(remote.value(0).toString(),remote.value(1).toString());for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);",
+        "src/core/HistoryStore.cpp:164 -- if(ok) {q.prepare(\"SELECT data FROM history WHERE id=?\");q.addBindValue(item[\"historyId\"].toString());ok=q.exec();if(ok&&q.next()) {auto data=decode(q.value(0));data[\"remoteStatus\"]=status;data[\"remoteError\"]=item[\"error\"];data[\"deleteOperationId\"]=doc[\"id\"];data[\"deleteProgress\"]=item[\"progress\"];q.prepare(\"UPDATE history SET remote_status=?,data=? WHERE id=?\");q.addBindValue(status);q.addBindValue(encode(data));q.addBindValue(item[\"historyId\"].toString());ok=q.exec();}}",
+        "src/ui/RecentOperations.cpp:23 -- auto second=\"Remote: \"+readableState(item[\"remoteStatus\"].toString());",
+        "Read-only SQLite in-memory trace: an item whose history status is removed still has not_requested in the operations blob used by recent()."
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:138 --  QSqlQuery q(db_);q.prepare(\"SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?\");q.addBindValue(limit);if(!q.exec()) {if(error)*error=sqlError();return result;}while(q.next())result.append(Operation::fromJson(decode(q.value(0))).publicJson());return result;",
+      "independent_reviewers": [
+        "correctness",
+        "api-contract",
+        "agent-native"
+      ],
+      "line": 138,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness",
+        "api-contract",
+        "agent-native"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Extract the history remote_status hydration currently used by HistoryStore::operation into a shared helper and apply it to every operation returned by HistoryStore::recent, preferably with a bounded bulk query for the selected operation IDs. Add a regression that completes an upload, deletes or supersedes its item, then verifies operation.recent, operation.inspect, history.detail and the refreshed Activity remote label agree without a later operation rewrite.",
+      "title": "Recent operations return stale remote outcomes",
+      "why_it_matters": "After an uploaded item is deleted or superseded, operation.recent still reports its old remoteStatus, commonly not_requested, while operation.inspect and history.detail report removed, changed or superseded. Activity renders that stale status directly, so refreshing or reopening Activity continues to contradict History about the same publication. The single-operation reader already overlays authoritative history statuses; applying the same hydration to recent results makes the public service responses agree without changing original receipts.",
+      "validation_status": "confirmed",
+      "validation_reason": "After deletion or supersession updates history through HistoryStore.cpp:70-71 or 161-164, recent():138 reads the untouched operation blob unlike operation():100-101, and OperationService.cpp:266 plus RecentOperations.cpp:23,57 expose that stale remoteStatus; an independent in-memory trace of the inspected queries returned removed for inspect but not_requested for recent.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 3,
+      "autofix_class": "manual",
+      "confidence": 100,
+      "evidence": [
+        "src/core/HistoryStore.cpp:154 -- if(!q.exec(\"INSERT OR IGNORE INTO cleared_history SELECT id FROM history\"+retained)||!q.exec(\"DELETE FROM history\"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};",
+        "src/core/HistoryStore.cpp:164 -- if(ok) {q.prepare(\"SELECT data FROM history WHERE id=?\");q.addBindValue(item[\"historyId\"].toString());ok=q.exec();if(ok&&q.next()) {auto data=decode(q.value(0));data[\"remoteStatus\"]=status;data[\"remoteError\"]=item[\"error\"];data[\"deleteOperationId\"]=doc[\"id\"];data[\"deleteProgress\"]=item[\"progress\"];q.prepare(\"UPDATE history SET remote_status=?,data=? WHERE id=?\");q.addBindValue(status);q.addBindValue(encode(data));q.addBindValue(item[\"historyId\"].toString());ok=q.exec();}}",
+        "src/core/HistoryStore.cpp:101 -- QHash<QString,QString> statuses;while(remote.next())statuses.insert(remote.value(0).toString(),remote.value(1).toString());for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);",
+        "src/core/Operation.cpp:3 -- bool OperationItem::linkAvailable() const {return uploadStatus==\"uploaded\"&&!receipt.directUrl.isEmpty()&&!QStringList{\"removed\",\"already_missing\",\"changed\",\"hidden_version_retained\"}.contains(remoteStatus);}",
+        "tests/integration/test_storage_contract.cpp:12 -- knownRemovedHistoryNeverWritesClipboard tests copy suppression while the history row still exists, without clearing it.",
+        "Read-only SQLite in-memory trace of these queries: inspect before clear = removed; inspect after clear = not_requested.",
+        "src/core/HistoryStore.cpp:101 --  QHash<QString,QString> statuses;while(remote.next())statuses.insert(remote.value(0).toString(),remote.value(1).toString());for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);",
+        "src/core/HistoryStore.cpp:164 saveDeletion updates remote_status/data in history only; it does not change the operations document.",
+        "src/core/HistoryStore.cpp:162 marks removed/already_missing/changed deletion targets inactive. clear() at lines 153-154 removes rows not held by active deletion targets; expireBefore() at lines 144-145 also removes eligible uploaded rows.",
+        "Scenario: complete an upload, delete it successfully without copying its operation again, then clear History. The history overlay disappears; the raw operations row still has remoteStatus not_requested. operation.copy loads that row through operation() and treats its uploaded receipt as linkAvailable.",
+        "src/app/OperationService.cpp:302 --  for(const auto& item:op.items) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus==\"local_only\"&&item.local.status==\"saved\") {files.append(item.local.path);localKind=item.artifact.category;}}",
+        "src/core/Operation.cpp:3 allows any uploaded nonempty URL unless remoteStatus is removed, already_missing, changed or hidden_version_retained.",
+        "tests/integration/test_storage_contract.cpp:17-21 checks removed-link copying before clear; lines 46-47 clear a completed removed record and retain a pending deletion, but do not subsequently copy the cleared operation."
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:154 -- if(!q.exec(\"INSERT OR IGNORE INTO cleared_history SELECT id FROM history\"+retained)||!q.exec(\"DELETE FROM history\"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};",
+      "independent_reviewers": [
+        "adversarial",
+        "correctness"
+      ],
+      "line": 154,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial",
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Persist last-known per-item remote outcomes in the operation journal or a separate item-state table that history.clear and expiry do not prune. Merge that state on operation reads and writes, including deletion and supersession updates; add a regression for delete -> clear/expire -> restart -> operation.copy that must not copy the removed URL.",
+      "title": "Preserve remote outcomes when clearing history",
+      "why_it_matters": "After deleting an upload and clearing history, Copy result from Activity or operation.copy can write that known-deleted URL to the clipboard again. Deletion updates only history, while operation() overlays remote outcomes from that table onto an older operations document; clear() and expiry remove the only current state, restoring not_requested and making linkAvailable() true. Keep the per-item remote outcome independently of the clearable history view so local record cleanup cannot undo a known removal.",
+      "validation_status": "confirmed",
+      "validation_reason": "When a completed deletion is followed by clear or eligible expiry without an intervening operation rewrite, HistoryStore.cpp:145,154 removes its only remote-state overlay and cleared_history retains only IDs, while OperationService.cpp:286,302 and Operation.cpp:3 again permit its uploaded URL; an independent in-memory trace reproduced removed becoming not_requested and linkAvailable=true after clear.",
+      "protected_subject": "data-loss"
+    },
+    {
+      "#": 4,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/app/HistoryService.cpp:82 --  },[this,id=doc[\"id\"].toString()](Error,QJsonObject) {active_.remove(id);});",
+        "src/app/HistoryService.h:5-26 declares no change signal; clear() at HistoryService.cpp:21 forwards its reply without invalidation and expiry at line 17 discards completion.",
+        "src/main.cpp:222-225 wires Settings, OperationService and SetupService changes to UiProcessController::invalidate; HistoryService is absent.",
+        "src/ui/HistoryWindow.cpp:65 refreshes for UiSession::operationsChanged, while deletion polling starts only from its own confirm/retry paths at lines 119 and 64.",
+        "tests/gui/test_history_view.cpp:49 manually calls restored.refresh() after clearing History."
+      ],
+      "file": "src/app/HistoryService.cpp",
+      "first_evidence": "src/app/HistoryService.cpp:82 --  },[this,id=doc[\"id\"].toString()](Error,QJsonObject) {active_.remove(id);});",
+      "independent_reviewers": [
+        "agent-native"
+      ],
+      "line": 82,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "agent-native"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Add a HistoryService change signal and connect it to the resident UI invalidation path. Emit on the session thread after successful clear/expiry and persisted deletion acceptance/progress/completion, coalescing progress. Test an open History view while a separate session client clears or deletes, without explicit refresh or reopen.",
+      "title": "Notify open views when history mutations commit",
+      "why_it_matters": "Remote deletion, history clearing and retention expiry initiated outside the GUI do not invalidate an already-open History view. Its table, inspector and enabled link actions retain old remote state until manual refresh, reopening or an unrelated operation/settings event; GUI-initiated deletion hides the gap by polling only its own deletion ID.",
+      "validation_status": "confirmed",
+      "validation_reason": "For an open History view and a separate-client clear/delete or retention expiry, HistoryService.cpp:17,21,82 publishes no change signal and main.cpp:222-225 excludes HistoryService from invalidation, while HistoryWindow.cpp:64-65,119-120 polls only GUI-initiated deletions and UiSession.cpp:10 refreshes views only from snapshots, establishing stale views until another refresh event; runtime incidence was not measured."
+    },
+    {
+      "#": 5,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/app/OperationService.cpp:351 -- void OperationService::cleanup(JsonReply reply) {const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+\"/artifacts\");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+\"/artifacts\");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus==\"unknown\"||item.uploadStatus==\"uploading\")successful=false;const bool finished=op.state==\"completed\"||op.state==\"partial\"||op.state==\"failed\"||op.state==\"cancelled\"||op.state==\"interrupted\";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status==\"failed\")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{\"removedOperations\",removed}};},reply);}",
+        "src/app/OperationService.cpp:278 -- auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved](Error e,QJsonObject doc) {",
+        "src/app/OperationService.cpp:64 -- heapReclamationTimer_.stop();",
+        "tests/unit/test_operations.cpp:657 -- Existing coverage calls ops.retry(id,...) before ops.cleanup(...), so activeIds already contains the retry.",
+        "src/app/OperationService.cpp:351 -- void OperationService::cleanup(JsonReply reply) {const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+\"/artifacts\");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+\"/artifacts\");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus==\"unknown\"||item.uploadStatus==\"uploading\")successful=false;const bool finished=op.state==\"completed\"||op.state==\"partial\"||op.state==\"failed\"||op.state==\"cancelled\"||op.state==\"interrupted\";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status==\"failed\")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{\"removedOperations\",removed}};},reply);}\nsrc/app/OperationService.cpp:278 --  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved](Error e,QJsonObject doc) {",
+        "src/app/OperationService.cpp:285 -- retryLocalSave inserts the operation into active_ and dispatches a worker without coordinating with an already-running cleanup.",
+        "src/core/ArtifactStore.cpp:31 -- for(const auto& name:directory.entryList(QDir::Files|QDir::Hidden))if(!QUuid(name).isNull()&&!QFile::remove(directory.filePath(name)))return {\"artifact_io\",\"Cannot remove artifacts\",{}};",
+        "tests/unit/test_operations.cpp:657 -- The existing active-retry protection test calls retry before cleanup; it does not exercise cleanup admitted before retry.",
+        "src/app/OperationService.cpp:63-66 -- background starts a separate QThread for each operation, so cleanup and retry workers are not serialized."
+      ],
+      "file": "src/app/OperationService.cpp",
+      "first_evidence": "src/app/OperationService.cpp:351 -- void OperationService::cleanup(JsonReply reply) {const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+\"/artifacts\");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+\"/artifacts\");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus==\"unknown\"||item.uploadStatus==\"uploading\")successful=false;const bool finished=op.state==\"completed\"||op.state==\"partial\"||op.state==\"failed\"||op.state==\"cancelled\"||op.state==\"interrupted\";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status==\"failed\")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{\"removedOperations\",removed}};},reply);}",
+      "independent_reviewers": [
+        "reliability",
+        "correctness"
+      ],
+      "line": 351,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "reliability",
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Set a cleanup-in-progress admission guard on the session thread before starting cleanup and reject retry/retryLocalSave with a busy error until its callback clears that guard; preserve the existing exclusion of already-active IDs. Alternatively reserve cleanup candidate IDs against retry admission. Add a deterministic test that pauses cleanup after its snapshot, requests retry, and verifies the artifact cannot be removed from an admitted retry.",
+      "title": "Reserve artifacts against retries during cleanup",
+      "why_it_matters": "An explicit retry of an aged failed upload can lose its only retained bytes if cache.clear was dispatched immediately before it. cleanup() freezes active IDs before starting an independent worker; retry() can then reserve the same operation while cleanup still considers its previously failed record eligible and removes its artifact. The existing active-retry test only covers the opposite request order, so it cannot establish the intended ownership protection.",
+      "validation_status": "confirmed",
+      "validation_reason": "For an aged failed operation eligible for cleanup, OperationService.cpp:351 snapshots active IDs before launching an independent QThread through :63-66, yet retry():274-282 and retryLocalSave():285 can subsequently admit that ID without a cleanup guard while ArtifactStore.cpp:31 removes its spool, making the admitted retry lose retained bytes under a reachable request ordering; the precise concurrent schedule was not executed.",
+      "protected_subject": "concurrency"
+    },
+    {
+      "#": 6,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/cli/main.cpp:20 --  QJsonObject request{{\"schemaVersion\",1},{\"requestId\",id},{\"session\",path},{\"method\",args[0]},{\"params\",params.object()}};",
+        "src/cli/main.cpp:16 --  const auto bytes=args.size()==2?args[1].toUtf8():QByteArray(\"{}\");if(bytes.size()>1024*1024)return error(\"request_too_large\",\"Request exceeds 1 MiB\");",
+        "src/app/LocalServer.cpp:105 --  if(method==\"setup.storeCredentials\"||method==\"setup.unlockCredentials\"||method==\"setup.testDestination\") {",
+        "src/app/LocalServer.cpp:109 --   setup_->start(method.mid(6),p[\"profileId\"].toString(),p[\"expectedRevision\"].toString(),p[\"credentials\"].toObject(),std::move(reply));return;",
+        "src/app/SetupService.cpp:56 --   Credentials value{input[\"accessKey\"].toString(),input[\"secretKey\"].toString(),input[\"sessionToken\"].toString()};",
+        "docs/ui-process-protocol.md:37-39 -- Credential input contains accessKey/secretKey and an optional sessionToken. It is transient private socket data, never configuration, history, state checkpoints, arguments or diagnostic output.",
+        "tests/integration/test_ui_endpoints.cpp:162 --   const auto stored=wire(f.server,\"setup.storeCredentials\",input);QVERIFY(stored[\"ok\"].toBool());"
+      ],
+      "file": "src/cli/main.cpp",
+      "first_evidence": "src/cli/main.cpp:20 --  QJsonObject request{{\"schemaVersion\",1},{\"requestId\",id},{\"session\",path},{\"method\",args[0]},{\"params\",params.object()}};",
+      "independent_reviewers": [
+        "security"
+      ],
+      "line": 20,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "security"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Reject setup.storeCredentials in putgd-cli before opening the session socket, with fixed guidance to enter credentials through Settings. Keep the GUI's SessionClient endpoint intact. Add a synthetic CLI contract test proving this method cannot reach the resident; if credential setup via CLI is intentionally desired later, implement a bounded stdin/private-descriptor input path instead of positional JSON.",
+      "title": "CWE-214: CLI accepts raw credential setup in argv",
+      "why_it_matters": "A caller can successfully supply accessKey, secretKey and sessionToken to setup.storeCredentials through the CLI's positional JSON argument. Those values are then exposed in the process command line and potentially shell history, even though the setup protocol explicitly promises credentials never enter arguments. The CLI forwards every method without a public-method or credential-field guard, so the GUI's new secret-bearing socket endpoint has also become an argv-based interface; restricting this method to the existing private GUI socket flow closes that unintended route. See [MITRE CWE-214](https://cwe.mitre.org/data/definitions/214.html) for the process-argument exposure mechanism.",
+      "validation_status": "confirmed",
+      "validation_reason": "For a saved profile with a current expectedRevision, CLI main.cpp:16-20 accepts positional credential JSON and forwards setup.storeCredentials without restriction to LocalServer.cpp:105-109 and SetupService.cpp:55-57, exposing input in argv contrary to docs/ui-process-protocol.md:37-39, with test_ui_endpoints.cpp:161-163 evidencing endpoint acceptance; the argv route was inspected without passing any credentials or measuring user incidence.",
+      "protected_subject": "secrets-exposure"
+    },
+    {
+      "#": 7,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/core/HistoryStore.cpp:116 --  QList<QJsonObject> pending;while(d.next()) {auto doc=decode(d.value(0));if(doc[\"state\"]==\"running\") {doc[\"state\"]=\"interrupted\";auto items=doc[\"items\"].toArray();for(int i=0;i<items.size();++i) {auto item=items[i].toObject();if(item[\"status\"]==\"deleting\") item[\"status\"]=\"unknown\";items[i]=item;}doc[\"items\"]=items;pending.append(doc);}}",
+        "src/app/HistoryService.cpp:43-45 persists state accepted before replying with deleteOperationId and launching runDelete; the next background task changes it to running at line 49.",
+        "Scenario: stop the process after accepted saveDeletion commits but before runDelete commits running; on restart recover() ignores this accepted document and HistoryService has no entry in active_ for it.",
+        "src/ui/HistoryWindow.cpp:120 stops its 500ms deletion polling only when state is neither running nor accepted, so restoring this deletion ID at line 132 polls the inert acceptance indefinitely.",
+        "src/app/HistoryService.cpp:89 cancelDelete returns delete_not_active when the ID is absent from active_."
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:116 --  QList<QJsonObject> pending;while(d.next()) {auto doc=decode(d.value(0));if(doc[\"state\"]==\"running\") {doc[\"state\"]=\"interrupted\";auto items=doc[\"items\"].toArray();for(int i=0;i<items.size();++i) {auto item=items[i].toObject();if(item[\"status\"]==\"deleting\") item[\"status\"]=\"unknown\";items[i]=item;}doc[\"items\"]=items;pending.append(doc);}}",
+      "independent_reviewers": [
+        "adversarial"
+      ],
+      "line": 116,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Recover deletions in both accepted and running states as interrupted. Preserve pending item statuses and exact receipts/progress for accepted deletions, and convert only deleting items to unknown as currently done; add a restart regression seeded with an accepted deletion and verify inspect returns interrupted, no provider removal is replayed, and explicit retry works.",
+      "title": "Recover accepted deletions after resident restart",
+      "why_it_matters": "A resident crash after accepted deletion persistence but before the running checkpoint leaves that deletion marked accepted after restart, with no owning worker. History treats accepted as active and polls indefinitely, while cancellation returns delete_not_active. Explicit retry is available but the recorded state does not indicate that user action is needed; recover accepted requests as interrupted without replaying remote deletion.",
+      "validation_status": "confirmed",
+      "validation_reason": "A crash between HistoryService.cpp:43-45 committing accepted deletion and :49 committing running leaves a reachable accepted document that HistoryStore.cpp:116 never recovers, while HistoryService.cpp:89 has no active owner to cancel it and HistoryWindow.cpp:120 continues polling accepted indefinitely; the crash window was established from checkpoints but not executed.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 8,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/core/HistoryStore.cpp:58 --  for(const auto& item:op.items) {",
+        "src/core/HistoryStore.cpp:60-68 performs SELECT against cleared_history, SELECT against history, and INSERT/UPDATE against history for each item on every saveOperation call.",
+        "src/app/OperationService.cpp:178 --  for(auto& item:op.items) if((local||op.settings.archive.keepUploads)&&item.local.status!=\"saved\") {item.local=LocalArchive::save(item.artifact,op.settings.archive);if(!save())return op;}",
+        "src/app/OperationService.cpp:169 --  auto save=[&]() {auto e=store.saveOperation(op,&providers_);if(e) {op.error=e;op.state=\"failed\";}return !e;};",
+        "src/app/OperationService.cpp:191-207 saves the whole operation once per name check; lines 211-227 save before and after each successful upload.",
+        "src/core/Settings.h:22 --     int maxFiles = 100;",
+        "src/core/Settings.cpp:154 --         if (key == \"maxFiles\") maximum = 10000;"
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:58 --  for(const auto& item:op.items) {",
+      "independent_reviewers": [
+        "performance"
+      ],
+      "line": 58,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "performance"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Add a transactional checkpoint API that accepts the changed item IDs and updates only their history rows alongside the durable operation snapshot. Populate all history rows once after acquisition, pass the affected item ID at per-item archive/name/upload checkpoints, and retain one full pass for transitions that intentionally change every item. Preserve the existing remote-state merging, clear tombstones, replacement supersession, and receipt-before-publication ordering; verify SQL work scales linearly for a 100-file local batch and crash recovery remains correct.",
+      "title": "Per-item checkpoints rewrite every history row in the batch",
+      "why_it_matters": "Sharing a multi-file clipboard batch performs quadratic journal work, including on the local-only path. OperationService saves the whole operation after each archived item, name check, and upload transition, while each save executes two lookups and an upsert for every item: the default permitted 100-file local batch alone performs roughly 30,000 history statements during its archive checkpoints. This unnecessary work delays completion and occupies the bounded operation worker; the supported 10,000-file configuration magnifies it to roughly 300 million statements for that phase alone.",
+      "validation_status": "confirmed",
+      "validation_reason": "For an admitted multi-file local batch, OperationService.cpp:178 checkpoints after each archived item through :169 and HistoryStore.cpp:58-68 performs three history statements per item on every checkpoint, yielding quadratic ledger work under Settings.h:22 and Settings.cpp:154 limits without a changed-item guard; wall-clock incidence and speedup were not measured."
+    },
+    {
+      "#": 9,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "tools/lab/lab.py:707 --             expected = {'width': 96, 'height': 64, 'samples': [{'x': 20, 'y': 20, 'rgb': [220, 30, 40]}]}",
+        "tools/lab/lab.py:161 --     for sample in expected.get('samples', []):",
+        "tools/lab/lab.py:710-711 -- window/desktop expected pixels contain only the single red point at independent paint origin + (30,30).",
+        "tools/lab/lab.py:567,664-666 -- the region gesture starts at paint origin + (30,30) and selects 80 by 60 pixels; tests/fixtures/desktop_fixture.cpp:85 paints the entire 320 by 160 upper-left quadrant red. The requested crop and a crop shifted by (20,20) therefore have identical pixels.",
+        "tests/desktop/test_lab.py:102-112 -- test_exact_pixels_reject_wrong_crop_and_clipboard changes only the expected sampled RGB and width; it does not corrupt an unsampled pixel or supply a same-dimension wrong crop.",
+        "Read-only in-memory execution of production compare_ppm with its actual clipboard-image oracle: a 96 by 64 red image with pixel (0,0) changed to black returned ok=true. No files were written and no guest actions were performed."
+      ],
+      "file": "tools/lab/lab.py",
+      "first_evidence": "tools/lab/lab.py:707 --             expected = {'width': 96, 'height': 64, 'samples': [{'x': 20, 'y': 20, 'rgb': [220, 30, 40]}]}",
+      "independent_reviewers": [
+        "testing"
+      ],
+      "line": 707,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "testing"
+      ],
+      "severity": "P2",
+      "suggested_fix": "For clipboard-image, compare every decoded pixel against the independently generated synthetic image. Make the region selection cross the existing four-color fixture boundaries and compare the complete expected crop, using the independent pre-action geometry; verify the full deterministic paint area for window/desktop. Extend test_exact_pixels_reject_wrong_crop_and_clipboard with a correctly sized image corrupted away from the old sample points and a same-size shifted crop, asserting rejection for both saved artifacts and paste witnesses.",
+      "title": "Reject corrupted images outside the sampled red pixels",
+      "why_it_matters": "The graphical harness can report successful capture and native paste when most image pixels are wrong: clipboard-image checks only dimensions and one red pixel, and window/desktop likewise inspect one red pixel. Region also selects an entirely uniform red rectangle, so an equally sized crop shifted within that quadrant is indistinguishable from the requested crop. The independent public/artifact hash comparison proves transport consistency but cannot establish that the transported image is correct; the existing negative host test changes a sampled color or dimensions and never exercises these false positives.",
+      "validation_status": "confirmed",
+      "validation_reason": "The current oracle in lab.py:156-167,704-711 checks dimensions and only selected red pixels, while :567,664-666 selects a uniform red fixture quadrant from desktop_fixture.cpp:85 and test_lab.py:102-112 omits unsampled corruption, and independent execution of the actual compare_ppm functions in memory accepted a correctly sized clipboard image with pixel (0,0) corrupted."
+    },
+    {
+      "#": 10,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "tools/lab/lab.py:830 --         for name in ('parameters.json', 'results.json', 'results.xml', 'ready.json', 'paste.json',",
+        "tools/lab/lab.py:831-832 -- the fixed archive list continues with paste.ppm, artifact.ppm, before-head0.ppm, final-head0.ppm, versions.json, package.json and diagnostics.json; it contains neither history-paste.json nor selector/focus screenshots.",
+        "tools/lab/lab.py:573 --                 witness = screenshot(run, 'focus-' + str(attempt))",
+        "tools/lab/lab.py:652 --                 screenshot(run, 'selector')",
+        "tools/lab/lab.py:782 --                 get(run, 'putgd-lab/fixture/paste.json', run / 'history-paste.json')",
+        "tools/lab/lab.py:383-389 -- screenshot uses the reusable RUN/name-headN.ppm pathname; subsequent attempts overwrite the same names.",
+        "docs/testing.md:39-44 -- each attempt is promised a preserved RUN/tests/ID bundle containing synthetic artifacts/paste witnesses, while root files represent the latest attempt.",
+        "tests/desktop/test_lab.py:64-73 -- the existing attempt retention test checks test-events.jsonl only, without inspecting the archived witness files."
+      ],
+      "file": "tools/lab/lab.py",
+      "first_evidence": "tools/lab/lab.py:830 --         for name in ('parameters.json', 'results.json', 'results.xml', 'ready.json', 'paste.json',",
+      "independent_reviewers": [
+        "testing"
+      ],
+      "line": 830,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "testing"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Track the synthetic witness paths actually produced by the current fixture_run attempt, including focus/selector QMP screenshots and history-paste.json, and copy/hash them into RUN/tests/ID alongside the existing artifact list. Reset or separately track optional witness files so a fresh attempt cannot archive stale ones. Add a host-only bundle test that creates two attempts with different witness bytes and verifies each preserved bundle and manifest retain that attempt's bytes.",
+      "title": "Preserve all generated witnesses in each attempt bundle",
+      "why_it_matters": "A later graphical attempt overwrites selector/focus screenshots and the independent History copy paste witness from an earlier attempt, because the per-attempt archive omits those files. This leaves failed selector setup and History copy claims with only summarized outcomes after reuse of the run directory, preventing a reviewer from independently checking the observed state. The documentation promises preserved per-attempt synthetic paste witnesses, while the host journal test checks event JSON only and does not verify bundle contents.",
+      "validation_status": "confirmed",
+      "validation_reason": "When fixture_run is repeated in one run directory, lab.py:383-389 reuses screenshot filenames and :782 reuses history-paste.json, but the per-attempt copy/hash list at :830-840 excludes focus/selector screenshots and that History witness despite docs/testing.md:38-44 promising preserved attempt witnesses, so later attempts overwrite evidence absent from the prior bundle; a repeated guest run was not executed.",
+      "protected_subject": "data-loss"
+    }
+  ],
+  "actionable_findings": [
+    {
+      "#": 1,
+      "autofix_class": "manual",
+      "confidence": 100,
+      "evidence": [
+        "cmake/CheckBuildIdentity.cmake.in:10 -- set(programs putgd putgd-cli putgd-ui)",
+        "cmake/CheckBuildIdentity.cmake.in:11-13 adds only putgd-kde-region before iterating this list; there is no capture-helper branch.",
+        "CMakeLists.txt:229 --   add_executable(putgd-capture src/capture/main.cpp src/platform/x11/X11CaptureResolution.cpp)",
+        "CMakeLists.txt:231 --   install(TARGETS putgd-capture RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})",
+        "src/platform/x11/CaptureProcessController.cpp:138 rejects the ready frame when payload[\"build\"].toObject()!=build(), returning capture_incompatible.",
+        "Scenario: build all targets at revision A; advance to B; rebuild putgd, putgd-cli, putgd-ui and putgd-kde-region but leave putgd-capture at A; install/CPack passes all listed versions and installs the stale capture helper; the B resident rejects every A capture-helper handshake.",
+        "tests/cmake/version_contract.cmake builds a synthetic fixture containing only the three original executables and optional KDE selector, so its mixed-build checks do not expose this production helper omission."
+      ],
+      "file": "cmake/CheckBuildIdentity.cmake.in",
+      "first_evidence": "cmake/CheckBuildIdentity.cmake.in:10 -- set(programs putgd putgd-cli putgd-ui)",
+      "independent_reviewers": [
+        "adversarial"
+      ],
+      "line": 10,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Add a PUTGD_PACKAGE_CAPTURE target-file expression guarded by TARGET_EXISTS:putgd-capture in BuildVersion.cmake, append putgd-capture and resolve its binary in CheckBuildIdentity.cmake.in when present, and extend version_contract.cmake with stale-capture install/CPack rejection and absent-X11 cases, matching the existing KDE helper checks.",
+      "title": "Stale Cinnamon helper passes package identity verification",
+      "why_it_matters": "A partial rebuild can produce a successfully installed package whose Cinnamon region, window and desktop actions all fail with capture_incompatible. The install guard checks the resident, CLI, UI and optional KDE selector, but never putgd-capture, even though that separately built executable is installed and must match the resident's exact build manifest. Adding it to the same optional-target check closes the green-package/red-capture gap.",
+      "validation_status": "confirmed",
+      "validation_reason": "For a partial rebuild leaving putgd-capture stale, CheckBuildIdentity.cmake.in:10-23 checks only the resident, CLI, UI and optional KDE helper while CMakeLists.txt:229-231 installs the capture helper and CaptureProcessController.cpp:138 rejects its mismatched manifest, establishing a reachable package/capture incompatibility introduced by this cumulative diff; actual package incidence was not measured.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 2,
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "evidence": [
+        "src/core/HistoryStore.cpp:138 --  QSqlQuery q(db_);q.prepare(\"SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?\");q.addBindValue(limit);if(!q.exec()) {if(error)*error=sqlError();return result;}while(q.next())result.append(Operation::fromJson(decode(q.value(0))).publicJson());return result;",
+        "src/core/HistoryStore.cpp:100-101 -- operation() queries SELECT item_id,remote_status FROM history WHERE operation_id=? and replaces each matching item's remoteStatus before returning it.",
+        "src/core/HistoryStore.cpp:161-164 -- saveDeletion persists the deletion document and updates remote_status/data in history, but does not update operations.data.",
+        "src/core/HistoryStore.cpp:70-71 -- confirmed overwrite marks previous history rows superseded without rewriting their operations.data.",
+        "src/app/OperationService.cpp:266 -- operation.recent forwards HistoryStore::recent's public operation array unchanged.",
+        "src/ui/RecentOperations.cpp:23 --  auto second=\"Remote: \"+readableState(item[\"remoteStatus\"].toString());",
+        "src/ui/RecentOperations.cpp:57 -- Activity refresh requests operation.recent and passes its item JSON directly to fileDetails().",
+        "src/core/HistoryStore.cpp:138 -- QSqlQuery q(db_);q.prepare(\"SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?\");q.addBindValue(limit);if(!q.exec()) {if(error)*error=sqlError();return result;}while(q.next())result.append(Operation::fromJson(decode(q.value(0))).publicJson());return result;",
+        "src/core/HistoryStore.cpp:101 -- QHash<QString,QString> statuses;while(remote.next())statuses.insert(remote.value(0).toString(),remote.value(1).toString());for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);",
+        "src/core/HistoryStore.cpp:164 -- if(ok) {q.prepare(\"SELECT data FROM history WHERE id=?\");q.addBindValue(item[\"historyId\"].toString());ok=q.exec();if(ok&&q.next()) {auto data=decode(q.value(0));data[\"remoteStatus\"]=status;data[\"remoteError\"]=item[\"error\"];data[\"deleteOperationId\"]=doc[\"id\"];data[\"deleteProgress\"]=item[\"progress\"];q.prepare(\"UPDATE history SET remote_status=?,data=? WHERE id=?\");q.addBindValue(status);q.addBindValue(encode(data));q.addBindValue(item[\"historyId\"].toString());ok=q.exec();}}",
+        "src/ui/RecentOperations.cpp:23 -- auto second=\"Remote: \"+readableState(item[\"remoteStatus\"].toString());",
+        "Read-only SQLite in-memory trace: an item whose history status is removed still has not_requested in the operations blob used by recent()."
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:138 --  QSqlQuery q(db_);q.prepare(\"SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?\");q.addBindValue(limit);if(!q.exec()) {if(error)*error=sqlError();return result;}while(q.next())result.append(Operation::fromJson(decode(q.value(0))).publicJson());return result;",
+      "independent_reviewers": [
+        "correctness",
+        "api-contract",
+        "agent-native"
+      ],
+      "line": 138,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "correctness",
+        "api-contract",
+        "agent-native"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Extract the history remote_status hydration currently used by HistoryStore::operation into a shared helper and apply it to every operation returned by HistoryStore::recent, preferably with a bounded bulk query for the selected operation IDs. Add a regression that completes an upload, deletes or supersedes its item, then verifies operation.recent, operation.inspect, history.detail and the refreshed Activity remote label agree without a later operation rewrite.",
+      "title": "Recent operations return stale remote outcomes",
+      "why_it_matters": "After an uploaded item is deleted or superseded, operation.recent still reports its old remoteStatus, commonly not_requested, while operation.inspect and history.detail report removed, changed or superseded. Activity renders that stale status directly, so refreshing or reopening Activity continues to contradict History about the same publication. The single-operation reader already overlays authoritative history statuses; applying the same hydration to recent results makes the public service responses agree without changing original receipts.",
+      "validation_status": "confirmed",
+      "validation_reason": "After deletion or supersession updates history through HistoryStore.cpp:70-71 or 161-164, recent():138 reads the untouched operation blob unlike operation():100-101, and OperationService.cpp:266 plus RecentOperations.cpp:23,57 expose that stale remoteStatus; an independent in-memory trace of the inspected queries returned removed for inspect but not_requested for recent.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 3,
+      "autofix_class": "manual",
+      "confidence": 100,
+      "evidence": [
+        "src/core/HistoryStore.cpp:154 -- if(!q.exec(\"INSERT OR IGNORE INTO cleared_history SELECT id FROM history\"+retained)||!q.exec(\"DELETE FROM history\"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};",
+        "src/core/HistoryStore.cpp:164 -- if(ok) {q.prepare(\"SELECT data FROM history WHERE id=?\");q.addBindValue(item[\"historyId\"].toString());ok=q.exec();if(ok&&q.next()) {auto data=decode(q.value(0));data[\"remoteStatus\"]=status;data[\"remoteError\"]=item[\"error\"];data[\"deleteOperationId\"]=doc[\"id\"];data[\"deleteProgress\"]=item[\"progress\"];q.prepare(\"UPDATE history SET remote_status=?,data=? WHERE id=?\");q.addBindValue(status);q.addBindValue(encode(data));q.addBindValue(item[\"historyId\"].toString());ok=q.exec();}}",
+        "src/core/HistoryStore.cpp:101 -- QHash<QString,QString> statuses;while(remote.next())statuses.insert(remote.value(0).toString(),remote.value(1).toString());for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);",
+        "src/core/Operation.cpp:3 -- bool OperationItem::linkAvailable() const {return uploadStatus==\"uploaded\"&&!receipt.directUrl.isEmpty()&&!QStringList{\"removed\",\"already_missing\",\"changed\",\"hidden_version_retained\"}.contains(remoteStatus);}",
+        "tests/integration/test_storage_contract.cpp:12 -- knownRemovedHistoryNeverWritesClipboard tests copy suppression while the history row still exists, without clearing it.",
+        "Read-only SQLite in-memory trace of these queries: inspect before clear = removed; inspect after clear = not_requested.",
+        "src/core/HistoryStore.cpp:101 --  QHash<QString,QString> statuses;while(remote.next())statuses.insert(remote.value(0).toString(),remote.value(1).toString());for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);",
+        "src/core/HistoryStore.cpp:164 saveDeletion updates remote_status/data in history only; it does not change the operations document.",
+        "src/core/HistoryStore.cpp:162 marks removed/already_missing/changed deletion targets inactive. clear() at lines 153-154 removes rows not held by active deletion targets; expireBefore() at lines 144-145 also removes eligible uploaded rows.",
+        "Scenario: complete an upload, delete it successfully without copying its operation again, then clear History. The history overlay disappears; the raw operations row still has remoteStatus not_requested. operation.copy loads that row through operation() and treats its uploaded receipt as linkAvailable.",
+        "src/app/OperationService.cpp:302 --  for(const auto& item:op.items) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus==\"local_only\"&&item.local.status==\"saved\") {files.append(item.local.path);localKind=item.artifact.category;}}",
+        "src/core/Operation.cpp:3 allows any uploaded nonempty URL unless remoteStatus is removed, already_missing, changed or hidden_version_retained.",
+        "tests/integration/test_storage_contract.cpp:17-21 checks removed-link copying before clear; lines 46-47 clear a completed removed record and retain a pending deletion, but do not subsequently copy the cleared operation."
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:154 -- if(!q.exec(\"INSERT OR IGNORE INTO cleared_history SELECT id FROM history\"+retained)||!q.exec(\"DELETE FROM history\"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};",
+      "independent_reviewers": [
+        "adversarial",
+        "correctness"
+      ],
+      "line": 154,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial",
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Persist last-known per-item remote outcomes in the operation journal or a separate item-state table that history.clear and expiry do not prune. Merge that state on operation reads and writes, including deletion and supersession updates; add a regression for delete -> clear/expire -> restart -> operation.copy that must not copy the removed URL.",
+      "title": "Preserve remote outcomes when clearing history",
+      "why_it_matters": "After deleting an upload and clearing history, Copy result from Activity or operation.copy can write that known-deleted URL to the clipboard again. Deletion updates only history, while operation() overlays remote outcomes from that table onto an older operations document; clear() and expiry remove the only current state, restoring not_requested and making linkAvailable() true. Keep the per-item remote outcome independently of the clearable history view so local record cleanup cannot undo a known removal.",
+      "validation_status": "confirmed",
+      "validation_reason": "When a completed deletion is followed by clear or eligible expiry without an intervening operation rewrite, HistoryStore.cpp:145,154 removes its only remote-state overlay and cleared_history retains only IDs, while OperationService.cpp:286,302 and Operation.cpp:3 again permit its uploaded URL; an independent in-memory trace reproduced removed becoming not_requested and linkAvailable=true after clear.",
+      "protected_subject": "data-loss"
+    },
+    {
+      "#": 4,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/app/HistoryService.cpp:82 --  },[this,id=doc[\"id\"].toString()](Error,QJsonObject) {active_.remove(id);});",
+        "src/app/HistoryService.h:5-26 declares no change signal; clear() at HistoryService.cpp:21 forwards its reply without invalidation and expiry at line 17 discards completion.",
+        "src/main.cpp:222-225 wires Settings, OperationService and SetupService changes to UiProcessController::invalidate; HistoryService is absent.",
+        "src/ui/HistoryWindow.cpp:65 refreshes for UiSession::operationsChanged, while deletion polling starts only from its own confirm/retry paths at lines 119 and 64.",
+        "tests/gui/test_history_view.cpp:49 manually calls restored.refresh() after clearing History."
+      ],
+      "file": "src/app/HistoryService.cpp",
+      "first_evidence": "src/app/HistoryService.cpp:82 --  },[this,id=doc[\"id\"].toString()](Error,QJsonObject) {active_.remove(id);});",
+      "independent_reviewers": [
+        "agent-native"
+      ],
+      "line": 82,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "agent-native"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Add a HistoryService change signal and connect it to the resident UI invalidation path. Emit on the session thread after successful clear/expiry and persisted deletion acceptance/progress/completion, coalescing progress. Test an open History view while a separate session client clears or deletes, without explicit refresh or reopen.",
+      "title": "Notify open views when history mutations commit",
+      "why_it_matters": "Remote deletion, history clearing and retention expiry initiated outside the GUI do not invalidate an already-open History view. Its table, inspector and enabled link actions retain old remote state until manual refresh, reopening or an unrelated operation/settings event; GUI-initiated deletion hides the gap by polling only its own deletion ID.",
+      "validation_status": "confirmed",
+      "validation_reason": "For an open History view and a separate-client clear/delete or retention expiry, HistoryService.cpp:17,21,82 publishes no change signal and main.cpp:222-225 excludes HistoryService from invalidation, while HistoryWindow.cpp:64-65,119-120 polls only GUI-initiated deletions and UiSession.cpp:10 refreshes views only from snapshots, establishing stale views until another refresh event; runtime incidence was not measured."
+    },
+    {
+      "#": 5,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/app/OperationService.cpp:351 -- void OperationService::cleanup(JsonReply reply) {const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+\"/artifacts\");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+\"/artifacts\");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus==\"unknown\"||item.uploadStatus==\"uploading\")successful=false;const bool finished=op.state==\"completed\"||op.state==\"partial\"||op.state==\"failed\"||op.state==\"cancelled\"||op.state==\"interrupted\";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status==\"failed\")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{\"removedOperations\",removed}};},reply);}",
+        "src/app/OperationService.cpp:278 -- auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved](Error e,QJsonObject doc) {",
+        "src/app/OperationService.cpp:64 -- heapReclamationTimer_.stop();",
+        "tests/unit/test_operations.cpp:657 -- Existing coverage calls ops.retry(id,...) before ops.cleanup(...), so activeIds already contains the retry.",
+        "src/app/OperationService.cpp:351 -- void OperationService::cleanup(JsonReply reply) {const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+\"/artifacts\");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+\"/artifacts\");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus==\"unknown\"||item.uploadStatus==\"uploading\")successful=false;const bool finished=op.state==\"completed\"||op.state==\"partial\"||op.state==\"failed\"||op.state==\"cancelled\"||op.state==\"interrupted\";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status==\"failed\")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{\"removedOperations\",removed}};},reply);}\nsrc/app/OperationService.cpp:278 --  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved](Error e,QJsonObject doc) {",
+        "src/app/OperationService.cpp:285 -- retryLocalSave inserts the operation into active_ and dispatches a worker without coordinating with an already-running cleanup.",
+        "src/core/ArtifactStore.cpp:31 -- for(const auto& name:directory.entryList(QDir::Files|QDir::Hidden))if(!QUuid(name).isNull()&&!QFile::remove(directory.filePath(name)))return {\"artifact_io\",\"Cannot remove artifacts\",{}};",
+        "tests/unit/test_operations.cpp:657 -- The existing active-retry protection test calls retry before cleanup; it does not exercise cleanup admitted before retry.",
+        "src/app/OperationService.cpp:63-66 -- background starts a separate QThread for each operation, so cleanup and retry workers are not serialized."
+      ],
+      "file": "src/app/OperationService.cpp",
+      "first_evidence": "src/app/OperationService.cpp:351 -- void OperationService::cleanup(JsonReply reply) {const auto snapshot=settings_.snapshot();const auto path=databasePath(),root=root_;const auto activeIds=active_.keys();background([snapshot,path,root,activeIds](Error& e) {HistoryStore store(path);ArtifactStore artifacts(root+\"/artifacts\");e=store.error();if(e)return QJsonObject{};int removed=0;QDir dir(root+\"/artifacts\");for(const auto& name:dir.entryList(QDir::Dirs|QDir::NoDotAndDotDot)) {if(activeIds.contains(name))continue;Error error;auto op=store.operation(name,&error);if(error)continue;bool successful=true;for(const auto& item:op.items)if(item.uploadStatus==\"unknown\"||item.uploadStatus==\"uploading\")successful=false;const bool finished=op.state==\"completed\"||op.state==\"partial\"||op.state==\"failed\"||op.state==\"cancelled\"||op.state==\"interrupted\";bool uploaded=true;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus))uploaded=false;bool archivePending=false;for(const auto& item:op.items)if(item.local.status==\"failed\")archivePending=true;const auto date=QDateTime::fromString(op.created,Qt::ISODateWithMs);if(finished&&successful&&((uploaded&&!archivePending)||(snapshot.failedArtifactDays>0&&date.daysTo(QDateTime::currentDateTimeUtc())>=snapshot.failedArtifactDays))) {if(auto error=artifacts.remove(name)) {e=error;break;}++removed;}}artifacts.clearPreviews();return QJsonObject{{\"removedOperations\",removed}};},reply);}",
+      "independent_reviewers": [
+        "reliability",
+        "correctness"
+      ],
+      "line": 351,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "reliability",
+        "correctness"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Set a cleanup-in-progress admission guard on the session thread before starting cleanup and reject retry/retryLocalSave with a busy error until its callback clears that guard; preserve the existing exclusion of already-active IDs. Alternatively reserve cleanup candidate IDs against retry admission. Add a deterministic test that pauses cleanup after its snapshot, requests retry, and verifies the artifact cannot be removed from an admitted retry.",
+      "title": "Reserve artifacts against retries during cleanup",
+      "why_it_matters": "An explicit retry of an aged failed upload can lose its only retained bytes if cache.clear was dispatched immediately before it. cleanup() freezes active IDs before starting an independent worker; retry() can then reserve the same operation while cleanup still considers its previously failed record eligible and removes its artifact. The existing active-retry test only covers the opposite request order, so it cannot establish the intended ownership protection.",
+      "validation_status": "confirmed",
+      "validation_reason": "For an aged failed operation eligible for cleanup, OperationService.cpp:351 snapshots active IDs before launching an independent QThread through :63-66, yet retry():274-282 and retryLocalSave():285 can subsequently admit that ID without a cleanup guard while ArtifactStore.cpp:31 removes its spool, making the admitted retry lose retained bytes under a reachable request ordering; the precise concurrent schedule was not executed.",
+      "protected_subject": "concurrency"
+    },
+    {
+      "#": 6,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "src/cli/main.cpp:20 --  QJsonObject request{{\"schemaVersion\",1},{\"requestId\",id},{\"session\",path},{\"method\",args[0]},{\"params\",params.object()}};",
+        "src/cli/main.cpp:16 --  const auto bytes=args.size()==2?args[1].toUtf8():QByteArray(\"{}\");if(bytes.size()>1024*1024)return error(\"request_too_large\",\"Request exceeds 1 MiB\");",
+        "src/app/LocalServer.cpp:105 --  if(method==\"setup.storeCredentials\"||method==\"setup.unlockCredentials\"||method==\"setup.testDestination\") {",
+        "src/app/LocalServer.cpp:109 --   setup_->start(method.mid(6),p[\"profileId\"].toString(),p[\"expectedRevision\"].toString(),p[\"credentials\"].toObject(),std::move(reply));return;",
+        "src/app/SetupService.cpp:56 --   Credentials value{input[\"accessKey\"].toString(),input[\"secretKey\"].toString(),input[\"sessionToken\"].toString()};",
+        "docs/ui-process-protocol.md:37-39 -- Credential input contains accessKey/secretKey and an optional sessionToken. It is transient private socket data, never configuration, history, state checkpoints, arguments or diagnostic output.",
+        "tests/integration/test_ui_endpoints.cpp:162 --   const auto stored=wire(f.server,\"setup.storeCredentials\",input);QVERIFY(stored[\"ok\"].toBool());"
+      ],
+      "file": "src/cli/main.cpp",
+      "first_evidence": "src/cli/main.cpp:20 --  QJsonObject request{{\"schemaVersion\",1},{\"requestId\",id},{\"session\",path},{\"method\",args[0]},{\"params\",params.object()}};",
+      "independent_reviewers": [
+        "security"
+      ],
+      "line": 20,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "security"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Reject setup.storeCredentials in putgd-cli before opening the session socket, with fixed guidance to enter credentials through Settings. Keep the GUI's SessionClient endpoint intact. Add a synthetic CLI contract test proving this method cannot reach the resident; if credential setup via CLI is intentionally desired later, implement a bounded stdin/private-descriptor input path instead of positional JSON.",
+      "title": "CWE-214: CLI accepts raw credential setup in argv",
+      "why_it_matters": "A caller can successfully supply accessKey, secretKey and sessionToken to setup.storeCredentials through the CLI's positional JSON argument. Those values are then exposed in the process command line and potentially shell history, even though the setup protocol explicitly promises credentials never enter arguments. The CLI forwards every method without a public-method or credential-field guard, so the GUI's new secret-bearing socket endpoint has also become an argv-based interface; restricting this method to the existing private GUI socket flow closes that unintended route. See [MITRE CWE-214](https://cwe.mitre.org/data/definitions/214.html) for the process-argument exposure mechanism.",
+      "validation_status": "confirmed",
+      "validation_reason": "For a saved profile with a current expectedRevision, CLI main.cpp:16-20 accepts positional credential JSON and forwards setup.storeCredentials without restriction to LocalServer.cpp:105-109 and SetupService.cpp:55-57, exposing input in argv contrary to docs/ui-process-protocol.md:37-39, with test_ui_endpoints.cpp:161-163 evidencing endpoint acceptance; the argv route was inspected without passing any credentials or measuring user incidence.",
+      "protected_subject": "secrets-exposure"
+    },
+    {
+      "#": 7,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/core/HistoryStore.cpp:116 --  QList<QJsonObject> pending;while(d.next()) {auto doc=decode(d.value(0));if(doc[\"state\"]==\"running\") {doc[\"state\"]=\"interrupted\";auto items=doc[\"items\"].toArray();for(int i=0;i<items.size();++i) {auto item=items[i].toObject();if(item[\"status\"]==\"deleting\") item[\"status\"]=\"unknown\";items[i]=item;}doc[\"items\"]=items;pending.append(doc);}}",
+        "src/app/HistoryService.cpp:43-45 persists state accepted before replying with deleteOperationId and launching runDelete; the next background task changes it to running at line 49.",
+        "Scenario: stop the process after accepted saveDeletion commits but before runDelete commits running; on restart recover() ignores this accepted document and HistoryService has no entry in active_ for it.",
+        "src/ui/HistoryWindow.cpp:120 stops its 500ms deletion polling only when state is neither running nor accepted, so restoring this deletion ID at line 132 polls the inert acceptance indefinitely.",
+        "src/app/HistoryService.cpp:89 cancelDelete returns delete_not_active when the ID is absent from active_."
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:116 --  QList<QJsonObject> pending;while(d.next()) {auto doc=decode(d.value(0));if(doc[\"state\"]==\"running\") {doc[\"state\"]=\"interrupted\";auto items=doc[\"items\"].toArray();for(int i=0;i<items.size();++i) {auto item=items[i].toObject();if(item[\"status\"]==\"deleting\") item[\"status\"]=\"unknown\";items[i]=item;}doc[\"items\"]=items;pending.append(doc);}}",
+      "independent_reviewers": [
+        "adversarial"
+      ],
+      "line": 116,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "adversarial"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Recover deletions in both accepted and running states as interrupted. Preserve pending item statuses and exact receipts/progress for accepted deletions, and convert only deleting items to unknown as currently done; add a restart regression seeded with an accepted deletion and verify inspect returns interrupted, no provider removal is replayed, and explicit retry works.",
+      "title": "Recover accepted deletions after resident restart",
+      "why_it_matters": "A resident crash after accepted deletion persistence but before the running checkpoint leaves that deletion marked accepted after restart, with no owning worker. History treats accepted as active and polls indefinitely, while cancellation returns delete_not_active. Explicit retry is available but the recorded state does not indicate that user action is needed; recover accepted requests as interrupted without replaying remote deletion.",
+      "validation_status": "confirmed",
+      "validation_reason": "A crash between HistoryService.cpp:43-45 committing accepted deletion and :49 committing running leaves a reachable accepted document that HistoryStore.cpp:116 never recovers, while HistoryService.cpp:89 has no active owner to cancel it and HistoryWindow.cpp:120 continues polling accepted indefinitely; the crash window was established from checkpoints but not executed.",
+      "protected_subject": "public-contract"
+    },
+    {
+      "#": 8,
+      "autofix_class": "manual",
+      "confidence": 75,
+      "evidence": [
+        "src/core/HistoryStore.cpp:58 --  for(const auto& item:op.items) {",
+        "src/core/HistoryStore.cpp:60-68 performs SELECT against cleared_history, SELECT against history, and INSERT/UPDATE against history for each item on every saveOperation call.",
+        "src/app/OperationService.cpp:178 --  for(auto& item:op.items) if((local||op.settings.archive.keepUploads)&&item.local.status!=\"saved\") {item.local=LocalArchive::save(item.artifact,op.settings.archive);if(!save())return op;}",
+        "src/app/OperationService.cpp:169 --  auto save=[&]() {auto e=store.saveOperation(op,&providers_);if(e) {op.error=e;op.state=\"failed\";}return !e;};",
+        "src/app/OperationService.cpp:191-207 saves the whole operation once per name check; lines 211-227 save before and after each successful upload.",
+        "src/core/Settings.h:22 --     int maxFiles = 100;",
+        "src/core/Settings.cpp:154 --         if (key == \"maxFiles\") maximum = 10000;"
+      ],
+      "file": "src/core/HistoryStore.cpp",
+      "first_evidence": "src/core/HistoryStore.cpp:58 --  for(const auto& item:op.items) {",
+      "independent_reviewers": [
+        "performance"
+      ],
+      "line": 58,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "performance"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Add a transactional checkpoint API that accepts the changed item IDs and updates only their history rows alongside the durable operation snapshot. Populate all history rows once after acquisition, pass the affected item ID at per-item archive/name/upload checkpoints, and retain one full pass for transitions that intentionally change every item. Preserve the existing remote-state merging, clear tombstones, replacement supersession, and receipt-before-publication ordering; verify SQL work scales linearly for a 100-file local batch and crash recovery remains correct.",
+      "title": "Per-item checkpoints rewrite every history row in the batch",
+      "why_it_matters": "Sharing a multi-file clipboard batch performs quadratic journal work, including on the local-only path. OperationService saves the whole operation after each archived item, name check, and upload transition, while each save executes two lookups and an upsert for every item: the default permitted 100-file local batch alone performs roughly 30,000 history statements during its archive checkpoints. This unnecessary work delays completion and occupies the bounded operation worker; the supported 10,000-file configuration magnifies it to roughly 300 million statements for that phase alone.",
+      "validation_status": "confirmed",
+      "validation_reason": "For an admitted multi-file local batch, OperationService.cpp:178 checkpoints after each archived item through :169 and HistoryStore.cpp:58-68 performs three history statements per item on every checkpoint, yielding quadratic ledger work under Settings.h:22 and Settings.cpp:154 limits without a changed-item guard; wall-clock incidence and speedup were not measured."
+    },
+    {
+      "#": 9,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "tools/lab/lab.py:707 --             expected = {'width': 96, 'height': 64, 'samples': [{'x': 20, 'y': 20, 'rgb': [220, 30, 40]}]}",
+        "tools/lab/lab.py:161 --     for sample in expected.get('samples', []):",
+        "tools/lab/lab.py:710-711 -- window/desktop expected pixels contain only the single red point at independent paint origin + (30,30).",
+        "tools/lab/lab.py:567,664-666 -- the region gesture starts at paint origin + (30,30) and selects 80 by 60 pixels; tests/fixtures/desktop_fixture.cpp:85 paints the entire 320 by 160 upper-left quadrant red. The requested crop and a crop shifted by (20,20) therefore have identical pixels.",
+        "tests/desktop/test_lab.py:102-112 -- test_exact_pixels_reject_wrong_crop_and_clipboard changes only the expected sampled RGB and width; it does not corrupt an unsampled pixel or supply a same-dimension wrong crop.",
+        "Read-only in-memory execution of production compare_ppm with its actual clipboard-image oracle: a 96 by 64 red image with pixel (0,0) changed to black returned ok=true. No files were written and no guest actions were performed."
+      ],
+      "file": "tools/lab/lab.py",
+      "first_evidence": "tools/lab/lab.py:707 --             expected = {'width': 96, 'height': 64, 'samples': [{'x': 20, 'y': 20, 'rgb': [220, 30, 40]}]}",
+      "independent_reviewers": [
+        "testing"
+      ],
+      "line": 707,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "testing"
+      ],
+      "severity": "P2",
+      "suggested_fix": "For clipboard-image, compare every decoded pixel against the independently generated synthetic image. Make the region selection cross the existing four-color fixture boundaries and compare the complete expected crop, using the independent pre-action geometry; verify the full deterministic paint area for window/desktop. Extend test_exact_pixels_reject_wrong_crop_and_clipboard with a correctly sized image corrupted away from the old sample points and a same-size shifted crop, asserting rejection for both saved artifacts and paste witnesses.",
+      "title": "Reject corrupted images outside the sampled red pixels",
+      "why_it_matters": "The graphical harness can report successful capture and native paste when most image pixels are wrong: clipboard-image checks only dimensions and one red pixel, and window/desktop likewise inspect one red pixel. Region also selects an entirely uniform red rectangle, so an equally sized crop shifted within that quadrant is indistinguishable from the requested crop. The independent public/artifact hash comparison proves transport consistency but cannot establish that the transported image is correct; the existing negative host test changes a sampled color or dimensions and never exercises these false positives.",
+      "validation_status": "confirmed",
+      "validation_reason": "The current oracle in lab.py:156-167,704-711 checks dimensions and only selected red pixels, while :567,664-666 selects a uniform red fixture quadrant from desktop_fixture.cpp:85 and test_lab.py:102-112 omits unsampled corruption, and independent execution of the actual compare_ppm functions in memory accepted a correctly sized clipboard image with pixel (0,0) corrupted."
+    },
+    {
+      "#": 10,
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "tools/lab/lab.py:830 --         for name in ('parameters.json', 'results.json', 'results.xml', 'ready.json', 'paste.json',",
+        "tools/lab/lab.py:831-832 -- the fixed archive list continues with paste.ppm, artifact.ppm, before-head0.ppm, final-head0.ppm, versions.json, package.json and diagnostics.json; it contains neither history-paste.json nor selector/focus screenshots.",
+        "tools/lab/lab.py:573 --                 witness = screenshot(run, 'focus-' + str(attempt))",
+        "tools/lab/lab.py:652 --                 screenshot(run, 'selector')",
+        "tools/lab/lab.py:782 --                 get(run, 'putgd-lab/fixture/paste.json', run / 'history-paste.json')",
+        "tools/lab/lab.py:383-389 -- screenshot uses the reusable RUN/name-headN.ppm pathname; subsequent attempts overwrite the same names.",
+        "docs/testing.md:39-44 -- each attempt is promised a preserved RUN/tests/ID bundle containing synthetic artifacts/paste witnesses, while root files represent the latest attempt.",
+        "tests/desktop/test_lab.py:64-73 -- the existing attempt retention test checks test-events.jsonl only, without inspecting the archived witness files."
+      ],
+      "file": "tools/lab/lab.py",
+      "first_evidence": "tools/lab/lab.py:830 --         for name in ('parameters.json', 'results.json', 'results.xml', 'ready.json', 'paste.json',",
+      "independent_reviewers": [
+        "testing"
+      ],
+      "line": 830,
+      "owner": "downstream-resolver",
+      "pre_existing": false,
+      "requires_verification": true,
+      "reviewers": [
+        "testing"
+      ],
+      "severity": "P2",
+      "suggested_fix": "Track the synthetic witness paths actually produced by the current fixture_run attempt, including focus/selector QMP screenshots and history-paste.json, and copy/hash them into RUN/tests/ID alongside the existing artifact list. Reset or separately track optional witness files so a fresh attempt cannot archive stale ones. Add a host-only bundle test that creates two attempts with different witness bytes and verifies each preserved bundle and manifest retain that attempt's bytes.",
+      "title": "Preserve all generated witnesses in each attempt bundle",
+      "why_it_matters": "A later graphical attempt overwrites selector/focus screenshots and the independent History copy paste witness from an earlier attempt, because the per-attempt archive omits those files. This leaves failed selector setup and History copy claims with only summarized outcomes after reuse of the run directory, preventing a reviewer from independently checking the observed state. The documentation promises preserved per-attempt synthetic paste witnesses, while the host journal test checks event JSON only and does not verify bundle contents.",
+      "validation_status": "confirmed",
+      "validation_reason": "When fixture_run is repeated in one run directory, lab.py:383-389 reuses screenshot filenames and :782 reuses history-paste.json, but the per-attempt copy/hash list at :830-840 excludes focus/selector screenshots and that History witness despite docs/testing.md:38-44 promising preserved attempt witnesses, so later attempts overwrite evidence absent from the prior bundle; a repeated guest run was not executed.",
+      "protected_subject": "data-loss"
+    }
+  ],
+  "triage_groups": [
+    {
+      "title": "History state and view synchronization",
+      "findings": [
+        2,
+        3,
+        4,
+        7
+      ],
+      "context": "Cleared records, recent projections, UI invalidation and crash recovery can disagree about durable outcomes.",
+      "preferred_resolution": "Resolve #3 authoritative remote-state retention first, then use it in #2; separately add #4 invalidation and #7 accepted-deletion recovery.",
+      "why": "Shared durable state must remain consistent across history, operation inspection, Activity and external clients."
+    },
+    {
+      "title": "Reproducible graphical evidence",
+      "findings": [
+        9,
+        10
+      ],
+      "context": "The lab can accept corrupted images and overwrite per-attempt witnesses.",
+      "preferred_resolution": "Tighten #9 pixel/crop assertions and preserve #10 generated witness files; add independent negative and two-attempt bundle tests.",
+      "why": "Stored success outcomes need discriminating image assertions and independently reviewable evidence."
+    }
+  ],
+  "pre_existing_findings": [],
+  "requirements_completeness": {
+    "plan_path": "/home/patrick/work/put.gd/docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md",
+    "source": "inferred",
+    "requirements": [],
+    "implementation_units": [],
+    "status": "not_certified",
+    "note": "Dispatch extracted no requirement or implementation-unit checklist. This review does not certify full-plan completion; current guest live-S3, post-S3 memory, fresh-agent and installed-package release gates remain pending. No additional unrequested behavior rule was established by the retained findings and settled-decision reverse check.",
+    "unrequested_behavior_rules": []
+  },
+  "learnings": [],
+  "agent_native_gaps": [
+    {
+      "findings": [
+        2,
+        4
+      ],
+      "note": "The approved twelve MCP tools and eleven grouped core capabilities are accessible; current shared-history projections and invalidation remain deficient."
+    }
+  ],
+  "deployment_notes": [],
+  "residual_risks": [
+    "S3 ETag conditions cannot distinguish external identical-content replacement, and bucket-versioning changes remain outside the recorded object guard; docs/s3.md documents these provider limitations."
+  ],
+  "testing_gaps": [
+    "Current source63 guest live-S3 publication, unauthenticated public-byte verification, original-destination History copy/delete, and post-S3 populated-remote-history memory remain pending; local-native results do not establish R17/R20/R31/R32 remote gates.",
+    "Full U9 fresh-agent build/run/redacted-diagnostics/simulated-failure walkthrough and U10 installed-package lifecycle acceptance remain pending.",
+    "The full declared compositor release matrix still needs mixed-display geometry/scaling and failure/ownership/lifecycle scenarios from docs/release.md and the plan.",
+    "Current physical-desktop whole-family memory/responsiveness with a 10,000-row history is not established by existing pagination and event-loop progress tests."
+  ],
+  "coverage": {
+    "depth": "full",
+    "mode": "agent report-only",
+    "notes": [
+      "Cumulative review base is the original bootstrap commit; code packet excludes raw docs/evidence exports. Evidence inventories were checked selectively; thousands of historical log files were not individually audited.",
+      "Reviewed product identity: 0.1.1-dev.63+g050b702c6a6d; native memory claims belong to that build. No runtime tests performed in this review round.",
+      "Current guest live-S3/remote History/post-S3 memory and full release acceptance remain pending. Requirements completeness was not requested as a full-plan audit.",
+      "Security supplemental SetupService credential read is at line 56 rather than 58; testing supplemental fixture paint is at line 85 rather than 88. Primary evidence locations are unchanged.",
+      "Reliability reused an existing idle session-model reviewer; other mid-tier lenses used requested mid-tier instances.",
+      "Claude CLI auth status subsequently confirmed loggedIn=true and a safe-mode, no-tools authenticated request returned OK with exit 0; adapter failure was concurrent OAuth refresh, not evidence of invalid user credentials.",
+      "adversarial lens: in-process fallback (cross-model peer not run: Claude OAuth token refresh conflict after provider-capable dispatch). Requested claude-opus-5-5 at high via claude/acpx; receipt_supported=false, model_actual=unverified, effort_actual=unverified, independence_verified=false.",
+      "Semantic reconciliation merged three duplicate pairs: cleared-history remote outcomes, recent-activity remote outcomes, and cleanup/retry admission. Same-model corroboration did not raise confidence.",
+      "Initial first_evidence_backfilled=1; rerun recoveries=0; quote-gate demotions=0; suppressed_by_confidence={}; malformed findings=0; malformed returns=0; mode-aware demotions=0; settlement conflicts suppressed=0.",
+      "All ten primary P2 findings have a concrete current failure or explicit violated contract. No advisory candidates were retained as primary, and no protected artifact cleanup was proposed.",
+      "The accepted-deletion finding was narrowed: explicit retry already works, but startup leaves accepted state without an owner, so polling/cancellation behavior is misleading. No claim that explicit retry is unavailable remains.",
+      "Plan was inferred and extraction contained no requirements or implementation-unit checklist. This round does not certify full plan completion; current release gates remain explicit.",
+      "Validator shortcut-skipped=0: no independent cross-model corroboration was available. One batch returned valid confirmations for all ten selected findings inside its bound; this exceeded the normal eight-item cap despite having no P0/P1 overflow. No second batch ran.",
+      "All ten primary first_evidence quotes were independently checked against their exact reviewed file and line. No changes were applied in this agent report-only round."
+    ],
+    "suppressed_by_confidence": {},
+    "malformed_findings": 0,
+    "malformed_returns": 0,
+    "first_evidence_backfilled": 1,
+    "quote_gate_demotions": 0,
+    "mode_aware_demotions": 0,
+    "settlement_suppressed": 0,
+    "semantic_duplicates_merged": 3,
+    "validator": {
+      "outcome": "verdicts",
+      "selected": 10,
+      "confirmed": 10,
+      "rejected": 0,
+      "unresolved": 0,
+      "malformed": 0,
+      "failed": 0,
+      "shortcut_skipped": 0,
+      "bound_exceeded": false,
+      "protected_subject_reclassifications": []
+    },
+    "peer": {
+      "selected": true,
+      "target": "claude",
+      "route": "claude",
+      "preference_source": "default",
+      "outcome": "in-process-fallback",
+      "artifact": null,
+      "coverage": "adversarial lens: in-process fallback (cross-model peer not run: Claude OAuth token refresh conflict after provider-capable dispatch). Requested claude-opus-5-5 at high via claude/acpx; receipt_supported=false, model_actual=unverified, effort_actual=unverified, independence_verified=false."
+    },
+    "failed_reviewers": [],
+    "bound_exceeded": [],
+    "compound_packs": {
+      "roots": [],
+      "warnings": [],
+      "errors": []
+    }
+  },
+  "verdict_reason": "Ten independently validated P2 defects remain, with no P0/P1 finding. Address durable history state/recovery first, then cleanup admission and credential arguments, package identity, batch journal work and graphical evidence. Current native local-memory evidence remains valid for source63; live-S3 and full release acceptance are still pending. No fixes were applied.",
+  "artifact_path": "/tmp/compound-engineering-1000/ce-code-review/20261011-085046-e61b8a77",
+  "run_id": "20261011-085046-e61b8a77"
+}

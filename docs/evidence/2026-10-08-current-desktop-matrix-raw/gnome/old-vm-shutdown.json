@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:43:52.335427+00:00",
+  "run": "gnome-001",
+  "hostPid": 1673704,
+  "hostStartTicks": "21971090",
+  "request": "QMP system_powerdown",
+  "preserveStoppedOverlayReason": "Contains verified distro SDK source/install and current build cache; immutable golden untouched",
+  "copiedPackageSha256": "10d9c0023b71e40b66ffa714fefe3b923ba38a39b915ff83b48206943228f974",
+  "qmpReply": {},
+  "hostProcessGone": true,
+  "hostProcessState": null
+}

@@ -1,0 +1,11 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/home/patrick/work/put.gd/work/capture-parity/clean52/cold1/result.json",
+    "sha256": "1433078bbfd2e46e20c85d772c4554a9beb795013d870bf648cbb2ca7937517c"
+  },
+  "data": {
+    "exitCode": 1
+  }
+}

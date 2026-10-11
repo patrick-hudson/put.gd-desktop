@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T23:40:49.376183+00:00",
+  "unit": "U11 foundation: asynchronous client, private control framing, resident setup endpoints",
+  "baselineCommit": "bcbe63f0d1e1ad00f36ac110fb596d0245869617",
+  "status": "implemented and focused tests passed; window migration/supervision/native split acceptance pending",
+  "sourceFiles": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "f6789024b524fb323a584766107fc4e66d06db50cb5543f93c1c427194bd18d9"
+    },
+    {
+      "path": "src/app/LocalServer.h",
+      "sha256": "ba415387128b42924821dc1bc9ec1ca1295ebb2c3fd42e2973c003e2085c5c6e"
+    },
+    {
+      "path": "src/app/LocalServer.cpp",
+      "sha256": "b5fa7575335719a1c060be77f1e808a41c68126f2081243eb017a3917f5466da"
+    },
+    {
+      "path": "src/app/SetupService.h",
+      "sha256": "b6c0144f2aa7071c3890af1ea5c4d33c0ba4f9a629f46ec961a6629d91fddeed"
+    },
+    {
+      "path": "src/app/SetupService.cpp",
+      "sha256": "c6e56347a9b3b79592fec79ddbda041825bd30c82e08de86ff79e050e3f17eed"
+    },
+    {
+      "path": "src/app/UiControl.h",
+      "sha256": "9b626c633af96d0d50e31c170765ce56eb3efdabdaf1c43eb88e7367974a77ca"
+    },
+    {
+      "path": "src/app/UiControl.cpp",
+      "sha256": "d764956d6337fa984e51ade3b680f1c2a52ffca133042395001a63034556fdd2"
+    },
+    {
+      "path": "src/client/SessionClient.h",
+      "sha256": "3f2692e680fd09644c47a6a0f6569a586b386802fd4582e551e079250b2e63d0"
+    },
+    {
+      "path": "src/client/SessionClient.cpp",
+      "sha256": "17287ab4d2287ad3be041861b060453b2ae3f9434515ea09fcb75d6aac97e4c1"
+    },
+    {
+      "path": "src/ui/StdioDevice.h",
+      "sha256": "46149e809f710d38b817a5de05d4221a2c0ae51158ba6b0206f9463ea4225a7e"
+    },
+    {
+      "path": "src/ui/StdioDevice.cpp",
+      "sha256": "b43c3c77efeeb6766226b4452d292e8c5583e907fbcb2f929b745e4a1f6b0cdf"
+    },
+    {
+      "path": "tests/integration/test_session_client.cpp",
+      "sha256": "bf968b95a5339da8228cd4522f46f847f20d919da5bf5e1b4ca7c0d96872c4ce"
+    },
+    {
+      "path": "tests/integration/test_ui_control.cpp",
+      "sha256": "e4b571849daff3dd281eb9b2b1658a44c76f86d1e4194c57ab1e9dada42e862f"
+    },
+    {
+      "path": "tests/integration/test_ui_endpoints.cpp",
+      "sha256": "68fd59432d620a8b354627877d1cb8e1d7481e9a3002999f8edf982dde24473e"
+    }
+  ],
+  "verification": {
+    "transportDev": {
+      "suites": 2,
+      "passed": 2,
+      "seconds": 17.91
+    },
+    "transportAsanUbsan": {
+      "suites": 2,
+      "passed": 2,
+      "seconds": 19.29
+    },
+    "endpointDevAndExistingIpcKeychain": {
+      "suites": 3,
+      "passed": 3,
+      "seconds": 13.84
+    },
+    "clientAndExistingCliRegression": {
+      "suites": 2,
+      "passed": 2,
+      "seconds": 17.98
+    },
+    "endpointAsanUbsan": {
+      "suites": 1,
+      "passed": 1,
+      "seconds": 0.44
+    },
+    "redEvidence": [
+      "unimplemented client returned client_unavailable",
+      "malformed reply failed unknown-outcome assertion",
+      "client-owned receiver destruction produced SIGSEGV before fix",
+      "private framing did not deliver complete fragmented frame before implementation",
+      "missing endpoints and compiling SetupService stub failed expected runtime assertions"
+    ],
+    "exceptions": [
+      "New native pipe adapter was verified through a real child process carrying a 2 MiB frame; it has no earlier production implementation to characterize.",
+      "No native desktop or memory saving is established by these headless service tests."
+    ]
+  },
+  "artifacts": [
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/client-red.log",
+      "sha256": "5a5b2fb2bd4687b0883af656c8f4372a84c2601de7ea9a53e8f8ebf6f4f86948"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/client-review-red.log",
+      "sha256": "8e757187611721794af83d4c4af22ba212e4c5ad90f57b57f3c3c3fc69b79d2c"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/client-evidence.md",
+      "sha256": "5b5fa9199d3109011b9ccb8c4516a2b256f99be6b5ce0c2dadfb254648024253"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-red.log",
+      "sha256": "debc21c5f9ef1f20e763af86ab0df7f687bddfb3a6febc905aca5a39d9053ab6"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-service-red.log",
+      "sha256": "5e053237857cbd39674d6aaf3a00851e804c2edb6a94570d2ae17ee59e1ab383"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-green.log",
+      "sha256": "53a98f3d71b188bf444e6baa613cf6577da5a3a9f0f00610d22c7be9862e6f0d"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-green.xml",
+      "sha256": "a8ceb7cc80e7b35aae4ef5b2c07c1e3ac47ff37132184803eaf42eca8c2633a1"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-cli.log",
+      "sha256": "542d878b853db135e93b4bbea88ca6fb8d06cf755a129c7c30f5ab6bfe6db9f1"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-cli.xml",
+      "sha256": "452ccb420c17783a1c4218a4ab1a4cb2aa5de5188195e61ecb8dc7d26a5dbeb7"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-asan.log",
+      "sha256": "7f299298e236c754e51476a3290fb40f64b1a9e06036b8943978d097d8833462"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-asan.xml",
+      "sha256": "03ba984a7dbecd5e006a5e2d6f12bde187b1931042dedc68d555bbfc2ac7a90a"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/endpoints-evidence.md",
+      "sha256": "52b23d3d72f61291f6c14ac839c36f267e431d35f7a49b9232eb39b4d1eb2f2d"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/control-red.log",
+      "sha256": "1136b3cacce76960d57b1f662671f7fe1a6a3f4c6a51c317e44ba6a1efdcc88c"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/transport-final-dev.log",
+      "sha256": "06ebe66f05fea355338b204c187053d9e07c39e0400651270597d7ef3cd71569"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/transport-final-dev.xml",
+      "sha256": "20181ba43889f473b43c3bd5afa93aec330d3be0ae528561656e5ddabb4d30cf"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/transport-final-asan.log",
+      "sha256": "6a62a0b448760d637041417bf825b2b4edd8a5849b1708aea507f3bcc1ce8e1b"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/transport-final-asan.xml",
+      "sha256": "bd5ecae37af18782e7e8ee150d20bafb7311674ae3a73cebd9314c5308f15379"
+    },
+    {
+      "path": "docs/evidence/2026-10-08-ui-foundations-raw/transport-final-run.sh",
+      "sha256": "b4dd2e8e730eaa5bd89622e851357b186f0723486f0374c9593e9f5fbf7862c5"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite name="SettingsGui" timestamp="2026&#x002D;10&#x002D;08T21:40:03" hostname="patrick&#x002D;Precision&#x002D;5540" tests="3" failures="1" errors="0" skipped="0" time="0.104">
+  <properties>
+    <property name="QTestVersion" value="6.4.2"/>
+    <property name="QtVersion" value="6.4.2"/>
+    <property name="QtBuild" value="Qt 6.4.2 (x86_64&#x002D;little_endian&#x002D;lp64 shared (dynamic) release build; by GCC 13.2.0)"/>
+  </properties>
+  <testcase name="initTestCase" classname="SettingsGui" time="0.000"/>
+  <testcase name="simpleDestinationAndCredentialFieldsShareAlignment" classname="SettingsGui" time="0.104">
+    <failure type="fail" message="Compared values are not the same">
+      <![CDATA[   Actual   (bucket->mapTo(&window,QPoint{}).x()): 182
+   Expected (access->mapTo(&window,QPoint{}).x()): 150]]>
+    </failure>
+    <system-err>
+      <![CDATA[This plugin does not support propagateSizeHints()]]>
+    </system-err>
+  </testcase>
+  <testcase name="cleanupTestCase" classname="SettingsGui" time="0.000"/>
+</testsuite>

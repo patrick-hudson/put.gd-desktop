@@ -1,0 +1,21 @@
+{
+  "additional": [
+    {
+      "id": "a47dab06-4ce5-4101-abd1-43388623ba84",
+      "created": "2026-10-09T01:26:10.477Z",
+      "action": "region",
+      "state": "completed",
+      "copyStatus": "copied",
+      "items": [
+        {
+          "name": null,
+          "path": "/home/lab/putgd-lab/archive/images/Screen-Capture-2026-10-08-20-26-10.png",
+          "mime": "image/png"
+        }
+      ]
+    }
+  ],
+  "origin": "user-manual-vnc-region",
+  "confirmedBy": "User confirmation relayed by root",
+  "payloadDisposition": "Untouched and unexported; excluded from scripted acceptance"
+}

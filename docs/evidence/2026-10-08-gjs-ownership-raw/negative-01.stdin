@@ -1,0 +1,14 @@
+import pathlib,subprocess,json,hashlib
+p=pathlib.Path('/home/lab/putgd-gjs-negative-controls-source43-attempt1');p.mkdir()
+sources={'rejection.mjs': "await Promise.resolve(); throw new Error('synthetic assertion failure');\n", 'pending.mjs': 'await new Promise(() => {});\n'}
+version=subprocess.check_output(['gjs','--version'],text=True).strip()
+results=[]
+for name,source in sources.items():
+ f=p/name;f.write_text(source);argv=['gjs','-m',str(f)]
+ try:
+  result=subprocess.run(argv,text=True,capture_output=True,timeout=5)
+  receipt={'argv':argv,'exitCode':result.returncode,'stdout':result.stdout,'stderr':result.stderr,'timedOut':False}
+ except subprocess.TimeoutExpired as e:
+  receipt={'argv':argv,'exitCode':None,'stdout':e.stdout.decode() if isinstance(e.stdout,bytes) else e.stdout,'stderr':e.stderr.decode() if isinstance(e.stderr,bytes) else e.stderr,'timedOut':True}
+ receipt.update(source=source,sourceSha256=hashlib.sha256(f.read_bytes()).hexdigest(),runtimeVersion=version);results.append(receipt)
+print(json.dumps(results))

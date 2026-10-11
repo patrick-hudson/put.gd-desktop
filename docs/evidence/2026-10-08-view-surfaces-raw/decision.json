@@ -1,0 +1,35 @@
+{
+  "decision": "keep",
+  "eligible": true,
+  "next_measurement": "none",
+  "target_reached": false,
+  "improved_objectives": [
+    "finalHiddenRssBytes",
+    "gnomePostFunctionalRssBytes",
+    "kdePostFunctionalRssBytes"
+  ],
+  "violated_objectives": [],
+  "comparisons": {
+    "finalHiddenRssBytes": {
+      "verdict": "improved",
+      "delta": 8607744,
+      "relative": 0.11154754637861938,
+      "violated": false
+    },
+    "gnomePostFunctionalRssBytes": {
+      "verdict": "improved",
+      "delta": 29691904,
+      "relative": 0.24760050551627558,
+      "violated": false
+    },
+    "kdePostFunctionalRssBytes": {
+      "verdict": "improved",
+      "delta": 30343168,
+      "relative": 0.15543758786378228,
+      "violated": false
+    }
+  },
+  "primary_delta": 8607744,
+  "rank_score": 0.11154754637861938,
+  "reason": "improved finalHiddenRssBytes, gnomePostFunctionalRssBytes, kdePostFunctionalRssBytes without violating other required objectives"
+}

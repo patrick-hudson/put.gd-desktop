@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="desktop-lab" tests="1" failures="0"><testcase name="clipboard-text-independent-paste" classname="gnome-wayland" time="9.913439569005277" /></testsuite>

@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "testId": "eabd6672e8b34d18b80d52562e6d767b",
+  "profile": "cinnamon-x11",
+  "scenario": "region-independent-paste",
+  "ok": false,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 73893,
+    "startTicks": 2808369,
+    "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": "Ctrl+Shift+4",
+      "bound": true,
+      "requested": "Ctrl+Shift+4"
+    },
+    "desktop": {
+      "actual": "Ctrl+Shift+3",
+      "bound": true,
+      "requested": "Ctrl+Shift+3"
+    },
+    "region": {
+      "actual": "Ctrl+Shift+1",
+      "bound": true,
+      "requested": "Ctrl+Shift+1"
+    },
+    "window": {
+      "actual": "Ctrl+Shift+2",
+      "bound": true,
+      "requested": "Ctrl+Shift+2"
+    }
+  },
+  "parameters": "parameters.json",
+  "operationId": "0447224a-d5ae-44f8-b944-36f2ab62949f",
+  "operationState": "acquiring",
+  "copyStatus": "pending",
+  "itemOutcomes": [],
+  "error": "Sharing operation did not complete with a copied result; inspect recorded stage outcomes",
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T042304792474-1/final-head0.ppm",
+    "sha256": "62383e6691afd19fc92d9de3cd5351db372f610e719d1e2b5ebe3d8cd31a88ad"
+  },
+  "elapsedSeconds": 91.70156099402811,
+  "evidenceDirectory": "tests/eabd6672e8b34d18b80d52562e6d767b"
+}

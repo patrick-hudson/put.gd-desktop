@@ -1,0 +1,18 @@
+{
+  "peer_candidates": [
+    {
+      "title": "Missing gjs silently removes the ownership contract from ctest",
+      "disposition": "discarded",
+      "reason": "The invoking scope explicitly requires an optional native-GJS-only contract and intentional skip on the non-GNOME host. Registration was optional before this change as well; the configure STATUS message accurately reports the selected native-lab coverage."
+    },
+    {
+      "title": "Async gjs module failure may exit 0 and pass CTest",
+      "disposition": "discarded after targeted verification",
+      "reason": "Existing supported GNOME guest GJS 1.88 exits 1 for a throw after top-level await; a permanently pending await does not exit and reached the 5-second supervisor timeout. The test has a 30-second CTest timeout. No false-green interpreter outcome was reproduced."
+    }
+  ],
+  "residual_scope_limits": [
+    "Real GJS globals remain accessible during direct eval, but the deliberately mocked Shell/Gio/GLib/Main/global dependencies used by current ownership code are lexically shadowed. No current real dependency was found in tested paths.",
+    "An old unrelated GJS version may fail loudly; the supported GNOME50 environment already records GJS1.88 success."
+  ]
+}

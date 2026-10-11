@@ -1,0 +1,7 @@
+{
+  "timestampUtc": "2026-10-08T20:34:45.646860+00:00",
+  "vm": "kde-001",
+  "command": "set -eu\npids=$(pgrep -u lab -x putgd || true)\nif [ -n \"$pids\" ]; then kill -TERM $pids; fi\nsleep 1\npgrep -u lab -x putgd || true\n",
+  "remainingPutgdPids": [],
+  "reason": "Obsolete app resident stopped while independent current-source build continues."
+}

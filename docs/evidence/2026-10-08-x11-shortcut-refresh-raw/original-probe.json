@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "dbus-run-session",
+    "--",
+    "xvfb-run",
+    "-a",
+    "env",
+    "LD_PRELOAD=/home/patrick/work/put.gd/work/memory-surfaces/x11-diagnosis/xcb-delay-probe.so",
+    "QT_QPA_PLATFORM=xcb",
+    "build/dev/test_x11",
+    "nativeKeyActivationWithLocks"
+  ],
+  "exitCode": 0,
+  "elapsedSeconds": 0.6568527380004525,
+  "probeSha256": "d9c47657721d8fa9dbe84dc529879bf18a24d1db78724ae9c531bb5f51373c72"
+}

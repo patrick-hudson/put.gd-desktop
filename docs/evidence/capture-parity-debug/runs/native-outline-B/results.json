@@ -1,0 +1,1492 @@
+{
+    "budgetPassed": false,
+    "displays": [
+        {
+            "height": 1080,
+            "name": "eDP-1",
+            "scale": 1,
+            "width": 1920,
+            "x": 2560,
+            "y": 0
+        },
+        {
+            "height": 1440,
+            "name": "DP-1-2",
+            "scale": 1,
+            "width": 2560,
+            "x": 0,
+            "y": 0
+        },
+        {
+            "height": 1440,
+            "name": "DP-3",
+            "scale": 1,
+            "width": 2560,
+            "x": 4480,
+            "y": 0
+        }
+    ],
+    "error": "",
+    "measurementLimit": "Includes external press/drag injection and driver query/event/poll costs; differs from historical shaded-first-frame workload. White pixels witness the window drawable, not compositor presentation. Not native capture/outline-removal or mixed-DPI proof.",
+    "p95PaintMs": 214.964988,
+    "samples": [
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.8657729999999857,
+                "hotkeyInjectionMs": 0.214607,
+                "inputInjectionMs": 0.2905269999999973,
+                "mapEventDrainMs": 1.0695270000000199,
+                "mapOwnershipQueriesMs": 0.7500160000000164,
+                "paintQueriesMs": 58.542693,
+                "pollIterations": 97,
+                "pollSleepMs": 103.92059300000005
+            },
+            "inputIssuedMs": 107.394307,
+            "mapMs": 107.10378,
+            "paintAfterInputMs": 58.54727,
+            "paintMs": 165.941577,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 145.360779,
+                    "mapEventObservedMs": 106.554295,
+                    "mapValidatedMs": 106.692087,
+                    "ownerPid": 3174871,
+                    "ownerStartTicks": "33142613",
+                    "probeCount": 1,
+                    "probeMaxMs": 37.966251000000014,
+                    "probeTotalMs": 37.966251000000014
+                },
+                {
+                    "firstWhiteObservedMs": 162.497476,
+                    "mapEventObservedMs": 106.69455,
+                    "mapValidatedMs": 106.865841,
+                    "ownerPid": 3174871,
+                    "ownerStartTicks": "33142613",
+                    "probeCount": 1,
+                    "probeMaxMs": 17.134143999999992,
+                    "probeTotalMs": 17.134143999999992
+                },
+                {
+                    "firstWhiteObservedMs": 165.940815,
+                    "mapEventObservedMs": 106.866445,
+                    "mapValidatedMs": 107.102438,
+                    "ownerPid": 3174871,
+                    "ownerStartTicks": "33142613",
+                    "probeCount": 1,
+                    "probeMaxMs": 3.442297999999994,
+                    "probeTotalMs": 3.442297999999994
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.3421839999999947,
+                "hotkeyInjectionMs": 0.649553,
+                "inputInjectionMs": 0.2857889999999941,
+                "mapEventDrainMs": 1.2296579999999706,
+                "mapOwnershipQueriesMs": 0.6740070000000031,
+                "paintQueriesMs": 73.14662999999997,
+                "pollIterations": 104,
+                "pollSleepMs": 112.03370600000001
+            },
+            "inputIssuedMs": 115.478078,
+            "mapMs": 115.192289,
+            "paintAfterInputMs": 74.288811,
+            "paintMs": 189.766889,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 152.63485,
+                    "mapEventObservedMs": 114.854886,
+                    "mapValidatedMs": 115.040943,
+                    "ownerPid": 3174877,
+                    "ownerStartTicks": "33142647",
+                    "probeCount": 2,
+                    "probeMaxMs": 20.799096000000006,
+                    "probeTotalMs": 36.019154
+                },
+                {
+                    "firstWhiteObservedMs": 178.430014,
+                    "mapEventObservedMs": 115.046827,
+                    "mapValidatedMs": 115.130089,
+                    "ownerPid": 3174877,
+                    "ownerStartTicks": "33142647",
+                    "probeCount": 1,
+                    "probeMaxMs": 25.79403099999999,
+                    "probeTotalMs": 25.79403099999999
+                },
+                {
+                    "firstWhiteObservedMs": 189.765427,
+                    "mapEventObservedMs": 115.130581,
+                    "mapValidatedMs": 115.191317,
+                    "ownerPid": 3174877,
+                    "ownerStartTicks": "33142647",
+                    "probeCount": 1,
+                    "probeMaxMs": 11.333444999999983,
+                    "probeTotalMs": 11.333444999999983
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.067241000000058,
+                "hotkeyInjectionMs": 0.21647,
+                "inputInjectionMs": 0.3670680000000033,
+                "mapEventDrainMs": 1.6695599999999389,
+                "mapOwnershipQueriesMs": 1.3142069999999961,
+                "paintQueriesMs": 59.887192,
+                "pollIterations": 101,
+                "pollSleepMs": 107.43114299999995
+            },
+            "inputIssuedMs": 110.62732,
+            "mapMs": 110.260252,
+            "paintAfterInputMs": 61.06048000000001,
+            "paintMs": 171.6878,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 167.261236,
+                    "mapEventObservedMs": 109.613043,
+                    "mapValidatedMs": 109.966627,
+                    "ownerPid": 3174888,
+                    "ownerStartTicks": "33142678",
+                    "probeCount": 2,
+                    "probeMaxMs": 36.80536799999999,
+                    "probeTotalMs": 55.465385
+                },
+                {
+                    "firstWhiteObservedMs": 170.813037,
+                    "mapEventObservedMs": 109.969057,
+                    "mapValidatedMs": 110.199201,
+                    "ownerPid": 3174888,
+                    "ownerStartTicks": "33142678",
+                    "probeCount": 1,
+                    "probeMaxMs": 3.5497589999999946,
+                    "probeTotalMs": 3.5497589999999946
+                },
+                {
+                    "firstWhiteObservedMs": 171.686675,
+                    "mapEventObservedMs": 110.199891,
+                    "mapValidatedMs": 110.259308,
+                    "ownerPid": 3174888,
+                    "ownerStartTicks": "33142678",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.8720480000000066,
+                    "probeTotalMs": 0.8720480000000066
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.3811889999999334,
+                "hotkeyInjectionMs": 0.743141,
+                "inputInjectionMs": 0.33453899999999237,
+                "mapEventDrainMs": 1.0686169999999284,
+                "mapOwnershipQueriesMs": 0.504761000000002,
+                "paintQueriesMs": 60.813443999999976,
+                "pollIterations": 103,
+                "pollSleepMs": 110.62828499999998
+            },
+            "inputIssuedMs": 115.208581,
+            "mapMs": 114.874042,
+            "paintAfterInputMs": 60.81795699999999,
+            "paintMs": 176.026538,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 163.250601,
+                    "mapEventObservedMs": 114.626808,
+                    "mapValidatedMs": 114.720529,
+                    "ownerPid": 3174898,
+                    "ownerStartTicks": "33142713",
+                    "probeCount": 1,
+                    "probeMaxMs": 48.041837999999984,
+                    "probeTotalMs": 48.041837999999984
+                },
+                {
+                    "firstWhiteObservedMs": 172.907423,
+                    "mapEventObservedMs": 114.722559,
+                    "mapValidatedMs": 114.791469,
+                    "ownerPid": 3174898,
+                    "ownerStartTicks": "33142713",
+                    "probeCount": 1,
+                    "probeMaxMs": 9.655302000000006,
+                    "probeTotalMs": 9.655302000000006
+                },
+                {
+                    "firstWhiteObservedMs": 176.025964,
+                    "mapEventObservedMs": 114.791931,
+                    "mapValidatedMs": 114.87303,
+                    "ownerPid": 3174898,
+                    "ownerStartTicks": "33142713",
+                    "probeCount": 1,
+                    "probeMaxMs": 3.1163039999999853,
+                    "probeTotalMs": 3.1163039999999853
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.0505080000000162,
+                "hotkeyInjectionMs": 0.133901,
+                "inputInjectionMs": 0.45924700000000485,
+                "mapEventDrainMs": 1.3443330000000095,
+                "mapOwnershipQueriesMs": 1.1383250000000231,
+                "paintQueriesMs": 73.070003,
+                "pollIterations": 60,
+                "pollSleepMs": 63.40297199999999
+            },
+            "inputIssuedMs": 66.41642,
+            "mapMs": 65.957173,
+            "paintAfterInputMs": 73.073605,
+            "paintMs": 139.490025,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 107.462691,
+                    "mapEventObservedMs": 65.550037,
+                    "mapValidatedMs": 65.828377,
+                    "ownerPid": 3174905,
+                    "ownerStartTicks": "33142743",
+                    "probeCount": 1,
+                    "probeMaxMs": 41.04611600000001,
+                    "probeTotalMs": 41.04611600000001
+                },
+                {
+                    "firstWhiteObservedMs": 131.171563,
+                    "mapEventObservedMs": 65.830542,
+                    "mapValidatedMs": 65.900124,
+                    "ownerPid": 3174905,
+                    "ownerStartTicks": "33142743",
+                    "probeCount": 1,
+                    "probeMaxMs": 23.70710899999999,
+                    "probeTotalMs": 23.70710899999999
+                },
+                {
+                    "firstWhiteObservedMs": 139.48931,
+                    "mapEventObservedMs": 65.900539,
+                    "mapValidatedMs": 65.956225,
+                    "ownerPid": 3174905,
+                    "ownerStartTicks": "33142743",
+                    "probeCount": 1,
+                    "probeMaxMs": 8.316778,
+                    "probeTotalMs": 8.316778
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 3.485000000000056,
+                "hotkeyInjectionMs": 1.030119,
+                "inputInjectionMs": 0.912542000000002,
+                "mapEventDrainMs": 5.041564000000028,
+                "mapOwnershipQueriesMs": 4.367512000000033,
+                "paintQueriesMs": 45.745746999999994,
+                "pollIterations": 120,
+                "pollSleepMs": 130.49876400000005
+            },
+            "inputIssuedMs": 141.029931,
+            "mapMs": 140.117389,
+            "paintAfterInputMs": 45.75198599999999,
+            "paintMs": 186.781917,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 143.877467,
+                    "mapEventObservedMs": 137.751267,
+                    "mapValidatedMs": 138.769222,
+                    "ownerPid": 3174911,
+                    "ownerStartTicks": "33142774",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.8464539999999943,
+                    "probeTotalMs": 2.8464539999999943
+                },
+                {
+                    "firstWhiteObservedMs": 167.966699,
+                    "mapEventObservedMs": 138.776647,
+                    "mapValidatedMs": 139.176904,
+                    "ownerPid": 3174911,
+                    "ownerStartTicks": "33142774",
+                    "probeCount": 1,
+                    "probeMaxMs": 24.087522000000007,
+                    "probeTotalMs": 24.087522000000007
+                },
+                {
+                    "firstWhiteObservedMs": 186.780358,
+                    "mapEventObservedMs": 139.178618,
+                    "mapValidatedMs": 140.112773,
+                    "ownerPid": 3174911,
+                    "ownerStartTicks": "33142774",
+                    "probeCount": 1,
+                    "probeMaxMs": 18.811770999999993,
+                    "probeTotalMs": 18.811770999999993
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.838600000000005,
+                "hotkeyInjectionMs": 0.289597,
+                "inputInjectionMs": 1.18335900000001,
+                "mapEventDrainMs": 3.368392000000017,
+                "mapOwnershipQueriesMs": 2.815868000000023,
+                "paintQueriesMs": 38.73480199999997,
+                "pollIterations": 107,
+                "pollSleepMs": 115.18336799999997
+            },
+            "inputIssuedMs": 122.913593,
+            "mapMs": 121.730234,
+            "paintAfterInputMs": 38.739681000000004,
+            "paintMs": 161.653274,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 150.411719,
+                    "mapEventObservedMs": 120.31624,
+                    "mapValidatedMs": 120.819685,
+                    "ownerPid": 3174917,
+                    "ownerStartTicks": "33142806",
+                    "probeCount": 1,
+                    "probeMaxMs": 27.497181000000012,
+                    "probeTotalMs": 27.497181000000012
+                },
+                {
+                    "firstWhiteObservedMs": 159.207047,
+                    "mapEventObservedMs": 120.825047,
+                    "mapValidatedMs": 121.137466,
+                    "ownerPid": 3174917,
+                    "ownerStartTicks": "33142806",
+                    "probeCount": 1,
+                    "probeMaxMs": 8.793584999999979,
+                    "probeTotalMs": 8.793584999999979
+                },
+                {
+                    "firstWhiteObservedMs": 161.652439,
+                    "mapEventObservedMs": 121.138892,
+                    "mapValidatedMs": 121.726171,
+                    "ownerPid": 3174917,
+                    "ownerStartTicks": "33142806",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.4440359999999828,
+                    "probeTotalMs": 2.4440359999999828
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.7398400000000271,
+                "hotkeyInjectionMs": 0.158358,
+                "inputInjectionMs": 0.8843030000000027,
+                "mapEventDrainMs": 3.0567070000000505,
+                "mapOwnershipQueriesMs": 2.7017179999999996,
+                "paintQueriesMs": 36.80278400000002,
+                "pollIterations": 83,
+                "pollSleepMs": 88.75222900000003
+            },
+            "inputIssuedMs": 94.623075,
+            "mapMs": 93.738772,
+            "paintAfterInputMs": 36.807215000000014,
+            "paintMs": 131.43029,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 112.071442,
+                    "mapEventObservedMs": 92.32023,
+                    "mapValidatedMs": 92.924364,
+                    "ownerPid": 3174923,
+                    "ownerStartTicks": "33142837",
+                    "probeCount": 1,
+                    "probeMaxMs": 17.447850000000003,
+                    "probeTotalMs": 17.447850000000003
+                },
+                {
+                    "firstWhiteObservedMs": 115.821335,
+                    "mapEventObservedMs": 92.928747,
+                    "mapValidatedMs": 93.13459,
+                    "ownerPid": 3174923,
+                    "ownerStartTicks": "33142837",
+                    "probeCount": 1,
+                    "probeMaxMs": 3.7486350000000073,
+                    "probeTotalMs": 3.7486350000000073
+                },
+                {
+                    "firstWhiteObservedMs": 131.42928,
+                    "mapEventObservedMs": 93.135854,
+                    "mapValidatedMs": 93.736102,
+                    "ownerPid": 3174923,
+                    "ownerStartTicks": "33142837",
+                    "probeCount": 1,
+                    "probeMaxMs": 15.606299000000007,
+                    "probeTotalMs": 15.606299000000007
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.8565270000000504,
+                "hotkeyInjectionMs": 0.13054,
+                "inputInjectionMs": 0.28327200000001085,
+                "mapEventDrainMs": 0.7463449999999825,
+                "mapOwnershipQueriesMs": 0.4604709999999983,
+                "paintQueriesMs": 42.586119,
+                "pollIterations": 78,
+                "pollSleepMs": 83.86092199999997
+            },
+            "inputIssuedMs": 85.582817,
+            "mapMs": 85.299545,
+            "paintAfterInputMs": 43.92273900000001,
+            "paintMs": 129.505556,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 116.3054,
+                    "mapEventObservedMs": 85.037992,
+                    "mapValidatedMs": 85.151154,
+                    "ownerPid": 3174932,
+                    "ownerStartTicks": "33142864",
+                    "probeCount": 2,
+                    "probeMaxMs": 18.970061,
+                    "probeTotalMs": 29.390657000000004
+                },
+                {
+                    "firstWhiteObservedMs": 128.720271,
+                    "mapEventObservedMs": 85.153016,
+                    "mapValidatedMs": 85.209896,
+                    "ownerPid": 3174932,
+                    "ownerStartTicks": "33142864",
+                    "probeCount": 1,
+                    "probeMaxMs": 12.413048000000003,
+                    "probeTotalMs": 12.413048000000003
+                },
+                {
+                    "firstWhiteObservedMs": 129.504514,
+                    "mapEventObservedMs": 85.210312,
+                    "mapValidatedMs": 85.298264,
+                    "ownerPid": 3174932,
+                    "ownerStartTicks": "33142864",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.7824139999999886,
+                    "probeTotalMs": 0.7824139999999886
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.3554489999999957,
+                "hotkeyInjectionMs": 0.893297,
+                "inputInjectionMs": 0.28032400000000735,
+                "mapEventDrainMs": 2.0193569999999887,
+                "mapOwnershipQueriesMs": 1.4788620000000208,
+                "paintQueriesMs": 43.813173000000006,
+                "pollIterations": 119,
+                "pollSleepMs": 128.57004900000004
+            },
+            "inputIssuedMs": 134.180723,
+            "mapMs": 133.900399,
+            "paintAfterInputMs": 43.818556,
+            "paintMs": 177.999279,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 161.122834,
+                    "mapEventObservedMs": 133.502544,
+                    "mapValidatedMs": 133.750021,
+                    "ownerPid": 3174942,
+                    "ownerStartTicks": "33142894",
+                    "probeCount": 1,
+                    "probeMaxMs": 26.94194200000001,
+                    "probeTotalMs": 26.94194200000001
+                },
+                {
+                    "firstWhiteObservedMs": 162.835624,
+                    "mapEventObservedMs": 133.752107,
+                    "mapValidatedMs": 133.827793,
+                    "ownerPid": 3174942,
+                    "ownerStartTicks": "33142894",
+                    "probeCount": 1,
+                    "probeMaxMs": 1.711131999999992,
+                    "probeTotalMs": 1.711131999999992
+                },
+                {
+                    "firstWhiteObservedMs": 177.996936,
+                    "mapEventObservedMs": 133.828242,
+                    "mapValidatedMs": 133.899373,
+                    "ownerPid": 3174942,
+                    "ownerStartTicks": "33142894",
+                    "probeCount": 1,
+                    "probeMaxMs": 15.160099000000002,
+                    "probeTotalMs": 15.160099000000002
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.025532000000002,
+                "hotkeyInjectionMs": 0.795316,
+                "inputInjectionMs": 0.5546010000000052,
+                "mapEventDrainMs": 2.0845199999999413,
+                "mapOwnershipQueriesMs": 1.6708310000000068,
+                "paintQueriesMs": 58.70603900000002,
+                "pollIterations": 100,
+                "pollSleepMs": 107.39988599999995
+            },
+            "inputIssuedMs": 112.905608,
+            "mapMs": 112.351007,
+            "paintAfterInputMs": 58.711296000000004,
+            "paintMs": 171.616904,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 147.13276,
+                    "mapEventObservedMs": 111.686236,
+                    "mapValidatedMs": 111.922692,
+                    "ownerPid": 3174949,
+                    "ownerStartTicks": "33142928",
+                    "probeCount": 1,
+                    "probeMaxMs": 34.22696599999999,
+                    "probeTotalMs": 34.22696599999999
+                },
+                {
+                    "firstWhiteObservedMs": 157.244198,
+                    "mapEventObservedMs": 111.926252,
+                    "mapValidatedMs": 112.274117,
+                    "ownerPid": 3174949,
+                    "ownerStartTicks": "33142928",
+                    "probeCount": 1,
+                    "probeMaxMs": 10.10970500000002,
+                    "probeTotalMs": 10.10970500000002
+                },
+                {
+                    "firstWhiteObservedMs": 171.615329,
+                    "mapEventObservedMs": 112.274748,
+                    "mapValidatedMs": 112.350002,
+                    "ownerPid": 3174949,
+                    "ownerStartTicks": "33142928",
+                    "probeCount": 1,
+                    "probeMaxMs": 14.369368000000009,
+                    "probeTotalMs": 14.369368000000009
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.5109209999999562,
+                "hotkeyInjectionMs": 0.210569,
+                "inputInjectionMs": 0.4971919999999983,
+                "mapEventDrainMs": 0.9931490000000092,
+                "mapOwnershipQueriesMs": 0.6333960000000189,
+                "paintQueriesMs": 56.284987000000015,
+                "pollIterations": 96,
+                "pollSleepMs": 102.69611700000006
+            },
+            "inputIssuedMs": 105.943428,
+            "mapMs": 105.446236,
+            "paintAfterInputMs": 56.288912999999994,
+            "paintMs": 162.232341,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 136.207455,
+                    "mapEventObservedMs": 105.026246,
+                    "mapValidatedMs": 105.308092,
+                    "ownerPid": 3174955,
+                    "ownerStartTicks": "33142957",
+                    "probeCount": 1,
+                    "probeMaxMs": 30.26376900000001,
+                    "probeTotalMs": 30.26376900000001
+                },
+                {
+                    "firstWhiteObservedMs": 157.140642,
+                    "mapEventObservedMs": 105.311443,
+                    "mapValidatedMs": 105.385868,
+                    "ownerPid": 3174955,
+                    "ownerStartTicks": "33142957",
+                    "probeCount": 1,
+                    "probeMaxMs": 20.932000000000016,
+                    "probeTotalMs": 20.932000000000016
+                },
+                {
+                    "firstWhiteObservedMs": 162.231395,
+                    "mapEventObservedMs": 105.386449,
+                    "mapValidatedMs": 105.445272,
+                    "ownerPid": 3174955,
+                    "ownerStartTicks": "33142957",
+                    "probeCount": 1,
+                    "probeMaxMs": 5.089217999999988,
+                    "probeTotalMs": 5.089217999999988
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.3320249999998284,
+                "hotkeyInjectionMs": 0.130675,
+                "inputInjectionMs": 0.7685900000000174,
+                "mapEventDrainMs": 2.169915999999949,
+                "mapOwnershipQueriesMs": 1.633640000000014,
+                "paintQueriesMs": 27.19121099999998,
+                "pollIterations": 166,
+                "pollSleepMs": 178.93343900000008
+            },
+            "inputIssuedMs": 184.387231,
+            "mapMs": 183.618641,
+            "paintAfterInputMs": 27.195584999999994,
+            "paintMs": 211.582816,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 200.107957,
+                    "mapEventObservedMs": 182.461559,
+                    "mapValidatedMs": 183.210946,
+                    "ownerPid": 3174962,
+                    "ownerStartTicks": "33142995",
+                    "probeCount": 1,
+                    "probeMaxMs": 15.720148999999992,
+                    "probeTotalMs": 15.720148999999992
+                },
+                {
+                    "firstWhiteObservedMs": 208.945036,
+                    "mapEventObservedMs": 183.215409,
+                    "mapValidatedMs": 183.448436,
+                    "ownerPid": 3174962,
+                    "ownerStartTicks": "33142995",
+                    "probeCount": 1,
+                    "probeMaxMs": 8.835685999999981,
+                    "probeTotalMs": 8.835685999999981
+                },
+                {
+                    "firstWhiteObservedMs": 211.582096,
+                    "mapEventObservedMs": 183.449614,
+                    "mapValidatedMs": 183.615495,
+                    "ownerPid": 3174962,
+                    "ownerStartTicks": "33142995",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.635376000000008,
+                    "probeTotalMs": 2.635376000000008
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.379502000000015,
+                "hotkeyInjectionMs": 0.244437,
+                "inputInjectionMs": 0.5114459999999923,
+                "mapEventDrainMs": 0.9939379999999822,
+                "mapOwnershipQueriesMs": 0.6359950000000083,
+                "paintQueriesMs": 61.555717,
+                "pollIterations": 83,
+                "pollSleepMs": 88.53622199999998
+            },
+            "inputIssuedMs": 92.707563,
+            "mapMs": 92.196117,
+            "paintAfterInputMs": 61.562601,
+            "paintMs": 154.270164,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 118.250431,
+                    "mapEventObservedMs": 91.790273,
+                    "mapValidatedMs": 92.061595,
+                    "ownerPid": 3174968,
+                    "ownerStartTicks": "33143023",
+                    "probeCount": 1,
+                    "probeMaxMs": 25.542641000000003,
+                    "probeTotalMs": 25.542641000000003
+                },
+                {
+                    "firstWhiteObservedMs": 139.474181,
+                    "mapEventObservedMs": 92.064327,
+                    "mapValidatedMs": 92.135968,
+                    "ownerPid": 3174968,
+                    "ownerStartTicks": "33143023",
+                    "probeCount": 1,
+                    "probeMaxMs": 21.21880799999998,
+                    "probeTotalMs": 21.21880799999998
+                },
+                {
+                    "firstWhiteObservedMs": 154.269346,
+                    "mapEventObservedMs": 92.136429,
+                    "mapValidatedMs": 92.195119,
+                    "ownerPid": 3174968,
+                    "ownerStartTicks": "33143023",
+                    "probeCount": 1,
+                    "probeMaxMs": 14.794268000000017,
+                    "probeTotalMs": 14.794268000000017
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 3.129711999999905,
+                "hotkeyInjectionMs": 0.122018,
+                "inputInjectionMs": 0.9058990000000051,
+                "mapEventDrainMs": 1.969507999999994,
+                "mapOwnershipQueriesMs": 1.3452039999999954,
+                "paintQueriesMs": 55.046582,
+                "pollIterations": 157,
+                "pollSleepMs": 172.17668899999995
+            },
+            "inputIssuedMs": 178.365371,
+            "mapMs": 177.459472,
+            "paintAfterInputMs": 55.05031299999999,
+            "paintMs": 233.415684,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 212.41247,
+                    "mapEventObservedMs": 177.058299,
+                    "mapValidatedMs": 177.243108,
+                    "ownerPid": 3174976,
+                    "ownerStartTicks": "33143061",
+                    "probeCount": 1,
+                    "probeMaxMs": 34.04670900000002,
+                    "probeTotalMs": 34.04670900000002
+                },
+                {
+                    "firstWhiteObservedMs": 228.226172,
+                    "mapEventObservedMs": 177.249381,
+                    "mapValidatedMs": 177.355972,
+                    "ownerPid": 3174976,
+                    "ownerStartTicks": "33143061",
+                    "probeCount": 1,
+                    "probeMaxMs": 15.812369999999987,
+                    "probeTotalMs": 15.812369999999987
+                },
+                {
+                    "firstWhiteObservedMs": 233.414919,
+                    "mapEventObservedMs": 177.357796,
+                    "mapValidatedMs": 177.457609,
+                    "ownerPid": 3174976,
+                    "ownerStartTicks": "33143061",
+                    "probeCount": 1,
+                    "probeMaxMs": 5.187502999999992,
+                    "probeTotalMs": 5.187502999999992
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.293149000000022,
+                "hotkeyInjectionMs": 0.163032,
+                "inputInjectionMs": 0.3999610000000189,
+                "mapEventDrainMs": 1.2971440000000962,
+                "mapOwnershipQueriesMs": 0.755014999999986,
+                "paintQueriesMs": 4.493265999999977,
+                "pollIterations": 161,
+                "pollSleepMs": 172.89861600000006
+            },
+            "inputIssuedMs": 177.106198,
+            "mapMs": 176.706237,
+            "paintAfterInputMs": 4.494867999999997,
+            "paintMs": 181.601066,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 180.684516,
+                    "mapEventObservedMs": 176.295103,
+                    "mapValidatedMs": 176.494561,
+                    "ownerPid": 3174989,
+                    "ownerStartTicks": "33143100",
+                    "probeCount": 1,
+                    "probeMaxMs": 3.5780829999999924,
+                    "probeTotalMs": 3.5780829999999924
+                },
+                {
+                    "firstWhiteObservedMs": 181.186021,
+                    "mapEventObservedMs": 176.49655,
+                    "mapValidatedMs": 176.625159,
+                    "ownerPid": 3174989,
+                    "ownerStartTicks": "33143100",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.5005950000000041,
+                    "probeTotalMs": 0.5005950000000041
+                },
+                {
+                    "firstWhiteObservedMs": 181.600822,
+                    "mapEventObservedMs": 176.626056,
+                    "mapValidatedMs": 176.705146,
+                    "ownerPid": 3174989,
+                    "ownerStartTicks": "33143100",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.41458799999998064,
+                    "probeTotalMs": 0.41458799999998064
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.313740000000041,
+                "hotkeyInjectionMs": 0.203057,
+                "inputInjectionMs": 0.7708030000000008,
+                "mapEventDrainMs": 1.8638019999999937,
+                "mapOwnershipQueriesMs": 1.381174000000044,
+                "paintQueriesMs": 49.031457999999986,
+                "pollIterations": 150,
+                "pollSleepMs": 160.725753
+            },
+            "inputIssuedMs": 165.929503,
+            "mapMs": 165.1587,
+            "paintAfterInputMs": 49.035484999999994,
+            "paintMs": 214.964988,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 195.664878,
+                    "mapEventObservedMs": 164.269495,
+                    "mapValidatedMs": 164.809759,
+                    "ownerPid": 3174995,
+                    "ownerStartTicks": "33143133",
+                    "probeCount": 1,
+                    "probeMaxMs": 29.735182999999978,
+                    "probeTotalMs": 29.735182999999978
+                },
+                {
+                    "firstWhiteObservedMs": 212.103688,
+                    "mapEventObservedMs": 164.814663,
+                    "mapValidatedMs": 164.962139,
+                    "ownerPid": 3174995,
+                    "ownerStartTicks": "33143133",
+                    "probeCount": 1,
+                    "probeMaxMs": 16.437767000000008,
+                    "probeTotalMs": 16.437767000000008
+                },
+                {
+                    "firstWhiteObservedMs": 214.964549,
+                    "mapEventObservedMs": 164.963003,
+                    "mapValidatedMs": 165.157516,
+                    "ownerPid": 3174995,
+                    "ownerStartTicks": "33143133",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.8585080000000005,
+                    "probeTotalMs": 2.8585080000000005
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.5817530000000533,
+                "hotkeyInjectionMs": 0.123085,
+                "inputInjectionMs": 0.5000030000000066,
+                "mapEventDrainMs": 1.3711499999999865,
+                "mapOwnershipQueriesMs": 1.0255479999999864,
+                "paintQueriesMs": 46.884778,
+                "pollIterations": 85,
+                "pollSleepMs": 91.19352599999996
+            },
+            "inputIssuedMs": 94.803475,
+            "mapMs": 94.303472,
+            "paintAfterInputMs": 46.890766,
+            "paintMs": 141.694241,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 121.725751,
+                    "mapEventObservedMs": 93.482628,
+                    "mapValidatedMs": 93.959284,
+                    "ownerPid": 3175001,
+                    "ownerStartTicks": "33143161",
+                    "probeCount": 1,
+                    "probeMaxMs": 26.922144000000003,
+                    "probeTotalMs": 26.922144000000003
+                },
+                {
+                    "firstWhiteObservedMs": 139.190967,
+                    "mapEventObservedMs": 93.962713,
+                    "mapValidatedMs": 94.223873,
+                    "ownerPid": 3175001,
+                    "ownerStartTicks": "33143161",
+                    "probeCount": 1,
+                    "probeMaxMs": 17.461596,
+                    "probeTotalMs": 17.461596
+                },
+                {
+                    "firstWhiteObservedMs": 141.69305,
+                    "mapEventObservedMs": 94.22504,
+                    "mapValidatedMs": 94.302467,
+                    "ownerPid": 3175001,
+                    "ownerStartTicks": "33143161",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.501037999999994,
+                    "probeTotalMs": 2.501037999999994
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.509593000000033,
+                "hotkeyInjectionMs": 0.130768,
+                "inputInjectionMs": 0.33596000000000004,
+                "mapEventDrainMs": 1.9866880000001106,
+                "mapOwnershipQueriesMs": 1.3656119999999987,
+                "paintQueriesMs": 33.299373,
+                "pollIterations": 163,
+                "pollSleepMs": 175.39329900000004
+            },
+            "inputIssuedMs": 180.456056,
+            "mapMs": 180.120096,
+            "paintAfterInputMs": 33.30289500000001,
+            "paintMs": 213.758951,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 194.350007,
+                    "mapEventObservedMs": 179.606874,
+                    "mapValidatedMs": 179.775217,
+                    "ownerPid": 3175007,
+                    "ownerStartTicks": "33143199",
+                    "probeCount": 1,
+                    "probeMaxMs": 13.893675000000002,
+                    "probeTotalMs": 13.893675000000002
+                },
+                {
+                    "firstWhiteObservedMs": 211.482072,
+                    "mapEventObservedMs": 179.77832,
+                    "mapValidatedMs": 180.055895,
+                    "ownerPid": 3175007,
+                    "ownerStartTicks": "33143199",
+                    "probeCount": 1,
+                    "probeMaxMs": 17.130522999999982,
+                    "probeTotalMs": 17.130522999999982
+                },
+                {
+                    "firstWhiteObservedMs": 213.758652,
+                    "mapEventObservedMs": 180.056325,
+                    "mapValidatedMs": 180.118854,
+                    "ownerPid": 3175007,
+                    "ownerStartTicks": "33143199",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.2751750000000186,
+                    "probeTotalMs": 2.2751750000000186
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.7520829999999887,
+                "hotkeyInjectionMs": 0.293845,
+                "inputInjectionMs": 0.8377109999999988,
+                "mapEventDrainMs": 1.4269070000000252,
+                "mapOwnershipQueriesMs": 1.0339300000000122,
+                "paintQueriesMs": 48.25114700000002,
+                "pollIterations": 81,
+                "pollSleepMs": 92.07783799999999
+            },
+            "inputIssuedMs": 96.445602,
+            "mapMs": 95.607891,
+            "paintAfterInputMs": 48.25610300000001,
+            "paintMs": 144.701705,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 121.559297,
+                    "mapEventObservedMs": 94.783953,
+                    "mapValidatedMs": 95.074295,
+                    "ownerPid": 3175013,
+                    "ownerStartTicks": "33143229",
+                    "probeCount": 1,
+                    "probeMaxMs": 25.11323,
+                    "probeTotalMs": 25.11323
+                },
+                {
+                    "firstWhiteObservedMs": 140.526215,
+                    "mapEventObservedMs": 95.080843,
+                    "mapValidatedMs": 95.168295,
+                    "ownerPid": 3175013,
+                    "ownerStartTicks": "33143229",
+                    "probeCount": 1,
+                    "probeMaxMs": 18.96472700000001,
+                    "probeTotalMs": 18.96472700000001
+                },
+                {
+                    "firstWhiteObservedMs": 144.700774,
+                    "mapEventObservedMs": 95.169934,
+                    "mapValidatedMs": 95.606232,
+                    "ownerPid": 3175013,
+                    "ownerStartTicks": "33143229",
+                    "probeCount": 1,
+                    "probeMaxMs": 4.173190000000005,
+                    "probeTotalMs": 4.173190000000005
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.776417000000006,
+                "hotkeyInjectionMs": 0.13045,
+                "inputInjectionMs": 0.5654950000000127,
+                "mapEventDrainMs": 2.3214730000000046,
+                "mapOwnershipQueriesMs": 1.9720580000000183,
+                "paintQueriesMs": 54.386757,
+                "pollIterations": 84,
+                "pollSleepMs": 89.31678999999998
+            },
+            "inputIssuedMs": 94.144264,
+            "mapMs": 93.578769,
+            "paintAfterInputMs": 54.390891999999994,
+            "paintMs": 148.535156,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 126.399116,
+                    "mapEventObservedMs": 92.375419,
+                    "mapValidatedMs": 93.10508,
+                    "ownerPid": 3175020,
+                    "ownerStartTicks": "33143258",
+                    "probeCount": 1,
+                    "probeMaxMs": 32.25455000000001,
+                    "probeTotalMs": 32.25455000000001
+                },
+                {
+                    "firstWhiteObservedMs": 144.007524,
+                    "mapEventObservedMs": 93.109962,
+                    "mapValidatedMs": 93.496679,
+                    "ownerPid": 3175020,
+                    "ownerStartTicks": "33143258",
+                    "probeCount": 1,
+                    "probeMaxMs": 17.606589999999983,
+                    "probeTotalMs": 17.606589999999983
+                },
+                {
+                    "firstWhiteObservedMs": 148.534176,
+                    "mapEventObservedMs": 93.498352,
+                    "mapValidatedMs": 93.577539,
+                    "ownerPid": 3175020,
+                    "ownerStartTicks": "33143258",
+                    "probeCount": 1,
+                    "probeMaxMs": 4.525617000000011,
+                    "probeTotalMs": 4.525617000000011
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.8024409999999493,
+                "hotkeyInjectionMs": 1.006667,
+                "inputInjectionMs": 0.5533709999999985,
+                "mapEventDrainMs": 1.4397649999999618,
+                "mapOwnershipQueriesMs": 0.8306739999999877,
+                "paintQueriesMs": 30.450212000000022,
+                "pollIterations": 160,
+                "pollSleepMs": 173.485016
+            },
+            "inputIssuedMs": 178.118531,
+            "mapMs": 177.56516,
+            "paintAfterInputMs": 31.692447000000016,
+            "paintMs": 209.810978,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 190.501484,
+                    "mapEventObservedMs": 176.927848,
+                    "mapValidatedMs": 177.061568,
+                    "ownerPid": 3175034,
+                    "ownerStartTicks": "33143297",
+                    "probeCount": 2,
+                    "probeMaxMs": 7.988866000000002,
+                    "probeTotalMs": 11.144666
+                },
+                {
+                    "firstWhiteObservedMs": 209.136548,
+                    "mapEventObservedMs": 177.065791,
+                    "mapValidatedMs": 177.256161,
+                    "ownerPid": 3175034,
+                    "ownerStartTicks": "33143297",
+                    "probeCount": 1,
+                    "probeMaxMs": 18.633213000000012,
+                    "probeTotalMs": 18.633213000000012
+                },
+                {
+                    "firstWhiteObservedMs": 209.810273,
+                    "mapEventObservedMs": 177.256874,
+                    "mapValidatedMs": 177.563048,
+                    "ownerPid": 3175034,
+                    "ownerStartTicks": "33143297",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.672333000000009,
+                    "probeTotalMs": 0.672333000000009
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.6521239999999588,
+                "hotkeyInjectionMs": 0.197954,
+                "inputInjectionMs": 0.2602229999999963,
+                "mapEventDrainMs": 1.149861000000038,
+                "mapOwnershipQueriesMs": 0.747515000000007,
+                "paintQueriesMs": 60.35352100000004,
+                "pollIterations": 79,
+                "pollSleepMs": 84.44285900000003
+            },
+            "inputIssuedMs": 86.621665,
+            "mapMs": 86.361442,
+            "paintAfterInputMs": 61.48350000000001,
+            "paintMs": 148.105165,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 137.202388,
+                    "mapEventObservedMs": 85.874522,
+                    "mapValidatedMs": 85.976507,
+                    "ownerPid": 3175040,
+                    "ownerStartTicks": "33143324",
+                    "probeCount": 2,
+                    "probeMaxMs": 31.63704100000001,
+                    "probeTotalMs": 49.45398900000002
+                },
+                {
+                    "firstWhiteObservedMs": 140.115271,
+                    "mapEventObservedMs": 85.978381,
+                    "mapValidatedMs": 86.285675,
+                    "ownerPid": 3175040,
+                    "ownerStartTicks": "33143324",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.9112530000000163,
+                    "probeTotalMs": 2.9112530000000163
+                },
+                {
+                    "firstWhiteObservedMs": 148.10418,
+                    "mapEventObservedMs": 86.286217,
+                    "mapValidatedMs": 86.360399,
+                    "ownerPid": 3175040,
+                    "ownerStartTicks": "33143324",
+                    "probeCount": 1,
+                    "probeMaxMs": 7.988279000000006,
+                    "probeTotalMs": 7.988279000000006
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 3.0817200000000504,
+                "hotkeyInjectionMs": 0.5356,
+                "inputInjectionMs": 0.5434339999999906,
+                "mapEventDrainMs": 1.128257000000092,
+                "mapOwnershipQueriesMs": 0.5426700000000153,
+                "paintQueriesMs": 31.419727999999992,
+                "pollIterations": 154,
+                "pollSleepMs": 165.95416200000003
+            },
+            "inputIssuedMs": 171.304814,
+            "mapMs": 170.76138,
+            "paintAfterInputMs": 31.426973000000004,
+            "paintMs": 202.731787,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 176.134026,
+                    "mapEventObservedMs": 170.377145,
+                    "mapValidatedMs": 170.537384,
+                    "ownerPid": 3175047,
+                    "ownerStartTicks": "33143361",
+                    "probeCount": 1,
+                    "probeMaxMs": 4.828530999999998,
+                    "probeTotalMs": 4.828530999999998
+                },
+                {
+                    "firstWhiteObservedMs": 185.048102,
+                    "mapEventObservedMs": 170.539495,
+                    "mapValidatedMs": 170.680635,
+                    "ownerPid": 3175047,
+                    "ownerStartTicks": "33143361",
+                    "probeCount": 1,
+                    "probeMaxMs": 8.909642999999988,
+                    "probeTotalMs": 8.909642999999988
+                },
+                {
+                    "firstWhiteObservedMs": 202.730995,
+                    "mapEventObservedMs": 170.68124,
+                    "mapValidatedMs": 170.760321,
+                    "ownerPid": 3175047,
+                    "ownerStartTicks": "33143361",
+                    "probeCount": 1,
+                    "probeMaxMs": 17.681554000000006,
+                    "probeTotalMs": 17.681554000000006
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.534619999999942,
+                "hotkeyInjectionMs": 0.573839,
+                "inputInjectionMs": 0.5861109999999883,
+                "mapEventDrainMs": 1.8196469999999434,
+                "mapOwnershipQueriesMs": 1.316223000000008,
+                "paintQueriesMs": 46.232046999999994,
+                "pollIterations": 141,
+                "pollSleepMs": 152.124313
+            },
+            "inputIssuedMs": 157.694863,
+            "mapMs": 157.108752,
+            "paintAfterInputMs": 46.237753,
+            "paintMs": 203.932616,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 186.397232,
+                    "mapEventObservedMs": 156.690307,
+                    "mapValidatedMs": 156.916825,
+                    "ownerPid": 3175055,
+                    "ownerStartTicks": "33143393",
+                    "probeCount": 1,
+                    "probeMaxMs": 28.701999,
+                    "probeTotalMs": 28.701999
+                },
+                {
+                    "firstWhiteObservedMs": 195.938465,
+                    "mapEventObservedMs": 156.919345,
+                    "mapValidatedMs": 157.030909,
+                    "ownerPid": 3175055,
+                    "ownerStartTicks": "33143393",
+                    "probeCount": 1,
+                    "probeMaxMs": 9.538038999999998,
+                    "probeTotalMs": 9.538038999999998
+                },
+                {
+                    "firstWhiteObservedMs": 203.931793,
+                    "mapEventObservedMs": 157.031403,
+                    "mapValidatedMs": 157.107636,
+                    "ownerPid": 3175055,
+                    "ownerStartTicks": "33143393",
+                    "probeCount": 1,
+                    "probeMaxMs": 7.992008999999996,
+                    "probeTotalMs": 7.992008999999996
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.3028279999999652,
+                "hotkeyInjectionMs": 0.659991,
+                "inputInjectionMs": 0.4337670000000031,
+                "mapEventDrainMs": 1.0054139999999667,
+                "mapOwnershipQueriesMs": 0.5923669999999817,
+                "paintQueriesMs": 35.37115400000002,
+                "pollIterations": 98,
+                "pollSleepMs": 105.95090199999999
+            },
+            "inputIssuedMs": 110.394454,
+            "mapMs": 109.960687,
+            "paintAfterInputMs": 35.37595300000001,
+            "paintMs": 145.770407,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 134.773524,
+                    "mapEventObservedMs": 109.654872,
+                    "mapValidatedMs": 109.754143,
+                    "ownerPid": 3175061,
+                    "ownerStartTicks": "33143422",
+                    "probeCount": 1,
+                    "probeMaxMs": 24.378860000000003,
+                    "probeTotalMs": 24.378860000000003
+                },
+                {
+                    "firstWhiteObservedMs": 145.142234,
+                    "mapEventObservedMs": 109.758815,
+                    "mapValidatedMs": 109.856416,
+                    "ownerPid": 3175061,
+                    "ownerStartTicks": "33143422",
+                    "probeCount": 1,
+                    "probeMaxMs": 10.366512999999998,
+                    "probeTotalMs": 10.366512999999998
+                },
+                {
+                    "firstWhiteObservedMs": 145.769402,
+                    "mapEventObservedMs": 109.85714,
+                    "mapValidatedMs": 109.959668,
+                    "ownerPid": 3175061,
+                    "ownerStartTicks": "33143422",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.6257810000000177,
+                    "probeTotalMs": 0.6257810000000177
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.174012999999961,
+                "hotkeyInjectionMs": 0.343017,
+                "inputInjectionMs": 0.3548399999999958,
+                "mapEventDrainMs": 1.3789740000000372,
+                "mapOwnershipQueriesMs": 1.098988999999989,
+                "paintQueriesMs": 49.057002,
+                "pollIterations": 60,
+                "pollSleepMs": 63.84624200000001
+            },
+            "inputIssuedMs": 67.12755,
+            "mapMs": 66.77271,
+            "paintAfterInputMs": 49.06120800000001,
+            "paintMs": 116.188758,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 111.230136,
+                    "mapEventObservedMs": 66.012426,
+                    "mapValidatedMs": 66.387961,
+                    "ownerPid": 3175067,
+                    "ownerStartTicks": "33143447",
+                    "probeCount": 1,
+                    "probeMaxMs": 44.10247,
+                    "probeTotalMs": 44.10247
+                },
+                {
+                    "firstWhiteObservedMs": 115.955893,
+                    "mapEventObservedMs": 66.390029,
+                    "mapValidatedMs": 66.617296,
+                    "ownerPid": 3175067,
+                    "ownerStartTicks": "33143447",
+                    "probeCount": 1,
+                    "probeMaxMs": 4.723641999999998,
+                    "probeTotalMs": 4.723641999999998
+                },
+                {
+                    "firstWhiteObservedMs": 116.188393,
+                    "mapEventObservedMs": 66.617779,
+                    "mapValidatedMs": 66.771698,
+                    "ownerPid": 3175067,
+                    "ownerStartTicks": "33143447",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.23089000000000226,
+                    "probeTotalMs": 0.23089000000000226
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.1763719999999735,
+                "hotkeyInjectionMs": 0.245471,
+                "inputInjectionMs": 0.35137500000000443,
+                "mapEventDrainMs": 1.4851660000000146,
+                "mapOwnershipQueriesMs": 1.138397999999981,
+                "paintQueriesMs": 40.664207000000005,
+                "pollIterations": 68,
+                "pollSleepMs": 71.96628900000005
+            },
+            "inputIssuedMs": 75.255457,
+            "mapMs": 74.904082,
+            "paintAfterInputMs": 40.67038799999999,
+            "paintMs": 115.925845,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 98.441447,
+                    "mapEventObservedMs": 74.388249,
+                    "mapValidatedMs": 74.735808,
+                    "ownerPid": 3175073,
+                    "ownerStartTicks": "33143469",
+                    "probeCount": 1,
+                    "probeMaxMs": 23.185756999999995,
+                    "probeTotalMs": 23.185756999999995
+                },
+                {
+                    "firstWhiteObservedMs": 103.10412,
+                    "mapEventObservedMs": 74.738176,
+                    "mapValidatedMs": 74.82179,
+                    "ownerPid": 3175073,
+                    "ownerStartTicks": "33143469",
+                    "probeCount": 1,
+                    "probeMaxMs": 4.661062000000001,
+                    "probeTotalMs": 4.661062000000001
+                },
+                {
+                    "firstWhiteObservedMs": 115.924503,
+                    "mapEventObservedMs": 74.822269,
+                    "mapValidatedMs": 74.902982,
+                    "ownerPid": 3175073,
+                    "ownerStartTicks": "33143469",
+                    "probeCount": 1,
+                    "probeMaxMs": 12.817388000000008,
+                    "probeTotalMs": 12.817388000000008
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 2.6689569999998746,
+                "hotkeyInjectionMs": 0.639576,
+                "inputInjectionMs": 0.3598430000000121,
+                "mapEventDrainMs": 2.748838999999877,
+                "mapOwnershipQueriesMs": 2.1672780000000103,
+                "paintQueriesMs": 47.365421999999995,
+                "pollIterations": 140,
+                "pollSleepMs": 150.2956679999999
+            },
+            "inputIssuedMs": 156.770034,
+            "mapMs": 156.410191,
+            "paintAfterInputMs": 47.370507,
+            "paintMs": 204.140541,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 189.06695,
+                    "mapEventObservedMs": 155.524382,
+                    "mapValidatedMs": 155.90582,
+                    "ownerPid": 3175087,
+                    "ownerStartTicks": "33143504",
+                    "probeCount": 1,
+                    "probeMaxMs": 32.29666799999998,
+                    "probeTotalMs": 32.29666799999998
+                },
+                {
+                    "firstWhiteObservedMs": 191.370537,
+                    "mapEventObservedMs": 155.909174,
+                    "mapValidatedMs": 156.100744,
+                    "ownerPid": 3175087,
+                    "ownerStartTicks": "33143504",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.3014140000000225,
+                    "probeTotalMs": 2.3014140000000225
+                },
+                {
+                    "firstWhiteObservedMs": 204.138913,
+                    "mapEventObservedMs": 156.101384,
+                    "mapValidatedMs": 156.408924,
+                    "ownerPid": 3175087,
+                    "ownerStartTicks": "33143504",
+                    "probeCount": 1,
+                    "probeMaxMs": 12.76733999999999,
+                    "probeTotalMs": 12.76733999999999
+                }
+            ]
+        },
+        {
+            "driverCosts": {
+                "eventProcessingMs": 1.618801999999892,
+                "hotkeyInjectionMs": 0.144777,
+                "inputInjectionMs": 0.6304680000000076,
+                "mapEventDrainMs": 1.3231559999999332,
+                "mapOwnershipQueriesMs": 0.9794389999999993,
+                "paintQueriesMs": 17.099396,
+                "pollIterations": 107,
+                "pollSleepMs": 114.9881840000001
+            },
+            "inputIssuedMs": 118.758334,
+            "mapMs": 118.127866,
+            "paintAfterInputMs": 17.102007999999998,
+            "paintMs": 135.860342,
+            "windowWitnesses": [
+                {
+                    "firstWhiteObservedMs": 133.125432,
+                    "mapEventObservedMs": 117.484655,
+                    "mapValidatedMs": 117.964507,
+                    "ownerPid": 3175093,
+                    "ownerStartTicks": "33143532",
+                    "probeCount": 1,
+                    "probeMaxMs": 14.366725999999986,
+                    "probeTotalMs": 14.366725999999986
+                },
+                {
+                    "firstWhiteObservedMs": 135.479935,
+                    "mapEventObservedMs": 117.96973,
+                    "mapValidatedMs": 118.052398,
+                    "ownerPid": 3175093,
+                    "ownerStartTicks": "33143532",
+                    "probeCount": 1,
+                    "probeMaxMs": 2.353270000000009,
+                    "probeTotalMs": 2.353270000000009
+                },
+                {
+                    "firstWhiteObservedMs": 135.859927,
+                    "mapEventObservedMs": 118.053041,
+                    "mapValidatedMs": 118.126762,
+                    "ownerPid": 3175093,
+                    "ownerStartTicks": "33143532",
+                    "probeCount": 1,
+                    "probeMaxMs": 0.37940000000000396,
+                    "probeTotalMs": 0.37940000000000396
+                }
+            ]
+        }
+    ],
+    "schemaVersion": 3,
+    "scope": "physical Cinnamon X11 release hotkey to first drawn white outline on every actual transparent selector; synthetic canvases; scale1 shared vertical strip; Escape cancellation",
+    "selectorOwnership": "resident or exact supplied executable immediate child PID/start/device/inode",
+    "syntheticDrag": {
+        "endX": 6999,
+        "endY": 1040,
+        "startX": 40,
+        "startY": 20
+    },
+    "timingDefinitions": {
+        "mapMs": "All selector map events discovered and owner/override-redirect validated",
+        "mapOwnershipQueriesMs": "Subset of mapEventDrainMs; synchronous ownership and attribute queries",
+        "paintQueriesMs": "Sum of synchronous position, geometry and white-pixel witness queries",
+        "pollSleepMs": "Actual elapsed one-millisecond poll sleeps, including scheduling delay",
+        "windowWitnesses": "Driver-observed map event, validation and first white drawable pixel per selector"
+    },
+    "warmupInvocations": 5,
+    "witnessMode": "live-outline"
+}

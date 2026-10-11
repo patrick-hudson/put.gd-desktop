@@ -1,0 +1,247 @@
+{
+  "schemaVersion": 1,
+  "unscored": true,
+  "scope": "same-thread syscall correlation within accepted commit intervals; numeric clock offset only; no FD paths/content",
+  "samples": [
+    {
+      "threadId": 3193306,
+      "commitMs": 78.398765,
+      "syncMs": 76.91300000000001,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.067,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193321,
+      "commitMs": 3.862594,
+      "syncMs": 3.0349999999999997,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.038000000000000006,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193327,
+      "commitMs": 3.693614,
+      "syncMs": 2.8080000000000003,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.057999999999999996,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193334,
+      "commitMs": 7.166166,
+      "syncMs": 4.835,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.11800000000000001,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193345,
+      "commitMs": 5.724385,
+      "syncMs": 4.241,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.078,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193357,
+      "commitMs": 7.822551,
+      "syncMs": 6.974,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.035,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193364,
+      "commitMs": 3.658798,
+      "syncMs": 2.718,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.051000000000000004,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193370,
+      "commitMs": 7.704773,
+      "syncMs": 5.269,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.165,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193381,
+      "commitMs": 5.224946,
+      "syncMs": 4.194999999999999,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.047,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193392,
+      "commitMs": 7.6776,
+      "syncMs": 4.386,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.314,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193398,
+      "commitMs": 7.640367,
+      "syncMs": 6.75,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.052000000000000005,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193408,
+      "commitMs": 5.865616,
+      "syncMs": 4.596,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.074,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193420,
+      "commitMs": 8.227417,
+      "syncMs": 6.829,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.051000000000000004,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193427,
+      "commitMs": 4.426216,
+      "syncMs": 3.528,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.064,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193437,
+      "commitMs": 9.163652,
+      "syncMs": 7.6690000000000005,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.07100000000000001,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193449,
+      "commitMs": 4.667841,
+      "syncMs": 3.383,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.067,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193455,
+      "commitMs": 5.707985,
+      "syncMs": 4.3469999999999995,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.08,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193461,
+      "commitMs": 5.802906,
+      "syncMs": 4.072,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.088,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193476,
+      "commitMs": 3.562188,
+      "syncMs": 2.545,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.055,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193482,
+      "commitMs": 5.561561,
+      "syncMs": 4.151,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.083,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193490,
+      "commitMs": 9.482761,
+      "syncMs": 7.811,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.078,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193504,
+      "commitMs": 7.22216,
+      "syncMs": 4.4350000000000005,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.15,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193511,
+      "commitMs": 9.313797,
+      "syncMs": 8.137,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.049,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193517,
+      "commitMs": 81.632251,
+      "syncMs": 78.867,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.17200000000000001,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193533,
+      "commitMs": 3.643349,
+      "syncMs": 2.852,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.045,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193539,
+      "commitMs": 5.7427,
+      "syncMs": 4.783,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.038,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193549,
+      "commitMs": 8.746513,
+      "syncMs": 7.662000000000001,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.059000000000000004,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193562,
+      "commitMs": 5.799902,
+      "syncMs": 4.325,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.069,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193568,
+      "commitMs": 11.060001,
+      "syncMs": 8.556,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.153,
+      "failedLockAttempts": 0
+    },
+    {
+      "threadId": 3193574,
+      "commitMs": 77.451262,
+      "syncMs": 75.662,
+      "syncCalls": 4,
+      "lockSyscallMs": 0.103,
+      "failedLockAttempts": 0
+    }
+  ]
+}

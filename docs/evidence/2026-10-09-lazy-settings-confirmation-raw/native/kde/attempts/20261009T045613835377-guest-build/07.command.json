@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "ssh",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "IdentitiesOnly=yes",
+    "-o",
+    "StrictHostKeyChecking=yes",
+    "-o",
+    "ConnectTimeout=5",
+    "-o",
+    "UserKnownHostsFile=/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/known_hosts",
+    "-i",
+    "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/identity",
+    "-p",
+    "22234",
+    "lab@127.0.0.1",
+    "cd /home/lab/putgd-ui-refinement-frozen-exp001-source46 && python3 -"
+  ],
+  "cwd": null,
+  "stdinFile": "07.stdin",
+  "startedUtc": "2026-10-09T04:56:18.640041+00:00"
+}

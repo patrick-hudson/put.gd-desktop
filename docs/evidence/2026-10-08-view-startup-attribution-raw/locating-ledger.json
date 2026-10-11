@@ -1,0 +1,748 @@
+{
+  "spec": "view-startup-latency",
+  "run_id": "2026-10-08-view-startup-latency",
+  "started_at": "2026-10-08",
+  "baseline": {
+    "metrics": {
+      "settingsReopenMilliseconds": 332.6766769750975,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1
+    },
+    "gates": {
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896
+    },
+    "identity": {
+      "commit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+      "archiveSha256": "cf2a94b8594b6c0a5295b6a9e87884447a330b3ceed726ec2fb499cca7ca95c1",
+      "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-1/results.json",
+          "sha256": "1b6b4f994e975238639678f11356323e92659dc2a5c3a13aba69836cf18fa48d"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/u11/memory/split-2/results.json",
+          "sha256": "c936b0817748483c812e828c2abdd42b26b200f2a19d859d01f1b46cb75f0f17"
+        }
+      ],
+      "samples": [
+        329.63122898945585,
+        335.72212496073917,
+        393.30363704357296,
+        325.35388303222135
+      ],
+      "currentHeadAtIntake": "b7c9238795b7ab4ae3acbba919fcbb184721109a",
+      "reuseReason": "Recent native baseline is reused. The following evidence-only commit changes no runtime, build, schema, platform or performance-harness path. Existing measured binaries retain their original identity; no relabelled build."
+    },
+    "diagnostics": {
+      "sampleCount": 4,
+      "p95Certified": false
+    }
+  },
+  "experiments": [],
+  "best": {
+    "iteration": 0,
+    "metrics": {
+      "settingsReopenMilliseconds": 332.6766769750975,
+      "closedRssBytes": 47228928.0,
+      "closedPssBytes": 26636288.0,
+      "peakOpenPssBytes": 57680896,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1
+    }
+  },
+  "hypothesis_backlog": [
+    {
+      "description": "Construct advanced Settings pages on demand while preserving canonical draft and lazy-page state",
+      "category": "architecture",
+      "priority": "high",
+      "dep_status": "approved",
+      "required_deps": [],
+      "runnable": true,
+      "opportunity": {
+        "workload": "closed-view Settings reopen on physical Cinnamon",
+        "baseline": "CP-1 332.6767ms, source41, same frozen observer",
+        "evidence": "Two reopens: hidden Capture/Shortcuts/Preferences construction30.0\u201332.6ms plus disjoint show-phase exclusive Polish11.3\u201311.5ms. Located aggregate41.3\u201344.1ms; all Settings ctor45.1\u201350.2ms/show56.3\u201363.6ms. Native QApplication and observer stay unchanged.",
+        "expected_benefit": "Unknown net mapped benefit; located gross removable work about41\u201344ms, near40ms threshold, before lazy-state overhead; untracked hidden layout work might add saving. One bounded variant is justified, but likely borderline and ~200ms target not implied.",
+        "confidence": "High observed cost placement; low confidence net gain exceeds40ms",
+        "cost_and_risk": "One focused lazy-page variant; no dependencies; full draft/raw-number/profile semantics and targeted tests required. No cheaper available locating measurement changes which pages are chosen."
+      }
+    },
+    {
+      "description": "Coalesce ready/activate or remove the initial snapshot round trip",
+      "category": "architecture",
+      "priority": "low",
+      "dep_status": "approved",
+      "required_deps": [],
+      "runnable": false,
+      "decision": "skip: cannot exceed40ms keep threshold and adds protocol risk",
+      "opportunity": {
+        "workload": "same Settings reopen",
+        "baseline": "CP-1 332.6767ms",
+        "evidence": "Bootstrap2.0\u20132.6ms, snapshot2.8\u20133.2ms, validation/controller/activation under0.4ms combined.",
+        "expected_benefit": "upper bound about7ms even if all eliminated, below40ms threshold",
+        "confidence": "high for observed two reopens; instrumentation overhead acknowledged",
+        "cost_and_risk": "Private bootstrap/epoch/build validation and concurrent activation risks; no dependencies"
+      }
+    }
+  ],
+  "phase": "CP-2 fine attribution verified; single lazy-page experiment selected",
+  "approval": {
+    "timestampUtc": "2026-10-09T02:52:41.383568+00:00",
+    "scope": "333ms baseline, ~200ms target; <=3 variants/2h; no dependencies; native Cinnamon fonts/dialogs/tray/helper exit; >40ms keep; memory gates",
+    "userReply": "Proceed with startup experiments (Recommended)"
+  },
+  "locating_measurements": [
+    {
+      "kind": "diagnostic stage attribution",
+      "classification": "BASE41 + diagnostic overlay attribution only; no product saving or native certification",
+      "path": "work/view-startup-latency/probe/run-1/stage-attribution.json",
+      "sha256": "cf74d08d54956097e741631dd094655ec341eebb14139768276354035343bb08",
+      "sourceProvenance": "work/view-startup-latency/probe/source-provenance.json",
+      "settingsReopens": [
+        {
+          "cycle": 1,
+          "workloadKind": "cold first open",
+          "helperPid": 2614935,
+          "stageMilliseconds": {
+            "nativeQApplication": 72.685331,
+            "styleAndBranding": 0.340261,
+            "controlSetupAndBootstrap": 2.322752,
+            "snapshotRequestReply": 3.30671,
+            "snapshotValidation": 0.022024,
+            "controllerAndReadySend": 0.039837,
+            "readyToActivation": 0.12143,
+            "settingsConstructor": 55.067802,
+            "restoreAndShowPreparation": 0.026931,
+            "showCall": 144.386015,
+            "raiseActivateAndShownSend": 0.039495,
+            "mainToShownSent": 278.462219,
+            "launchToMain": 19.840927,
+            "launchToProcessStarted": 0.881205
+          },
+          "cliShownAcknowledgementMilliseconds": 325.2194669912569,
+          "independentlyObservedMappedMilliseconds": 475.654145993758,
+          "mappedAfterCliOverheadMilliseconds": 150.43467900250107,
+          "missingStages": []
+        },
+        {
+          "cycle": 2,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2616664,
+          "stageMilliseconds": {
+            "nativeQApplication": 59.185051,
+            "styleAndBranding": 0.326667,
+            "controlSetupAndBootstrap": 2.039388,
+            "snapshotRequestReply": 2.827644,
+            "snapshotValidation": 0.013795,
+            "controllerAndReadySend": 0.027577,
+            "readyToActivation": 0.111447,
+            "settingsConstructor": 65.386591,
+            "restoreAndShowPreparation": 0.602462,
+            "showCall": 63.739548,
+            "raiseActivateAndShownSend": 0.026732,
+            "mainToShownSent": 194.353501,
+            "launchToMain": 13.542321,
+            "launchToProcessStarted": 0.266165
+          },
+          "cliShownAcknowledgementMilliseconds": 221.96271503344178,
+          "independentlyObservedMappedMilliseconds": 362.28689400013536,
+          "mappedAfterCliOverheadMilliseconds": 140.32417896669358,
+          "missingStages": []
+        },
+        {
+          "cycle": 3,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2617766,
+          "stageMilliseconds": {
+            "nativeQApplication": 56.233429,
+            "styleAndBranding": 0.341352,
+            "controlSetupAndBootstrap": 2.561084,
+            "snapshotRequestReply": 3.203332,
+            "snapshotValidation": 0.021123,
+            "controllerAndReadySend": 0.035186,
+            "readyToActivation": 0.17415,
+            "settingsConstructor": 44.675205,
+            "restoreAndShowPreparation": 0.37568,
+            "showCall": 71.543109,
+            "raiseActivateAndShownSend": 0.068877,
+            "mainToShownSent": 179.305654,
+            "launchToMain": 12.304866,
+            "launchToProcessStarted": 0.387659
+          },
+          "cliShownAcknowledgementMilliseconds": 206.41974499449134,
+          "independentlyObservedMappedMilliseconds": 314.9338740040548,
+          "mappedAfterCliOverheadMilliseconds": 108.51412900956348,
+          "missingStages": []
+        }
+      ],
+      "limitations": [
+        "stderr instrumentation adds overhead",
+        "control.send return records queued frames rather than resident receipt",
+        "QWidget show return and CLI shown acknowledgement do not prove mapped or painted pixels",
+        "mapped observer includes process/window/diagnostic inspection overhead",
+        "not p95 or populated-history/post-upload memory evidence"
+      ]
+    },
+    {
+      "kind": "hidden-page constructor and exclusive Polish attribution",
+      "path": "work/view-startup-latency/hidden-page-probe/run-1/stage-attribution.json",
+      "sha256": "9acd136bb9f10907155674088c6fc76739a07e5581d00238c0e27c316e518efa",
+      "sourceProvenance": "work/view-startup-latency/hidden-page-probe/source-provenance.json",
+      "classification": "BASE41 + diagnostic overlay attribution only; no product saving or native certification",
+      "settingsReopens": [
+        {
+          "cycle": 1,
+          "workloadKind": "cold first open",
+          "helperPid": 2644904,
+          "stageMilliseconds": {
+            "nativeQApplication": 68.805536,
+            "styleAndBranding": 0.315648,
+            "controlSetupAndBootstrap": 1.964101,
+            "snapshotRequestReply": 3.087968,
+            "snapshotValidation": 0.024966,
+            "controllerAndReadySend": 0.05107,
+            "readyToActivation": 0.136365,
+            "settingsConstructor": 46.481953,
+            "restoreAndShowPreparation": 0.05544,
+            "showCall": 69.030499,
+            "raiseActivateAndShownSend": 0.072429,
+            "mainToShownSent": 190.131453,
+            "constructPreferences": 3.199944,
+            "constructDestinations": 12.561219,
+            "constructShortcuts": 3.627739,
+            "constructCapture": 23.226401,
+            "settingsWiring": 0.80352,
+            "settingsRefresh": 1.398429,
+            "launchToMain": 18.709026,
+            "launchToProcessStarted": 0.671951
+          },
+          "constructorAccounting": {
+            "measuredSectionMilliseconds": 44.817251999999996,
+            "unassignedShellAndTraceMilliseconds": 1.6647010000000009,
+            "completeSections": true
+          },
+          "polishAttribution": {
+            "intervals": {
+              "constructor": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.650193,
+                    "eventCount": 28
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.681287,
+                    "eventCount": 21
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.285118,
+                    "eventCount": 31
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.030007,
+                    "eventCount": 1
+                  }
+                },
+                "exclusiveTotalMilliseconds": 2.646605,
+                "eventCount": 81
+              },
+              "restoreAndShowPreparation": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "showCall": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 6.379471,
+                    "eventCount": 138
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 4.754796,
+                    "eventCount": 109
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 3.003259,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.824395,
+                    "eventCount": 19
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.717132,
+                    "eventCount": 41
+                  }
+                },
+                "exclusiveTotalMilliseconds": 16.679053,
+                "eventCount": 377
+              },
+              "raiseActivateAndShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "constructorThroughShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 7.029664,
+                    "eventCount": 166
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.436083,
+                    "eventCount": 130
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 3.003259,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 2.109513,
+                    "eventCount": 50
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.747139,
+                    "eventCount": 42
+                  }
+                },
+                "exclusiveTotalMilliseconds": 19.325658,
+                "eventCount": 458
+              }
+            },
+            "missingSnapshots": [],
+            "invalidCounterIntervals": []
+          },
+          "cliShownAcknowledgementMilliseconds": 255.1838089711964,
+          "independentlyObservedMappedMilliseconds": 394.1643809666857,
+          "mappedAfterCliOverheadMilliseconds": 138.9805719954893,
+          "missingStages": []
+        },
+        {
+          "cycle": 2,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2645815,
+          "stageMilliseconds": {
+            "nativeQApplication": 63.205722,
+            "styleAndBranding": 0.36086,
+            "controlSetupAndBootstrap": 2.672978,
+            "snapshotRequestReply": 3.084047,
+            "snapshotValidation": 0.040009,
+            "controllerAndReadySend": 0.06605,
+            "readyToActivation": 0.303863,
+            "settingsConstructor": 50.152278,
+            "restoreAndShowPreparation": 0.730833,
+            "showCall": 63.562394,
+            "raiseActivateAndShownSend": 0.045063,
+            "mainToShownSent": 184.329567,
+            "constructPreferences": 3.327507,
+            "constructDestinations": 12.619558,
+            "constructShortcuts": 3.453014,
+            "constructCapture": 25.855617,
+            "settingsWiring": 1.27458,
+            "settingsRefresh": 1.802714,
+            "launchToMain": 20.273704,
+            "launchToProcessStarted": 7.819085
+          },
+          "constructorAccounting": {
+            "measuredSectionMilliseconds": 48.332989999999995,
+            "unassignedShellAndTraceMilliseconds": 1.8192880000000073,
+            "completeSections": true
+          },
+          "polishAttribution": {
+            "intervals": {
+              "constructor": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.667113,
+                    "eventCount": 28
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.727667,
+                    "eventCount": 21
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.440559,
+                    "eventCount": 31
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.031179,
+                    "eventCount": 1
+                  }
+                },
+                "exclusiveTotalMilliseconds": 2.8665179999999997,
+                "eventCount": 81
+              },
+              "restoreAndShowPreparation": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "showCall": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 6.919666,
+                    "eventCount": 138
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 4.95154,
+                    "eventCount": 109
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.97086,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.001959,
+                    "eventCount": 19
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.586026,
+                    "eventCount": 41
+                  }
+                },
+                "exclusiveTotalMilliseconds": 17.430051,
+                "eventCount": 377
+              },
+              "raiseActivateAndShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "constructorThroughShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 7.586779,
+                    "eventCount": 166
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.679207,
+                    "eventCount": 130
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.97086,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 2.442518,
+                    "eventCount": 50
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.617205,
+                    "eventCount": 42
+                  }
+                },
+                "exclusiveTotalMilliseconds": 20.296569,
+                "eventCount": 458
+              }
+            },
+            "missingSnapshots": [],
+            "invalidCounterIntervals": []
+          },
+          "cliShownAcknowledgementMilliseconds": 222.76878700358793,
+          "independentlyObservedMappedMilliseconds": 347.04432100988925,
+          "mappedAfterCliOverheadMilliseconds": 124.27553400630131,
+          "missingStages": []
+        },
+        {
+          "cycle": 3,
+          "workloadKind": "closed-view reopen",
+          "helperPid": 2646710,
+          "stageMilliseconds": {
+            "nativeQApplication": 57.923973,
+            "styleAndBranding": 0.321633,
+            "controlSetupAndBootstrap": 2.428678,
+            "snapshotRequestReply": 3.05082,
+            "snapshotValidation": 0.012944,
+            "controllerAndReadySend": 0.048479,
+            "readyToActivation": 0.153741,
+            "settingsConstructor": 45.067549,
+            "restoreAndShowPreparation": 0.598884,
+            "showCall": 56.344222,
+            "raiseActivateAndShownSend": 0.02371,
+            "mainToShownSent": 166.097457,
+            "constructPreferences": 3.163184,
+            "constructDestinations": 11.386595,
+            "constructShortcuts": 3.024884,
+            "constructCapture": 23.842468,
+            "settingsWiring": 0.738683,
+            "settingsRefresh": 1.080791,
+            "launchToMain": 12.305382,
+            "launchToProcessStarted": 0.32945
+          },
+          "constructorAccounting": {
+            "measuredSectionMilliseconds": 43.236605,
+            "unassignedShellAndTraceMilliseconds": 1.8309440000000023,
+            "completeSections": true
+          },
+          "polishAttribution": {
+            "intervals": {
+              "constructor": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.663675,
+                    "eventCount": 28
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.568671,
+                    "eventCount": 21
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 1.277119,
+                    "eventCount": 31
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.032941,
+                    "eventCount": 1
+                  }
+                },
+                "exclusiveTotalMilliseconds": 2.5424059999999997,
+                "eventCount": 81
+              },
+              "restoreAndShowPreparation": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "showCall": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 6.710982,
+                    "eventCount": 138
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.184114,
+                    "eventCount": 109
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.974838,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.760732,
+                    "eventCount": 19
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.610074,
+                    "eventCount": 41
+                  }
+                },
+                "exclusiveTotalMilliseconds": 17.24074,
+                "eventCount": 377
+              },
+              "raiseActivateAndShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 0.0,
+                    "eventCount": 0
+                  }
+                },
+                "exclusiveTotalMilliseconds": 0.0,
+                "eventCount": 0
+              },
+              "constructorThroughShownSend": {
+                "pages": {
+                  "capture": {
+                    "exclusiveMilliseconds": 7.374657,
+                    "eventCount": 166
+                  },
+                  "destinations": {
+                    "exclusiveMilliseconds": 5.752785,
+                    "eventCount": 130
+                  },
+                  "preferences": {
+                    "exclusiveMilliseconds": 2.974838,
+                    "eventCount": 70
+                  },
+                  "shell": {
+                    "exclusiveMilliseconds": 2.037851,
+                    "eventCount": 50
+                  },
+                  "shortcuts": {
+                    "exclusiveMilliseconds": 1.643015,
+                    "eventCount": 42
+                  }
+                },
+                "exclusiveTotalMilliseconds": 19.783146,
+                "eventCount": 458
+              }
+            },
+            "missingSnapshots": [],
+            "invalidCounterIntervals": []
+          },
+          "cliShownAcknowledgementMilliseconds": 193.58806795207784,
+          "independentlyObservedMappedMilliseconds": 317.53956800093874,
+          "mappedAfterCliOverheadMilliseconds": 123.95150004886091,
+          "missingStages": []
+        }
+      ],
+      "limitations": [
+        "Polish timings measure exclusive QApplication::notify dispatch only, excluding nested Polish dispatch; other Qt style/layout/font work is outside this attribution",
+        "Page ancestry is sampled at dispatch time; pre-reparenting work can be shell or untracked",
+        "Polish totals are subsets of constructor/show wall time and must not be added to them",
+        "Constructor shell remainder includes fixed trace overhead and setup; wiring interval includes visibility/footer setup",
+        "stderr instrumentation adds overhead",
+        "control.send return records queued frames rather than resident receipt",
+        "QWidget show return and CLI shown acknowledgement do not prove mapped or painted pixels",
+        "mapped observer includes process/window/diagnostic inspection overhead",
+        "not p95 or populated-history/post-upload memory evidence"
+      ]
+    }
+  ],
+  "independent_changes": [
+    {
+      "commit": "f56dc72de4fe03ddd7f28917433070a3a9052c83",
+      "commitCount": 43,
+      "scope": "UI refinement,8 product/test paths",
+      "nativeStatus": "source43 frozen allthree dev builds passed; release/native replay in progress",
+      "performanceStatus": "not scored as startup optimization"
+    },
+    {
+      "commit": "86301db2620a204854c08fb3f2d50f71d22112c4",
+      "commitCount": 44,
+      "scope": "NativeGJS ownership fixture and documentation; product runtime/extension sourceunchanged from43",
+      "checks": "ExistingGJS5assertions+failure/pending controls; completedreview0findings",
+      "comparisonRule": "Do not relabel source43 binaries after test/doccommit44. Futurecandidate patch/identities separate."
+    }
+  ],
+  "phase3_started_at": "2026-10-09T03:36:16.003283+00:00"
+}

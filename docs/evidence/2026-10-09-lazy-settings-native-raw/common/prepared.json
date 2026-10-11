@@ -1,0 +1,21 @@
+{
+  "candidate": {
+    "worktree": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+    "patch": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/candidate.patch",
+    "patchSha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+    "bundle": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/lazy-exp001-native/source.bundle",
+    "bundleSha256": "60a47dc4950ec89deac830cf73186175536c326f1e090aa7412dc068a04c6218",
+    "files": {
+      "src/ui/SettingsWindow.cpp": "18e44b7b50ea52c043d0e0db69d388f6eedf6177dc25f27c0604aae7fc6e033c",
+      "src/ui/SettingsWindow.h": "267536902660030d9ed7e208851951e541b0b514a65b66b2efe35c70d15caba6",
+      "tests/gui/test_settings.cpp": "7fdca5f7fcd1cadec07a06c49cc552b753f1ab94d8258738f9740cc2c61399fd",
+      "tests/gui/test_ui_application.cpp": "5811ad64908371e66340e899d05de02748d90b1d2e0414f2cac2c2fcf0329f98"
+    },
+    "dirty": true,
+    "comparison": "Base44 committed tree plus exact four-path overlay, not relabelled as clean44."
+  },
+  "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "existingOverlaysOnly": true,
+  "nativeAcceptance": "pending",
+  "inventoryVerified": true
+}

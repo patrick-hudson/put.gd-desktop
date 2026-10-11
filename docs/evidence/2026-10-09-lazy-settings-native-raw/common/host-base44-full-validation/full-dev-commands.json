@@ -1,0 +1,29 @@
+[
+  {
+    "label": "full-dev-build",
+    "argv": [
+      "cmake",
+      "--build",
+      "--preset",
+      "dev"
+    ],
+    "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+    "startedUtc": "2026-10-09T03:57:35.424002+00:00",
+    "finishedUtc": "2026-10-09T03:59:58.314692+00:00",
+    "exitCode": 0
+  },
+  {
+    "label": "full-dev-tests",
+    "argv": [
+      "ctest",
+      "--preset",
+      "dev",
+      "--output-junit",
+      "/home/patrick/work/put.gd/work/view-startup-latency/exp001/work/lazy-validation/full-dev.xml"
+    ],
+    "cwd": "/home/patrick/work/put.gd/work/view-startup-latency/exp001",
+    "startedUtc": "2026-10-09T03:59:58.314931+00:00",
+    "finishedUtc": "2026-10-09T04:03:35.171173+00:00",
+    "exitCode": 0
+  }
+]

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "testId": "5f79e7cdd55b4c1eace3dea4ea7d7e32",
+  "profile": "cinnamon-x11",
+  "scenario": "region-cancel-right-click-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 2406,
+    "startTicks": 17322,
+    "sha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": "Ctrl+Shift+4",
+      "bound": true,
+      "requested": "Ctrl+Shift+4"
+    },
+    "desktop": {
+      "actual": "Ctrl+Shift+3",
+      "bound": true,
+      "requested": "Ctrl+Shift+3"
+    },
+    "region": {
+      "actual": "Ctrl+Shift+1",
+      "bound": true,
+      "requested": "Ctrl+Shift+1"
+    },
+    "window": {
+      "actual": "Ctrl+Shift+2",
+      "bound": true,
+      "requested": "Ctrl+Shift+2"
+    }
+  },
+  "parameters": "parameters.json",
+  "operationId": "ca78edb0-e3db-4bfc-9f61-d0c679a42a4b",
+  "operationState": "cancelled",
+  "copyStatus": "no_result",
+  "itemOutcomes": [],
+  "paste": {
+    "ok": true,
+    "expected": {
+      "text": "putgd synthetic clipboard text"
+    },
+    "actual": {
+      "formats": [
+        "text/plain"
+      ],
+      "schemaVersion": 1,
+      "text": "putgd synthetic clipboard text"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc/final-head0.ppm",
+    "sha256": "4ec529b32e2d4da70f8d99c9d66324ec4a471abaa20e160df972ae2871ab51e9"
+  },
+  "elapsedSeconds": 7.797482555033639,
+  "evidenceDirectory": "tests/5f79e7cdd55b4c1eace3dea4ea7d7e32"
+}

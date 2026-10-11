@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuite name="GnomeAdapterTransportTest" timestamp="2026&#x002D;10&#x002D;08T19:55:47" hostname="putgd&#x002D;ubuntu&#x002D;lab" tests="5" failures="1" errors="0" skipped="0" time="22.133">
+  <properties>
+    <property name="QTestVersion" value="6.10.2"/>
+    <property name="QtVersion" value="6.10.2"/>
+    <property name="QtBuild" value="Qt 6.10.2 (x86_64&#x002D;little_endian&#x002D;lp64 shared (dynamic) release build; by GCC 15.2.0)"/>
+  </properties>
+  <testcase name="initTestCase" classname="GnomeAdapterTransportTest" time="0.001"/>
+  <testcase name="clearFailureRecoversWithoutUiReopen" classname="GnomeAdapterTransportTest" time="15.328">
+    <failure type="fail" message="&apos;windowAvailable(source)&apos; returned FALSE. ()"/>
+  </testcase>
+  <testcase name="liveFailureStaysClosedAndNewPidSupersedesClear" classname="GnomeAdapterTransportTest" time="6.670"/>
+  <testcase name="ownerReplacementRegistersLatestPid" classname="GnomeAdapterTransportTest" time="0.134"/>
+  <testcase name="cleanupTestCase" classname="GnomeAdapterTransportTest" time="0.000"/>
+</testsuite>

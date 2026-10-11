@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "xvfb-run",
+    "-a",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/dev/test_capture_process",
+    "earlyReleaseWaitsForCompleteHelperCleanup",
+    "-o",
+    "/home/patrick/work/put.gd/work/capture-parity/early-selection/early-release-controller-red.xml,junitxml"
+  ],
+  "cwd": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+  "startedUtc": "2026-10-09T19:19:51.277692+00:00"
+}

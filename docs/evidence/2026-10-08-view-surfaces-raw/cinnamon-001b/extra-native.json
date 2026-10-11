@@ -1,0 +1,762 @@
+{
+  "runningApp": {
+    "pid": 17990,
+    "startTicks": 657928,
+    "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+  },
+  "run": "/home/patrick/work/put.gd/work/lab-runs/current-cinnamon-a3d70dc",
+  "vnc": "127.0.0.1:5938",
+  "steps": [
+    {
+      "guestCommand": "python3 - <<'CHECK'\nimport hashlib,json,os\nfrom pathlib import Path\nbase=Path(os.environ['XDG_CONFIG_HOME'])\nprint(json.dumps({str(p.relative_to(base)):hashlib.sha256(p.read_bytes()).hexdigest() for p in base.rglob('config.json')}))\nCHECK\n",
+      "stdout": "{\"putgd/putgd/config.json\": \"6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54\"}\n",
+      "timestampUtc": "2026-10-08T22:54:33.467806+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e00065  0 17990  putgd-lab put.gd \u2014 Settings\n",
+      "timestampUtc": "2026-10-08T22:54:33.739411+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/controls-start.png",
+      "sha256": "356f313013be03ad0329ee668ff0d010f9569ccca12adc0759abd64b7d8afa5b",
+      "timestampUtc": "2026-10-08T22:54:33.843464+00:00"
+    },
+    {
+      "qmpClick": [
+        150,
+        155
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:54:33.846710+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/advanced-open.png",
+      "sha256": "a5fd1bc73638542be26c4ad43ba27aedfc4e1a92eb1997210d54fe7b45817c20",
+      "timestampUtc": "2026-10-08T22:54:34.628825+00:00"
+    },
+    {
+      "qmpClick": [
+        143,
+        214
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:54:48.969861+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/capture-page.png",
+      "sha256": "e3f89037ee34757074b179cda8ef61eba3521166b80d46be6cbd7ef6d8682c31",
+      "timestampUtc": "2026-10-08T22:54:49.763340+00:00"
+    },
+    {
+      "qmpScrollDown": 5,
+      "position": [
+        900,
+        540
+      ],
+      "timestampUtc": "2026-10-08T22:55:06.424356+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/local-folders.png",
+      "sha256": "88c4c092da3dac622331ff23a6f04a8e5507d1911fb611353847b75fe2e6f5d8",
+      "timestampUtc": "2026-10-08T22:55:07.013485+00:00"
+    },
+    {
+      "qmpClick": [
+        590,
+        456
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:55:14.748671+00:00"
+    },
+    {
+      "qmpKeys": [
+        "ctrl",
+        "a"
+      ],
+      "timestampUtc": "2026-10-08T22:55:14.802821+00:00"
+    },
+    {
+      "qmpKeys": [
+        "slash"
+      ],
+      "timestampUtc": "2026-10-08T22:55:14.855307+00:00"
+    },
+    {
+      "qmpKeys": [
+        "t"
+      ],
+      "timestampUtc": "2026-10-08T22:55:14.908739+00:00"
+    },
+    {
+      "qmpKeys": [
+        "m"
+      ],
+      "timestampUtc": "2026-10-08T22:55:14.962012+00:00"
+    },
+    {
+      "qmpKeys": [
+        "p"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.014885+00:00"
+    },
+    {
+      "qmpKeys": [
+        "slash"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.067802+00:00"
+    },
+    {
+      "qmpKeys": [
+        "p"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.121039+00:00"
+    },
+    {
+      "qmpKeys": [
+        "u"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.174328+00:00"
+    },
+    {
+      "qmpKeys": [
+        "t"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.227124+00:00"
+    },
+    {
+      "qmpKeys": [
+        "g"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.280100+00:00"
+    },
+    {
+      "qmpKeys": [
+        "d"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.333344+00:00"
+    },
+    {
+      "qmpKeys": [
+        "minus"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.387058+00:00"
+    },
+    {
+      "qmpKeys": [
+        "d"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.440967+00:00"
+    },
+    {
+      "qmpKeys": [
+        "r"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.495341+00:00"
+    },
+    {
+      "qmpKeys": [
+        "a"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.549857+00:00"
+    },
+    {
+      "qmpKeys": [
+        "f"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.604804+00:00"
+    },
+    {
+      "qmpKeys": [
+        "t"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.659570+00:00"
+    },
+    {
+      "qmpKeys": [
+        "minus"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.716210+00:00"
+    },
+    {
+      "qmpKeys": [
+        "n"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.772371+00:00"
+    },
+    {
+      "qmpKeys": [
+        "a"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.829001+00:00"
+    },
+    {
+      "qmpKeys": [
+        "t"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.885684+00:00"
+    },
+    {
+      "qmpKeys": [
+        "i"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.940870+00:00"
+    },
+    {
+      "qmpKeys": [
+        "v"
+      ],
+      "timestampUtc": "2026-10-08T22:55:15.996498+00:00"
+    },
+    {
+      "qmpKeys": [
+        "e"
+      ],
+      "timestampUtc": "2026-10-08T22:55:16.053950+00:00"
+    },
+    {
+      "qmpKeys": [
+        "minus"
+      ],
+      "timestampUtc": "2026-10-08T22:55:16.111302+00:00"
+    },
+    {
+      "qmpKeys": [
+        "0"
+      ],
+      "timestampUtc": "2026-10-08T22:55:16.169588+00:00"
+    },
+    {
+      "qmpKeys": [
+        "0"
+      ],
+      "timestampUtc": "2026-10-08T22:55:16.227416+00:00"
+    },
+    {
+      "qmpKeys": [
+        "1"
+      ],
+      "timestampUtc": "2026-10-08T22:55:16.284550+00:00"
+    },
+    {
+      "qmpKeys": [
+        "b"
+      ],
+      "timestampUtc": "2026-10-08T22:55:16.341145+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/dirty-draft-before-close.png",
+      "sha256": "6fe3b8ca2f3e5b3c283262fad71895b15cf0dfbf800d4369bfde85c0dea51311",
+      "timestampUtc": "2026-10-08T22:55:16.965476+00:00"
+    },
+    {
+      "qmpKeys": [
+        "alt",
+        "f4"
+      ],
+      "timestampUtc": "2026-10-08T22:55:17.020076+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/dirty-draft-closed.png",
+      "sha256": "32fa1b77457e8a669c0fc5ef06ee647346fcc33bd0cf47efb4d56d5bf2442590",
+      "timestampUtc": "2026-10-08T22:55:17.945220+00:00"
+    },
+    {
+      "cli": "ui.show",
+      "params": {
+        "view": "settings"
+      },
+      "result": {
+        "shown": "settings"
+      },
+      "timestampUtc": "2026-10-08T22:55:18.242342+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/dirty-draft-reopened.png",
+      "sha256": "668a331eac45b66976989f014bb5a14ca1821d6ce7cce0b6455f9e85b259bf71",
+      "timestampUtc": "2026-10-08T22:55:19.326379+00:00"
+    },
+    {
+      "qmpClick": [
+        103,
+        700
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:55:31.671739+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/cancel-closed.png",
+      "sha256": "32fa1b77457e8a669c0fc5ef06ee647346fcc33bd0cf47efb4d56d5bf2442590",
+      "timestampUtc": "2026-10-08T22:55:32.670031+00:00"
+    },
+    {
+      "cli": "ui.show",
+      "params": {
+        "view": "settings"
+      },
+      "result": {
+        "shown": "settings"
+      },
+      "timestampUtc": "2026-10-08T22:55:33.051008+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/cancel-reopened.png",
+      "sha256": "e6abb5f7d4761d49a58c359433f1e2a548bf455913ea2c77b8a43df42b3a9cc4",
+      "timestampUtc": "2026-10-08T22:55:34.178691+00:00"
+    },
+    {
+      "guestCommand": "python3 - <<'CHECK'\nimport hashlib,json,os\nfrom pathlib import Path\nbase=Path(os.environ['XDG_CONFIG_HOME'])\nprint(json.dumps({str(p.relative_to(base)):hashlib.sha256(p.read_bytes()).hexdigest() for p in base.rglob('config.json')}))\nCHECK\n",
+      "stdout": "{\"putgd/putgd/config.json\": \"6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54\"}\n",
+      "timestampUtc": "2026-10-08T22:55:34.585521+00:00"
+    },
+    {
+      "qmpClick": [
+        953,
+        456
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:55:48.314965+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/folder-chooser-open.png",
+      "sha256": "502579717f7eb5706819605c5f8c9f2e27c9a6469a26b28f0d875a2c9dd888cc",
+      "timestampUtc": "2026-10-08T22:55:49.157073+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE WM_TRANSIENT_FOR; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = \nWM_TRANSIENT_FOR:  not found.\n_NET_WM_STATE(ATOM) = _NET_WM_STATE_MODAL, _NET_WM_STATE_SKIP_TASKBAR, _NET_WM_STATE_FOCUSED\nWM_TRANSIENT_FOR(WINDOW): window id # 0x2e00079\n",
+      "timestampUtc": "2026-10-08T22:55:55.069779+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/folder-chooser-state.png",
+      "sha256": "4d3408d76b38e72a39f1c0f52745aab94ca2cefa8439ce284f852690a0356567",
+      "timestampUtc": "2026-10-08T22:55:55.157851+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e00079  0 17990  putgd-lab put.gd \u2014 Settings\n0x03e00007  0 17990  putgd-lab Local output folder\n",
+      "timestampUtc": "2026-10-08T22:56:14.053726+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -i -c 0x02e00079\n",
+      "stdout": "",
+      "timestampUtc": "2026-10-08T22:56:14.441661+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/folder-parent-close-request.png",
+      "sha256": "b72a084fe23f9f76a1fc7806ddbbaeed17eb41a4f4a70b44d16b881762fcf1fa",
+      "timestampUtc": "2026-10-08T22:56:15.230026+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e00079  0 17990  putgd-lab put.gd \u2014 Settings\n0x03e00007  0 17990  putgd-lab Local output folder\n",
+      "timestampUtc": "2026-10-08T22:56:15.511223+00:00"
+    },
+    {
+      "qmpKeys": [
+        "esc"
+      ],
+      "timestampUtc": "2026-10-08T22:56:16.071266+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/folder-cancelled.png",
+      "sha256": "14f8cb71b12ccca93644ec9571f71862e83c251aca6bc75ffd01201a37471ab8",
+      "timestampUtc": "2026-10-08T22:56:16.982352+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -l -p\n",
+      "stdout": "0x03000003  0 1374   putgd-lab Desktop\n0x03a0000e  0 1992   putgd-lab Update Manager\n0x02e00079  0 17990  putgd-lab put.gd \u2014 Settings\n",
+      "timestampUtc": "2026-10-08T22:56:17.605568+00:00"
+    },
+    {
+      "qmpClick": [
+        151,
+        265
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:56:36.534058+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/destination-before-draft.png",
+      "sha256": "aec51f527209d9885d60d5573305c316535937e3fb83fb50000f500c1289f96c",
+      "timestampUtc": "2026-10-08T22:56:37.195080+00:00"
+    },
+    {
+      "qmpClick": [
+        319,
+        236
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:56:37.201014+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/destination-draft.png",
+      "sha256": "2d8200a52bbd7de1f2acb306bd3873e12de0ec37e6dac741c1473746b381d36b",
+      "timestampUtc": "2026-10-08T22:56:37.799058+00:00"
+    },
+    {
+      "qmpKeys": [
+        "alt",
+        "f4"
+      ],
+      "timestampUtc": "2026-10-08T22:56:37.852806+00:00"
+    },
+    {
+      "cli": "ui.show",
+      "params": {
+        "view": "settings"
+      },
+      "result": {
+        "shown": "settings"
+      },
+      "timestampUtc": "2026-10-08T22:56:38.673154+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/destination-recreated.png",
+      "sha256": "2d8200a52bbd7de1f2acb306bd3873e12de0ec37e6dac741c1473746b381d36b",
+      "timestampUtc": "2026-10-08T22:56:39.922361+00:00"
+    },
+    {
+      "qmpClick": [
+        980,
+        435
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:56:45.984657+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/region-dropdown-recreated.png",
+      "sha256": "91a607e848e56994d3d8a1aa327855974a9c9c4be967f435f4e166c8fd1f3216",
+      "timestampUtc": "2026-10-08T22:56:46.776585+00:00"
+    },
+    {
+      "qmpKeys": [
+        "esc"
+      ],
+      "timestampUtc": "2026-10-08T22:57:05.342835+00:00"
+    },
+    {
+      "qmpClick": [
+        103,
+        700
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:57:05.347128+00:00"
+    },
+    {
+      "cli": "ui.show",
+      "params": {
+        "view": "settings"
+      },
+      "result": {
+        "shown": "settings"
+      },
+      "timestampUtc": "2026-10-08T22:57:06.141551+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/draft-destination-discarded.png",
+      "sha256": "d134545fd773ef42605f7e5bbcc2e2e165a6c068b38d012ef740a64d3d9a4494",
+      "timestampUtc": "2026-10-08T22:57:07.356270+00:00"
+    },
+    {
+      "qmpClick": [
+        977,
+        16
+      ],
+      "screen": [
+        1280,
+        800
+      ],
+      "timestampUtc": "2026-10-08T22:57:07.364714+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN\n",
+      "timestampUtc": "2026-10-08T22:57:08.870789+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/native-button-minimized.png",
+      "sha256": "e4ef087ac8777ba6adffdb21a1d9a9e1a21103d300fe13ee47cc956b243192bd",
+      "timestampUtc": "2026-10-08T22:57:09.022712+00:00"
+    },
+    {
+      "cli": "ui.show",
+      "params": {
+        "view": "settings"
+      },
+      "result": {
+        "shown": "settings"
+      },
+      "timestampUtc": "2026-10-08T22:57:09.317347+00:00"
+    },
+    {
+      "guestCommand": "wmctrl -l -p | awk '$3 == 17990 {print $1}' | while read id; do xprop -id \"$id\" _NET_WM_STATE; done\n",
+      "stdout": "_NET_WM_STATE(ATOM) = _NET_WM_STATE_FOCUSED\n",
+      "timestampUtc": "2026-10-08T22:57:10.666625+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/native-button-restored.png",
+      "sha256": "2c3daf580fa47d3289525641c35d98fd7833aef36a9c917f03b84d8eeb0b9174",
+      "timestampUtc": "2026-10-08T22:57:10.781041+00:00"
+    },
+    {
+      "qmpKeys": [
+        "alt",
+        "f4"
+      ],
+      "timestampUtc": "2026-10-08T22:57:10.836117+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/settings-closed-final.png",
+      "sha256": "e8b6f8728df330588ffaf3348deda551d691315fba7f62690fc19092c44143ac",
+      "timestampUtc": "2026-10-08T22:57:11.664065+00:00"
+    },
+    {
+      "guestCommand": "python3 - <<'CHECK'\nimport hashlib,json,os\nfrom pathlib import Path\nbase=Path(os.environ['XDG_CONFIG_HOME'])\nprint(json.dumps({str(p.relative_to(base)):hashlib.sha256(p.read_bytes()).hexdigest() for p in base.rglob('config.json')}))\nCHECK\n",
+      "stdout": "{\"putgd/putgd/config.json\": \"6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54\"}\n",
+      "timestampUtc": "2026-10-08T22:57:21.656099+00:00"
+    },
+    {
+      "witness": "/home/patrick/work/put.gd/work/memory-surfaces/cinnamon-001b/extras/finished.png",
+      "sha256": "e8b6f8728df330588ffaf3348deda551d691315fba7f62690fc19092c44143ac",
+      "timestampUtc": "2026-10-08T22:57:22.402985+00:00"
+    }
+  ],
+  "outcomes": {
+    "maximizeRecreation": {
+      "status": "passed",
+      "evidence": [
+        "extras/maximized-before-close.png",
+        "extras/maximized-reopened.png",
+        "extras/states.json"
+      ],
+      "observation": "Both inspected images show the maximized Settings layout with all bottom controls visible; native flags include both maximize axes before and after recreation."
+    },
+    "fullscreenRecreation": {
+      "status": "passed",
+      "evidence": [
+        "extras/fullscreen-before-close.png",
+        "extras/fullscreen-reopened.png",
+        "extras/states.json"
+      ],
+      "observation": "Both inspected images show Settings filling the screen without desktop panel/title decoration; FULLSCREEN flag retained after recreation."
+    },
+    "initialAltF9Attempt": {
+      "status": "not-a-minimize-witness",
+      "evidence": [
+        "extras/minimized.png",
+        "extras/restored-from-minimize.png",
+        "extras/states.json"
+      ],
+      "observation": "Settings remained visible and the reported native state was FOCUSED, not HIDDEN. Do not use this attempt as minimize evidence."
+    },
+    "minimizeRestore": {
+      "status": "passed",
+      "evidence": [
+        "extras/native-button-minimized.png",
+        "extras/native-button-restored.png"
+      ],
+      "observation": "Visible title-bar minimize click hid Settings and native state became _NET_WM_STATE_HIDDEN; production ui.show restored Settings visibly and native state became FOCUSED."
+    },
+    "dirtyDraftCloseReopen": {
+      "status": "passed",
+      "evidence": [
+        "extras/dirty-draft-before-close.png",
+        "extras/dirty-draft-closed.png",
+        "extras/dirty-draft-reopened.png"
+      ],
+      "observation": "Synthetic unsaved default folder /tmp/putgd-draft-native-001b persisted across Alt+F4 close and production ui.show reopening; closed witness shows the unrelated Update Manager instead of Settings."
+    },
+    "cancelDiscardsDraft": {
+      "status": "passed",
+      "evidence": [
+        "extras/cancel-reopened.png",
+        "extras/draft-destination-discarded.png"
+      ],
+      "observation": "Cancel restored /home/lab/putgd-lab/archive and discarded the temporary destination draft. Config file SHA-256 values match before, after Cancel, and final."
+    },
+    "regionPopupAfterRecreation": {
+      "status": "passed",
+      "evidence": [
+        "extras/destination-recreated.png",
+        "extras/region-dropdown-recreated.png"
+      ],
+      "observation": "Used an unsaved empty synthetic destination draft solely to enable the local region widget. After close/recreation, popup was aligned directly below the region field (approximately x463..995, y450..602), within the Settings window and display. No destination save/test/upload or credential interaction occurred; draft subsequently cancelled."
+    },
+    "nativeFolderChooserAndParentGuard": {
+      "status": "passed",
+      "evidence": [
+        "extras/folder-chooser-state.png",
+        "extras/folder-parent-close-request.png",
+        "extras/folder-cancelled.png"
+      ],
+      "observation": "Visible native Local output folder chooser had MODAL/SKIP_TASKBAR flags and WM_TRANSIENT_FOR 0x2e00079 (Settings). An explicit wmctrl close request to that parent retained both parent and chooser IDs. Escape cancelled the chooser, leaving Settings alive with its saved folder unchanged and the same resident identity."
+    },
+    "invariants": {
+      "status": "passed",
+      "operationCountBefore": 12,
+      "operationCountAfter": 12,
+      "configurationUnchanged": true,
+      "residentIdentityUnchanged": true,
+      "finalUi": "Settings closed; existing Update Manager visible; VNC listener and display output kept enabled."
+    }
+  },
+  "limits": [
+    "Initial Alt+F9 attempt did not minimize and is excluded; later title-bar control provides actual native minimize evidence.",
+    "Native evidence applies only to this running Cinnamon candidate and 1280x800 display; no other compositor or DPI setting was exercised.",
+    "The unsaved field edit did not visibly change the top saved-settings status message; preservation/discard conclusions use the actual field contents and unchanged file hashes."
+  ],
+  "operationCountBefore": 12,
+  "configurationBefore": {
+    "putgd/putgd/config.json": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54"
+  },
+  "configurationAfterCancel": {
+    "putgd/putgd/config.json": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54"
+  },
+  "folderParentId": "0x02e00079",
+  "folderDialogId": "0x03e00007",
+  "configurationAfter": {
+    "putgd/putgd/config.json": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54"
+  },
+  "operationCountAfter": 12,
+  "identityAfter": {
+    "pid": 17990,
+    "startTicks": 657928,
+    "sha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09"
+  },
+  "status": "passed-with-corrected-minimize-witness",
+  "inspectedWitnesses": [
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/maximized-before-close.png",
+      "sha256": "7f306977b505dbc8364e2ca519686df623f593243825d019710d9cc44de13887"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/maximized-reopened.png",
+      "sha256": "7f306977b505dbc8364e2ca519686df623f593243825d019710d9cc44de13887"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/fullscreen-before-close.png",
+      "sha256": "23b4c8702712100c96c8d83f5de20ecd965a31708d63d94b89bc1e40512a8354"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/fullscreen-reopened.png",
+      "sha256": "23b4c8702712100c96c8d83f5de20ecd965a31708d63d94b89bc1e40512a8354"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/minimized.png",
+      "sha256": "0ea09a195d589f5eb263b96537b84334e33c1b66d4b9c0e03c0286b3d9ca9c95"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/restored-from-minimize.png",
+      "sha256": "0ea09a195d589f5eb263b96537b84334e33c1b66d4b9c0e03c0286b3d9ca9c95"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/normal-for-controls.png",
+      "sha256": "294999a944eb16064dcfa70dd327dc82f525542f46fb6e94583239e8f4f233d9"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/advanced-open.png",
+      "sha256": "a5fd1bc73638542be26c4ad43ba27aedfc4e1a92eb1997210d54fe7b45817c20"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/capture-page.png",
+      "sha256": "e3f89037ee34757074b179cda8ef61eba3521166b80d46be6cbd7ef6d8682c31"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/local-folders.png",
+      "sha256": "88c4c092da3dac622331ff23a6f04a8e5507d1911fb611353847b75fe2e6f5d8"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/dirty-draft-before-close.png",
+      "sha256": "6fe3b8ca2f3e5b3c283262fad71895b15cf0dfbf800d4369bfde85c0dea51311"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/dirty-draft-closed.png",
+      "sha256": "32fa1b77457e8a669c0fc5ef06ee647346fcc33bd0cf47efb4d56d5bf2442590"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/dirty-draft-reopened.png",
+      "sha256": "668a331eac45b66976989f014bb5a14ca1821d6ce7cce0b6455f9e85b259bf71"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/cancel-reopened.png",
+      "sha256": "e6abb5f7d4761d49a58c359433f1e2a548bf455913ea2c77b8a43df42b3a9cc4"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/folder-chooser-open.png",
+      "sha256": "502579717f7eb5706819605c5f8c9f2e27c9a6469a26b28f0d875a2c9dd888cc"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/folder-chooser-state.png",
+      "sha256": "4d3408d76b38e72a39f1c0f52745aab94ca2cefa8439ce284f852690a0356567"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/folder-parent-close-request.png",
+      "sha256": "b72a084fe23f9f76a1fc7806ddbbaeed17eb41a4f4a70b44d16b881762fcf1fa"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/folder-cancelled.png",
+      "sha256": "14f8cb71b12ccca93644ec9571f71862e83c251aca6bc75ffd01201a37471ab8"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/destination-recreated.png",
+      "sha256": "2d8200a52bbd7de1f2acb306bd3873e12de0ec37e6dac741c1473746b381d36b"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/region-dropdown-recreated.png",
+      "sha256": "91a607e848e56994d3d8a1aa327855974a9c9c4be967f435f4e166c8fd1f3216"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/draft-destination-discarded.png",
+      "sha256": "d134545fd773ef42605f7e5bbcc2e2e165a6c068b38d012ef740a64d3d9a4494"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/native-button-minimized.png",
+      "sha256": "e4ef087ac8777ba6adffdb21a1d9a9e1a21103d300fe13ee47cc956b243192bd"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/native-button-restored.png",
+      "sha256": "2c3daf580fa47d3289525641c35d98fd7833aef36a9c917f03b84d8eeb0b9174"
+    },
+    {
+      "path": "work/memory-surfaces/cinnamon-001b/extras/settings-closed-final.png",
+      "sha256": "e8b6f8728df330588ffaf3348deda551d691315fba7f62690fc19092c44143ac"
+    }
+  ],
+  "script": {
+    "path": "work/memory-surfaces/cinnamon-001b/extra-native.py",
+    "sha256": "b7adc43cecc2e4fa18ed9e91d52b599a31808fe51aa09d5c6e2aa0c3fdea67a1"
+  },
+  "completedAtUtc": "2026-10-08T22:57:48.175679+00:00",
+  "executionNotes": [
+    "Initial sandboxed localhost SSH attempt failed before any graphical action. Authorized escalated localhost SSH/QMP succeeded.",
+    "No repository source, build, SDK, credential, bucket, or other VM changes. Evidence written only beneath work/memory-surfaces/cinnamon-001b."
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "argv": [
+    "python3",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/docs/evidence/capture-parity-debug/run_checked_capture.py",
+    "--harness",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/tests/performance/run_capture.py",
+    "--harness-sha256",
+    "caf58fd076ce0c46835753739055bbda2ee3c2cfd1b0ce2822290f8b2783fb94",
+    "--checker",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/tools/diagnostics/check_socket_paths.py",
+    "--",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "--driver",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-bench-capture",
+    "--capture-helper",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-capture",
+    "--live-outline",
+    "--output",
+    "/tmp/pg-parity-truncate-B"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "startedUtc": "2026-10-09T18:22:54.278282+00:00"
+}

@@ -1,0 +1,29 @@
+{
+  "utc": "2026-10-09T09:14:28.878050+00:00",
+  "view": "activity",
+  "reply": {
+    "shown": "activity"
+  },
+  "helper": {
+    "pid": 293807,
+    "startTicks": 4579218,
+    "parentPid": 275236,
+    "sha256": "d9ad6e3b8773b24bfa1828248e5345e2f40db620fb5202f48ed0a9e7e985dabc"
+  },
+  "trigger": "production CLI ui.show; native visible window",
+  "witness": {
+    "utc": "2026-10-09T09:14:28.954619+00:00",
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/activity-open.png",
+    "sha256": "202fd5111b19f7e0c8b5a960b42097b399e418a9560e6114f8e18c94fea7f53b",
+    "nativeQmp": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-nativecore-exp001-c49-cross-activity-open-head0.ppm",
+      "sha256": "0cf32c3114f8c420ec0f1f366184e7501cf0ab0c252cb1a1091da2a205b173eb"
+    },
+    "desktopPixels": [
+      1280,
+      800
+    ],
+    "vncPort": 5934,
+    "visualReview": "pending"
+  }
+}

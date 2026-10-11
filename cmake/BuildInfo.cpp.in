@@ -1,0 +1,6 @@
+#include "core/BuildInfo.h"
+namespace putgd {
+const char* buildVersion() noexcept { return "@version@"; }
+const char* buildManifestJson() noexcept { return R"putgd(@manifest@
+)putgd"; }
+}

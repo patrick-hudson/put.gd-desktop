@@ -1,0 +1,13 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/unlock-visible.py",
+    "gnome",
+    "type-password",
+    "--output",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross"
+  ],
+  "cwd": null,
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T08:45:21.892599+00:00"
+}

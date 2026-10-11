@@ -1,0 +1,12 @@
+{
+  "timestampUtc": "2026-10-09T00:52:57.681621+00:00",
+  "script": "set -eu\nsession_id=$(loginctl show-user \"$(id -u)\" -p Display --value)\n[ \"$(loginctl show-session \"$session_id\" -p User --value)\" = \"$(id -u)\" ]\n[ \"$(loginctl show-session \"$session_id\" -p Type --value)\" = wayland ]\nloginctl unlock-session \"$session_id\"\n",
+  "visibleKeys": [
+    "esc"
+  ],
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/u11-console-restored-head0.ppm",
+    "sha256": "8cf21743e5edfe65cab152ded2383b138bb035a6c428996486664daaf9cea280"
+  },
+  "policyChanged": false
+}

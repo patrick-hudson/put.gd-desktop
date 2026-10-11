@@ -1,0 +1,161 @@
+{
+  "projectionSchemaVersion": 1,
+  "transformed": true,
+  "original": {
+    "path": "/home/patrick/work/put.gd/work/capture-parity/clean53/view-exit-supplement/repeat1/results.json",
+    "sha256": "8b88af3539296778199cfd8fed5339cca8bf045c2fe1680e03fd59e59e43c4b9"
+  },
+  "data": {
+    "schemaVersion": 1,
+    "sourceCount": 53,
+    "exitCode": 0,
+    "queryCount": 3,
+    "elapsedSeconds": 119.61231669795234,
+    "passed": true,
+    "knownOwnedCleanupComplete": true,
+    "sourceCommit": "1ee42f32c61c3d93d88cc1d3dc624d9ad086bb70",
+    "failurePresent": false,
+    "cleanupFailurePresent": false,
+    "rawFrozenResult": {
+      "path": "/tmp/pg53-vex1/results.json",
+      "sha256": "a5d0f05ab44aa681ce542393018ae3dae197f4a03c5d2602c28259455ce636bb"
+    },
+    "cycles": [
+      {
+        "cycle": 1,
+        "cliMilliseconds": 17.24516396643594,
+        "resident": {
+          "pid": 3568977,
+          "startTicks": 35927717,
+          "uid": 1000,
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332"
+        },
+        "socketPeer": {
+          "pid": 3568977,
+          "uid": 1000,
+          "gid": 1000,
+          "device": 66306,
+          "inode": 5775639
+        },
+        "snapshot": {
+          "build": {
+            "schemaVersion": 1,
+            "version": "0.1.1-dev.53+g1ee42f32c61c",
+            "baseVersion": "0.1.1",
+            "packageVersion": "0.1.1~dev.53+g1ee42f32c61c",
+            "gitCommit": "1ee42f32c61c3d93d88cc1d3dc624d9ad086bb70",
+            "gitTree": "e6584c6e2e002c2296855ad42b5dcd73e69a8ad7",
+            "commitCount": 53,
+            "dirty": false,
+            "sourceProvenance": "git"
+          },
+          "ui": {
+            "pid": 0,
+            "state": "stopped",
+            "lastExit": {
+              "generation": 1,
+              "code": 0,
+              "status": "normal"
+            }
+          },
+          "operationsReady": true,
+          "journalReady": true,
+          "trayAvailable": true,
+          "activeOperations": 0
+        }
+      },
+      {
+        "cycle": 2,
+        "cliMilliseconds": 16.59656100673601,
+        "resident": {
+          "pid": 3568977,
+          "startTicks": 35927717,
+          "uid": 1000,
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332"
+        },
+        "socketPeer": {
+          "pid": 3568977,
+          "uid": 1000,
+          "gid": 1000,
+          "device": 66306,
+          "inode": 5775639
+        },
+        "snapshot": {
+          "build": {
+            "schemaVersion": 1,
+            "version": "0.1.1-dev.53+g1ee42f32c61c",
+            "baseVersion": "0.1.1",
+            "packageVersion": "0.1.1~dev.53+g1ee42f32c61c",
+            "gitCommit": "1ee42f32c61c3d93d88cc1d3dc624d9ad086bb70",
+            "gitTree": "e6584c6e2e002c2296855ad42b5dcd73e69a8ad7",
+            "commitCount": 53,
+            "dirty": false,
+            "sourceProvenance": "git"
+          },
+          "ui": {
+            "pid": 0,
+            "state": "stopped",
+            "lastExit": {
+              "generation": 2,
+              "code": 0,
+              "status": "normal"
+            }
+          },
+          "operationsReady": true,
+          "journalReady": true,
+          "trayAvailable": true,
+          "activeOperations": 0
+        }
+      },
+      {
+        "cycle": 3,
+        "cliMilliseconds": 20.69160802057013,
+        "resident": {
+          "pid": 3568977,
+          "startTicks": 35927717,
+          "uid": 1000,
+          "device": 66306,
+          "inode": 28082856,
+          "sha256": "e8433e98deee55f68f7c88d5f3a09f41bdcf95155fba5f83d6c98955d8b05332"
+        },
+        "socketPeer": {
+          "pid": 3568977,
+          "uid": 1000,
+          "gid": 1000,
+          "device": 66306,
+          "inode": 5775639
+        },
+        "snapshot": {
+          "build": {
+            "schemaVersion": 1,
+            "version": "0.1.1-dev.53+g1ee42f32c61c",
+            "baseVersion": "0.1.1",
+            "packageVersion": "0.1.1~dev.53+g1ee42f32c61c",
+            "gitCommit": "1ee42f32c61c3d93d88cc1d3dc624d9ad086bb70",
+            "gitTree": "e6584c6e2e002c2296855ad42b5dcd73e69a8ad7",
+            "commitCount": 53,
+            "dirty": false,
+            "sourceProvenance": "git"
+          },
+          "ui": {
+            "pid": 0,
+            "state": "stopped",
+            "lastExit": {
+              "generation": 3,
+              "code": 0,
+              "status": "normal"
+            }
+          },
+          "operationsReady": true,
+          "journalReady": true,
+          "trayAvailable": true,
+          "activeOperations": 0
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "timestampUtc": "2026-10-08T20:48:51.042922+00:00",
+  "command": "sudo -n apt-get install -y gir1.2-gtk-4.0\n",
+  "exitCode": 0,
+  "scope": "Only GTK4 independent fixture runtime typelib, using normal guest distro apt."
+}

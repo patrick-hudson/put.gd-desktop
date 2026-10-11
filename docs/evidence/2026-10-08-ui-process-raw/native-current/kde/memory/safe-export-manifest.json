@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "desktop": "kde",
+  "sourceCommit": "97ca3a521714e2717cedc1139976130627bfb8a8",
+  "allowlistOnly": true,
+  "privacy": "No payloads, clipboard contents, credentials, private-key bytes, profile/configuration contents or user screenshot data. Guard exports are IDs/states/count/UI only. The sole user-generated region payload was never read/hashed/exported.",
+  "files": [
+    {
+      "path": "work/u11/native/kde/memory/results.json",
+      "bytes": 14462,
+      "sha256": "36594188686a8357874584d234b32d5d9ff28a4c5950ad217028c33f7709fa0f"
+    },
+    {
+      "path": "work/u11/native/kde/memory/progress.json",
+      "bytes": 5361,
+      "sha256": "750ff376cf1d40d670eb62648587b12414af4f2161003454c2a57d28772c7019"
+    },
+    {
+      "path": "work/u11/native/kde/memory/samples.jsonl",
+      "bytes": 15544,
+      "sha256": "138891432bac969484ac86ce0a9cbdf53113325fab92082841583eaa9fd3a8d2"
+    },
+    {
+      "path": "work/u11/native/kde/memory/footprint.json",
+      "bytes": 38966,
+      "sha256": "107e4e069f1ee3f1d0e21b7141b108e1b7333d70d4e9a7c3f267c350b46c0175"
+    },
+    {
+      "path": "work/u11/native/kde/memory/footprint-command.json",
+      "bytes": 521,
+      "sha256": "e89bb8dd1ec4dbac9f775aa2865b1805f5aa17ff7a085b08d23af68a47cc1887"
+    },
+    {
+      "path": "work/u11/native/kde/memory/observer.log",
+      "bytes": 6769,
+      "sha256": "129b1c3b95f56035b04e8662eb031cfb9b61e42bb1ddc08ae618df0874500c16"
+    },
+    {
+      "path": "work/u11/native/kde/memory/unit-receipt.json",
+      "bytes": 2661,
+      "sha256": "57494e42baf5fad27f18d1d2b2eaa1d8e9bba8085075969dbe12d24f0fd0d0b8"
+    },
+    {
+      "path": "work/u11/native/kde/memory/quiet-guard.json",
+      "bytes": 81438,
+      "sha256": "6daca9033d0567ff5539508b73ca5a93fab9586bed4283ba4fdfb0e57d9710ce"
+    },
+    {
+      "path": "work/u11/native/kde/quiet-memory-preflight/launcher.json",
+      "bytes": 844,
+      "sha256": "c75f710df6f989815d06049d886700cdf944512234e67bcba2ee8a9687700c2d"
+    },
+    {
+      "path": "work/u11/native/kde/quiet-memory-preflight/launcher.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "work/u11/native/kde/quiet-memory-preflight/launcher-exit.json",
+      "bytes": 59,
+      "sha256": "7c0c1d71a7747abd6e105cef4fc93935ffbd2022429327e1b7f1ef3a1bd163e6"
+    },
+    {
+      "path": "work/u11/native/kde/quiet-memory-preflight/restored-preflight.json",
+      "bytes": 7883,
+      "sha256": "68edffc82163b4664c41a0170986dd21f094094f0e4d442b796ed762858216b8"
+    },
+    {
+      "path": "work/u11/native/kde/quiet-memory-preflight/console-before-converted.png",
+      "bytes": 100231,
+      "sha256": "d222cc3c8fe86c36d7296d72702559246b50faa9200078831f76d7d74f694cc3"
+    },
+    {
+      "path": "work/u11/native/kde/quiet-memory-preflight/console-restored.png",
+      "bytes": 100446,
+      "sha256": "16dc0b2da223a9e0847abb0fb957f466f73412a0e29e453351ca62d23c027d62"
+    },
+    {
+      "path": "work/u11/native/kde/memory-prepared.json",
+      "bytes": 3422,
+      "sha256": "3e5894d8b59ca63d195da5c50a496d39a355feb78fc223fa1ad4024657ee5bb2"
+    },
+    {
+      "path": "work/u11/native/kde/monitor-quiet.py",
+      "bytes": 3647,
+      "sha256": "4b195099253fab835422d312e2251a963e56fdc186d6f559d2dc03e7ad41c258"
+    },
+    {
+      "path": "work/u11/native/kde/mapping-after-sample.py",
+      "bytes": 2083,
+      "sha256": "83cc7d7c5dfaa42ee9363325d071fdc5dc50ea5bcbd4f9250d35e057dc6b91fa"
+    },
+    {
+      "path": "work/u11/native/kde/guest-memory-plan.json",
+      "bytes": 1193,
+      "sha256": "9061a04d7911e065183b7b51d5d3dfacabd97a12439dbdabc10fbeed8a90e7b5"
+    }
+  ]
+}

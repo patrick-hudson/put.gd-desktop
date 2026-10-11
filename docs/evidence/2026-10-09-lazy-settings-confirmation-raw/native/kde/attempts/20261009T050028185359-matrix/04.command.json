@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tools/lab/lab.py",
+    "run",
+    "--run",
+    "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T050028185359-1",
+    "--scenario",
+    "region",
+    "--clipboard-client",
+    "qt",
+    "--timeout",
+    "90",
+    "--keep"
+  ],
+  "cwd": "/home/patrick/work/put.gd",
+  "stdinFile": null,
+  "startedUtc": "2026-10-09T05:00:29.883583+00:00"
+}

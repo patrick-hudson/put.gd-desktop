@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "reviewedUtc": "2026-10-09T04:44:35.225762+00:00",
+  "scope": "Root follow-up current45dirty full twelve-case native matrix; no latency/memory claim",
+  "version": "0.1.1-dev.45+g9d142919e5e6.dirty",
+  "candidatePatchSha256": "e4fb0b3e247ba5c14c04c79515a1468cc182a50b0742e79ec885696077f8f086",
+  "matrixSha256": "5525176d9efdd74b85a23ce7c35ed4efed927c834c0d0326fe43d205f36c790e",
+  "visualReview": "Root inspected actual 12-case matrix contact sheet and final fixture-close screenshot; independent Qt/GTK paste and synthetic artifacts verified in per-case results",
+  "contactSheet": {
+    "path": "work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/matrix-contact-sheet.png",
+    "sha256": "63b87c597d2fbdf23f98153425ed9d5f93005eec305db4d2daf790c37cf44e48"
+  },
+  "cases": [
+    {
+      "client": "qt",
+      "scenario": "region",
+      "passed": true,
+      "operationId": "c071c390-66d7-4a53-8d30-05d2677f2751",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-1/final-head0.ppm",
+        "sha256": "acfcb51e341e4cb316b3132629ea4c244e9177799ec56eda5d521da0fd91470b"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-1"
+    },
+    {
+      "client": "qt",
+      "scenario": "window",
+      "passed": true,
+      "operationId": "2e891f6c-f273-4424-b641-07433d0d70f4",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-2/final-head0.ppm",
+        "sha256": "acfcb51e341e4cb316b3132629ea4c244e9177799ec56eda5d521da0fd91470b"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-2"
+    },
+    {
+      "client": "qt",
+      "scenario": "desktop",
+      "passed": true,
+      "operationId": "4289ff61-6e31-4a03-b9c9-6a36bed683ec",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-3/final-head0.ppm",
+        "sha256": "acfcb51e341e4cb316b3132629ea4c244e9177799ec56eda5d521da0fd91470b"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-3"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-text",
+      "passed": true,
+      "operationId": "bc9c6c6b-a8f9-4ddd-8197-e40249d09122",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-4/final-head0.ppm",
+        "sha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-4"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-image",
+      "passed": true,
+      "operationId": "643dfc9f-611d-408c-a780-aa79bb13f2cb",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-5/final-head0.ppm",
+        "sha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-5"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-files",
+      "passed": true,
+      "operationId": "d6e1c388-57bb-4bbf-9a51-7bb56c59b5e2",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-6/final-head0.ppm",
+        "sha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-6"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-escape",
+      "passed": true,
+      "operationId": "e975b1ae-a77f-41ab-8c17-54fdc6544871",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-7/final-head0.ppm",
+        "sha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-7"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-right-click",
+      "passed": true,
+      "operationId": "04c35fc5-ba75-4450-9559-a8b391c7a8bc",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-8/final-head0.ppm",
+        "sha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-8"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-zero-area",
+      "passed": true,
+      "operationId": "4a372e5f-3f05-40ff-9aa3-ac10fce08a61",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-9/final-head0.ppm",
+        "sha256": "5f94c8e74a6db111b3ecf5be5a3c2ebfc1541669e92c856fcd587fce6cd8b37e"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-9"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-text",
+      "passed": true,
+      "operationId": "240362b9-f818-47e4-a5f9-93af81028fc3",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-10/final-head0.ppm",
+        "sha256": "d973ba9abecd4d4eedf5ac1d90cdccb95907f7004248a8789bdcf35ea8a1012c"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-10"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-image",
+      "passed": true,
+      "operationId": "fab598d3-f90a-4b43-9438-f50a218e7db5",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-11/final-head0.ppm",
+        "sha256": "67d4b09bfb5154ebb53c33b3e8a6e8d7fecba3159e7ce370147dfa6ea5bc8cbf"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-11"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-files",
+      "passed": true,
+      "operationId": "33d6c12d-448d-4cac-ae33-7e90ad792e9b",
+      "witness": {
+        "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-12/final-head0.ppm",
+        "sha256": "67d4b09bfb5154ebb53c33b3e8a6e8d7fecba3159e7ce370147dfa6ea5bc8cbf"
+      },
+      "controlDirectory": "/home/patrick/work/put.gd/work/lab-runs/ui43-cinnamon-20261009T043733015306-12"
+    }
+  ],
+  "final": {
+    "utc": "2026-10-09T04:44:21.160388+00:00",
+    "resident": {
+      "pid": 73893,
+      "startTicks": 2808369,
+      "sha256": "461f0522ba61db00b02c2dd32dfe7a3ee343c00ad8730c0cc51876c3f5fd0009"
+    },
+    "ui": {
+      "checkpointBytes": 3853,
+      "lastExit": {
+        "code": 0,
+        "generation": 10,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    },
+    "acceptedRevision": "3f12a24dee84bc1fe121b12c534a74eb6aac48a0ebf3634f5c20f5ac83adbf99",
+    "observedRevision": "3f12a24dee84bc1fe121b12c534a74eb6aac48a0ebf3634f5c20f5ac83adbf99",
+    "profileIds": [
+      "synthetic-ui-only"
+    ],
+    "actionOutputs": {
+      "clipboard": "local",
+      "desktop": "local",
+      "region": "local",
+      "window": "local"
+    },
+    "activeOperations": 0
+  },
+  "finalObservedReceipt": "work/ui-refinement/native-replay/lazy-exp001-native/cinnamon/attempts/20261009T044419812402-observe/observed.json",
+  "trayRendered": "Blue up-arrow visible bottom-right after synthetic fixture normal Alt+F4 close",
+  "priorFailurePreserved": "Original Qt region timeout 0447224a-d5ae-44f8-b944-36f2ab62949f remains in original visual-review.json and attempt; cause unconfirmed; fresh matrix after builds drained passed12/12",
+  "limits": [
+    "Single-head synthetic native actions only; no full desktop profile certification",
+    "Earlier agent UI receipt remains a separate bounded Settings/lifecycle receipt"
+  ]
+}

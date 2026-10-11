@@ -1,0 +1,9 @@
+{
+  "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+  "scope": "Matched driver/live-outline/control geometry; original resident selector, no child",
+  "result": "/tmp/pg-nc1-latency-reference1/results.json",
+  "sha256": "8436d5f9ac6c1511a448c6a826c1a9e419dd80b00b03567166b275279a9b5a85",
+  "p95PaintMs": 596.008894,
+  "budgetPassed": false,
+  "interpretation": "150ms budget already fails in clean source45 under same driver. Candidate49 also adds roughly100ms median mapping/painting; tail comparison needs attribution, not a Qt-only blame."
+}

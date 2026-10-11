@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/patrick/work/put.gd/work/u11/native/cinnamon/native.py", line 387, in <module>
+    main()
+  File "/home/patrick/work/put.gd/work/u11/native/cinnamon/native.py", line 379, in main
+    globals()[args.phase](args)
+  File "/home/patrick/work/put.gd/work/u11/native/cinnamon/native.py", line 144, in install
+    before = lab.verify_running_app(RUN)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/patrick/work/put.gd/tools/lab/lab.py", line 451, in verify_running_app
+    raise LabError('Expected exactly one lab resident; stop stale test processes before retrying')
+lab.LabError: Expected exactly one lab resident; stop stale test processes before retrying

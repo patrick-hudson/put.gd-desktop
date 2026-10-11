@@ -1,0 +1,498 @@
+{
+  "spec": "resident-view-surfaces",
+  "run_id": "resident-view-surfaces-20261008",
+  "started_at": "2026-10-08T21:25:30.148820+00:00",
+  "phase": "complete",
+  "baseline": {
+    "timestamp": "2026-10-08T21:25:30.148820+00:00",
+    "metrics": {
+      "finalHiddenRssBytes": {
+        "aggregate": 77166592.0,
+        "samples": [
+          77488128,
+          76845056
+        ]
+      },
+      "gnomePostFunctionalRssBytes": {
+        "aggregate": 119918592,
+        "samples": [
+          119918592
+        ]
+      },
+      "kdePostFunctionalRssBytes": {
+        "aggregate": 195211264,
+        "samples": [
+          195211264
+        ]
+      }
+    },
+    "gates": {
+      "allProfilesPassed": 1,
+      "physicalViewsReopened": 1,
+      "operationCount": 0
+    },
+    "diagnostics": {
+      "coldSnapshotRssBytes": 47091712.0,
+      "gnomePssBytes": 75053056,
+      "kdePssBytes": 67477504
+    },
+    "physicalReferenceRuns": [
+      "work/memory-next/baseline-views-1/results.json",
+      "work/memory-next/baseline-views-2/results.json"
+    ],
+    "physicalSpreadBytes": 643072,
+    "desktopWave": "work/cross-desktop-current/memory-wave.json",
+    "method": "Two physical runs; one quiet120s observation per Wayland guest with25flatRSS samples after frozen functional workflow. Different workloads are compared only within each profile. No new desktop baseline was invented."
+  },
+  "experiments": [
+    {
+      "iteration": 1,
+      "hypothesisId": "deferred-native-release",
+      "opportunity": {
+        "workload": "Frozen physical3viewcycles and each nativeWayland postfunctionalwave",
+        "baseline": "CP1 77166592physical /119918592GNOME /195211264KDE bytes RSS",
+        "evidence": "8,404,992resident Xorg SHM bytes and GNOME27,979,776/KDE28,016,640Wayland SHM bytes remain hidden; Qt6.4.2/6.10.2 destructor chain releases backing store; logical widgets are retained in main.",
+        "expected_benefit": "Unknown realized saving; drawing-buffer opportunity upper bound about8MiB physical and26.7MiB per Wayland guest. No cold saving predicted.",
+        "confidence": "High resource-lifetime evidence; medium realized RSS gain until actual candidate measurements",
+        "cost_and_risk": "Small shared native-lifetime helper and3views; no dependencies. Main risks: native dialog ownership, full repaint/reopen, minimize, queued callback lifetime, retained draft/selection.",
+        "cheaper_locator": "Completed smaps/source attribution suffices to select; per-view staging would refine ownership but not change whether to try this small candidate. Actual native tests and paired measurements decide keep."
+      },
+      "measuredAtUtc": "2026-10-08T22:45:20.560331+00:00",
+      "outcome": "kept",
+      "rawMetrics": {
+        "finalHiddenRssBytes": 68558848.0,
+        "coldSnapshotRssBytes": 46888960.0,
+        "allProfilesPassed": 1,
+        "physicalViewsReopened": 1,
+        "operationCount": 0,
+        "gnomePostFunctionalRssBytes": 90226688,
+        "gnomePssBytes": 59119616,
+        "kdePostFunctionalRssBytes": 164868096,
+        "kdePssBytes": 57109504
+      },
+      "metrics": {
+        "finalHiddenRssBytes": {
+          "aggregate": 68558848.0,
+          "samples": [
+            68542464,
+            68575232
+          ]
+        },
+        "gnomePostFunctionalRssBytes": {
+          "aggregate": 90226688,
+          "samples": [
+            90226688
+          ]
+        },
+        "kdePostFunctionalRssBytes": {
+          "aggregate": 164868096,
+          "samples": [
+            164868096
+          ]
+        }
+      },
+      "gates": {
+        "allProfilesPassed": 1,
+        "physicalViewsReopened": 1,
+        "operationCount": 0
+      },
+      "diagnostics": {
+        "coldSnapshotRssBytes": 46888960.0,
+        "gnomePssBytes": 59119616,
+        "kdePssBytes": 57109504
+      },
+      "comparisons": [
+        {
+          "kind": "standalone",
+          "workload": "physical Cinnamon3emptyviewcycles/30secondshidden,2serialruns",
+          "reference": {
+            "sourceCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+            "appSha256": "f1a494b62bd408728e0988a11fc01f889d72caeb74cefeabd16ec7fcfbf7099f",
+            "samples": [
+              77488128,
+              76845056
+            ]
+          },
+          "candidate": {
+            "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+            "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+            "appSha256": "12bc4309e2191bb5d715dc74e4e04d98e0b11a7fbd2f42bde80c5217f014fd09",
+            "samples": [
+              68542464,
+              68575232
+            ]
+          },
+          "uncertainty": {
+            "referenceSpreadBytes": 643072,
+            "candidateSpreadBytes": 32768
+          },
+          "correctness": "All3views reopen eachcycle;0operations; nativeextra state/dialog checks pending."
+        },
+        {
+          "kind": "standalone",
+          "workload": "12nativeQt/GTKcases+2viewcycles then120s/5sinterval/5swarmup; GNOMEextra liveregion operation13",
+          "reference": {
+            "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+            "runningApp": {
+              "pid": 2775,
+              "startTicks": 4592,
+              "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+            },
+            "rssBytes": 119918592
+          },
+          "candidate": {
+            "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+            "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+            "runningApp": {
+              "pid": 31221,
+              "startTicks": 617110,
+              "sha256": "514a33cd6eda3b155f2fd7067280f614e6d9443a75f3c59dd9e217a6c07c1dd4"
+            },
+            "rssBytes": 90226688
+          },
+          "uncertainty": "Single observation per profile; all raw samples retained; KDE additionalcycle caveat remains explicit.",
+          "correctness": "12cases passed, all6open/closedviewframes inspected; extra native checks pending."
+        },
+        {
+          "kind": "standalone",
+          "workload": "12nativeQt/GTKcases+2viewcycles then120s/5sinterval/5swarmup; baselineKDE had2initial+2acceptedviewcycles, candidateextra2cycles deferred untilprimarysample",
+          "reference": {
+            "sourceCommit": "a3d70dc2a6c6866fc6e38dd5e001553fb5c157a2",
+            "runningApp": {
+              "pid": 2958,
+              "startTicks": 81226,
+              "sha256": "8336dcdee8429dd0126b8b33609cf3ab6b7f5fc0fc607554a9eb69a5302603a1"
+            },
+            "rssBytes": 195211264
+          },
+          "candidate": {
+            "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+            "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+            "runningApp": {
+              "pid": 58990,
+              "startTicks": 731554,
+              "sha256": "89627b4f91bb1a8cc40100139407caade5a731173567f98fec118659e568d426"
+            },
+            "rssBytes": 164868096
+          },
+          "uncertainty": "Single observation per profile; all raw samples retained; KDE additionalcycle caveat remains explicit.",
+          "correctness": "12cases passed, all6open/closedviewframes inspected; extra native checks pending."
+        }
+      ],
+      "candidateSource": {
+        "schemaVersion": 1,
+        "timestampUtc": "2026-10-08T22:19:13.656801+00:00",
+        "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+        "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+        "archive": "/home/patrick/work/put.gd/work/memory-surfaces/candidate-001b.tar",
+        "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+        "patchSha256": "aef12ee24f0005ccb3cccec522bb68841156524fd623acb6add780a473554315",
+        "sourceHashes": {
+          "src/ui/RetainedWindow.h": "1df97f83fb32f6954b11895f17062fd10ffe923d2cc810566fff4297f409eb05",
+          "src/ui/SettingsWindow.h": "c28e488710608b5dd1366ea097df70286cca3e2dd1d892394517be700b338b6d",
+          "src/ui/SettingsWindow.cpp": "46726a792da084e0e8ca965ce0f75f39ea5551e4a48011f25adfa9ec8dc1e99a",
+          "src/ui/HistoryWindow.h": "1aa2e83b8984309db0f03b34b48dc64ad35c74d7a06b9b4b66b49ec6fb66f24b",
+          "src/ui/HistoryWindow.cpp": "f5a863440bc8a553bf515e9b8d309e3e1ef80829072a0cff77c5832ca6a69c18",
+          "src/ui/RecentOperations.h": "b0838c14f21240ffd63454f7e5fe38254d4cf7e8ba59916666d94559bfbe3180",
+          "src/ui/RecentOperations.cpp": "7f356eb18334769bd1fcda69058bdcde5221d4bea1d982d6f322b333c8f412eb",
+          "tests/gui/test_settings.cpp": "c657a34bdff3b6df36cae69df5ff05f19cd787c245d255b882486b69f7198c47",
+          "tests/gui/test_history_view.cpp": "7de08fd777ebb7c16d091b05333b8b90f8bca7e98a8122301a1c77196e5a023b",
+          "tests/gui/test_operations_view.cpp": "8d37f832be4b007d0ea6fce2f710b8da93096f01e4d8ecfcaac3c35534068fc7"
+        },
+        "supersedesUnmeasuredCandidate": "52667aa0291bf3eb1eeb30f1e6d11ef1cc8d5ce3",
+        "reason": "Confirmed native/logical window-state mismatch; showEvent synchronizes native states. Test failed red then all3GUItests passed. No memory measurements existed for001."
+      },
+      "correctness": {
+        "hostChecks": "work/memory-surfaces/host-checks-001b.json",
+        "review": "work/memory-surfaces/review/review.json",
+        "coldFiveMinute": {
+          "elapsedSeconds": 300.1582729970105,
+          "idleCpuPercentOneCore": 0.009994727015336602,
+          "finalRssBytes": 47095808,
+          "peakSampledRssBytes": 47095808,
+          "budgetPassed": true
+        },
+        "nativeExtras": {
+          "cinnamon": "work/memory-surfaces/cinnamon-001b/extra-native.json",
+          "gnome": "work/memory-surfaces/gnome/extra-native.json",
+          "gnomeGeometryControl": "work/memory-surfaces/gnome/geometry-probe/conclusion.json",
+          "kde": "work/memory-surfaces/kde/attempts/candidate-001b/extra-native.json",
+          "limits": [
+            "GNOME fullscreen has no existing binding/product action, untested; host widget state tests cover it offscreen.",
+            "GNOME activation policy may require dock activation of minimized windows; not attributed to candidate.",
+            "GNOME normal geometry behavior reproduced identically in plain QWidget and exact candidate; no candidate-specific regression established."
+          ]
+        },
+        "kdeAdditionalCycleObservation": {
+          "file": "work/memory-surfaces/kde/attempts/candidate-001b/verified-extra-cycle-memory-sample.json",
+          "finalRssBytes": 164954112,
+          "acceptedCycles": 4,
+          "failedAttemptsPreserved": true,
+          "replacesPrimary": false
+        },
+        "canonicalIntegration": {
+          "schemaVersion": 1,
+          "timestampUtc": "2026-10-08T23:09:04.778589+00:00",
+          "canonicalCommit": "0a2b104595e06dbdc27ae64b8677c5336d819419",
+          "experimentCommit": "427662c9bf9d4a425d672e27b085c16609b7d4f8",
+          "sourceHashesMatchFrozenCandidate": true,
+          "integratedGuiContracts": {
+            "name": "Linux-c++",
+            "tests": "4",
+            "failures": "0",
+            "disabled": "0",
+            "skipped": "0",
+            "hostname": "patrick-Precision-5540",
+            "time": "8",
+            "timestamp": "2026-10-08T18:07:40"
+          },
+          "scope": "New canonical memory changes plus committed per-build identity and X11 shortcut fix. Standalone measurements retain original archive/binary identities; combined native package acceptance follows."
+        }
+      },
+      "aggregateReceipt": "work/memory-surfaces/aggregate-command.json",
+      "decision": {
+        "decision": "keep",
+        "eligible": true,
+        "next_measurement": "none",
+        "target_reached": false,
+        "improved_objectives": [
+          "finalHiddenRssBytes",
+          "gnomePostFunctionalRssBytes",
+          "kdePostFunctionalRssBytes"
+        ],
+        "violated_objectives": [],
+        "comparisons": {
+          "finalHiddenRssBytes": {
+            "verdict": "improved",
+            "delta": 8607744,
+            "relative": 0.11154754637861938,
+            "violated": false
+          },
+          "gnomePostFunctionalRssBytes": {
+            "verdict": "improved",
+            "delta": 29691904,
+            "relative": 0.24760050551627558,
+            "violated": false
+          },
+          "kdePostFunctionalRssBytes": {
+            "verdict": "improved",
+            "delta": 30343168,
+            "relative": 0.15543758786378228,
+            "violated": false
+          }
+        },
+        "primary_delta": 8607744,
+        "rank_score": 0.11154754637861938,
+        "reason": "improved finalHiddenRssBytes, gnomePostFunctionalRssBytes, kdePostFunctionalRssBytes without violating other required objectives"
+      },
+      "experimentCommit": "427662c9bf9d4a425d672e27b085c16609b7d4f8",
+      "optimizationCommit": "427662c9bf9d4a425d672e27b085c16609b7d4f8",
+      "canonicalCommit": "0a2b104595e06dbdc27ae64b8677c5336d819419"
+    }
+  ],
+  "best": {
+    "iteration": 1,
+    "commit": "427662c9bf9d4a425d672e27b085c16609b7d4f8",
+    "metrics": {
+      "finalHiddenRssBytes": {
+        "aggregate": 68558848.0,
+        "samples": [
+          68542464,
+          68575232
+        ]
+      },
+      "gnomePostFunctionalRssBytes": {
+        "aggregate": 90226688,
+        "samples": [
+          90226688
+        ]
+      },
+      "kdePostFunctionalRssBytes": {
+        "aggregate": 164868096,
+        "samples": [
+          164868096
+        ]
+      }
+    },
+    "gates": {
+      "allProfilesPassed": 1,
+      "physicalViewsReopened": 1,
+      "operationCount": 0
+    }
+  },
+  "hypothesis_backlog": [
+    {
+      "id": "deferred-native-release",
+      "description": "Defer QWidget native-resource destruction after eligible explicit hide while retaining logical widgets and state; fully recreate resources on show.",
+      "category": "resource-lifetime",
+      "priority": "high",
+      "dep_status": "approved",
+      "required_deps": [],
+      "status": "kept",
+      "opportunity": {
+        "workload": "Frozen physical3viewcycles and each nativeWayland postfunctionalwave",
+        "baseline": "CP1 77166592physical /119918592GNOME /195211264KDE bytes RSS",
+        "evidence": "8,404,992resident Xorg SHM bytes and GNOME27,979,776/KDE28,016,640Wayland SHM bytes remain hidden; Qt6.4.2/6.10.2 destructor chain releases backing store; logical widgets are retained in main.",
+        "expected_benefit": "Unknown realized saving; drawing-buffer opportunity upper bound about8MiB physical and26.7MiB per Wayland guest. No cold saving predicted.",
+        "confidence": "High resource-lifetime evidence; medium realized RSS gain until actual candidate measurements",
+        "cost_and_risk": "Small shared native-lifetime helper and3views; no dependencies. Main risks: native dialog ownership, full repaint/reopen, minimize, queued callback lifetime, retained draft/selection.",
+        "cheaper_locator": "Completed smaps/source attribution suffices to select; per-view staging would refine ownership but not change whether to try this small candidate. Actual native tests and paired measurements decide keep."
+      }
+    }
+  ],
+  "specSha256": "0b8b16b18e8ae36061f02ba199d4f62b0959a787e438248bbdce84928f3297db",
+  "harnesses": {
+    "tests/performance/bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "tests/performance/observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+    "tests/performance/bench_idle.py": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+    "work/memory-next/measure-views.py": "8f51d0fb328bdeccc9797ff8214f4b12d3e491d93a6094e3f1a62e875a013d5d",
+    "work/memory-next/score-surfaces.py": "68efb51ee9742df94ff0aa7765b28767fc4247265a729205884ea3b7689eca3c"
+  },
+  "cost": "No new product dependencies or paid infrastructure. Existing documented build dependencies/pinned SDK are being provisioned in current disposable guests using standard package management and CMake. Ordinary model usage has no separate dollar cap; up to2variants/2hours after implementation begins.",
+  "cleanTree": "All mutable/product/harness tracked paths clean; unrelated AGENTS/lab docs/dashboard WIP excluded. Ignored adapters newly prepared and frozen by hash.",
+  "worktreeBudget": {
+    "existing": 9,
+    "projected": 10,
+    "limit": 12
+  },
+  "parallelReadiness": "Measurements serial on physical Cinnamon, independent native VM functional work parallel after quiet physical runs. Read-only analysis parallel. Bundled probe reports no blocker and grep warning; actualexclusivephysicalrule wins.",
+  "sourceEquivalence": "git diff a3d70dc dac46af -- src CMakeLists.txt CMakePresets.json cmake is empty; canonical currentbuild hashes match prior native-wave receipt.",
+  "validation": "Requiredschemafields/gateoperators/uniquemetricnames/hardmetric/native2.0hstop/worktree1concurrency/serialexclusivity/immutableharness verified. Aggregator executed through bundled measure.sh and checks actual12case/profile receipts,25samplememory identities and2physicalviewworkloads.",
+  "preApprovalClarification": "Clarified build-environment preparation versus the no-new-product-dependencies constraint before backlog or experiments. User-facing approval question already says no new dependencies; it remains pending.",
+  "approval": {
+    "userText": "if you've found something to optimize, move on",
+    "receivedAtUtc": "2026-10-08T21:49:36.703442+00:00",
+    "scope": "Proceed with proposed retained-view buffer release on all three desktops; original constraints and limits unchanged."
+  },
+  "phase3StartedAtUtc": "2026-10-08T21:49:53.373195+00:00",
+  "activeExperiment": {
+    "iteration": 1,
+    "worktree": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001",
+    "hypothesisId": "deferred-native-release",
+    "opportunity": {
+      "workload": "Frozen physical3viewcycles and each nativeWayland postfunctionalwave",
+      "baseline": "CP1 77166592physical /119918592GNOME /195211264KDE bytes RSS",
+      "evidence": "8,404,992resident Xorg SHM bytes and GNOME27,979,776/KDE28,016,640Wayland SHM bytes remain hidden; Qt6.4.2/6.10.2 destructor chain releases backing store; logical widgets are retained in main.",
+      "expected_benefit": "Unknown realized saving; drawing-buffer opportunity upper bound about8MiB physical and26.7MiB per Wayland guest. No cold saving predicted.",
+      "confidence": "High resource-lifetime evidence; medium realized RSS gain until actual candidate measurements",
+      "cost_and_risk": "Small shared native-lifetime helper and3views; no dependencies. Main risks: native dialog ownership, full repaint/reopen, minimize, queued callback lifetime, retained draft/selection.",
+      "cheaper_locator": "Completed smaps/source attribution suffices to select; per-view staging would refine ownership but not change whether to try this small candidate. Actual native tests and paired measurements decide keep."
+    },
+    "testFirstEvidence": {
+      "timestampUtc": "2026-10-08T21:58:52.978222+00:00",
+      "status": "All3existingGUIcontracts fail expected resource-retention assertions; production unchanged for red run",
+      "receiptDirectory": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/work/view-surfaces",
+      "finding": "QWidget::close may clear nativeID/WA_WState_Created while retaining backingStore. NativeID-only eligibility would miss the actual close case."
+    },
+    "sourceRevisions": [
+      {
+        "schemaVersion": 1,
+        "timestampUtc": "2026-10-08T22:02:40.950352+00:00",
+        "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+        "sourceTree": "52667aa0291bf3eb1eeb30f1e6d11ef1cc8d5ce3",
+        "archive": "/home/patrick/work/put.gd/work/memory-surfaces/candidate-001.tar",
+        "archiveSha256": "979883ab4d3c7a91c5f6247bcec09d8a6b837ef470d630c305d65a8d21b03a76",
+        "patchSha256": "d4a6739d9a55a677e5138b56c44477a7e6d5d4ad1aec15f5f23c473b7d978f51",
+        "scope": "Exact staged source tree for uncommitted experiment; all10owned paths; no secret/local/unrelated inputs. Worker source frozen after3passingGUIcontracts.",
+        "sourceHashes": {
+          "src/ui/RetainedWindow.h": "37fc4d0bab48f9f3e53c28ae8fd7fe543c73f734c2c2bb7c98aec750e99f22ad",
+          "src/ui/SettingsWindow.h": "c28e488710608b5dd1366ea097df70286cca3e2dd1d892394517be700b338b6d",
+          "src/ui/SettingsWindow.cpp": "46726a792da084e0e8ca965ce0f75f39ea5551e4a48011f25adfa9ec8dc1e99a",
+          "src/ui/HistoryWindow.h": "1aa2e83b8984309db0f03b34b48dc64ad35c74d7a06b9b4b66b49ec6fb66f24b",
+          "src/ui/HistoryWindow.cpp": "f5a863440bc8a553bf515e9b8d309e3e1ef80829072a0cff77c5832ca6a69c18",
+          "src/ui/RecentOperations.h": "b0838c14f21240ffd63454f7e5fe38254d4cf7e8ba59916666d94559bfbe3180",
+          "src/ui/RecentOperations.cpp": "7f356eb18334769bd1fcda69058bdcde5221d4bea1d982d6f322b333c8f412eb",
+          "tests/gui/test_settings.cpp": "4da7315ab3a67b0a1001af605afb117946e0430d467933b40609b9c98226a9da",
+          "tests/gui/test_history_view.cpp": "7de08fd777ebb7c16d091b05333b8b90f8bca7e98a8122301a1c77196e5a023b",
+          "tests/gui/test_operations_view.cpp": "8d37f832be4b007d0ea6fce2f710b8da93096f01e4d8ecfcaac3c35534068fc7"
+        },
+        "workerIdentity": {
+          "phase": "focused-green-source-frozen",
+          "utc": "2026-10-08T22:01:56.438549+00:00",
+          "repoRoot": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001",
+          "head": "dac46af06feb0e8326d472c77bdf96cff117be51",
+          "branch": "optimize-exp/resident-view-surfaces/exp-001",
+          "ownedSourceSha256": "d6564c843fc36ed2b5787874556aa70c1dc41b27d18b8e01d3e35968eb4dc878",
+          "ownedFilesSha256": {
+            "src/ui/HistoryWindow.cpp": "f5a863440bc8a553bf515e9b8d309e3e1ef80829072a0cff77c5832ca6a69c18",
+            "src/ui/HistoryWindow.h": "1aa2e83b8984309db0f03b34b48dc64ad35c74d7a06b9b4b66b49ec6fb66f24b",
+            "src/ui/RecentOperations.cpp": "7f356eb18334769bd1fcda69058bdcde5221d4bea1d982d6f322b333c8f412eb",
+            "src/ui/RecentOperations.h": "b0838c14f21240ffd63454f7e5fe38254d4cf7e8ba59916666d94559bfbe3180",
+            "src/ui/RetainedWindow.h": "37fc4d0bab48f9f3e53c28ae8fd7fe543c73f734c2c2bb7c98aec750e99f22ad",
+            "src/ui/SettingsWindow.cpp": "46726a792da084e0e8ca965ce0f75f39ea5551e4a48011f25adfa9ec8dc1e99a",
+            "src/ui/SettingsWindow.h": "c28e488710608b5dd1366ea097df70286cca3e2dd1d892394517be700b338b6d",
+            "tests/gui/test_history_view.cpp": "7de08fd777ebb7c16d091b05333b8b90f8bca7e98a8122301a1c77196e5a023b",
+            "tests/gui/test_operations_view.cpp": "8d37f832be4b007d0ea6fce2f710b8da93096f01e4d8ecfcaac3c35534068fc7",
+            "tests/gui/test_settings.cpp": "4da7315ab3a67b0a1001af605afb117946e0430d467933b40609b9c98226a9da"
+          },
+          "focusedBinariesSha256": {
+            "build/dev/test_gui_settings": "4804317c455d47345996b8110e269ce926b0292391b71082ed85d6e8b9d00293",
+            "build/dev/test_gui_history_view": "37a548672b9ae62e072c1d5e021a9c82880fc9b6425d5ad7ab5aaf301d1b0f91",
+            "build/dev/test_gui_operations_view": "d02ad35052ce177d917574de11d00582b271722e655501025049c26e92dd56c9"
+          },
+          "trackedDiffSha256": "15b6c7bc9848595b9a104efb065843f336e96d2ea6018ad6d5d1e59a118979c6",
+          "newHeaderSha256": "37fc4d0bab48f9f3e53c28ae8fd7fe543c73f734c2c2bb7c98aec750e99f22ad",
+          "cmakeCacheSha256": "4cb664815d1cd32ad843a48f9668fbfcb8d1d9c69f15d0d6de0ecef84f33f6cf",
+          "compileCommandsSha256": "2f5c5eac5a22881a50dc87dc273750fbb91ec5ec291d2a3b4703c65a136631b2",
+          "runnerSha256": "4b6e2ef2a59abf5bd061bfbf1c4646d46abe98daea8f63d029c56d8dc179b702",
+          "focusedReceipt": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/work/view-surfaces/focused-green/receipt.json",
+          "initialRedReceipt": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/work/view-surfaces/red/receipt.json",
+          "minimizedRedReceipt": "/home/patrick/.codex/worktrees/resident-memory/put.gd/.worktrees/optimize-resident-view-surfaces-exp-001/work/view-surfaces/minimized-red/receipt.json",
+          "limits": [
+            "Offscreen contracts only; no graphical acceptance or measured savings",
+            "Root owns all performance/native/VM measurements and integration"
+          ]
+        }
+      },
+      {
+        "schemaVersion": 1,
+        "timestampUtc": "2026-10-08T22:19:13.656801+00:00",
+        "baseCommit": "dac46af06feb0e8326d472c77bdf96cff117be51",
+        "sourceTree": "d7f9c996d6dd43fc864bcb42239431ff7b2e47d1",
+        "archive": "/home/patrick/work/put.gd/work/memory-surfaces/candidate-001b.tar",
+        "archiveSha256": "94d350cbc0d940ddba1f74ee7d46f722f7b5c006bd108639c95cebc5e02dcf3e",
+        "patchSha256": "aef12ee24f0005ccb3cccec522bb68841156524fd623acb6add780a473554315",
+        "sourceHashes": {
+          "src/ui/RetainedWindow.h": "1df97f83fb32f6954b11895f17062fd10ffe923d2cc810566fff4297f409eb05",
+          "src/ui/SettingsWindow.h": "c28e488710608b5dd1366ea097df70286cca3e2dd1d892394517be700b338b6d",
+          "src/ui/SettingsWindow.cpp": "46726a792da084e0e8ca965ce0f75f39ea5551e4a48011f25adfa9ec8dc1e99a",
+          "src/ui/HistoryWindow.h": "1aa2e83b8984309db0f03b34b48dc64ad35c74d7a06b9b4b66b49ec6fb66f24b",
+          "src/ui/HistoryWindow.cpp": "f5a863440bc8a553bf515e9b8d309e3e1ef80829072a0cff77c5832ca6a69c18",
+          "src/ui/RecentOperations.h": "b0838c14f21240ffd63454f7e5fe38254d4cf7e8ba59916666d94559bfbe3180",
+          "src/ui/RecentOperations.cpp": "7f356eb18334769bd1fcda69058bdcde5221d4bea1d982d6f322b333c8f412eb",
+          "tests/gui/test_settings.cpp": "c657a34bdff3b6df36cae69df5ff05f19cd787c245d255b882486b69f7198c47",
+          "tests/gui/test_history_view.cpp": "7de08fd777ebb7c16d091b05333b8b90f8bca7e98a8122301a1c77196e5a023b",
+          "tests/gui/test_operations_view.cpp": "8d37f832be4b007d0ea6fce2f710b8da93096f01e4d8ecfcaac3c35534068fc7"
+        },
+        "supersedesUnmeasuredCandidate": "52667aa0291bf3eb1eeb30f1e6d11ef1cc8d5ce3",
+        "reason": "Confirmed native/logical window-state mismatch; showEvent synchronizes native states. Test failed red then all3GUItests passed. No memory measurements existed for001."
+      }
+    ],
+    "reviewCorrection": {
+      "timestampUtc": "2026-10-08T22:19:54.274231+00:00",
+      "finding": "Native window state reset by recreation; confirmed with plain-widget control and red settings regression.",
+      "fix": "Synchronize recreated QWindow state in showEvent; preserve baseline maximize/fullscreen/minimize semantics.",
+      "verification": "state-probe/red-state.xml then green-gui.xml all3passed",
+      "unmeasuredOriginal": true,
+      "peerReceipt": "work/memory-surfaces/review/review.json"
+    }
+  },
+  "stoppingReason": "No runnable hypothesis remains within the frozen ten-file scope; approved on-demand UI is a separate implementation.",
+  "phase3StoppedAtUtc": "2026-10-08T23:07:07.512154+00:00",
+  "runAccounting": {
+    "experiments": 1,
+    "unmeasuredCorrectnessRevision": 1,
+    "kept": 1,
+    "notSelected": 0,
+    "judgeCostUsd": 0,
+    "wholeRunModelCostUsd": "unavailable; ordinary model usage not separately capped",
+    "paidInfrastructureUsd": 0,
+    "newDependencies": 0
+  },
+  "completion": {
+    "timestampUtc": "2026-10-08T23:10:05.463023+00:00",
+    "userNextDirection": "Approved separate resident/UI process split with a persistent tray. Proceed with U11; do not re-enter this frozen experiment.",
+    "stoppingReason": "No runnable hypothesis remains within the frozen ten-file scope; approved on-demand UI is a separate implementation.",
+    "worktreePreserved": "Experiment build paths are still referenced by frozen evidence and baseline tooling; retain until replacement evidence and artifact preservation permit cleanup."
+  }
+}

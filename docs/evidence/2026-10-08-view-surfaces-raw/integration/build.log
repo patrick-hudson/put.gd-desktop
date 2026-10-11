@@ -1,0 +1,24 @@
+[1/27] cd /home/patrick/work/put.gd/build/dev && /usr/bin/cmake -DSOURCE_DIR=/home/patrick/work/put.gd -DOUTPUT_DIR=/home/patrick/work/put.gd/build/dev/build-identity -DBASE_VERSION=0.1.1 -DSUPPLIED_COMMIT= -DSUPPLIED_TREE= -DSUPPLIED_COUNT= -P /home/patrick/work/put.gd/cmake/GenerateBuildInfo.cmake
+[2/27] Building CXX object CMakeFiles/putgd_build_identity.dir/build-identity/BuildInfo.cpp.o
+[3/27] Linking CXX static library libputgd_build_identity.a
+[4/27] Linking CXX shared module libputgd-s3.so
+[5/27] Linking CXX executable putgd-cli
+[6/27] Automatic MOC and UIC for target putgd_ui
+[7/27] Building CXX object CMakeFiles/putgd_ui.dir/putgd_ui_autogen/mocs_compilation.cpp.o
+[8/27] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/SettingsWindow.cpp.o
+[9/27] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/RecentOperations.cpp.o
+[10/27] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/HistoryWindow.cpp.o
+[11/27] Building CXX object CMakeFiles/putgd_ui.dir/src/ui/TrayController.cpp.o
+[12/27] Linking CXX static library libputgd_ui.a
+[13/27] Linking CXX executable test_gui_version
+[14/27] Automatic MOC and UIC for target test_gui_settings
+[15/26] Building CXX object CMakeFiles/putgd.dir/src/main.cpp.o
+[16/26] Linking CXX executable putgd
+[17/26] Automatic MOC and UIC for target test_gui_operations_view
+[18/25] Building CXX object CMakeFiles/test_gui_settings.dir/tests/gui/test_settings.cpp.o
+[19/25] Linking CXX executable test_gui_settings
+[20/25] Automatic MOC and UIC for target test_gui_history_view
+[21/24] Building CXX object CMakeFiles/test_gui_operations_view.dir/tests/gui/test_operations_view.cpp.o
+[22/24] Linking CXX executable test_gui_operations_view
+[23/24] Building CXX object CMakeFiles/test_gui_history_view.dir/tests/gui/test_history_view.cpp.o
+[24/24] Linking CXX executable test_gui_history_view

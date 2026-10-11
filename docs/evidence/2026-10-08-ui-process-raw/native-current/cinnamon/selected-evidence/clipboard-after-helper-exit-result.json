@@ -1,0 +1,24 @@
+{
+  "timestampUtc": "2026-10-09T01:21:37.448508+00:00",
+  "normalClose": {
+    "helperPid": 54419,
+    "diagnostics": {
+      "checkpointBytes": 2450,
+      "lastExit": {
+        "code": 0,
+        "generation": 18,
+        "status": "normal"
+      },
+      "pid": 0,
+      "state": "stopped"
+    }
+  },
+  "pasteTextMatched": true,
+  "expectedSyntheticText": "putgd synthetic clipboard text",
+  "resident": {
+    "pid": 38189,
+    "startTicks": 1681006,
+    "sha256": "019d8e7ef1c16d6733f2a91c074e464e450b0424299dd409bfd3caba84d03eef"
+  },
+  "witness": "/home/patrick/work/put.gd/work/u11/native/cinnamon/clipboard-after-helper-exit.png"
+}

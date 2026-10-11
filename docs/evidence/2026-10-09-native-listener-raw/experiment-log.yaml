@@ -1,0 +1,1067 @@
+{
+  "spec_name": "resident-native-boundary",
+  "started_at": "2026-10-09T05:41:36.129426+00:00",
+  "phase": "Phase4 wrap-up; memory target confirmed; integration held; CP-5 awaits user option",
+  "baseline": {
+    "metrics": {
+      "settingsReopenMilliseconds": 332.5024600198958,
+      "closedRssBytes": 47814656.0,
+      "closedPssBytes": 27087360.0,
+      "peakOpenPssBytes": 58215424,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "reopenSamples": [
+        339.5424230257049,
+        325.4624970140867,
+        344.9719980126247,
+        284.36045098351315
+      ],
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+          "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+          "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        }
+      ],
+      "limits": [
+        "Mapped readiness includes observer overhead; no p95 or paint certification.",
+        "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+      ]
+    },
+    "gates": {
+      "settingsReopenMilliseconds": 332.5024600198958,
+      "closedRssBytes": 47814656.0,
+      "closedPssBytes": 27087360.0,
+      "peakOpenPssBytes": 58215424,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "reopenSamples": [
+        339.5424230257049,
+        325.4624970140867,
+        344.9719980126247,
+        284.36045098351315
+      ],
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+          "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+          "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        }
+      ],
+      "limits": [
+        "Mapped readiness includes observer overhead; no p95 or paint certification.",
+        "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+      ]
+    },
+    "coldReference": {
+      "schemaVersion": 1,
+      "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+      "version": "0.1.1-dev.45+g9d142919e5e6",
+      "scope": "physical Cinnamon idle resident; empty history; capture/network not invoked",
+      "parameters": {
+        "warmupSeconds": 5,
+        "seconds": 300,
+        "rssSamplingIntervalSeconds": 30,
+        "ownedWindowPollingSeconds": 1
+      },
+      "command": [
+        "python3",
+        "tests/performance/observe_idle.py",
+        "--app",
+        "work/view-startup-latency/reference45/source/build/release/putgd",
+        "--cli",
+        "work/view-startup-latency/reference45/source/build/release/putgd-cli",
+        "--output",
+        "/tmp/putgd-cold45-20261009",
+        "--seconds",
+        "300"
+      ],
+      "appSha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+      "cliSha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+      "peakRssBytes": 47620096,
+      "finalRssBytes": 47620096,
+      "finalMappingTotals": {
+        "rssBytes": 47620096,
+        "pssBytes": 26744832,
+        "privateBytes": 24186880
+      },
+      "idleCpuPercentOneCore": 0.0033316960040275906,
+      "coldIdleUninterrupted": true,
+      "operationCount": 0,
+      "legacyBudgetPassed": true,
+      "target40MiBReached": false,
+      "rawDirectory": "2026-10-09-cold-reference45-raw",
+      "files": [
+        {
+          "path": "results.json",
+          "sha256": "da16928ed45447c2ce92799c0ff8d04f67270756858b1d9a5817cbf63486f4d9",
+          "bytes": 39036
+        },
+        {
+          "path": "progress.json",
+          "sha256": "8b8c349262f14f07a7986bdf295d19ef6d717aa50b5d0f2fa00668b74ab7ac62",
+          "bytes": 20218
+        },
+        {
+          "path": "window-observations.json",
+          "sha256": "ee78c7437da7d8849687d4a48dfbdf26683a5b4e5f002c177c4df29d253ba2de",
+          "bytes": 2136
+        },
+        {
+          "path": "source-provenance.json",
+          "sha256": "cda2310aab0a28a3ae5aa8a2fd4b8942c290f8e99d1a185c4ee3fe6c891a14b8",
+          "bytes": 1019
+        },
+        {
+          "path": "bench_idle.py",
+          "sha256": "47e65e026ebd3a2a596224036ef594cf30770a49f4ff1dbc462dbf0f6c95e652",
+          "bytes": 7209
+        },
+        {
+          "path": "observe_idle.py",
+          "sha256": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe",
+          "bytes": 10143
+        }
+      ],
+      "limitations": [
+        "One fresh cold baseline, not a paired optimization saving",
+        "Build retains source45 identity after later documentation commits",
+        "RSS and smaps mapping totals use different snapshot mechanisms",
+        "No tray rendering or native function claim from this idle run",
+        "No credentials/config/history/resident stderr exported"
+      ]
+    }
+  },
+  "experiments": [
+    {
+      "iteration": 1,
+      "hypothesis": "core-native-combined",
+      "status": "memory-confirmed-integration-held-for-latency",
+      "dispatchedUtc": "2026-10-09T06:13:58.459978+00:00",
+      "forecast": {
+        "workload": "cold and post-view Cinnamon whole-family idle",
+        "baseline": "source45 cold45.414MiB/closed45.600MiB RSS",
+        "evidence": "Core+DBus initialization11.34MiB vs Widgets40.045MiB; actual Cinnamon native SNI locator rendered menu/callback12.164MiB RSS; this is attribution only",
+        "expected_benefit": "Product net saving unknown. Constructor initialization gap is28.7MiB upper locating contrast, not an additive product saving. Needed combined saving5.6MiB; verify full product after all persistent duties move. Native menu compatibility and no-child locator now passed.",
+        "confidence": "moderate for initialization opportunity; product/lifecycle costs unmeasured",
+        "cost_and_risk": "Combined candidate up to remaining4h cap; scaling fingerprint, outgoing INCR and capture dismissal/security need new tests. No dependencies."
+      },
+      "worktree": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd",
+      "referenceCommit": "c01cbe7140db1b5b9a20388acd399864798ccf13",
+      "CinnamonFirst": true,
+      "validationAttempts": [
+        {
+          "label": "configure",
+          "receipt": "work/resident-native-boundary/build-1/configure-result.json",
+          "receiptSha256": "a6f7d127935e56665356181faeadbd2c1cf767deabb5d0b98e7dfd07ec43c7e8",
+          "result": {
+            "exitCode": 1,
+            "finishedUtc": "2026-10-09T06:31:50.094146+00:00"
+          }
+        },
+        {
+          "label": "configure2",
+          "receipt": "work/resident-native-boundary/build-1/configure2-result.json",
+          "receiptSha256": "3c448e24d389b90f5b07825bb79a1b0395233f42c777b29e21b509f7c3d83472",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T06:32:49.141236+00:00"
+          }
+        },
+        {
+          "label": "build",
+          "receipt": "work/resident-native-boundary/build-1/build-result.json",
+          "receiptSha256": "84996256709f4a90461957bc1e79d8740bd96a97658ec7c84fef51b6e95efb65",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T06:38:18.765252+00:00"
+          }
+        },
+        {
+          "label": "focused",
+          "receipt": "work/resident-native-boundary/build-1/focused-result.json",
+          "receiptSha256": "d75622bb3b69714ea3bd2043061ff54116cb76e6016865eab5abe9e085f0d8af",
+          "result": {
+            "exitCode": 8,
+            "finishedUtc": "2026-10-09T06:39:23.808463+00:00"
+          }
+        },
+        {
+          "label": "build2",
+          "receipt": "work/resident-native-boundary/build-1/build2-result.json",
+          "receiptSha256": "23b9de275a50990fbcb4343aa7096b89d3083457a795eb52d36b057873093d9f",
+          "result": {
+            "exitCode": 1,
+            "finishedUtc": "2026-10-09T06:44:33.160614+00:00"
+          }
+        },
+        {
+          "label": "build3",
+          "receipt": "work/resident-native-boundary/build-1/build3-result.json",
+          "receiptSha256": "bf08c5959f212c01020dc6c11bb582d98722c5fa5f5edb43ccab277c56715a12",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:07:14.485974+00:00",
+            "elapsedSeconds": 8.7202931419597
+          }
+        },
+        {
+          "label": "focused2",
+          "receipt": "work/resident-native-boundary/build-1/focused2-result.json",
+          "receiptSha256": "34f633683871ca37368a1433431353c185b14cff3505df24a856d7f3bcfa0d3a",
+          "result": {
+            "exitCode": 8,
+            "finishedUtc": "2026-10-09T07:07:46.509626+00:00",
+            "elapsedSeconds": 17.826946486951783
+          }
+        },
+        {
+          "label": "existing-suite-excluding-capture",
+          "receipt": "work/resident-native-boundary/build-1/existing-suite-result.json",
+          "receiptSha256": "0bda92fc3dc70633ab0b6ea47fe25de64a9629b5847ad7ea3b705414eddf6978",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:10:45.122200+00:00",
+            "elapsedSeconds": 125.98739258002024
+          },
+          "scope": "45 executables passed; excluded failing capture process. Not final full suite."
+        },
+        {
+          "label": "release-configure",
+          "receipt": "work/resident-native-boundary/build-1/release-configure-result.json",
+          "receiptSha256": "6c8649baa2cb6ca56cf57429646606bc7ee374c220c7812ccc009cb6a87a2370",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:11:09.771455+00:00",
+            "elapsedSeconds": 2.6012207550229505
+          },
+          "scope": "dirty developer build only, no memory score"
+        },
+        {
+          "label": "release-build",
+          "receipt": "work/resident-native-boundary/build-1/release-build-result.json",
+          "receiptSha256": "0ee330d78679ef4c9a3d01ed1c004407220f6089c3bec0935b30e934f2f6ee9c",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:16:06.368711+00:00",
+            "elapsedSeconds": 296.5963949080324
+          },
+          "scope": "dirty developer build only, no memory score"
+        },
+        {
+          "label": "asan-configure",
+          "receipt": "work/resident-native-boundary/build-1/asan-configure-result.json",
+          "receiptSha256": "eaeff4e42c216f804be21332effe0d177ed21fe3a05ae8d736c63a1c2a038991",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:17:47.507734+00:00",
+            "elapsedSeconds": 2.092451676959172
+          }
+        },
+        {
+          "label": "asan-build",
+          "receipt": "work/resident-native-boundary/build-1/asan-build-result.json",
+          "receiptSha256": "7082bc11625c4126f7a235dfb3e3e0a2384f07a75296873ab20edc9d0443fe8f",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:20:15.345589+00:00",
+            "elapsedSeconds": 86.34241029602708
+          }
+        },
+        {
+          "label": "asan-native",
+          "receipt": "work/resident-native-boundary/build-1/asan-native-result.json",
+          "receiptSha256": "370707f110587a7e8eb2fabdf9b19205434190f7a1420c5b0e3bb73571cd3773",
+          "result": {
+            "exitCode": 8,
+            "finishedUtc": "2026-10-09T07:24:53.212398+00:00",
+            "elapsedSeconds": 24.55283555999631
+          }
+        },
+        {
+          "label": "capture-bench-configure",
+          "receipt": "work/resident-native-boundary/build-1/capture-bench-configure-result.json",
+          "receiptSha256": "859b3e04686de1781a69f1faf55444f49a40d90ee7d37880e8d433ade1de07f6",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:24:57.070836+00:00",
+            "elapsedSeconds": 0.8105262479512021
+          }
+        },
+        {
+          "label": "capture-bench-build",
+          "receipt": "work/resident-native-boundary/build-1/capture-bench-build-result.json",
+          "receiptSha256": "246319373144fb3287404aea8e4522e3d89923d5fe5b4ddf848e5448419aff65",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:25:01.445485+00:00",
+            "elapsedSeconds": 4.37419892201433
+          }
+        },
+        {
+          "label": "dev-finalpatch-build",
+          "receipt": "work/resident-native-boundary/build-1/dev-finalpatch-build-result.json",
+          "receiptSha256": "702493e0ad227b959c9224e70d3dce163d776cb7d676ff367e2564c068304ae9",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:26:27.766156+00:00",
+            "elapsedSeconds": 19.93183018802665
+          }
+        },
+        {
+          "label": "asan-finalpatch-build",
+          "receipt": "work/resident-native-boundary/build-1/asan-finalpatch-build-result.json",
+          "receiptSha256": "89ddbefb2dd3fd51c889db45b2f0cd9cfe7d7fbb7bb336ac68123a96bd4abe39",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:26:45.026562+00:00",
+            "elapsedSeconds": 17.260154813004192
+          }
+        },
+        {
+          "label": "asan-finalpatch-suite",
+          "receipt": "work/resident-native-boundary/build-1/asan-finalpatch-suite-result.json",
+          "receiptSha256": "eaa16b78273856c3fe887d4cedc21ae93728987402e258e02a8d30934fcba12e",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:28:50.250612+00:00",
+            "elapsedSeconds": 26.638556257996242
+          }
+        },
+        {
+          "label": "dev-finalpatch-suite",
+          "receipt": "work/resident-native-boundary/build-1/dev-finalpatch-suite-result.json",
+          "receiptSha256": "969322e1695638d6034f1cf0927182689305da2c32aac1247e71635ea8c09ea4",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:30:14.678243+00:00",
+            "elapsedSeconds": 118.93409445800353
+          },
+          "passedExecutables": 46
+        },
+        {
+          "label": "mcp-contract",
+          "receipt": "work/resident-native-boundary/build-1/mcp-contract-result.json",
+          "receiptSha256": "a70932eca8777f53902ded514ad543c0b432786bc0a576a301657ef820f6ebdf",
+          "result": {
+            "exitCode": 2,
+            "finishedUtc": "2026-10-09T07:30:38.268759+00:00",
+            "elapsedSeconds": 0.5906092870282009
+          },
+          "scope": "synthetic official SDK forwarding contract; no desktop proof"
+        },
+        {
+          "label": "mcp-contract2",
+          "receipt": "work/resident-native-boundary/build-1/mcp-contract2-result.json",
+          "receiptSha256": "1b3ea3914acd73664bedb7e6cd51706bdfbddc2b2f0fd359f144a8285135a933",
+          "result": {
+            "exitCode": 0,
+            "finishedUtc": "2026-10-09T07:31:16.385750+00:00",
+            "elapsedSeconds": 2.9859159819898196
+          },
+          "scope": "synthetic official SDK forwarding contract; no desktop proof"
+        }
+      ],
+      "functionalPassed": 0,
+      "memoryMeasured": false,
+      "lastFailure": "Earlier lifetime and asynchronous assertion failures repaired. Final dirty-development full suite46/46 and focused ASan/UBSan4/4 pass. Review, clean build/native/physical gates still pending.",
+      "checkpointCommit": "b6e987ca9097ac6ebdd82101acac5aea664d1071",
+      "checkpointCommitCount": 48,
+      "checkpointState": "clean source only; not kept; must rebuild matching manifest and run native/memory gates",
+      "nativePreparation": "work/ui-refinement/native-replay/nativecore-exp001-c48/prepared.json",
+      "nativeReplay": {
+        "cohort": "work/ui-refinement/native-replay/nativecore-exp001-c48",
+        "cleanSourceCommit": "b6e987ca9097ac6ebdd82101acac5aea664d1071",
+        "hostBuildPassed": true,
+        "devTestsPassed": 46,
+        "installedVersion": "0.1.1-dev.48+gb6e987ca9097",
+        "CinnamonFirst": true,
+        "memoryScored": false,
+        "installationRecovery": "Package installation and base metadata succeeded; supplement save incorrectly attempted exclusive overwrite of installed.json. Failure preserved; separate capture-helper verification completed without reinstall.",
+        "matrixCasesPassed": 12
+      },
+      "reviewPendingFix": {
+        "severity": "P2",
+        "problem": "Synchronous full-payload clipboard disk write/flush on listener event loop",
+        "fixScope": "X11Clipboard plus tests/docs; retain synchronous copy eligibility and native ownership retention exception"
+      },
+      "correction": {
+        "commit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+        "count": 49,
+        "deltaReview": "work/resident-native-boundary/review-1/clipboard-fix-review.json",
+        "devRegressionPassed": 3,
+        "asanClipboardPassed": 1,
+        "scope": "Four clipboard/test/doc files; same combined candidate, not a second experiment",
+        "tradeoff": "Encoded native clipboard payload retained until ownership ends; no full disk IO or async invocation eligibility gap"
+      },
+      "cleanValidation": {
+        "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+        "devPassed": 46,
+        "JUnit": "work/ui-refinement/native-replay/nativecore-exp001-c49/host/dev.xml",
+        "packageReceipt": "work/ui-refinement/native-replay/nativecore-exp001-c49/host/build.json",
+        "nativeCurrentSource": {
+          "passed": true,
+          "receipt": "work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/functional.json",
+          "scope": "single-head named four-action matrix+tray/views; no complete-product certification"
+        },
+        "memory": "pending"
+      },
+      "latency": {
+        "receipt": "/tmp/pg-nc1-latency/results.json",
+        "sha256": "fd142e445e1b0fc923b5cf3dac841ac6af6fda4defc330d4450a2f9ca9e45169",
+        "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+        "p95PaintMs": 951.700527,
+        "budgetPassed": false,
+        "samples": 30,
+        "observation": "Mapped versus drawn-outline timings differ; three displays and driver readback overhead need attribution. No latency or keep claim."
+      },
+      "physicalMeasurements": [
+        {
+          "label": "cold1",
+          "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+          "receipt": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold1/result.json",
+          "sha256": "10701146d1ca0f101701bd11430189eef2aa904ff3873927f4ce5b59fa7f4dd6"
+        },
+        {
+          "label": "view1",
+          "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+          "receipt": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/view1/result.json",
+          "sha256": "0353a58b8d9da9b39f733423a1f0b9a03a1b63cba264af11252a8055323359fd"
+        },
+        {
+          "label": "cold2",
+          "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+          "receipt": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold2/result.json",
+          "sha256": "95f555385dd81c8950d62985a2cda8fb1f0201c32cdfef54788a4ece3c5ed701"
+        },
+        {
+          "label": "view2",
+          "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+          "receipt": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/view2/result.json",
+          "sha256": "70d33d4aa68a2779eae66d067f1045174742a8078509f9d831b84b9176a4f194"
+        }
+      ],
+      "metrics": {
+        "settingsReopenMilliseconds": 300.3646365250461,
+        "closedRssBytes": 26454016.0,
+        "closedPssBytes": 17579008.0,
+        "peakOpenPssBytes": 54669312,
+        "functionalPassed": 1,
+        "normalHelperExitPassed": 1,
+        "reopenSamples": [
+          289.37643801327795,
+          309.3724700156599,
+          321.5214269584976,
+          291.35680303443223
+        ],
+        "inputs": [
+          {
+            "path": "/tmp/pg-nc1-view1/results.json",
+            "sha256": "56b5c72a3d77eaa849f7e7cb0202a34ad196737344b74ee694854da3ea6255c6",
+            "binaries": {
+              "app": {
+                "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+                "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+                "version": "0.1.1-dev.49+g676f6e6d6e0b"
+              },
+              "cli": {
+                "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+                "sha256": "f16508f551b80cbc4aa31493b5573cbba06f7c14f7a1f05aac49413fe1c5535b",
+                "version": "0.1.1-dev.49+g676f6e6d6e0b"
+              },
+              "helper": {
+                "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+                "sha256": "db4f00b54cbc8540bb8139fbba82d06a436627d0c25106710f20add92ff00d0f",
+                "version": "0.1.1-dev.49+g676f6e6d6e0b"
+              }
+            },
+            "sourceRevision": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3"
+          },
+          {
+            "path": "/tmp/pg-nc1-view2/results.json",
+            "sha256": "b8fdf98d8c53269ee1f4e34bb189170a1cbc833cadec6ff324cba59c9761c627",
+            "binaries": {
+              "app": {
+                "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+                "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+                "version": "0.1.1-dev.49+g676f6e6d6e0b"
+              },
+              "cli": {
+                "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+                "sha256": "f16508f551b80cbc4aa31493b5573cbba06f7c14f7a1f05aac49413fe1c5535b",
+                "version": "0.1.1-dev.49+g676f6e6d6e0b"
+              },
+              "helper": {
+                "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+                "sha256": "db4f00b54cbc8540bb8139fbba82d06a436627d0c25106710f20add92ff00d0f",
+                "version": "0.1.1-dev.49+g676f6e6d6e0b"
+              }
+            },
+            "sourceRevision": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3"
+          }
+        ],
+        "limits": [
+          "Mapped readiness includes observer overhead; no p95 or paint certification.",
+          "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+        ]
+      },
+      "coldConfirmation": [
+        {
+          "peakRssBytes": 25874432,
+          "finalRssBytes": 25845760,
+          "peakFamilyRssBytes": 25874432,
+          "idleCpuPercentOneCore": 0.006661961446942549,
+          "familySamples": 292,
+          "processCount": 1
+        },
+        {
+          "peakRssBytes": 25747456,
+          "finalRssBytes": 25718784,
+          "peakFamilyRssBytes": 25747456,
+          "idleCpuPercentOneCore": 0.0033305692294276655,
+          "familySamples": 292,
+          "processCount": 1
+        }
+      ],
+      "memoryPassed": true,
+      "comparisonGuard": "Memory target passes; not kept. Failed capture latency under investigation with a matched control.",
+      "latencyControl": {
+        "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe",
+        "scope": "Matched driver/live-outline/control geometry; original resident selector, no child",
+        "result": "/tmp/pg-nc1-latency-reference1/results.json",
+        "sha256": "8436d5f9ac6c1511a448c6a826c1a9e419dd80b00b03567166b275279a9b5a85",
+        "p95PaintMs": 596.008894,
+        "budgetPassed": false,
+        "interpretation": "150ms budget already fails in clean source45 under same driver. Candidate49 also adds roughly100ms median mapping/painting; tail comparison needs attribution, not a Qt-only blame."
+      },
+      "memoryDecision": {
+        "path": "work/resident-native-boundary/physical-c49/memory-decision2.json",
+        "decision": "keep",
+        "eligible": true,
+        "targetReached": true,
+        "kept": false,
+        "reason": "Declared memory metrics eligible; integration held for capture latency. Initial evaluator-input mistake lacking gates retained separately."
+      },
+      "regressionExpansion": {
+        "functionalPassed": true,
+        "memoryPassed": true,
+        "latencyPassed": false,
+        "scope": "Original spec only requires Cinnamon functional+memory before sibling testing; prepared extra latency prerequisite was corrected without weakening release/keep claims."
+      },
+      "elapsedState": {
+        "atUtc": "2026-10-09T09:30:06.271213+00:00",
+        "loopTargetMet": true,
+        "nativeExpansion": "Completed single-head12 cases/desktop and post-use5min/61 samples each; real receipts, no full release claim",
+        "captureLatencyGuard": "failed; integration held",
+        "deadlineUtc": "2026-10-09T09:51:45.055278Z"
+      },
+      "syscallProbe": {
+        "receipt": "work/resident-native-boundary/physical-c49/syscall-flush-summary.json",
+        "status": "diagnostic-incomplete",
+        "samples": 5,
+        "largestFlushSeconds": 0.001757,
+        "scored": false,
+        "sourceModified": false
+      },
+      "accounting": {
+        "combinedImplementationCandidates": 1,
+        "sourceCheckpoints": [
+          48,
+          49
+        ],
+        "confirmedMemoryTargets": 2,
+        "latencyGate": "failed; matched old control also failed, additional median delay observed",
+        "stoppingReason": "Declared memory objectives reached; retain candidate without integration while regression guard remains open",
+        "newDependencies": 0,
+        "cloudMachines": 0,
+        "reviewJudgeCostUsd": null,
+        "modelUsageCostUsd": "unrecorded; ordinary model usage has no separate cap",
+        "elapsedHoursAtCrossVerification": 3.6392266486111113
+      },
+      "cinnamonGuestPostNativeMemory": {
+        "scope": "Cinnamon VM quiescent post-native-use whole-family; not physical cold or closed-view confirmation",
+        "receipt": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/attempts/20261009T091403300112-post-native-memory/memory.json",
+        "sha256": "0805fc27f26f03a779b395e4901d5cdc5dc81130b953987e4447f869f33c714c",
+        "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+        "result": {
+          "peakRssBytes": 29904896,
+          "finalRssBytes": 29904896,
+          "finalPssBytes": 19275776,
+          "finalPrivateBytes": 18345984,
+          "cpuPercentOneCore": 0.006666379651646045
+        }
+      },
+      "crossDesktop": {
+        "kde": {
+          "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+          "summary": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/summary.json",
+          "sha256": "f683d698dfaa52a7b2c26e992d82c933631d748a2e2421da17c198d7c30dabd3",
+          "memory": {
+            "receipt": {
+              "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/memory.json",
+              "sha256": "88a70cd1baf7e9c406ca25fa1ba99faca15aa1e968b3758c812da8d02c444b57"
+            },
+            "context": {
+              "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/measurement-context.json",
+              "sha256": "a4a018b7ccf0866179def3aac5bc717335180e198d3be82d4624cce827110b5c"
+            },
+            "samples": 61,
+            "peakRssMiB": 138.55859375,
+            "finalRssMiB": 138.55859375,
+            "finalPssMiB": 36.9951171875,
+            "finalPrivateMiB": 24.05859375,
+            "cpuPercentOneCore": 0.02333166597618821
+          },
+          "nativeCases": 12,
+          "devTests": 46,
+          "scope": "Single-head local-only current source49 Qt/GTK native regression, actual views and post-use quiescent family measurement; unchanged graphical fallback"
+        },
+        "gnome": {
+          "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+          "summary": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/summary.json",
+          "sha256": "de34426fcf385415abbf889f46fea7f5856d20ff8637da9021c8b679fe3c25f7",
+          "memory": {
+            "durationSeconds": 300,
+            "sampleCount": 61,
+            "peakRssBytes": 63143936,
+            "finalRssBytes": 63143936,
+            "finalPssBytes": 35652608,
+            "finalPrivateBytes": 31772672,
+            "cpuPercentOneCore": 0.023331035290984042
+          },
+          "nativeCases": {
+            "matrixCases": 12,
+            "passed": 12,
+            "failed": 0,
+            "matrix": {
+              "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/matrix.json",
+              "sha256": "1ad26c7b2a7eb94a8a147efee1b157689176c4bafc391bd7ae478e0fce691d4e",
+              "bytes": 36475
+            },
+            "views": [
+              {
+                "view": "settings",
+                "helper": {
+                  "pid": 160929,
+                  "startTicks": 2769996,
+                  "parentPid": 144260,
+                  "sha256": "d9ad6e3b8773b24bfa1828248e5345e2f40db620fb5202f48ed0a9e7e985dabc"
+                },
+                "shown": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/shown.json",
+                  "sha256": "9a5ccd9b98220d83abeb67b04a6ce882418fa6ec8d2c3f6ede059caa09eca41c",
+                  "bytes": 987
+                },
+                "closed": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/closed.json",
+                  "sha256": "15299fe7c1717861d17bc6f11f916a0ab23150a92ca4ae9b0a801d1fa573f6ba",
+                  "bytes": 1256
+                },
+                "openWitness": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-settings.png",
+                  "sha256": "550b11883a20ef4a8d5cf76adf2057d3d12ab27f80d1fcd425da4f1ce93cc166",
+                  "bytes": 240896
+                },
+                "closeWitness": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-settings-close.png",
+                  "sha256": "3200dda79ddc59576f1fccf7704d8ed3f9bff25c819e031dea424aa113d7491e",
+                  "bytes": 603688
+                },
+                "normalExitCode": 0,
+                "visualObservation": "Native GNOME chrome and blue application controls painted correctly; no corruption in reviewed witness",
+                "renderReviewScope": "Current-version screenshot and ordinary close, no full UI feature certification"
+              },
+              {
+                "view": "history",
+                "helper": {
+                  "pid": 161517,
+                  "startTicks": 2774187,
+                  "parentPid": 144260,
+                  "sha256": "d9ad6e3b8773b24bfa1828248e5345e2f40db620fb5202f48ed0a9e7e985dabc"
+                },
+                "shown": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/shown.json",
+                  "sha256": "81cefde12fc7b661f4a17d9e2bc538a6e324b362f77c6d5176641605fe6912eb",
+                  "bytes": 983
+                },
+                "closed": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/closed.json",
+                  "sha256": "f0715f3021b6216ef2ac0eae1d07c185dd5af1f1bdee06ae199d45c2fcad55bc",
+                  "bytes": 1254
+                },
+                "openWitness": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-history.png",
+                  "sha256": "a0515d8439fb981bfddcbe5745206adc0002ab838c4aa10fd778fac220c55b8a",
+                  "bytes": 334569
+                },
+                "closeWitness": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-history-close.png",
+                  "sha256": "3200dda79ddc59576f1fccf7704d8ed3f9bff25c819e031dea424aa113d7491e",
+                  "bytes": 603688
+                },
+                "normalExitCode": 0,
+                "visualObservation": "Native GNOME chrome and blue application controls painted correctly; no corruption in reviewed witness",
+                "renderReviewScope": "Current-version screenshot and ordinary close, no full UI feature certification"
+              },
+              {
+                "view": "activity",
+                "helper": {
+                  "pid": 162112,
+                  "startTicks": 2778135,
+                  "parentPid": 144260,
+                  "sha256": "d9ad6e3b8773b24bfa1828248e5345e2f40db620fb5202f48ed0a9e7e985dabc"
+                },
+                "shown": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/shown.json",
+                  "sha256": "d8b81be1e9d70d0ae52e0b67bfa2af8a974629a04c49d41ee746d3084dd7b41c",
+                  "bytes": 987
+                },
+                "closed": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/closed.json",
+                  "sha256": "b313642c127a21a62d4118de1a68410c905b0568f3a93f8c4e653dde2b1f4931",
+                  "bytes": 1256
+                },
+                "openWitness": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-activity.png",
+                  "sha256": "f6d3711ddbe0c23bd471a85db9320e54e3eb801645c331acfa4d4bf1040b8ca5",
+                  "bytes": 332379
+                },
+                "closeWitness": {
+                  "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-activity-close.png",
+                  "sha256": "6421b92dad40e49f2c73a125c1329d5c0db76481cc85675135ad18ececba3b3d",
+                  "bytes": 603485
+                },
+                "normalExitCode": 0,
+                "visualObservation": "Native GNOME chrome and blue application controls painted correctly; no corruption in reviewed witness",
+                "renderReviewScope": "Current-version screenshot and ordinary close, no full UI feature certification"
+              }
+            ],
+            "visualReview": {
+              "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/visual-review.json",
+              "sha256": "4c5cd3f0df3db2a4a3943136eaaec1f5791df81aaa84509eb41cd96bd01942b7",
+              "bytes": 4285
+            }
+          },
+          "devTests": {
+            "toolchain": "Normal distro C++20/Qt6 Widgets CMake presets and Ninja; dynamically linked distro Qt; verified pinned official AWS C++ SDK",
+            "devTests": {
+              "total": 47,
+              "passed": 47,
+              "failed": 0,
+              "skipped": 0,
+              "raw": {
+                "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/dev.xml",
+                "sha256": "d811389ea61c506407a85aacaf8a800fb1cfc7683879b779ee9798d7cb487089",
+                "bytes": 45261
+              }
+            },
+            "devReleaseAndPackageCompleted": true
+          },
+          "scope": "Installed candidate49 current-source GNOME Wayland single-head local-only regression and post-native-use quiescent VM memory observation. Graphical fallback unchanged; no ephemeral Cinnamon capture helper used."
+        }
+      },
+      "crossDesktopVerified": true
+    }
+  ],
+  "best": {
+    "iteration": 0,
+    "sourceCommit": "9d142919e5e6365227a4424212380e92f85285fe"
+  },
+  "userDirection": [
+    "Minimal listener + tray with deferred loading",
+    "Cinnamon functional and memory gates first",
+    "Combined changes may satisfy threshold"
+  ],
+  "approval": {
+    "timestampUtc": "2026-10-09T05:51:45.055278+00:00",
+    "userReply": "Proceed with the listener/tray experiment",
+    "scope": "4h/two combined candidates, no dependencies/cloud machines, Cinnamon functional+memory first, <=40MiB cold+closed, full feature/native integration preserved"
+  },
+  "phase2_started_at": "2026-10-09T05:51:45.055304+00:00",
+  "nativeHostProbe": {
+    "desktop": "physical Cinnamon X11",
+    "query": "org.kde.StatusNotifierWatcher IsStatusNotifierHostRegistered",
+    "value": true,
+    "effect": "Read-only property, no registrations or graphical mutation"
+  },
+  "nativeTrayLocator": {
+    "schemaVersion": 1,
+    "utc": "2026-10-09T06:13:58.455596+00:00",
+    "purpose": "Cinnamon native SNI/menu locating probe, not product parity or saving",
+    "identity": {
+      "pid": 105802,
+      "startTicks": "3472014",
+      "executable": "/home/lab/native-tray-locator",
+      "sha256": "1bf6eb2daa4d247da4e7d8ec806b28e8ef4c94dd09850eed52f3f04b1ec330fa"
+    },
+    "menuRendered": true,
+    "pacedVisibleSettingsCallback": true,
+    "memorySamples": [
+      {
+        "elapsedSeconds": 0,
+        "bytes": {
+          "Rss": 12754944,
+          "Pss": 3604480,
+          "Private_Clean": 184320,
+          "Private_Dirty": 925696
+        },
+        "children": []
+      },
+      {
+        "elapsedSeconds": 5,
+        "bytes": {
+          "Rss": 12754944,
+          "Pss": 3604480,
+          "Private_Clean": 184320,
+          "Private_Dirty": 925696
+        },
+        "children": []
+      },
+      {
+        "elapsedSeconds": 10,
+        "bytes": {
+          "Rss": 12754944,
+          "Pss": 3604480,
+          "Private_Clean": 184320,
+          "Private_Dirty": 925696
+        },
+        "children": []
+      },
+      {
+        "elapsedSeconds": 15,
+        "bytes": {
+          "Rss": 12754944,
+          "Pss": 3610624,
+          "Private_Clean": 184320,
+          "Private_Dirty": 925696
+        },
+        "children": []
+      },
+      {
+        "elapsedSeconds": 20,
+        "bytes": {
+          "Rss": 12754944,
+          "Pss": 3610624,
+          "Private_Clean": 184320,
+          "Private_Dirty": 925696
+        },
+        "children": []
+      },
+      {
+        "elapsedSeconds": 25,
+        "bytes": {
+          "Rss": 12754944,
+          "Pss": 3610624,
+          "Private_Clean": 184320,
+          "Private_Dirty": 925696
+        },
+        "children": []
+      },
+      {
+        "elapsedSeconds": 30,
+        "bytes": {
+          "Rss": 12754944,
+          "Pss": 3610624,
+          "Private_Clean": 184320,
+          "Private_Dirty": 925696
+        },
+        "children": []
+      }
+    ],
+    "rssMiB": 12.1640625,
+    "limitations": [
+      "No product workload or target claim",
+      "First unpaced click missed; paced retry preserved",
+      "Console unlocked with protected bootstrap login through confirmed masked field"
+    ],
+    "files": [
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/after-click.jsonl",
+        "sha256": "ae7a4e9e70a258f62b5a29ed372e073e59d86d7f3b5412a4ce0338ff1112f4ad"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/after-click.png",
+        "sha256": "e656769fde38e0eb00f232912e79a75691705f1486931bd8789d0349c3c87b6c"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/first-attempt.json",
+        "sha256": "dad8e1d4980ca919cfc5df217e6dc0f1f3f3b232ae270310a0f5ae45a4afc987"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/initial.png",
+        "sha256": "344cf5fa323b1d0ba4301384365c3772d469b9a9bd37919231c2f2df3b1adb59"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/launch.json",
+        "sha256": "5acf9d4004b43be222c9af7098477a63edcb3d73958c148a5dd34a1fb049a9e6"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/measure-command.py",
+        "sha256": "49e8a3b401b1b9300cd2667c057ab47708c218a5e3289df450f145c2c285797c"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/memory.json",
+        "sha256": "ccb272a1a9ba7f82a5d08e59fdf0dc87c60b292200e9735f636105a05ee4e495"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/menu.png",
+        "sha256": "8bf55642f866655d9692aed4d15a4a4240be326a02ad5c3fe841e636e9f5df03"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/menu2.png",
+        "sha256": "93d44dd9d2ee2a215ee9e5ac8c747bb0efb562426d97a241f4c0ab83f7aa9d95"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/paced-click.jsonl",
+        "sha256": "f0357c2b1982bfb4a9866e0cb9a82e72245df626227e1622575ef1194df741a4"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/paced-click.png",
+        "sha256": "590ec9d4b85809b1c26ce030da6cf113c457d4fe762c12d404652b8a9b527a60"
+      },
+      {
+        "path": "work/native-tray-locator/cinnamon-proof-1/startup.jsonl",
+        "sha256": "ae7a4e9e70a258f62b5a29ed372e073e59d86d7f3b5412a4ce0338ff1112f4ad"
+      }
+    ],
+    "normalTimeoutExit": true,
+    "finalEvents": [
+      {
+        "event": "ready",
+        "pid": 105802,
+        "qtVersion": "6.4.2",
+        "seconds": 300,
+        "service": ":1.1777",
+        "syntheticOnly": true
+      },
+      {
+        "event": "registered",
+        "pid": 105802,
+        "syntheticOnly": true,
+        "utc": "2026-10-09T06:10:41.132Z"
+      },
+      {
+        "event": "layout-request",
+        "pid": 105802,
+        "syntheticOnly": true,
+        "utc": "2026-10-09T06:10:41.142Z"
+      },
+      {
+        "action": "settings",
+        "event": "menu-action",
+        "pid": 105802,
+        "syntheticOnly": true,
+        "utc": "2026-10-09T06:13:28.263Z"
+      },
+      {
+        "event": "timeout-stop",
+        "pid": 105802,
+        "syntheticOnly": true,
+        "utc": "2026-10-09T06:15:40.995Z"
+      },
+      {
+        "event": "normal-exit",
+        "pid": 105802,
+        "syntheticOnly": true,
+        "utc": "2026-10-09T06:15:40.995Z"
+      }
+    ]
+  },
+  "hypothesis_backlog": [
+    {
+      "id": "core-native-combined",
+      "description": "Qt Core listener with native SNI tray/menu and native persistent XCB clipboard; graphical captures move into a bounded ephemeral helper, retain QImage/QKeySequence linkage",
+      "category": "architecture",
+      "priority": "high",
+      "rank": 1,
+      "required_deps": [],
+      "dep_status": "approved",
+      "opportunity": {
+        "workload": "cold and post-view Cinnamon whole-family idle",
+        "baseline": "source45 cold45.414MiB/closed45.600MiB RSS",
+        "evidence": "Core+DBus initialization11.34MiB vs Widgets40.045MiB; actual Cinnamon native SNI locator rendered menu/callback12.164MiB RSS; this is attribution only",
+        "expected_benefit": "Product net saving unknown. Constructor initialization gap is28.7MiB upper locating contrast, not an additive product saving. Needed combined saving5.6MiB; verify full product after all persistent duties move. Native menu compatibility and no-child locator now passed.",
+        "confidence": "moderate for initialization opportunity; product/lifecycle costs unmeasured",
+        "cost_and_risk": "Combined candidate up to remaining4h cap; scaling fingerprint, outgoing INCR and capture dismissal/security need new tests. No dependencies."
+      }
+    }
+  ]
+}

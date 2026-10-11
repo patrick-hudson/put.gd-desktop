@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "timestampUtc": "2026-10-08T20:52:12.563748+00:00",
+  "scope": "Ready for parent-coordinated post-functional sampler; no comparative memory measured by this worker",
+  "runningApp": {
+    "pid": 2775,
+    "startTicks": 4592,
+    "sha256": "15252c95892e81a4ec07afe816d090b3701374da868d0bc65f54ea8a9e92abd3"
+  },
+  "operationCount": 13,
+  "fixtureProcessesStopped": true,
+  "finalWitness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc/functional-ready-head0.ppm",
+    "sha256": "844fe3c7f28781777436765f41d7ed799a0963de11bb89b7e86ed70e7d964d33"
+  },
+  "diagnosticsCollection": {
+    "status": "collected",
+    "evidence": "/home/patrick/work/put.gd/work/lab-runs/current-gnome-a3d70dc"
+  }
+}
