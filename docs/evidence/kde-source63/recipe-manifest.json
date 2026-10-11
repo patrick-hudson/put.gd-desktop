@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "commit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "tree": "553a904064be556ebeec5ae06593994429b356b4",
+    "count": 63,
+    "version": "0.1.1-dev.63+g050b702c6a6d"
+  },
+  "exportPlan": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-evidence-export-preparation/export-plan.json",
+    "sha256": "c2e7bfbc9533881a47460246e736ce691737dc19201109222b52e0041446ef07"
+  },
+  "recipes": {
+    "native": [
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/native.py",
+        "sha256": "a917641df1e52b837a9a1a5cc86e37cd9adab81bfde76f013b158e29c972c2bd"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/context.py",
+        "sha256": "b94dedf626e801bfb49944c6a2ad9b3b8e95dca19d37fc9edff7fe9de65de281"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/adapter60.py",
+        "sha256": "60a01f6a875a207fa205300a029508add9672a664e5e67d616f36bd832528dac"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/matrix60.py",
+        "sha256": "5bf3bcec3bb62611ee075f116ea5efe2a89be9ba419e24164394fedfc1cea3f5"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/overlay.py",
+        "sha256": "d7ed89571217be1a6fcb7281694ad5108ea9b2127084b69d79ce8ea334ddc50b"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/atomic_keys.py",
+        "sha256": "456ec7022794d3655fceeede68b4f05ead0989c931976c612911f854bfb22f53"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/session_environment.py",
+        "sha256": "fe3db5511f0dc63e6d4832d95c307dfa41ea11286ecd1575ed1b5b2ad12d63d0"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-full-native-preparation/guest_checks.py",
+        "sha256": "6a70de490c471b7de2ce1f251bd56369a754877dd5741853b3e7b302be4a0b17"
+      }
+    ],
+    "focused": [
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/focused/entry.py",
+        "sha256": "a682bff5b364932ed13880a55f9a8d32db902ca6398194bec14b2576e84f7b62"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/focused/focused.py",
+        "sha256": "8f2cbff78231c138057cedc89df36e9e89884992a8ef3b8e3e65407b994440d3"
+      }
+    ],
+    "views": [
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/focus/control.py",
+        "sha256": "3c4abda7aa6d7bdfebee4ec75c284403dcc4aa9517cb3305ae5d05a51aeb2114"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/focus/font-guest.py",
+        "sha256": "8b01df0c22673696340b18dfc6bc4cbd48ea3c51b2ccecaa8a591b16f0edbe87"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/focus/evidence-plan.json",
+        "sha256": "0e42af6760372a2fad74aec8c4d3654c445f93fcd5789372347285974a776264"
+      }
+    ],
+    "live": [
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/live/entry.py",
+        "sha256": "73673af8f03eafd5cb7119de605390a608c0a4b9eab28554537b30523681a1d8"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/live/clock.py",
+        "sha256": "9eeda4fe0ae855e19ac1f78d6fb0f62315e0ffb803d40c94dff61eca4dfd3394"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/live/alpha/cursor.py",
+        "sha256": "b1ee029239cb620282637555b58da9bcfe842e00cb80b0750ed92c13e737d006"
+      }
+    ],
+    "guest51": [
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/guest51/run-deferred-ctest63.py",
+        "sha256": "9f0beade11b4ea4b4ad1cff1d4379605b434f10390dc9d48b1fd6e18c6260594"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/guest51/deferred-ctest63.sh.in",
+        "sha256": "b2253c61a75962138094c0a7cc0883b2c2ef4190837fb58954bc455b28ca5be5"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-preparation/guest51/ctest63-socket-preflight.py.in",
+        "sha256": "fd49a650b241d44e321ff2be5a6cd606b6a6b0dcd69a84714303a3c2bf0e17b3"
+      }
+    ],
+    "memory": [
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/memory/observe.py",
+        "sha256": "4e20ccb1028f8147e722413f366825b1c96977d34f215eea17eedfdaef21a275"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/memory/run-memory63-kde-a1.py.in",
+        "sha256": "cb145de381ff490098201d531f8c3e85c3fdceef124c7c764d3b2c62134f576c"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/memory/run-memory63-kde-a2.py.in",
+        "sha256": "469d3a90311e216c9b568268ca8a087b8ecb220d27155398cebd1b4b777c546e"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/memory/run-cold63-owned.py.in",
+        "sha256": "ae0be93b97034e6b55ad155af53127eeb3f028140f251e8c6e00b48cd6395941"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/memory/observe_cold.py.in",
+        "sha256": "cb3a123ff91d6b63f858209a0db2f1e20f57693211afe668f50e625704b6b546"
+      }
+    ]
+  },
+  "frozenOracleProvenance": {
+    "guards.py": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/guards.py",
+      "sha256": "fc500e862532f692e838817ca4da8e3c8658992b2e93e43bbc77629286fc8690"
+    },
+    "adapter.py": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/adapter.py",
+      "sha256": "91d96c507dbb0037073c746e0be66493e2c0218c59b51279af60d170c2bb5733"
+    },
+    "fixture_registry.py": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/fixture_registry.py",
+      "sha256": "d3dfe4d7fbc3fca3bf38c690ac0cfe442699d0c7554bb5318ac7b331fd46bb3d"
+    },
+    "matrix_fixture_wrapper.py": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/matrix_fixture_wrapper.py",
+      "sha256": "530a776e09096dd6f6e649a93b42df4fa969d65fe62c54b6565a56bcf878c39d"
+    },
+    "binding-current57-a1.json": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/binding-current57-a1.json",
+      "sha256": "521035ec29c9a109abaf189262cd080f4af46c45459dae63ef8507572f217543"
+    }
+  },
+  "frozenSampler": {
+    "path": "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+    "sha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+  },
+  "frozenEvaluator": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/evaluate.py",
+    "sha256": "ec6d9bffd4170482ad047fc6ecda880659dc538d4d1bf4c9f942a2be87b6502a"
+  },
+  "socketChecker": {
+    "path": "/home/patrick/work/put.gd/tools/diagnostics/check_socket_paths.py",
+    "sha256": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+  },
+  "currentRecipeDrift": [],
+  "runtimeReleaseGrantedByDraft": false,
+  "bindingRule": "Templates and hashes are provenance only. Bind actual installed family, PID/start/device/inode, native packet/quiet receipts and root admission before execution. Preserve original bytes and failed attempts.",
+  "availability": {
+    "archivalExactCampaign": {
+      "recipes": 24,
+      "storedUnderIgnoredWork": true,
+      "freshCloneRunnableWithoutOriginalArtifacts": false,
+      "requiresOriginalPrivateReceiptsAndRootAdmissions": true,
+      "missingOriginals": "Fail closed. Do not reconstruct or relabel a passed receipt, remove guards, or import a historical gate as current authorization."
+    },
+    "newCampaign": {
+      "trackedRunners": {
+        "tools/lab/lab.py": {
+          "path": "/home/patrick/work/put.gd/tools/lab/lab.py",
+          "sha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89"
+        },
+        "tests/performance/bench_ui_process.py": {
+          "path": "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+          "sha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+        },
+        "tools/diagnostics/check_socket_paths.py": {
+          "path": "/home/patrick/work/put.gd/tools/diagnostics/check_socket_paths.py",
+          "sha256": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+        },
+        "docs/vm-lab.md": {
+          "path": "/home/patrick/work/put.gd/docs/vm-lab.md",
+          "sha256": "96773a33bfe7eb499c35d02c9a233d08aa3c53b9e29efb6b188bb929100e0011"
+        },
+        "docs/testing-ui-process.md": {
+          "path": "/home/patrick/work/put.gd/docs/testing-ui-process.md",
+          "sha256": "ad2b074ec0ede1adc99bf75f5f56ba12a508671c91834cb6456286b2337c7a38"
+        },
+        "docs/cli.md": {
+          "path": "/home/patrick/work/put.gd/docs/cli.md",
+          "sha256": "da43e2e87838de744afa3a105ce50c43b4bd3ec3961c05b2b1d7ff77679fd689"
+        }
+      },
+      "usesNewBaselineAndCurrentBuild": true,
+      "requiresFreshOwnedOverlayAndProtectedBootstrap": true,
+      "usesOriginalTrackedSingleScenarioOracles": true,
+      "memoryUsesUnchangedTrackedSampler": true,
+      "requiresFreshActualNativeQuietFamilyAndIdentityEvidence": true,
+      "historicalAcceptanceTransferred": false,
+      "exactOldCampaignReplayed": false,
+      "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
+    }
+  },
+  "trackedNativeRunner": {
+    "path": "/home/patrick/work/put.gd/tools/lab/lab.py",
+    "sha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89"
+  },
+  "archivalWorkArtifactsShipped": false
+}

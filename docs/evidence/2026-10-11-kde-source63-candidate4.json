@@ -1,0 +1,555 @@
+{
+  "schemaVersion": 1,
+  "status": "interim_not_accepted",
+  "terminal": false,
+  "trackedExportPerformed": true,
+  "candidateNumber": 4,
+  "source": {
+    "commit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "tree": "553a904064be556ebeec5ae06593994429b356b4",
+    "count": 63,
+    "version": "0.1.1-dev.63+g050b702c6a6d"
+  },
+  "allocatorPolicy": {
+    "changedFile": "src/main.cpp",
+    "platform": "Linux glibc KDE Core resident only",
+    "call": "mallopt(M_MMAP_THRESHOLD, 128 * 1024)",
+    "beforeApplicationConstruction": true,
+    "mechanism": "Fix the mmap threshold for larger transient allocations instead of allowing glibc threshold adaptation. Existing arena free chunks may still serve allocations; unchanged idle cleanup remains active.",
+    "cinnamonGnomeRoutingChanged": false,
+    "policyAppliedToSiblingResidents": false,
+    "portability": "No policy on non-glibc or non-Linux builds.",
+    "benefitConfirmed": false
+  },
+  "build": {
+    "hostStandardBuildPassed": true,
+    "hostRegisteredTests": 51,
+    "hostRegisteredTestsPassed": 51,
+    "hostSkippedCases": [
+      {
+        "case": "svgTextDecodeHasFontServicesOnlyInChild",
+        "reason": "optional host SVG codec absent"
+      },
+      {
+        "case": "svgRegularFilePreviewThroughArtifactStore",
+        "reason": "optional host SVG codec absent"
+      },
+      {
+        "case": "unavailableFacadeChild",
+        "reason": "subprocess helper case"
+      }
+    ],
+    "hostEvidenceScope": "Core/widget/protocol only; SVG guest cases must pass where declared.",
+    "kdePackageBuilt": true,
+    "packageSha256": "bc652760cdbdab8df927c0b775c8d0e873ce6c62874d9d01e7843860a3b87217",
+    "kdeGuestTestsRegistered": 51,
+    "kdeGuestTestsExecuted": false,
+    "compiledInstalledManifest": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.63+g050b702c6a6d",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.63+g050b702c6a6d",
+      "gitCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+      "gitTree": "553a904064be556ebeec5ae06593994429b356b4",
+      "commitCount": 63,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "installedFamilySha256": {
+      "/usr/bin/putgd": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed",
+      "/usr/bin/putgd-cli": "bf4a6331a1c33ad797fd3a62054b1a891a29faca599045028a19716a3a5b1f82",
+      "/usr/bin/putgd-ui": "f73a5d9da4e4db3c79b84d828f440806b7a8f2ceb2e5f908943661868a8087f8",
+      "/usr/bin/putgd-capture": "8c18d995981a34ba9091d8980a281926bdfd4225b7e9d516cbf8265c55587932",
+      "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750",
+      "/usr/bin/putgd-kde-region": "0ddb504080ca8eaaedb3d06fa1613bb0fc9ec0470f0755a3741d59f97bde6c43",
+      "/usr/lib/x86_64-linux-gnu/putgd/libputgd-s3.so": "1239cd5963342c157446507df81fe5eb991d9a7bb3ba9b3b43f1a23486ad3dd0"
+    }
+  },
+  "residentIdentity": {
+    "device": 64769,
+    "executableBasename": "putgd",
+    "inode": 1312189,
+    "pid": 149243,
+    "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed",
+    "startTicks": 3225818,
+    "uid": 1000
+  },
+  "firstColdDiagnostic": {
+    "timestampUtc": "2026-10-11T00:08:47.388358+00:00",
+    "rssBytes": 29278208,
+    "rssMiB": 27.921875,
+    "pssBytes": 6579200,
+    "pssMiB": 6.2744140625,
+    "privateBytes": 5038080,
+    "privateMiB": 4.8046875,
+    "identityUnchanged": true,
+    "rssCategoriesReconciled": true,
+    "collectionSeconds": 0.025204034998751013,
+    "scored": false,
+    "sampleCount": null,
+    "cpu": null,
+    "limits": [
+      "smaps and rollup are sequential, not an atomic allocation snapshot.",
+      "Categories do not prove allocator ownership or removable memory.",
+      "This is not a scored five-minute sample or native acceptance."
+    ]
+  },
+  "originalSelected4": {
+    "passed": false,
+    "completedPassingCases": 3,
+    "failedCases": 1,
+    "cases": [
+      {
+        "scenario": "clipboard-text-independent-paste",
+        "client": "qt",
+        "passed": true,
+        "elapsedSeconds": 140.24952872202266,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-1/results.json",
+          "sha256": "622803cdd447bd805eefa09b25e6ae32d387aa030a73715ad5a22d93f349e39d"
+        },
+        "errorCategory": null,
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      },
+      {
+        "scenario": "window-independent-paste",
+        "client": "qt",
+        "passed": true,
+        "elapsedSeconds": 165.42558707401622,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-2/results.json",
+          "sha256": "9f817aa169920c6ff6d39eb4fb7102debc2342d57dd15a6cd7ec7ace3e2d3dd5"
+        },
+        "errorCategory": null,
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      },
+      {
+        "scenario": "desktop-independent-paste",
+        "client": "qt",
+        "passed": true,
+        "elapsedSeconds": 141.87570592598058,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-3/results.json",
+          "sha256": "c38f264a096d8bbab7ab836ca06f2845fc93d045fd22e22e6555cfd227eef461"
+        },
+        "errorCategory": null,
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      },
+      {
+        "scenario": "region-cancel-escape-independent-paste",
+        "client": "qt",
+        "passed": false,
+        "elapsedSeconds": 115.49729127896717,
+        "receipt": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T002214224914-4/results.json",
+          "sha256": "6f0087973c52a1da0ded547d685a4d0fe64a07a802a03582c3f78271d9427f43"
+        },
+        "errorCategory": "cancellation-artifact-or-terminal-state-unconfirmed",
+        "singleHeadOnly": true,
+        "performanceEligible": false
+      }
+    ],
+    "normalRerunPerformedByDraft": false,
+    "unchangedOracles": true
+  },
+  "cancellationDiagnosis": {
+    "originalFailurePreserved": true,
+    "deadlineInterpretationCorrected": true,
+    "deadlineStart": "After guarded fixture launch returns; exact deadline timestamp not instrumented.",
+    "approximateDeadlineBracketUtc": [
+      "2026-10-11T00:32:43.743116Z",
+      "2026-10-11T00:32:46.019Z"
+    ],
+    "escapeReceiptPublicationUtc": "2026-10-11T00:32:44.352158Z",
+    "publicationIsNotKeydownTime": true,
+    "timingConclusion": "Budget exhaustion is supported; zero operation polls versus one slow empty poll is unproven. Timing alone does not prove product cancellation, artifact absence, or clipboard parity.",
+    "journalReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/reply.json",
+      "sha256": "a76380b0d50df553846e40565c45c7e099af41976212158c26c4bfa85f4e610c"
+    },
+    "itemCopyInspectReceipt": null,
+    "helperNormalExitReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003807511430-candidate63-failed-selected4-fixture-drain/complete.json",
+      "sha256": "d37fa13dccfc49c25440febab7684182a4f10087506adf57745901c948df62f5"
+    },
+    "cancellationAccepted": false,
+    "qualification": "The actual journal confirms cancelled/no_result/items[] and the subsequent drain confirms certified normal-zero helper exit with no fixture residue. This diagnoses the original timed-out failure; it does not retroactively pass its cancellation artifact/independent clipboard oracles. Separate item/copy inspection remains pending.",
+    "journalCompleteReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/complete.json",
+      "sha256": "01fa7673ceb9437677199fd13e795bdfa428033a1580ffd12858f132bae19ec8"
+    },
+    "journalBoundedProjection": {
+      "id": "79246861-13be-4e44-911e-22fd0b566d77",
+      "action": "region",
+      "state": "cancelled",
+      "cancelled": true,
+      "created": "2026-10-11T00:32:27.207Z",
+      "copyStatus": "no_result",
+      "items": []
+    },
+    "errorCode": "cancelled",
+    "beforeReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/before.json",
+      "sha256": "2ee8909f7865b2c4836319022603bc35546961ea1210dd962c62e9872b7b9b8f"
+    },
+    "afterReceipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/after.json",
+      "sha256": "2ee8909f7865b2c4836319022603bc35546961ea1210dd962c62e9872b7b9b8f"
+    },
+    "identityAndQuietBeforeAfter": {
+      "sourceCount": 63,
+      "installedFamilyMembers": 7,
+      "pid": 149243,
+      "startTicks": 3225818,
+      "activeOperations": 0,
+      "uiPid": 0,
+      "installedFamilyUnchanged": true
+    },
+    "journalCancellationConfirmed": true,
+    "fixtureDrain": {
+      "fixtureResidue": false,
+      "productionFamilySingle": true,
+      "active": false,
+      "cleanupRequired": false,
+      "lastExit": {
+        "code": 0,
+        "generation": "1",
+        "processId": 177207,
+        "startTicks": "3368847",
+        "status": "normal",
+        "teardownCertified": true
+      }
+    }
+  },
+  "parameters": {
+    "toolchain": "C++20 / dynamic distro Qt>=6.4.2 / CMake presets / Ninja / official AWS SDK",
+    "commands": [
+      "cmake --preset dev",
+      "cmake --build --preset dev",
+      "ctest --preset dev"
+    ],
+    "vm": "Owned KDE Wayland overlay only; golden/base disks immutable; graphical actions visible via localhost VNC5934/display wall8765",
+    "order": "KDE functional/memory first. Current63 Cinnamon/GNOME regression execution only after KDE satisfactory; frozen57 sibling gate provenance only.",
+    "guestCTest": {
+      "count": 51,
+      "timeoutSeconds": 900,
+      "skipPolicy": "No skipped registered tests accepted",
+      "socketPreflight": "Actual Qt/Python templates incl runtime/putgd/session.sock, pgoWayland, qmp; UTF8<=107 before launch; preserve failures"
+    },
+    "native": {
+      "selectedCases": [
+        "clipboard-text/qt",
+        "window/qt",
+        "desktop/qt",
+        "region-cancel-escape/qt"
+      ],
+      "fullCases": 12,
+      "fullRequiredBeforeFocused": true,
+      "hotkeys": "Actual matrix bindings Ctrl+Shift+F9/F10/F11/F12; default bindings not independently qualified",
+      "fixture": "Synthetic original Qt/GTK fixtures and exact PID/start/exe/output inode registry; independent actual paste/pixel gates; no Node"
+    },
+    "supplementalImages": "Three actual GTK SVG clipboard/original-file URI/mislabeled non-PNG cases; original input/image/preview/paste oracles; raw payloads private",
+    "views": "Tray/nativefonts/nativefolder; settings Cancel/Save/Reload/feedback/notifications; Activityparent/item with unrelated-image reset+independent paste; localHistory; normal helperexit; restore priorconfig",
+    "region": "One pending transparent selector +changing clock +no-input cursor alpha/RGB metadata, then Escape/durablecancel/normalhelperexit; retain legacyRFBmask visibility qualification",
+    "memory": {
+      "seconds": 300,
+      "intervalSeconds": 5,
+      "warmupSeconds": 5,
+      "expectedSamples": 61,
+      "minimumSpanSeconds": 299.5,
+      "maximumGapSeconds": 7.5,
+      "timeoutSeconds": 420,
+      "targetRssBytes": 41943040,
+      "pssDiagnosticOnly": true,
+      "cpu": "Actual clockticks/cputime/elapsed fraction of onecore",
+      "family": "Current-version complete productfamily, exact PID/start/device/inode; active0/UIclosed/helpergone/allocatorpendingfalse",
+      "ladder": "Postnative300a1 + independentrepeat300a2 + separatelyfreshcold300 after exactnormalquit/profilepreserve/restartproof",
+      "samplingAltered": false
+    },
+    "environmentQualification": "User-adjusted KDE power/dimming settings docs/vm-lab.md:227; no further mutations. Include bounded actual Qt/glibc version only; no arbitraryenvironment"
+  },
+  "references": {
+    "sourceMetadata": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate4-source63/source-metadata.json",
+      "sha256": "298aaf8a6cfc51405809410992dd720bf661ca946c19723563f4abc3a4c7ca8d"
+    },
+    "hostBuildTests": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate4-host/verification-source63.json",
+      "sha256": "7397b1658e70916cb550b73bd3f3d047eb578a146f4f7dcb9d16cc232e877327"
+    },
+    "kdeBuild": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T000204894583-candidate63-standard-build/complete.json",
+      "sha256": "0641c8f61cb3d86a3a9204a30a9b90cb662059ecc9818c257447467d98fcebd0"
+    },
+    "deployment": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T000808426626-candidate63-deploy-first-cold-continuation/complete.json",
+      "sha256": "64f896485aaa6ea86368d19669713669ca1449f00cc93da255e193e433507b45"
+    },
+    "firstCold": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T000808426626-candidate63-deploy-first-cold-continuation/first-cold-attribution.json",
+      "sha256": "7ecba117c45ce7641d4cf66b8bf4f31f739e025b3947d976601ada0aa0dbbd33"
+    },
+    "selectedMatrixFailure": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/failed.json",
+      "sha256": "e7ff705f7e8110f082d7f3fe756286daac608396fe53e668815e8b5844af9474"
+    },
+    "deadlineOriginal": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-cancellation-diagnosis/original-deadline-evidence.json",
+      "sha256": "9459018d42cf2db0e97c298e22f86b8b7c2af04f6b38d592301a497f0a86e9c5"
+    },
+    "deadlineCorrection": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-cancellation-diagnosis/deadline-interpretation-correction.json",
+      "sha256": "2e22864ba912f2ef62603e3fbc7379c15c865d961120e6d2ca03f5e62d62dea3"
+    },
+    "socketPreflights": [
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-01.json",
+        "sha256": "88235d287884ed7c6f9c05aebd0b2dd9f1ca48d053d767225b9b907f107119a0"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-02.json",
+        "sha256": "d53ac03135c4b6d81916bcda31799d5b64efda7772fc19775956da138c18ac35"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-03.json",
+        "sha256": "19fb6699a9ae2784cafaa313ecb0e8eca6607c6464df9f2006cf06a9f33cd5ab"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T002214224914-matrix/isolated-socket-preflight-04.json",
+        "sha256": "20d72fac47a2f8789cc690e42cece9528f3e812df71164e837cd56fd2803d447"
+      }
+    ],
+    "cancellationJournal": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/reply.json",
+      "sha256": "a76380b0d50df553846e40565c45c7e099af41976212158c26c4bfa85f4e610c"
+    },
+    "postFailureDrain": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003807511430-candidate63-failed-selected4-fixture-drain/complete.json",
+      "sha256": "d37fa13dccfc49c25440febab7684182a4f10087506adf57745901c948df62f5"
+    }
+  },
+  "pendingGates": [
+    "Independent cancellation clipboard check and complete artifact/terminal-state diagnosis; journal items[] and certified normal helper exit already confirmed, original case remains failed",
+    "Promising postworkload diagnostic and accepted selected4 run",
+    "Full12 Qt/GTK native matrix",
+    "Guest51 registered tests without acceptance skips",
+    "SVG3 production path proof",
+    "Native tray/settings/history/activity and native fonts/folder dialogs",
+    "Transparent live selector/clock/cursor alpha and durable cancellation",
+    "Two populated postnative300s observations and one independently fresh empty-profile cold300s observation",
+    "Current source63 Cinnamon physical functional and memory gate",
+    "Current source63 GNOME functional and memory gate after Cinnamon",
+    "Remote S3/history acceptance where declared"
+  ],
+  "acceptance": {
+    "native": false,
+    "memory": false,
+    "keeper": false,
+    "siblings": false,
+    "remote": false
+  },
+  "trackedTargets": [
+    "docs/evidence/2026-10-11-kde-source63-candidate4.json",
+    "docs/evidence/kde-source63/recipe-manifest.json",
+    "docs/evidence/kde-source63/reproduction.md"
+  ],
+  "hostControlCostDiagnosis": {
+    "scope": "Test harness/control diagnostics only; no product memory acceptance",
+    "originalAuthorize": {
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-host-guard-cost-audit/original-authorize-cost.json",
+        "sha256": "837fcdfd01da9d7d9a635a9356e64223ef0343f7a03621aa0e10c408edc0e267"
+      },
+      "historicalSourceCount": 57,
+      "current63AcceptanceOrAuthorization": false,
+      "bindSeconds": 0.0021025199675932527,
+      "authorizeSeconds": 0.8348829749738798,
+      "hashCalls": 106,
+      "hashBytes": 345638106,
+      "hashSeconds": 0.7933780799503438,
+      "categoryTotals": {
+        "code-or-metadata": {
+          "calls": 53,
+          "bytes": 3274217,
+          "elapsedSeconds": 0.010071283031720668
+        },
+        "historical-physical-receipt": {
+          "calls": 21,
+          "bytes": 166008,
+          "elapsedSeconds": 0.0009497448918409646
+        },
+        "other": {
+          "calls": 28,
+          "bytes": 11513965,
+          "elapsedSeconds": 0.029579746071249247
+        },
+        "package": {
+          "calls": 2,
+          "bytes": 11503116,
+          "elapsedSeconds": 0.0280610189656727
+        },
+        "source-archive": {
+          "calls": 2,
+          "bytes": 319180800,
+          "elapsedSeconds": 0.7247162869898602
+        }
+      },
+      "historicalHashAlreadyStreaming": true,
+      "arbitraryPerCallPathsExported": false
+    },
+    "hashMethodProbe": {
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-host-guard-cost-audit/hash-method-probe/results.json",
+        "sha256": "350c0670ec53723564ac74a1be0ba81acacb1bc1649d9704ff348b13df918a25"
+      },
+      "rows": [
+        {
+          "method": "read_bytes",
+          "repeat": 1,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.45818150497507304,
+          "highWaterIncreaseBytes": 159625216
+        },
+        {
+          "method": "file_digest",
+          "repeat": 1,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.35967759700724855,
+          "highWaterIncreaseBytes": 258048
+        },
+        {
+          "method": "read_bytes",
+          "repeat": 2,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.4291466569993645,
+          "highWaterIncreaseBytes": 159776768
+        },
+        {
+          "method": "file_digest",
+          "repeat": 2,
+          "pythonVersion": "3.12.3",
+          "archiveBytes": 159764480,
+          "actualDigest": "f75bd9d07f219de3271103fcbcd5809815d247b9e35c0149013d943a8b7016d8",
+          "metadataUnchanged": true,
+          "elapsedSeconds": 0.3531535139773041,
+          "highWaterIncreaseBytes": 262144
+        }
+      ],
+      "allDigestsAndMetadataEqual": true,
+      "runOrder": "serialread_bytes1,file_digest1,read_bytes2,file_digest2; freshprocess each",
+      "hostTemporaryAllocationOnly": true,
+      "historicalGuardBenefitProven": false,
+      "freshDigestEachCall": true,
+      "noDigestCache": true,
+      "qualification": "Fresh isolated Python process per method/repeat; existing page cache retained. Current overlay read_bytes versus standard streaming file_digest, not product RSS. Streaming saved about76-99ms and avoided about159MB temporary host high-water allocation in these two pairs; historical guard already streams."
+    },
+    "actualSshTransport": {
+      "completeReceipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004341572151-candidate63-transport/complete.json",
+        "sha256": "bd8cd911349071b99eaa39e8cd300d8264d5ebf4a339852bdad435b219bf32d7"
+      },
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004341572151-candidate63-transport/transport.json",
+        "sha256": "438fe9bb96f66ba1df5b5e831254b754aa4f1896c20164a8269b85af5ddd8106"
+      },
+      "rows": [
+        {
+          "kind": "nop",
+          "hostElapsedSeconds": 0.30246756999986246
+        },
+        {
+          "kind": "inventory",
+          "hostElapsedSeconds": 0.4710725449840538
+        }
+      ],
+      "allChecksRetained": true,
+      "controlMasterAdded": false,
+      "memoryTargetSample": false,
+      "qualification": "Durations include fresh SSH connection and actual guest nop or inventory; original guards run before/after outside measured call. Two serial calls only."
+    },
+    "inventoryConcurrencyProbe": {
+      "receipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004113984567-candidate63-compare/comparison.json",
+        "sha256": "ae2f13afcaf8318f98b8a0976caa88477b780933628c44e04d88ec56a869ece7"
+      },
+      "completeReceipt": {
+        "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004113984567-candidate63-compare/complete.json",
+        "sha256": "ec7fe6fb9d5d14caf6a613e1a211c17d55862ecd967677625afebbe7ba8e5239"
+      },
+      "identicalInventories": true,
+      "originalDurationSeconds": 0.161852571000054,
+      "concurrentDurationSeconds": 0.17038217400113354,
+      "memoryTargetSample": false,
+      "allChecksRetained": true,
+      "applied": false,
+      "qualification": "Two inventory methods returned identical values; concurrency was slower in this single comparison, so it remained unapplied."
+    },
+    "productSourceChanged": false,
+    "productMemoryTargetClaim": false,
+    "nativeAcceptanceClaim": false
+  },
+  "supersedesDraftOnly": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-evidence-export-preparation/draft-a2/manifest.json",
+    "sha256": "6251e4d65e5f514811e095c90be6cacf9dacfcb5a7d276326aca29cf6d466412"
+  },
+  "reproductionAvailability": {
+    "archivalExactCampaign": {
+      "recipes": 24,
+      "storedUnderIgnoredWork": true,
+      "freshCloneRunnableWithoutOriginalArtifacts": false,
+      "requiresOriginalPrivateReceiptsAndRootAdmissions": true,
+      "missingOriginals": "Fail closed. Do not reconstruct or relabel a passed receipt, remove guards, or import a historical gate as current authorization."
+    },
+    "newCampaign": {
+      "trackedRunners": {
+        "tools/lab/lab.py": {
+          "path": "/home/patrick/work/put.gd/tools/lab/lab.py",
+          "sha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89"
+        },
+        "tests/performance/bench_ui_process.py": {
+          "path": "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+          "sha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+        },
+        "tools/diagnostics/check_socket_paths.py": {
+          "path": "/home/patrick/work/put.gd/tools/diagnostics/check_socket_paths.py",
+          "sha256": "7e8797ec6ea0014eeacd428f822ef3fe545a276247a7ad7e6de9b557a0937f55"
+        },
+        "docs/vm-lab.md": {
+          "path": "/home/patrick/work/put.gd/docs/vm-lab.md",
+          "sha256": "96773a33bfe7eb499c35d02c9a233d08aa3c53b9e29efb6b188bb929100e0011"
+        },
+        "docs/testing-ui-process.md": {
+          "path": "/home/patrick/work/put.gd/docs/testing-ui-process.md",
+          "sha256": "ad2b074ec0ede1adc99bf75f5f56ba12a508671c91834cb6456286b2337c7a38"
+        },
+        "docs/cli.md": {
+          "path": "/home/patrick/work/put.gd/docs/cli.md",
+          "sha256": "da43e2e87838de744afa3a105ce50c43b4bd3ec3961c05b2b1d7ff77679fd689"
+        }
+      },
+      "usesNewBaselineAndCurrentBuild": true,
+      "requiresFreshOwnedOverlayAndProtectedBootstrap": true,
+      "usesOriginalTrackedSingleScenarioOracles": true,
+      "memoryUsesUnchangedTrackedSampler": true,
+      "requiresFreshActualNativeQuietFamilyAndIdentityEvidence": true,
+      "historicalAcceptanceTransferred": false,
+      "exactOldCampaignReplayed": false,
+      "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
+    }
+  },
+  "exportedUtc": "2026-10-11T00:49:04.313328+00:00",
+  "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
+  "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB."
+}
