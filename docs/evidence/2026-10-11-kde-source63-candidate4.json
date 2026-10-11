@@ -354,17 +354,17 @@
     }
   },
   "pendingGates": [
-    "One independently fresh empty-profile cold300s observation; both populated postnative300s observations passed",
     "Current source63 Cinnamon physical functional and memory gate",
     "Current source63 GNOME functional and memory gate after Cinnamon",
     "Remote S3/history acceptance where declared"
   ],
   "acceptance": {
     "native": false,
-    "memory": false,
+    "memory": true,
     "keeper": false,
     "siblings": false,
-    "remote": false
+    "remote": false,
+    "memoryScope": "KDE VM local-native two postuse300 and one freshcold300; current sibling gates remain pending"
   },
   "trackedTargets": [
     "docs/evidence/2026-10-11-kde-source63-candidate4.json",
@@ -564,7 +564,7 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T03:00:18.861645+00:00",
+  "exportedUtc": "2026-10-11T03:15:30.210180+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
   "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
   "freshCancellationCase": {
@@ -1004,5 +1004,22 @@
       ]
     }
   ],
-  "postNativeTwoRunsConfirmed": true
+  "postNativeTwoRunsConfirmed": true,
+  "freshColdConfirmation": {
+    "path": "docs/evidence/kde-source63/fresh-cold-a1.json",
+    "sha256": "45d64dda7c2f0c5729220b3a2b4839538fa1cbdd764749d7f1bbf92c1e7eaf7a",
+    "samplesSha256": "90bee0309b3f1bc5e5aae629750184b9390791ab321674eaa64b46c3a6b5d5ba",
+    "peakRssMiB": 27.9140625,
+    "newResident": {
+      "pid": 302275,
+      "startTicks": 4298152,
+      "uid": 1000,
+      "executable": "/usr/bin/putgd",
+      "device": 64769,
+      "inode": 1312189,
+      "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed"
+    },
+    "rootVerified": true
+  },
+  "kdeLocalFunctionalAndMemoryLadderPassed": true
 }

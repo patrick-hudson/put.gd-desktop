@@ -134,3 +134,5 @@ for name in ("post-native-a1", "post-native-a2"):
     print(f"{name}: {peak / 1048576:.3f} MiB, {cpu:.5f}% CPU, {len(rows)} samples")
 PYTHON
 ```
+
+The separately launched empty-profile cold observation also passed: 29,270,016 bytes (27.914 MiB) peak RSS, 61 samples over 299.996 seconds and 0.04667% of one core. `fresh-cold-a1.json` and `fresh-cold-a1.samples.jsonl` preserve its content-free measurement data. The old populated profile was kept intact after normal quit; the installed binaries were unchanged. History and operation counts and UI/capture-helper generations stayed zero. The three required KDE memory windows are now confirmed. Current-source Cinnamon/GNOME regressions and remote S3/history remain pending, so source63 is not yet accepted as a keeper.
