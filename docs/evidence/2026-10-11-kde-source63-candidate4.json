@@ -364,7 +364,7 @@
     "keeper": false,
     "siblings": false,
     "remote": false,
-    "memoryScope": "KDE VM local-native two postuse300 and one freshcold300; current sibling gates remain pending"
+    "memoryScope": "KDE three memory windows and current Cinnamon complete regression passed; current GNOME and remote gates pending"
   },
   "trackedTargets": [
     "docs/evidence/2026-10-11-kde-source63-candidate4.json",
@@ -564,7 +564,7 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T03:15:30.210180+00:00",
+  "exportedUtc": "2026-10-11T04:08:29.616604+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
   "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
   "freshCancellationCase": {
@@ -1021,5 +1021,38 @@
     },
     "rootVerified": true
   },
-  "kdeLocalFunctionalAndMemoryLadderPassed": true
+  "kdeLocalFunctionalAndMemoryLadderPassed": true,
+  "currentSiblingRegressions": {
+    "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "sourceCount": 63,
+    "cinnamon": {
+      "deploymentVerified": true,
+      "nativeMatrixPassed": true,
+      "qtCases": 9,
+      "gtkCases": 3,
+      "matrixReference": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/siblings/cinnamon/cohort/cinnamon/matrix.json",
+        "sha256": "45635929af9883aed527915e60f95ecd26d1e2a6bbbffa220c2b58922dd30362"
+      },
+      "copyLogReference": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/siblings/cinnamon/cohort/cinnamon/attempts/20261011T032846525115-matrix/matrix-copy-log.json",
+        "sha256": "c8a9cc0b72e9721194c86d66872b04dd08b372e74e7af30ff2cae6f486a8139e"
+      },
+      "focusedGuiPassed": true,
+      "physicalTimingPassed": true,
+      "memoryPassed": true,
+      "normalExitsPassed": true,
+      "completeRegressionPassed": true,
+      "trackedEvidence": "docs/evidence/kde-source63/cinnamon-regression-a1.json"
+    },
+    "gnome": {
+      "runtimeTestStarted": false,
+      "passed": false
+    },
+    "qualification": "Current63 Cinnamon local native12/focusedGUI and physical timing/cold/closed-view/normal-exit regressions passed. GNOME runtime preparation admitted; actual current-version acceptance pending."
+  },
+  "regressionWindow": {
+    "deadlineUtc": "2026-10-11T05:28:20.881985Z",
+    "scope": "Current-source Cinnamon then GNOME regressions only; no new optimization candidates, dependencies or desktop-setting changes."
+  }
 }

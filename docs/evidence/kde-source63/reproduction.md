@@ -136,3 +136,38 @@ PYTHON
 ```
 
 The separately launched empty-profile cold observation also passed: 29,270,016 bytes (27.914 MiB) peak RSS, 61 samples over 299.996 seconds and 0.04667% of one core. `fresh-cold-a1.json` and `fresh-cold-a1.samples.jsonl` preserve its content-free measurement data. The old populated profile was kept intact after normal quit; the installed binaries were unchanged. History and operation counts and UI/capture-helper generations stayed zero. The three required KDE memory windows are now confirmed. Current-source Cinnamon/GNOME regressions and remote S3/history remain pending, so source63 is not yet accepted as a keeper.
+
+Current source63 Cinnamon deployment and its canonical 12-case native suite have now passed: nine Qt cases and three GTK clipboard cases, with unchanged resident identity after each case. These are local-only checks. Focused GUI, physical timing/memory and GNOME current-version regressions remain pending. The user approved a regression-only extension through 2026-10-11 05:28 UTC; no additional optimization candidate or dependency is admitted.
+
+The complete current63 Cinnamon regression subsequently passed. Physical cold300 peaked at 25,964,544 bytes (24.762 MiB) with 0.00666% of one core; the three original closed-view cycles settled at 25.004, 25.277 and 25.293 MiB RSS. A separate unchanged-workload supplement verified normal helper exit generations 1, 2 and 3 with zero live GUI processes; its three extra read-only snapshots are recorded as measurement noise, not silently combined with the original run. The physical capture test passed at 121.273 ms p95, with all 35 operations cancelled without results. The current Cinnamon VM also passed the focused tray, native font/folder chooser, settings Save/Cancel/Reload, local History previews, Activity parent/item independent paste and live selector checks. `cinnamon-regression-a1.json` and its content-free cold/view sample files preserve the parameters and numeric evidence. GNOME current-version acceptance and remote S3/history remain pending. Earlier incomplete-status paragraphs above describe their chronological checkpoints.
+
+Check the exported Cinnamon numeric evidence using Python's standard library. This verifies the saved run, rather than performing a new desktop test:
+
+```sh
+python3 - <<'PYTHON'
+import hashlib, json, math
+from pathlib import Path
+root = Path("docs/evidence/kde-source63")
+meta = json.loads((root / "cinnamon-regression-a1.json").read_text())
+for name, expected in meta["exportedSamplesSha256"].items():
+    assert hashlib.sha256((root / name).read_bytes()).hexdigest() == expected
+cold = [json.loads(line) for line in
+        (root / "cinnamon-cold-a1.samples.jsonl").read_text().splitlines()]
+assert len(cold) == 11 and cold[-1]["elapsedSeconds"] >= 300
+peak = max(row["rssBytes"] for row in cold)
+assert peak == meta["coldPrimary"]["peakSampledRssBytes"] <= 40 * 1048576
+cpu = ((cold[-1]["cpuTicks"] - cold[0]["cpuTicks"])
+       / meta["clockTicksPerSecond"] / meta["coldPrimary"]["elapsedSeconds"] * 100)
+assert math.isclose(cpu, meta["coldPrimary"]["idleCpuPercentOneCore"], rel_tol=1e-12)
+assert cpu < 0.5
+views = [json.loads(line) for line in
+         (root / "cinnamon-views-a1.samples.jsonl").read_text().splitlines()]
+for cycle in (1, 2, 3):
+    rows = [row for row in views if row["label"].startswith(f"cycle-{cycle}-closed-")]
+    assert rows and all(row["processCount"] == 1 and row["uiProcessCount"] == 0
+                        and row["escapedProcessCount"] == 0 for row in rows)
+    assert rows[-1]["totals"]["rssBytes"] <= 40 * 1048576
+    assert rows[-1]["totals"]["pssBytes"] <= 29 * 1048576
+print(f"Cinnamon cold: {peak / 1048576:.3f} MiB RSS; {cpu:.5f}% CPU; three closed cycles passed")
+PYTHON
+```
