@@ -1096,10 +1096,15 @@
       "registeredTestsPassed": 52,
       "registeredTestsFailed": 0,
       "registeredTestsSkipped": 0,
-      "nativeMatrixPassed": false,
+      "nativeMatrixPassed": true,
       "focusedGuiPassed": false,
       "memoryPassed": false,
-      "testQualification": "One expected internal QtTest helper skip in S3ModuleContract::unavailableFacadeChild; all optional codec cases ran. Registered JUnit has no skipped test entries. Automated tests do not establish compositor support."
+      "testQualification": "One expected internal QtTest helper skip in S3ModuleContract::unavailableFacadeChild; all optional codec cases ran. Registered JUnit has no skipped test entries. Automated tests do not establish compositor support.",
+      "nativeCasesPassed": 12,
+      "qtCases": 9,
+      "gtkCases": 3,
+      "trackedAutomatedBuildEvidence": "docs/evidence/kde-source63/gnome-guest-build-a1.json",
+      "trackedNativeMatrixEvidence": "docs/evidence/kde-source63/gnome-native12-a1.json"
     },
     "qualification": "Current63 Cinnamon complete local regression passed. GNOME standard guest build, 52 registered tests and exact current-source package installation passed. Native graphical matrix is progressing; focused GUI and memory acceptance remain pending."
   },
