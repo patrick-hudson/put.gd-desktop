@@ -35,10 +35,68 @@ class LabContracts(unittest.TestCase):
                         self.assertLessEqual(ticks, 32767)
                         # Wayland fixed-point positions quantize to 1/256 pixel;
                         # native consumers use either floor or Qt qRound.
-                        delivered = int(ticks * extent / 32768 * 256) / 256
-                        self.assertEqual(int(delivered), target)
-                        self.assertEqual(int(delivered + .5), target)
+                        raw_fixed = ticks * extent / 32768 * 256
+                        for quantized in (int(raw_fixed), int(raw_fixed + .5)):
+                            delivered = quantized / 256
+                            self.assertEqual(int(delivered), target)
+                            self.assertEqual(int(delivered + .5), target)
                     self.assertEqual(events[2], {'type': 'btn', 'data': {'button': 'left', 'down': True}})
+
+    def test_failed_drag_witness_releases_button_and_cannot_archive_stale_image(self):
+        # Exercise the production attempt handler, not a copied gesture.
+        for failed_stage in ('move', 'witness'):
+            with self.subTest(failed_stage=failed_stage), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11',
+                    'acceleration': 'kvm', 'guest_user': 'fixture', 'id': 'synthetic'})
+                (run / 'drag-head0.ppm').write_bytes(b'previous attempt drag')
+                ready = {'session': 'x11', 'qt_platform': 'xcb', 'desktop': 'X-Cinnamon',
+                    'qt_version': '6.4.2', 'display_layout': [
+                        {'x': 0, 'y': 0, 'width': 800, 'height': 600}],
+                    'paint': {'x': 10, 'y': 20, 'width': 640, 'height': 320}}
+                events = []
+                def fake_cli(_run, method, _params=None):
+                    if method == 'settings.get':
+                        return {'metadata': {'acceptedRevision': 1}}
+                    if method == 'diagnostics':
+                        return {'journalReady': True}
+                    if method == 'capabilities':
+                        return {'source': {'shortcuts': {'bindings': {
+                            action: {'bound': True} for action in ('region', 'window', 'desktop', 'clipboard')}}}}
+                    if method == 'operation.recent':
+                        return {'operations': []}
+                    return {}
+                def fake_pointer(*args):
+                    events.append(args[1:])
+                    if failed_stage == 'move' and len(args) == 5:
+                        raise lab.LabError('synthetic drag move failure')
+                def fake_screenshot(_run, name='witness', head=0):
+                    if name == 'drag':
+                        raise lab.LabError('synthetic drag witness failure')
+                    path = run / f'{name}-head{head}.ppm'
+                    path.write_bytes(b'current attempt:' + name.encode())
+                    return {'path': str(path), 'sha256': lab.hash_file(path)}
+                args = SimpleNamespace(run=str(run), scenario='region', clipboard_client='qt',
+                    settings=None, history=False, timeout=3, keep=True)
+                with contextlib.ExitStack() as stack:
+                    for name, replacement in (
+                            ('cli', fake_cli), ('get', lambda _run, _remote, target: lab.write_json(target, ready)),
+                            ('screenshot', fake_screenshot), ('pointer', fake_pointer),
+                            ('guest_session', lambda *_args: ''), ('verify_running_app', lambda *_args: {'pid': 42}),
+                            ('compare_ppm', lambda *_args: {'ok': True}),
+                            ('key', lambda *_args: None), ('collect', lambda *_args: None)):
+                        stack.enter_context(patch.object(lab, name, side_effect=replacement))
+                    stack.enter_context(patch.object(lab.time, 'sleep'))
+                    result = lab.fixture_run(args)
+                self.assertFalse(result['ok'])
+                self.assertIn('synthetic drag', result['error'])
+                with self.subTest(check='release'):
+                    self.assertEqual(events[-1], (370, 210, 800, 600, False))
+                with self.subTest(check='stale witness'):
+                    self.assertFalse((run / 'drag-head0.ppm').exists())
+                evidence = run / result['evidenceDirectory']
+                self.assertNotIn('drag-head0.ppm', lab.read_json(evidence / 'manifest.json')['files'])
+                self.assertEqual((evidence / 'final-head0.ppm').read_bytes(), b'current attempt:final')
 
     def test_failed_install_cannot_reuse_previous_package_receipt(self):
         with tempfile.TemporaryDirectory() as directory:

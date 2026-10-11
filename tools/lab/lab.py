@@ -482,7 +482,7 @@ def fixture_run(args):
     for stale in ('parameters.json', 'ready.json', 'gtk-ready.json', 'paste.json',
                   'history-paste.json', 'paste.ppm', 'artifact.ppm', 'versions.json', 'diagnostics.json'):
         (run / stale).unlink(missing_ok=True)
-    for pattern in ('focus-*-head*.ppm', 'selector-head*.ppm', 'before-head*.ppm', 'final-head*.ppm',
+    for pattern in ('focus-*-head*.ppm', 'selector-head*.ppm', 'drag-head*.ppm', 'before-head*.ppm', 'final-head*.ppm',
                     'artifact-[0-9]*', 'public-[0-9]*'):
         for stale in run.glob(pattern):
             stale.unlink()
@@ -703,11 +703,13 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             elif scenario == 'region':
                 time.sleep(.5)
                 pointer(run, x, y, width, height, True)
-                time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
-                pointer(run, x + selection_width, y + selection_height, width, height)
-                time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
-                capture_witness('drag')
-                pointer(run, x + selection_width, y + selection_height, width, height, False)
+                try:
+                    time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
+                    pointer(run, x + selection_width, y + selection_height, width, height)
+                    time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
+                    capture_witness('drag')
+                finally:
+                    pointer(run, x + selection_width, y + selection_height, width, height, False)
         operation = None
         while time.monotonic() < deadline:
             recent = cli(run, 'operation.recent')
