@@ -59,6 +59,12 @@ these functional-input delays do not modify the frozen performance observers.
 The original cancelled attempt remains unexplained; gesture pacing does not
 establish its cause. Complete image/paste oracles and deadlines remain unchanged.
 
+Failures during press, move, witness capture or endpoint release request Escape
+and a release at the start point. Cleanup errors remain separate from the original
+error. A lost QMP reply can follow a delivered event, so the runner also records
+new operation IDs/states after failure; an incomplete or empty snapshot does not
+prove there were no side effects. Each failed attempt retains its witnesses.
+
 Read the saved `replayCommand`, recreate the same profile/display layout in a new
 disposable overlay, and install the package whose hash is recorded before running it.
 Replace `<disposable-run>` with that overlay’s directory. Verify the current runner

@@ -45,7 +45,8 @@ class LabContracts(unittest.TestCase):
     def test_failed_drag_witness_releases_button_and_cannot_archive_stale_image(self):
         # Exercise the production attempt handler, not a copied gesture.
         for failed_stage, cleanup_failure in (('press', None), ('move', None), ('witness', None),
-                                               ('witness', 'cancel'), ('witness', 'release')):
+                                               ('witness', 'cancel'), ('witness', 'release'),
+                                               ('endpoint-release', None), ('witness', 'observation')):
             with self.subTest(failed_stage=failed_stage, cleanup_failure=cleanup_failure), tempfile.TemporaryDirectory() as directory:
                 run = Path(directory)
                 lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11',
@@ -70,6 +71,8 @@ class LabContracts(unittest.TestCase):
                             action: {'bound': True} for action in ('region', 'window', 'desktop', 'clipboard')}}}}
                     if method == 'operation.recent':
                         recent_calls += 1
+                        if cleanup_failure == 'observation' and recent_calls > 1:
+                            raise lab.LabError('synthetic outcome observation failure')
                         return {'operations': [] if recent_calls == 1 else [
                             {'id': 'failed-gesture', 'state': 'cancelled', 'copyStatus': 'suppressed'}]}
                     return {}
@@ -80,6 +83,8 @@ class LabContracts(unittest.TestCase):
                         raise lab.LabError('synthetic drag press failure')
                     if cleanup_failure == 'release' and args[1:3] != (40, 50) and args[-1] is False:
                         raise lab.LabError('synthetic cleanup release failure')
+                    if failed_stage == 'endpoint-release' and args[1:3] == (370, 210) and args[-1] is False:
+                        raise lab.LabError('synthetic drag endpoint-release failure')
                     if failed_stage == 'move' and len(args) == 5:
                         raise lab.LabError('synthetic drag move failure')
                 def fake_key(_run, pressed):
@@ -88,7 +93,7 @@ class LabContracts(unittest.TestCase):
                     if cleanup_failure == 'cancel' and pressed == ['esc']:
                         raise lab.LabError('synthetic cleanup cancel failure')
                 def fake_screenshot(_run, name='witness', head=0):
-                    if name == 'drag':
+                    if name == 'drag' and failed_stage != 'endpoint-release':
                         raise lab.LabError('synthetic drag witness failure')
                     path = run / f'{name}-head{head}.ppm'
                     path.write_bytes(b'current attempt:' + name.encode())
@@ -111,9 +116,13 @@ class LabContracts(unittest.TestCase):
                 self.assertEqual(keys[-1], ['esc'])
                 self.assertEqual(trace[-2:], [('key', ['esc']),
                     ('pointer', (290, 150, 800, 600, False))])
-                self.assertEqual(result['operationsAfterFailedDrag'], [
-                    {'id': 'failed-gesture', 'state': 'cancelled', 'copyStatus': 'suppressed'}])
-                if cleanup_failure:
+                if cleanup_failure == 'observation':
+                    self.assertTrue(result['dragOperationObservationIncomplete'])
+                    self.assertNotIn('operationsAfterFailedDrag', result)
+                else:
+                    self.assertEqual(result['operationsAfterFailedDrag'], [
+                        {'id': 'failed-gesture', 'state': 'cancelled', 'copyStatus': 'suppressed'}])
+                if cleanup_failure in ('cancel', 'release'):
                     self.assertEqual(result['dragCleanupErrors'], [{'stage': cleanup_failure,
                         'error': 'synthetic cleanup ' + cleanup_failure + ' failure'}])
                 else:
@@ -121,9 +130,17 @@ class LabContracts(unittest.TestCase):
                 with self.subTest(check='release'):
                     self.assertEqual(events[-1], (290, 150, 800, 600, False))
                 with self.subTest(check='stale witness'):
-                    self.assertFalse((run / 'drag-head0.ppm').exists())
+                    if failed_stage == 'endpoint-release':
+                        self.assertEqual((run / 'drag-head0.ppm').read_bytes(), b'current attempt:drag')
+                    else:
+                        self.assertFalse((run / 'drag-head0.ppm').exists())
                 evidence = run / result['evidenceDirectory']
-                self.assertNotIn('drag-head0.ppm', lab.read_json(evidence / 'manifest.json')['files'])
+                manifest = lab.read_json(evidence / 'manifest.json')['files']
+                if failed_stage == 'endpoint-release':
+                    self.assertEqual(manifest['drag-head0.ppm'],
+                        hashlib.sha256(b'current attempt:drag').hexdigest())
+                else:
+                    self.assertNotIn('drag-head0.ppm', manifest)
                 self.assertEqual((evidence / 'final-head0.ppm').read_bytes(), b'current attempt:final')
 
     def test_failed_install_cannot_reuse_previous_package_receipt(self):

@@ -709,9 +709,11 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                     pointer(run, x + selection_width, y + selection_height, width, height)
                     time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
                     capture_witness('drag')
+                    pointer(run, x + selection_width, y + selection_height, width, height, False)
                 except BaseException:
-                    # A failed gesture must not finish at the success endpoint.
-                    # Press may have reached QEMU even if its reply was lost.
+                    # Any input may reach QEMU even if its reply is lost.
+                    # Request cancellation and release at the start point; the
+                    # operation observation below retains delivered outcomes.
                     result['dragAbortRequested'] = True
                     for stage, cleanup in (
                             ('cancel', lambda: key(run, ['esc'])),
@@ -722,8 +724,6 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                             result.setdefault('dragCleanupErrors', []).append(
                                 {'stage': stage, 'error': str(cleanup_error)})
                     raise
-                else:
-                    pointer(run, x + selection_width, y + selection_height, width, height, False)
         operation = None
         while time.monotonic() < deadline:
             recent = cli(run, 'operation.recent')
