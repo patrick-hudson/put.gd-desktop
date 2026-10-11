@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "status": "interim_not_accepted",
-  "terminal": false,
+  "status": "local_memory_target_met_remote_release_pending",
+  "terminal": true,
   "trackedExportPerformed": true,
   "candidateNumber": 4,
   "source": {
@@ -354,16 +354,18 @@
     }
   },
   "pendingGates": [
-    "Current source63 GNOME functional and memory gate",
-    "Remote S3/history acceptance where declared"
+    "Current real guest S3 upload/remote History direct-link copy and deletion",
+    "Current post-S3/populated-remote-history memory",
+    "Full U9/fresh-agent walkthrough"
   ],
   "acceptance": {
     "native": false,
     "memory": true,
-    "keeper": false,
-    "siblings": false,
+    "keeper": true,
+    "siblings": true,
     "remote": false,
-    "memoryScope": "KDE three memory windows and current Cinnamon complete regression passed; current GNOME and remote gates pending"
+    "memoryScope": "Current source63 KDE, physical Cinnamon and GNOME local functional and memory gates passed; remote workflows/full release remain pending.",
+    "localNative": true
   },
   "trackedTargets": [
     "docs/evidence/2026-10-11-kde-source63-candidate4.json",
@@ -1046,7 +1048,7 @@
     },
     "gnome": {
       "runtimeTestStarted": true,
-      "passed": false,
+      "passed": true,
       "buildStarted": true,
       "buildComplete": true,
       "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
@@ -1097,8 +1099,8 @@
       "registeredTestsFailed": 0,
       "registeredTestsSkipped": 0,
       "nativeMatrixPassed": true,
-      "focusedGuiPassed": false,
-      "memoryPassed": false,
+      "focusedGuiPassed": true,
+      "memoryPassed": true,
       "testQualification": "One expected internal QtTest helper skip in S3ModuleContract::unavailableFacadeChild; all optional codec cases ran. Registered JUnit has no skipped test entries. Automated tests do not establish compositor support.",
       "nativeCasesPassed": 12,
       "qtCases": 9,
@@ -1111,14 +1113,69 @@
       "localHistoryPreviewVerified": true,
       "normalViewExitsVerified": true,
       "trackedFocusedCheckpoint": "docs/evidence/kde-source63/gnome-focused-checkpoint-a1.json",
-      "safeSameResidentContinuation": true
+      "safeSameResidentContinuation": false,
+      "completeLocalRegressionPassed": true,
+      "normalPopulatedAndColdQuitVerified": true,
+      "trackedFinalLocalFunctionalEvidence": "docs/evidence/kde-source63/gnome-local-native-a1.json",
+      "trackedMemoryEvidence": [
+        "docs/evidence/kde-source63/gnome-post-native-a1.json",
+        "docs/evidence/kde-source63/gnome-post-native-a2.json",
+        "docs/evidence/kde-source63/gnome-fresh-cold-a1.json"
+      ],
+      "postUsePeakRssMiB": [
+        32.80859375,
+        32.80859375
+      ],
+      "freshColdPeakRssMiB": 27.00390625,
+      "remoteHistoryProven": false,
+      "fullNativeParityAccepted": false
     },
-    "qualification": "Current KDE and Cinnamon local regression passed. GNOME52/native12/Settings full restoration/native GTK folder chooser/local History image preview/normal view exits passed. Guest test actions stopped at approved deadline with the same quiet current resident preserved. Activity/live-selection/final local packet and three GNOME memory windows remain pending."
+    "qualification": "Current source63 local functional and memory gates passed on KDE, physical Cinnamon and GNOME. GNOME A3 live clock and separate A4 normal cancellation are distinct; timed failures retained. Real remote S3/History and full U9 release remain pending."
   },
   "regressionWindow": {
     "deadlineUtc": "2026-10-11T05:28:20.881985Z",
     "scope": "Current-source Cinnamon then GNOME regressions only; no new optimization candidates, dependencies or desktop-setting changes.",
     "stoppedAtApprovedDeadline": true,
     "additional30MinutesApproved": false
+  },
+  "resumedRegressionWindow": {
+    "userApproval": "I guess extend testing?",
+    "startedUtc": "2026-10-11T12:31:32Z",
+    "deadlineUtc": "2026-10-11T13:31:32Z",
+    "scope": "Remaining same-source GNOME focused Activity/live/quiet checks and unchanged three 300-second memory windows only. Prior deadline stop retained as historical evidence.",
+    "sameSourceBuildReused": true,
+    "sameResidentRevalidated": true,
+    "newCandidates": 0,
+    "desktopSettingsChanged": false,
+    "acceptancePending": false,
+    "initialAssistantEstimateUtc": "2026-10-11T13:01:32Z",
+    "durationEstimateCorrectedReason": "Same required graphical checks and unchanged three 300-second windows require a realistic one-hour cap; user requested testing extension without numeric duration.",
+    "finalAdditionalExtension": {
+      "requestedAdditionalMinutes": 30,
+      "approved": true,
+      "currentDeadlineUtc": "2026-10-11T13:31:32Z",
+      "reason": "Finish unchanged three GNOME memory windows after preserved/control-input and private-file test failures; no new candidates/packages/desktop-setting changes",
+      "userAnswer": "Extend 30 minutes",
+      "approvedUtc": "2026-10-11T13:14:30.615700+00:00",
+      "newDeadlineUtc": "2026-10-11T14:01:32Z"
+    },
+    "localScopeCompletedUtc": "2026-10-11T13:43:52.124299+00:00",
+    "fullRemoteReleaseAcceptance": false
+  },
+  "keeperAccepted": true,
+  "keeperScope": "Confirmed local memory and current compositor regressions; full remote/release acceptance pending",
+  "fullNativeParityAccepted": false,
+  "summary": "docs/evidence/kde-source63/memory-summary.md",
+  "remainingReleaseGates": [
+    "Current real guest S3 upload/remote History direct-link copy and deletion",
+    "Current post-S3/populated-remote-history memory",
+    "Full U9/fresh-agent walkthrough"
+  ],
+  "historicalRecordQualification": "Nested diagnostic and first-observation pending flags retain their original chronological meaning; current state is acceptance/currentSiblingRegressions/remainingReleaseGates.",
+  "normalLabParking": {
+    "gnome": "docs/evidence/kde-source63/gnome-normal-parking-a1.json",
+    "kdeAndCinnamonPreviouslyParked": true,
+    "allCompletedTestVmsStopped": true,
+    "goldenBasesAndTestOverlaysRetained": true
   }
 }

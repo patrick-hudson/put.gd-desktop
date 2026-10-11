@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "sourceCount": 63,
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "desktop": "gnomeWaylandVM",
+  "localNativeWorkflowsPassed": true,
+  "nativeMatrix": {
+    "cases": 12,
+    "qt": 9,
+    "gtk": 3,
+    "allPassed": true,
+    "trackedEvidence": "docs/evidence/kde-source63/gnome-native12-a1.json"
+  },
+  "localChecks": {
+    "tray-menu": {
+      "observed": true,
+      "basis": "native-current-version"
+    },
+    "native-fonts-folder-dialog": {
+      "observed": true,
+      "basis": "native-current-version"
+    },
+    "live-background-selector-cursor": {
+      "observed": true,
+      "basis": "native-current-version"
+    },
+    "activity-parent-paste": {
+      "observed": true,
+      "basis": "native-current-version",
+      "copyOutcome": "succeeded",
+      "independentPasteVerified": true,
+      "pasteClient": "qt",
+      "payloadExported": false,
+      "selection": "parent"
+    },
+    "activity-item-paste": {
+      "observed": true,
+      "basis": "native-current-version",
+      "copyOutcome": "succeeded",
+      "independentPasteVerified": true,
+      "pasteClient": "qt",
+      "payloadExported": false,
+      "selection": "item"
+    },
+    "normal-helper-exit": {
+      "observed": true,
+      "basis": "native-current-version"
+    },
+    "history-direct-link-copy": {
+      "observed": false,
+      "basis": "pending-real-remote-history",
+      "copyOutcome": "not-observed",
+      "independentPasteVerified": false,
+      "payloadExported": false,
+      "selection": "history",
+      "remoteUrlAvailable": false,
+      "syntheticUrlSeeded": false,
+      "s3IsolatedPrefixPermissionsVerified": false
+    }
+  },
+  "settings": {
+    "saveCancelReloadAndFullRestorationPassed": true,
+    "trackedEvidence": "docs/evidence/kde-source63/gnome-settings-a1.json"
+  },
+  "localHistory": {
+    "entriesViewed": 11,
+    "syntheticImagePreviewViewed": true,
+    "remoteUrlsSeeded": false
+  },
+  "activity": {
+    "parentIndependentPastePassed": true,
+    "itemIndependentPastePassed": true,
+    "distinctUnrelatedImageResetBeforeEach": true,
+    "parentFullIdTooltipViewed": true,
+    "childFilenameAndFullPathViewed": true,
+    "itemUuidTooltipClaimed": false
+  },
+  "normalUiExit": {
+    "generation": 5,
+    "code": 0,
+    "state": "stopped",
+    "liveUiProcesses": 0
+  },
+  "liveSelection": {
+    "samePendingOperationClockAdvanced": true,
+    "clockBefore": "08:03",
+    "clockAfter": "08:04",
+    "nativeThemedCrosshairMatched": true,
+    "sameOperationNormalCancellationPassed": false,
+    "sameOperationTimeoutPreserved": true,
+    "failureReason": "Root context compaction exhausted the unchanged acquisition deadline before Escape input.",
+    "separateFreshCancellationPassed": true,
+    "separateOperationId": "5be4d9fc-9f4e-442f-ad4b-56a900c34b2e"
+  },
+  "finalQuiet": {
+    "activeOperations": 0,
+    "trayAvailable": true,
+    "fixtureAndHelperResidue": false
+  },
+  "populatedResident": {
+    "pid": 14107,
+    "startTicks": 237790,
+    "uid": 1000,
+    "sha256": "9e40f493557a051172df632a4745bbe6ea0444644f5bfecf7944050682cf1f57",
+    "executable": "/usr/bin/putgd"
+  },
+  "canonicalPacket": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/phase-assembly-resumption-a2/canonical-packet/packet.json",
+    "sha256": "4a76e85f7212d9ce817a518af7fa098690d500ff7f02da7ef64c4e309647b3ca"
+  },
+  "canonicalFunctional": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/phase-assembly-resumption-a2/canonical-packet/native/functional.json",
+    "sha256": "53e28dfa98316fd311037db40bb995dfabc3658b4f42c765cf0b94ac65af67da"
+  },
+  "canonicalMetadata": [
+    {
+      "localPath": "native/matrix.json",
+      "sha256": "ef1e0029194f57f9cf4fa2075c67f67132961cbfb7d9309d1b62ce04c63c054d"
+    },
+    {
+      "localPath": "native/fixture-drain.json",
+      "sha256": "7bbaebb1e7587e2f1e3bfe9e9024dfe6c173e057848722a981a940c1bdb59619"
+    },
+    {
+      "localPath": "native/quiet.json",
+      "sha256": "a2bf5f5e5dcc45e3e71c7b54a4b294337d2b531bdc59351a07596e7dea307b9a"
+    },
+    {
+      "localPath": "native/install.json",
+      "sha256": "f46ae974d663f0fa73d5198bc004e17681b6be7dd2730511096415e1e5f31485"
+    },
+    {
+      "localPath": "native/focused.json",
+      "sha256": "09aeea8fdb3badfbc3d8ecbcd89ec0bd571262a48c95ade977d2cc578fe123d6"
+    },
+    {
+      "localPath": "native/review.json",
+      "sha256": "595d647f8761c9fad2ef0795d61dcb3bc7d01edd21a67998a2366751fbb89e5c"
+    },
+    {
+      "localPath": "native/functional.json",
+      "sha256": "53e28dfa98316fd311037db40bb995dfabc3658b4f42c765cf0b94ac65af67da"
+    }
+  ],
+  "independentPacketReview": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/phase-canonical-host-review-a1/review.json",
+    "sha256": "e2a3b53e950bb2f66158759e8636586092d8b2aca7340334ca7982b56080bfc6"
+  },
+  "clockOriginals": {
+    "before": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/views/gnome63-clock-a3-before.json",
+      "sha256": "1c6f1019ad40576598fc77a8692378145965a9ca95eff0aa34c5da7b6ef11d9c"
+    },
+    "after": {
+      "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/views/gnome63-clock-a3-after.json",
+      "sha256": "d90ca3edc76a3a5661a555e0caf534b082c9755e4a7fad606bf9f9d4d0dd52ab"
+    }
+  },
+  "clockFailedTerminal": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T130554713107-gnome63-clock-a3-terminal/06.stdout",
+    "sha256": "89496c184595a2e331d061c00c395ca7c561e3782c5a3ad75aa5c83343358215"
+  },
+  "separateCancellationOriginal": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T131110337526-gnome63-clock-a4-terminal/observation.json",
+    "sha256": "d130d181473d136a8543e89802f8406f1cd1252be35ccaf901e13213ea61e4f4"
+  },
+  "remoteHistoryProven": false,
+  "s3IsolatedPrefixPermissionsVerified": false,
+  "fullNativeParityAccepted": false,
+  "pendingSemanticGates": [
+    "history-direct-link-copy"
+  ],
+  "secretPayloadConfigOrImageExported": false,
+  "scope": "Current local compositor and GUI regression only; memory and release acceptance are recorded separately."
+}

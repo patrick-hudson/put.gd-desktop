@@ -1,0 +1,33 @@
+{
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "sourceCount": 63,
+  "oneNormalSessionPoweroffInvoked": true,
+  "normalCommandResponseRecorded": true,
+  "originalParkingScriptExitCode": 1,
+  "originalPollGuardError": "qemu_overlay_mismatch while shutdown raced process identity inspection",
+  "originalPollFailureRetained": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/phase-normal-parking-preparation-a1/poll-guard-failure.json",
+    "sha256": "f71f6b31c998eebce2dccc4653b1b8b54b66637c7b24b1d002f59229cbbaae92"
+  },
+  "independentRootReadOnlyPostExitProof": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/phase-normal-parking-preparation-a1/root-independent-post-shutdown.json",
+    "sha256": "d693edfc73658bbc829b5017e7cd400cb72e7385b4f84328f340b257001eed1c"
+  },
+  "agentReadOnlyPostExitProof": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/phase-normal-parking-preparation-a1/normal-parking-absence-complete.json",
+    "sha256": "c2175560b076596ca8d2275e5fe39c886e34e96dfce7d8cf02ad92cc03c03baa"
+  },
+  "exactQemuPidAbsent": 685288,
+  "exactQemuStartTicks": 46528796,
+  "qmpAbsent": true,
+  "closedListeners": [
+    22236,
+    5936
+  ],
+  "goldenBaseUnchanged": true,
+  "testOverlayPreserved": true,
+  "shutdownRetried": false,
+  "forceSignalsOrResets": false,
+  "guestEffectsInReadOnlyContinuation": false,
+  "payloadOrCredentialsExported": false
+}

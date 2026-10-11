@@ -1433,3 +1433,35 @@ final local packet and two post-use plus one fresh-cold300-second GNOME memory
 windows remain required. An additional30 minutes was requested but not approved;
 do not treat this checkpoint as full regression or memory acceptance. See
 [the partial GNOME checkpoint](../evidence/kde-source63/gnome-focused-checkpoint-a1.json).
+
+
+### Confirmed source63 local memory checkpoint — 2026-10-11
+
+The explicitly approved GNOME testing extension finished its unchanged local
+checks and all three memory windows before the 14:01 UTC deadline. Both
+populated post-use runs peaked at 32.809 MiB; the independent fresh empty-profile
+window peaked at 27.004 MiB. Each used five quiet warmup seconds followed by
+300 seconds at five-second intervals, with 61 raw samples, verified process/build
+identity, no live GUI/helper or escaped family and CPU below 0.5% of one core.
+The populated and cold residents quit normally; the populated profile remained
+intact. Activity parent/item independent paste, tray, native fonts/dialogs,
+Settings restoration and local History preview passed. The same pending
+selector's clock advanced; its delayed cancellation attempt timed out and stays
+failed. A separate fresh operation cancelled normally. Do not combine them into
+a same-operation clock/cancellation proof.
+
+The cumulative source63 implementation now passes the declared local memory and
+functional gates on KDE, Cinnamon and GNOME. Keep the existing sibling routes.
+The matched KDE baseline fell from 139.422 to 30.051 MiB peak RSS (78.446%); its
+fresh cold peak was 27.914 MiB. Cinnamon's physical cold peak was 24.762 MiB and
+closed-view RSS remained 25.004–25.293 MiB. These distinct protocols remain
+separate. The final allocator probe does not establish an incremental product
+contribution. Exact tested version: `0.1.1-dev.63+g050b702c6a6d`.
+
+This supersedes earlier pending local-regression checkpoints, while preserving
+their failed attempts and deadline history. Real current guest S3/remote History
+copy/deletion and post-S3 memory, full U9 and a fresh-agent walkthrough remain
+release gates. Continue the existing UI/product plan after that acceptance work;
+no new optimization candidate is authorized by this checkpoint. See
+[the memory report](../evidence/kde-source63/memory-summary.md) and
+[reproducible recorded-sample checks](../evidence/kde-source63/reproduction.md).

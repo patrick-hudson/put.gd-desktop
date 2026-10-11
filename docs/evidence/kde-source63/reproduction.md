@@ -106,12 +106,15 @@ The exported samples can be checked without a VM, Qt, Node.js or AWS access. Thi
 
 ```sh
 python3 - <<'PYTHON'
-import json, math
+import hashlib, json, math
 from pathlib import Path
-for name in ("post-native-a1", "post-native-a2"):
+for name in ("post-native-a1", "post-native-a2",
+             "gnome-post-native-a1", "gnome-post-native-a2"):
     metadata = json.loads(Path(f"docs/evidence/kde-source63/{name}.json").read_text())
-    rows = [json.loads(line) for line in
-            Path(metadata["trackedSamples"]).read_text().splitlines()]
+    sample_file = Path(metadata["trackedSamples"])
+    assert hashlib.sha256(sample_file.read_bytes()).hexdigest() == metadata["originalSamplesSha256"]
+    assert metadata["sourceCount"] == 63
+    rows = [json.loads(line) for line in sample_file.read_text().splitlines()]
     assert len(rows) == 61 and [r["index"] for r in rows] == list(range(61))
     span = rows[-1]["elapsedSeconds"] - rows[0]["elapsedSeconds"]
     gaps = [b["elapsedSeconds"] - a["elapsedSeconds"]
@@ -171,3 +174,56 @@ for cycle in (1, 2, 3):
 print(f"Cinnamon cold: {peak / 1048576:.3f} MiB RSS; {cpu:.5f}% CPU; three closed cycles passed")
 PYTHON
 ```
+
+
+The remaining current63 GNOME local regression is now complete. Both populated
+post-use windows peaked at 32.809 MiB, and the independent empty-profile cold
+window peaked at 27.004 MiB. Normal populated/cold quit and profile preservation
+were verified. All three current desktops pass the local memory scope; full
+remote History/S3 and U9 acceptance remain pending. `gnome-local-native-a1.json`
+retains the A3 live-clock timeout and separate passing A4 cancellation explicitly.
+Earlier pending paragraphs above are chronological checkpoints.
+
+The cold sampler has a different schema: labelled rows and per-process CPU ticks.
+Use this standard-library check for its saved GNOME rows; never rewrite the raw
+rows into the post-native format or treat final RSS alone as the peak gate:
+
+```sh
+python3 - <<'PYTHON'
+import hashlib, json, math
+from pathlib import Path
+metadata = json.loads(Path("docs/evidence/kde-source63/gnome-fresh-cold-a1.json").read_text())
+sample_file = Path(metadata["trackedSamples"])
+assert hashlib.sha256(sample_file.read_bytes()).hexdigest() == metadata["originalSamplesSha256"]
+assert metadata["sourceCount"] == 63 and metadata["twoPostUseAndFreshColdConfirmed"]
+rows = [json.loads(line) for line in sample_file.read_text().splitlines()]
+assert len(rows) == 61
+assert [r["label"] for r in rows] == [f"fresh-native-gnome-cold-{i}" for i in range(61)]
+span = rows[-1]["elapsedSeconds"] - rows[0]["elapsedSeconds"]
+gaps = [b["elapsedSeconds"] - a["elapsedSeconds"] for a, b in zip(rows, rows[1:])]
+assert span >= 299.5 and all(0 < gap <= 7.5 for gap in gaps)
+ticks = []
+for row in rows:
+    assert row["processCount"] == len(row["processes"]) == 1
+    assert row["uiProcessCount"] == row["escapedProcessCount"] == 0
+    process = row["processes"][0]
+    assert process["role"] == "resident" and process["inResidentTree"]
+    for key, value in metadata["resident"].items():
+        assert process[key] == value
+    for key in ("rssBytes", "pssBytes", "privateBytes"):
+        assert row["totals"][key] == sum(p[key] for p in row["processes"])
+    ticks.append(sum(p["cpuTicks"] for p in row["processes"]))
+assert all(b >= a for a, b in zip(ticks, ticks[1:]))
+peak = max(r["totals"]["rssBytes"] for r in rows)
+cpu = (ticks[-1] - ticks[0]) / metadata["clockTicksPerSecond"] / span * 100
+assert peak == metadata["evaluation"]["coldPeakRssBytes"] and peak <= 41943040
+assert math.isclose(cpu, metadata["evaluation"]["idleCpuPercentOneCore"], rel_tol=1e-12)
+assert 0 <= cpu < 0.5
+print(f"GNOME cold: {peak / 1048576:.3f} MiB, {cpu:.7f}% CPU, {len(rows)} samples")
+PYTHON
+```
+
+This command checks saved evidence without a desktop, Node.js or cloud access,
+and can run in CI. Actual compositor acceptance still requires the visible lab
+and exact current build. For the comparison, limitations and remaining gates,
+see [the final local memory report](memory-summary.md).
