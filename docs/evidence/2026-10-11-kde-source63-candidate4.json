@@ -545,7 +545,7 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T01:30:40.053868+00:00",
+  "exportedUtc": "2026-10-11T02:04:56.766982+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
   "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
   "freshCancellationCase": {
@@ -788,5 +788,43 @@
       "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005447671613-matrix/fixture-safety.json",
       "sha256": "81c30de8bf8ab99c08d66a79c8d0562f4dc1db5255e04e01f8d9dfcd97dbe760"
     }
+  },
+  "standardHostAsan": {
+    "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "sourceCount": 63,
+    "registeredTests": 51,
+    "passedRegisteredTests": 51,
+    "registeredSkippedTests": 0,
+    "exitCode": 0,
+    "noSuppressionsOrFiltersAdded": true,
+    "individualQtTestSkips": [
+      {
+        "case": "ImageJobTest::svgTextDecodeHasFontServicesOnlyInChild()",
+        "qualification": "host optional SVG codec absent"
+      },
+      {
+        "case": "ImageJobTest::svgRegularFilePreviewThroughArtifactStore()",
+        "qualification": "host optional SVG codec absent"
+      },
+      {
+        "case": "S3ModuleContract::unavailableFacadeChild()",
+        "qualification": "subprocess helper case"
+      }
+    ],
+    "nativeDesktopAcceptance": false,
+    "privateVerificationSha256": "c9b20b4ee510253d8da72fe71e2f2a20acc1929cecbef9b4b49a67a75f9975d7",
+    "junitSha256": "8b3041400cd38b4ce358f351ce9d1a600e1b07358595220e0a30428ee9f271c0",
+    "heavyHostWorkAbsent": true
+  },
+  "settingsUiProgress": {
+    "saveCancelReloadChecked": true,
+    "originalSettingsRestorationPending": true,
+    "nativeKdeFontIntegrationAndFolderDialogObserved": true,
+    "localHistoryRendered": true,
+    "activityRendered": true,
+    "activityIndependentCopyPastePending": true,
+    "notificationScreenshotMissedToastLifetime": true,
+    "liveRegionProofPending": true,
+    "qualification": "Actual UI progress; no full native parity or scored memory acceptance."
   }
 }
