@@ -170,6 +170,39 @@ private slots:
   importer.acquire(limits,[&](PayloadResult r){a=r;++completed;});importer.acquire(limits,[&](PayloadResult r){b=r;++completed;});importer.acquire(limits,[&](PayloadResult r){excess=r;});QCOMPARE(excess.error.code,QString("queue_full"));
   X11SelectionFixture replacement({{"UTF8_STRING","new owner"}});QTRY_COMPARE(completed,2);QCOMPARE(a.error.code,QString("clipboard_changed"));QCOMPARE(b.error.code,QString("clipboard_changed"));
  }
+ void liveDigitRebindRemovesOldChordAndKeepsOtherActions() {
+  X11DesktopFixture desktop;X11Shortcuts shortcuts;QStringList actions;
+  connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString& action){actions.append(action);});
+  auto chord=[&](bool shift,bool alt,int digit){
+   desktop.key(XK_Control_L,true);if(shift)desktop.key(XK_Shift_L,true);if(alt)desktop.key(XK_Alt_L,true);
+   desktop.key(digit,true);desktop.key(digit,false);
+   if(alt)desktop.key(XK_Alt_L,false);
+   if(shift)desktop.key(XK_Shift_L,false);
+   desktop.key(XK_Control_L,false);
+   desktop.inputFocus();
+  };
+  auto bind=[&](const QString& region){shortcuts.bind({{"region",region},{"desktop","Ctrl+Shift+3"}});QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());QVERIFY(shortcuts.status()["desktop"].toObject()["bound"].toBool());};
+  bind("Ctrl+Shift+1");chord(true,false,XK_1);QTRY_COMPARE(actions,QStringList{"region"});
+  bind("Ctrl+1");
+  // A separate client's checked grab proves removal at the server, without
+  // inferring absence from a short event-loop wait alone.
+  const auto root=xcb_setup_roots_iterator(xcb_get_setup(desktop.connection)).data->root;
+  auto removed=[&](uint16_t modifiers){
+   auto* error=xcb_request_check(desktop.connection,xcb_grab_key_checked(desktop.connection,0,root,modifiers,desktop.code(XK_1),XCB_GRAB_MODE_ASYNC,XCB_GRAB_MODE_ASYNC));
+   const bool available=!error;free(error);
+   if(available){xcb_ungrab_key(desktop.connection,desktop.code(XK_1),root,modifiers);desktop.inputFocus();}
+   return available;
+  };
+  QVERIFY(removed(XCB_MOD_MASK_CONTROL|XCB_MOD_MASK_SHIFT));
+  chord(true,false,XK_1);QTest::qWait(30);QCOMPARE(actions.size(),1);
+  chord(false,false,XK_1);QTRY_COMPARE(actions.size(),2);QCOMPARE(actions.last(),QString("region"));
+  chord(true,false,XK_3);QTRY_COMPARE(actions.size(),3);QCOMPARE(actions.last(),QString("desktop"));
+  bind("Ctrl+Alt+1");QVERIFY(removed(XCB_MOD_MASK_CONTROL));
+  chord(false,false,XK_1);QTest::qWait(30);QCOMPARE(actions.size(),3);
+  chord(false,true,XK_1);QTRY_COMPARE(actions.size(),4);QCOMPARE(actions.last(),QString("region"));
+  chord(true,false,XK_3);QTRY_COMPARE(actions.size(),5);QCOMPARE(actions.last(),QString("desktop"));
+  QTest::qWait(30);QCOMPARE(actions.size(),5);
+ }
  void asciiLetterShortcutNeedsNoImplicitShift() {
   X11DesktopFixture desktop;X11Shortcuts shortcuts;int activated=0;connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString&){++activated;});shortcuts.bind({{"region","Ctrl+A"}});QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
   desktop.key(XK_Control_L,true);desktop.key(XK_a,true);desktop.key(XK_a,false);desktop.key(XK_Control_L,false);QTRY_COMPARE(activated,1);

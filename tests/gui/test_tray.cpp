@@ -113,6 +113,52 @@ private slots:
   QCOMPARE(source.copies, 0);
  }
 
+ void nativeShortcutDuringRecoveryDoesNotOpenViews() {
+  QTemporaryDir directory;ProviderRegistry providers;
+  SettingsService settings(directory.filePath("config.json"));CaptureSource source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);
+  QVERIFY(!operations.ready());QStringList views;
+  TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});
+  controller.invokeShortcut("region");
+  QVERIFY(views.isEmpty());QVERIFY(source.actions.isEmpty());
+  QTRY_VERIFY(operations.ready());
+ }
+ void repeatedNativeCaptureDoesNotOpenViewsOverSelection() {
+  QTemporaryDir directory;ProviderRegistry providers;
+  SettingsService settings(directory.filePath("config.json"));
+  QVERIFY(settings.save(configuration(directory.path(),true),{}));
+  CaptureSource source;OperationService operations(directory.filePath("data"),settings,providers,source);
+  QTRY_VERIFY(operations.ready());QStringList views;
+  TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});
+  controller.invokeShortcut("region");
+  controller.invokeShortcut("region");
+  QVERIFY2(views.isEmpty(),"A repeated native shortcut must not open Activity over an accepted selection");
+  QTRY_COMPARE(source.actions.size(),1);
+ }
+ void nativeFullQueueDoesNotOpenViewsOverSelection() {
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));
+  auto document=configuration(directory.path(),true);auto limits=document["limits"].toObject();
+  limits["pendingOperations"]=1;limits["concurrentUploads"]=1;document["limits"]=limits;
+  QVERIFY(settings.save(document,{}));CaptureSource source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  QStringList views;TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});
+  controller.invokeShortcut("clipboard");controller.invokeShortcut("region");
+  QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),2);
+  controller.invokeShortcut("region");
+  QVERIFY2(views.isEmpty(),"queue_full precedes busy_selecting and must not map Activity over selection");
+  QTRY_COMPARE(source.actions.size(),2);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+ }
+ void nativeClipboardRejectionDoesNotOpenViewsOverSelection() {
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));
+  auto document=configuration(directory.path(),true);auto actions=document["actions"].toObject();
+  auto clipboard=actions["clipboard"].toObject();clipboard["destination"]="upload";actions["clipboard"]=clipboard;document["actions"]=actions;
+  QVERIFY(settings.save(document,{}));CaptureSource source;
+  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  QStringList views;TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});
+  controller.invokeShortcut("region");controller.invokeShortcut("clipboard");
+  QVERIFY2(views.isEmpty(),"Clipboard bypasses the selection guard but admission errors must not map a view");
+  QTRY_COMPARE(source.actions,QStringList{"region"});QCOMPARE(source.copies,0);
+ }
  void rejectedCaptureCallbackCanDestroyItsTray() {
   QTemporaryDir directory;
   QVERIFY(directory.isValid());

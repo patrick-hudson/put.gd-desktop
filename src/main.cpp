@@ -164,26 +164,17 @@ int main(int argc,char* argv[]) {
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
  const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
- const auto requested=[&operations](const QString& action){operations.invoke(action,[](putgd::Error error,QJsonObject){if(error)qWarning("Action rejected: %s",qPrintable(error.code));});};
 #ifdef PUTGD_NATIVE_X11
  if(coreNative) {
   const auto bind=[&] {coreNative->bindShortcuts(bindings());};
   bind();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bind);
-  QObject::connect(coreNative,&putgd::X11CoreSourceAdapter::actionRequested,&operations,requested);
  }
  if(native) {
   const auto bind=[&] {native->bindShortcuts(bindings());};
   bind();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bind);
-  QObject::connect(native,&putgd::X11SourceAdapter::actionRequested,&operations,requested);
  }
 #endif
  if(bindSource){bindSource();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bindSource);}
-#ifdef PUTGD_NATIVE_GNOME
- if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::actionRequested,&operations,requested);
-#endif
-#ifdef PUTGD_NATIVE_KDE
- if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&operations,requested);
-#endif
  auto tester=[&](const QString& profileId,const QJsonObject& profile,std::function<void(putgd::Error)> reply) {
   if(profile["provider"]!="s3"){reply({"test_unsupported","This provider has no destination test",{}});return;}
   const putgd::Destination destination{"s3",profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
@@ -215,6 +206,18 @@ int main(int argc,char* argv[]) {
 #endif
  const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
  putgd::TrayController tray(operations,[&](const QString& requested){ui.activate(requested);},quitApplication);
+ // Native shortcuts use the tray feedback with selection-safe re-entry handling.
+ const auto requested=[&tray](const QString& action){tray.invokeShortcut(action);};
+#ifdef PUTGD_NATIVE_X11
+ if(coreNative)QObject::connect(coreNative,&putgd::X11CoreSourceAdapter::actionRequested,&tray,requested);
+ if(native)QObject::connect(native,&putgd::X11SourceAdapter::actionRequested,&tray,requested);
+#endif
+#ifdef PUTGD_NATIVE_GNOME
+ if(gnome)QObject::connect(gnome,&putgd::GnomeAdapter::actionRequested,&tray,requested);
+#endif
+#ifdef PUTGD_NATIVE_KDE
+ if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::actionRequested,&tray,requested);
+#endif
  server.setUiQuit(quitApplication);
  QObject::connect(&ui,&putgd::UiProcessController::failure,&tray,&putgd::TrayController::notifyFailure);
  server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){ui.activate(requested,std::move(reply));});

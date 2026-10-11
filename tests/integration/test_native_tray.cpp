@@ -13,6 +13,11 @@
 #include <QPointer>
 #include <QSignalSpy>
 #include <QtTest>
+#include <QProcess>
+#include <QProcessEnvironment>
+#include <QFile>
+#include "fixtures/X11DesktopFixture.h"
+#include <X11/keysym.h>
 using namespace putgd;
 using namespace putgd::test;
 
@@ -115,6 +120,62 @@ private slots:
   peer.unregisterService("org.freedesktop.Notifications");
   QDBusConnection::disconnectFromBus("native-tray-wire-client");
   QDBusConnection::disconnectFromBus("native-tray-wire-peer");
+ }
+ void rejectedGlobalShortcutReportsMissingDestination() {
+  if (qEnvironmentVariable("PUTGD_ISOLATED_SHORTCUT_TEST") != "1")
+   QSKIP("Requires its dedicated private-bus/Xvfb invocation");
+  QTemporaryDir directory;
+  QVERIFY(directory.isValid());
+  const auto runtime = directory.filePath("r");
+  const auto socket = runtime + "/putgd/session.sock";
+  QVERIFY2(socket.toUtf8().size() <= 107, "Resolved test socket exceeds Linux's limit");
+  auto environment = QProcessEnvironment::systemEnvironment();
+  environment.insert("XDG_CONFIG_HOME", directory.filePath("c"));
+  environment.insert("XDG_DATA_HOME", directory.filePath("d"));
+  environment.insert("XDG_CACHE_HOME", directory.filePath("k"));
+  environment.insert("XDG_RUNTIME_DIR", runtime);
+  environment.insert("XDG_CURRENT_DESKTOP", "X-Cinnamon");
+  environment.insert("XDG_SESSION_TYPE", "x11");
+  environment.insert("WAYLAND_DISPLAY", "");
+  QDir().mkpath(runtime);
+  QFile::setPermissions(runtime, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
+  SettingsService settings(directory.filePath("c/putgd/putgd/config.json"));
+  auto document = Settings::defaults();
+  auto actions = document["actions"].toObject();
+  auto region = actions["region"].toObject(); region["shortcut"] = "Ctrl+1";
+  actions["region"] = region; document["actions"] = actions;
+  QVERIFY(settings.save(document, {}));
+  QProcess resident; resident.setProcessEnvironment(environment);
+  resident.start(PUTGD_PRODUCT_APP_PATH, {"--background"});
+  QVERIFY(resident.waitForStarted());
+  // Keep failed attempts bounded and always release child-owned key grabs.
+  struct Stop { QProcess& process; ~Stop() { if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(3000);} } } stop{resident};
+  auto request = [&](const QString& method) {
+   QProcess cli; cli.start(PUTGD_PRODUCT_CLI_PATH, {"--socket", socket, method});
+   if(!cli.waitForFinished(3000))return QJsonObject{};
+   return QJsonDocument::fromJson(cli.readAllStandardOutput()).object()["result"].toObject();
+  };
+  QJsonObject snapshot;
+  QTRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
+  QTRY_VERIFY(!watcher.registrations.isEmpty());
+  QVERIFY(snapshot["diagnostics"].toObject()["shortcuts"].toObject()["bindings"].toObject()["region"].toObject()["bound"].toBool());
+  QCOMPARE(snapshot["diagnostics"].toObject()["ui"].toObject()["pid"].toInteger(), qint64(0));
+  X11DesktopFixture desktop;
+  desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
+  desktop.key(XK_1,false);desktop.key(XK_Control_L,false);
+  QTRY_COMPARE_WITH_TIMEOUT(notifications.values.size(), 1, 5000);
+  QCOMPARE(notifications.values.first()["body"].toString(), QString("Configure a destination before sharing"));
+  for(int repeat=0;repeat<2;++repeat){
+   desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
+   desktop.key(XK_1,false);desktop.key(XK_Control_L,false);
+   QTest::qWait(50);
+  }
+  QCOMPARE(notifications.values.size(),1);
+  QVERIFY(request("operation.recent")["operations"].toArray().isEmpty());
+  QCOMPARE(request("ui.snapshot")["diagnostics"].toObject()["ui"].toObject()["pid"].toInteger(), qint64(0));
+  QVERIFY(request("ui.quit")["quitting"].toBool());
+  QTRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
+  QCOMPARE(resident.exitCode(), 0);
  }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
   NativeTray tray; QVERIFY(!tray.availabilityKnown()); QTRY_VERIFY(tray.availabilityKnown()); QTRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);

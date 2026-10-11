@@ -1,6 +1,7 @@
 #pragma once
 #include "app/OperationService.h"
 #include <QObject>
+#include <QElapsedTimer>
 #include <functional>
 #include <memory>
 
@@ -24,12 +25,15 @@ public:
  void showHistory();
  void showActivity();
  void notifyFailure(const Error&);
+ void invokeShortcut(const QString&);
 
 signals:
  void availabilityResolved();
 
 private:
- void invokeAction(const QString&);
+ void invokeAction(const QString&, bool fromShortcut = false);
+ QString lastShortcutError_;
+ QElapsedTimer shortcutFeedbackClock_;
  void notifyMessage(const QString&, const QString&, bool warning);
  void showAbout();
  void showView(const QString&);

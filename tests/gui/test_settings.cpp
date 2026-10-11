@@ -26,6 +26,23 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void savingOnlyAShortcutPreservesEveryUploadDestination() {
+  QTemporaryDir directory;CredentialStore secrets;S3Provider provider(secrets);
+  SettingsService settings(directory.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});
+  QVERIFY(settings.save(Settings::developmentTemplate(),{}));
+  const auto before=settings.document()["actions"].toObject();
+  UiSessionFixture fixture(settings,secrets);QTRY_VERIFY(fixture.session.ready());
+  SettingsWindow window(fixture.session);
+  window.findChild<QLineEdit*>("shortcutRegion")->setText("Ctrl+1");
+  window.findChild<QPushButton*>("saveSettings")->click();
+  QTRY_COMPARE(settings.snapshot().actions["region"].shortcut,QString("Ctrl+1"));
+  const auto after=settings.document()["actions"].toObject();
+  for(const auto& name:Settings::actionNames()){
+   QCOMPARE(after[name].toObject()["profileId"],before[name].toObject()["profileId"]);
+   QCOMPARE(after[name].toObject()["destination"],before[name].toObject()["destination"]);
+   if(name!="region")QCOMPARE(after[name],before[name]);
+  }
+ }
  void simpleDestinationAndCredentialFieldsShareAlignment(){
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);window.show();QTest::qWait(20);
   auto* bucket=window.findChild<QLineEdit*>("s3Bucket");auto* access=window.findChild<QLineEdit*>("credentialAccessKey");auto* advanced=window.findChild<QToolButton*>("advancedSettings");
