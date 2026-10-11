@@ -32,8 +32,7 @@ objects. Record actual operation/history IDs and deletion effects before confirm
 Use `ctest --preset dev --output-junit "$PWD/build/dev/ctest-results.xml"` to retain
 JUnit alongside CTest’s `build/dev/Testing/Temporary/LastTest.log`. GitHub Actions
 uploads these reports on success or failure, with a separate artifact for each
-distribution and 30-day retention. This workflow has been authored; a remote run
-has not yet been observed. Hosted CI covers contracts, not native compositor acceptance.
+distribution and 30-day retention. Hosted CI covers contracts, not native compositor acceptance.
 
 Each graphical `run` appends start/finish JSON events to `RUN/test-events.jsonl`.
 Each attempt receives a unique ID and a preserved `RUN/tests/ID/` bundle, containing
@@ -48,6 +47,17 @@ Image checks compare every decoded clipboard/region pixel. The 80×60 region
 starts at fixture offset (280, 130), crossing all four color quadrants; window
 and desktop checks compare the full 640×320 deterministic paint area using
 independent pre-action geometry.
+
+The lab maps a pixel coordinate to the first tablet tick at or above its edge:
+`ceil(pixel * 32768 / viewportExtent)`, capped at 32767. Dividing by
+`viewportExtent - 1` can cross Qt’s half-pixel boundary: on KDE a requested
+600-to-680 drag became 600.46875-to-680.5078125 and selected 81 pixels.
+The corrected ticks returned exactly 80 pixels from the actual full-screen
+helper. Region gestures hold each press/move phase for 100 ms and retain a
+mid-drag witness before release. Parameters record both the mapping and timing;
+these functional-input delays do not modify the frozen performance observers.
+The original cancelled attempt remains unexplained; gesture pacing does not
+establish its cause. Complete image/paste oracles and deadlines remain unchanged.
 
 Read the saved `replayCommand`, recreate the same profile/display layout in a new
 disposable overlay, and install the package whose hash is recorded before running it.

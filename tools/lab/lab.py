@@ -5,6 +5,7 @@ import datetime
 import shutil
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -385,8 +386,12 @@ def key(run, keys):
 
 
 def pointer(run, x, y, width, height, down=None):
-    events = [{'type': 'abs', 'data': {'axis': 'x', 'value': round(x * 32767 / (width - 1))}},
-              {'type': 'abs', 'data': {'axis': 'y', 'value': round(y * 32767 / (height - 1))}}]
+    # The inclusive tablet range has 32768 positions. Using extent-1
+    # crosses Qt's half-pixel rounding boundary (680 becomes 680.5078 at 1280).
+    # Choose the first tick at or above each pixel edge; floor and qRound
+    # then agree for the tested native viewport sizes.
+    events = [{'type': 'abs', 'data': {'axis': 'x', 'value': min(32767, math.ceil(x * 32768 / width))}},
+              {'type': 'abs', 'data': {'axis': 'y', 'value': min(32767, math.ceil(y * 32768 / height))}}]
     if down is not None:
         events.append({'type': 'btn', 'data': {'button': 'left', 'down': down}})
     input_events(run, events)
@@ -579,7 +584,9 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             'acceleration': state(run)['acceleration'],
             'goldenSha256': state(run).get('golden_sha256'),
             'timingSeconds': {'keyHold': .05, 'focusPoll': .1, 'focusAttemptLimit': 2,
-                'clipboardSourceSettle': .3, 'selectorSettle': .5, 'operationPoll': .2},
+                'clipboardSourceSettle': .3, 'selectorSettle': .5, 'dragPhaseSettle': .1, 'operationPoll': .2},
+            'tabletCoordinates': {'rangeSteps': 32768, 'maximumTick': 32767,
+                'mapping': 'ceil(pixel * 32768 / extent), clamped to maximumTick'},
             'selection': {'fixtureOffset': dict(zip(('x', 'y'), selection['paintOffset'])),
                 'width': selection_width, 'height': selection_height},
             'timeoutSeconds': args.timeout,
@@ -696,7 +703,10 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             elif scenario == 'region':
                 time.sleep(.5)
                 pointer(run, x, y, width, height, True)
+                time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
                 pointer(run, x + selection_width, y + selection_height, width, height)
+                time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
+                capture_witness('drag')
                 pointer(run, x + selection_width, y + selection_height, width, height, False)
         operation = None
         while time.monotonic() < deadline:

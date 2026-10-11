@@ -19,6 +19,27 @@ spec.loader.exec_module(lab)
 
 
 class LabContracts(unittest.TestCase):
+    def test_tablet_ticks_preserve_pixel_targets_for_native_rounding(self):
+        # Actual KWin fullscreen probe: old ticks 15372/17421 delivered
+        # 600.46875/680.5078125, so Qt selected 81 instead of 80 pixels.
+        # The tablet range has 32768 ticks, including zero.
+        for width, height in ((1280, 800), (1920, 1080), (3840, 2160)):
+            for x, y in ((0, 0), (600, 307), (680, 367), (width-1, height-1)):
+                with self.subTest(viewport=(width, height), target=(x, y)), \
+                        patch.object(lab, 'input_events') as send:
+                    lab.pointer('/unused', x, y, width, height, True)
+                    events = send.call_args.args[1]
+                    for event, target, extent in zip(events[:2], (x, y), (width, height)):
+                        ticks = event['data']['value']
+                        self.assertGreaterEqual(ticks, 0)
+                        self.assertLessEqual(ticks, 32767)
+                        # Wayland fixed-point positions quantize to 1/256 pixel;
+                        # native consumers use either floor or Qt qRound.
+                        delivered = int(ticks * extent / 32768 * 256) / 256
+                        self.assertEqual(int(delivered), target)
+                        self.assertEqual(int(delivered + .5), target)
+                    self.assertEqual(events[2], {'type': 'btn', 'data': {'button': 'left', 'down': True}})
+
     def test_failed_install_cannot_reuse_previous_package_receipt(self):
         with tempfile.TemporaryDirectory() as directory:
             receipt = Path(directory) / 'package.json'
