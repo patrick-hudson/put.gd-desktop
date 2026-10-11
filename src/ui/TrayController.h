@@ -8,7 +8,9 @@ class QMenu;
 class QSystemTrayIcon;
 
 namespace putgd {
+#ifdef Q_OS_LINUX
 class NativeTray;
+#endif
 class TrayController final : public QObject {
  Q_OBJECT
 public:
@@ -35,7 +37,9 @@ private:
  std::function<void(const QString&)> openView_;
  std::function<void()> quit_;
  QSystemTrayIcon* tray_ = nullptr;
+#ifdef Q_OS_LINUX
  std::unique_ptr<NativeTray> native_;
+#endif
  std::unique_ptr<QMenu> menu_;
 };
 }

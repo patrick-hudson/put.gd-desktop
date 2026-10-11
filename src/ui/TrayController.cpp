@@ -1,6 +1,8 @@
 #include "TrayController.h"
 #include "VisualStyle.h"
+#ifdef Q_OS_LINUX
 #include "NativeTray.h"
+#endif
 #include <QApplication>
 #include <QCoreApplication>
 #include <QAction>
@@ -15,6 +17,7 @@ TrayController::TrayController(OperationService& operations,
                                std::function<void()> quit, QObject* parent)
  : QObject(parent), operations_(operations), openView_(std::move(openView)),
    quit_(std::move(quit)) {
+#ifdef Q_OS_LINUX
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
   native_ = std::make_unique<NativeTray>(this);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
@@ -26,7 +29,9 @@ TrayController::TrayController(OperationService& operations,
    else if (action == "about") showAbout();
    else if (action == "quit") { const auto quit = quit_; quit(); }
   });
- } else {
+ } else
+#endif
+ {
  tray_ = new QSystemTrayIcon(VisualStyle::icon("brand"), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip("put.gd — Share and local capture");
@@ -79,8 +84,13 @@ TrayController::~TrayController() {
  }
 }
 
+#ifdef Q_OS_LINUX
 bool TrayController::available() const { return native_ ? native_->available() : QSystemTrayIcon::isSystemTrayAvailable(); }
 bool TrayController::availabilityKnown() const { return !native_ || native_->availabilityKnown(); }
+#else
+bool TrayController::available() const { return QSystemTrayIcon::isSystemTrayAvailable(); }
+bool TrayController::availabilityKnown() const { return true; }
+#endif
 void TrayController::activate() { showSettings(); }
 void TrayController::showSettings() { showView("settings"); }
 void TrayController::showHistory() { showView("history"); }
@@ -99,8 +109,11 @@ void TrayController::invokeAction(const QString& action) {
  });
 }
 void TrayController::notifyMessage(const QString& title, const QString& message, bool warning) {
+#ifdef Q_OS_LINUX
  if (native_) native_->notify(title, message, warning);
- else if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
+ else
+#endif
+ if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
 }
 void TrayController::notifyFailure(const Error& error) {
  if (error && available()) notifyMessage("put.gd", error.message, true);
