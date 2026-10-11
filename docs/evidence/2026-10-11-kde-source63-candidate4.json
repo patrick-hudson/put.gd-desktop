@@ -545,7 +545,7 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T02:04:56.766982+00:00",
+  "exportedUtc": "2026-10-11T02:36:57.959251+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
   "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
   "freshCancellationCase": {
@@ -818,13 +818,81 @@
   },
   "settingsUiProgress": {
     "saveCancelReloadChecked": true,
-    "originalSettingsRestorationPending": true,
+    "originalSettingsRestorationPending": false,
     "nativeKdeFontIntegrationAndFolderDialogObserved": true,
     "localHistoryRendered": true,
     "activityRendered": true,
-    "activityIndependentCopyPastePending": true,
+    "activityIndependentCopyPastePending": false,
     "notificationScreenshotMissedToastLifetime": true,
     "liveRegionProofPending": true,
-    "qualification": "Actual UI progress; no full native parity or scored memory acceptance."
+    "qualification": "Actual UI progress; no full native parity or scored memory acceptance.",
+    "notificationObservedDuringRequiredParentCopy": true,
+    "originalMissedNotificationWitnessPreserved": true
+  },
+  "settingsRestoration": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-followup-streaming-preparation/focus/actual-settings-restoration-final.json",
+    "sha256": "c0f7aec66fb32b1f9f6dd4524ade4de7dc1de113f50801472b6286ba958e85db",
+    "rootIndependentlyComparedWholeDocuments": true
+  },
+  "activityCopyVerification": {
+    "parent": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T021312010797-fixture/activity-result-copy.json",
+      "sha256": "c837fafca3b9f4177cadb27de495a2e6724aabfbb41c910b9147530590881bf6",
+      "rootOracleReviewed": true,
+      "rootUniqueHashImageReviewed": true,
+      "selectionKind": "parent",
+      "passed": true,
+      "itemCheckPending": false,
+      "sourceCount": 63
+    },
+    "item": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T022028552596-fixture/activity-result-copy.json",
+      "sha256": "397f4cdcf5d65e9e6c1e7c76bc18cd102195c62b2e03515169a8eac953ac8266",
+      "rootOracleReviewed": true,
+      "rootUniqueHashImageReviewed": true,
+      "rootSelectedRowImageSha256": "96318593d829d6f12c8be7f51e226c8cd74059906e0554d2d4a6017d3abadc61",
+      "selectionKind": "item",
+      "passed": true,
+      "sourceCount": 63,
+      "qualification": "One-item operation; not proof of a multi-item subset distinction."
+    }
+  },
+  "liveSelectorValidation": {
+    "accepted": false,
+    "attempt1": {
+      "operationId": "43dc9819-1cc3-48ba-869b-cee7b0d5a56f",
+      "status": "failed-validation",
+      "terminal": "capture_timeout/no_result/empty_items",
+      "originals": [
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T022942885548-selector63-clock-after/02.stdout",
+          "sha256": "efbe8be243cf9f1c49fb4cdd5b1c73faccbad0c3f0c239139b20cf256626ec20"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T022942885548-selector63-clock-after/03.stdout",
+          "sha256": "3a74ddfe4f7d216b14625d9faee9be0d9cc0cab5d2ceb714b1570098e8b38fa4"
+        }
+      ],
+      "helperNormalExit": true,
+      "helperTeardownCertified": true,
+      "uiGeneration": 5,
+      "memoryMeasurementStarted": false,
+      "cursorGate": "selected_cursor_rgb_changed; wire bytes were discarded on original strict rejection, so glyph regression not established",
+      "stateBindingIssue": "Original command reply accepted; later inventory acquiring. Strict equal-state host join rejected before outputs. A read-only inspect consumed additional selection lifetime.",
+      "retryPendingRootReview": false,
+      "retryReason": "Correct asynchronous metadata binding and perform observations within unchanged120-second selection lifetime; fresh private namespace, same scripts/pixel/coverage oracles.",
+      "originalFailurePreserved": true
+    },
+    "attempt2": {
+      "operationId": "83ce3b7f-1a18-4b87-8622-e7a83600575b",
+      "status": "failed-setup-unique-witness-label",
+      "originalFailurePreserved": true,
+      "diagnosis": {
+        "path": "/home/patrick/work/put.gd/work/kde-native-boundary/candidate63-live-retry-a2/witness-label-collision-diagnosis.json",
+        "sha256": "65346ae86c0da1a23928403991544f19d0b8f9a5f6e9fa92b0f843a99ee598ba"
+      },
+      "semanticAcceptance": false,
+      "setupCorrectionPending": true
+    }
   }
 }
