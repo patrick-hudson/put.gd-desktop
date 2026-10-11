@@ -563,7 +563,7 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T04:08:29.616604+00:00",
+  "exportedUtc": "2026-10-11T05:10:27.813919+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
   "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
   "freshCancellationCase": {
@@ -1048,7 +1048,7 @@
       "runtimeTestStarted": true,
       "passed": false,
       "buildStarted": true,
-      "buildComplete": false,
+      "buildComplete": true,
       "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
       "hostPackageReuseRejected": true,
       "reason": "Five required t64 package names are unavailable in this GNOME guest despite all 22 ELF loader checks passing.",
@@ -1065,10 +1065,43 @@
         "sdkAndSource": {
           "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T043149326330-guest-build/source-sdk-verification.json",
           "sha256": "5b2105d318f503f3a5fc9140adcb24983913da9fcb030ed915d01d62730bd0d4"
+        },
+        "build": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/build.json",
+          "sha256": "ad2a8f73a33796e10f0d2db63e7de76f424c218ac8d73b3133df5674a86231c1"
+        },
+        "verifiedBuild": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/build-verified.json",
+          "sha256": "1e8689ddf5ee8d72c091b384a0c31a6ce825189bfacc8403925f45491bdab11c"
+        },
+        "registeredTests": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/dev-registered.json",
+          "sha256": "232d8572d651de83271afd2a24e554265662d651e7700b47f7c278ece65f151d"
+        },
+        "junit": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/dev.xml",
+          "sha256": "bfc2fef92fbc95ee13fe10c911992d5f61d5393be2464b828647468ecdd57509"
+        },
+        "installed": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T045257639596-install/install-complete.json",
+          "sha256": "0a90fc2b895f964080c2e1e361f0eef009dc48341e5c25463f1d7dcd8e483762"
+        },
+        "configured": {
+          "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-gnome-regression-preparation/execution-current63-a1/replay/cohorts/sib63-a1/gnome/attempts/20261011T045744076355-configure-local/held-lifecycle-complete.json",
+          "sha256": "19aa7ce5993c340d4daeb811c90225b6b0f11d6d039923c9128d487acf02af2b"
         }
-      }
+      },
+      "buildPassed": true,
+      "installedCurrentVersion": true,
+      "registeredTestsPassed": 52,
+      "registeredTestsFailed": 0,
+      "registeredTestsSkipped": 0,
+      "nativeMatrixPassed": false,
+      "focusedGuiPassed": false,
+      "memoryPassed": false,
+      "testQualification": "One expected internal QtTest helper skip in S3ModuleContract::unavailableFacadeChild; all optional codec cases ran. Registered JUnit has no skipped test entries. Automated tests do not establish compositor support."
     },
-    "qualification": "Current63 Cinnamon complete local regression passed; GNOME standard build is running after actual package compatibility rejection. GNOME functional and memory acceptance remain pending."
+    "qualification": "Current63 Cinnamon complete local regression passed. GNOME standard guest build, 52 registered tests and exact current-source package installation passed. Native graphical matrix is progressing; focused GUI and memory acceptance remain pending."
   },
   "regressionWindow": {
     "deadlineUtc": "2026-10-11T05:28:20.881985Z",
