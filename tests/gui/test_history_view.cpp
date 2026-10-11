@@ -1,5 +1,7 @@
 #include "ui/HistoryModel.h"
 #include "ui/HistoryWindow.h"
+#include "ui/RecentOperations.h"
+#include <QTreeWidget>
 #include "fixtures/UiSessionFixture.h"
 #include <QTableView>
 #include <QHeaderView>
@@ -17,6 +19,7 @@
 #include <QImage>
 #include <QPlainTextEdit>
 #include <QPaintEvent>
+#include <QSignalBlocker>
 using namespace putgd;using namespace putgd::test;
 class HistoryPaintObserver final:public QObject {
 public:int paints=0;QRegion region;
@@ -26,6 +29,17 @@ class HistoryGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void externalDeletionAndClearRefreshOpenViews() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);const QSignalBlocker settingsSignals(settings),operationSignals(operations);HistoryWindow window(fixture.session);RecentOperations activity(fixture.session);window.show();activity.show();
+  auto* table=window.findChild<QTableView*>("historyTable");auto* model=qobject_cast<HistoryModel*>(table->model());auto* tree=activity.findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(model->rowCount(),1);QTRY_COMPARE(tree->topLevelItemCount(),1);QTRY_COMPARE(tree->topLevelItem(0)->childCount(),1);table->selectRow(0);QTest::qWait(100);
+  DispatchSessionClient external(fixture.server);const auto id=model->record(0)["id"].toString();QJsonObject preview;external.request("delete.prepare",{{"ids",QJsonArray{id}}},this,[&](Error e,QJsonObject r){QVERIFY(!e);preview=r;});QTRY_VERIFY(!preview.isEmpty());
+  bool accepted=false;external.request("delete.confirm",{{"ids",QJsonArray{id}},{"acknowledgement",preview["acknowledgement"]}},this,[&](Error e,QJsonObject){QVERIFY(!e);accepted=true;});QTRY_VERIFY(accepted);QTRY_COMPARE(provider->deletes.load(),1);
+  QTRY_COMPARE(model->record(0)["remoteStatus"].toString(),QString("removed"));QTRY_VERIFY(!window.findChild<QPushButton*>("copyHistoryLink")->isEnabled());QTRY_VERIFY(tree->topLevelItem(0)->child(0)->text(4).contains("Remote: Removed"));
+  bool cleared=false;external.request("history.clear",{},this,[&](Error e,QJsonObject){QVERIFY(!e);cleared=true;});QTRY_VERIFY(cleared);QTRY_COMPARE(model->rowCount(),0);QVERIFY(window.saveViewState()["selectedIds"].toArray().isEmpty());
+ }
  void compactHistoryKeepsOutcomesVisibleAndOriginalDetailsRoutedById(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.resize(1024,700);window.show();
   auto* table=window.findChild<QTableView*>("historyTable");auto* inspector=window.findChild<QScrollArea*>("historyInspectorScroll");QVERIFY(table);QVERIFY(inspector);QVERIFY(!inspector->isVisible());auto* empty=window.findChild<QLabel*>("historyEmpty");QVERIFY(empty);QTRY_VERIFY(empty->isVisible());
@@ -46,7 +60,7 @@ private slots:
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);QJsonObject state;
   {HistoryWindow window(fixture.session);auto* table=window.findChild<QTableView*>("historyTable");QTRY_COMPARE(table->model()->rowCount(),1);table->selectRow(0);window.findChild<QLineEdit*>("historySearch")->setText("raw unapplied search");window.findChild<QLineEdit*>("historyFilterfrom")->setText("invalid raw date");state=window.saveViewState();}
   QVERIFY(!validateUiState({{"schemaVersion",1},{"history",state}}));QVERIFY(!QJsonDocument(state).toJson().contains("state.txt"));HistoryWindow restored(fixture.session);QVERIFY(restored.restoreViewState(state));auto* table=restored.findChild<QTableView*>("historyTable");QTRY_COMPARE(table->selectionModel()->selectedRows().size(),1);QCOMPARE(restored.findChild<QLineEdit*>("historySearch")->text(),QString("raw unapplied search"));QCOMPARE(restored.findChild<QLineEdit*>("historyFilterfrom")->text(),QString("invalid raw date"));
-  bool cleared=false;history.clear([&](Error e,QJsonObject){QVERIFY(!e);cleared=true;});QTRY_VERIFY(cleared);restored.refresh();QTRY_COMPARE(table->model()->rowCount(),0);QVERIFY(restored.saveViewState()["selectedIds"].toArray().isEmpty());QCOMPARE(source.reads,0);
+  bool cleared=false;history.clear([&](Error e,QJsonObject){QVERIFY(!e);cleared=true;});QTRY_VERIFY(cleared);QTRY_COMPARE(table->model()->rowCount(),0);QVERIFY(restored.saveViewState()["selectedIds"].toArray().isEmpty());QCOMPARE(source.reads,0);
  }
  void restoringHistoryKeepsActiveDeletionCancellation() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);

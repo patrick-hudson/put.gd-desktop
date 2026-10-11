@@ -126,7 +126,7 @@ private:
  QString selectingId_;
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
- bool ready_=false,stopping_=false;
+ bool ready_=false,stopping_=false,cleanupInProgress_=false;
  Error startupError_;
 };
 // Callback adapters complete once, including ambiguous outcomes. Waiting occurs

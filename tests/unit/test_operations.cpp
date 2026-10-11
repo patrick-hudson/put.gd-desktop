@@ -9,6 +9,26 @@ using namespace putgd;using namespace putgd::test;
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void cleanupBlocksRetriesUntilItsSnapshotFinishes() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  bool cleaned=false;operations.cleanup([&](Error e,QJsonObject){QVERIFY(!e);cleaned=true;});
+  // No event dispatch between the snapshot and retry admission: even a fast
+  // worker cannot deliver its session-thread completion yet.
+  Error retryError,archiveError,secondCleanupError;operations.retry("synthetic-old-operation",[&](Error e,QJsonObject){retryError=e;});operations.retryLocalSave("synthetic-old-operation",[&](Error e,QJsonObject){archiveError=e;});operations.cleanup([&](Error e,QJsonObject){secondCleanupError=e;});
+  QCOMPARE(retryError.code,QString("cleanup_busy"));QCOMPARE(archiveError.code,QString("cleanup_busy"));QCOMPARE(secondCleanupError.code,QString("cleanup_busy"));QTRY_VERIFY(cleaned);
+  bool retried=false;operations.retry("synthetic-old-operation",[&](Error e,QJsonObject){QCOMPARE(e.code,QString("operation_not_found"));retried=true;});QTRY_VERIFY(retried);
+ }
+ void batchItemCheckpointsHaveLinearLedgerWrites() {
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;source.payload.kind="files";
+  constexpr int count=100;for(int i=0;i<count;++i)source.payload.files.append(fixture(d.path(),QString("batch-%1.txt").arg(i),"synthetic batch content"));
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());const auto connection=QUuid::createUuid().toString();
+  {auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(operations.databasePath());QVERIFY(db.open());QSqlQuery q(db);QVERIFY(q.exec("CREATE TABLE checkpoint_count(value INTEGER NOT NULL)"));QVERIFY(q.exec("INSERT INTO checkpoint_count VALUES(0)"));
+   for(const auto* verb:{"INSERT","UPDATE"})QVERIFY(q.exec(QString("CREATE TRIGGER count_%1 AFTER %1 ON history BEGIN UPDATE checkpoint_count SET value=value+1; END").arg(verb)));
+   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());HistoryStore store(operations.databasePath());QTRY_COMPARE_WITH_TIMEOUT(store.operation(id).copyStatus,QString("copied"),30000);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+   const auto op=store.operation(id);QCOMPARE(op.items.size(),count);for(const auto& item:op.items){QCOMPARE(item.local.status,QString("saved"));QCOMPARE(item.uploadStatus,QString("local_only"));QVERIFY(QFile::exists(item.local.path));}
+   QVERIFY(q.exec("SELECT value FROM checkpoint_count"));QVERIFY(q.next());const auto writes=q.value(0).toInt();QVERIFY2(writes<=5*count,qPrintable(QString("Expected linear ledger writes; %1 files caused %2 writes").arg(count).arg(writes)));q.finish();db.close();
+  }QSqlDatabase::removeDatabase(connection);
+ }
  void startupHeapCleanupRunsOnceAfterSuccessfulInitialization() {
 #ifndef __GLIBC__
   QSKIP("Allocator reclamation uses glibc on supported Linux builds");

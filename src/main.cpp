@@ -222,6 +222,7 @@ int main(int argc,char* argv[]) {
  QObject::connect(&settings,&putgd::SettingsService::statusChanged,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&operations,&putgd::OperationService::initialized,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&operations,&putgd::OperationService::changed,&ui,&putgd::UiProcessController::invalidate);
+ QObject::connect(&history,&putgd::HistoryService::changed,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&setup,&putgd::SetupService::changed,&ui,&putgd::UiProcessController::invalidate);
  const auto loginMutex=std::make_shared<std::mutex>();
  const auto loginGeneration=std::make_shared<std::atomic_ullong>(0);

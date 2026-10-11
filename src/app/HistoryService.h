@@ -16,12 +16,15 @@ public:
  void inspectDelete(const QString&,JsonReply);
  void retryDelete(const QString&,JsonReply);
  void cancelDelete(const QString&,JsonReply);
+signals:
+ void changed();
 private:
+ void notifyChanged();
  QJsonObject prepare(const QStringList&,Error&) const;
  void expireConfigured();
  void runDelete(QJsonObject,std::shared_ptr<std::atomic_bool>);
  OperationService& operations_;
- QTimer retention_;
+ QTimer retention_,notification_;
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
 };
 }

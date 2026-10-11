@@ -28,14 +28,15 @@ public:
  LocalServer server;SetupService setup;DispatchSessionClient client;UiSession session;
  UiSessionFixture(SettingsService& settings,CredentialStore& secrets,SetupService::DestinationTester tester={}):
   ownedOperations_(std::make_unique<OperationService>(data_.path(),settings,registry_,source_)),ownedHistory_(std::make_unique<HistoryService>(*ownedOperations_)),
-  server(settings,*ownedOperations_,*ownedHistory_),setup(settings,secrets,tester?std::move(tester):SetupService::DestinationTester([](const QString&,const QJsonObject&,auto reply){reply({});})),client(server),session(client){initialize(settings,*ownedOperations_);}
- UiSessionFixture(SettingsService& settings,OperationService& operations,HistoryService& history):server(settings,operations,history),setup(settings,ownedSecrets_,[](const QString&,const QJsonObject&,auto reply){reply({});}),client(server),session(client){initialize(settings,operations);}
+  server(settings,*ownedOperations_,*ownedHistory_),setup(settings,secrets,tester?std::move(tester):SetupService::DestinationTester([](const QString&,const QJsonObject&,auto reply){reply({});})),client(server),session(client){initialize(settings,*ownedOperations_,*ownedHistory_);}
+ UiSessionFixture(SettingsService& settings,OperationService& operations,HistoryService& history):server(settings,operations,history),setup(settings,ownedSecrets_,[](const QString&,const QJsonObject&,auto reply){reply({});}),client(server),session(client){initialize(settings,operations,history);}
 private:
- void initialize(SettingsService& settings,OperationService& operations){
+ void initialize(SettingsService& settings,OperationService& operations,HistoryService& history){
   server.setSetupService(&setup);server.dispatch({{"schemaVersion",1},{"requestId","bootstrap"},{"session",server.socketPath()},{"method","ui.snapshot"},{"params",QJsonObject{}}},[this](Error e,QJsonObject data){Q_ASSERT(!e);session.applySnapshot(data);});
   QObject::connect(&settings,&SettingsService::statusChanged,&session,&UiSession::invalidate);
   QObject::connect(&operations,&OperationService::initialized,&session,&UiSession::invalidate);
   QObject::connect(&operations,&OperationService::changed,&session,&UiSession::invalidate);
+  QObject::connect(&history,&HistoryService::changed,&session,&UiSession::invalidate);
  }
 };
 }

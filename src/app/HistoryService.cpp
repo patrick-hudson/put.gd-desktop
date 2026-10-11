@@ -3,22 +3,25 @@
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QSet>
+#include <QPointer>
 #include <QUuid>
 namespace putgd {
 HistoryService::HistoryService(OperationService& operations,QObject* parent):QObject(parent),operations_(operations) {
+ notification_.setSingleShot(true);notification_.setInterval(25);connect(&notification_,&QTimer::timeout,this,&HistoryService::changed);
  retention_.setInterval(60*60*1000);connect(&retention_,&QTimer::timeout,this,&HistoryService::expireConfigured);connect(&operations_,&OperationService::initialized,this,&HistoryService::expireConfigured);retention_.start();if(operations_.ready())expireConfigured();
 }
 HistoryService::~HistoryService() {
  for(const auto& cancelled:active_)cancelled->store(true);
  operations_.shutdown();
 }
+void HistoryService::notifyChanged() {if(!notification_.isActive())notification_.start();}
 void HistoryService::expireConfigured() {
  const int days=operations_.settingsSnapshot().historyRetentionDays;if(days<=0||!operations_.ready())return;
- const auto before=QDateTime::currentDateTimeUtc().addDays(-days).toString(Qt::ISODateWithMs),path=operations_.databasePath();operations_.background([before,path](Error& e) {HistoryStore store(path);e=store.expireBefore(before);return QJsonObject{};},[](Error,QJsonObject) {});
+ const auto before=QDateTime::currentDateTimeUtc().addDays(-days).toString(Qt::ISODateWithMs),path=operations_.databasePath();operations_.background([before,path](Error& e) {HistoryStore store(path);e=store.expireBefore(before);return QJsonObject{};},[this](Error e,QJsonObject) {if(!e)notifyChanged();});
 }
 void HistoryService::list(const HistoryQuery& query,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path,query](Error& e) {HistoryStore store(path);auto page=store.list(query);e=page.error;return page.toJson();},reply);}
 void HistoryService::detail(const QString& id,JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path,id](Error& e) {HistoryStore store(path);return store.detail(id,&e);},reply);}
-void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path](Error& e) {HistoryStore store(path);e=store.clear();return QJsonObject{{"cleared",!e},{"pendingDeletionTargetsRetained",true}};},reply);}
+void HistoryService::clear(JsonReply reply) {if(!operations_.ready()){reply({"initializing","Wait for resident journal recovery",{}},{});return;}const auto path=operations_.databasePath();operations_.background([path](Error& e) {HistoryStore store(path);e=store.clear();return QJsonObject{{"cleared",!e},{"pendingDeletionTargetsRetained",true}};},[this,reply=std::move(reply)](Error e,QJsonObject result){if(!e)notifyChanged();reply(e,result);});}
 void HistoryService::copyLink(const QString& id,JsonReply reply) {const auto ticket=operations_.invalidateCopyEligibility();detail(id,[this,reply,ticket](Error e,QJsonObject data) {if(e)reply(e,{});else if(!data["linkAvailable"].toBool())reply({"link_unavailable","This recorded link is no longer available",{}},{});else operations_.copyHistoryUrl(data["receipt"].toObject()["directUrl"].toString(),reply,ticket);});}
 QJsonObject HistoryService::prepare(const QStringList& ids,Error& e) const {
  if(ids.isEmpty()||ids.size()>1000) {e={"invalid_selection","Select between 1 and 1000 confirmed uploads",{}};return {};}
@@ -42,11 +45,16 @@ void HistoryService::deleteConfirmed(const QStringList& ids,const QString& ackno
   QJsonArray items;for(auto target:preview["targets"].toArray()) {auto item=target.toObject();item["status"]="pending";item["progress"]=QJsonObject{{"schemaVersion",1}};items.append(item);}
   QJsonObject doc{{"id",QUuid::createUuid().toString(QUuid::WithoutBraces)},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},{"state","accepted"},{"acknowledgement",acknowledgement},{"items",items},{"cancelled",false}};
   HistoryStore store(operations_.databasePath());e=store.saveDeletion(doc);return doc;
- },[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}const auto id=doc["id"].toString();auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"deletion",doc}});runDelete(doc,flag);});
+ },[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}notifyChanged();const auto id=doc["id"].toString();auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"deletion",doc}});runDelete(doc,flag);});
 }
 void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool> cancelled) {
- operations_.background([this,doc,cancelled](Error& error) mutable {
-  const auto path=operations_.databasePath();HistoryStore store(path);doc["state"]="running";if((error=store.saveDeletion(doc)))return doc;
+ // Provider checkpoints can run on a different worker. Queue a coalesced
+ // metadata invalidation only after the durable transaction commits.
+ const auto committed=[owner=QPointer<HistoryService>(this)] {
+  if(owner)QMetaObject::invokeMethod(owner,[owner]{if(owner)owner->notifyChanged();},Qt::QueuedConnection);
+ };
+ operations_.background([this,doc,cancelled,committed](Error& error) mutable {
+  const auto path=operations_.databasePath();HistoryStore store(path);doc["state"]="running";if((error=store.saveDeletion(doc)))return doc;committed();
   auto items=doc["items"].toArray();
   for(int index=0;index<items.size();++index) {
    auto item=items[index].toObject();auto status=item["status"].toString();if(status=="removed"||status=="already_missing"||status=="changed")continue;
@@ -64,21 +72,21 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     else if(stat.status!="own"||stat.error) {outcome="unknown";e=stat.error?stat.error:Error{"delete_unknown","Recorded object identity could not be reconciled",{}};}
     else if(stat.receipt.publicationId!=receipt.publicationId||stat.receipt.objectReference!=receipt.objectReference||stat.receipt.concurrencyToken!=receipt.concurrencyToken||stat.receipt.destination.toJson()!=receipt.destination.toJson()) {outcome="changed";e={"delete_target_changed","The recorded target has changed",{}};}
     else {
-     item["status"]="deleting";items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;
+     item["status"]="deleting";items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
      // Callback may run on the provider's worker. It creates a connection on that
      // thread, commits progress, then acknowledges; no Qt SQL connection crosses threads.
-     auto checkpoint=[path,&doc,&items,index](const QJsonObject& checkpoint,std::function<void(Error)> ack) {
+     auto checkpoint=[path,&doc,&items,index,committed](const QJsonObject& checkpoint,std::function<void(Error)> ack) {
       if(!checkpoint["schemaVersion"].isDouble()||checkpoint["schemaVersion"].toInt()<1) {ack({"delete_checkpoint_invalid","Driver progress requires a version",{}});return;}
-      auto target=items[index].toObject();target["progress"]=checkpoint;items[index]=target;doc["items"]=items;HistoryStore durable(path);ack(durable.saveDeletion(doc));
+      auto target=items[index].toObject();target["progress"]=checkpoint;items[index]=target;doc["items"]=items;HistoryStore durable(path);const auto e=durable.saveDeletion(doc);if(!e)committed();ack(e);
      };
      DeleteRequest request{doc["id"].toString(),receipt,progress,cancelled};
      auto result=awaitProvider<DeleteResult>([&](auto cb) {provider->remove(request,checkpoint,cb);});outcome=result.status=="missing"?"already_missing":result.status;progress=result.progress.isEmpty()?items[index].toObject()["progress"].toObject():result.progress;e=result.error;
      const QStringList allowed{"removed","already_missing","changed","failed","unknown","hidden_version_retained","version_retained","unsupported_safe_removal"};if(!allowed.contains(outcome)) {outcome="unknown";e={"delete_unknown","Provider returned an unrecognized deletion result",{}};}
     }
    }
-   item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;
+   item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
   }
-  doc["state"]=cancelled->load()?"cancelled":"completed";doc["items"]=items;error=store.saveDeletion(doc);return doc;
+  doc["state"]=cancelled->load()?"cancelled":"completed";doc["items"]=items;error=store.saveDeletion(doc);if(!error)committed();return doc;
  },[this,id=doc["id"].toString()](Error,QJsonObject) {active_.remove(id);});
 }
 void HistoryService::inspectDelete(const QString& id,JsonReply reply) {const auto path=operations_.databasePath();operations_.background([path,id](Error& e) {HistoryStore store(path);return store.deletion(id,&e);},reply);}

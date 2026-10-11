@@ -1,6 +1,7 @@
 #pragma once
 #include "Operation.h"
 #include <QSqlDatabase>
+#include <QSet>
 namespace putgd {
 struct HistoryQuery {
  int limit=50,offset=0;
@@ -15,6 +16,8 @@ public:
  HistoryStore(const HistoryStore&)=delete;
  Error error() const {return error_;}
  Error saveOperation(const Operation&,const ProviderRegistry* = nullptr); // operation and item ledger in one transaction
+ // Persist the full operation snapshot atomically with only changed ledger items.
+ Error checkpointOperation(const Operation&,const QSet<QString>& changedItems,const ProviderRegistry* = nullptr);
  Operation operation(const QString&,Error* = nullptr) const;
  QList<Operation> recover(Error* = nullptr);
  Error indexPublications(const ProviderRegistry&);
@@ -28,6 +31,7 @@ public:
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
 private:
  Error initialize();
+ Error persistOperation(const Operation&,const ProviderRegistry*,const QSet<QString>* changedItems);
  QString connection_;
  QSqlDatabase db_;
  Error error_;
