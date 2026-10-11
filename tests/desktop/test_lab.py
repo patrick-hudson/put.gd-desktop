@@ -44,8 +44,9 @@ class LabContracts(unittest.TestCase):
 
     def test_failed_drag_witness_releases_button_and_cannot_archive_stale_image(self):
         # Exercise the production attempt handler, not a copied gesture.
-        for failed_stage in ('move', 'witness'):
-            with self.subTest(failed_stage=failed_stage), tempfile.TemporaryDirectory() as directory:
+        for failed_stage, cleanup_failure in (('press', None), ('move', None), ('witness', None),
+                                               ('witness', 'cancel'), ('witness', 'release')):
+            with self.subTest(failed_stage=failed_stage, cleanup_failure=cleanup_failure), tempfile.TemporaryDirectory() as directory:
                 run = Path(directory)
                 lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11',
                     'acceleration': 'kvm', 'guest_user': 'fixture', 'id': 'synthetic'})
@@ -55,7 +56,11 @@ class LabContracts(unittest.TestCase):
                         {'x': 0, 'y': 0, 'width': 800, 'height': 600}],
                     'paint': {'x': 10, 'y': 20, 'width': 640, 'height': 320}}
                 events = []
+                keys = []
+                trace = []
+                recent_calls = 0
                 def fake_cli(_run, method, _params=None):
+                    nonlocal recent_calls
                     if method == 'settings.get':
                         return {'metadata': {'acceptedRevision': 1}}
                     if method == 'diagnostics':
@@ -64,12 +69,24 @@ class LabContracts(unittest.TestCase):
                         return {'source': {'shortcuts': {'bindings': {
                             action: {'bound': True} for action in ('region', 'window', 'desktop', 'clipboard')}}}}
                     if method == 'operation.recent':
-                        return {'operations': []}
+                        recent_calls += 1
+                        return {'operations': [] if recent_calls == 1 else [
+                            {'id': 'failed-gesture', 'state': 'cancelled', 'copyStatus': 'suppressed'}]}
                     return {}
                 def fake_pointer(*args):
                     events.append(args[1:])
+                    trace.append(('pointer', args[1:]))
+                    if failed_stage == 'press' and args[1:3] == (290, 150) and args[-1] is True:
+                        raise lab.LabError('synthetic drag press failure')
+                    if cleanup_failure == 'release' and args[1:3] != (40, 50) and args[-1] is False:
+                        raise lab.LabError('synthetic cleanup release failure')
                     if failed_stage == 'move' and len(args) == 5:
                         raise lab.LabError('synthetic drag move failure')
+                def fake_key(_run, pressed):
+                    keys.append(pressed)
+                    trace.append(('key', pressed))
+                    if cleanup_failure == 'cancel' and pressed == ['esc']:
+                        raise lab.LabError('synthetic cleanup cancel failure')
                 def fake_screenshot(_run, name='witness', head=0):
                     if name == 'drag':
                         raise lab.LabError('synthetic drag witness failure')
@@ -84,14 +101,25 @@ class LabContracts(unittest.TestCase):
                             ('screenshot', fake_screenshot), ('pointer', fake_pointer),
                             ('guest_session', lambda *_args: ''), ('verify_running_app', lambda *_args: {'pid': 42}),
                             ('compare_ppm', lambda *_args: {'ok': True}),
-                            ('key', lambda *_args: None), ('collect', lambda *_args: None)):
+                            ('key', fake_key), ('collect', lambda *_args: None)):
                         stack.enter_context(patch.object(lab, name, side_effect=replacement))
                     stack.enter_context(patch.object(lab.time, 'sleep'))
                     result = lab.fixture_run(args)
                 self.assertFalse(result['ok'])
-                self.assertIn('synthetic drag', result['error'])
+                self.assertEqual(result['error'], 'synthetic drag ' + failed_stage + ' failure')
+                self.assertTrue(result['dragAbortRequested'])
+                self.assertEqual(keys[-1], ['esc'])
+                self.assertEqual(trace[-2:], [('key', ['esc']),
+                    ('pointer', (290, 150, 800, 600, False))])
+                self.assertEqual(result['operationsAfterFailedDrag'], [
+                    {'id': 'failed-gesture', 'state': 'cancelled', 'copyStatus': 'suppressed'}])
+                if cleanup_failure:
+                    self.assertEqual(result['dragCleanupErrors'], [{'stage': cleanup_failure,
+                        'error': 'synthetic cleanup ' + cleanup_failure + ' failure'}])
+                else:
+                    self.assertNotIn('dragCleanupErrors', result)
                 with self.subTest(check='release'):
-                    self.assertEqual(events[-1], (370, 210, 800, 600, False))
+                    self.assertEqual(events[-1], (290, 150, 800, 600, False))
                 with self.subTest(check='stale witness'):
                     self.assertFalse((run / 'drag-head0.ppm').exists())
                 evidence = run / result['evidenceDirectory']

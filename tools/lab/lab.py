@@ -479,6 +479,7 @@ def fixture_run(args):
     artifacts = []
     public_files = []
     witnesses = []
+    before_ids = None
     for stale in ('parameters.json', 'ready.json', 'gtk-ready.json', 'paste.json',
                   'history-paste.json', 'paste.ppm', 'artifact.ppm', 'versions.json', 'diagnostics.json'):
         (run / stale).unlink(missing_ok=True)
@@ -702,13 +703,26 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                     pointer(run, x, y, width, height, False)
             elif scenario == 'region':
                 time.sleep(.5)
-                pointer(run, x, y, width, height, True)
                 try:
+                    pointer(run, x, y, width, height, True)
                     time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
                     pointer(run, x + selection_width, y + selection_height, width, height)
                     time.sleep(parameters['timingSeconds']['dragPhaseSettle'])
                     capture_witness('drag')
-                finally:
+                except BaseException:
+                    # A failed gesture must not finish at the success endpoint.
+                    # Press may have reached QEMU even if its reply was lost.
+                    result['dragAbortRequested'] = True
+                    for stage, cleanup in (
+                            ('cancel', lambda: key(run, ['esc'])),
+                            ('release', lambda: pointer(run, x, y, width, height, False))):
+                        try:
+                            cleanup()
+                        except Exception as cleanup_error:
+                            result.setdefault('dragCleanupErrors', []).append(
+                                {'stage': stage, 'error': str(cleanup_error)})
+                    raise
+                else:
                     pointer(run, x + selection_width, y + selection_height, width, height, False)
         operation = None
         while time.monotonic() < deadline:
@@ -849,6 +863,17 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
     except (LabError, OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
         result['ok'] = False
         result['error'] = str(error)
+        if args.scenario == 'region' and before_ids is not None:
+            # Input delivery can precede a failed QMP reply. Retain identities
+            # even when cleanup cannot confirm cancellation; never claim that
+            # a failed driver means the application had no side effects.
+            try:
+                result['operationsAfterFailedDrag'] = [
+                    {field: operation.get(field) for field in ('id', 'state', 'copyStatus')}
+                    for operation in cli(run, 'operation.recent')['operations']
+                    if operation['id'] not in before_ids]
+            except (LabError, OSError, ValueError, KeyError, subprocess.TimeoutExpired):
+                result['dragOperationObservationIncomplete'] = True
     finally:
         if result['ok']:
             try:
