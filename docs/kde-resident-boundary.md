@@ -1,7 +1,10 @@
 # KDE resident and region selector
 
-Status: candidate implementation. Desktop and memory acceptance are pending; host
-contract tests do not establish compositor support.
+Status: retained source63 implementation. Recorded KDE local-native and memory
+gates passed, followed by current-source Cinnamon/GNOME regressions. Current real
+S3/remote History and full release acceptance remain pending. See
+[the cumulative strategy](memory-strategy.md) and [source63 evidence](evidence/kde-source63/memory-summary.md).
+Host contract tests alone do not establish compositor support.
 
 On an unambiguous native KDE Wayland session, the resident uses `QCoreApplication`.
 It retains the existing native tray, KGlobalAccel, private Wayland data-control

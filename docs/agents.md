@@ -2,6 +2,8 @@
 
 Read [AGENTS.md](../AGENTS.md), [build](build.md), [architecture](architecture.md),
 [configuration](configuration.md), [CLI](cli.md), and [current evidence](verification.md).
+Read [resident memory strategy](memory-strategy.md) before changing process boundaries, codec loading or idle retention. Its linked source63 checkpoint distinguishes accepted local memory from pending remote/release acceptance.
+
 The implementation contract is issue #1 and the dated plan in `docs/plans/`.
 Implement its dependencies in order and record blocked acceptance separately from passing tests.
 

@@ -1,10 +1,11 @@
 # Native listener experiment
 
-This candidate selects a Qt Core resident on Cinnamon X11. It keeps the existing
-Qt Widgets settings, history and activity process. Other desktop routes retain
-the existing graphical resident until their own native boundary is implemented
-and verified. The candidate is experimental: a successful build or fixture is
-not a desktop or memory acceptance result.
+The retained implementation selects a Qt Core resident on Cinnamon X11 and keeps
+Qt Widgets settings, history and activity in the transient view process. GNOME
+and KDE now have their own native boundaries. Source63 passed the recorded local
+functional and memory gates on all three desktops; full remote/release acceptance
+remains pending. See [the current strategy](memory-strategy.md) and its exact
+workload limitations. A successful build or fixture is not desktop acceptance.
 
 ## Routing and process ownership
 

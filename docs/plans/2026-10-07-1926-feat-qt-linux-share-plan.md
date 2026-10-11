@@ -1633,3 +1633,19 @@ release gates. Continue the existing UI/product plan after that acceptance work;
 no new optimization candidate is authorized by this checkpoint. See
 [the memory report](../evidence/kde-source63/memory-summary.md) and
 [reproducible recorded-sample checks](../evidence/kde-source63/reproduction.md).
+
+
+### Cumulative review and strategy publication — 2026-10-11
+
+The source63 cumulative code review confirmed ten P2 defects in durable history
+state/recovery, cleanup/retry admission, CLI credential arguments, package
+identity, batch checkpoint work and graphical evidence. No fixes were applied
+in this report-only round. Preserve the local memory keeper and its source63
+measurements; passing RSS does not close correctness or release gates.
+
+[The review](../reviews/2026-10-11-cumulative-review.md) records exact locations,
+preconditions, proposed fixes and validation limits. [The strategy](../memory-strategy.md)
+documents the resident/helper boundaries, native clipboard lifetimes, decoder
+loading, cumulative allocation policy and reproducible acceptance sequence.
+Publish this checkpoint as a draft PR; current guest live-S3/remote History,
+post-S3 memory and full U9/U10/compositor release acceptance remain pending.

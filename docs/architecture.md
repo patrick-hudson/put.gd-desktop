@@ -1,5 +1,7 @@
 # Shared operation services
 
+The current process and memory design is summarized in [resident memory strategy](memory-strategy.md), with exact source63 measurements and remaining release gates.
+
 `OperationService` owns acceptance, acquisition, immutable artifacts, naming, archive,
 publication, explicit retries and result copying. GUI/hotkeys and JSON session clients
 use this service. `HistoryService` owns offline browsing, explicit link copying and

@@ -1,8 +1,11 @@
 # Resident service and an on-demand UI
 
-Status: retain the implemented split for its measured reduction after views close.
-Current-source native subsets pass on Cinnamon, GNOME and KDE; full acceptance
-and the 40 MiB cold target remain open. See [protocol and lifecycle](ui-process-protocol.md).
+Status: retain the split and native listener boundaries. Source63 meets the 40 MiB
+resident target in the recorded local workflows on Cinnamon, GNOME and KDE;
+current real S3/remote History and full release acceptance remain pending. Read
+[the current strategy and workload limits](memory-strategy.md). Measurements below
+from source41 and earlier are historical, not the current baseline. See
+[protocol and lifecycle](ui-process-protocol.md).
 The resident must retain a tray icon and menu while all UI windows are closed.
 It must still offer capture/upload actions and reopen Settings, History and
 Activity. Closing the UI must leave shortcuts, clipboard ownership and operations
@@ -34,7 +37,7 @@ The S3 SDK is already loaded on demand. The earlier retained-window experiment
 releases native drawing buffers after explicit close while preserving logical
 widgets and drafts. It does not unload Qt Widgets or desktop styling libraries.
 
-## Remaining dependencies
+## Dependency graph before the native listener work
 
 | Component | Current dependency | Work needed for a smaller resident |
 | --- | --- | --- |
@@ -47,10 +50,11 @@ widgets and drafts. It does not unload Qt Widgets or desktop styling libraries.
 | Live view updates | Coalesced private invalidations while a helper exists | Verify runtime updates and failure recovery |
 | Unsaved drafts and history state | Bounded classified RAM checkpoint in the resident | Validate close/reopen conflicts and exclude credential inputs |
 
-Moving only the settings windows will not remove Qt Widgets from the current
+Moving only settings did not remove Qt Widgets from the source41
 resident link graph: `putgd_x11`, `putgd_kde` and `TrayController` still require it.
-Replacing all desktop integration with a new native framework is not justified
-by this analysis.
+Source63 instead retains Qt for transient graphical work and uses the existing
+native tray and desktop-specific listeners. This historical graph is not the
+current resident dependency inventory.
 
 ## Evidence and limits
 
@@ -86,7 +90,7 @@ Qt Core/Gui/Widgets mappings contributed 13,025,280 bytes; Widgets alone contrib
 3,530,752 bytes. The heap contributed 3,026,944 bytes. These mappings are attribution,
 not a forecast of removable memory: Core/Gui remain useful, libraries can be shared,
 and the GUI process would have its own startup cost. The subsequent five-minute
-cold run ended at 44.9 MiB; the 40 MiB target remains unmet.
+cold run ended at 44.9 MiB; that candidate did not meet the 40 MiB target.
 
 Local source evidence: `src/main.cpp`, `src/cli/main.cpp`,
 `src/app/LocalServer.cpp`, `src/ui/TrayController.cpp`, the three view classes,
@@ -101,8 +105,9 @@ Our supported minimum remains Qt 6.4.2; new code must use APIs available there.
 
 ## Reproducible experiment boundary
 
-After the current buffer-release change is integrated, prepare a separate measured
-implementation with its own frozen baseline and explicit mutable files. First measure
+For future changes, prepare a separate measured implementation against a fresh
+matched baseline with explicit mutable files. The source63 result is already
+retained for its recorded local workload; it is not a forecast for another change. First measure
 minimal service/tray variants with the existing system compiler, CMake, Ninja and
 distro Qt. A tiny probe locates costs; it does not prove product savings.
 
@@ -118,4 +123,4 @@ shortcut rebinding, single-resident ownership, clipboard survival after UI exit,
 unsaved-draft conflict handling, exact remote deletion acknowledgement, helper
 failure/restart, shutdown ordering, version mismatch and current CLI/MCP parity.
 Retain a split only if the measured memory benefit warrants the added process
-and IPC lifecycle. No memory saving or 40 MiB result is promised here.
+and IPC lifecycle. Additional savings and unmeasured workloads remain unknown.

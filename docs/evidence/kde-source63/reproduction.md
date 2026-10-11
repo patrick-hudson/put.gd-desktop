@@ -1,4 +1,9 @@
-# Source63 candidate4 interim evidence
+# Source63 memory evidence and reproduction
+
+The final source63 local memory checkpoint passed on Cinnamon/X11, GNOME Wayland and KDE Wayland. The measured build is `0.1.1-dev.63+g050b702c6a6d`. Current guest live-S3, remote History copy/delete, post-S3 memory and full release acceptance remain pending. See [the memory summary](memory-summary.md) and [cumulative strategy](../../memory-strategy.md).
+
+The paragraphs below retain the campaign’s chronological checkpoints, including earlier pending states and failed attempts. Those earlier states are historical; the final local result and its limits are recorded at the end. Saved-sample checks verify recorded evidence and do not establish new desktop acceptance.
+
 
 This is a nonterminal metadata projection exported from the host campaign. Source63 is `050b702c6a6da5c945ea8b4e138dee50e6fdbd83`, version `0.1.1-dev.63+g050b702c6a6d`. Exporting this document does not launch an app or test. Completed runs and pending acceptance checks are recorded below.
 

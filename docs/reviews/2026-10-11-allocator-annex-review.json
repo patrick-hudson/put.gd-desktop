@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "reviewedRevision": "aea2238702a3a2b3a6c41f5b8d525c3f7c2b3a76",
+  "scope": "Read-only static review of the standalone Linux/glibc allocator-sequence publication annex; not a product or desktop acceptance review.",
+  "files": [
+    {
+      "path": "tests/performance/allocator_sequence/CMakeLists.txt",
+      "blob": "103cd43bf72ef01ba3d62b3ae753e99971b9b8bd"
+    },
+    {
+      "path": "tests/performance/allocator_sequence/main.cpp",
+      "blob": "b70f360bb6eba5e145dd316eee47b047554c4222"
+    },
+    {
+      "path": "tests/performance/allocator_sequence/README.md",
+      "blob": "59d2252dd1ed4d8c097e62a941d425838f5c90a9"
+    },
+    {
+      "path": "tests/performance/allocator_sequence/result-contract.json",
+      "blob": "7f66cbc441074801945419ffd49216d37366564d"
+    }
+  ],
+  "instructions": "Read the root AGENTS.md and the user-supplied replacement instructions, including the approved KDE-first experiment exception and the requirement to preserve secrets and product gate qualifications.",
+  "findings": [],
+  "assessment": [
+    "The fixed sizes bound raw allocations; decode and encode workers are joined and deleted before snapshots and trim, releasing their captures. The raw-backed image is deep-copied while its backing bytes are alive.",
+    "Only synthetic image data is processed in memory. Standard CMake/Ninja, dynamically linked distro Qt Core/Gui and existing glibc APIs are used; no system allocator or desktop setting is changed.",
+    "README and result contract separate RSS from allocator counters, require complete original runs and rejection of missing numeric fields, and explicitly deny product or compositor acceptance from standalone gains.",
+    "The comparison is a cumulative four-stage diagnostic with one explicit process-local allocator policy; it does not isolate a product change or guarantee a universal memory ceiling."
+  ],
+  "limitations": [
+    "No code was built or executed, and no memory results were independently reproduced in this narrow static review.",
+    "The JSON contract is descriptive; the documenting caller must perform its validation and record exit codes, durations, source/build identity and bounded allocator-policy provenance.",
+    "A mode labeled dynamic assumes an appropriate untuned inherited allocator environment. Actual comparisons must retain the README-required allocator-policy provenance; the executable does not itself certify the inherited default policy.",
+    "The source is intentionally Linux/glibc-specific, uses mallinfo2 and /proc/self/smaps_rollup, and does not establish portability to non-glibc platforms.",
+    "This review does not inspect the cumulative application, remote S3 acceptance, root uncommitted work or historical result artifacts."
+  ],
+  "mutations": "Only this receipt under /tmp was written; reviewed source files were not changed."
+}
