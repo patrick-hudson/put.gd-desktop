@@ -1186,6 +1186,14 @@ column allocation or an accessible selected-item detail view, preserving the
 MiB/GiB display and full tooltip explanations. Clean painting and native helper
 lifecycle checks establish functionality, not completed visual design.
 
+The source63 KDE Settings inspection also found that the header still says
+“Saved settings are active” while a notification checkbox has an unsaved draft.
+The next visual pass should distinguish unsaved changes from the active saved
+configuration, with clear state after Cancel, Save, and Reload. Verify the draft
+and persisted document separately; a successful save must keep its visible
+feedback. This wording refinement does not substitute for those functional checks
+or authorize changing the frozen memory workload.
+
 ### Independent desktop memory acceptance (2026-10-09)
 
 User-directed: retain the passing Cinnamon memory changes if GNOME or KDE misses
