@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "description": "Contract for original compact JSON stdout emitted by standalone executable; byte units throughout. No payload, path, environment or application acceptance fields.",
+  "requiredRootKeys": [
+    "schemaVersion",
+    "qtVersion",
+    "glibcVersion",
+    "mode",
+    "policyResult",
+    "before",
+    "stages",
+    "final",
+    "syntheticOnly",
+    "payloadExported",
+    "environmentChanged",
+    "appOwnedUnixSockets"
+  ],
+  "fixedRootValues": {
+    "schemaVersion": 1,
+    "syntheticOnly": true,
+    "payloadExported": false,
+    "environmentChanged": false,
+    "appOwnedUnixSockets": []
+  },
+  "allowedModes": [
+    "dynamic",
+    "static128k"
+  ],
+  "policyResultByMode": {
+    "dynamic": 0,
+    "static128k": 1
+  },
+  "memoryRequiredNumericNonnegativeKeys": [
+    "Rss",
+    "Pss",
+    "Anonymous",
+    "Private_Dirty",
+    "Private_Clean",
+    "allocatorLiveBytes",
+    "allocatorFreeBytes",
+    "allocatorMmapBytes",
+    "allocatorArenaBytes"
+  ],
+  "requiredStageKeys": [
+    "width",
+    "height",
+    "rawBytes",
+    "rawCapacityBytes",
+    "pngStagePassed",
+    "before",
+    "after",
+    "postTrim",
+    "trimResult"
+  ],
+  "stageSizes": [
+    [
+      640,
+      448
+    ],
+    [
+      1280,
+      800
+    ],
+    [
+      640,
+      448
+    ],
+    [
+      1280,
+      800
+    ]
+  ],
+  "rawBytesFormula": "width*height*4",
+  "rawCapacityRule": "integer >= rawBytes",
+  "pngStagePassedRequired": true,
+  "trimResultAllowed": [
+    0,
+    1
+  ],
+  "wrapperRecordRequired": [
+    "mode",
+    "iteration",
+    "exitCode",
+    "durationSeconds",
+    "result"
+  ],
+  "wrapperConstraints": {
+    "allExitCodes": 0,
+    "iterationRange": [
+      1,
+      3
+    ],
+    "durationSecondsExclusiveMaximum": 15,
+    "maximumStdoutBytes": 65536,
+    "sameQtAndGlibcVersionsWithinComparison": true
+  },
+  "missingNumericFieldsRejected": true,
+  "comparison": "For every accepted original run report final-before RSS, PSS, Anonymous, live/free/arena/mmap bytes. Preserve each complete run; compare modes without selecting favorable point or treating standalone as product gate."
+}
