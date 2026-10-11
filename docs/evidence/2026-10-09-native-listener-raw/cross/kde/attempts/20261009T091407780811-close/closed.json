@@ -1,0 +1,43 @@
+{
+  "utc": "2026-10-09T09:14:13.137735+00:00",
+  "gesture": [
+    "alt",
+    "f4"
+  ],
+  "helperBefore": {
+    "pid": 293206,
+    "startTicks": 4575726,
+    "parentPid": 275236,
+    "sha256": "d9ad6e3b8773b24bfa1828248e5345e2f40db620fb5202f48ed0a9e7e985dabc"
+  },
+  "helperAfter": {
+    "checkpointBytes": 2362,
+    "lastExit": {
+      "code": 0,
+      "generation": 3,
+      "status": "normal"
+    },
+    "pid": 0,
+    "state": "stopped"
+  },
+  "residentUnchanged": {
+    "pid": 275236,
+    "startTicks": 4530864,
+    "sha256": "9272218106a5a9c220a494810362c106809e2bf37d6c391ba43dbf6885e93ab3"
+  },
+  "witness": {
+    "utc": "2026-10-09T09:14:13.217322+00:00",
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/history-closed.png",
+    "sha256": "fcbcf8dbc85c0bcb7f3d9181afac2d077752ba956db41bc3e04d32a4ee5b9dff",
+    "nativeQmp": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/current-kde-a3d70dc/ui-refinement-nativecore-exp001-c49-cross-history-closed-head0.ppm",
+      "sha256": "7d70cb98875deea51cba67ec411df2b0dad674774254c608dc0855ef4a8e485d"
+    },
+    "desktopPixels": [
+      1280,
+      800
+    ],
+    "vncPort": 5934,
+    "visualReview": "pending"
+  }
+}

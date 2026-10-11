@@ -65,6 +65,33 @@ to distribution libraries. The `s3_module_integration` contract covers absent,
 wrong-contract, wrong-build and wrong-transport modules, concurrent first use,
 shutdown and recovery in a new process.
 
+For a Linux DEB, use the normal Release preset and CPack with a standard package
+umask and a fresh output directory:
+
+```sh
+cmake --preset release
+cmake --build --preset release
+ctest --preset release
+(umask 022; cpack --config build/release/CPackConfig.cmake -G DEB -B build/release/packages-fresh)
+```
+
+Choose an absent output directory for each package attempt. CPack can otherwise
+reuse staging directories created under a permissive host umask. Inspect the
+actual DEB directory ownership/modes and executable hashes before installation;
+package directories should be root-owned `0755`. Preserve any failed package
+audit, then regenerate with CPack rather than repairing the archive manually.
+Installation rewrites the S3 module's RPATH to `$ORIGIN`, so its packaged digest
+can differ from the build-tree digest. Compare the packaged module against the
+packaged AWS runtime manifest and record both identities separately.
+
+Native lab packages additionally need `-DPUTGD_LAB_FIXTURE=ON` at Release
+configuration time. Physical capture timing needs
+`-DPUTGD_PHYSICAL_BENCHMARKS=ON`. Build both with the ordinary Release preset
+before packaging; verify `putgd-desktop-fixture` is actually present in the lab
+DEB and `putgd-bench-capture` exists in the build directory. These options default
+off for normal distribution packages. Record them with the test parameters so a
+future agent does not mistake a production-only package for a lab-ready artifact.
+
 Use `release`, `asan`, or `tsan` in place of `dev` for application presets. ASan/UBSan
 and TSan are separate builds. The SDK is currently built in Release; sanitizer evidence
 applies to application code, not an instrumented dependency. Set `-DBUILD_TESTING=OFF`

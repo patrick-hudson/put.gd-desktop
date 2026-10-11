@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-09T08:40:13.544870+00:00",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "CinnamonGate": "pending; mandatory SHA and all three gate flags before every guest phase",
+  "previousCohort": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46",
+  "runnerSha256": "3f5a4dff9e8974025cd185e4efc7aba5c59e910afcd559426ffa1c86b95c8165",
+  "fallbackAdapters": [
+    "gnome-wayland",
+    "kde-wayland"
+  ],
+  "nativeAcceptance": "pending",
+  "memoryAcceptance": "pending"
+}

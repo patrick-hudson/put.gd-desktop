@@ -1,0 +1,968 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T09:20:30.444464+00:00",
+  "guest": "kde-wayland",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "version": "0.1.1-dev.49+g676f6e6d6e0b",
+  "resident": {
+    "pid": 275236,
+    "startTicks": 4530864,
+    "sha256": "9272218106a5a9c220a494810362c106809e2bf37d6c391ba43dbf6885e93ab3"
+  },
+  "vncPort": 5934,
+  "scope": "Single-head local-only current source49 Qt/GTK native regression, actual views and post-use quiescent family measurement; unchanged graphical fallback",
+  "source": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/source.json",
+    "sha256": "64514d7bf0be78ea94cdb1a645c85591d4544e55b2a81ada7b7109c6822cf9eb"
+  },
+  "build": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/build.json",
+    "sha256": "9301499b8f5a49312f2f35c9ad6f29e9e580c3a9c965d1768f25ab24069b039a"
+  },
+  "tests": {
+    "receipt": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/dev.xml",
+      "sha256": "6c2e87ce8a708294249e2407d8f60bb468d8b76cf92075dafd94a4f80dce1f05"
+    },
+    "count": 46,
+    "failures": 0
+  },
+  "installed": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/installed.json",
+    "sha256": "e3581eabfa73b2a1b76885aae2318f65bdcdc5e5b879485bdeb937e2b486f8b8"
+  },
+  "captureHelperInstall": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/capture-helper-install.json",
+    "sha256": "c34cf85a8ae88665b9afbe6ebfff664a13e716344b9d2f63347bc3f3a766b6a8"
+  },
+  "start": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/start.json",
+    "sha256": "5bd4f7fca45aa6954ab9f8f29464de56cb896c03f6d14abd893d3ad9a1908613"
+  },
+  "old46Stop": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/stopped.json",
+    "sha256": "1dcfe5b3cd0147278bc8ff3801b8e621ce9a7ca273322dd6f3b49a383d0db447"
+  },
+  "matrix": {
+    "receipt": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/matrix.json",
+      "sha256": "b7ae5a002fd2f01e2107850725bdcb0c9dd56dc07820c22d5dc83761ff9db5c8"
+    },
+    "passed": 12,
+    "cases": [
+      {
+        "client": "qt",
+        "scenario": "region",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-1/final-head0.ppm",
+          "sha256": "6bd53a974ce586adaf0f6ff265f39511db98944e40b6068175a034ed1d968d28"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "window",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-2/final-head0.ppm",
+          "sha256": "91a1b9b32ba2b3c9ce8a856d8880c6a62b51d7846ace67d5a0ad8760efef99c1"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "desktop",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-3/final-head0.ppm",
+          "sha256": "dc1fdf3ab710b8c652729d8013b2dbaa392239f459972c5526650daa5eb9720d"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-text",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-4/final-head0.ppm",
+          "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-image",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-5/final-head0.ppm",
+          "sha256": "dc1fdf3ab710b8c652729d8013b2dbaa392239f459972c5526650daa5eb9720d"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "clipboard-files",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-6/final-head0.ppm",
+          "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-escape",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-7/final-head0.ppm",
+          "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-right-click",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-8/final-head0.ppm",
+          "sha256": "37c0f075bf302105aa6cddb0606e4efd627b197233f71faaf757a7558b753d84"
+        }
+      },
+      {
+        "client": "qt",
+        "scenario": "region-cancel-zero-area",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-9/final-head0.ppm",
+          "sha256": "dfc04e92e1786afb08901a9834b707f38edfc9be827534e35a3826b7198b8a35"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-text",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-10/final-head0.ppm",
+          "sha256": "28664db98b02e58db12c3e8318538ec07dd2f4726d6a2206a619227e9730ba7a"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-image",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-11/final-head0.ppm",
+          "sha256": "28664db98b02e58db12c3e8318538ec07dd2f4726d6a2206a619227e9730ba7a"
+        }
+      },
+      {
+        "client": "gtk",
+        "scenario": "clipboard-files",
+        "result": true,
+        "finalWitness": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261009T090922885818-12/final-head0.ppm",
+          "sha256": "28664db98b02e58db12c3e8318538ec07dd2f4726d6a2206a619227e9730ba7a"
+        }
+      }
+    ]
+  },
+  "views": {
+    "settings": {
+      "shown": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/shown.json",
+        "sha256": "d0a987f80c3097d54f5311f51618ffd1aed81e39ea18f0dc063487fe3b70c414"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/closed.json",
+        "sha256": "6f31b4acacf0be02b86a3a6c0f706c845a37a97bb76efcf91a1cf9b930601ecb"
+      },
+      "openWitness": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/settings-open.png",
+        "sha256": "8d6a75f6ef4ff62ebd804db6b63778731c513c1349987548cedfc71341e88ddc"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/settings-closed.png",
+        "sha256": "ca4a6f9ca80d2d01c7c17c86dae313a5cd6cb865c0669ba2650930e0fb8d7be9"
+      },
+      "review": "Reviewed actual rendered native view by core_clipboard_owner; root review separate",
+      "helperNormalExit": true
+    },
+    "history": {
+      "shown": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/shown.json",
+        "sha256": "b31bb16fe5b3f9d18301a9098c35e4ecb41c628430da99cb0e0e78722f213bf8"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/closed.json",
+        "sha256": "ff5d43c751d2cdfbd6b1fafb791701f7b2cec69cfb426cdca885c57921a3656c"
+      },
+      "openWitness": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/history-open.png",
+        "sha256": "f4f8410ef5b84da2ca59f2d423e9f94e041608a1a98ad63fb5e1d1ecdec6e7f5"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/history-closed.png",
+        "sha256": "fcbcf8dbc85c0bcb7f3d9181afac2d077752ba956db41bc3e04d32a4ee5b9dff"
+      },
+      "review": "Reviewed actual rendered native view by core_clipboard_owner; root review separate",
+      "helperNormalExit": true
+    },
+    "activity": {
+      "shown": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/shown.json",
+        "sha256": "b08770eae37e9db5b5d3f36af4076fd1366c291a897366ee070a0df7153411ae"
+      },
+      "closed": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/closed.json",
+        "sha256": "7c7fdb2554a18a63eba5690d6d8e9b5c542824cc244bee5412600f9084fb3af2"
+      },
+      "openWitness": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/activity-open.png",
+        "sha256": "202fd5111b19f7e0c8b5a960b42097b399e418a9560e6114f8e18c94fea7f53b"
+      },
+      "closedWitness": {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/activity-closed.png",
+        "sha256": "fcbcf8dbc85c0bcb7f3d9181afac2d077752ba956db41bc3e04d32a4ee5b9dff"
+      },
+      "review": "Reviewed actual rendered native view by core_clipboard_owner; root review separate",
+      "helperNormalExit": true
+    }
+  },
+  "memory": {
+    "receipt": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/memory.json",
+      "sha256": "88a70cd1baf7e9c406ca25fa1ba99faca15aa1e968b3758c812da8d02c444b57"
+    },
+    "context": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/measurement-context.json",
+      "sha256": "a4a018b7ccf0866179def3aac5bc717335180e198d3be82d4624cce827110b5c"
+    },
+    "samples": 61,
+    "peakRssMiB": 138.55859375,
+    "finalRssMiB": 138.55859375,
+    "finalPssMiB": 36.9951171875,
+    "finalPrivateMiB": 24.05859375,
+    "cpuPercentOneCore": 0.02333166597618821
+  },
+  "mappingSummary": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/mapping-summary.json",
+    "sha256": "81a8f42caab9620ad62f18217b9274c47eda4ab6aefdb3ad4544254bdf298722"
+  },
+  "preservedFailures": [
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/failed.json",
+      "sha256": "534ba48ca8b6d1b52da2061f93ec1a2c50d4939d0523b7e3722e00fa310a973f"
+    }
+  ],
+  "failureDiagnosis": "Fresh helper close attempted while the VM had auto-locked during build; inactive witness and timeout preserved; visible masked-field restore and distinctly labeled normal close succeeded",
+  "failureRecovery": {
+    "diagnosis": [
+      {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090835152817-visible-post-build-unlock/diagnosis.json",
+        "sha256": "102eed7cdae2e089a28a118ccb8639c3206c5e23d3cae7d6ccd185ff3f176bf0"
+      }
+    ],
+    "unlockedWitness": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/post-build-unlocked.png",
+      "sha256": "9af7f65ba5913d664e1eb700d34801c2e73bf60f06b58013c2e08c0ce0a3ef7e"
+    },
+    "freshNormalClose": [
+      {
+        "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/closed.json",
+        "sha256": "1002b3ccf5a00c97baa163324e1d84026871b55652ba66346979d6d9fb2796c6"
+      }
+    ]
+  },
+  "commandMetadataHashes": [
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/03.command.json",
+      "sha256": "dfc98e3ade9985ac881e88a0ea9af0893f0b3a7b2d598f56a9ca3ca0becf8919"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/04.command.json",
+      "sha256": "e023c1e08c15ccfec1ada715543a9e7864d30c1c6303e16a8c19434b20859979"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/01.command.json",
+      "sha256": "9ab07d66e36af0e8d746093b84374915dccc8e39f2e7527d0a072cf30adf9d3e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/05.command.json",
+      "sha256": "58968d9e1036e655462bd14f750f65fc188e1ca70ffa44a2e6591ca682cd7a42"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/06.command.json",
+      "sha256": "8a8f5b86afad96b396b54f6f90bc44fe8853efa74852558db491e29476729ac0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/02.command.json",
+      "sha256": "cf71faa953e9c7298bef443cde7268fb049901284d5a2491954304d10fed79da"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/03.command.json",
+      "sha256": "acad2ec2d7f2a38b63c9962b79f33979d161cf5f0184d07ede28984f91ad1f21"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/04.command.json",
+      "sha256": "66fe325f77827f70091b6116759c15c003045af9d058135947f303f4c64389e7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/07.command.json",
+      "sha256": "426a2f826a0da35b99de942d4742f010bda98eb48d0f876d34e1107bfb994384"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/01.command.json",
+      "sha256": "96e53a1e98f1893f9c19101924b63bffc74ac180f1e21385edd064366e1a98aa"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/05.command.json",
+      "sha256": "ed5f738315faa9b7badc657613b1d42cb2acf7605a7467922c799fb89921f8d0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/06.command.json",
+      "sha256": "0fb1501718907a6ed4c2a2598f510d865530a41dc3b76779b4620e5da1545b3c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/02.command.json",
+      "sha256": "18e612a4c1ba7a531264627096c14f1363587c6066ddc6287de881eb982ce5f3"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/03.command.json",
+      "sha256": "1fa19ee5055ce688d471bb12fa47e22d08cb51b2c4183aa3f46fb5c248823992"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/04.command.json",
+      "sha256": "5a2aa0d042ae34d8898da6655f3fb6372b11a29c925bc3de6ab0997a00097b5b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/01.command.json",
+      "sha256": "1f591715fcdf1e764d2c298821a844ee500421a2fe499c74f894c27d77302440"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/05.command.json",
+      "sha256": "cbc753b73bd070ec64432572454f30a34edc637a1d3570303e85a3dd9ceaf7f9"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/06.command.json",
+      "sha256": "f3c49efa5e278df16bfda5b53bdcb68f1ad0ee2c8e2ea43c102411819913712e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/02.command.json",
+      "sha256": "f5cb2a20c75ebe0999cc4df52a7d9e047eb29236eba30ee5b6718245a2d8664b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/34.command.json",
+      "sha256": "670bf21fcbb37af4b081ce27a8b5083608dba907767449f0c9cd0308211dfc8c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/22.command.json",
+      "sha256": "a85ae2eeb1584da289bd34a544d138ce4bc9c93c8dd5e0affb59023a06e4ac38"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/38.command.json",
+      "sha256": "22dd9e2d2a1b0647a4da536edd6fc3f788b01b23e5a88d4441fcf62e311583ae"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/16.command.json",
+      "sha256": "5a2f6c7d4a38e33d2c77be8778f13429a8eb2b149f35bc1fb966c228d524a25f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/36.command.json",
+      "sha256": "86d5f658eaa1f7e0852f33273d1e379f526bfd7d229eb2f221dc68ca68d43e70"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/26.command.json",
+      "sha256": "38b3ce719d2f0b6068afe8d07dc1b44a899ee97fb03a263795477c9301170a3e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/03.command.json",
+      "sha256": "612e2c46ee3da0ea2acb92d568f54ad1b6fc23ab6c79bce10c9583367d625d56"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/27.command.json",
+      "sha256": "8f6031971a367128d7b50f6159f3d40cdeab9e2e8448364c4e1631aaa4798bd4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/04.command.json",
+      "sha256": "77f2f9c40a8673a7c92c99ad33d5a09d1a55894d071d2910e4fae5907bf6bc4c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/07.command.json",
+      "sha256": "a27cfb4e08975792a6841ee01090299b68e4c57542e26c1ddc2915634b3673df"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/46.command.json",
+      "sha256": "4345d6b4bb3851d3a77a85515fda8e4eab7461032fef2b5dc6a9bca1334d3964"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/37.command.json",
+      "sha256": "8871d3b1c97248305c803953cdd8bd7c8e264de212cf7ee8a7449aceb4e4cd77"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/10.command.json",
+      "sha256": "c9eba66509e7887f89e170e68100221144a9343b6a882357b4eadeec6ff693b7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/48.command.json",
+      "sha256": "1d76faee43df92c0171e71755075e279261ca1f46e2657ceef2ed01e95c33a77"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/08.command.json",
+      "sha256": "5298d17a3312e7ec9138dd0ab31a63c3325d58ec02d0f9d0b25a9b16b14eaebc"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/09.command.json",
+      "sha256": "861a299aa3e59d4ffbdd43e7636d3293b64d8cf48057c0fcf9c1e1fd22cfeb92"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/31.command.json",
+      "sha256": "2f9135ceae6cad65041898bb4cde86c65f7b7cb13b208d1a5b58fd2cacb0d84a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/40.command.json",
+      "sha256": "b4da4be7cb6745cc838c031199cb52cbd46f0bb664c8c20bd1bb4e72e2e3bef6"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/23.command.json",
+      "sha256": "376cdafb0e407b943c5937cbc20f78a11b0cbbfb248968da3f560dd19cc0ee4f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/28.command.json",
+      "sha256": "9f30cf584a500c62b0185cd249811611b1996af7b98db941e09c5b8d41cc4889"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/11.command.json",
+      "sha256": "c60068e2be0102d05f1b527219045db3b22bd4b25c3e3190993a0037b86beb8d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/13.command.json",
+      "sha256": "ceac2daefd9aa14199540eb4c6050044aa5f23f5cb0be003b35129cbb78ae454"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/50.command.json",
+      "sha256": "3a35acfeca8950c17aafe295c2b6f8a22ceccb4f677ec2f95f3749fbafa49a73"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/29.command.json",
+      "sha256": "9ae2fd6370f8accb019a4a472669a66ca6db6afc4d3cfc6bcc0de0c5131f6121"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/01.command.json",
+      "sha256": "08aa061598e119ad8876de416fdfc1bed057c5fd122af9c71db779a42d2e1677"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/05.command.json",
+      "sha256": "9789f98d2cad7c48fe58284532a28a96683354722057fc290f0041f3bf854a0c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/43.command.json",
+      "sha256": "4dd99ed3430a159c4aea86f7109fc09bbbf66886b206130e6614c4fc19e08ba2"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/12.command.json",
+      "sha256": "2ac4948393e7a38a3123b5a3897c6db13c9a73d501ffdede69ff7e1820e77203"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/35.command.json",
+      "sha256": "f6499657d1a2321b8f01492b2526d574ef4d4f878baf7cc8a77b6bb34a882f69"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/06.command.json",
+      "sha256": "628c0d93570df28f90dd5d934f3073e2b7bec048c80a01fa21d955618e3865f4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/47.command.json",
+      "sha256": "dc5aa3e5740da6c9be46e6ba7bec9c8be6eb779b1edd44c2826a34a821df5958"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/17.command.json",
+      "sha256": "3f8496c362ccccd191a76de976f18c63f39c17b9b82a48989d553ec58a6b3f5f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/30.command.json",
+      "sha256": "322fa3ecce25d3dd87ed9ae923e2d339c517acabbb34d63a444cdc7feec476db"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/02.command.json",
+      "sha256": "8ee089fc4186c2917d8fce478f5aaec3436e32d1b4dda35c374aa67491ef95df"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/20.command.json",
+      "sha256": "a6e6a37f8a5e2545d7f3dc441a339f67703328aded5e95096f67ac7be9e3a62b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/49.command.json",
+      "sha256": "928aadb8fcfeb09e1c985311940bfffc4c6bbff52d5eeed6f0859f7b0764ffda"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/32.command.json",
+      "sha256": "cd98d4dc748b136d6ca36f5444c4163ad4719f1b8d94c695b9b950516c14eca4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/15.command.json",
+      "sha256": "e6fb44f4509515ac2644e114d66c772f79489604fb4d209e17528ba549360011"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/25.command.json",
+      "sha256": "1a43427aad58567c0b90ec372490a2e413f7aa644f9e6e2e0f048428f5e9dd94"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/14.command.json",
+      "sha256": "7f799f5e31cde4a4da92b30d2d748216256dc5e1d53ccf832b013e3ed4bf0d25"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/19.command.json",
+      "sha256": "994cdcacfd2e29487cf088bd4e94d23529655408a5acb39e0f1c42e2cd9931e5"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/24.command.json",
+      "sha256": "1e331b6c4b359a55fd285f187c91397faf7e9a9663230108f5af5cafa8987e2f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/51.command.json",
+      "sha256": "6f51f610b211c5ab91ca9cf8a04982c2c022149092f86d856b15bf099a63557c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/21.command.json",
+      "sha256": "3d1c979a8bf815bf79a22b43d5750e3cbea84f3226dc5aa45c0b33f427fc140a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/42.command.json",
+      "sha256": "61c16f6057ccb8d1d9892b10522688c7767febe4ee83f6fbc1880a3cb65eb7f0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/45.command.json",
+      "sha256": "27349bbf0cd19dcb2b3be7f9eced7ca4b73f94646f9419bbfc4804a3fecf0d1e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/41.command.json",
+      "sha256": "32d8bd19b7b4bec477e9e6ded57e0deb917c458ad745d26262c3b7575c2d75d8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/44.command.json",
+      "sha256": "fc63787774fd7d69a426582b42a64253209fe91ad199812b304ed88e9560348c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/33.command.json",
+      "sha256": "fd20f8cc8cef7bd0568c20a7cd9e0257d253965846a3ddc3777c2872b6b4c0f8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/18.command.json",
+      "sha256": "63aa43f09a95517ee0852af43a14588d022aee26fc34b7d3e596826a2657faa2"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/52.command.json",
+      "sha256": "dee95e67d8be47a662d326d1caba2250b9eb0bbd1f34d759ea54af5da55c30d4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/39.command.json",
+      "sha256": "00cc513e0956c82d2536300b6b32fc32df4b6d73deb13cd7038fdf3bfd67083c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/03.command.json",
+      "sha256": "2ee2a5fa2e79eb38c79e44ad03842c6871457a7bc2f0e4fd2074c0d61dc53105"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/04.command.json",
+      "sha256": "67595ca9c84c729cab4672fcfb950bcfd57473eb634f248271b14aeae4c937e2"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/07.command.json",
+      "sha256": "7ba0b36cd3d5e4e531a6c02a44d7670943616e2e0c13b669151c22bf5fd101d5"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/10.command.json",
+      "sha256": "cef679c7c259c58ac846cd4eda6920b87e46fef6680c5d2a96c1939ac6ae26db"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/08.command.json",
+      "sha256": "da598b69945dd671936bdfb80f01e460cf35c99a80996e747a7659cc039a4646"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/09.command.json",
+      "sha256": "0d33f7a408fb0c280f2d4fef08fae2d304fb102ea5927481592ec5f14ee48901"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/11.command.json",
+      "sha256": "8acbfbf0a8fa2ae60b0c92d204fc4331cff1c6a30ebb67acc810b1bf4d5b94b4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/01.command.json",
+      "sha256": "7504036bfcb8bc75a93947d5a634df28439508146818c5c0c6c352177100a724"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/05.command.json",
+      "sha256": "b4817d8758d853fd0475a96d94c1889c4d707e598252ef86a80c43f7ef8be059"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/06.command.json",
+      "sha256": "94ae301a35a95f6286ad79c1bd5f899040a61ab005642606c21055d491575319"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/02.command.json",
+      "sha256": "d1ef23a8aa4f870db307ce999ac760e03b778faa3f469e15c7d9dbafb08ceb16"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/03.command.json",
+      "sha256": "fa17ac153a5dce61a0a17728e1491bda9f6412db9bd6c84a8595076459b3d5ef"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/04.command.json",
+      "sha256": "b02050f967303b7705dc978ef29e1a78f0dd44e2e4ddae5e2a93cd3d5f27f49e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/01.command.json",
+      "sha256": "634e88e6919009da7c587dbcefdb81168117948c708c38433a625b4f722b53f9"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/05.command.json",
+      "sha256": "671689382009d08ca65c3dc16b2409972a6f5292ca1a6da5a9c57aa2a4dbd47b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/06.command.json",
+      "sha256": "61e450e19d60711c84d2274f2f47cc0773ec0b482548efcbfaac7b90d0ecab33"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/02.command.json",
+      "sha256": "b91681d0f4377303da32d4bb026650e5e2aaad5ae52851bec0a0057d7cfdae39"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/03.command.json",
+      "sha256": "1a8a96c909e347e310b87b65560ff2b974fdadf8c4b38e7c09ffd090ad0da137"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/04.command.json",
+      "sha256": "537cc3daf9460f1f41d0c4054cb9effe84b1088dbf49aead807ce653674a9ec9"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/01.command.json",
+      "sha256": "35644dac801edd54354422ef41974f2868bbbd50b1839a4ea63855f29088ffd0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/05.command.json",
+      "sha256": "9616e3e22c124fd4104597cfef56daeac1ec5b05ad5b24afd6110970c07d3c99"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/06.command.json",
+      "sha256": "af18ffd25d2f445c7409a603342daaf563f0f0529fa7fbf79e7b5d4832540632"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/02.command.json",
+      "sha256": "d6d32b8999ce9aff2c68cf8848765d648b780ea7acccffde6eb45b5a101c48a7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090810101134-step/01.command.json",
+      "sha256": "6bbd1ac4ae5eb956297b630649f33f963ccbae2b269c90ee3cf285bb6a10a464"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090810101134-step/02.command.json",
+      "sha256": "f0582aee4618a167137bafb4057da5a06d666cb5b39edbc52eafa80e159a81c1"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/03.command.json",
+      "sha256": "2d522ab88da0165a24ff58f49cb98db1e71e15a2589993df2846aa7116b8df2f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/04.command.json",
+      "sha256": "d04d56309ed6b4ec38ba57aececb39845b622134cecc4d464b27919f950f74b6"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/01.command.json",
+      "sha256": "68878797e123faf1a1576c5d029dd2eb1bcbf875e5870ea8e34cf326b39eee70"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/05.command.json",
+      "sha256": "517b32b0a10291cfea98f4cea96f8af2a0d07b6825645248d8448c731e086047"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/06.command.json",
+      "sha256": "9ba27460453b81fa5395f8338c8d561542af193676a650cd56bd9a353953374a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/02.command.json",
+      "sha256": "3cf237cad026354f72e083939adfac9368d07e41fe7e29512f63bcb4100a5850"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/03.command.json",
+      "sha256": "c922c4146e54bc6654571684b19aab2dfe633560090b302929bc9b8884097f06"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/04.command.json",
+      "sha256": "e43a9ff50527c5c89e3e8298dcbc66ef414fcce28967cbd2ba0d164207d59394"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/01.command.json",
+      "sha256": "90ccaf199e101c67bff1fe22087df816997ade4eef6e2eeed444911eeb2d866d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/05.command.json",
+      "sha256": "6a3e898755b326982d079d3c7dc0a1a64a8870d539952b2b8d7c6808d939a151"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/02.command.json",
+      "sha256": "6d4cdf729032a14590d020a77f96385019d21a36f88a7c1e4c45cb5711054177"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090835152817-visible-post-build-unlock/01.command.json",
+      "sha256": "5d0ccfa71a19bfe464ddfe72ed663b7527e60d674cf79a5b6f4d1872113f7a15"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/03.command.json",
+      "sha256": "6e8a35af41760c8e29ff3b8c815f6f81c5b6010f841518e0fdd62ff4754508b9"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/04.command.json",
+      "sha256": "ead3f0c85eb36fc1dfb1ec4a84d54ea1d2eb6c9498b5073748fb931302f9f51a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/07.command.json",
+      "sha256": "6f88db70ac2d5645c7a28b13a1f667a4a0bb388483a0e1ae3071291014352336"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/08.command.json",
+      "sha256": "8aecf66475258a8e78b4a1f9cae40a80c8ad91076a8ccfe92515aee0e3cccd69"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/09.command.json",
+      "sha256": "199841a720c3f554c4e0f4ec2c043dcb876d43038deeea8cee2a33d87866c1a4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/01.command.json",
+      "sha256": "6e128f77cdc2da838f6c28342a94cd02485c6cebfb06b61b99c71c7932042b77"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/05.command.json",
+      "sha256": "16bf5c436c33105d3aadc7970b9b9220f85c1f1813b545d2ad8bd13b2f6b5c3c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/06.command.json",
+      "sha256": "f36a481e9ffc221acc147a8a14f9fe5a4d73b67c1ed68611d4385b5d4b64b6a7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/02.command.json",
+      "sha256": "ad2ab0600c9cec59976280d5036078702c9abcccd0002fb7d54858a20e6ef1f0"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/03.command.json",
+      "sha256": "2124b8cf022f46b28a08a7f17769718691471edf62165a5ba6bb2c6a6f7ae9d8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/04.command.json",
+      "sha256": "b65980495dafcd2a39fa299e759a66e1c1187c3aa3eee56485b37fb8150f8f91"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/01.command.json",
+      "sha256": "77e1a109aa5990a9cdc4eec435398dc274e44ec4abf418195ab58c82367f9d74"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/05.command.json",
+      "sha256": "6c59584c6e955f975cc48811c69990ec70791bfe32d0ad0678ca363f868ed13c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/06.command.json",
+      "sha256": "8b5a050c23626b74eda60e9d36c5d080c4c72432d7254301d27e7363ff78599f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/02.command.json",
+      "sha256": "b5b8ef3d7c35d83e15f228db07d8cd0d4f330a1653c919d276fd426d9ab5d834"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084119705404-unlock-wake/01.command.json",
+      "sha256": "5501d27e0a720b11c84bfa3da7c87262980d8ff356e2ba9c8a797fbaee21a1b8"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/03.command.json",
+      "sha256": "a62507a88eb342f8db628379e4b519d29678becf8ebc73735490ef67e5e90d1e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/04.command.json",
+      "sha256": "c7b6bf36d799c3759e89af82706cf4619941b5ff81d7bddc303f311052019018"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/07.command.json",
+      "sha256": "7682b6a938a5a847b0c75727a675cf7dcc1754512bc4969a480aad4ad7e5e66b"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/01.command.json",
+      "sha256": "855c60498252db13ba6555069896ec3fbcc7d7772c528201477d3ebf674782d4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/05.command.json",
+      "sha256": "3b7f2c3a88ee30dc37a60b0527322cb16b0f143cbd43a51bef1dfb45c09bb7d7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/06.command.json",
+      "sha256": "8f10faa08a72ef1b8d60329d889e0d134ddb9a8f153add6f6625a9dc05404310"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/02.command.json",
+      "sha256": "69c4c8483bb24f0879cc1644a6c9adbdcfab65c48bfe622f7e89e7784581c93f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084452489909-unlock-password/01.command.json",
+      "sha256": "edf98f846426c57138fc021caa9dfe4f124c07bdfec377cb37720411584daff7"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/03.command.json",
+      "sha256": "0dc5f19938509c950244565e6a98f3e5a843acee3185a33945aa8a2642b01c70"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/04.command.json",
+      "sha256": "630ed93bd215d56cd9cc10de186bb7890df946ffc38a697fbe5179074d5674ba"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/01.command.json",
+      "sha256": "80f53be5dbc4700d3164fcf2bac4ed089679bf380c5f52e832b2dbb50e64a742"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/05.command.json",
+      "sha256": "a49505483274d55c27e7612575709489b6a4bd427aa336795850e70c46247c9c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/06.command.json",
+      "sha256": "d625c91fd3fceb98c93396619a6d69203e139ed613551687df0d53e7d6911841"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/02.command.json",
+      "sha256": "242494c04e21ac2e49948a07db067423918ba2ed5404002b8de1f7b29f9d4575"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/03.command.json",
+      "sha256": "b2ff9eaf8a8dcf87769a56c0f80797976505b5cde160a2a7905d3fc697114582"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/04.command.json",
+      "sha256": "9a187349b7ab3443d88374583f13dca3e3fc314a2dc140f644705fcd46f4d73a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/01.command.json",
+      "sha256": "0352ed1398a88f940ef2609049382bf957bd49ca61928519279f9699d6d54290"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/05.command.json",
+      "sha256": "d51b1d011a497916090b06e0b3e732cc86fe12e75b9db3c5bea38b4ddfc73631"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/02.command.json",
+      "sha256": "a7457ccc6447f89fc04677b442f401c014ac4ab6d1dce746574c947f2dae6bfa"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/16.command.json",
+      "sha256": "2e48fdb4c23970dda157dd1f7cd8a3ba908b77a3f11e5fb39df4995e5242e3c4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/03.command.json",
+      "sha256": "32d18259e7f8b25f0864f2ba6c07a55307f30466d9b4c0ea4357285d944181ae"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/04.command.json",
+      "sha256": "144e9a9c863a0e132587ed772d43900a0cd3afd2b096d9f8252afd35ffb30250"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/07.command.json",
+      "sha256": "eb40033dae33ec8991758f25941674c4adbe97fed377e642ba1af065a5c2ef39"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/10.command.json",
+      "sha256": "4288aeeb7abfa5402073223eb49c9a38c4315c26e5acd3b9279d6370f38b1a7e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/08.command.json",
+      "sha256": "d286b7ab795c07b38a99c13a6af90d2b0e350bb4dfc7b00b70e7a00b8aeb0742"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/09.command.json",
+      "sha256": "d570293deefd36efd69fe2a44694a52a2dfb1852cfdde3108284d3ccb840bfbf"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/11.command.json",
+      "sha256": "b7462dc7383fd80c319fa790f78155ac5ae8ae9a3439762265f6658ba35aa38c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/13.command.json",
+      "sha256": "f8a3280220552163a8419f7d28f9b676012392e035e0233870eef15ffcdc17b4"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/01.command.json",
+      "sha256": "531747499ba4b76c2009ab8d4e1db4347d728f9978e4753df3376eaa60490838"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/05.command.json",
+      "sha256": "729fbb42cac9b36fffbd1fa13f038039a74ca24dd3dedb2e6eb42afb8e236e36"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/12.command.json",
+      "sha256": "a89051481f4c72f4a660f9ab6d2f66c84a8ee33cf48fbf67f5a3d56857105e98"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/06.command.json",
+      "sha256": "1a6f96fc3daf99a8278ad6d4ea2761616ca6905da0bf1b9877771243fa09342c"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/17.command.json",
+      "sha256": "db1ae2adbfb6fdf9a69d5b3ee7d907230b1bba7b5aef7a634ca9ed4e730f5945"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/02.command.json",
+      "sha256": "98c3f4d7cec3a7237d348390238b37d073e9c203d7ad3955b73265ec934445ad"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/15.command.json",
+      "sha256": "d15f5aed265cbab7e5715348c967979d103a7045d79fe7ff8ceb1fac8fb33f8e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/14.command.json",
+      "sha256": "f8f849ac0f514a1a165e1adac6a2391444a7f9a8c9b5e06a96b5840e09623058"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/18.command.json",
+      "sha256": "6874be1300ba4d31506e04d276728ec3372101cc65e1fca261c4ddeb8cc51ecf"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/03.command.json",
+      "sha256": "94a40b8d505bd9568521566f2382ecd911591515b81cce25eff01eff2a15c29e"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/04.command.json",
+      "sha256": "57db7a9b6fd8d3eb8a62b6eabeb6e175af2791268d46829cc29d83b590774c2a"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/01.command.json",
+      "sha256": "15d02e7c0879dc584f77c6ac9aa788231b3aa7f0bf211e00ced0ed9f4084c986"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/05.command.json",
+      "sha256": "44c57997d8bf98da4790324233852824d4531b614884ac8c276ace72ca92b3dd"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/06.command.json",
+      "sha256": "8b9e36219c2e9742751c71598151f8dd9d2b80df0b45861289a0089de11ca922"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/02.command.json",
+      "sha256": "a5c1965295665aa3db69326b08fcbd2138a4f9f6cb5ecf94c7119cc049e91636"
+    }
+  ],
+  "limits": {
+    "coldMemoryCertification": false,
+    "fortyMiBCertification": false,
+    "fullDesktopProfileCertification": false,
+    "latencyPassed": false,
+    "integrationKeepClaim": false,
+    "remoteStorageTested": false,
+    "allMatrixPixelsReviewed": false,
+    "mappingCategories": "Basename heuristic; not anonymous allocation call-site attribution"
+  },
+  "collectors": {
+    "familyRunner": {
+      "path": "/home/patrick/work/put.gd/work/resident-native-boundary/cross-desktop-replay.py",
+      "sha256": "3f5a4dff9e8974025cd185e4efc7aba5c59e910afcd559426ffa1c86b95c8165"
+    },
+    "socketPreflightMatrix": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/run-preflighted-matrix.py",
+      "sha256": "3eabbf4a48e1cdbb879a76c4ddb7b1421e7e10ad32a103bd20711251347e2cf9"
+    },
+    "mapping": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/collect-mapping-baselines.py",
+      "sha256": "4c89e187f77c6117345e1fd5f6cf437f33db3bb75fed7542e1b8a1be6da26abf"
+    },
+    "summary": {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/summarize-replay.py",
+      "sha256": "9e602356f6d3a406f1665321f656cdaf4b6376bd5f40848462aab7290064e55a"
+    }
+  }
+}

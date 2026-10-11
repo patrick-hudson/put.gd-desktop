@@ -1,0 +1,52 @@
+{
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "sourceCount": 63,
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "guest": "kde",
+  "workload": "Fresh prepared-default-local empty profile; same installed seven binaries after normal quit and whole populated-profile preservation",
+  "parameters": {
+    "warmupSeconds": 5,
+    "primarySeconds": 300,
+    "intervalSeconds": 5,
+    "requiredSamples": 61,
+    "maximumGapSeconds": 7.5
+  },
+  "clockTicksPerSecond": 100,
+  "primaryStartedUtc": "2026-10-11T03:09:07.210137+00:00",
+  "finishedUtc": "2026-10-11T03:14:07.355962+00:00",
+  "resident": {
+    "pid": 302275,
+    "startTicks": 4298152,
+    "uid": 1000,
+    "executable": "/usr/bin/putgd",
+    "device": 64769,
+    "inode": 1312189,
+    "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed"
+  },
+  "metrics": {
+    "coldPeakRssBytes": 29270016,
+    "peakPssBytes": 6407168,
+    "peakPrivateBytes": 4861952,
+    "idleCpuPercentOneCore": 0.04666721136729097
+  },
+  "coverage": {
+    "samples": 61,
+    "spanSeconds": 299.9964983940008,
+    "maximumGapSeconds": 5.072704056998191
+  },
+  "originalResultsSha256": "2be03bf9f708a7ced2c83c94bc7db83dd9a4483249905e14f1929f8e406b06e7",
+  "originalSamplesSha256": "90bee0309b3f1bc5e5aae629750184b9390791ab321674eaa64b46c3a6b5d5ba",
+  "trackedSamples": "docs/evidence/kde-source63/fresh-cold-a1.samples.jsonl",
+  "samplerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "observerSha256": "5db4d08ed1d577f44d4bcd41c90a573b0f51335f4d9fe311d00cd16d4438396e",
+  "deploymentSha256": "a5bf3da6d5c7be9b97e360f2bae19706e33f511f033a06e5b00532fc65f273c4",
+  "newHistoryAndOperationCounts": 0,
+  "uiAndCaptureHelperGenerations": 0,
+  "passed": true,
+  "qualification": "Steady-state five-minute window; transient startup peak not measured",
+  "keeperAccepted": false,
+  "currentSiblingRegressionsPending": true,
+  "remoteHistoryProven": false,
+  "fullNativeParityAccepted": false,
+  "secretPayloadConfigAndRawSmapsExported": false
+}

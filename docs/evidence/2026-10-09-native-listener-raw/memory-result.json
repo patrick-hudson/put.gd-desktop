@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "metrics": {
+    "settingsReopenMilliseconds": 300.3646365250461,
+    "closedRssBytes": 26454016.0,
+    "closedPssBytes": 17579008.0,
+    "peakOpenPssBytes": 54669312,
+    "functionalPassed": 1,
+    "normalHelperExitPassed": 1,
+    "reopenSamples": [
+      289.37643801327795,
+      309.3724700156599,
+      321.5214269584976,
+      291.35680303443223
+    ],
+    "inputs": [
+      {
+        "path": "/tmp/pg-nc1-view1/results.json",
+        "sha256": "56b5c72a3d77eaa849f7e7cb0202a34ad196737344b74ee694854da3ea6255c6",
+        "binaries": {
+          "app": {
+            "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "version": "0.1.1-dev.49+g676f6e6d6e0b"
+          },
+          "cli": {
+            "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+            "sha256": "f16508f551b80cbc4aa31493b5573cbba06f7c14f7a1f05aac49413fe1c5535b",
+            "version": "0.1.1-dev.49+g676f6e6d6e0b"
+          },
+          "helper": {
+            "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+            "sha256": "db4f00b54cbc8540bb8139fbba82d06a436627d0c25106710f20add92ff00d0f",
+            "version": "0.1.1-dev.49+g676f6e6d6e0b"
+          }
+        },
+        "sourceRevision": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3"
+      },
+      {
+        "path": "/tmp/pg-nc1-view2/results.json",
+        "sha256": "b8fdf98d8c53269ee1f4e34bb189170a1cbc833cadec6ff324cba59c9761c627",
+        "binaries": {
+          "app": {
+            "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+            "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+            "version": "0.1.1-dev.49+g676f6e6d6e0b"
+          },
+          "cli": {
+            "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+            "sha256": "f16508f551b80cbc4aa31493b5573cbba06f7c14f7a1f05aac49413fe1c5535b",
+            "version": "0.1.1-dev.49+g676f6e6d6e0b"
+          },
+          "helper": {
+            "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+            "sha256": "db4f00b54cbc8540bb8139fbba82d06a436627d0c25106710f20add92ff00d0f",
+            "version": "0.1.1-dev.49+g676f6e6d6e0b"
+          }
+        },
+        "sourceRevision": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3"
+      }
+    ],
+    "limits": [
+      "Mapped readiness includes observer overhead; no p95 or paint certification.",
+      "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+    ]
+  },
+  "cold": [
+    {
+      "peakRssBytes": 25874432,
+      "finalRssBytes": 25845760,
+      "peakFamilyRssBytes": 25874432,
+      "idleCpuPercentOneCore": 0.006661961446942549,
+      "familySamples": 292,
+      "processCount": 1
+    },
+    {
+      "peakRssBytes": 25747456,
+      "finalRssBytes": 25718784,
+      "peakFamilyRssBytes": 25747456,
+      "idleCpuPercentOneCore": 0.0033305692294276655,
+      "familySamples": 292,
+      "processCount": 1
+    }
+  ],
+  "memoryPassed": true,
+  "latencyPassed": false,
+  "kept": false
+}

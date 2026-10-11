@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "dependencyDiagnosisOnly": true,
+  "nativeParityProof": false,
+  "memoryAcceptance": false,
+  "binarySha256": "15f3ce477b565e6b36da910c6de8d215ae4296fd7fe310ed2683cb37b1f09f6d",
+  "timeoutSeconds": 15,
+  "outputLimitBytesPerStream": 65536,
+  "coreDumpLimitBytes": 0,
+  "guiPlatform": "offscreen",
+  "rows": [
+    {
+      "mode": "inventory",
+      "returnCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdoutBytes": 154,
+      "stderrBytes": 0,
+      "stdout": [
+        {
+          "compiledQt": "6.10.2",
+          "mode": "inventory",
+          "phase": "starting",
+          "runtimeQt": "6.10.2"
+        },
+        {
+          "phase": "inventory",
+          "supportedMimeCount": 74,
+          "svgMimeAdvertised": true
+        }
+      ],
+      "stderr": ""
+    },
+    {
+      "mode": "core",
+      "returnCode": -6,
+      "signal": 6,
+      "timedOut": false,
+      "stdoutBytes": 160,
+      "stderrBytes": 79,
+      "stdout": [
+        {
+          "compiledQt": "6.10.2",
+          "mode": "core",
+          "phase": "starting",
+          "runtimeQt": "6.10.2"
+        },
+        {
+          "inputBytes": 217,
+          "phase": "reader_start"
+        },
+        {
+          "height": 64,
+          "phase": "size",
+          "width": 96
+        }
+      ],
+      "stderr": "QFontDatabase: Must construct a QGuiApplication before accessing QFontDatabase\n"
+    },
+    {
+      "mode": "gui",
+      "returnCode": 0,
+      "signal": null,
+      "timedOut": false,
+      "stdoutBytes": 274,
+      "stderrBytes": 0,
+      "stdout": [
+        {
+          "compiledQt": "6.10.2",
+          "mode": "gui",
+          "phase": "starting",
+          "runtimeQt": "6.10.2"
+        },
+        {
+          "inputBytes": 217,
+          "phase": "reader_start"
+        },
+        {
+          "height": 64,
+          "phase": "size",
+          "width": 96
+        },
+        {
+          "format": "",
+          "height": 64,
+          "inkPixels": 296,
+          "nullImage": false,
+          "ok": true,
+          "phase": "decoded",
+          "readerError": 0,
+          "width": 96
+        }
+      ],
+      "stderr": ""
+    }
+  ]
+}

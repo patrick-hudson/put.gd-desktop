@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-09T08:46:12.397621+00:00",
+  "argv": [
+    "work/resident-native-boundary/cross-desktop-replay.py",
+    "--guest",
+    "gnome",
+    "--cinnamon-gates-sha256",
+    "5536705e64b29fae8b586f0c9db9365f1968d77261e10d94c8cac35b43bbabd1",
+    "guest-build"
+  ],
+  "runnerSha256": "36aafa4c772a64821fa8d9cfa69793cdd4e1209b5b9907bc446f3212737412bf",
+  "labSha256": "09ed6fd84f09a90a617aab38ca646089e9819def06668fe7d29da5173f9efb89"
+}

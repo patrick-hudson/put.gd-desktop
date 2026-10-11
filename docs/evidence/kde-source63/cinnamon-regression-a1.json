@@ -1,0 +1,101 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "sourceCount": 63,
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "passed": true,
+  "scope": "Current physical Cinnamon regression plus local-only current Cinnamon VM native/GUI acceptance",
+  "p95PaintMilliseconds": 121.273299,
+  "cold": [
+    {
+      "repeat": 1,
+      "peakRssMiB": 24.76171875,
+      "idleCpuPercentOneCore": 0.006662221053411496,
+      "elapsedSeconds": 300.20018608897226
+    }
+  ],
+  "views": [
+    {
+      "repeat": 1,
+      "label": "original",
+      "peakOpenPssMiB": 50.625,
+      "settledCycles": [
+        {
+          "cycle": 1,
+          "rssMiB": 25.00390625,
+          "pssMiB": 16.267578125
+        },
+        {
+          "cycle": 2,
+          "rssMiB": 25.27734375,
+          "pssMiB": 16.5400390625
+        },
+        {
+          "cycle": 3,
+          "rssMiB": 25.29296875,
+          "pssMiB": 16.57421875
+        }
+      ]
+    },
+    {
+      "repeat": 1,
+      "label": "supplement",
+      "peakOpenPssMiB": 50.767578125,
+      "settledCycles": [
+        {
+          "cycle": 1,
+          "rssMiB": 25.01171875,
+          "pssMiB": 16.2880859375
+        },
+        {
+          "cycle": 2,
+          "rssMiB": 25.28515625,
+          "pssMiB": 16.5615234375
+        },
+        {
+          "cycle": 3,
+          "rssMiB": 25.2890625,
+          "pssMiB": 16.5654296875
+        }
+      ]
+    }
+  ],
+  "normalExitGenerations": [
+    1,
+    2,
+    3
+  ],
+  "originalGate": {
+    "path": "/home/patrick/work/put.gd/work/kde-native-boundary/source63-memory-sibling-preparation/siblings/cinnamon/physical/cinnamon-expansion-gate.json",
+    "sha256": "6968c64a3a14ad14c2750a695be66bd4f1ad27f21788a16e8132a5f314f9a936",
+    "references": 87
+  },
+  "coldPrimary": {
+    "warmupSeconds": 5,
+    "elapsedSeconds": 300.20018608897226,
+    "initialRssBytes": 25964544,
+    "finalRssBytes": 25935872,
+    "peakSampledRssBytes": 25964544,
+    "idleCpuPercentOneCore": 0.006662221053411496,
+    "appSha256": "295d1f8e0f46203ec6ed3c8577e4fa13f86070f8a8879bf3dedeffea554bc47a"
+  },
+  "coldCoverage": {
+    "sampleSpanSeconds": 299.349806401995,
+    "maximumSampleGapSeconds": 1.107770019036252,
+    "maximumAllowedGapSeconds": 3,
+    "minimumSampleCount": 101,
+    "adequate": true
+  },
+  "clockTicksPerSecond": 100,
+  "trackedColdSamples": "docs/evidence/kde-source63/cinnamon-cold-a1.samples.jsonl",
+  "trackedViewSamples": "docs/evidence/kde-source63/cinnamon-views-a1.samples.jsonl",
+  "limitations": [
+    "Root-authorized lower-cost Cinnamon regression: one pair only because Cinnamon implementation is unchanged and source55 margin is about15MiB. GNOME winner confirmation protocol remains unchanged.",
+    "Original view runs omit final generation3 status; separate unchanged-workload supplements add three snapshot queries and explicit normal0 proof.",
+    "No post-S3/post-upload/populated-history retained-memory, permanent plateau, mixed-DPI, GNOME/KDE or full U9 claim."
+  ],
+  "exportedSamplesSha256": {
+    "cinnamon-cold-a1.samples.jsonl": "c8e19cd4a74a33541f3bf76a151675c321d3f2a8a2d49dfb564907b074176561",
+    "cinnamon-views-a1.samples.jsonl": "32326c42456c7fa2f9f385568c7e362b26251785f662684c57f7143b24cf8f38"
+  }
+}

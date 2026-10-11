@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "status": "Executing regression checks after actual Cinnamon functionality and memory passed; integration held for failed latency",
+  "candidateCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "candidateCount": 49,
+  "runner": "/home/patrick/work/put.gd/work/resident-native-boundary/cross-desktop-replay.py",
+  "output": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross",
+  "authorization": {
+    "gate": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/gates.json",
+    "requiredArgument": "--cinnamon-gates-sha256 EXACT_ROOT_APPROVED_SHA256",
+    "requirements": "Exact gate hash, candidate source commit49, passed/functionalPassed/memoryPassed true, nonempty receipt list with every SHA256 verified. latencyPassed remains false; it is a keep/release blocker rather than a prerequisite for this regression expansion. Guard runs before Replay construction and each subprocess."
+  },
+  "oldCohort": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/frozen-exp001-source46",
+  "guests": {
+    "gnome": {
+      "sshPort": 22236,
+      "vncPort": 5936,
+      "expectedAdapter": "gnome-wayland",
+      "protectedLoginInput": "/home/patrick/work/put.gd/work/lab-bootstrap/ubuntu-install/password"
+    },
+    "kde": {
+      "sshPort": 22234,
+      "vncPort": 5934,
+      "expectedAdapter": "kde-wayland",
+      "protectedLoginInput": "/home/patrick/work/put.gd/work/lab-bootstrap/kubuntu-install/password"
+    }
+  },
+  "sequence": [
+    "Run prepare-local once: copies only saved candidate source metadata and exact old46 resident identities into a new private output. No Replay construction, guest inspection or secret access.",
+    "After root passes the approved Cinnamon functionality and memory prerequisites and supplies their exact SHA, unlock-wake through visible QMP/VNC if needed; inspect its witness. Only then unlock-password --masked-focus-reviewed, using the existing helper's owned0600 regular local login input in memory. Never expose password/sequence; verify unlocked desktop visibly.",
+    "stop: revalidate old46 PID/start/executable SHA/manifest, require no UI/no active operations and terminal old journal states, preserve entire synthetic profile and old live metadata; send pidfd SIGTERM to exact resident only and verify exit. No VM lifecycle changes.",
+    "guest-build: require this guest's stop receipt; preflight existing distro compiler/CMake/Ninja/Qt>=6.4.2/XCB/Wayland and official SDK. Rebuild candidate49 archive locally in guest with standard dev/release presets and dev tests; preserve all logs and package/source identities. Do not install missing dependencies silently.",
+    "install: package-only apt simulation must change only putgd, no removals or additional dependencies; unchanged GNOME extension hash; verify all installed app/CLI/UI and capture-helper identities/versions match guest-built manifest. No capture lastExit requirement on fallback adapters.",
+    "start: use existing launcher/environment; verify candidate49 live identity and expected Wayland adapter. Review visible fresh setup, close normally through console, then configure --kind empty for local-only synthetic actions.",
+    "matrix: original12 native Qt/GTK capture/clipboard/cancellation cases, VNC output unchanged; preserve each failure and do not silently retry. Review visible acceptance screenshots before asserting native pass.",
+    "show --view settings --label settings-open; inspect visible window and normal controls, then close --label settings-closed. Repeat history/activity/about with unique labels. No new UI assertions are inferred from CLI state alone.",
+    "memory --seconds300: sixty-one serial whole-family samples, no graphical workload/clipboard/uploads; require one exact resident, no untracked pre-existing UI/capture helpers, no operations, same current identity. Uses frozen ProcessFamily accounting only, not X11 view discovery on Wayland. Save RSS/PSS/private/CPU/raw process identities separately. Can request60 or300seconds explicitly.",
+    "After each guest passes, preserve source/package/live manifests, native matrix and UI witnesses plus memory parameters/raw results. Final declared desktop acceptance requires root review. GNOME/KDE phases may run independently in parallel only after Cinnamon gates pass."
+  ],
+  "limits": [
+    "No runner phases were executed during preparation; syntax was parsed statically only.",
+    "Existing immutable bases remain sealed; runner only reuses current disposable overlays and visible localhost VNC listeners.",
+    "No new dependencies, storage credentials, remote uploads or bucket changes.",
+    "Guest memory is explicitly post-native-use VM idle evidence; no40MiB or physical-budget promise. GNOME/KDE retain their graphical fallback resident in candidate49.",
+    "The inherited unlock helper uses unique fixed console witness names; if a second unlock is required, preserve prior witnesses and deliberately arrange a fresh output/witness attempt rather than overwriting them.",
+    "Root must bound actual execution by its09:51UTC experiment deadline; prepared guest-build inherited timeout can exceed the remaining experiment time. Preparation does not authorize continuing beyond the approved scope."
+  ]
+}

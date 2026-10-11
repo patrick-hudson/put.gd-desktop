@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-09T09:15:40.163874+00:00",
+  "candidateCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "scope": "KDE VM current native graphical fallback, post-12-case local-only use and closed Settings/History/Activity",
+  "durationSeconds": 300,
+  "requestedGuiQuiet": true,
+  "kdeHeavyBuildCompleted": true,
+  "gnomeWorkerConfirmedHeavyBuildCompleted": true,
+  "parallelObservation": "Independent GNOME and Cinnamon guest counters may run concurrently on same host; no heavy guest builds planned during sampling",
+  "rootNotifiedBeforeMeasurement": true,
+  "coldMemoryCertification": false,
+  "fortyMiBCertification": false,
+  "integrationKeepClaim": false,
+  "latencyPassed": false
+}

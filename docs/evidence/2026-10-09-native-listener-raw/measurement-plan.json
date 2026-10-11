@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "CinnamonFirst": true,
+  "order": ["clean dev suite", "Cinnamon current-source native matrix", "native tray and three views", "physical region latency", "physical cold1", "physical views1", "physical cold2", "physical views2", "evaluate and persist gates", "GNOME/KDE only if gates pass"],
+  "cold": {"repeatCount": 2, "seconds": 300, "warmupSeconds": 5, "rssSampleIntervalSeconds": 30, "windowPollIntervalSeconds": 1, "maximumRssBytes": 41943040, "maximumIdleCpuPercentOneCore": 0.5},
+  "closedViews": {"repeatCount": 2, "cycles": 3, "views": ["settings", "history", "activity"], "warmupSeconds": 5, "visibleSeconds": 2, "quietSeconds": 30, "sampleIntervalSeconds": 5, "maximumRssBytes": 41943040},
+  "capture": {"warmupInvocations": 5, "samples": 30, "p95MaximumMilliseconds": 150, "witness": "live transparent outline", "allSelectionsCancelled": true, "captureHelperWitness": "same-UID immediate child of resident, exact executable inode and stable startTicks"},
+  "scope": "Clean release candidate, isolated synthetic local-only profiles, native physical Cinnamon; no credentials, uploads or real user payloads",
+  "retentionException": "A native local-image clipboard owner can retain encoded bytes until ownership ends; cold/empty-view target does not imply a 40 MiB ceiling during intentional image ownership."
+}

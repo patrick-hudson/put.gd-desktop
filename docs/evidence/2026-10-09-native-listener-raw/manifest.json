@@ -1,0 +1,3192 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "source-provenance.json",
+      "source": "generated normalized exact-source metadata",
+      "sha256": "51c64d90ebb6341c27d0002d38955e7838abe838e0f5f12da41f90c9b0cd0c41",
+      "bytes": 499
+    },
+    {
+      "path": "measurement-plan.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/measurement-plan.json",
+      "sha256": "e015f64d87d05e1423b552eb0076706ece527bfc8835563e579d0ce41d5fb09d",
+      "bytes": 1408
+    },
+    {
+      "path": "cross-desktop-recipe.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/cross-desktop-recipe.json",
+      "sha256": "89c586f1869afb02eacd2442437df00502ef937305262fa3cb4265e02afdc83a",
+      "bytes": 5330
+    },
+    {
+      "path": "spec.yaml",
+      "source": "/home/patrick/work/put.gd/.context/compound-engineering/ce-optimize/resident-native-boundary/spec.yaml",
+      "sha256": "eb59fae3bf24aaa0810170d8bf98ac07370b0518f389e404e4bfcd905e73c157",
+      "bytes": 7537
+    },
+    {
+      "path": "baseline.json",
+      "source": "/home/patrick/work/put.gd/.context/compound-engineering/ce-optimize/resident-native-boundary/baseline.json",
+      "sha256": "0805a36dbf211fa2aa38dbf5d84ec5854e2fdeff6ebe00d30166bfeb37845040",
+      "bytes": 7997
+    },
+    {
+      "path": "experiment-log.yaml",
+      "source": "/home/patrick/work/put.gd/.context/compound-engineering/ce-optimize/resident-native-boundary/experiment-log.yaml",
+      "sha256": "6dc1025dd4aca4fc349b6a409a8a1f8332339019ed5faa2b28bb19eb5473d701",
+      "bytes": 48440
+    },
+    {
+      "path": "strategy-digest.md",
+      "source": "/home/patrick/work/put.gd/.context/compound-engineering/ce-optimize/resident-native-boundary/strategy-digest.md",
+      "sha256": "1405142e8c0c8280704c38993d3ea1bd721892f42a60fe7396ff276cb4c93a39",
+      "bytes": 2422
+    },
+    {
+      "path": "memory-result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/memory-result.json",
+      "sha256": "26085f3fd977e604faf55732387daaeaa7075a7cba17c6a0d90ce347131fe136",
+      "bytes": 3432
+    },
+    {
+      "path": "evaluation.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/evaluation.json",
+      "sha256": "f190e8d5ec611a4ae1d27c9323b3c370f36975cf01249f30f12e779d123554c4",
+      "bytes": 2251
+    },
+    {
+      "path": "memory-decision.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/memory-decision.json",
+      "sha256": "2c465831d0f41704726b2dc9805e9ea7e2d2bf4af91e177c5d2ed9e881f686b7",
+      "bytes": 448
+    },
+    {
+      "path": "memory-decision2.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/memory-decision2.json",
+      "sha256": "8d33692c146b2c987df9f61b3ee999449100e78a98d155a0298c19ee8a72193f",
+      "bytes": 501
+    },
+    {
+      "path": "decide-input.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/decide-input.json",
+      "sha256": "eddc019ae25aa3c7b8fe2cf6cd440720a5e63fe59c269d170d4eb123c613d321",
+      "bytes": 19922
+    },
+    {
+      "path": "decide-input2.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/decide-input2.json",
+      "sha256": "64263ae27a4ae473a739ef155c4cb99045bbd7c285f6f80bf4f70f2fb9e4decc",
+      "bytes": 22867
+    },
+    {
+      "path": "latency-control-comparison.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency-control-comparison.json",
+      "sha256": "7b8129b5f5b984ba23eadc405e77a20147ef74b5ee27806aef54cbd6693f7168",
+      "bytes": 557
+    },
+    {
+      "path": "syscall-flush-summary.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/syscall-flush-summary.json",
+      "sha256": "0365c0d18f5d7de923d358b3651ef785a4361764b1d32b13ca6580b37473b3c3",
+      "bytes": 1822
+    },
+    {
+      "path": "syscall-probe-scope.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/syscall-probe-scope.json",
+      "sha256": "46e6ab4783493e6f8ad9847b9583a1c826bf958c019e46463a0d514e8059d3b6",
+      "bytes": 637
+    },
+    {
+      "path": "commands/cold1/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold1/command.json",
+      "sha256": "37c0c518b26f0b6c61cb4bf7078569a7c42e6a12f6199c62aad4321eb19724fd",
+      "bytes": 668
+    },
+    {
+      "path": "commands/cold1/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold1/result.json",
+      "sha256": "10701146d1ca0f101701bd11430189eef2aa904ff3873927f4ce5b59fa7f4dd6",
+      "bytes": 73
+    },
+    {
+      "path": "commands/cold2/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold2/command.json",
+      "sha256": "999a8cd853d6e8f2c93d2088d413c408d9f41f82deabe9881b339ae8b61adf28",
+      "bytes": 668
+    },
+    {
+      "path": "commands/cold2/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold2/result.json",
+      "sha256": "95f555385dd81c8950d62985a2cda8fb1f0201c32cdfef54788a4ece3c5ed701",
+      "bytes": 73
+    },
+    {
+      "path": "commands/view1/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/view1/command.json",
+      "sha256": "fae226d76a3cabbf5ee5e28aeac6d7be0e2f9b27748ebfe03e2bef00766049d6",
+      "bytes": 1175
+    },
+    {
+      "path": "commands/view1/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/view1/result.json",
+      "sha256": "0353a58b8d9da9b39f733423a1f0b9a03a1b63cba264af11252a8055323359fd",
+      "bytes": 73
+    },
+    {
+      "path": "commands/view2/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/view2/command.json",
+      "sha256": "88a5f2d30d5dac132545883e9e4954d38908e97f869e419997ee5f843b2be52a",
+      "bytes": 1175
+    },
+    {
+      "path": "commands/view2/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/view2/result.json",
+      "sha256": "70d33d4aa68a2779eae66d067f1045174742a8078509f9d831b84b9176a4f194",
+      "bytes": 73
+    },
+    {
+      "path": "commands/cold1-family/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold1-family/command.json",
+      "sha256": "7107cb7f295957dee52eeb6d56dc20f1def97ff37404c6f0eccd1d017505e8f5",
+      "bytes": 743
+    },
+    {
+      "path": "commands/cold1-family/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold1-family/result.json",
+      "sha256": "c7ec577ad46d8aaface38624f29022d53db2992dc56576fc9687652d0ff12e1b",
+      "bytes": 269853
+    },
+    {
+      "path": "commands/cold1-family/progress.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold1-family/progress.json",
+      "sha256": "3c846038e1df9456be7d3105cf612e3e667d89434e734d8b28a1cc1c311f5be6",
+      "bytes": 269837
+    },
+    {
+      "path": "commands/cold2-family/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold2-family/command.json",
+      "sha256": "82393d47a85239a6f75941893744d8bc540b9f81e73270f7d2ce78b85fc8fbcd",
+      "bytes": 743
+    },
+    {
+      "path": "commands/cold2-family/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold2-family/result.json",
+      "sha256": "13d9fa2076ad0623e05f093842463ffaa5d838cceef8c344b24b3682db01fa0f",
+      "bytes": 269851
+    },
+    {
+      "path": "commands/cold2-family/progress.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/cold2-family/progress.json",
+      "sha256": "9a73dca3a1d38a65890df68fb7a6346ad448c9067ce37d145b88a11fd4954142",
+      "bytes": 269835
+    },
+    {
+      "path": "commands/latency/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency/command.json",
+      "sha256": "4b3b9ea80ca9df962b796e90808b8bf2de74a220984a63ee727e323d7795b5ec",
+      "bytes": 744
+    },
+    {
+      "path": "commands/latency/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency/result.json",
+      "sha256": "cf77b36603fe244bce983fa2e272a79b1de3e588a6d0661551e556e59fdaac96",
+      "bytes": 73
+    },
+    {
+      "path": "commands/latency-reference1/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency-reference1/command.json",
+      "sha256": "8b841e73aae1743948d5b244f7d83a22ebe576d842d181dfec6aea4f88aecf3d",
+      "bytes": 649
+    },
+    {
+      "path": "commands/latency-reference1/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency-reference1/result.json",
+      "sha256": "9fbca51c52925809fac25b79e77ca9be3c27c5bd6629676cd5afa47d59bb8e46",
+      "bytes": 73
+    },
+    {
+      "path": "commands/latency-syscall-probe/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency-syscall-probe/command.json",
+      "sha256": "4dcfa397f1a800ccfab226562b3732babb096a96ad1a7fe90aec78405dcd5b4f",
+      "bytes": 913
+    },
+    {
+      "path": "commands/latency-syscall-probe/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency-syscall-probe/result.json",
+      "sha256": "eb396cc65984b172f3f0d8dbbb2f86567a1b46eee727e1604a051ecb41eb2464",
+      "bytes": 73
+    },
+    {
+      "path": "cold1/results.json",
+      "source": "/tmp/pg-nc1-cold1/results.json",
+      "sha256": "476720278f4023ce6d8ec194c779667d6ab6dd7c0dfb6ec28eff5276c537acee",
+      "bytes": 21843
+    },
+    {
+      "path": "cold1/progress.json",
+      "source": "/tmp/pg-nc1-cold1/progress.json",
+      "sha256": "4438b882f36806f59ea44080ede6707d894cb603897a734d764a16ce547440cb",
+      "bytes": 11624
+    },
+    {
+      "path": "cold2/results.json",
+      "source": "/tmp/pg-nc1-cold2/results.json",
+      "sha256": "804fc8ee2dc496b3fac8e76b072cf0a2a11cd70a4b73af2125164ee669183a82",
+      "bytes": 21839
+    },
+    {
+      "path": "cold2/progress.json",
+      "source": "/tmp/pg-nc1-cold2/progress.json",
+      "sha256": "16c50edfb8dfdaa2e45bc3ef75502d503fa8f8b9f143468e530d10c121044d9c",
+      "bytes": 11619
+    },
+    {
+      "path": "view1/results.json",
+      "source": "/tmp/pg-nc1-view1/results.json",
+      "sha256": "56b5c72a3d77eaa849f7e7cb0202a34ad196737344b74ee694854da3ea6255c6",
+      "bytes": 28294
+    },
+    {
+      "path": "view1/samples.jsonl",
+      "source": "/tmp/pg-nc1-view1/samples.jsonl",
+      "sha256": "bceb7aaf2ead676e80bfd33bff3104e62fa72798c7f7a79bf5353d917346fa70",
+      "bytes": 35901
+    },
+    {
+      "path": "view1/progress.json",
+      "source": "/tmp/pg-nc1-view1/progress.json",
+      "sha256": "ea34bd03afe78a6c3b7cdaccd2d8cb076257f1fe89c8a4db761d3e6a1798b20b",
+      "bytes": 12354
+    },
+    {
+      "path": "view2/results.json",
+      "source": "/tmp/pg-nc1-view2/results.json",
+      "sha256": "b8fdf98d8c53269ee1f4e34bb189170a1cbc833cadec6ff324cba59c9761c627",
+      "bytes": 28300
+    },
+    {
+      "path": "view2/samples.jsonl",
+      "source": "/tmp/pg-nc1-view2/samples.jsonl",
+      "sha256": "dbebf432dc34e277dac0bf71c393f468bc3bbb6b16feff8f0b45cefccc36c8b3",
+      "bytes": 35909
+    },
+    {
+      "path": "view2/progress.json",
+      "source": "/tmp/pg-nc1-view2/progress.json",
+      "sha256": "e45c720cb75802b451467347b17e2b7012044706f32a52bcee654ef912965c31",
+      "bytes": 12352
+    },
+    {
+      "path": "latency/results.json",
+      "source": "/tmp/pg-nc1-latency/results.json",
+      "sha256": "fd142e445e1b0fc923b5cf3dac841ac6af6fda4defc330d4450a2f9ca9e45169",
+      "bytes": 61520
+    },
+    {
+      "path": "latency/parameters.json",
+      "source": "/tmp/pg-nc1-latency/parameters.json",
+      "sha256": "01793c85ddbb3a8cad04d9e296067464fbc5e05ba9ccb38ad28848cbe0e1543a",
+      "bytes": 831
+    },
+    {
+      "path": "latency-reference1/results.json",
+      "source": "/tmp/pg-nc1-latency-reference1/results.json",
+      "sha256": "8436d5f9ac6c1511a448c6a826c1a9e419dd80b00b03567166b275279a9b5a85",
+      "bytes": 61016
+    },
+    {
+      "path": "latency-reference1/parameters.json",
+      "source": "/tmp/pg-nc1-latency-reference1/parameters.json",
+      "sha256": "72a5df311205eda627385a9ad53b5e1fd9cc1c6e153b2ce766b6e24cc37a01d9",
+      "bytes": 672
+    },
+    {
+      "path": "diagnostic-incomplete/results.json",
+      "source": "/tmp/pg-nc1-latency-probe/results.json",
+      "sha256": "3d7b0004f6bb5a0bee2ec1b2c02e3069e1bd69df4772981962231fea460bb2ec",
+      "bytes": 11944
+    },
+    {
+      "path": "diagnostic-incomplete/parameters.json",
+      "source": "/tmp/pg-nc1-latency-probe/parameters.json",
+      "sha256": "01793c85ddbb3a8cad04d9e296067464fbc5e05ba9ccb38ad28848cbe0e1543a",
+      "bytes": 831
+    },
+    {
+      "path": "cold1/window-observations.json",
+      "source": "/tmp/pg-nc1-cold1-windows.json",
+      "sha256": "1ffc2db6cebb80af2897b922239c8fc11998896b02522d487796c195daaed15a",
+      "bytes": 2110
+    },
+    {
+      "path": "cold2/window-observations.json",
+      "source": "/tmp/pg-nc1-cold2-windows.json",
+      "sha256": "7150c74f56f2d9997f7c338ac81b4cd69a1e1b839535904c2196ad2385350a88",
+      "bytes": 2111
+    },
+    {
+      "path": "host/build.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/host/build.json",
+      "sha256": "ccdd7d35e719a39466407a408f5de99a45b6a77314478e8320c13d46ca7206fc",
+      "bytes": 747
+    },
+    {
+      "path": "host/dev.xml",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/host/dev.xml",
+      "sha256": "a303a5fd0f376400b8e3a5705cd2c24cf3ff718b26fe14d3553e0ffff6f8176b",
+      "bytes": 45495
+    },
+    {
+      "path": "cinnamon/functional.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/functional.json",
+      "sha256": "27ccc56dea5ce41f752cfa231b7a3881c97f7b8f9924124a6fee09710d49e7af",
+      "bytes": 3681
+    },
+    {
+      "path": "cinnamon/gates.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/gates.json",
+      "sha256": "5536705e64b29fae8b586f0c9db9365f1968d77261e10d94c8cac35b43bbabd1",
+      "bytes": 1355
+    },
+    {
+      "path": "cinnamon/matrix.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/matrix.json",
+      "sha256": "aed24b6e99295a51635e038feb55b844fcd72e72941d85662513b5230fc59721",
+      "bytes": 34427
+    },
+    {
+      "path": "cinnamon/start.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/start.json",
+      "sha256": "f8823d0459e3bcf4530d90cb874f3d1801da5d105d31bf41103b14fb9b137e0d",
+      "bytes": 619
+    },
+    {
+      "path": "cinnamon/installed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/installed.json",
+      "sha256": "a0f2600e39d29556279a24b8868c62790c75344e397f3636e0b0c17478177f5a",
+      "bytes": 964
+    },
+    {
+      "path": "cinnamon/capture-helper-install.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/capture-helper-install.json",
+      "sha256": "7dae7a22fe497e8429e1194885fe46f448768533402cfd00c25fd8a24ec01a9d",
+      "bytes": 662
+    },
+    {
+      "path": "cinnamon/stopped.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/stopped.json",
+      "sha256": "127162befc3c8df0b88c3950a4e760ace27a7490ac1392d83812afb6ad5d7bb5",
+      "bytes": 2259
+    },
+    {
+      "path": "cinnamon/views/native-tray-menu.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/native-tray-menu.json",
+      "sha256": "2573a3e0a692579fc2e25f015e0e180fbc7459df3787b6fd8bce34d13e9a510d",
+      "bytes": 596
+    },
+    {
+      "path": "cinnamon/views/native-tray-menu.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/native-tray-menu.png",
+      "sha256": "e1edfaa115c72e1bf33246b4ec6199d6333dcef7d029e06cf2079efa7e772832",
+      "bytes": 263013
+    },
+    {
+      "path": "cinnamon/views/native-context-menu.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/native-context-menu.json",
+      "sha256": "bf04842fb95f46d4786f1d81e7c1829c5ae65d4b525af81980155252dfe448c2",
+      "bytes": 602
+    },
+    {
+      "path": "cinnamon/views/native-context-menu.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/native-context-menu.png",
+      "sha256": "09e8ab01ad762e04d57441ef98457692dffc469394cefd830a1619c0faaca499",
+      "bytes": 242986
+    },
+    {
+      "path": "cinnamon/views/settings-from-context-menu.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/settings-from-context-menu.json",
+      "sha256": "d0bbeb3a9e63090390c4cf2441942aa508c23e6b45619e1b1311f908340882ac",
+      "bytes": 616
+    },
+    {
+      "path": "cinnamon/views/settings-from-context-menu.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/settings-from-context-menu.png",
+      "sha256": "4050e7de43ae258560db7f3a36e67a87743b53f96c63822b8dbd5552f1bdcf0a",
+      "bytes": 177397
+    },
+    {
+      "path": "cinnamon/views/history-from-context-menu.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/history-from-context-menu.json",
+      "sha256": "c11b18f1efc822566493969e40f4dec81fe3aa126b4179445e9f031559ede159",
+      "bytes": 614
+    },
+    {
+      "path": "cinnamon/views/history-from-context-menu.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/history-from-context-menu.png",
+      "sha256": "484c41d3bad3545a9d50a2b5fedd0e70490b1bd8d01915006db93d4805f0489c",
+      "bytes": 269348
+    },
+    {
+      "path": "review/review.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/review-1/review.json",
+      "sha256": "d99d685463e0cef96e18b20691645fbf4b15f24fc62b48df17dfff0cedb153b6",
+      "bytes": 17098
+    },
+    {
+      "path": "review/clipboard-fix-review.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/review-1/clipboard-fix-review.json",
+      "sha256": "baa47b31791f2f035082b980bc36cce96e650affbd3f0826e58338a39888369e",
+      "bytes": 3375
+    },
+    {
+      "path": "review/validator-outcome.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/review-1/validator-outcome.json",
+      "sha256": "7ec0b374b68298e3c7af5aa383f4552d83b2de497e38303f3175d8daa99307e3",
+      "bytes": 163
+    },
+    {
+      "path": "review/metadata.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/review-1/metadata.json",
+      "sha256": "bf5d12275796592b3f3934e7bf294ccaa22111a8f21e4d413d1aa067e6bfebf6",
+      "bytes": 2373
+    },
+    {
+      "path": "latency-attribution/attribution.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/latency-static-c49/attribution.json",
+      "sha256": "b48acf0578298c7f5c4849d25af3b54ec85ffcb14b34ba8d555704f049ac5289",
+      "bytes": 24497
+    },
+    {
+      "path": "latency-attribution/control-command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/latency-static-c49/control-command.json",
+      "sha256": "8125447c6667ccc6f9df07bf1847588a6115e7c9b3c02c8b793669420af60d88",
+      "bytes": 620
+    },
+    {
+      "path": "mcp/command.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/fix-validation/c49-mcp/command.json",
+      "sha256": "1699c3153cf13b624aa60cb819bdbbf80c703048e417ff21995b7e7ca0ca42a2",
+      "bytes": 438
+    },
+    {
+      "path": "mcp/result.json",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/fix-validation/c49-mcp/result.json",
+      "sha256": "64497697296cc45b00b43725e3c7143e0a4042ef87f9e7484cb2e2e89e94b151",
+      "bytes": 73
+    },
+    {
+      "path": "supplemental/cold_family.py",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/cold_family.py",
+      "sha256": "91ba800129479728ffbbd38619d3d30548e5293181f44ded01189278f7c14cfe",
+      "bytes": 2774
+    },
+    {
+      "path": "supplemental/physical_sequence.py",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/physical_sequence.py",
+      "sha256": "59380539734005d41b34895574223c54873ed55500968538090f10df97bab60b",
+      "bytes": 3291
+    },
+    {
+      "path": "supplemental/run_command.py",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/run_command.py",
+      "sha256": "251463f14304df095c9df072e69459710b068675aad3b5c6b939cc1a4b4c99fa",
+      "bytes": 935
+    },
+    {
+      "path": "cross/gnome/dev.xml",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/dev.xml",
+      "sha256": "d811389ea61c506407a85aacaf8a800fb1cfc7683879b779ee9798d7cb487089",
+      "bytes": 45261
+    },
+    {
+      "path": "cross/gnome/matrix.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/matrix.json",
+      "sha256": "1ad26c7b2a7eb94a8a147efee1b157689176c4bafc391bd7ae478e0fce691d4e",
+      "bytes": 36475
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/shown.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/shown.json",
+      "sha256": "9a5ccd9b98220d83abeb67b04a6ce882418fa6ec8d2c3f6ede059caa09eca41c",
+      "bytes": 987
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/closed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/closed.json",
+      "sha256": "15299fe7c1717861d17bc6f11f916a0ab23150a92ca4ae9b0a801d1fa573f6ba",
+      "bytes": 1256
+    },
+    {
+      "path": "cross/gnome/views/native-settings.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-settings.png",
+      "sha256": "550b11883a20ef4a8d5cf76adf2057d3d12ab27f80d1fcd425da4f1ce93cc166",
+      "bytes": 240896
+    },
+    {
+      "path": "cross/gnome/views/native-settings-close.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-settings-close.png",
+      "sha256": "3200dda79ddc59576f1fccf7704d8ed3f9bff25c819e031dea424aa113d7491e",
+      "bytes": 603688
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/shown.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/shown.json",
+      "sha256": "81cefde12fc7b661f4a17d9e2bc538a6e324b362f77c6d5176641605fe6912eb",
+      "bytes": 983
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/closed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/closed.json",
+      "sha256": "f0715f3021b6216ef2ac0eae1d07c185dd5af1f1bdee06ae199d45c2fcad55bc",
+      "bytes": 1254
+    },
+    {
+      "path": "cross/gnome/views/native-history.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-history.png",
+      "sha256": "a0515d8439fb981bfddcbe5745206adc0002ab838c4aa10fd778fac220c55b8a",
+      "bytes": 334569
+    },
+    {
+      "path": "cross/gnome/views/native-history-close.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-history-close.png",
+      "sha256": "3200dda79ddc59576f1fccf7704d8ed3f9bff25c819e031dea424aa113d7491e",
+      "bytes": 603688
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/shown.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/shown.json",
+      "sha256": "d8b81be1e9d70d0ae52e0b67bfa2af8a974629a04c49d41ee746d3084dd7b41c",
+      "bytes": 987
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/closed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/closed.json",
+      "sha256": "b313642c127a21a62d4118de1a68410c905b0568f3a93f8c4e653dde2b1f4931",
+      "bytes": 1256
+    },
+    {
+      "path": "cross/gnome/views/native-activity.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-activity.png",
+      "sha256": "f6d3711ddbe0c23bd471a85db9320e54e3eb801645c331acfa4d4bf1040b8ca5",
+      "bytes": 332379
+    },
+    {
+      "path": "cross/gnome/views/native-activity-close.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/native-activity-close.png",
+      "sha256": "6421b92dad40e49f2c73a125c1329d5c0db76481cc85675135ad18ececba3b3d",
+      "bytes": 603485
+    },
+    {
+      "path": "cross/gnome/visual-review.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/visual-review.json",
+      "sha256": "4c5cd3f0df3db2a4a3943136eaaec1f5791df81aaa84509eb41cd96bd01942b7",
+      "bytes": 4285
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/memory-parameters.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/memory-parameters.json",
+      "sha256": "68d75bb848dfa63e7af278273458183786775cd7b7331efe8014219335d8f019",
+      "bytes": 538
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/memory.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/memory.json",
+      "sha256": "d7a4b050119958e63f6878a08ce416fe4c78931066dbef6bc71c71cbae197d3f",
+      "bytes": 59601
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/smaps-attribution.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/smaps-attribution.json",
+      "sha256": "97f0e13bc6817532e3a41b730bbc03f8065ae6c8b20b3b9dee22ef1080fc7968",
+      "bytes": 38825
+    },
+    {
+      "path": "cross/collectors/gates.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/gates.json",
+      "sha256": "5536705e64b29fae8b586f0c9db9365f1968d77261e10d94c8cac35b43bbabd1",
+      "bytes": 1355
+    },
+    {
+      "path": "cross/gnome/build-info.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/build-info.json",
+      "sha256": "7adf02bf0fe7d865e809eacceba78fc1250f45ef2c1173a10614d53294715492",
+      "bytes": 332
+    },
+    {
+      "path": "cross/gnome/build.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/build.json",
+      "sha256": "0edc371a9482e4eedfe4b7ab66d0907373eed45b4975b00c5a097a476198698e",
+      "bytes": 830
+    },
+    {
+      "path": "cross/gnome/capture-helper-install.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/capture-helper-install.json",
+      "sha256": "f42b854d2558024888d056559d1f7b49dc8a75af7d176aee68607d4ee96d2362",
+      "bytes": 391
+    },
+    {
+      "path": "cross/gnome/configure-retry-reason.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/configure-retry-reason.json",
+      "sha256": "4f0eff8bb85db083b4592f358509c8bc1d113473af339e0304754ceabbc147fc",
+      "bytes": 645
+    },
+    {
+      "path": "cross/gnome/install.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/install.json",
+      "sha256": "5b0b74e4e8087ed79ffb3d3b1e4bbfd89f9cc80eea265696d1d2827417d8afd2",
+      "bytes": 2400
+    },
+    {
+      "path": "cross/gnome/installed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/installed.json",
+      "sha256": "7ab90ffe2890ec64e31b73372a918100e591837f92aeb384df01a6a783273d8d",
+      "bytes": 968
+    },
+    {
+      "path": "cross/gnome/previous-state.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/previous-state.json",
+      "sha256": "a23c220101a005c4787e2f0e9483b9de38eba6c0dceff8e93be9c5c50ec635da",
+      "bytes": 1787
+    },
+    {
+      "path": "cross/gnome/start.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/start.json",
+      "sha256": "53b542e49fbc8dd6adc19f53f37ccff939fd16b69104bc96d0d9b97c939cb0e5",
+      "bytes": 624
+    },
+    {
+      "path": "cross/gnome/stopped.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/stopped.json",
+      "sha256": "d6a7c647c58fcbd06d1907ecd1c4fce127018663fdcdc57a07c9c868629f24cc",
+      "bytes": 2271
+    },
+    {
+      "path": "cross/prepared.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/prepared.json",
+      "sha256": "e45b335c20a663d1bc0a98343208c6a52aef26693d7dfcf93ed08f80a1e16102",
+      "bytes": 529
+    },
+    {
+      "path": "cross/source.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/source.json",
+      "sha256": "64514d7bf0be78ea94cdb1a645c85591d4544e55b2a81ada7b7109c6822cf9eb",
+      "bytes": 1108390
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084332466343-unlock-wake/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084332466343-unlock-wake/01.command.json",
+      "sha256": "18da995e5c364dc84f26c6a1dee77b4aa2891fcd1faeff4de9abad5c3388ac9a",
+      "bytes": 350
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084426474247-unlock-wake/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084426474247-unlock-wake/01.command.json",
+      "sha256": "0f6099aff81ff07801b81efd200bfcc77fd79bf3fbcebf9464852c49b84f23fd",
+      "bytes": 350
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084521072578-unlock-password/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084521072578-unlock-password/01.command.json",
+      "sha256": "1d1c0820c4772ee1b3dd20b0107f560eb9b104c5dcf2c86e382dd68db7727c40",
+      "bytes": 359
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084550180487-stop/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084550180487-stop/01.command.json",
+      "sha256": "e0ea255b26f24d2b2ac88067edaa32d78ddc57eaeb81e30bdde39067833a77c3",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084550180487-stop/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084550180487-stop/02.command.json",
+      "sha256": "675619d58192a3f5e212b1322dba31dae77f1f7b276bf8f69e25b289e0edf7f3",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084550180487-stop/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084550180487-stop/03.command.json",
+      "sha256": "11793b7de6303953dba9d964eac9d2c79c936d578b16df5bfe5825bf8cf71da5",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084550180487-stop/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084550180487-stop/04.command.json",
+      "sha256": "3cd12d0b169ffda1d5f8bf3714310221e7215a064e6d50f6392cb98375937e80",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084550180487-stop/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084550180487-stop/05.command.json",
+      "sha256": "5f1f5ea915581820a68c72159e05cb42794cfed1a32f12a1f1f7eb0257cbe8fd",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/01.command.json",
+      "sha256": "97d950e2ec4cfcd0e08c62b253cb654a63976fdf33652367952abb535f0160fd",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/02.command.json",
+      "sha256": "b0e12a9ae7f0ffe4d34e534d77b9a1295d4371e648bb55c6360c07b4fe451f53",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/03.command.json",
+      "sha256": "ffc835e275dba4af4f06f235d1f4995a8790ef8a3feee2e77278bd0f0afdfba0",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/04.command.json",
+      "sha256": "7514deb26b9fad87802be9fc844e8fd758533aacb321c2a9d15e4b40e641abb6",
+      "bytes": 648
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/05.command.json",
+      "sha256": "126735622e32aacdbbdd990a4cd5a0fbadeecc9f7acf6acfccb6a6cd1c1d834c",
+      "bytes": 656
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/06.command.json",
+      "sha256": "239e8295bb8cc1e746198d2a7ed7a74612ffc76d7b517be398ab10867fd44be7",
+      "bytes": 591
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/07.command.json",
+      "sha256": "6e6935d64fc2323573c465eb27f0a687319cd3a0ff39151fa839ea3ffda6c404",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/08.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/08.command.json",
+      "sha256": "16174eed32f7eb14ad944c829f154e6a59613540d455d95f927e3e8e4d258443",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/09.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/09.command.json",
+      "sha256": "455b87006db764447924dd82978f8a8dee0a97fe99ac71b423e0b975aa19cc4e",
+      "bytes": 733
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/10.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/10.command.json",
+      "sha256": "fc75119bc1a858df341b7b606adc95f7a8ebd836cb2e1e627b125cf728f44e95",
+      "bytes": 654
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/11.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/11.command.json",
+      "sha256": "0c1733b96956d53d2d167215f2cbf93bf1474d675bdddeb7744570130be9fe62",
+      "bytes": 706
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/01.command.json",
+      "sha256": "ebd8ee93f294bbde7c02af4220180c6b13173716c5984ad13f0d81ed0ccbd69f",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/02.command.json",
+      "sha256": "4c35b1ee898aafe3dcb3dc5166f5d04295cb67e65106e2b171f613e0d1d975d2",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/03.command.json",
+      "sha256": "677075444120919b446df6b3a68bc37078a2f30ad4ae89981da2b715dbbca0cd",
+      "bytes": 324
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/04.command.json",
+      "sha256": "d2a0668778a099d467794c31920c756a883dac807d0788c798ca6ac01f069a25",
+      "bytes": 680
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/05.command.json",
+      "sha256": "67c339992841fc5fcd28608995758060ec51768cb990519014009a4837233cc8",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/06.command.json",
+      "sha256": "b9c42ec106edfd97f352120e63287991adbe1b8c0d5cae2e69ce78137c55a2ae",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/07.command.json",
+      "sha256": "127cf2b748aa5828263fdc6953cadf15b799bda9c62b0ddd2c6a5bcef4ef8266",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/08.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/08.command.json",
+      "sha256": "1a71ea24ca286e4283d7ada32632ca9e61406db9c99d40d5dcc163945208bc84",
+      "bytes": 324
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/09.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/09.command.json",
+      "sha256": "3777bc321eb32048deb4bad343bb3ee544dde78b58982b8e7025a8e20adc1452",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/01.command.json",
+      "sha256": "bb884b724452c2ceeb3f4250c63119fdc423c02e3c5237e817ac63af134cf812",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/02.command.json",
+      "sha256": "703af0db3a7ecca3a464b428cb762ea44a3fec03cf2c1d98b7bcd8dcc50d81c5",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/03.command.json",
+      "sha256": "31295ab74970fcfae9d045b25dde2350f3b121aa59661d91e32ff5e07f46a84f",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/04.command.json",
+      "sha256": "6ce0e872a2cea6b07d731b1e2c7d7767c39870859484046bfdcf465b6f03a4d7",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/05.command.json",
+      "sha256": "1a161195f00fffa026e5a352091908c1225737aba19a204a3fee4916c0fca2a6",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/06.command.json",
+      "sha256": "3c3d2cb314ddfd760448d503a97e556410ce02230d751e2619260978dbd83eef",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/07.command.json",
+      "sha256": "cf1ab324593ba712a95835132543aeb983303f37b6aba9fd444b157ef591d257",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090742334022-step/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090742334022-step/01.command.json",
+      "sha256": "405defd13f13c37ad7058dab61260f99699360cfc5ab298034f3db1165fb49e4",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090742334022-step/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090742334022-step/02.command.json",
+      "sha256": "69b5d3fbe223f2a4a6998ffd8d93810d7b64c3bba2ee70c22939584793f386b9",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090856095249-configure/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/01.command.json",
+      "sha256": "d48ee86897885135a7dcf487b996137229325eb5c10b8602b87f707758884376",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090856095249-configure/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/02.command.json",
+      "sha256": "9fb76f56a151247cfdc06af900836dab3494722db4e34769341e1ca11f301cd5",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090907632064-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090907632064-close/01.command.json",
+      "sha256": "995c26a3de8f260a42fa9d9d92424e6db746475499dcc64ba32b22c6fc93d50c",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090907632064-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090907632064-close/02.command.json",
+      "sha256": "c15189ec77eedf643dfccbd1415308fbab2b8be96b7c1ce843d9705d9868052a",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090907632064-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090907632064-close/03.command.json",
+      "sha256": "e5ed94c7e0d757b90850780504d3b75a3626af017070c904b87173ae650384a1",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090907632064-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090907632064-close/04.command.json",
+      "sha256": "23251e21abce78132943e1f97f95196f7e7dc5abf8abae449931afa3a0f18f29",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090907632064-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090907632064-close/05.command.json",
+      "sha256": "ab5cf2507ed32408ce1e019b66a06bda5bd1e06a9a07e6752a8c860d452f16ae",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090907632064-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090907632064-close/06.command.json",
+      "sha256": "ea51b4e1f51c6ceeca02879eea4462818050813d56eaefe219462762927c3653",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090928934797-configure/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090928934797-configure/01.command.json",
+      "sha256": "4537aac4f9900e15332abd199dcb8d65cfbbb8f878b8d47086b747e9ded808cd",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090928934797-configure/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090928934797-configure/02.command.json",
+      "sha256": "8d92a6f328258438ae17d94ff298a8614343c0bb6a2264dd185a499cb0906a9e",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090928934797-configure/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090928934797-configure/03.command.json",
+      "sha256": "747db58e3a2b8beecc4c7496f5d546fa9c52f00c11f999119d8e079a4d38d1e0",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090928934797-configure/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090928934797-configure/04.command.json",
+      "sha256": "78ebc1813c87594c44d7e969807f64302e1cb59ecdc69e6834ad5c6d7e6eedba",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090928934797-configure/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090928934797-configure/05.command.json",
+      "sha256": "ec53a26a545c1e6f7ae3abadb1fe7a1a6dd50b8977084c6d689238b961063e13",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/01.command.json",
+      "sha256": "11b906a5a7da9f5fef7ed729446ee1b5e134904da0b7aa042e978b7f0284537c",
+      "bytes": 1434
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/02.command.json",
+      "sha256": "c0ecf53d131fd31911a69d08d1d94520608feb40e8d94bc710a48604c02a7911",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/03.command.json",
+      "sha256": "3f16c3f054fe3e780e8ac7d6cac58f600081bd86add839f12d45ce54e9249620",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/04.command.json",
+      "sha256": "57cbab30e9acbd5abb4ed69bf5b9748b61f3dd70bb8a536facdb5f413026b5b6",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/05.command.json",
+      "sha256": "929a1eda26db8e8a1cda8802ca38436d9ef1d9fc0d3ed88a7ae31c746b1fc702",
+      "bytes": 419
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/06.command.json",
+      "sha256": "26faf5d2857bdf82bea26e9aea2be493dc5fdc52d8e73309b2ab2cd47043cae8",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/07.command.json",
+      "sha256": "a09538d632552fa28ad2ed2574b3ed3976fbdfbbe8abbba46a2cc79901d625c5",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/08.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/08.command.json",
+      "sha256": "a20cb41218b7acdb9fc75cbcaddc4dfa1cf32a48ed7fb7ee54e2086b9f2c2610",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/09.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/09.command.json",
+      "sha256": "8de6b6c3978d385a015c1765079df5025cf7979119c0b27a91b71f1deb73f500",
+      "bytes": 419
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/10.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/10.command.json",
+      "sha256": "6ffa61977c8dedccf620718e669be510e7a1b6b2936a70d4399202380f5f7dbd",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/11.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/11.command.json",
+      "sha256": "48ae01f1bdf8d79769cfc0faae94b82f3553bb7f79ab34d2dc486ba59db5ef7f",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/12.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/12.command.json",
+      "sha256": "48ff9738b9aa25f2f0d5f2b2a157dc32bb4c5a5ea499ac8dd153a357b8bcb1be",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/13.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/13.command.json",
+      "sha256": "c6193e66d125e668eedd17cbf3743e3fc5d9a45f9540ee92710f500df7f2d829",
+      "bytes": 420
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/14.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/14.command.json",
+      "sha256": "2b9ad269c0b4c4c5395e6dffbc5fbd6e23c0bf633020558592c5d5fc5fcfdbd1",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/15.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/15.command.json",
+      "sha256": "0d4513a33c4892a0a1964ae1826ca3203981b4831ffc7728b75a64d36c497b58",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/16.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/16.command.json",
+      "sha256": "83f4d7b16ce09741ac6e46a63eacfde14c85a9d1406151b9ff18ff48fbe6f966",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/17.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/17.command.json",
+      "sha256": "1a7b3636405d6b707a613a6b46d5fc4b445aff848e2d00d90c3fe5165bb1fee6",
+      "bytes": 427
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/18.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/18.command.json",
+      "sha256": "61674e9492b04256d65d35a94d04a58285677ebca93ba64c64093117055e7314",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/19.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/19.command.json",
+      "sha256": "3fc0a253b62576d549d8845499a3a63e419f77e663ee8f5375e4d7448afe8dfa",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/20.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/20.command.json",
+      "sha256": "9204b35f448d704725b68803f8c646d5a80de6644457080532a2e06a9727f995",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/21.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/21.command.json",
+      "sha256": "205a03a328d3f533b2aca3c212a1c3615c90a2099523c82db92671672b9ec4cb",
+      "bytes": 428
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/22.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/22.command.json",
+      "sha256": "90dee20f77a12e3eb9478e0903acf25f76756b716f3cacd9a1890c0aa5084c04",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/23.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/23.command.json",
+      "sha256": "cc67f82293d0e456d2814ef5591fae768677cb016652dab80de77889d08a31f1",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/24.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/24.command.json",
+      "sha256": "ca66d6540596cad22b3aade855d77e90f0bbdecc550951ca27cd0bc9db69fb69",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/25.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/25.command.json",
+      "sha256": "6a39974d3ef1e837e99d051c9c7bd3db6b8d214e56ec481c569b0280c51a9a0f",
+      "bytes": 428
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/26.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/26.command.json",
+      "sha256": "e18137d16afe4e41965a07f5019a44cde4580ebc5f92ee852ebc1dc31e96490f",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/27.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/27.command.json",
+      "sha256": "6039433012d64283bd284970fa3f67635b6ba74be28930dbdc15336676cc2a96",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/28.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/28.command.json",
+      "sha256": "4c9455a42cb3ed10f2e6cf1826a06ca73e6b171c540a2acfa649ed3789d56956",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/29.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/29.command.json",
+      "sha256": "191a964fcc16bf6c812a2dcf085988f552b0b31b3a4dd46feaaa1ec03f6efc19",
+      "bytes": 433
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/30.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/30.command.json",
+      "sha256": "2ef24ec80d94b302f05ee102e43aec08f572dd9955aa6e95581c7bf76b5b8c73",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/31.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/31.command.json",
+      "sha256": "3f016a5443165e7bea5351583387d6d82cb0173b259fcbef2c183bbcf8d8de30",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/32.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/32.command.json",
+      "sha256": "75558a80021387a75163d309302d03add88afc61882da2e34a54e71c1bf023a5",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/33.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/33.command.json",
+      "sha256": "318cdffffe44c65a3b3b7aff1a2ca0efe178e95a1b9e7b17bfb3653305d4b15f",
+      "bytes": 438
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/34.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/34.command.json",
+      "sha256": "5e7bf384dca541192b5392430c87fd8eac937a115889cf7e2df36fc59e0ef8b5",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/35.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/35.command.json",
+      "sha256": "f319db4459601e357087fa3040b8f6aa664b1f53b8941ecebf0bca7b4939f234",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/36.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/36.command.json",
+      "sha256": "310305f316290b682180f009f54d05c496cc97fd59a720e6fc62653b997d1100",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/37.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/37.command.json",
+      "sha256": "9a942c18ae026b964135d61f465387a4d391d277a875813088713824d73f2749",
+      "bytes": 436
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/38.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/38.command.json",
+      "sha256": "6fa656c98b3a61d13b220b12d5ce6135088d0a17f6d8b1d707a5d38c0a6affbc",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/39.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/39.command.json",
+      "sha256": "a7e46ba11fe5e280671452a13052c5673c0d38eb6ba03ba520a5d79c1bb7df75",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/40.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/40.command.json",
+      "sha256": "c1d1ea2ddee444c7e8b3a7641ca17d646d3c6ea046ed05d44dbd748c882324ca",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/41.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/41.command.json",
+      "sha256": "6de8066c24658980bf788715f1c6639daa1d55820b46048e9a508d1a542b3c46",
+      "bytes": 429
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/42.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/42.command.json",
+      "sha256": "a101061eecad689871e60be8d40abd6a5b58c93149190dab976f836804833cfd",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/43.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/43.command.json",
+      "sha256": "38390fd221cbe1d5098c135e1e55c7a7d55cb8f980c37748378776ad1390ed01",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/44.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/44.command.json",
+      "sha256": "e40ed62f9fd461b6b1194a750701a0c359cebb288cc2a750246d999d76f1f47e",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/45.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/45.command.json",
+      "sha256": "c1bec4366e6fd3413fda5f87c710901069925f36383e006c0e11b695563272d9",
+      "bytes": 430
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/46.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/46.command.json",
+      "sha256": "a182a77544f2ec0f2341bf83f495dc6d3256234145f23e6fa3ae84745000763d",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/47.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/47.command.json",
+      "sha256": "bbcdecca5451443477c20b0621831e252ec0c46864fbad23771f139b2f7d1eb2",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/48.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/48.command.json",
+      "sha256": "4859758a62b2e1a3f4693e571557897c9cba82e2e896ef37266a26b99d11bb12",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/49.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/49.command.json",
+      "sha256": "8572d05d0624b7fa6886beaddd15e31455fe174d2c86a2bb33dd58dddda96fa6",
+      "bytes": 430
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/50.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/50.command.json",
+      "sha256": "eacdda74995c6fc165b2ee3e8c145e60a89dd7a5161f7bc26aaa909f82ace69c",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/51.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/51.command.json",
+      "sha256": "7184e3909bb1a5f7943d523b64b56d0adabbf4e919285a4546813bc19e5acae6",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/52.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/52.command.json",
+      "sha256": "1a2829863f415b0f7afa0e9c703d4edc61f3c419f8e2943d02f272765e40d260",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/01.command.json",
+      "sha256": "6a8509a1223c0c5aeb45af94720606e8acd38846881227243ca1a27f7ccc4477",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/02.command.json",
+      "sha256": "37c9e5d6211ccd923a03331f522a379452719b4d229647581b12c0f26951fcf5",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/03.command.json",
+      "sha256": "925478f4c2b22a2f8bf5a1802c31075a7fe450acaeb74eb6f8dbec174b73e82a",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/04.command.json",
+      "sha256": "560795c5596108c415717cd52b1bbdcc4c19b51a77aa3a979c8351806fee1a4b",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/05.command.json",
+      "sha256": "6d50006a631b1d1e4a4662383a526e9eb958f3352f0bc3413c763c207133523b",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/06.command.json",
+      "sha256": "6694f3eb310ba57c9dd2a6639de82fe9be4c16968df716706519f17db913ea8c",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/01.command.json",
+      "sha256": "a750827f0b7178eba3b81ff5577bf48cb4ae96e9077a39c61f75ba9fa8b5b226",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/02.command.json",
+      "sha256": "ccf3922147d29bb7367f2c3081c26892ed7400aa0f0b40b046200e001e900d58",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/03.command.json",
+      "sha256": "9be1abf915ae4a59439295ddf9aaf2ad16bc1dc066167c2af5758d160d467c90",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/04.command.json",
+      "sha256": "1914503b84f9433160faa4e1cab62a05189eba0fb39aef21391458e78b43accb",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/05.command.json",
+      "sha256": "dca5984881cda87ff9c07b11afdf54896a14b097e58d042d99149bb89d413d2d",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/06.command.json",
+      "sha256": "4bae5149183761200f99c3e283f542c7081c5eeb915b43780bd18bb46fcee374",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/01.command.json",
+      "sha256": "666c525d560efce3c17e9a3c532de668d406078229b46c17b73f9fac45e4c2f8",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/02.command.json",
+      "sha256": "8da7432f49352a0a2240da2983db4bfb060061212693ebd9dad01f470f868281",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/03.command.json",
+      "sha256": "768d6214580e899913dbdb62eec5d752db6868e4c31055f738d4f09df510b2f0",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/04.command.json",
+      "sha256": "97dedec2364e05d04315a3f056204c2c0ce52f42903476f6e9d04b52c90d7f24",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/05.command.json",
+      "sha256": "02a58a1f6631a516b0d46af78ef996ff4997f61643cd3ec0e3d0c437eb0cd900",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/06.command.json",
+      "sha256": "6b95d3cea4492382dbf43b6c7e5e45b595b6be89c32e47bc5a7835ff1471411b",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/01.command.json",
+      "sha256": "0a229fa263602aa5fb4ee3d849e913e43f7014b9694addc7f1d1dc2157dcc238",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/02.command.json",
+      "sha256": "b6186cf0a99bb74dfc510603d8b60556ff35d3360ef71534956e71443d1f27ab",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/03.command.json",
+      "sha256": "d9c40eecc11a3b2b6612af5fe857391df10c993234ffe9e1af6e4b5cbbe02639",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/04.command.json",
+      "sha256": "19a976ecb4ff01177e7621ab50c1f26434638becc976dff7ad6f7dcd24784feb",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/05.command.json",
+      "sha256": "679217f7f99ac8eb94c36e195f775a229abe30de01e2e6dc214d041f2d76726a",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/06.command.json",
+      "sha256": "b9b674639900c42080f93d068a61114296d2fa56353c1693f9d67a2d20881f7a",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/01.command.json",
+      "sha256": "dbf1f7b55681ffdd64056e37c3f75d9409962b0604d69fb19254f1e8ed38f782",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/02.command.json",
+      "sha256": "e1f485617c0eb1834edb141f99f0a43377045636d66b210a5ed1d0e7d3a97682",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/03.command.json",
+      "sha256": "ec182899a6ff7ef79f05d7081f29ee73bf52e6a9c3fa684aaf1b310dbaadf7e8",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/04.command.json",
+      "sha256": "4c4f7c0c58d8f2f0a51ed142473bee63fc068316cf2976136a56076d00d7f53e",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/05.command.json",
+      "sha256": "40e96f7b97e9bae63b62bd6466e1e450b96a59850008aa41f0882d4ff6eb6e44",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/06.command.json",
+      "sha256": "af4871656b098c0d07bfcfd52662bcb3a84f2e0ec46a46188bdd8c1aead82cd2",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/01.command.json",
+      "sha256": "fb8a63eb2cec9b1c5e5d4f5fdf2d89d5f3101d0b6ea117f5b35e095ad3afbed1",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/02.command.json",
+      "sha256": "f51cbb736c0ccd3d0d8aa3f54b30b9b9e538078928c3fbd4e1f950cf72cc50e1",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/03.command.json",
+      "sha256": "c33ad02a08927592938a3a6461f8251d2d6f8060af24fe8cae5efd6348f21cf8",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/04.command.json",
+      "sha256": "3af3752562aa1fc6756087f557333badc0b86bc2906c6fbc8d78f87752c2b248",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/05.command.json",
+      "sha256": "593ae4159a2801ab384625dd7bfcc45208b1062a1a2982fbe2d58527f740ebdb",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/06.command.json",
+      "sha256": "51ca051080accb7fd39c8a101e59b94ee8a59a39e468ae3a33f446cb8d83eca4",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/01.command.json",
+      "sha256": "4458b0abee5d68d6361fd8c959eec631b4ba70642910761bf3f852b24d7e3278",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/02.command.json",
+      "sha256": "5c636e6b80cb1337349eacc29985f5fbca47be57f95e6cd27fd5b349a972d499",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/03.command.json",
+      "sha256": "b38f12170a48b4706d1b1a77a05526f4a4cbafa9ace9868a7da81bd22f5e80d3",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/04.command.json",
+      "sha256": "2d58a9392acb0db1e8a1aa20c68a3c2d8f1094188756183c45f35547a0d9d2e4",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/05.command.json",
+      "sha256": "7e5c037555479d0cd685440abba194131f81532b646d7ccfe4fda7cf350d4722",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/06.command.json",
+      "sha256": "2c313ebddca88cf019052a5d23a83dba5defaece58be05a59b368dcec2cc0ba8",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/07.command.json",
+      "sha256": "48ebf66c1f86c9cff0d584e8174ecff61d27f727c48a06d29e04dac4346fcba9",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/01.command.json",
+      "sha256": "0a3402b4fdb119e04389f1cde9a5b12aba9f67a5e55cb0605dbad7f0331f010f",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/02.command.json",
+      "sha256": "640791094243d3fc7c5f17b712180962de13811d23435d2d4e1623dcd68ea62b",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/03.command.json",
+      "sha256": "941106b80ffda49874e152e1494bdf4af1524846e2860d7b214277c06853e738",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/04.command.json",
+      "sha256": "fc4a4bff54c4e4ce6ce7df4c5dfb7b74a430bc1f94671f6d89b8d48e6eb49ca7",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/05.command.json",
+      "sha256": "818febf0f9d95aadbf8fb91075d7b3c5abd4298c738da3e6bd9338f249429853",
+      "bytes": 534
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/06.command.json",
+      "sha256": "12423b8ee809464aa516c0c920d621d35f4a210a60969961ec6266cf247409a3",
+      "bytes": 530
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084332466343-unlock-wake/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084332466343-unlock-wake/request.json",
+      "sha256": "22fc2c72635ed68f843fab890b4f35ef7934761e589855e153c6ae8bd5e37f32",
+      "bytes": 444
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084333294400-visible-console-wake/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084333294400-visible-console-wake/request.json",
+      "sha256": "c9894900d19ebdfc49b8aefa6c6472843b5d8b9c1003d73eb456fb69683fb2ce",
+      "bytes": 452
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084426474247-unlock-wake/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084426474247-unlock-wake/request.json",
+      "sha256": "71547b6cbc55669851ddfef7cfcb95c8fa9cd7db5e55ef9f24b6916e1ba38b9b",
+      "bytes": 444
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084427290025-visible-console-wake/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084427290025-visible-console-wake/request.json",
+      "sha256": "6b0126f8a85043b9ced39d0e2096b4f81f6d0378b067c8d84de16e30471a446d",
+      "bytes": 452
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084521072578-unlock-password/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084521072578-unlock-password/request.json",
+      "sha256": "fb156882d028a3f579c85d1e4c4195752346cd726d0916fa61f62d2f4ed09838",
+      "bytes": 479
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084521951729-visible-console-type-password/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084521951729-visible-console-type-password/request.json",
+      "sha256": "8ee9f3752c35dbd0e66bc83817c13417542aa83ccf1bbb823957b1f45725993d",
+      "bytes": 461
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084550180487-stop/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084550180487-stop/request.json",
+      "sha256": "f76bf830c4bdd89e8b3396a3f03d45f120628e41c1c589c76cc39f0fee4f2404",
+      "bytes": 437
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084612397519-guest-build/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/request.json",
+      "sha256": "384452eba6abcbc96959dcb76b9fe753e57aeabd7c53dd974f8e443b16f2e123",
+      "bytes": 444
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090643946679-install/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090643946679-install/request.json",
+      "sha256": "245bea808f6a9b35b25e91915de8692ea94179c1188eea3ba05c154d5fdd1a69",
+      "bytes": 440
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090711271294-start/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090711271294-start/request.json",
+      "sha256": "7e68fd1d71e32970f1ef89211c854d5ad28b8b6505c343eb61d6e6bf30fc0695",
+      "bytes": 438
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090742334022-step/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090742334022-step/request.json",
+      "sha256": "dc329813a6964d55b601076bf93e9520a90066bf6e75813f25495b83c5395644",
+      "bytes": 536
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090856095249-configure/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/request.json",
+      "sha256": "8d7afc7671675766611a0eaa25ecfc59e725eac38d776fbe7cf5b285630dc861",
+      "bytes": 442
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090907632064-close/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090907632064-close/request.json",
+      "sha256": "1e799b360e058c1f270473e694cb9408471c5bfa0ac7d5fbf3a8e34b9586319c",
+      "bytes": 481
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090928934797-configure/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090928934797-configure/request.json",
+      "sha256": "3393379baa9278d3c25e278fc988ca1c2d5fdc437b9c5468442e611828f361eb",
+      "bytes": 442
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091005679415-matrix/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091005679415-matrix/request.json",
+      "sha256": "f087505fd29b1110fab43f832ce398c54752291d559df737f9d9e5da85b1d726",
+      "bytes": 327
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091242822158-show/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091242822158-show/request.json",
+      "sha256": "fb5952d7facfa677c6e51c942a4ad60daf1b5511ba90ab1e36fab1cf1a3d526d",
+      "bytes": 505
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091311584065-close/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091311584065-close/request.json",
+      "sha256": "b8ee9ad7655b2e96b0b84c3ed0c7594fedea1a819106ff49da8970c3c3a06fa7",
+      "bytes": 482
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091324751561-show/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091324751561-show/request.json",
+      "sha256": "235ffae380814fa9e9cfe81ce9ff2ede2a72739304705bf38ef000b80283911d",
+      "bytes": 503
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091349180321-close/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091349180321-close/request.json",
+      "sha256": "d8015e29bde8227c7f1111fb93191f672f910ca8f14511b80bfe1ff82113bd3b",
+      "bytes": 481
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091404153710-show/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091404153710-show/request.json",
+      "sha256": "375649f57e2cce46c475a6d9f592b68b10b054b87c0692a0a5c91559ff513ede",
+      "bytes": 505
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091419544934-close/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091419544934-close/request.json",
+      "sha256": "86589466456f735100eae38099dde86a74740fc2389a4f29cca9b895d8c5e8dc",
+      "bytes": 482
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T091632064415-memory/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T091632064415-memory/request.json",
+      "sha256": "7774a5c65935a385ae531a2645b1ffc66e171b6d6df2bed762e9ae7a38e9b43e",
+      "bytes": 467
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T092150928500-smaps-attribution/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T092150928500-smaps-attribution/request.json",
+      "sha256": "ad93547b9dcb51a13cba506a5971b8b4a0d25d4babb6849f41c8975b8ca3e9c3",
+      "bytes": 324
+    },
+    {
+      "path": "cross/gnome/reunlock-after-build/gnome/attempts/20261009T090815649424-unlock-password/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/reunlock-after-build/gnome/attempts/20261009T090815649424-unlock-password/01.command.json",
+      "sha256": "99b77f0c98d0eebf09dac30eb40bcd7cf2a9bccac00b74dcd7b893ca29f69d1c",
+      "bytes": 386
+    },
+    {
+      "path": "cross/gnome/reunlock-after-build/gnome/attempts/20261009T090815649424-unlock-password/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/reunlock-after-build/gnome/attempts/20261009T090815649424-unlock-password/request.json",
+      "sha256": "deab6f22696a0dd6dec74c4be99687d146c8b8b1e54e603e5ed265080b6bd643",
+      "bytes": 616
+    },
+    {
+      "path": "cross/gnome/reunlock-after-build/gnome/attempts/20261009T090816505713-visible-console-type-password/request.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/reunlock-after-build/gnome/attempts/20261009T090816505713-visible-console-type-password/request.json",
+      "sha256": "eebe39b47e1c60c720455031e8e45a4b38c5785eb005702025b6f34c34fbf95b",
+      "bytes": 488
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084332466343-unlock-wake/failed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084332466343-unlock-wake/failed.json",
+      "sha256": "11152e19bdc7a91d212555654e614f85cb2ce6724316faafd172631795b27a0e",
+      "bytes": 178
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084332466343-unlock-wake/01.result.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084332466343-unlock-wake/01.result.json",
+      "sha256": "f225fd5788974ace0d814b667210c5cc21326610c10006e19b764339a6a68130",
+      "bytes": 73
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T084332466343-unlock-wake/cinnamon-authorization.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084332466343-unlock-wake/cinnamon-authorization.json",
+      "sha256": "61aae841c6f4d7a9b7724a76aadf9d5549eb9c3b4603394956f40af21049ebf0",
+      "bytes": 586
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090856095249-configure/failed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/failed.json",
+      "sha256": "30ad95c1496ff3c7187839843b024ba8f27346d01e9e4e4e4288eb2be73a18bc",
+      "bytes": 172
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090856095249-configure/01.result.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/01.result.json",
+      "sha256": "4177cd1435f8d0d7937e9778fc3151bec66dd8f0c732fde917c1ed5cad8ed48c",
+      "bytes": 73
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090856095249-configure/02.result.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/02.result.json",
+      "sha256": "28d9e27ae73757e99f467adaabb64255e134817dcd995df203ae6ff0ee2e19c1",
+      "bytes": 73
+    },
+    {
+      "path": "cross/gnome/attempts/20261009T090856095249-configure/cinnamon-authorization.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T090856095249-configure/cinnamon-authorization.json",
+      "sha256": "aac5daa576862f3195230105c6afe7df98525329b57d0eb9615f50e19ea2e9f0",
+      "bytes": 586
+    },
+    {
+      "path": "cross/gnome/views/console-wake-after-build.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/console-wake-after-build.png",
+      "sha256": "c29181ba2e55c8445c090c1d49410ba588f2980fe10a00ed0c9570ccfb6dc92f",
+      "bytes": 49831
+    },
+    {
+      "path": "cross/gnome/reunlock-after-build/gnome/views/console-after-unlock.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/reunlock-after-build/gnome/views/console-after-unlock.png",
+      "sha256": "27535327f734b2ccfed74462bcce9d0aefbeaae500b4ba147e426c3f2a7f2ca1",
+      "bytes": 261872
+    },
+    {
+      "path": "cross/gnome/views/fresh-start.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/fresh-start.png",
+      "sha256": "76f9bcc850e9c7b2277cb9b07878a1ddc706c85867bed3db9a006c63a9725bf4",
+      "bytes": 3448
+    },
+    {
+      "path": "cross/gnome/collect-smaps.py",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/collect-smaps.py",
+      "sha256": "a38f132874b8cffba81f76e8d196df3d4bbeafdb46fa816eaa97d340370b1509",
+      "bytes": 4120
+    },
+    {
+      "path": "cross/gnome/finalize-summary.py",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/finalize-summary.py",
+      "sha256": "ff07b9ef663c0487df3417030f526884e4410c3fdd5e81603f24444044038c1b",
+      "bytes": 7944
+    },
+    {
+      "path": "cross/gnome/matrix-preflight.py",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/matrix-preflight.py",
+      "sha256": "0999b30dc23c0455a6dd3b806f41e57482a7b70f9ff2ac69622f299c4719032b",
+      "bytes": 1444
+    },
+    {
+      "path": "cross/gnome/summary.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/summary.json",
+      "sha256": "de34426fcf385415abbf889f46fea7f5856d20ff8637da9021c8b679fe3c25f7",
+      "bytes": 74307
+    },
+    {
+      "path": "cross/gnome/views/matrix/gtk-clipboard-files.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-files.png",
+      "sha256": "52a54463c2e230c368342c4a7f243c6bba0b4bef920fac30943822e24d673c44",
+      "bytes": 603660
+    },
+    {
+      "path": "cross/gnome/views/matrix/gtk-clipboard-image.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-image.png",
+      "sha256": "52a54463c2e230c368342c4a7f243c6bba0b4bef920fac30943822e24d673c44",
+      "bytes": 603660
+    },
+    {
+      "path": "cross/gnome/views/matrix/gtk-clipboard-text.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/gtk-clipboard-text.png",
+      "sha256": "2b78ddf77d38f85e85f912a39caf18425a44ef0076f9af136155d7761c7482f1",
+      "bytes": 603463
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-clipboard-files.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-files.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-clipboard-image.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-image.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-clipboard-text.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-clipboard-text.png",
+      "sha256": "af50a907aebcd37d46a176047981dd2b6ff08f4319ce41a8d2bb132ffc5b6636",
+      "bytes": 595666
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-desktop.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-desktop.png",
+      "sha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+      "bytes": 595670
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-region-cancel-escape.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-escape.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-region-cancel-right-click.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-right-click.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-region-cancel-zero-area.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region-cancel-zero-area.png",
+      "sha256": "ec21a1a76cb4e91542276f977e4f7aedd3e4cee81b1814ab9920ef1496428499",
+      "bytes": 595665
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-region.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-region.png",
+      "sha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+      "bytes": 595670
+    },
+    {
+      "path": "cross/gnome/views/matrix/qt-window.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/qt-window.png",
+      "sha256": "ee6229199b25594c74d8fee4744138ebdc45336bc188d9d33004456172b25c98",
+      "bytes": 595670
+    },
+    {
+      "path": "cross/gnome/views/matrix/render-receipt.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/views/matrix/render-receipt.json",
+      "sha256": "dce95a2bee50d0c5fb81554c2a143611ab159656e671fd5150bc3f357f7ed9db",
+      "bytes": 5542
+    },
+    {
+      "path": "cross/kde/build.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/build.json",
+      "sha256": "9301499b8f5a49312f2f35c9ad6f29e9e580c3a9c965d1768f25ab24069b039a",
+      "bytes": 828
+    },
+    {
+      "path": "cross/kde/dev.xml",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/dev.xml",
+      "sha256": "6c2e87ce8a708294249e2407d8f60bb468d8b76cf92075dafd94a4f80dce1f05",
+      "bytes": 44844
+    },
+    {
+      "path": "cross/kde/installed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/installed.json",
+      "sha256": "e3581eabfa73b2a1b76885aae2318f65bdcdc5e5b879485bdeb937e2b486f8b8",
+      "bytes": 968
+    },
+    {
+      "path": "cross/kde/capture-helper-install.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/capture-helper-install.json",
+      "sha256": "c34cf85a8ae88665b9afbe6ebfff664a13e716344b9d2f63347bc3f3a766b6a8",
+      "bytes": 391
+    },
+    {
+      "path": "cross/kde/start.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/start.json",
+      "sha256": "5bd4f7fca45aa6954ab9f8f29464de56cb896c03f6d14abd893d3ad9a1908613",
+      "bytes": 622
+    },
+    {
+      "path": "cross/kde/stopped.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/stopped.json",
+      "sha256": "1dcfe5b3cd0147278bc8ff3801b8e621ce9a7ca273322dd6f3b49a383d0db447",
+      "bytes": 2271
+    },
+    {
+      "path": "cross/kde/matrix.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/matrix.json",
+      "sha256": "b7ae5a002fd2f01e2107850725bdcb0c9dd56dc07820c22d5dc83761ff9db5c8",
+      "bytes": 40098
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091308137081-show/shown.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/shown.json",
+      "sha256": "d0a987f80c3097d54f5311f51618ffd1aed81e39ea18f0dc063487fe3b70c414",
+      "bytes": 979
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091331009726-close/closed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/closed.json",
+      "sha256": "6f31b4acacf0be02b86a3a6c0f706c845a37a97bb76efcf91a1cf9b930601ecb",
+      "bytes": 1240
+    },
+    {
+      "path": "cross/kde/views/settings-open.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/settings-open.png",
+      "sha256": "8d6a75f6ef4ff62ebd804db6b63778731c513c1349987548cedfc71341e88ddc",
+      "bytes": 68969
+    },
+    {
+      "path": "cross/kde/views/settings-closed.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/settings-closed.png",
+      "sha256": "ca4a6f9ca80d2d01c7c17c86dae313a5cd6cb865c0669ba2650930e0fb8d7be9",
+      "bytes": 77653
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091347659589-show/shown.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/shown.json",
+      "sha256": "b31bb16fe5b3f9d18301a9098c35e4ecb41c628430da99cb0e0e78722f213bf8",
+      "bytes": 975
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091407780811-close/closed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/closed.json",
+      "sha256": "ff5d43c751d2cdfbd6b1fafb791701f7b2cec69cfb426cdca885c57921a3656c",
+      "bytes": 1238
+    },
+    {
+      "path": "cross/kde/views/history-open.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/history-open.png",
+      "sha256": "f4f8410ef5b84da2ca59f2d423e9f94e041608a1a98ad63fb5e1d1ecdec6e7f5",
+      "bytes": 151285
+    },
+    {
+      "path": "cross/kde/views/history-closed.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/history-closed.png",
+      "sha256": "fcbcf8dbc85c0bcb7f3d9181afac2d077752ba956db41bc3e04d32a4ee5b9dff",
+      "bytes": 77495
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091422651630-show/shown.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/shown.json",
+      "sha256": "b08770eae37e9db5b5d3f36af4076fd1366c291a897366ee070a0df7153411ae",
+      "bytes": 979
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091442015510-close/closed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/closed.json",
+      "sha256": "7c7fdb2554a18a63eba5690d6d8e9b5c542824cc244bee5412600f9084fb3af2",
+      "bytes": 1240
+    },
+    {
+      "path": "cross/kde/views/activity-open.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/activity-open.png",
+      "sha256": "202fd5111b19f7e0c8b5a960b42097b399e418a9560e6114f8e18c94fea7f53b",
+      "bytes": 138446
+    },
+    {
+      "path": "cross/kde/views/activity-closed.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/activity-closed.png",
+      "sha256": "fcbcf8dbc85c0bcb7f3d9181afac2d077752ba956db41bc3e04d32a4ee5b9dff",
+      "bytes": 77495
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/memory.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/memory.json",
+      "sha256": "88a70cd1baf7e9c406ca25fa1ba99faca15aa1e968b3758c812da8d02c444b57",
+      "bytes": 59708
+    },
+    {
+      "path": "cross/kde/measurement-context.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/measurement-context.json",
+      "sha256": "a4a018b7ccf0866179def3aac5bc717335180e198d3be82d4624cce827110b5c",
+      "bytes": 699
+    },
+    {
+      "path": "cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/mapping-summary.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/mapping-summary.json",
+      "sha256": "81a8f42caab9620ad62f18217b9274c47eda4ab6aefdb3ad4544254bdf298722",
+      "bytes": 14033
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/failed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/failed.json",
+      "sha256": "534ba48ca8b6d1b52da2061f93ec1a2c50d4939d0523b7e3722e00fa310a973f",
+      "bytes": 166
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090835152817-visible-post-build-unlock/diagnosis.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090835152817-visible-post-build-unlock/diagnosis.json",
+      "sha256": "102eed7cdae2e089a28a118ccb8639c3206c5e23d3cae7d6ccd185ff3f176bf0",
+      "bytes": 260
+    },
+    {
+      "path": "cross/kde/views/post-build-unlocked.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/post-build-unlocked.png",
+      "sha256": "9af7f65ba5913d664e1eb700d34801c2e73bf60f06b58013c2e08c0ce0a3ef7e",
+      "bytes": 88017
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090850903509-close/closed.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/closed.json",
+      "sha256": "1002b3ccf5a00c97baa163324e1d84026871b55652ba66346979d6d9fb2796c6",
+      "bytes": 1264
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090850903509-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/03.command.json",
+      "sha256": "dfc98e3ade9985ac881e88a0ea9af0893f0b3a7b2d598f56a9ca3ca0becf8919",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090850903509-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/04.command.json",
+      "sha256": "e023c1e08c15ccfec1ada715543a9e7864d30c1c6303e16a8c19434b20859979",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090850903509-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/01.command.json",
+      "sha256": "9ab07d66e36af0e8d746093b84374915dccc8e39f2e7527d0a072cf30adf9d3e",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090850903509-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/05.command.json",
+      "sha256": "58968d9e1036e655462bd14f750f65fc188e1ca70ffa44a2e6591ca682cd7a42",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090850903509-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/06.command.json",
+      "sha256": "8a8f5b86afad96b396b54f6f90bc44fe8853efa74852558db491e29476729ac0",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090850903509-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090850903509-close/02.command.json",
+      "sha256": "cf71faa953e9c7298bef443cde7268fb049901284d5a2491954304d10fed79da",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/03.command.json",
+      "sha256": "acad2ec2d7f2a38b63c9962b79f33979d161cf5f0184d07ede28984f91ad1f21",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/04.command.json",
+      "sha256": "66fe325f77827f70091b6116759c15c003045af9d058135947f303f4c64389e7",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/07.command.json",
+      "sha256": "426a2f826a0da35b99de942d4742f010bda98eb48d0f876d34e1107bfb994384",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/01.command.json",
+      "sha256": "96e53a1e98f1893f9c19101924b63bffc74ac180f1e21385edd064366e1a98aa",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/05.command.json",
+      "sha256": "ed5f738315faa9b7badc657613b1d42cb2acf7605a7467922c799fb89921f8d0",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/06.command.json",
+      "sha256": "0fb1501718907a6ed4c2a2598f510d865530a41dc3b76779b4620e5da1545b3c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091508227702-memory/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091508227702-memory/02.command.json",
+      "sha256": "18e612a4c1ba7a531264627096c14f1363587c6066ddc6287de881eb982ce5f3",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091422651630-show/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/03.command.json",
+      "sha256": "1fa19ee5055ce688d471bb12fa47e22d08cb51b2c4183aa3f46fb5c248823992",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091422651630-show/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/04.command.json",
+      "sha256": "5a2aa0d042ae34d8898da6655f3fb6372b11a29c925bc3de6ab0997a00097b5b",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091422651630-show/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/01.command.json",
+      "sha256": "1f591715fcdf1e764d2c298821a844ee500421a2fe499c74f894c27d77302440",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091422651630-show/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/05.command.json",
+      "sha256": "cbc753b73bd070ec64432572454f30a34edc637a1d3570303e85a3dd9ceaf7f9",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091422651630-show/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/06.command.json",
+      "sha256": "f3c49efa5e278df16bfda5b53bdcb68f1ad0ee2c8e2ea43c102411819913712e",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091422651630-show/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091422651630-show/02.command.json",
+      "sha256": "f5cb2a20c75ebe0999cc4df52a7d9e047eb29236eba30ee5b6718245a2d8664b",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/34.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/34.command.json",
+      "sha256": "670bf21fcbb37af4b081ce27a8b5083608dba907767449f0c9cd0308211dfc8c",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/22.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/22.command.json",
+      "sha256": "a85ae2eeb1584da289bd34a544d138ce4bc9c93c8dd5e0affb59023a06e4ac38",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/38.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/38.command.json",
+      "sha256": "22dd9e2d2a1b0647a4da536edd6fc3f788b01b23e5a88d4441fcf62e311583ae",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/16.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/16.command.json",
+      "sha256": "5a2f6c7d4a38e33d2c77be8778f13429a8eb2b149f35bc1fb966c228d524a25f",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/36.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/36.command.json",
+      "sha256": "86d5f658eaa1f7e0852f33273d1e379f526bfd7d229eb2f221dc68ca68d43e70",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/26.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/26.command.json",
+      "sha256": "38b3ce719d2f0b6068afe8d07dc1b44a899ee97fb03a263795477c9301170a3e",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/03.command.json",
+      "sha256": "612e2c46ee3da0ea2acb92d568f54ad1b6fc23ab6c79bce10c9583367d625d56",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/27.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/27.command.json",
+      "sha256": "8f6031971a367128d7b50f6159f3d40cdeab9e2e8448364c4e1631aaa4798bd4",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/04.command.json",
+      "sha256": "77f2f9c40a8673a7c92c99ad33d5a09d1a55894d071d2910e4fae5907bf6bc4c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/07.command.json",
+      "sha256": "a27cfb4e08975792a6841ee01090299b68e4c57542e26c1ddc2915634b3673df",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/46.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/46.command.json",
+      "sha256": "4345d6b4bb3851d3a77a85515fda8e4eab7461032fef2b5dc6a9bca1334d3964",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/37.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/37.command.json",
+      "sha256": "8871d3b1c97248305c803953cdd8bd7c8e264de212cf7ee8a7449aceb4e4cd77",
+      "bytes": 434
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/10.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/10.command.json",
+      "sha256": "c9eba66509e7887f89e170e68100221144a9343b6a882357b4eadeec6ff693b7",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/48.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/48.command.json",
+      "sha256": "1d76faee43df92c0171e71755075e279261ca1f46e2657ceef2ed01e95c33a77",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/08.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/08.command.json",
+      "sha256": "5298d17a3312e7ec9138dd0ab31a63c3325d58ec02d0f9d0b25a9b16b14eaebc",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/09.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/09.command.json",
+      "sha256": "861a299aa3e59d4ffbdd43e7636d3293b64d8cf48057c0fcf9c1e1fd22cfeb92",
+      "bytes": 417
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/31.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/31.command.json",
+      "sha256": "2f9135ceae6cad65041898bb4cde86c65f7b7cb13b208d1a5b58fd2cacb0d84a",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/40.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/40.command.json",
+      "sha256": "b4da4be7cb6745cc838c031199cb52cbd46f0bb664c8c20bd1bb4e72e2e3bef6",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/23.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/23.command.json",
+      "sha256": "376cdafb0e407b943c5937cbc20f78a11b0cbbfb248968da3f560dd19cc0ee4f",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/28.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/28.command.json",
+      "sha256": "9f30cf584a500c62b0185cd249811611b1996af7b98db941e09c5b8d41cc4889",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/11.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/11.command.json",
+      "sha256": "c60068e2be0102d05f1b527219045db3b22bd4b25c3e3190993a0037b86beb8d",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/13.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/13.command.json",
+      "sha256": "ceac2daefd9aa14199540eb4c6050044aa5f23f5cb0be003b35129cbb78ae454",
+      "bytes": 418
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/50.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/50.command.json",
+      "sha256": "3a35acfeca8950c17aafe295c2b6f8a22ceccb4f677ec2f95f3749fbafa49a73",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/29.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/29.command.json",
+      "sha256": "9ae2fd6370f8accb019a4a472669a66ca6db6afc4d3cfc6bcc0de0c5131f6121",
+      "bytes": 431
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/01.command.json",
+      "sha256": "08aa061598e119ad8876de416fdfc1bed057c5fd122af9c71db779a42d2e1677",
+      "bytes": 1408
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/05.command.json",
+      "sha256": "9789f98d2cad7c48fe58284532a28a96683354722057fc290f0041f3bf854a0c",
+      "bytes": 417
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/43.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/43.command.json",
+      "sha256": "4dd99ed3430a159c4aea86f7109fc09bbbf66886b206130e6614c4fc19e08ba2",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/12.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/12.command.json",
+      "sha256": "2ac4948393e7a38a3123b5a3897c6db13c9a73d501ffdede69ff7e1820e77203",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/35.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/35.command.json",
+      "sha256": "f6499657d1a2321b8f01492b2526d574ef4d4f878baf7cc8a77b6bb34a882f69",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/06.command.json",
+      "sha256": "628c0d93570df28f90dd5d934f3073e2b7bec048c80a01fa21d955618e3865f4",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/47.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/47.command.json",
+      "sha256": "dc5aa3e5740da6c9be46e6ba7bec9c8be6eb779b1edd44c2826a34a821df5958",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/17.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/17.command.json",
+      "sha256": "3f8496c362ccccd191a76de976f18c63f39c17b9b82a48989d553ec58a6b3f5f",
+      "bytes": 425
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/30.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/30.command.json",
+      "sha256": "322fa3ecce25d3dd87ed9ae923e2d339c517acabbb34d63a444cdc7feec476db",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/02.command.json",
+      "sha256": "8ee089fc4186c2917d8fce478f5aaec3436e32d1b4dda35c374aa67491ef95df",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/20.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/20.command.json",
+      "sha256": "a6e6a37f8a5e2545d7f3dc441a339f67703328aded5e95096f67ac7be9e3a62b",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/49.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/49.command.json",
+      "sha256": "928aadb8fcfeb09e1c985311940bfffc4c6bbff52d5eeed6f0859f7b0764ffda",
+      "bytes": 428
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/32.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/32.command.json",
+      "sha256": "cd98d4dc748b136d6ca36f5444c4163ad4719f1b8d94c695b9b950516c14eca4",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/15.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/15.command.json",
+      "sha256": "e6fb44f4509515ac2644e114d66c772f79489604fb4d209e17528ba549360011",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/25.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/25.command.json",
+      "sha256": "1a43427aad58567c0b90ec372490a2e413f7aa644f9e6e2e0f048428f5e9dd94",
+      "bytes": 426
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/14.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/14.command.json",
+      "sha256": "7f799f5e31cde4a4da92b30d2d748216256dc5e1d53ccf832b013e3ed4bf0d25",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/19.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/19.command.json",
+      "sha256": "994cdcacfd2e29487cf088bd4e94d23529655408a5acb39e0f1c42e2cd9931e5",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/24.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/24.command.json",
+      "sha256": "1e331b6c4b359a55fd285f187c91397faf7e9a9663230108f5af5cafa8987e2f",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/51.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/51.command.json",
+      "sha256": "6f51f610b211c5ab91ca9cf8a04982c2c022149092f86d856b15bf099a63557c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/21.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/21.command.json",
+      "sha256": "3d1c979a8bf815bf79a22b43d5750e3cbea84f3226dc5aa45c0b33f427fc140a",
+      "bytes": 426
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/42.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/42.command.json",
+      "sha256": "61c16f6057ccb8d1d9892b10522688c7767febe4ee83f6fbc1880a3cb65eb7f0",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/45.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/45.command.json",
+      "sha256": "27349bbf0cd19dcb2b3be7f9eced7ca4b73f94646f9419bbfc4804a3fecf0d1e",
+      "bytes": 428
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/41.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/41.command.json",
+      "sha256": "32d8bd19b7b4bec477e9e6ded57e0deb917c458ad745d26262c3b7575c2d75d8",
+      "bytes": 427
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/44.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/44.command.json",
+      "sha256": "fc63787774fd7d69a426582b42a64253209fe91ad199812b304ed88e9560348c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/33.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/33.command.json",
+      "sha256": "fd20f8cc8cef7bd0568c20a7cd9e0257d253965846a3ddc3777c2872b6b4c0f8",
+      "bytes": 436
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/18.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/18.command.json",
+      "sha256": "63aa43f09a95517ee0852af43a14588d022aee26fc34b7d3e596826a2657faa2",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/52.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/52.command.json",
+      "sha256": "dee95e67d8be47a662d326d1caba2250b9eb0bbd1f34d759ea54af5da55c30d4",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090922885818-matrix/39.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090922885818-matrix/39.command.json",
+      "sha256": "00cc513e0956c82d2536300b6b32fc32df4b6d73deb13cd7038fdf3bfd67083c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/03.command.json",
+      "sha256": "2ee2a5fa2e79eb38c79e44ad03842c6871457a7bc2f0e4fd2074c0d61dc53105",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/04.command.json",
+      "sha256": "67595ca9c84c729cab4672fcfb950bcfd57473eb634f248271b14aeae4c937e2",
+      "bytes": 644
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/07.command.json",
+      "sha256": "7ba0b36cd3d5e4e531a6c02a44d7670943616e2e0c13b669151c22bf5fd101d5",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/10.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/10.command.json",
+      "sha256": "cef679c7c259c58ac846cd4eda6920b87e46fef6680c5d2a96c1939ac6ae26db",
+      "bytes": 648
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/08.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/08.command.json",
+      "sha256": "da598b69945dd671936bdfb80f01e460cf35c99a80996e747a7659cc039a4646",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/09.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/09.command.json",
+      "sha256": "0d33f7a408fb0c280f2d4fef08fae2d304fb102ea5927481592ec5f14ee48901",
+      "bytes": 727
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/11.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/11.command.json",
+      "sha256": "8acbfbf0a8fa2ae60b0c92d204fc4331cff1c6a30ebb67acc810b1bf4d5b94b4",
+      "bytes": 700
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/01.command.json",
+      "sha256": "7504036bfcb8bc75a93947d5a634df28439508146818c5c0c6c352177100a724",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/05.command.json",
+      "sha256": "b4817d8758d853fd0475a96d94c1889c4d707e598252ef86a80c43f7ef8be059",
+      "bytes": 652
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/06.command.json",
+      "sha256": "94ae301a35a95f6286ad79c1bd5f899040a61ab005642606c21055d491575319",
+      "bytes": 587
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084524797851-guest-build/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/02.command.json",
+      "sha256": "d1ef23a8aa4f870db307ce999ac760e03b778faa3f469e15c7d9dbafb08ceb16",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091331009726-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/03.command.json",
+      "sha256": "fa17ac153a5dce61a0a17728e1491bda9f6412db9bd6c84a8595076459b3d5ef",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091331009726-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/04.command.json",
+      "sha256": "b02050f967303b7705dc978ef29e1a78f0dd44e2e4ddae5e2a93cd3d5f27f49e",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091331009726-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/01.command.json",
+      "sha256": "634e88e6919009da7c587dbcefdb81168117948c708c38433a625b4f722b53f9",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091331009726-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/05.command.json",
+      "sha256": "671689382009d08ca65c3dc16b2409972a6f5292ca1a6da5a9c57aa2a4dbd47b",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091331009726-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/06.command.json",
+      "sha256": "61e450e19d60711c84d2274f2f47cc0773ec0b482548efcbfaac7b90d0ecab33",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091331009726-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091331009726-close/02.command.json",
+      "sha256": "b91681d0f4377303da32d4bb026650e5e2aaad5ae52851bec0a0057d7cfdae39",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091407780811-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/03.command.json",
+      "sha256": "1a8a96c909e347e310b87b65560ff2b974fdadf8c4b38e7c09ffd090ad0da137",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091407780811-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/04.command.json",
+      "sha256": "537cc3daf9460f1f41d0c4054cb9effe84b1088dbf49aead807ce653674a9ec9",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091407780811-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/01.command.json",
+      "sha256": "35644dac801edd54354422ef41974f2868bbbd50b1839a4ea63855f29088ffd0",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091407780811-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/05.command.json",
+      "sha256": "9616e3e22c124fd4104597cfef56daeac1ec5b05ad5b24afd6110970c07d3c99",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091407780811-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/06.command.json",
+      "sha256": "af18ffd25d2f445c7409a603342daaf563f0f0529fa7fbf79e7b5d4832540632",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091407780811-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091407780811-close/02.command.json",
+      "sha256": "d6d32b8999ce9aff2c68cf8848765d648b780ea7acccffde6eb45b5a101c48a7",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090810101134-step/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090810101134-step/01.command.json",
+      "sha256": "6bbd1ac4ae5eb956297b630649f33f963ccbae2b269c90ee3cf285bb6a10a464",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090810101134-step/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090810101134-step/02.command.json",
+      "sha256": "f0582aee4618a167137bafb4057da5a06d666cb5b39edbc52eafa80e159a81c1",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091347659589-show/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/03.command.json",
+      "sha256": "2d522ab88da0165a24ff58f49cb98db1e71e15a2589993df2846aa7116b8df2f",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091347659589-show/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/04.command.json",
+      "sha256": "d04d56309ed6b4ec38ba57aececb39845b622134cecc4d464b27919f950f74b6",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091347659589-show/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/01.command.json",
+      "sha256": "68878797e123faf1a1576c5d029dd2eb1bcbf875e5870ea8e34cf326b39eee70",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091347659589-show/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/05.command.json",
+      "sha256": "517b32b0a10291cfea98f4cea96f8af2a0d07b6825645248d8448c731e086047",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091347659589-show/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/06.command.json",
+      "sha256": "9ba27460453b81fa5395f8338c8d561542af193676a650cd56bd9a353953374a",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091347659589-show/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091347659589-show/02.command.json",
+      "sha256": "3cf237cad026354f72e083939adfac9368d07e41fe7e29512f63bcb4100a5850",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090907647417-configure/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/03.command.json",
+      "sha256": "c922c4146e54bc6654571684b19aab2dfe633560090b302929bc9b8884097f06",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090907647417-configure/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/04.command.json",
+      "sha256": "e43a9ff50527c5c89e3e8298dcbc66ef414fcce28967cbd2ba0d164207d59394",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090907647417-configure/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/01.command.json",
+      "sha256": "90ccaf199e101c67bff1fe22087df816997ade4eef6e2eeed444911eeb2d866d",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090907647417-configure/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/05.command.json",
+      "sha256": "6a3e898755b326982d079d3c7dc0a1a64a8870d539952b2b8d7c6808d939a151",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090907647417-configure/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090907647417-configure/02.command.json",
+      "sha256": "6d4cdf729032a14590d020a77f96385019d21a36f88a7c1e4c45cb5711054177",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090835152817-visible-post-build-unlock/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090835152817-visible-post-build-unlock/01.command.json",
+      "sha256": "5d0ccfa71a19bfe464ddfe72ed663b7527e60d674cf79a5b6f4d1872113f7a15",
+      "bytes": 369
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/03.command.json",
+      "sha256": "6e8a35af41760c8e29ff3b8c815f6f81c5b6010f841518e0fdd62ff4754508b9",
+      "bytes": 322
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/04.command.json",
+      "sha256": "ead3f0c85eb36fc1dfb1ec4a84d54ea1d2eb6c9498b5073748fb931302f9f51a",
+      "bytes": 674
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/07.command.json",
+      "sha256": "6f88db70ac2d5645c7a28b13a1f667a4a0bb388483a0e1ae3071291014352336",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/08.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/08.command.json",
+      "sha256": "8aecf66475258a8e78b4a1f9cae40a80c8ad91076a8ccfe92515aee0e3cccd69",
+      "bytes": 322
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/09.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/09.command.json",
+      "sha256": "199841a720c3f554c4e0f4ec2c043dcb876d43038deeea8cee2a33d87866c1a4",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/01.command.json",
+      "sha256": "6e128f77cdc2da838f6c28342a94cd02485c6cebfb06b61b99c71c7932042b77",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/05.command.json",
+      "sha256": "16bf5c436c33105d3aadc7970b9b9220f85c1f1813b545d2ad8bd13b2f6b5c3c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/06.command.json",
+      "sha256": "f36a481e9ffc221acc147a8a14f9fe5a4d73b67c1ed68611d4385b5d4b64b6a7",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090542840143-install/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090542840143-install/02.command.json",
+      "sha256": "ad2ab0600c9cec59976280d5036078702c9abcccd0002fb7d54858a20e6ef1f0",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091442015510-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/03.command.json",
+      "sha256": "2124b8cf022f46b28a08a7f17769718691471edf62165a5ba6bb2c6a6f7ae9d8",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091442015510-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/04.command.json",
+      "sha256": "b65980495dafcd2a39fa299e759a66e1c1187c3aa3eee56485b37fb8150f8f91",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091442015510-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/01.command.json",
+      "sha256": "77e1a109aa5990a9cdc4eec435398dc274e44ec4abf418195ab58c82367f9d74",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091442015510-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/05.command.json",
+      "sha256": "6c59584c6e955f975cc48811c69990ec70791bfe32d0ad0678ca363f868ed13c",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091442015510-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/06.command.json",
+      "sha256": "8b5a050c23626b74eda60e9d36c5d080c4c72432d7254301d27e7363ff78599f",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091442015510-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091442015510-close/02.command.json",
+      "sha256": "b5b8ef3d7c35d83e15f228db07d8cd0d4f330a1653c919d276fd426d9ab5d834",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084119705404-unlock-wake/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084119705404-unlock-wake/01.command.json",
+      "sha256": "5501d27e0a720b11c84bfa3da7c87262980d8ff356e2ba9c8a797fbaee21a1b8",
+      "bytes": 348
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090620247517-start/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/03.command.json",
+      "sha256": "a62507a88eb342f8db628379e4b519d29678becf8ebc73735490ef67e5e90d1e",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090620247517-start/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/04.command.json",
+      "sha256": "c7b6bf36d799c3759e89af82706cf4619941b5ff81d7bddc303f311052019018",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090620247517-start/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/07.command.json",
+      "sha256": "7682b6a938a5a847b0c75727a675cf7dcc1754512bc4969a480aad4ad7e5e66b",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090620247517-start/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/01.command.json",
+      "sha256": "855c60498252db13ba6555069896ec3fbcc7d7772c528201477d3ebf674782d4",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090620247517-start/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/05.command.json",
+      "sha256": "3b7f2c3a88ee30dc37a60b0527322cb16b0f143cbd43a51bef1dfb45c09bb7d7",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090620247517-start/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/06.command.json",
+      "sha256": "8f10faa08a72ef1b8d60329d889e0d134ddb9a8f153add6f6625a9dc05404310",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090620247517-start/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090620247517-start/02.command.json",
+      "sha256": "69c4c8483bb24f0879cc1644a6c9adbdcfab65c48bfe622f7e89e7784581c93f",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084452489909-unlock-password/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084452489909-unlock-password/01.command.json",
+      "sha256": "edf98f846426c57138fc021caa9dfe4f124c07bdfec377cb37720411584daff7",
+      "bytes": 357
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091308137081-show/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/03.command.json",
+      "sha256": "0dc5f19938509c950244565e6a98f3e5a843acee3185a33945aa8a2642b01c70",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091308137081-show/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/04.command.json",
+      "sha256": "630ed93bd215d56cd9cc10de186bb7890df946ffc38a697fbe5179074d5674ba",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091308137081-show/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/01.command.json",
+      "sha256": "80f53be5dbc4700d3164fcf2bac4ed089679bf380c5f52e832b2dbb50e64a742",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091308137081-show/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/05.command.json",
+      "sha256": "a49505483274d55c27e7612575709489b6a4bd427aa336795850e70c46247c9c",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091308137081-show/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/06.command.json",
+      "sha256": "d625c91fd3fceb98c93396619a6d69203e139ed613551687df0d53e7d6911841",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T091308137081-show/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T091308137081-show/02.command.json",
+      "sha256": "242494c04e21ac2e49948a07db067423918ba2ed5404002b8de1f7b29f9d4575",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084509831651-stop/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/03.command.json",
+      "sha256": "b2ff9eaf8a8dcf87769a56c0f80797976505b5cde160a2a7905d3fc697114582",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084509831651-stop/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/04.command.json",
+      "sha256": "9a187349b7ab3443d88374583f13dca3e3fc314a2dc140f644705fcd46f4d73a",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084509831651-stop/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/01.command.json",
+      "sha256": "0352ed1398a88f940ef2609049382bf957bd49ca61928519279f9699d6d54290",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084509831651-stop/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/05.command.json",
+      "sha256": "d51b1d011a497916090b06e0b3e732cc86fe12e75b9db3c5bea38b4ddfc73631",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T084509831651-stop/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084509831651-stop/02.command.json",
+      "sha256": "a7457ccc6447f89fc04677b442f401c014ac4ab6d1dce746574c947f2dae6bfa",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/16.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/16.command.json",
+      "sha256": "2e48fdb4c23970dda157dd1f7cd8a3ba908b77a3f11e5fb39df4995e5242e3c4",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/03.command.json",
+      "sha256": "32d18259e7f8b25f0864f2ba6c07a55307f30466d9b4c0ea4357285d944181ae",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/04.command.json",
+      "sha256": "144e9a9c863a0e132587ed772d43900a0cd3afd2b096d9f8252afd35ffb30250",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/07.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/07.command.json",
+      "sha256": "eb40033dae33ec8991758f25941674c4adbe97fed377e642ba1af065a5c2ef39",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/10.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/10.command.json",
+      "sha256": "4288aeeb7abfa5402073223eb49c9a38c4315c26e5acd3b9279d6370f38b1a7e",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/08.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/08.command.json",
+      "sha256": "d286b7ab795c07b38a99c13a6af90d2b0e350bb4dfc7b00b70e7a00b8aeb0742",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/09.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/09.command.json",
+      "sha256": "d570293deefd36efd69fe2a44694a52a2dfb1852cfdde3108284d3ccb840bfbf",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/11.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/11.command.json",
+      "sha256": "b7462dc7383fd80c319fa790f78155ac5ae8ae9a3439762265f6658ba35aa38c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/13.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/13.command.json",
+      "sha256": "f8a3280220552163a8419f7d28f9b676012392e035e0233870eef15ffcdc17b4",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/01.command.json",
+      "sha256": "531747499ba4b76c2009ab8d4e1db4347d728f9978e4753df3376eaa60490838",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/05.command.json",
+      "sha256": "729fbb42cac9b36fffbd1fa13f038039a74ca24dd3dedb2e6eb42afb8e236e36",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/12.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/12.command.json",
+      "sha256": "a89051481f4c72f4a660f9ab6d2f66c84a8ee33cf48fbf67f5a3d56857105e98",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/06.command.json",
+      "sha256": "1a6f96fc3daf99a8278ad6d4ea2761616ca6905da0bf1b9877771243fa09342c",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/17.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/17.command.json",
+      "sha256": "db1ae2adbfb6fdf9a69d5b3ee7d907230b1bba7b5aef7a634ca9ed4e730f5945",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/02.command.json",
+      "sha256": "98c3f4d7cec3a7237d348390238b37d073e9c203d7ad3955b73265ec934445ad",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/15.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/15.command.json",
+      "sha256": "d15f5aed265cbab7e5715348c967979d103a7045d79fe7ff8ceb1fac8fb33f8e",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/14.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/14.command.json",
+      "sha256": "f8f849ac0f514a1a165e1adac6a2391444a7f9a8c9b5e06a96b5840e09623058",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T090746739216-close/18.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T090746739216-close/18.command.json",
+      "sha256": "6874be1300ba4d31506e04d276728ec3372101cc65e1fca261c4ddeb8cc51ecf",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/03.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/03.command.json",
+      "sha256": "94a40b8d505bd9568521566f2382ecd911591515b81cce25eff01eff2a15c29e",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/04.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/04.command.json",
+      "sha256": "57db7a9b6fd8d3eb8a62b6eabeb6e175af2791268d46829cc29d83b590774c2a",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/01.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/01.command.json",
+      "sha256": "15d02e7c0879dc584f77c6ac9aa788231b3aa7f0bf211e00ced0ed9f4084c986",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/05.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/05.command.json",
+      "sha256": "44c57997d8bf98da4790324233852824d4531b614884ac8c276ace72ca92b3dd",
+      "bytes": 530
+    },
+    {
+      "path": "cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/06.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/06.command.json",
+      "sha256": "8b9e36219c2e9742751c71598151f8dd9d2b80df0b45861289a0089de11ca922",
+      "bytes": 526
+    },
+    {
+      "path": "cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/02.command.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T092024779281-post-idle-mapping-summary/02.command.json",
+      "sha256": "a5c1965295665aa3db69326b08fcbd2138a4f9f6cb5ecf94c7119cc049e91636",
+      "bytes": 526
+    },
+    {
+      "path": "cross/collectors/cross-desktop-replay.py",
+      "source": "/home/patrick/work/put.gd/work/resident-native-boundary/cross-desktop-replay.py",
+      "sha256": "3f5a4dff9e8974025cd185e4efc7aba5c59e910afcd559426ffa1c86b95c8165",
+      "bytes": 11326
+    },
+    {
+      "path": "cross/kde/run-preflighted-matrix.py",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/run-preflighted-matrix.py",
+      "sha256": "3eabbf4a48e1cdbb879a76c4ddb7b1421e7e10ad32a103bd20711251347e2cf9",
+      "bytes": 1165
+    },
+    {
+      "path": "cross/kde/collect-mapping-baselines.py",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/collect-mapping-baselines.py",
+      "sha256": "4c89e187f77c6117345e1fd5f6cf437f33db3bb75fed7542e1b8a1be6da26abf",
+      "bytes": 3107
+    },
+    {
+      "path": "cross/kde/summarize-replay.py",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/summarize-replay.py",
+      "sha256": "9e602356f6d3a406f1665321f656cdaf4b6376bd5f40848462aab7290064e55a",
+      "bytes": 5026
+    },
+    {
+      "path": "cross/kde/summary.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/summary.json",
+      "sha256": "f683d698dfaa52a7b2c26e992d82c933631d748a2e2421da17c198d7c30dabd3",
+      "bytes": 57071
+    },
+    {
+      "path": "cross/kde/views/matrix-1-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-1-final.png",
+      "sha256": "0e0a58fe398abb0329a85f98da7c16fe5a786eb1ff4d167a8a5b163acce3c79b",
+      "bytes": 84741
+    },
+    {
+      "path": "cross/kde/views/matrix-10-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-10-final.png",
+      "sha256": "1bfba4f6562cf99b6fef237c2dc746e221d1d98ba5c9a89ada140ae9d5e1371b",
+      "bytes": 77223
+    },
+    {
+      "path": "cross/kde/views/matrix-11-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-11-final.png",
+      "sha256": "1bfba4f6562cf99b6fef237c2dc746e221d1d98ba5c9a89ada140ae9d5e1371b",
+      "bytes": 77223
+    },
+    {
+      "path": "cross/kde/views/matrix-12-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-12-final.png",
+      "sha256": "1bfba4f6562cf99b6fef237c2dc746e221d1d98ba5c9a89ada140ae9d5e1371b",
+      "bytes": 77223
+    },
+    {
+      "path": "cross/kde/views/matrix-2-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-2-final.png",
+      "sha256": "e96499627356c0411a24d8b36c04a6f6c9933d004dea59c0e78c6efd1a903340",
+      "bytes": 84741
+    },
+    {
+      "path": "cross/kde/views/matrix-3-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-3-final.png",
+      "sha256": "125a429b1c553af0570f50c3022f863e10e7243d0d66ee009336b0a869a7d048",
+      "bytes": 84392
+    },
+    {
+      "path": "cross/kde/views/matrix-4-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-4-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d",
+      "bytes": 84392
+    },
+    {
+      "path": "cross/kde/views/matrix-5-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-5-final.png",
+      "sha256": "125a429b1c553af0570f50c3022f863e10e7243d0d66ee009336b0a869a7d048",
+      "bytes": 84392
+    },
+    {
+      "path": "cross/kde/views/matrix-6-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-6-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d",
+      "bytes": 84392
+    },
+    {
+      "path": "cross/kde/views/matrix-7-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-7-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d",
+      "bytes": 84392
+    },
+    {
+      "path": "cross/kde/views/matrix-8-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-8-final.png",
+      "sha256": "2548fe514f291a5ab57b02a95a7cbdd7864856281e4df8c8bb2e18f65fce224d",
+      "bytes": 84392
+    },
+    {
+      "path": "cross/kde/views/matrix-9-final.png",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/views/matrix-9-final.png",
+      "sha256": "24c9028db51ae253fe8016cc29f93adf92d088f119305810d8687f6a586eda75",
+      "bytes": 83945
+    },
+    {
+      "path": "cross/kde/matrix-pixel-review-input.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/matrix-pixel-review-input.json",
+      "sha256": "706d45c8d1692e0f2d52a1af3a1ec2c27d0a4f15a5376f916af114744ef3deba",
+      "bytes": 7147
+    },
+    {
+      "path": "cross/gnome/sdk-preflight.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/gnome/attempts/20261009T084612397519-guest-build/sdk-preflight.json",
+      "sha256": "a1270237fd36f8a722bd24921f71cf5968ab3a4a742909aea2fed4aa6b8a3a55",
+      "bytes": 114
+    },
+    {
+      "path": "cross/kde/sdk-preflight.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49-cross/kde/attempts/20261009T084524797851-guest-build/sdk-preflight.json",
+      "sha256": "a1270237fd36f8a722bd24921f71cf5968ab3a4a742909aea2fed4aa6b8a3a55",
+      "bytes": 114
+    },
+    {
+      "path": "cinnamon/post-native-memory.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/post-native-memory.json",
+      "sha256": "c7bccd91612e3e74a3dc973713cd6d80350d1a363d530b186360d35447d3ad51",
+      "bytes": 617
+    },
+    {
+      "path": "cinnamon/post-native-memory-raw.json",
+      "source": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/attempts/20261009T091403300112-post-native-memory/memory.json",
+      "sha256": "0805fc27f26f03a779b395e4901d5cdc5dc81130b953987e4447f869f33c714c",
+      "bytes": 59475
+    }
+  ],
+  "scope": "Explicit allowlist, synthetic structured records/screenshots only. Credentials, configs, profiles, databases, raw resident logs, payloads and protected VM input excluded."
+}

@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 1,
+  "evidenceClass": "standard-guest-build-and-registered-tests",
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "sourceDirty": false,
+  "route": "cmake --preset dev; cmake --build --preset dev; ctest --preset dev; cmake --preset release; cmake --build --preset release; CPack",
+  "registeredCases": [
+    {
+      "name": "kde_region_control",
+      "seconds": 9.49516,
+      "passed": true
+    },
+    {
+      "name": "native_session_guards",
+      "seconds": 0.0120406,
+      "passed": true
+    },
+    {
+      "name": "native_tray_integration",
+      "seconds": 5.98936,
+      "passed": true
+    },
+    {
+      "name": "capture_control_integration",
+      "seconds": 0.00716665,
+      "passed": true
+    },
+    {
+      "name": "capture_process_integration",
+      "seconds": 8.11228,
+      "passed": true
+    },
+    {
+      "name": "x11_core_clipboard",
+      "seconds": 18.244,
+      "passed": true
+    },
+    {
+      "name": "x11_native_snapshot",
+      "seconds": 0.0773998,
+      "passed": true
+    },
+    {
+      "name": "version_contract",
+      "seconds": 3.14767,
+      "passed": true
+    },
+    {
+      "name": "kde_ownership_integration",
+      "seconds": 5.32102,
+      "passed": true
+    },
+    {
+      "name": "image_job_integration",
+      "seconds": 3.06131,
+      "passed": true
+    },
+    {
+      "name": "ui_split_services_integration",
+      "seconds": 0.522774,
+      "passed": true
+    },
+    {
+      "name": "ui_process_integration",
+      "seconds": 13.1243,
+      "passed": true
+    },
+    {
+      "name": "ui_endpoints_integration",
+      "seconds": 0.256228,
+      "passed": true
+    },
+    {
+      "name": "ui_control_integration",
+      "seconds": 1.06534,
+      "passed": true
+    },
+    {
+      "name": "session_client_integration",
+      "seconds": 18.51,
+      "passed": true
+    },
+    {
+      "name": "version_integration",
+      "seconds": 0.0794946,
+      "passed": true
+    },
+    {
+      "name": "gui_application",
+      "seconds": 5.89049,
+      "passed": true
+    },
+    {
+      "name": "gui_tray",
+      "seconds": 0.394783,
+      "passed": true
+    },
+    {
+      "name": "gui_version",
+      "seconds": 0.034865,
+      "passed": true
+    },
+    {
+      "name": "geometry_contract",
+      "seconds": 0.008567,
+      "passed": true
+    },
+    {
+      "name": "ui_native_lifecycle_integration",
+      "seconds": 2.54467,
+      "passed": true
+    },
+    {
+      "name": "x11_isolated",
+      "seconds": 17.7411,
+      "passed": true
+    },
+    {
+      "name": "keychain_backend_integration",
+      "seconds": 0.336897,
+      "passed": true
+    },
+    {
+      "name": "keychain_integration",
+      "seconds": 0.136261,
+      "passed": true
+    },
+    {
+      "name": "collision_policy_integration",
+      "seconds": 3.21773,
+      "passed": true
+    },
+    {
+      "name": "s3_delete_integration",
+      "seconds": 3.68528,
+      "passed": true
+    },
+    {
+      "name": "s3_module_integration",
+      "seconds": 31.9467,
+      "passed": true
+    },
+    {
+      "name": "s3_integration",
+      "seconds": 2.47368,
+      "passed": true
+    },
+    {
+      "name": "public_url",
+      "seconds": 0.0151409,
+      "passed": true
+    },
+    {
+      "name": "build_contract",
+      "seconds": 0.0549249,
+      "passed": true
+    },
+    {
+      "name": "sdk_contract",
+      "seconds": 0.151345,
+      "passed": true
+    },
+    {
+      "name": "payload_contract",
+      "seconds": 0.0707147,
+      "passed": true
+    },
+    {
+      "name": "archive_contract",
+      "seconds": 0.0102731,
+      "passed": true
+    },
+    {
+      "name": "upload_naming_contract",
+      "seconds": 0.0212716,
+      "passed": true
+    },
+    {
+      "name": "history_contract",
+      "seconds": 4.18678,
+      "passed": true
+    },
+    {
+      "name": "operations_contract",
+      "seconds": 35.7259,
+      "passed": true
+    },
+    {
+      "name": "storage_contract_integration",
+      "seconds": 2.90678,
+      "passed": true
+    },
+    {
+      "name": "cli_integration",
+      "seconds": 20.0976,
+      "passed": true
+    },
+    {
+      "name": "config_reload_integration",
+      "seconds": 0.622367,
+      "passed": true
+    },
+    {
+      "name": "gnome_bridge_contract",
+      "seconds": 0.0109498,
+      "passed": true
+    },
+    {
+      "name": "gnome_core_transport_integration",
+      "seconds": 10.2216,
+      "passed": true
+    },
+    {
+      "name": "gnome_ui_ownership_contract",
+      "seconds": 0.0720062,
+      "passed": true
+    },
+    {
+      "name": "kwin_transfer_contract",
+      "seconds": 0.175765,
+      "passed": true
+    },
+    {
+      "name": "settings_contract",
+      "seconds": 2.96901,
+      "passed": true
+    },
+    {
+      "name": "gui_settings",
+      "seconds": 8.36895,
+      "passed": true
+    },
+    {
+      "name": "gui_operations_view",
+      "seconds": 0.877267,
+      "passed": true
+    },
+    {
+      "name": "gui_history_view",
+      "seconds": 3.92592,
+      "passed": true
+    },
+    {
+      "name": "login_startup_contract",
+      "seconds": 0.0117389,
+      "passed": true
+    },
+    {
+      "name": "local_ipc_contract",
+      "seconds": 12.7347,
+      "passed": true
+    },
+    {
+      "name": "ip_address_contract",
+      "seconds": 0.0334427,
+      "passed": true
+    },
+    {
+      "name": "native_region_overlay",
+      "seconds": 0.862384,
+      "passed": true
+    },
+    {
+      "name": "capture_preparation_x11",
+      "seconds": 5.3009,
+      "passed": true
+    }
+  ],
+  "passed": 52,
+  "failed": 0,
+  "registeredSkipped": 0,
+  "internalQtTestHelperSkip": "One expected S3ModuleContract::unavailableFacadeChild helper skip; optional codec tests ran.",
+  "originalJUnitSha256": "bfc2fef92fbc95ee13fe10c911992d5f61d5393be2464b828647468ecdd57509",
+  "originalRegistrySha256": "232d8572d651de83271afd2a24e554265662d651e7700b47f7c278ece65f151d",
+  "guestPackageSha256": "9491807dcb940438d0f091784b73b592f1acb96de4332de5dc8c56457fd9cacd",
+  "graphicalAcceptance": false,
+  "memoryAcceptance": false,
+  "remoteAcceptance": false,
+  "payloadOrConfigurationExported": false,
+  "exportedUtc": "2026-10-11T05:13:14.509671+00:00"
+}

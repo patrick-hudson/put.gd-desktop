@@ -119,9 +119,19 @@ spaces in paths, metadata-only inspection, and expected-revision conflict forwar
 It does not prove real compositor, GUI, provider network effects, public links or native
 clipboard behavior. The C++ service suites separately verify resident business behavior.
 
-U6's lab runner and package interfaces are implemented. Use [vm-lab.md](vm-lab.md)
-and [build.md](build.md) for the current commands. Full U9 remains gated on
-current-version real Cinnamon capture/paste evidence and the complete fresh-agent
-build/run/debug walkthrough. Earlier named walkthrough subsets do not establish
-all of those gates. [agents.md](agents.md) maps source and evidence;
-[verification.md](verification.md) records actual tests and outstanding acceptance.
+The native CLI, graphical lab runner and development-package commands are implemented.
+Use [vm-lab.md](vm-lab.md) for disposable overlays and native scenarios,
+[release.md](release.md) for existing CMake/CPack commands and pending installed
+lifecycle checks, and [agents.md](agents.md) for the source and verification map.
+An earlier [fresh-agent Cinnamon walkthrough](evidence/2026-10-08-fresh-cinnamon.json)
+exercised build/package/run/collect instructions, actual MCP/CLI local-operation
+parity and configuration-error recovery. Its local-only scope and source-identity
+limitations remain recorded; it did not exercise cloud publication or deletion.
+
+Full U9 still requires complete production-resident tool/effect coverage and a
+current-source reproducible walkthrough, including remote receipt/history/deletion
+behavior. The source55 Cinnamon live S3 check used the production CLI and GUI,
+so it does not establish MCP cloud parity. Current native and memory checkpoints
+also leave the remaining U6 display/failure cases, full compositor release gates
+and U10 release lifecycle open. [verification.md](verification.md) records the
+source-specific checks and outstanding acceptance.

@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "evidenceClass": "graphical-kvm",
+  "profile": "gnome-wayland",
+  "resident": {
+    "pid": 14107,
+    "startTicks": 237790,
+    "sha256": "9e40f493557a051172df632a4745bbe6ea0444644f5bfecf7944050682cf1f57"
+  },
+  "originalMatrixSha256": "6eb1b1f65202a3f0497d23f2d5790c4844dd5e5fe87046e6c530b662ae0cf331",
+  "cases": [
+    {
+      "client": "qt",
+      "scenario": "region",
+      "passed": true,
+      "operationId": "7f7ef656-6aa5-4d83-b90d-3543623cdcba",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 73.53528617398115,
+      "witnessSha256": "9e582a57709f97046c64fea88c8411cdf4ec93d80638ac1a5e447d3dc737efa1"
+    },
+    {
+      "client": "qt",
+      "scenario": "window",
+      "passed": true,
+      "operationId": "66732e2e-f0f2-4d53-9297-8636ef077327",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 64.43129211501218,
+      "witnessSha256": "34959cadc2d80e650084f548c69bba1391593516d058e1a2d17368150c79f655"
+    },
+    {
+      "client": "qt",
+      "scenario": "desktop",
+      "passed": true,
+      "operationId": "c709e68b-d694-4c2a-b17e-6f7b35284a85",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 64.52076386503177,
+      "witnessSha256": "c0150ee481fe099e6753c6903f5cc19c6d6f1b27b1f6a3542cc6ef81193a7d7e"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-text",
+      "passed": true,
+      "operationId": "31f52b98-1e99-4742-bedd-ea7917effb19",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 64.48165841400623,
+      "witnessSha256": "5aa4fc36bb235cba38e22c0250dbee8f5c9862185bc3a5034c310fe34969ba1f"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-image",
+      "passed": true,
+      "operationId": "e9e2e6d3-755c-460b-90c3-931c981b9d53",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 68.68764835700858,
+      "witnessSha256": "b0b163f167f6d667f9665c416f28e7489da5e629768f89739e6d30d835f8a167"
+    },
+    {
+      "client": "qt",
+      "scenario": "clipboard-files",
+      "passed": true,
+      "operationId": "4b15ea28-de8d-4f0f-813d-8cbd3a959401",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 65.23408423003275,
+      "witnessSha256": "4bc00adbb99b0fd4ee1b979b5030970961403874c8527a6be74f1e6dfdde8c73"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-escape",
+      "passed": true,
+      "operationId": "96bdb146-04ce-49e7-823e-fccc5c5d7b3b",
+      "operationState": "cancelled",
+      "copyStatus": "no_result",
+      "elapsedSeconds": 64.46563948696712,
+      "witnessSha256": "f70db694b8931d30d97e78049f7628884890803ba15edaac5fb700e6f1b5b341"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-right-click",
+      "passed": true,
+      "operationId": "ddca3646-9d39-436f-b28f-7db1f1e77373",
+      "operationState": "cancelled",
+      "copyStatus": "no_result",
+      "elapsedSeconds": 65.90649806102738,
+      "witnessSha256": "2da8fec6648634d6b8def934db26ff8f81b1c1b2744b356ed174e5d49d9540bb"
+    },
+    {
+      "client": "qt",
+      "scenario": "region-cancel-zero-area",
+      "passed": true,
+      "operationId": "86b69766-311a-4654-9438-8953c9f3c14f",
+      "operationState": "cancelled",
+      "copyStatus": "no_result",
+      "elapsedSeconds": 65.47366091702133,
+      "witnessSha256": "d41eb5fa64fffb4bf77b6175653ebcbef090a94a5c7ec33089855b93574a9113"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-text",
+      "passed": true,
+      "operationId": "6acce337-e37c-48b5-aef1-0eea55c679a9",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 72.81884816201637,
+      "witnessSha256": "9ebd1e322d4384c8d2b8cd71160ed735156905a68dc6dd1cba791deb17224885"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-image",
+      "passed": true,
+      "operationId": "a995d2b9-8b40-4a99-a1b3-873f87d9c65a",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 77.74726412101882,
+      "witnessSha256": "fae66de7409fbfac58bb1e041b67a03c31d7c7274fb9f820fd106b185c39e420"
+    },
+    {
+      "client": "gtk",
+      "scenario": "clipboard-files",
+      "passed": true,
+      "operationId": "87dbafee-5e7c-4677-8451-8fdc6c592191",
+      "operationState": "completed",
+      "copyStatus": "copied",
+      "elapsedSeconds": 72.88577097002417,
+      "witnessSha256": "550e8543268ec5192d680e37c40ed4a14e0ba7c41623b5e5614094acf53b5afe"
+    }
+  ],
+  "proceduralPassed": true,
+  "performanceEligible": false,
+  "focusedGuiAcceptance": false,
+  "memoryAcceptance": false,
+  "remoteAcceptance": false,
+  "fullProfileCertification": false,
+  "qualification": "All12 ordered original cases, actual current resident and witness hashes independently verified. Single-head native actions; focused UI, live selection and memory remain separate gates. Synthetic payloads omitted."
+}

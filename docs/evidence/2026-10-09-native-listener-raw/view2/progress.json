@@ -1,0 +1,406 @@
+{
+  "schemaVersion": 1,
+  "startedUtc": "2026-10-09T08:34:34.861301+00:00",
+  "command": [
+    "/usr/bin/python3",
+    "/home/patrick/work/put.gd/tests/performance/bench_ui_process.py",
+    "--mode",
+    "split",
+    "--app",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "--cli",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "--helper",
+    "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+    "--source-revision",
+    "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "--source-archive",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/source.tar",
+    "--fixture",
+    "/tmp/pg-nc1-cold2",
+    "--output",
+    "/tmp/pg-nc1-view2",
+    "--views",
+    "settings",
+    "history",
+    "activity",
+    "--cycles",
+    "3",
+    "--warmup-seconds",
+    "5",
+    "--visible-seconds",
+    "2",
+    "--quiet-seconds",
+    "30",
+    "--interval",
+    "5",
+    "--acceptance-receipt",
+    "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/functional.json"
+  ],
+  "workingDirectory": "/home/patrick/work/put.gd",
+  "mode": "split",
+  "scope": "isolated empty-view lifecycle",
+  "parameters": {
+    "mode": "split",
+    "app": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "cli": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+    "helper": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+    "source_revision": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "source_archive": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/source.tar",
+    "output": "/tmp/pg-nc1-view2",
+    "allow_dirty": false,
+    "acceptance_receipt": [
+      "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/functional.json"
+    ],
+    "pid": null,
+    "start_ticks": null,
+    "socket": null,
+    "label": "existing-process",
+    "seconds": 0,
+    "interval": 5.0,
+    "fixture": "/tmp/pg-nc1-cold2",
+    "cycles": 3,
+    "views": [
+      "settings",
+      "history",
+      "activity"
+    ],
+    "warmup_seconds": 5.0,
+    "visible_seconds": 2.0,
+    "quiet_seconds": 30.0,
+    "timeout": 20
+  },
+  "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "sourceRevision": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "binaries": {
+    "app": {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+      "sha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+      "version": "0.1.1-dev.49+g676f6e6d6e0b"
+    },
+    "cli": {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-cli",
+      "sha256": "f16508f551b80cbc4aa31493b5573cbba06f7c14f7a1f05aac49413fe1c5535b",
+      "version": "0.1.1-dev.49+g676f6e6d6e0b"
+    },
+    "helper": {
+      "path": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd-ui",
+      "sha256": "db4f00b54cbc8540bb8139fbba82d06a436627d0c25106710f20add92ff00d0f",
+      "version": "0.1.1-dev.49+g676f6e6d6e0b"
+    }
+  },
+  "sampleCount": 42,
+  "sampleFile": "samples.jsonl",
+  "samples": [
+    {
+      "label": "cycle-3-closed-6",
+      "elapsedSeconds": 118.30140136601403,
+      "totals": {
+        "rssBytes": 26451968,
+        "pssBytes": 17595392,
+        "privateBytes": 17006592
+      },
+      "processCount": 1,
+      "uiProcessCount": 0,
+      "escapedProcessCount": 0,
+      "sampleSeconds": 0.010054790996946394
+    }
+  ],
+  "events": [
+    {
+      "elapsedSeconds": 6.083831994968932,
+      "kind": "view-shown",
+      "cycle": 1,
+      "view": "settings",
+      "acknowledgementMilliseconds": 188.98611300392076,
+      "mappedReadyMilliseconds": 297.645814018324,
+      "mappedOwnedWindows": [
+        "0x8600006"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 0,
+        "lastExit": {},
+        "pid": 2939057,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 8.348254936980084,
+      "kind": "view-shown",
+      "cycle": 1,
+      "view": "history",
+      "acknowledgementMilliseconds": 28.507331968285143,
+      "mappedReadyMilliseconds": 140.24815894663334,
+      "mappedOwnedWindows": [
+        "0x8600006",
+        "0x8600011"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 1890,
+        "lastExit": {},
+        "pid": 2939057,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 10.613766553986352,
+      "kind": "view-shown",
+      "cycle": 1,
+      "view": "activity",
+      "acknowledgementMilliseconds": 22.53553702030331,
+      "mappedReadyMilliseconds": 128.41862899949774,
+      "mappedOwnedWindows": [
+        "0x8600006",
+        "0x8600011",
+        "0x8600017"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 2314,
+        "lastExit": {},
+        "pid": 2939057,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 13.187313581991475,
+      "kind": "all-views-closed",
+      "cycle": 1,
+      "closeMilliseconds": 127.26684001972899,
+      "helperAbsent": true,
+      "helperExitRequired": true,
+      "residentAlive": true,
+      "closeMethod": "EWMH _NET_CLOSE_WINDOW through wmctrl; no process signal"
+    },
+    {
+      "elapsedSeconds": 43.59143372398103,
+      "kind": "view-shown",
+      "cycle": 2,
+      "view": "settings",
+      "acknowledgementMilliseconds": 207.20430900109932,
+      "mappedReadyMilliseconds": 321.5214269584976,
+      "mappedOwnedWindows": [
+        "0x8600006"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 2412,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 2940055,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 45.82837377599208,
+      "kind": "view-shown",
+      "cycle": 2,
+      "view": "history",
+      "acknowledgementMilliseconds": 26.516988000366837,
+      "mappedReadyMilliseconds": 119.70217898488045,
+      "mappedOwnedWindows": [
+        "0x8600006",
+        "0x8600011"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 2412,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 2940055,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 48.114282791968435,
+      "kind": "view-shown",
+      "cycle": 2,
+      "view": "activity",
+      "acknowledgementMilliseconds": 20.377517968881875,
+      "mappedReadyMilliseconds": 124.4562859646976,
+      "mappedOwnedWindows": [
+        "0x8600006",
+        "0x8600011",
+        "0x8600017"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 2412,
+        "lastExit": {
+          "code": 0,
+          "generation": 1,
+          "status": "normal"
+        },
+        "pid": 2940055,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 50.68880646600155,
+      "kind": "all-views-closed",
+      "cycle": 2,
+      "closeMilliseconds": 140.3327330481261,
+      "helperAbsent": true,
+      "helperExitRequired": true,
+      "residentAlive": true,
+      "closeMethod": "EWMH _NET_CLOSE_WINDOW through wmctrl; no process signal"
+    },
+    {
+      "elapsedSeconds": 81.04338229302084,
+      "kind": "view-shown",
+      "cycle": 3,
+      "view": "settings",
+      "acknowledgementMilliseconds": 181.04681698605418,
+      "mappedReadyMilliseconds": 291.35680303443223,
+      "mappedOwnedWindows": [
+        "0x8600006"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 2411,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 2941065,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 83.33285352599341,
+      "kind": "view-shown",
+      "cycle": 3,
+      "view": "history",
+      "acknowledgementMilliseconds": 28.19259697571397,
+      "mappedReadyMilliseconds": 137.39393797004595,
+      "mappedOwnedWindows": [
+        "0x8600006",
+        "0x8600011"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 2410,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 2941065,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 85.59757752896985,
+      "kind": "view-shown",
+      "cycle": 3,
+      "view": "activity",
+      "acknowledgementMilliseconds": 19.356964039616287,
+      "mappedReadyMilliseconds": 127.12129100691527,
+      "mappedOwnedWindows": [
+        "0x8600006",
+        "0x8600011",
+        "0x8600017"
+      ],
+      "acknowledgementIsShown": true,
+      "ui": {
+        "checkpointBytes": 2410,
+        "lastExit": {
+          "code": 0,
+          "generation": 2,
+          "status": "normal"
+        },
+        "pid": 2941065,
+        "state": "ready"
+      }
+    },
+    {
+      "elapsedSeconds": 88.19640335498843,
+      "kind": "all-views-closed",
+      "cycle": 3,
+      "closeMilliseconds": 151.9382299738936,
+      "helperAbsent": true,
+      "helperExitRequired": true,
+      "residentAlive": true,
+      "closeMethod": "EWMH _NET_CLOSE_WINDOW through wmctrl; no process signal"
+    }
+  ],
+  "status": "starting",
+  "passed": false,
+  "acceptanceReceipts": [
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/functional.json",
+      "sha256": "27ccc56dea5ce41f752cfa231b7a3881c97f7b8f9924124a6fee09710d49e7af"
+    }
+  ],
+  "limitations": [
+    "Summed RSS double-counts pages shared between processes; compare total PSS and private memory as well.",
+    "Shared desktop services outside the resident descendant tree are not charged as separate processes.",
+    "Sequential /proc snapshots are not atomic; a descendant born and exited between samples can be missed.",
+    "This is a sampled memory diagnostic, not a leak proof, rendered tray proof, CPU budget or cold-idle acceptance."
+  ],
+  "environment": {
+    "kernel": "6.14.0-37-generic",
+    "machine": "x86_64",
+    "python": "3.12.3",
+    "desktop": "X-Cinnamon",
+    "session": "x11",
+    "packages": [
+      "cinnamon 6.6.4+zena",
+      "gnome-shell ",
+      "libc6 2.39-0ubuntu8.9",
+      "libc6 2.39-0ubuntu8.9",
+      "libqt6core6 ",
+      "libqt6core6t64 6.4.2+dfsg-21.1build5",
+      "libqt6widgets6 ",
+      "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+      "muffin 6.6.1+zena"
+    ],
+    "cpu": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+    "logicalCpus": 16,
+    "virtualization": "none"
+  },
+  "sourceArchive": {
+    "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/source.tar",
+    "sha256": "3128b686e497869311f2ba45ce157ae93e8aededbe1fc5524c966e842068f306"
+  },
+  "fixture": {
+    "fixtureName": "pg-nc1-cold2",
+    "resultsSha256": "804fc8ee2dc496b3fac8e76b072cf0a2a11cd70a4b73af2125164ee669183a82",
+    "configSha256": "ea990a7207faeec49c8878a4b31b267adb75e63078239ab31b9b19b61ff43778",
+    "idleAppSha256": "2738818e8b7906f681c8d55a432ffb3c32e8883b7ff2fbd3d85c75857cd180b2",
+    "idlePeakSampledRssBytes": 25747456
+  },
+  "dependencies": {
+    "bench_views.py": "09d030642715ef9cec1070261ce334f4dd30492ab01b5d9bcc9be8485bbe333a",
+    "observe_idle.py": "33fab955eb36d617ee0a2fd5de67cf0a54aab0994a3dccb3f70dac5111398efe"
+  },
+  "residentIdentity": {
+    "pid": 2938930,
+    "startTicks": 30800731,
+    "uid": 1000,
+    "executable": "/home/patrick/.codex/worktrees/resident-native-boundary/put.gd/build/release/putgd",
+    "device": 66306,
+    "inode": 28083062
+  },
+  "residentBuild": {
+    "baseVersion": "0.1.1",
+    "commitCount": 49,
+    "dirty": false,
+    "gitCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+    "gitTree": "6c2e1e1583173a48ff393009b18fabe02428eed2",
+    "packageVersion": "0.1.1~dev.49+g676f6e6d6e0b",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.49+g676f6e6d6e0b"
+  },
+  "progressIncludesLatestSampleOnly": true
+}

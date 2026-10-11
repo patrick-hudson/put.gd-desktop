@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T08:40:13.039240+00:00",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "passed": true,
+  "functionalPassed": true,
+  "memoryPassed": true,
+  "latencyPassed": false,
+  "integrationApproved": false,
+  "releaseApproved": false,
+  "scope": "Authorizes current-source GNOME/KDE regression testing after the two prerequisites explicitly approved in the fixed optimization spec. Does not accept capture latency or integrate the candidate.",
+  "receipts": [
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/functional.json",
+      "sha256": "27ccc56dea5ce41f752cfa231b7a3881c97f7b8f9924124a6fee09710d49e7af"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/memory-result.json",
+      "sha256": "26085f3fd977e604faf55732387daaeaa7075a7cba17c6a0d90ce347131fe136"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/memory-decision2.json",
+      "sha256": "8d33692c146b2c987df9f61b3ee999449100e78a98d155a0298c19ee8a72193f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/resident-native-boundary/physical-c49/latency-control-comparison.json",
+      "sha256": "7b8129b5f5b984ba23eadc405e77a20147ef74b5ee27806aef54cbd6693f7168"
+    }
+  ]
+}

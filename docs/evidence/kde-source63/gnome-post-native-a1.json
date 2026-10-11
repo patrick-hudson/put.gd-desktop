@@ -1,0 +1,61 @@
+{
+  "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+  "sourceCount": 63,
+  "version": "0.1.1-dev.63+g050b702c6a6d",
+  "guest": "gnome",
+  "workload": "Populated local-native12, settings and native folder chooser, local History preview, Activity independent parent/item paste, tray, live-background clock/cursor and separate normal cancellation; remote workflows excluded",
+  "parameters": {
+    "warmupSeconds": 5,
+    "primarySeconds": 300,
+    "intervalSeconds": 5,
+    "requiredSamples": 61,
+    "maximumGapSeconds": 7.5,
+    "appLaunched": false,
+    "guiInput": false,
+    "clipboardAcquired": false
+  },
+  "system": {
+    "kernel": "7.0.0-38-generic",
+    "machine": "x86_64",
+    "logicalCpus": 2,
+    "clockTicksPerSecond": 100
+  },
+  "primaryStartedUtc": "2026-10-11T13:16:04.878971+00:00",
+  "finishedUtc": "2026-10-11T13:21:05.221564+00:00",
+  "resident": {
+    "pid": 14107,
+    "startTicks": 237790,
+    "uid": 1000,
+    "executable": "/usr/bin/putgd",
+    "device": 64770,
+    "inode": 1060325,
+    "sha256": "9e40f493557a051172df632a4745bbe6ea0444644f5bfecf7944050682cf1f57"
+  },
+  "evaluation": {
+    "postNativePeakRssBytes": 34402304,
+    "peakPssBytes": 23319552,
+    "peakPrivateBytes": 22302720,
+    "idleCpuPercentOneCore": 0.03999955982244391,
+    "measurementValid": 1,
+    "localNativePassed": 1,
+    "normalHelperExitPassed": 1,
+    "sourceCommit": "050b702c6a6da5c945ea8b4e138dee50e6fdbd83",
+    "remoteHistoryProven": false,
+    "fullNativeParityAccepted": false,
+    "samples": 61,
+    "spanSeconds": 300.0033013680004,
+    "maximumGapSeconds": 5.067206823998276
+  },
+  "originalResultSha256": "08013cdcd7438edfe49b27626d51fa0485d84354a2e0c43656d263c74e9bf2be",
+  "originalSamplesSha256": "87d3fcacc65d313bcebcdcebc4a862df7dddbd43a2fc1acf66510c80f62b638b",
+  "trackedSamples": "docs/evidence/kde-source63/gnome-post-native-a1.samples.jsonl",
+  "trackedSamplesSha256": "87d3fcacc65d313bcebcdcebc4a862df7dddbd43a2fc1acf66510c80f62b638b",
+  "originalSmapsSha256": "992cb19f3265c8cb2c3c8195b0120c98a7f6dfe000e06e924d89fcb140770abb",
+  "samplerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+  "observerSha256": "c792f1145ed1eccc92d68085f251e4f7a6e258a24fa462d779997bf6dfeabf97",
+  "confirmationPending": true,
+  "remoteHistoryProven": false,
+  "fullNativeParityAccepted": false,
+  "secretPayloadConfigAndRawSmapsExported": false,
+  "cpuFormula": "(last.familyCpuTicks-first.familyCpuTicks)/clockTicksPerSecond/spanSeconds*100"
+}

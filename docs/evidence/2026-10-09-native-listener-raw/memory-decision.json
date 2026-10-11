@@ -1,0 +1,17 @@
+{
+  "eligible": false,
+  "next_measurement": "none",
+  "target_reached": false,
+  "improved_objectives": [],
+  "violated_objectives": [
+    "functionalPassed",
+    "normalHelperExitPassed",
+    "closedPssBytes",
+    "peakOpenPssBytes"
+  ],
+  "comparisons": {},
+  "primary_delta": null,
+  "rank_score": 0,
+  "decision": "degenerate",
+  "reason": "degenerate gate failed: functionalPassed, normalHelperExitPassed, closedPssBytes, peakOpenPssBytes"
+}

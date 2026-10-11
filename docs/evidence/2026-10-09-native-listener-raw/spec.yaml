@@ -1,0 +1,168 @@
+{
+  "name": "resident-native-boundary",
+  "description": "Reduce combined idle listener/tray whole-family memory by deferring graphical initialization, preserving all functionality and native on-demand UI.",
+  "metric": {
+    "primary": {
+      "type": "hard",
+      "name": "closedRssBytes",
+      "direction": "minimize",
+      "target": 41943040
+    },
+    "degenerate_gates": [
+      {
+        "name": "functionalPassed",
+        "check": "== 1"
+      },
+      {
+        "name": "normalHelperExitPassed",
+        "check": "== 1"
+      },
+      {
+        "name": "closedPssBytes",
+        "check": "<= 30408704"
+      },
+      {
+        "name": "peakOpenPssBytes",
+        "check": "<= 62914560"
+      }
+    ]
+  },
+  "measurement": {
+    "command": "python3 work/view-startup-latency/evaluate.py --result RUN_1/results.json --result RUN_2/results.json",
+    "timeout_seconds": 30,
+    "working_directory": ".",
+    "output_format": "json",
+    "stability": {
+      "mode": "stable",
+      "noise_threshold": 1048576,
+      "comparison": {
+        "method": "absolute"
+      }
+    },
+    "evaluatorSha256": "64145d8ab6036195dc290a9b99abe0201f1f2b7deda16618b8f5fbdcae8cda72",
+    "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "validation": "Two passed current source45 physical three-view runs; normal helper exits and memory aggregation verified"
+  },
+  "scope": {
+    "mutable": [
+      "src/main.cpp",
+      "src/ui/TrayController.cpp",
+      "src/ui/TrayController.h",
+      "src/platform/",
+      "src/app/UiProcessController.cpp",
+      "src/app/UiProcessController.h",
+      "src/app/LocalIpc.cpp",
+      "src/app/LocalIpc.h",
+      "src/cli/main.cpp",
+      "src/ui/main.cpp",
+      "CMakeLists.txt",
+      "tests/",
+      "docs/"
+    ],
+    "immutable": [
+      "src/storage/",
+      "src/secrets/",
+      "src/core/StorageProvider.h",
+      "credentials.txt"
+    ]
+  },
+  "execution": {
+    "mode": "serial",
+    "backend": "worktree",
+    "max_concurrent": 1
+  },
+  "dependencies": {
+    "approved": []
+  },
+  "constraints": [
+    "Cinnamon build, functional and memory gates first. Fix/reject failures before building/testing GNOME or KDE. After Cinnamon passes, sibling gates may run in parallel.",
+    "Preserve resident tray, all tray menu actions/notifications/late-host registration, native fonts/dialogs and the existing on-demand Qt Widgets views.",
+    "Preserve all capture/clipboard/shortcuts, live transparent region background, history/configuration/secrets, CLI/MCP authorization and ongoing-operation behavior.",
+    "No new packages/cloud machines or separate model dollar cap; ordinary model cost unavailable.",
+    "No permanent hidden graphical helper; count the whole family, RSS/PSS/private separately.",
+    "Several compatible changes may be combined; save standalone versus integrated pairings, never sum deltas from different baselines.",
+    "Keep existing native Unix IPC unless independent attribution justifies a change; preserve its bounded ownership/build/epoch checks.",
+    "Next executable locating gate is native StatusNotifier/menu compatibility and memory on actual Cinnamon. Bare Core locator is not product parity.",
+    "Final kept candidate needs two independent frozen cold measurements plus native functionality and post-use/lifecycle checks; real guest output remains VNC visible.",
+    "Both confirmed closed-family RSS and a five-minute cold peak must meet 40 MiB; cold CPU <0.5% of one core. Keep only measured >1MiB whole-family saving. Native tray/menu and full four-action acceptance are separate mandatory keep gates."
+  ],
+  "stopping": {
+    "max_iterations": 2,
+    "max_hours": 4,
+    "target_reached": true
+  },
+  "reference": {
+    "commit": "9d142919e5e6365227a4424212380e92f85285fe",
+    "currentHead": "c01cbe7140db1b5b9a20388acd399864798ccf13",
+    "reuseReason": "Two later commits change documentation/workflow utility only; no product runtime or build source differs. Measured source45 binaries retain original identity.",
+    "baselineReceipt": "docs/evidence/2026-10-09-cold-reference45.json",
+    "baselineSha256": "e8d2fc602162b61e5b40f6eb097ae81ce299cf010ef4766f09a507817f96c816",
+    "locatorReceipt": "docs/evidence/2026-10-09-native-initialization.json",
+    "locatorSha256": "a5cada0c607fb509a4f70238ad95e64604da9286e033c69c3fa414953ed5429f",
+    "closedFamilyBaselineMetrics": {
+      "settingsReopenMilliseconds": 332.5024600198958,
+      "closedRssBytes": 47814656.0,
+      "closedPssBytes": 27087360.0,
+      "peakOpenPssBytes": 58215424,
+      "functionalPassed": 1,
+      "normalHelperExitPassed": 1,
+      "reopenSamples": [
+        339.5424230257049,
+        325.4624970140867,
+        344.9719980126247,
+        284.36045098351315
+      ],
+      "inputs": [
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-1/results.json",
+          "sha256": "5afaa13023f18da323e92faeb26129a87d3587129c5454996390cab664e889c3",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        },
+        {
+          "path": "/home/patrick/work/put.gd/work/view-startup-latency/c46/reference-2/results.json",
+          "sha256": "652b1ae4d55c747f91f0c36d3b6a8c065546107fc8c9efbf00d79c09b4b50e92",
+          "binaries": {
+            "app": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd",
+              "sha256": "b03b97ec448bb9aa4c2b9411fc1e6139f7d8e79816ae23dddb5327e903c0985a",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "cli": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-cli",
+              "sha256": "82926d3e34fae5f52c1385ffdb3377862cc5f3019d2f9ddfc936f1081f140582",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            },
+            "helper": {
+              "path": "/home/patrick/work/put.gd/work/view-startup-latency/reference45/source/build/release/putgd-ui",
+              "sha256": "5c38cd2518eab57d83ed59dce0067ee9c8dc8cc3d518ff43529ac3f4008749b1",
+              "version": "0.1.1-dev.45+g9d142919e5e6"
+            }
+          },
+          "sourceRevision": "9d142919e5e6365227a4424212380e92f85285fe"
+        }
+      ],
+      "limits": [
+        "Mapped readiness includes observer overhead; no p95 or paint certification.",
+        "functionalPassed reports workload success only; current-source native receipts must be verified separately."
+      ]
+    }
+  },
+  "phase": "CP-1 assembled; approval pending"
+}

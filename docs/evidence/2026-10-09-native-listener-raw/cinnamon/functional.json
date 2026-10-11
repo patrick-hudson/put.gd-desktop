@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "utc": "2026-10-09T08:21:10.327043+00:00",
+  "sourceCommit": "676f6e6d6e0b026dcdd1b4ef2ae7dabc8a29ded3",
+  "passed": true,
+  "casesPassed": 12,
+  "scope": "Single-head Cinnamon native four-action Qt/GTK paste and region cancellation; actual tray Activity/menu Settings/History and normal GUI helper exits; CLI/MCP contract. Does not certify mixed-DPI, remote storage or complete release.",
+  "visualReview": "Root inspected current-source native tray menu and rendered Settings/Activity/populated History screenshots. Synthetic payload geometry/hash/paste witnesses independently verified by lab runner.",
+  "receipts": [
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/matrix.json",
+      "sha256": "aed24b6e99295a51635e038feb55b844fcd72e72941d85662513b5230fc59721"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/start.json",
+      "sha256": "f8823d0459e3bcf4530d90cb874f3d1801da5d105d31bf41103b14fb9b137e0d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/capture-helper-install.json",
+      "sha256": "7dae7a22fe497e8429e1194885fe46f448768533402cfd00c25fd8a24ec01a9d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/host/build.json",
+      "sha256": "ccdd7d35e719a39466407a408f5de99a45b6a77314478e8320c13d46ca7206fc"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/resident-native-boundary/fix-validation/c49-mcp/result.json",
+      "sha256": "64497697296cc45b00b43725e3c7143e0a4042ef87f9e7484cb2e2e89e94b151"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/attempts/20261009T081309697252-close/closed.json",
+      "sha256": "9f4b20b29c867cab220dbe64e99a0acc0580855ef5ea72c8850058d8afccdf63"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/attempts/20261009T081616191283-close/closed.json",
+      "sha256": "965fab864b5268db2e4a02d563039e87e5159c40210e2250440b7ba3841975d6"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/attempts/20261009T081725033178-close/closed.json",
+      "sha256": "2595ecd87eee420ec1a0f83bed2ba5497889e3add5c25178f62d77644a527d6f"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/attempts/20261009T082031996118-close/closed.json",
+      "sha256": "41e4754ed6acf7ea0f7c37bfc6232a49c7356d20a13b8f1ce6365d7e592e00ae"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/native-tray-menu.json",
+      "sha256": "2573a3e0a692579fc2e25f015e0e180fbc7459df3787b6fd8bce34d13e9a510d"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/native-context-menu.json",
+      "sha256": "bf04842fb95f46d4786f1d81e7c1829c5ae65d4b525af81980155252dfe448c2"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/settings-from-context-menu.json",
+      "sha256": "d0bbeb3a9e63090390c4cf2441942aa508c23e6b45619e1b1311f908340882ac"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/work/ui-refinement/native-replay/nativecore-exp001-c49/cinnamon/views/history-from-context-menu.json",
+      "sha256": "c11b18f1efc822566493969e40f4dec81fe3aa126b4179445e9f031559ede159"
+    }
+  ]
+}

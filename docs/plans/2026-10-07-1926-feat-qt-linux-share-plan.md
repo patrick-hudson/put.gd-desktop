@@ -1328,3 +1328,308 @@ packaging-only public directory umask, retain private source/artifact roots,
 and verify original versus corrected package payloads. Preserve failed builds
 and original package receipts. Guest memory attribution starts only after
 current native acceptance and exact fixture/helper cleanup.
+
+
+The clean native-listener candidate `676f6e6` reached the physical Cinnamon
+40 MiB memory target in two independent cold/closed measurement pairs: cold
+24.676/24.555 MiB peak RSS, closed family 25.229 MiB median RSS versus 45.600 MiB
+reference. Native fonts/dialogs, tray and on-demand views are preserved. Source49
+passed host contracts and twelve visible native Cinnamon cases. This experimental
+branch is not integrated: region selector mapping/painting regressed by about
+100 ms median and both the candidate and matched original control miss the
+150 ms timing gate. Current-source GNOME/KDE each passed twelve native cases and normal view
+helper exit. Post-use VM RSS/PSS was 60.219/34.001 MiB GNOME and 138.559/36.995 MiB
+KDE, compared with 28.520/18.383 MiB Cinnamon. Their graphical fallback is unchanged;
+a Wayland 40 MiB RSS result remains unachieved. These VM observations are separate
+from the physical target and have no matched old-guest baseline. See
+[native-listener replay](../testing-native-listener.md) and
+[structured evidence](../evidence/2026-10-09-native-listener.json). Retain this
+memory result while fixing capture responsiveness; do not weaken its timing gate
+or infer a Wayland 40 MiB win from Cinnamon.
+
+
+Native view inspection also found a remaining polish task: Activity's narrow
+Details column elides size/status text. Refine that presentation with readable
+column allocation or an accessible selected-item detail view, preserving the
+MiB/GiB display and full tooltip explanations. Clean painting and native helper
+lifecycle checks establish functionality, not completed visual design.
+
+The source63 KDE Settings inspection also found that the header still says
+“Saved settings are active” while a notification checkbox has an unsaved draft.
+The next visual pass should distinguish unsaved changes from the active saved
+configuration, with clear state after Cancel, Save, and Reload. Verify the draft
+and persisted document separately; a successful save must keep its visible
+feedback. This wording refinement does not substitute for those functional checks
+or authorize changing the frozen memory workload.
+
+### Independent desktop memory acceptance (2026-10-09)
+
+User-directed: retain the passing Cinnamon memory changes if GNOME or KDE misses
+its memory target. Treat each desktop's measurements and remaining work
+separately; a Wayland memory miss does not trigger a Cinnamon rollback. Improve
+GNOME first, then KDE, while preserving the passing Cinnamon behavior and
+measurements. Feature regressions still require correction before that desktop
+can be accepted. Keep cold, post-view, post-capture and post-upload workloads
+distinct, and record each build identity and whole-family RSS/PSS/private memory.
+Do not promote a Cinnamon result into GNOME or KDE acceptance.
+
+The approved GNOME experiment changes only GNOME startup routing and its bridge
+constructor, preserving Cinnamon's environment guard and capture implementation.
+Rebuild and test Cinnamon to detect shared-startup regressions; do not refactor
+its implementation while optimizing GNOME. The verified source55 GNOME
+post-local-native baseline is 65.527 MiB peak RSS, 38.920 MiB PSS and 35.348 MiB
+private over 61 samples/300 seconds. This is a populated VM observation, with
+remote-history acceptance pending; it establishes neither cold nor full-parity
+acceptance. The experiment retains native on-demand settings/history fonts and
+folder dialogs and tests the existing native tray on GNOME.
+
+Candidate `578f6c29` (version `0.1.1-dev.56`) passed the unchanged Cinnamon
+regression workload: twelve native cases, 117.6 ms region-selection p95,
+24.6 MiB cold peak RSS over 300 seconds, and 25.1 MiB worst settled RSS after
+closing views. Native dialogs/fonts and transparent live region selection were
+verified; all three view-helper generations exited normally. This one-pair
+regression confirms preservation of the already passing Cinnamon implementation.
+GNOME memory is still unmeasured, and review found a GNOME Qt-argument routing
+regression that must be corrected before retaining its candidate. See the
+[bounded regression record](../evidence/2026-10-10-gnome-candidate-cinnamon-regression.json).
+
+Live S3 provider testing now passes against the isolated synthetic root object:
+upload, unsigned public URL byte comparison and guarded deletion succeeded.
+Ordinary fresh root-name HEAD returns missing as required for collision checks.
+The actual source55 Cinnamon resident also uploaded one native synthetic text
+item, passed unsigned public-byte verification, and copied its actual URL into
+the independent native receiver. The operation and History receipt identities
+match. Actual History Copy link also passes after a verified clipboard reset;
+the selected test object was guardedly removed, its History entry shows Removed,
+and the original configuration was restored. The view helper exited normally
+and the owned test fixture was stopped. A single post-cloud diagnostic measured
+49.14 MiB RSS; this is not the frozen memory acceptance workload, and post-upload
+memory remains an open gate. The test resident then exited normally, with its
+exact process generation and session socket absent. Credentials remained local
+and session-only throughout; no memory-zeroization claim is made. Follow
+[the repeatable live S3 procedure](../testing-live-s3.md) with fresh synthetic IDs.
+
+
+### Current GNOME boundary checkpoint (2026-10-10)
+
+The corrected isolated candidate is `2a02118ffc7bc` / version
+`0.1.1-dev.57+g2a02118ffc7b`. Its GNOME Core route preserves Qt GUI argument
+parsing by falling back to QApplication when graphical or unknown arguments
+are supplied. Cinnamon implementation remains unchanged.
+
+Current-source57 Cinnamon regression passed the twelve native cases, native
+tray/dialog/font and clipboard checks, live region selection, and normal view
+helper teardown. Physical region-selection p95 was 113.6 ms; the 300-second
+cold run peaked at 24.62 MiB RSS, and settled closed-view RSS was at most
+25.19 MiB. A separate unchanged-workload supplement verifies all three normal
+helper exits. These are the existing cold/view regression workloads, not
+post-upload acceptance; preserve the separate 49.14 MiB source55 post-cloud
+diagnostic and its open gate.
+
+Source56 GNOME passed all fifty registered guest tests and the twelve native
+capture/clipboard cases. Root also verified the native tray, production
+notification delivery in GNOME's notification center, native fonts/folder
+dialog, live background and crosshair, fresh independent parent/file Activity
+pastes, and normal helper exits. The transient notification banner was not
+observed. This is local-native diagnostic evidence with remote History
+link-copy still pending; source56 remains a locating candidate because its Qt
+argument regression is corrected only in source57. The unchanged 300-second
+locating run measured 63.01 MiB RSS, against the 65.53 MiB reference, and missed
+the target. A bounded process-environment check proved that the lab-launched
+resident lacked WAYLAND_DISPLAY and therefore used QApplication: these native
+checks prove the graphical fallback, not the intended Core route.
+
+Read-only user-manager environment provenance confirms that it publishes
+wayland-0 and its owned native socket; the lab copied an earlier compositor
+environment. GNOME-only test-launch discovery now uses that verified client
+environment, preserving the product guard and Cinnamon implementation. Clean
+source57 passed all fifty registered guest tests, installed normally and
+actually selected the Core route. Its initial 26.72 MiB RSS snapshot is not
+memory acceptance. Its current-version local-native capture/clipboard, tray,
+notification, native dialog, live selector, Activity and normal-exit gates passed.
+Both 300-second post-use runs passed at 32.77 MiB peak RSS, with worst CPU
+0.0334% of one core. The user-approved 30-minute extension completed the fresh
+empty-profile cold confirmation at 26.95 MiB peak RSS and 0.0067% of one core,
+with 61 valid samples over 300.000 seconds. Independent numeric/lifecycle review
+confirmed normal shutdown and the unchanged populated profile. Source57 is kept
+in its clean isolated checkout for this scoped GNOME VM memory experiment;
+main integration and remote History link-copy remain pending. Cinnamon's
+implementation remains unchanged. The two orchestration failures before sampling
+are preserved and documented rather than counted as observations.
+Follow [the repeatable GNOME procedure](../testing-gnome-memory.md). The corrected
+discovery currently lives in the pinned run adapter; incorporate it into the
+repository lab runner with focused contracts before claiming clean-checkout replay.
+
+Keep deterministic parameters, source/build/process identities, all failed
+attempts and structured logs. Fix only the specific test-input problem when
+an owned fixture fails its privacy checks; do not weaken application, clipboard
+or timing oracles. GNOME work precedes KDE, and neither desktop inherits
+Cinnamon acceptance. The complete native, remote, geometry, visual, MCP and
+release gates in this plan remain required.
+
+### KDE memory baseline follows the checkpoints (2026-10-10)
+
+User-directed: proceed to KDE while preserving the accepted Cinnamon and GNOME
+memory work. Use unchanged source57 for the baseline, then isolate any KDE
+implementation candidate. New candidates still pass Cinnamon functional and
+memory checks first; shared startup changes also require GNOME regression.
+
+KDE's standard development/release builds and package completed against its
+distro Qt. All 49 registered tests passed. The exact registry matches the
+source57 host; GNOME has one additional optional GJS ownership test. Preserve
+the rejected cross-distro count assumption and original successful JUnit rather
+than rebuilding to satisfy a number. The package is installed and the live
+resident matches source57. All twelve native Qt/GTK capture and clipboard cases
+passed on KDE's single-head Wayland session. Focused tray, native folder-dialog,
+production notification, live background, Activity copies and normal helper exits
+passed. Actual cursor alpha proves the complete native crosshair; the installed
+QEMU's legacy VNC mask loses its partially transparent pixels, so full crosshair
+visibility on the display wall remains a documented infrastructure limitation.
+The five-minute KDE baseline passed measurement integrity at 139.42 MiB peak RSS,
+33.96 MiB PSS, 21.15 MiB private memory and 0.0667% CPU of one core. All 61
+samples covered 299.958 seconds, with no live UI/helper and constant RSS.
+The 40 MiB RSS target remains unmet; current cold memory was not measured.
+At this baseline checkpoint, no KDE optimization candidate had been built.
+Historical KDE memory figures are not this baseline. These local checks do not establish remote History behavior,
+multi-item Activity subset copy or the full geometry profile.
+
+Follow [the KDE measurement procedure](../testing-kde-memory.md). Preserve
+native dialogs/fonts, tray/menu, live transparent selection, focus/output
+guards and normal helper exits. Attribute cold and post-use RSS/PSS/private
+memory outside scored sampling windows before choosing changes. Record actual
+baseline and experiment evidence separately; a KDE memory miss does not undo
+the passing sibling desktops.
+
+
+### KDE memory experiment ordering — approved 2026-10-10
+
+Optimize and iterate on KDE first. Establish a satisfactory KDE candidate using
+its functional and memory checks before starting both Cinnamon and GNOME
+regressions. Both regressions remain required before accepting the candidate.
+Do not run the full three-desktop matrix after every small KDE change. Retain
+the accepted Cinnamon/GNOME routes and existing frozen measurement gates.
+
+
+### KDE generic-image parity and next candidate — approved 2026-10-10
+
+Source60's limited native diagnostic reached 40.195 MiB RSS after text, window,
+desktop and Escape checks; this remains above the 40 MiB target and is not the
+full acceptance workload. A distro Qt probe also exposed a reachable abort when
+font-bearing SVG is decoded inside the Core resident. Preserve that failure;
+all previously supported formats remain part of feature parity.
+
+The user approved one further combined candidate and six additional hours:
+use a temporary windowless image-job mode in the existing Qt view helper for
+generic codecs/font services, retaining direct PNG paths, native dialogs/fonts
+and normal helper cleanup. Combine this with a guarded KDE-only full-output
+frame-sharing path; shared Cinnamon/GNOME composition remains unchanged.
+Record clean versioned source, host integration checks, actual SVG clipboard
+and regular-file preview evidence, then KDE functional/memory confirmation.
+Run both exact-candidate sibling regressions only after KDE is satisfactory.
+This approval does not establish a passing candidate or memory result.
+
+
+### Combined KDE memory target — clarified 2026-10-10
+
+The target applies to cumulative changes. Each change need not independently
+reach 40 MiB; evaluate the complete candidate against the original source57
+baseline while preserving all functional, idle-CPU and memory gates. The user
+approved one fourth KDE-only allocator candidate within the existing ten-hour
+limit and unchanged deadline. Its clean checkpoint is source63, version
+`0.1.1-dev.63+g050b702c6a6d`.
+
+The fourth candidate combines the Core listener/tray, transient region/image
+helpers, explicit PNG paths and frame sharing with a fixed glibc allocation
+threshold. A diagnostic after selected real capture/clipboard/SVG checks reached
+29.813 MiB RSS. This is a promising snapshot, not acceptance. Complete KDE
+native/UI and repeated cold/post-use checks, then current-candidate Cinnamon
+and GNOME regressions. Preserve the passing sibling routes and every failed
+attempt. Remote-storage/history and full declared desktop gates remain separate
+until verified on the current version. See [the KDE procedure](../testing-kde-memory.md).
+
+
+### Current63 regression checkpoint — 2026-10-11
+
+The user approved a two-hour extension for existing regression tests through
+2026-10-11 05:28 UTC. This adds no optimization candidates, dependencies or
+desktop-setting changes. The cumulative KDE candidate passed its local native
+and focused GUI gates, two post-use five-minute windows at 30.051 MiB peak RSS,
+and a fresh cold window at 27.914 MiB. The matched source57 post-use baseline was
+139.422 MiB. These are integrated results, not allocator-only contributions.
+
+Current63 Cinnamon passed twelve native Qt/GTK cases and focused tray,
+settings, native fonts/folder chooser, local History, Activity independent
+clipboard paste and live selector checks. Physical capture timing passed at
+121.273 ms p95, with all 35 operations cancelled without results. The physical
+cold five-minute run peaked at 24.762 MiB; three original closed-view cycles
+settled at 25.004–25.293 MiB RSS. A separate unchanged-workload supplement
+verified normal GUI exit generations 1, 2 and 3. The original and supplemental
+runs remain separate because the supplement adds three read-only queries.
+
+Current63 GNOME regressions are the remaining local acceptance gate. Preserve
+the passing Cinnamon implementation, and park completed unused lab VMs normally
+before resuming GNOME. Keep VNC output visible. Verify the current package against the guest before
+installation; if distro package names differ, build the same source commit with
+the guest’s standard CMake/Ninja toolchain and official SDK. Do not force-install
+or rewrite package dependencies. The source63 GNOME host-package reuse attempt
+was rejected after an actual dependency check; its normal guest build is running. Remote S3/history and full U9
+acceptance remain pending; local memory results do not satisfy those gates.
+The content-free samples and reproducible checks are recorded in
+[the source63 evidence](../evidence/kde-source63/reproduction.md).
+
+### Current GNOME regression checkpoint — 2026-10-11
+
+The exact source63 guest build and all52 registered tests passed using the normal
+CMake presets, Ninja and CPack. All12 native Qt/GTK action cases passed on the
+current resident, and the synthetic fixtures drained normally. Settings Cancel
+preserved the entire configuration and revisions; Save changed only the intended
+notification setting; Reload matched the saved document and revisions; the final
+restore returned the entire original configuration. These checks do not establish
+the remaining focused History/Activity/live-selection gates or GNOME memory
+acceptance. Preserve the passing KDE and Cinnamon checkpoints while completing
+those gates. Portable metadata is in [the source63 evidence](../evidence/kde-source63/reproduction.md)
+and `../evidence/kde-source63/gnome-guest-build-a1.json`, `gnome-native12-a1.json`
+and `gnome-settings-a1.json`. No payload or raw configuration is included.
+
+The regression-only window ended at `2026-10-11T05:28:20.881985Z`. Before that
+cutoff, the actual native GTK folder dialog cancelled normally and local History
+displayed11 entries plus the selected synthetic image preview. Settings and History
+helpers exited normally (generations3 and4). The same current GNOME resident/VM
+remains available with UI stopped, operations0, tray present, journal ready and the
+original configuration restored. Activity parent/item copy, live selection/cursor,
+final local packet and two post-use plus one fresh-cold300-second GNOME memory
+windows remain required. An additional30 minutes was requested but not approved;
+do not treat this checkpoint as full regression or memory acceptance. See
+[the partial GNOME checkpoint](../evidence/kde-source63/gnome-focused-checkpoint-a1.json).
+
+
+### Confirmed source63 local memory checkpoint — 2026-10-11
+
+The explicitly approved GNOME testing extension finished its unchanged local
+checks and all three memory windows before the 14:01 UTC deadline. Both
+populated post-use runs peaked at 32.809 MiB; the independent fresh empty-profile
+window peaked at 27.004 MiB. Each used five quiet warmup seconds followed by
+300 seconds at five-second intervals, with 61 raw samples, verified process/build
+identity, no live GUI/helper or escaped family and CPU below 0.5% of one core.
+The populated and cold residents quit normally; the populated profile remained
+intact. Activity parent/item independent paste, tray, native fonts/dialogs,
+Settings restoration and local History preview passed. The same pending
+selector's clock advanced; its delayed cancellation attempt timed out and stays
+failed. A separate fresh operation cancelled normally. Do not combine them into
+a same-operation clock/cancellation proof.
+
+The cumulative source63 implementation now passes the declared local memory and
+functional gates on KDE, Cinnamon and GNOME. Keep the existing sibling routes.
+The matched KDE baseline fell from 139.422 to 30.051 MiB peak RSS (78.446%); its
+fresh cold peak was 27.914 MiB. Cinnamon's physical cold peak was 24.762 MiB and
+closed-view RSS remained 25.004–25.293 MiB. These distinct protocols remain
+separate. The final allocator probe does not establish an incremental product
+contribution. Exact tested version: `0.1.1-dev.63+g050b702c6a6d`.
+
+This supersedes earlier pending local-regression checkpoints, while preserving
+their failed attempts and deadline history. Real current guest S3/remote History
+copy/deletion and post-S3 memory, full U9 and a fresh-agent walkthrough remain
+release gates. Continue the existing UI/product plan after that acceptance work;
+no new optimization candidate is authorized by this checkpoint. See
+[the memory report](../evidence/kde-source63/memory-summary.md) and
+[reproducible recorded-sample checks](../evidence/kde-source63/reproduction.md).

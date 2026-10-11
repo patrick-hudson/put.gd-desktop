@@ -1,0 +1,82 @@
+{
+  "utc": "2026-10-09T08:06:44.786062+00:00",
+  "previousResident": {
+    "pid": 106567,
+    "startTicks": 4139177,
+    "sha256": "2da14c8da765913ed737dcde5711c8dc57a5598449bce8ff5af51df74681d0b8"
+  },
+  "previousManifest": {
+    "baseVersion": "0.1.1",
+    "commitCount": 48,
+    "dirty": false,
+    "gitCommit": "b6e987ca9097ac6ebdd82101acac5aea664d1071",
+    "gitTree": "36c589356fb2dded1806c5016d534d3d6bdb9d77",
+    "packageVersion": "0.1.1~dev.48+gb6e987ca9097",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.48+gb6e987ca9097"
+  },
+  "terminalStates": {
+    "operations": [
+      {
+        "id": "b6d5140f-8446-4dc7-b9f6-16439f065e26",
+        "state": "completed"
+      },
+      {
+        "id": "8eb6d18d-5310-41dd-86b6-cc4454b0d10c",
+        "state": "completed"
+      },
+      {
+        "id": "cd495e24-beed-46b8-9b18-37eeafe2769b",
+        "state": "completed"
+      },
+      {
+        "id": "435f9edd-1a0c-4419-bb44-069cc00aaef1",
+        "state": "completed"
+      },
+      {
+        "id": "417f3dd0-dbc3-4f00-ae5e-b9ac19e8edd8",
+        "state": "completed"
+      },
+      {
+        "id": "b2f9d5ff-3167-45c2-9a01-585e751a133e",
+        "state": "completed"
+      },
+      {
+        "id": "91e33996-b7a7-49d7-b5b9-59ae50bb09cb",
+        "state": "cancelled"
+      },
+      {
+        "id": "9ad31eb9-b5ce-46ea-9ed9-6b124d336832",
+        "state": "cancelled"
+      },
+      {
+        "id": "145303eb-a3ea-457b-b989-5705e4099890",
+        "state": "cancelled"
+      },
+      {
+        "id": "4ab626e6-0783-423e-b8fa-61d78e6556c2",
+        "state": "completed"
+      },
+      {
+        "id": "b4323acb-e4a0-40d5-830a-fad9b9e7d82b",
+        "state": "completed"
+      },
+      {
+        "id": "a00adb96-49c7-421d-9daf-b5dbc791f0ab",
+        "state": "completed"
+      }
+    ],
+    "deletions": []
+  },
+  "preservedGuestProfile": "/home/lab/putgd-lab-before-ui-refinement-nativecore-exp001-c49",
+  "stopResult": {
+    "stopped": {
+      "pid": 106567,
+      "startTicks": 4139177,
+      "sha256": "2da14c8da765913ed737dcde5711c8dc57a5598449bce8ff5af51df74681d0b8"
+    },
+    "preservedAt": "/home/lab/putgd-lab-before-ui-refinement-nativecore-exp001-c49",
+    "method": "PID/start/hash guarded pidfd SIGTERM"
+  }
+}
