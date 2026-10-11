@@ -67,7 +67,7 @@ metadata; collect a fresh full inventory and require equality with the original
 installation receipt before enriching the derived index. Keep the original
 rejection. Do not weaken the equality check or reinstall an unchanged package.
 
-KDE currently uses QApplication. Do not change it to QCoreApplication before
+The source57 KDE baseline uses QApplication. Do not change a resident to QCoreApplication before
 replacing and verifying its real GUI dependencies: output layout/focus checks,
 QWidget region surfaces, per-window LayerShellQt roles and native Wayland
 unmap fencing. Static inspection of DBus transports is not feature parity.
@@ -138,9 +138,10 @@ Record the enable/restore revisions, document hashes and unchanged resident;
 require the final settled configuration before sampling.
 
 Source57 may reuse its unchanged Cinnamon checkpoint for baseline preparation.
-Each new product candidate must pass Cinnamon functional and memory gates first;
-expand only after passing. Preserve retained Cinnamon and GNOME implementations.
-Shared startup changes also need current-candidate GNOME regression evidence.
+The original proposal used Cinnamon-first expansion. The user subsequently
+approved KDE-first iteration for this experiment (see the approved order below).
+Both Cinnamon and GNOME current-candidate regressions remain required before
+acceptance; preserve their checkpointed implementations.
 
 ## Frozen observation
 
@@ -175,12 +176,12 @@ or an observed transient startup peak. Quit normally afterward and verify exact
 process/socket absence and unchanged preserved profile. Record populated-history
 and post-S3 workloads separately. VM evidence is not physical KDE certification.
 
-## Checkpoint status
+## Historical source57 checkpoint
 
 The KDE current-source post-local-native baseline is measured and independently
 checked. All 49 registered tests and twelve native local scenarios passed, with
 focused checks qualified above. RSS remains 139.42 MiB against the 40 MiB target.
-No KDE memory candidate has been implemented or accepted. Cinnamon and GNOME
+At that baseline checkpoint no KDE memory candidate had been implemented or accepted. Cinnamon and GNOME
 checkpoints remain intact;
 KDE cannot inherit their native or memory acceptance. The canonical lab session
 discovery follow-up and full cloud, geometry, visual, MCP and release gates
@@ -219,3 +220,143 @@ passed its integrity, local-native, normal-exit and CPU gates; the separate RSS
 comparison failed. One stable baseline run was sufficient. No second observation
 or optimization experiment was started. The proposed experiment scope is two
 candidates/four hours after approval, with no new dependencies or cloud machines.
+
+
+## Approved KDE experiment order (2026-10-10)
+
+The user approved two candidates/four hours with KDE iteration first, superseding
+the earlier Cinnamon-first proposal above for this experiment. Use focused KDE
+functional checks and exact-candidate memory snapshots to reject broken or
+unpromising changes quickly. Once KDE is satisfactory, run the frozen confirmation
+measurements and both Cinnamon and GNOME functional/memory regressions before
+acceptance. Preserve the checkpointed sibling implementations; their old results
+do not prove a new candidate. Small KDE fixes do not trigger repeated full
+three-desktop runs. No new dependencies or cloud machines are authorized.
+
+## Source60 diagnostic checkpoint
+
+Version `0.1.1-dev.60+g2b0f1fd15f34` combines the KDE Core resident and transient
+region helper with signature-proven PNG decoding/preview and lazy clipboard
+codec discovery. Four Qt local native checks passed: clipboard text, window,
+desktop and Escape cancellation, including independent paste and pixel checks.
+After exact registered-fixture cleanup, the unchanged resident measured
+40.195 MiB RSS, 18.033 MiB PSS and 16.297 MiB private memory. The 40 MiB RSS
+target fails by 200 KiB. This is one diagnostic snapshot after five completed
+allocator reclamations, not a five-minute observation or full UI/native workload.
+Do not rerun snapshots merely to obtain a favorable threshold.
+
+A separate bounded CMake/Ninja dependency probe on the same distro Qt6.10.2
+confirmed that a supported text-bearing SVG aborts inside QCoreApplication:
+QFontDatabase requires QGuiApplication. Identical bytes decode normally with
+GUI initialization. Both generic clipboard decoding and regular-file preview
+have reachable callers; excluding SVG or ignoring the abort would lose parity.
+At that checkpoint, the proposed transient image-job fix was unimplemented.
+The user subsequently approved a windowless mode in the existing Qt view helper
+and a six-hour extension for one combined candidate. The resulting candidate
+is recorded below; source60 remains a separate diagnostic.
+
+The [bounded source60 export](evidence/2026-10-10-kde-source60-diagnostic/summary.json)
+contains actual attribution, dependency results and reproducible probe sources.
+Its README explains what the probe establishes and which outcomes are
+inconclusive. Source60 is unaccepted: full50 guest tests, full12 native cases,
+UI/live-selector checks, long memory confirmation and both current-candidate
+sibling regressions remain pending. Preserve the passing Cinnamon/GNOME
+implementations and continue KDE-first iteration.
+
+## Source62 checks in progress
+
+Version `0.1.1-dev.62+ga7a3aa02d3ea` moves generic image-format discovery,
+decoding and previews into a temporary windowless `putgd-ui` process. PNG
+remains an explicit resident path. An exact complete KDE output can share its
+image buffer rather than allocating a second frame. See
+[`image-worker.md`](image-worker.md) for transport limits, cancellation,
+ownership checks and reproduction commands.
+
+The clean host build passed all 51 registered tests. The host lacks the SVG
+codec, so the two actual SVG/font cases were explicitly skipped there. The
+KDE development build then passed all 38 image-worker cases with no skips,
+including those two cases. Development and offscreen checks do not establish
+installed-release graphical acceptance.
+
+The installed release's first cold snapshot was 28.016 MiB RSS, 6.275 MiB PSS
+and 4.840 MiB private memory, before capture or views. The exact source,
+package, resident identity and raw attribution are recorded under
+`work/kde-native-boundary/` and in the optimization log. This is a locating
+snapshot, not a 300-second observation or an accepted 40 MiB result. Visible
+SVG/clipboard/capture checks, the complete native/UI workload, guest tests,
+long observations and current-version Cinnamon/GNOME regressions remain open.
+
+The installed release subsequently passed three supplemental SVG cases and
+four selected Qt native cases. These covered SVG clipboard decoding, an
+unchanged original SVG file with a font-bearing thumbnail, SVG bytes advertised
+as PNG, clipboard text, active-window capture, desktop capture and Escape
+cancellation. Saved pixels and independent paste results passed their original
+checks. The SVG test restored its application settings; both workloads drained
+their exact registered fixtures. Script/schema failures remain recorded
+separately and are not counted as passing attempts.
+
+After that workload, one quiet diagnostic measured **40.508 MiB RSS**, 18.034 MiB
+PSS and 16.301 MiB private memory. The RSS target fails by 520 KiB. Keep this
+measurement; do not select another snapshot to obtain a passing number. Full
+native/UI checks and expansion to sibling desktops are held while the retained
+memory is attributed. A read-only mapping diagnostic found three live threads
+and growth within existing anonymous mappings; it does not prove which
+allocations remain live.
+
+The [source62 interim evidence](evidence/2026-10-10-kde-source62-interim.json)
+saves build identities, installed binary hashes, test parameters, actual result
+references, retained failures and pending gates. It explicitly grants no keeper,
+full native, memory, remote-storage or current-version sibling acceptance.
+The user changed KDE's power settings during this run. Preserve those settings;
+the later environment-maintenance task is recorded in [vm-lab.md](vm-lab.md).
+
+
+## Reproducing allocator attribution
+
+The standalone [allocator sequence probe](../tests/performance/allocator_sequence/README.md)
+uses the same C++20, CMake/Ninja and distro Qt libraries as the app. Its checked-in
+source, exact buffer sizes, chunk growth, thread lifecycle and result contract
+allow another agent to repeat the locating measurement without a Node fixture.
+The [original host and KDE results](evidence/2026-10-10-allocator-sequence.json)
+retain every repeat and distinguish the standalone process from product gates.
+
+On KDE's Qt 6.10.2/glibc 2.43, the fixed-threshold mode retained 4,096,000 fewer
+anonymous bytes (3.906 MiB) across all three repeats, with similar live allocation
+counts. This supports testing allocator policy; it does not establish the app's
+saving or feature parity. The original source62 diagnostic remains above target.
+The user approved one further KDE-only candidate with the existing deadline and
+acceptance gates. Its source checkpoint is `050b702c6a6da5c945ea8b4e138dee50e6fdbd83`,
+version `0.1.1-dev.63+g050b702c6a6d`. The clean host build passed all 51
+registered tests. KDE's standard development/release builds and package install
+completed; its first cold diagnostic measured 27.922 MiB RSS, 6.274 MiB PSS
+and 4.805 MiB private memory. This is one snapshot before capture or views.
+Guest tests, graphical parity, long observations and current-version sibling
+regressions remain pending; no candidate acceptance follows from that snapshot.
+The change leaves the checkpointed Cinnamon and GNOME selection paths intact.
+
+The current source63 SVG clipboard, SVG file-URI and mislabeled-PNG SVG checks
+passed with independently inspected rendered previews. The first three selected
+native cases (clipboard text, active window and full desktop) passed. The Escape
+case failed its original observation check and remains recorded as a failure.
+Read-only diagnosis found that guarded setup consumed almost the entire shared
+90-second budget: its Escape post-check receipt was published 90.609 seconds
+after fixture registration, versus 85.156 seconds in the passing source62 case.
+The exact monotonic deadline and poll count were not logged, so this supports a
+timing explanation without proving it. Final diagnostics show zero active
+operations and a normal certified capture-helper exit. Subsequent exact journal
+inspection proved cancellation, no items and no copied result. A separately
+recorded fresh Escape case passed the original cancellation and independent
+clipboard checks after the test runner switched to fresh streaming checksums.
+The original 90-second limit and every ownership/pixel/paste check remained
+unchanged. Concurrent inventory reads showed no speedup and were not used.
+The original failed case remains failed; both exact fixture generations drained.
+
+After SVG3 and the combined four-action coverage, one quiet source63 diagnostic
+measured **29.813 MiB RSS**, 7.394 MiB PSS and 5.680 MiB private memory on the
+same resident. This promising point is below the target; full twelve-case/UI
+checks, repeated 300-second RSS/CPU observations and current-candidate sibling
+regressions remain pending. The target applies to the cumulative changes,
+measured against source57; a single lever need not reach 40 MiB by itself.
+[Interim evidence](evidence/2026-10-11-kde-source63-candidate4.json) and
+[fresh-campaign reproduction](evidence/kde-source63/reproduction.md) distinguish
+private archival recipes from tracked tools usable by another agent.

@@ -1313,8 +1313,8 @@ The five-minute KDE baseline passed measurement integrity at 139.42 MiB peak RSS
 33.96 MiB PSS, 21.15 MiB private memory and 0.0667% CPU of one core. All 61
 samples covered 299.958 seconds, with no live UI/helper and constant RSS.
 The 40 MiB RSS target remains unmet; current cold memory was not measured.
-No KDE optimization candidate has been built. Historical KDE memory figures
-are not this baseline. These local checks do not establish remote History behavior,
+At this baseline checkpoint, no KDE optimization candidate had been built.
+Historical KDE memory figures are not this baseline. These local checks do not establish remote History behavior,
 multi-item Activity subset copy or the full geometry profile.
 
 Follow [the KDE measurement procedure](../testing-kde-memory.md). Preserve
@@ -1323,3 +1323,50 @@ guards and normal helper exits. Attribute cold and post-use RSS/PSS/private
 memory outside scored sampling windows before choosing changes. Record actual
 baseline and experiment evidence separately; a KDE memory miss does not undo
 the passing sibling desktops.
+
+
+### KDE memory experiment ordering — approved 2026-10-10
+
+Optimize and iterate on KDE first. Establish a satisfactory KDE candidate using
+its functional and memory checks before starting both Cinnamon and GNOME
+regressions. Both regressions remain required before accepting the candidate.
+Do not run the full three-desktop matrix after every small KDE change. Retain
+the accepted Cinnamon/GNOME routes and existing frozen measurement gates.
+
+
+### KDE generic-image parity and next candidate — approved 2026-10-10
+
+Source60's limited native diagnostic reached 40.195 MiB RSS after text, window,
+desktop and Escape checks; this remains above the 40 MiB target and is not the
+full acceptance workload. A distro Qt probe also exposed a reachable abort when
+font-bearing SVG is decoded inside the Core resident. Preserve that failure;
+all previously supported formats remain part of feature parity.
+
+The user approved one further combined candidate and six additional hours:
+use a temporary windowless image-job mode in the existing Qt view helper for
+generic codecs/font services, retaining direct PNG paths, native dialogs/fonts
+and normal helper cleanup. Combine this with a guarded KDE-only full-output
+frame-sharing path; shared Cinnamon/GNOME composition remains unchanged.
+Record clean versioned source, host integration checks, actual SVG clipboard
+and regular-file preview evidence, then KDE functional/memory confirmation.
+Run both exact-candidate sibling regressions only after KDE is satisfactory.
+This approval does not establish a passing candidate or memory result.
+
+
+### Combined KDE memory target — clarified 2026-10-10
+
+The target applies to cumulative changes. Each change need not independently
+reach 40 MiB; evaluate the complete candidate against the original source57
+baseline while preserving all functional, idle-CPU and memory gates. The user
+approved one fourth KDE-only allocator candidate within the existing ten-hour
+limit and unchanged deadline. Its clean checkpoint is source63, version
+`0.1.1-dev.63+g050b702c6a6d`.
+
+The fourth candidate combines the Core listener/tray, transient region/image
+helpers, explicit PNG paths and frame sharing with a fixed glibc allocation
+threshold. A diagnostic after selected real capture/clipboard/SVG checks reached
+29.813 MiB RSS. This is a promising snapshot, not acceptance. Complete KDE
+native/UI and repeated cold/post-use checks, then current-candidate Cinnamon
+and GNOME regressions. Preserve the passing sibling routes and every failed
+attempt. Remote-storage/history and full declared desktop gates remain separate
+until verified on the current version. See [the KDE procedure](../testing-kde-memory.md).
