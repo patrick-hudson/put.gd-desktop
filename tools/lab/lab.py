@@ -158,13 +158,25 @@ def compare_ppm(path, expected):
     errors = []
     if (width, height) != (expected['width'], expected['height']):
         errors.append('dimensions')
-    for sample in expected.get('samples', []):
-        x, y = sample['x'], sample['y']
-        offset = (y * width + x) * 3
-        if not (0 <= x < width and 0 <= y < height) or list(pixels[offset:offset+3]) != sample['rgb']:
-            errors.append(f'pixel({x},{y})')
+    for area in expected['areas']:
+        x, y, area_width, area_height = (area[field] for field in ('x', 'y', 'width', 'height'))
+        row_pixels = bytes(area['rgb']) * area_width
+        if not (0 <= x and 0 <= y and x + area_width <= width and y + area_height <= height) or any(
+                pixels[((y + row) * width + x) * 3:((y + row) * width + x + area_width) * 3]
+                != row_pixels for row in range(area_height)):
+            errors.append(f'area({x},{y},{area_width},{area_height})')
     return {'ok': not errors, 'errors': errors, 'width': width, 'height': height,
             'sha256': hashlib.sha256(Path(path).read_bytes()).hexdigest()}
+
+
+def fixture_oracle(rectangle, paint):
+    """Deterministic fixture pixels at geometry established before capture."""
+    colors = ([220, 30, 40], [20, 180, 70], [35, 70, 220], [235, 190, 20])
+    return {'width': rectangle['width'], 'height': rectangle['height'], 'areas': [
+        {'x': paint['x'] - rectangle['x'] + (index % 2) * 320,
+         'y': paint['y'] - rectangle['y'] + (index // 2) * 160,
+         'width': 320, 'height': 160, 'rgb': color}
+        for index, color in enumerate(colors)]}
 
 
 def locate_fixture_paint(path):
@@ -461,8 +473,23 @@ def fixture_run(args):
     started = time.monotonic()
     artifacts = []
     public_files = []
-    for stale in ('parameters.json', 'paste.json', 'paste.ppm', 'artifact.ppm', 'before-head0.ppm', 'final-head0.ppm'):
+    witnesses = []
+    for stale in ('parameters.json', 'ready.json', 'gtk-ready.json', 'paste.json',
+                  'history-paste.json', 'paste.ppm', 'artifact.ppm', 'versions.json', 'diagnostics.json'):
         (run / stale).unlink(missing_ok=True)
+    for pattern in ('focus-*-head*.ppm', 'selector-head*.ppm', 'before-head*.ppm', 'final-head*.ppm',
+                    'artifact-[0-9]*', 'public-[0-9]*'):
+        for stale in run.glob(pattern):
+            stale.unlink()
+
+    def get_witness(remote, target):
+        target.unlink(missing_ok=True)
+        witnesses.append(target)
+        return get(run, remote, target)
+
+    def capture_witness(name):
+        witnesses.append(run / f'{name}-head0.ppm')
+        return screenshot(run, name)
     test_event(run, {'event': 'started', 'testId': test_id, 'profile': state(run)['profile'],
         'scenario': args.scenario, 'clipboardClient': args.clipboard_client, 'timeoutSeconds': args.timeout})
     result = {'schemaVersion': 1, 'testId': test_id, 'profile': state(run)['profile'],
@@ -480,7 +507,7 @@ nohup putgd-desktop-fixture --output "$HOME/putgd-lab/fixture" > ~/putgd-lab/fix
         deadline = time.monotonic() + args.timeout
         while True:
             try:
-                get(run, 'putgd-lab/fixture/ready.json', run / 'ready.json')
+                get_witness('putgd-lab/fixture/ready.json', run / 'ready.json')
                 settings = cli(run, 'settings.get')
                 if not cli(run, 'diagnostics').get('journalReady'):
                     raise LabError('Resident journal initialization pending')
@@ -502,7 +529,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
 ''')
             while True:
                 try:
-                    get(run, 'putgd-lab/fixture/gtk-ready.json', run / 'gtk-ready.json')
+                    get_witness('putgd-lab/fixture/gtk-ready.json', run / 'gtk-ready.json')
                     gtk = read_json(run / 'gtk-ready.json')
                     if ready['session'] == 'wayland' and 'Wayland' not in gtk['displayBackend']:
                         raise LabError('GTK clipboard client is not native Wayland')
@@ -540,6 +567,9 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                 raise LabError('Configured native fixture shortcuts did not bind')
             time.sleep(.1)
         result['shortcutBindings'] = bindings
+        region_contract = read_json(HERE.parent.parent / 'tests/desktop/common.yaml')
+        selection = region_contract['input']['drag']
+        selection_width, selection_height = selection['size']
         parameters = {'schemaVersion': 1, 'profile': state(run)['profile'],
             'scenario': args.scenario, 'clipboardClient': args.clipboard_client,
             'destination': 'upload' if args.settings else 'local',
@@ -550,7 +580,8 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             'goldenSha256': state(run).get('golden_sha256'),
             'timingSeconds': {'keyHold': .05, 'focusPoll': .1, 'focusAttemptLimit': 2,
                 'clipboardSourceSettle': .3, 'selectorSettle': .5, 'operationPoll': .2},
-            'selection': {'fixtureOffset': {'x': 30, 'y': 30}, 'width': 80, 'height': 60},
+            'selection': {'fixtureOffset': dict(zip(('x', 'y'), selection['paintOffset'])),
+                'width': selection_width, 'height': selection_height},
             'timeoutSeconds': args.timeout,
             'replayCommand': [sys.executable, 'tools/lab/lab.py', 'run', '--run', '<disposable-run>',
                 '--scenario', args.scenario, '--clipboard-client', args.clipboard_client,
@@ -569,8 +600,10 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         # than assuming launch order or clicking a window hidden underneath it.
         for attempt in range(3):
             focus_deadline = min(deadline, time.monotonic() + 2)
+            focus_poll = 0
             while True:
-                witness = screenshot(run, 'focus-' + str(attempt))
+                witness = capture_witness(f'focus-{attempt}-{focus_poll}')
+                focus_poll += 1
                 # GTK replaces the Qt fixture and has its own window position,
                 # including on X11. Only the independent witness locates it.
                 if ready['session'] == 'wayland' or args.clipboard_client == 'gtk':
@@ -586,9 +619,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                                 'width': 640 + margins['left'] + margins['right'],
                                 'height': 420 + margins['top'] + margins['bottom']}
                             result['independentWindowFrame'] = ready['frame']
-                visible = compare_ppm(witness['path'], {'width': width, 'height': height,
-                    'samples': [{'x': x, 'y': y, 'rgb': [220, 30, 40]},
-                                {'x': geometry['x'] + 350, 'y': y, 'rgb': [20, 180, 70]}]})
+                visible = compare_ppm(witness['path'], fixture_oracle(screen, geometry))
                 if visible['ok'] or time.monotonic() >= focus_deadline:
                     break
                 time.sleep(.1)
@@ -626,14 +657,17 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                     if time.monotonic() >= oracle_deadline:
                         raise LabError('Independent KWin window geometry query did not complete')
                     time.sleep(.1)
+        if args.scenario.startswith('region'):
+            x = geometry['x'] + selection['paintOffset'][0]
+            y = geometry['y'] + selection['paintOffset'][1]
         parameters['selection'].update(start={'x': x, 'y': y},
-            end={'x': x + 80, 'y': y + 60}, inputViewport={'width': width, 'height': height})
+            end={'x': x + selection_width, 'y': y + selection_height}, inputViewport={'width': width, 'height': height})
         parameters['independentFixtureGeometry'] = geometry
         if 'independentWindowFrame' in result:
             parameters['independentWindowFrame'] = result['independentWindowFrame']
         write_json(run / 'parameters.json', parameters)
         result['parameters'] = 'parameters.json'
-        screenshot(run, 'before')
+        capture_witness('before')
         scenario = args.scenario
         cancelled_region = scenario.startswith('region-cancel-')
         if cancelled_region:
@@ -649,7 +683,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             key(run, hotkeys['region' if cancelled_region else scenario]['keys'])
             if cancelled_region:
                 time.sleep(.5)
-                screenshot(run, 'selector')
+                capture_witness('selector')
                 if scenario == 'region-cancel-escape':
                     key(run, ['esc'])
                 elif scenario == 'region-cancel-right-click':
@@ -662,8 +696,8 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             elif scenario == 'region':
                 time.sleep(.5)
                 pointer(run, x, y, width, height, True)
-                pointer(run, x + 80, y + 60, width, height)
-                pointer(run, x + 80, y + 60, width, height, False)
+                pointer(run, x + selection_width, y + selection_height, width, height)
+                pointer(run, x + selection_width, y + selection_height, width, height, False)
         operation = None
         while time.monotonic() < deadline:
             recent = cli(run, 'operation.recent')
@@ -690,7 +724,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             guest_session(run, 'rm -f ~/putgd-lab/fixture/paste.json\n')
             key(run, ['ctrl', 'v'])
             time.sleep(.3)
-            get(run, 'putgd-lab/fixture/paste.json', run / 'paste.json')
+            get_witness('putgd-lab/fixture/paste.json', run / 'paste.json')
             result['paste'] = compare_paste(read_json(run / 'paste.json'),
                 {'text': 'putgd synthetic clipboard text'})
             result['ok'] = result['paste']['ok']
@@ -702,27 +736,27 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         artifacts = []
         expected = None
         if scenario == 'region':
-            expected = read_json(HERE.parent.parent / 'tests/desktop/common.yaml')['oracle']
+            expected = region_contract['oracle']
         elif scenario == 'clipboard-image':
-            expected = {'width': 96, 'height': 64, 'samples': [{'x': 20, 'y': 20, 'rgb': [220, 30, 40]}]}
+            expected = {'width': 96, 'height': 64, 'areas': [
+                {'x': 0, 'y': 0, 'width': 96, 'height': 64, 'rgb': [220, 30, 40]}]}
         elif scenario in ('window', 'desktop'):
             rectangle = ready['frame'] if scenario == 'window' else screen
-            expected = {'width': rectangle['width'], 'height': rectangle['height'], 'samples': [
-                {'x': geometry['x'] + 30 - rectangle['x'], 'y': geometry['y'] + 30 - rectangle['y'], 'rgb': [220, 30, 40]}]}
+            expected = fixture_oracle(rectangle, geometry)
         parameters['expectedArtifact'] = expected or {'syntheticBytes': scenario}
         write_json(run / 'parameters.json', parameters)
         for index, item in enumerate(operation['items']):
             if item['local']['status'] != 'saved':
                 raise LabError('Preserved local result missing')
             artifact = run / f'artifact-{index}'
-            get(run, item['local']['path'], artifact)
+            get_witness(item['local']['path'], artifact)
             artifacts.append(artifact)
             if hash_file(artifact) != item['artifact']['sha256']:
                 raise LabError('Stored artifact hash mismatch')
         if expected:
             item = operation['items'][0]
             guest_session(run, 'putgd-desktop-fixture --convert ' + shlex.quote(item['local']['path']) + ' "$HOME/putgd-lab/fixture/artifact.ppm"\n')
-            get(run, 'putgd-lab/fixture/artifact.ppm', run / 'artifact.ppm')
+            get_witness('putgd-lab/fixture/artifact.ppm', run / 'artifact.ppm')
             result['artifact'] = compare_ppm(run / 'artifact.ppm', expected)
         elif scenario == 'clipboard-text':
             result['artifact'] = {'ok': len(artifacts) == 1 and artifacts[0].read_bytes() == b'putgd synthetic clipboard text'}
@@ -735,7 +769,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         guest_session(run, 'rm -f ~/putgd-lab/fixture/paste.json ~/putgd-lab/fixture/paste.ppm ~/putgd-lab/fixture/paste.png\n')
         key(run, ['ctrl', 'v'])
         time.sleep(.5)
-        get(run, 'putgd-lab/fixture/paste.json', run / 'paste.json')
+        get_witness('putgd-lab/fixture/paste.json', run / 'paste.json')
         paste = read_json(run / 'paste.json')
         result['pasteMetadata'] = paste
         if args.settings:
@@ -746,6 +780,8 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                 if not url.startswith(('http://', 'https://')):
                     raise LabError('No public HTTP direct URL')
                 public = run / f'public-{index}'
+                public.unlink(missing_ok=True)
+                witnesses.append(public)
                 with urllib.request.urlopen(url, timeout=15) as response, public.open('wb') as output:
                     received = 0
                     while chunk := response.read(1024 * 1024):
@@ -779,7 +815,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                 pointer(run, x, y, width, height, False)
                 key(run, ['ctrl', 'v'])
                 time.sleep(.3)
-                get(run, 'putgd-lab/fixture/paste.json', run / 'history-paste.json')
+                get_witness('putgd-lab/fixture/paste.json', run / 'history-paste.json')
                 result['history']['ok'] &= read_json(run / 'history-paste.json').get('text') == details[0]['receipt']['directUrl']
                 # Preparation is read-only. Exact IDs/effects are retained for review;
                 # deletion is a separate explicit production CLI acknowledgement.
@@ -787,7 +823,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         elif expected:
             if args.clipboard_client == 'gtk':
                 guest_session(run, 'putgd-desktop-fixture --convert "$HOME/putgd-lab/fixture/paste.png" "$HOME/putgd-lab/fixture/paste.ppm"\n')
-            get(run, 'putgd-lab/fixture/paste.ppm', run / 'paste.ppm')
+            get_witness('putgd-lab/fixture/paste.ppm', run / 'paste.ppm')
             result['paste'] = compare_ppm(run / 'paste.ppm', expected)
         elif scenario == 'clipboard-text':
             result['paste'] = compare_paste(paste, {'text': 'putgd synthetic clipboard text'})
@@ -811,7 +847,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
                 result['ok'] = False
                 result['error'] = str(error)
         try:
-            result['witness'] = screenshot(run, 'final')
+            result['witness'] = capture_witness('final')
             collect(run)
         except (LabError, OSError, ValueError, subprocess.TimeoutExpired):
             result['collectionIncomplete'] = True
@@ -827,14 +863,9 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         evidence = run / 'tests' / test_id
         evidence.mkdir(parents=True, exist_ok=False)
         files = {}
-        for name in ('parameters.json', 'results.json', 'results.xml', 'ready.json', 'paste.json',
-                     'paste.ppm', 'artifact.ppm', 'before-head0.ppm', 'final-head0.ppm',
-                     'versions.json', 'package.json', 'diagnostics.json'):
-            source = run / name
-            if source.exists():
-                shutil.copyfile(source, evidence / name)
-                files[name] = hash_file(evidence / name)
-        for source in artifacts + public_files:
+        metadata = [run / name for name in ('parameters.json', 'results.json', 'results.xml',
+                    'versions.json', 'package.json', 'diagnostics.json')]
+        for source in dict.fromkeys(metadata + witnesses):
             if source.exists():
                 shutil.copyfile(source, evidence / source.name)
                 files[source.name] = hash_file(evidence / source.name)

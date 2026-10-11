@@ -39,9 +39,15 @@ Each graphical `run` appends start/finish JSON events to `RUN/test-events.jsonl`
 Each attempt receives a unique ID and a preserved `RUN/tests/ID/` bundle, containing
 `parameters.json`, results JSON/JUnit, package/runner identities, native display
 layout, requested/actual hotkeys, timing, pre-action selection/window geometry,
-synthetic artifacts/paste witnesses, and a SHA256 manifest. Root-level files remain
+synthetic artifacts/paste witnesses (including `history-paste.json`), every focus
+poll and selector screenshot, and a SHA256 manifest. Focus polls use distinct
+filenames within the attempt; optional witnesses are cleared before a fresh run. Root-level files remain
 the latest attempt for interactive inspection; the per-attempt bundles do not overwrite
 earlier failures. An interrupted attempt retains its start event.
+Image checks compare every decoded clipboard/region pixel. The 80×60 region
+starts at fixture offset (280, 130), crossing all four color quadrants; window
+and desktop checks compare the full 640×320 deterministic paint area using
+independent pre-action geometry.
 
 Read the saved `replayCommand`, recreate the same profile/display layout in a new
 disposable overlay, and install the package whose hash is recorded before running it.
