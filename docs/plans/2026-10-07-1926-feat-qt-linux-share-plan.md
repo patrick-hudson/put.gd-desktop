@@ -1378,3 +1378,30 @@ native/UI and repeated cold/post-use checks, then current-candidate Cinnamon
 and GNOME regressions. Preserve the passing sibling routes and every failed
 attempt. Remote-storage/history and full declared desktop gates remain separate
 until verified on the current version. See [the KDE procedure](../testing-kde-memory.md).
+
+
+### Current63 regression checkpoint — 2026-10-11
+
+The user approved a two-hour extension for existing regression tests through
+2026-10-11 05:28 UTC. This adds no optimization candidates, dependencies or
+desktop-setting changes. The cumulative KDE candidate passed its local native
+and focused GUI gates, two post-use five-minute windows at 30.051 MiB peak RSS,
+and a fresh cold window at 27.914 MiB. The matched source57 post-use baseline was
+139.422 MiB. These are integrated results, not allocator-only contributions.
+
+Current63 Cinnamon passed twelve native Qt/GTK cases and focused tray,
+settings, native fonts/folder chooser, local History, Activity independent
+clipboard paste and live selector checks. Physical capture timing passed at
+121.273 ms p95, with all 35 operations cancelled without results. The physical
+cold five-minute run peaked at 24.762 MiB; three original closed-view cycles
+settled at 25.004–25.293 MiB RSS. A separate unchanged-workload supplement
+verified normal GUI exit generations 1, 2 and 3. The original and supplemental
+runs remain separate because the supplement adds three read-only queries.
+
+Current63 GNOME regressions are the remaining local acceptance gate. Preserve
+the passing Cinnamon implementation, and park completed unused lab VMs normally
+before resuming GNOME. Keep VNC output visible and use the exact current package
+only after its actual guest ABI check passes. Remote S3/history and full U9
+acceptance remain pending; local memory results do not satisfy those gates.
+The content-free samples and reproducible checks are recorded in
+[the source63 evidence](../evidence/kde-source63/reproduction.md).
