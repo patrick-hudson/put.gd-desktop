@@ -176,7 +176,7 @@
       "sha256": "d37fa13dccfc49c25440febab7684182a4f10087506adf57745901c948df62f5"
     },
     "cancellationAccepted": false,
-    "qualification": "The actual journal confirms cancelled/no_result/items[] and the subsequent drain confirms certified normal-zero helper exit with no fixture residue. This diagnoses the original timed-out failure; it does not retroactively pass its cancellation artifact/independent clipboard oracles. Separate item/copy inspection remains pending.",
+    "qualification": "The original timed failure remains failed. Exact journal inspection confirmed cancellation and no items. A separate fresh case then passed the original cancellation and independent clipboard checks; its distinct receipt is recorded in freshCancellationCase. No full native acceptance follows.",
     "journalCompleteReceipt": {
       "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T003929934976-candidate63-cli/complete.json",
       "sha256": "01fa7673ceb9437677199fd13e795bdfa428033a1580ffd12858f132bae19ec8"
@@ -332,11 +332,7 @@
     }
   },
   "pendingGates": [
-    "Independent cancellation clipboard check and complete artifact/terminal-state diagnosis; journal items[] and certified normal helper exit already confirmed, original case remains failed",
-    "Promising postworkload diagnostic and accepted selected4 run",
-    "Full12 Qt/GTK native matrix",
     "Guest51 registered tests without acceptance skips",
-    "SVG3 production path proof",
     "Native tray/settings/history/activity and native fonts/folder dialogs",
     "Transparent live selector/clock/cursor alpha and durable cancellation",
     "Two populated postnative300s observations and one independently fresh empty-profile cold300s observation",
@@ -549,7 +545,248 @@
       "privateFocusedAndLiveRecipesAvailability": "The 24 campaign recipe fingerprints preserve provenance but do not ship the private orchestration. A new campaign must independently collect any remaining focused-view/live-selector/cursor/continuous-quiet checks before claiming equivalent full acceptance."
     }
   },
-  "exportedUtc": "2026-10-11T00:49:04.313328+00:00",
+  "exportedUtc": "2026-10-11T01:30:40.053868+00:00",
   "sourceDraftSha256": "1872409876c648df132dd32db52ebd09e2d080f9d915834d6a00519b9ed8f0db",
-  "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB."
+  "cumulativeGoal": "The complete combined candidate is measured against source57; individual changes need not independently reach40MiB.",
+  "freshCancellationCase": {
+    "matrix": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004623653226-matrix/matrix.json",
+      "sha256": "b25ecba5b830231f6edf81a61909c6f4ff6cdc37a4e76ca6458d410f44cf3ef3"
+    },
+    "complete": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T004623653226-matrix/complete.json",
+      "sha256": "ee19b201b53634fa15da55b698bd0228a9616d87613bc9cf4d8dfd09b2a2ed22"
+    },
+    "operationId": "a40a3b07-b2fc-4515-93fd-7296f43897e7",
+    "state": "cancelled",
+    "copyStatus": "no_result",
+    "itemCount": 0,
+    "independentPastePassed": true,
+    "elapsedSeconds": 137.9600599979749,
+    "originalCaseLimitSeconds": 90,
+    "qualification": "A separate fresh Escape case passed with unchanged production version and original oracles. Original timedfailed case remains failed; totalelapsedincludespostpollpaste/guards beyondactiondeadline. Combined cheapcoverage original3passes+fresh1, no full12/CPU/memory acceptance."
+  },
+  "combinedPostWorkloadDiagnostic": {
+    "stage": "exploratory-post-svg3-combined-native",
+    "rssBytes": 31260672,
+    "pssBytes": 7752704,
+    "privateBytes": 5955584,
+    "identity": {
+      "device": 64769,
+      "executableBasename": "putgd",
+      "inode": 1312189,
+      "pid": 149243,
+      "sha256": "0128a36ca47e5107d0399c3424e6bfc7d4f4a9e39405c07a2a5059dc6e3247ed",
+      "startTicks": 3225818,
+      "uid": 1000
+    },
+    "attribution": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005327249201-candidate63-quick-attribution/attribution.json",
+      "sha256": "e2f072e22cfe0cfa93b045f73771f6c6c0d8002550bddb9fce306ccd30323b0b"
+    },
+    "receipt": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005327249201-candidate63-quick-attribution/complete.json",
+      "sha256": "618e6f02d602a963ac5c4a4d698286e1b90b8afb7b9791508435afa0d4f81fd1"
+    },
+    "scored": false,
+    "targetBytes": 41943040,
+    "targetPassed": true,
+    "qualification": "One original quiet diagnostic after SVG3 and original3 passing native cases plus separately passed Escape case; full native/UI, 300-second CPU/RSS and current sibling gates remain pending."
+  },
+  "svg3": {
+    "complete": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T001418179997-kde63-svg3/complete.json",
+      "sha256": "2e73a82b45c9c51751c18234ab3df986b7d498cdeb43b64288d70405ed8992ae"
+    },
+    "result": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T001418179997-kde63-svg3/svg3-result.json",
+      "sha256": "10244616825bc4b1b7496fda3a595a9d5708861a964698550523a8af660927da"
+    },
+    "caseCount": 3,
+    "proceduralPassed": true,
+    "operationIds": [
+      "35af6d73-079e-4d71-bb01-0b762057e03c",
+      "11c8f53b-3391-41a8-98ac-3a49c1e6e81b",
+      "7d4ffdf5-fbac-4218-9c1e-0b28fec292ef"
+    ],
+    "rootReviewedVerifiedWitnesses": true,
+    "preview1TextVisuallyRendered": true,
+    "frozenOracleUnchanged": true,
+    "fullNativeAcceptance": false,
+    "limitations": {
+      "workerGenerationNotIndependentlyObserved": true,
+      "ownerChangeTimingRaceNotAttempted": true
+    }
+  },
+  "full12Progress": {
+    "attempt": "20261011T005447671613-matrix",
+    "region": {
+      "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-1/results.json",
+      "sha256": "3f0c7ff93b8ccbefbffe9e2b84b5ebb46eff8d29bdb399083e498829e0edc8a4"
+    },
+    "regionPassed": true,
+    "rootViewedNativeDesktopAnd80x60Artifact": true,
+    "independentPasteMatchesArtifact": true,
+    "full12Complete": true,
+    "cases": [
+      {
+        "caseIndex": 1,
+        "client": "qt",
+        "scenario": "region-independent-paste",
+        "passed": true,
+        "operationId": "6f2bfd09-87bb-4812-a1a3-159dd6510b3d",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-1/results.json",
+          "sha256": "3f0c7ff93b8ccbefbffe9e2b84b5ebb46eff8d29bdb399083e498829e0edc8a4"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 2,
+        "client": "qt",
+        "scenario": "window-independent-paste",
+        "passed": true,
+        "operationId": "59527204-8990-4d18-b031-21eeaa71d919",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-2/results.json",
+          "sha256": "fc70a76776eef9e40745964580c694e43694ba4d75c827e925c83a47201e8394"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 3,
+        "client": "qt",
+        "scenario": "desktop-independent-paste",
+        "passed": true,
+        "operationId": "422d19f6-e95a-4127-b115-1bc1bb2071fb",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-3/results.json",
+          "sha256": "3d4a69b3a116b36df332e256a0a0f382a3cec3a163182179aa7162e4f9d1b346"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 4,
+        "client": "qt",
+        "scenario": "clipboard-text-independent-paste",
+        "passed": true,
+        "operationId": "505d530f-d676-41ff-972f-1c9a01b617f1",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-4/results.json",
+          "sha256": "3e9334d8bc678e69e924eee33822fa85488febd681e51cde34c51c200584e659"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 5,
+        "client": "qt",
+        "scenario": "clipboard-image-independent-paste",
+        "passed": true,
+        "operationId": "efd52836-baa8-4c21-8184-5b3db607ef2a",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-5/results.json",
+          "sha256": "4ed928c9b63cb274bdc3cc6fd2052f6e92ec971ad955cb4928dee2ef1a97bd27"
+        },
+        "rootViewedArtifact": true
+      },
+      {
+        "caseIndex": 6,
+        "client": "qt",
+        "scenario": "clipboard-files-independent-paste",
+        "passed": true,
+        "operationId": "77622f18-ad1a-4891-a6da-21c73f312f99",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-6/results.json",
+          "sha256": "127b914ee1f93c27df0aacdd23357bbf14b203e1961110d05717d7156475e93a"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 7,
+        "client": "qt",
+        "scenario": "region-cancel-escape-independent-paste",
+        "passed": true,
+        "operationId": "630aba48-8b48-482f-a102-3abe1e861ee6",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-7/results.json",
+          "sha256": "d5f76fb009ac8ff660974f5e9d16597cc5b30b517bb1db9d17f8da97fb8c9a3e"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 8,
+        "client": "qt",
+        "scenario": "region-cancel-right-click-independent-paste",
+        "passed": true,
+        "operationId": "1d50e35f-fd1f-4418-9b54-031bfe5e9656",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-8/results.json",
+          "sha256": "ed5df4091cab069947f39968bb4ce7472e510fcd212dcd4215e976791254ee6d"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 9,
+        "client": "qt",
+        "scenario": "region-cancel-zero-area-independent-paste",
+        "passed": true,
+        "operationId": "84892bc0-03f5-4444-9ffe-bff95a06cc1e",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-9/results.json",
+          "sha256": "c3218b1b80bf74b0859e48c866ab6b246b201816fabaabc19a402aad7448029a"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 10,
+        "client": "gtk",
+        "scenario": "clipboard-text-independent-paste",
+        "passed": true,
+        "operationId": "d822693b-3aec-473b-a7fd-d704e9de93bd",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-10/results.json",
+          "sha256": "156a3fe401503cc114520f5d123b4b9137c64e86bbee4eb7fa7edb9ecb7fb187"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 11,
+        "client": "gtk",
+        "scenario": "clipboard-image-independent-paste",
+        "passed": true,
+        "operationId": "35281d14-4dc3-4a0d-9a33-c25371f07b48",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-11/results.json",
+          "sha256": "cc11be9b5a9786d0ab0d4a9aad5d102af74a48a23b4fd15df24dcde91fe83fb8"
+        },
+        "rootViewedArtifact": false
+      },
+      {
+        "caseIndex": 12,
+        "client": "gtk",
+        "scenario": "clipboard-files-independent-paste",
+        "passed": true,
+        "operationId": "aa15e880-e3dd-4365-8ec1-9493e0d99062",
+        "result": {
+          "path": "/home/patrick/work/put.gd/work/lab-runs/ui43-kde-20261011T005447671613-12/results.json",
+          "sha256": "88049b134d94a75891e577a7ff8fd8e1ea2403098d1999898c8ff6b50c66bfd2"
+        },
+        "rootViewedArtifact": false
+      }
+    ],
+    "complete": true,
+    "acceptanceGranted": false,
+    "actualMatrix": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005447671613-matrix/matrix.json",
+      "sha256": "f848570648160a298ec531a4811cd3ed026f7b4845b197da640317f0da638b90"
+    },
+    "actualComplete": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005447671613-matrix/complete.json",
+      "sha256": "ee19b201b53634fa15da55b698bd0228a9616d87613bc9cf4d8dfd09b2a2ed22"
+    },
+    "actualFixtureSafety": {
+      "path": "/home/patrick/work/put.gd/work/capture-parity/clean57/gnome-argv-parity-preparation/replay/cohorts/kdebase57-a1/kde/attempts/20261011T005447671613-matrix/fixture-safety.json",
+      "sha256": "81c30de8bf8ab99c08d66a79c8d0562f4dc1db5255e04e01f8d9dfcd97dbe760"
+    }
+  }
 }
