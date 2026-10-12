@@ -12,6 +12,11 @@ namespace {
 struct ErrorScope {
     ~ErrorScope() { ERR_clear_error(); }
 };
+std::string_view moduleName(const char* name) {
+    const std::string_view value(name);
+    const auto dot = value.rfind('.');
+    return dot == value.npos ? value : value.substr(0, dot);
+}
 std::string_view commandName(const char* name) {
     const std::string_view value(name);
     const auto dot = value.find('.');
@@ -33,7 +38,7 @@ bool defaultSystemTlsGroups(const char* configuration) {
     if (!init) return false;
     for (int i = 0; i < sk_CONF_VALUE_num(init); ++i) {
         const auto* module = sk_CONF_VALUE_value(init, i);
-        if (commandName(module->name) != "ssl_conf") continue;
+        if (moduleName(module->name) != "ssl_conf") continue;
         const auto* ssl = NCONF_get_section(conf.get(), module->value);
         if (!ssl) return false;
         for (int j = 0; j < sk_CONF_VALUE_num(ssl); ++j) {

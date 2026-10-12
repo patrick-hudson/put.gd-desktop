@@ -57,6 +57,10 @@ private slots:
             QVERIFY(write(QByteArray("openssl_conf=init\n[init]\nssl_conf=ssl\n[ssl]\nsystem_default=policy\n[policy]\n") + name + "=P-256\n"));
             QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(path)));
         }
+        for (const auto module : {"ssl_conf.1", "ssl_conf.2"}) {
+            QVERIFY(write(QByteArray("openssl_conf=init\n[init]\n") + module + "=ssl\n[ssl]\nsystem_default=policy\n[policy]\nGroups=P-256\n"));
+            QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(path)));
+        }
         // Resolve includes and variables with OpenSSL's own parser.
         QFile included(directory.filePath("policy.cnf"));
         QVERIFY(included.open(QIODevice::WriteOnly));

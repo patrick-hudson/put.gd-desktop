@@ -183,7 +183,17 @@ retries or broad desktop matrix precede that targeted KDE gate. Passing the TLS
 probe does not establish product parity; product results will be recorded below.
 
 The SDK contract suite checks backend/version boundaries, a custom P-256 group
-policy, Curves aliases, dotted command keys, includes/variables, absent group
+policy, Curves aliases, dotted command keys and module instance suffixes, includes/variables, absent group
 policy, missing/malformed files and preservation of a prior OpenSSL error. The
 custom-policy test failed against the former unconditional override and passed
 with the guard. The focused SDK, worker-protocol and deletion safety checks passed.
+
+
+Review also covered the SDK hook's lifetime: it must not throw after the SDK
+acquires a pooled connection handle. The group option is validated using a
+short-lived, unused Curl handle before requests; per-request option failure
+falls back to secure defaults in a `noexcept` hook. No connection is made by the
+validation handle. The guard separately parses module instance suffixes such
+as `ssl_conf.1` and SSL command prefixes such as `1.Groups`. The module-instance
+regression failed before that distinction was added. Source111 was superseded
+before any guest build, deployment or live product operation.
