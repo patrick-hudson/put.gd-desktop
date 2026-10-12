@@ -1,5 +1,5 @@
 name: Linux release
-run-name: Linux release ${{ inputs.tag || github.ref_name }} coordinator ${{ inputs.coordinator_run_id || 'manual' }}
+run-name: ${{ inputs.nightly && inputs.publish && inputs.coordinator_run_id && 'Nightly' || 'Linux' }} release ${{ inputs.tag || github.ref_name }} coordinator ${{ inputs.coordinator_run_id || 'manual' }}
 on:
   push:
     tags: ['v*']
@@ -302,3 +302,11 @@ jobs:
           else
             python3 tools/releases/publish.py --tag "$RELEASE_TAG" --directory build/publish
           fi
+      - name: Retain final publication evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/publish/publication.json
+          if-no-files-found: warn
+          retention-days: 90

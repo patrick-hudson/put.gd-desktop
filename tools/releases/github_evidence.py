@@ -10,6 +10,7 @@ PACKAGE_WORKFLOW = '.github/workflows/release.yml'
 BUILD_JOBS = ('linux (24.04)', 'linux (26.04)', 'portable (windows-2022)', 'portable (macos-14)')
 PACKAGE_JOBS = ('native (ubuntu24.04)', 'native (ubuntu26.04)', 'native (fedora44)', 'appimage')
 _PENDING_STATUSES = ('queued', 'in_progress', 'waiting', 'pending', 'requested')
+_EXACT_SOURCE_EVENTS = ('push', 'workflow_dispatch')
 
 
 def full_sha(value):
@@ -80,6 +81,9 @@ def _verify_producer(api, run_id, source_sha, workflow_path, required_jobs, *, p
                 or (package_jobs and run.get('status') == 'in_progress' and run.get('conclusion') is None))
     workflow = api.workflow(workflow_path)
     run = api.json('actions/runs/' + str(run_id))
+    # Default PR checkout tests a merge commit; API head_sha alone is not its identity.
+    if run.get('event') not in _EXACT_SOURCE_EVENTS:
+        raise ValueError('Producer event does not establish an exact-source checkout')
     _run_identity(api, run, run_id, source_sha, workflow)
     if not successful_state(run):
         raise ValueError('Required CI producer is not completed successfully: ' + str(run_id))
@@ -124,7 +128,8 @@ def coordinate_build(api, source_sha, tag, *, timeout=7200, poll_seconds=15):
         if selected is None:
             pages = api.json('actions/workflows/' + str(workflow['id']) +
                              '/runs?head_sha=' + source_sha + '&per_page=100', paginate=True)
-            runs = [run for page in pages for run in page['workflow_runs'] if run.get('head_sha') == source_sha]
+            runs = [run for page in pages for run in page['workflow_runs']
+                    if run.get('head_sha') == source_sha and run.get('event') in _EXACT_SOURCE_EVENTS]
             for run in runs:
                 _run_identity(api, run, run.get('id'), source_sha, workflow)
             successful = [run for run in runs if run.get('status') == 'completed' and run.get('conclusion') == 'success']
@@ -148,6 +153,14 @@ def coordinate_build(api, source_sha, tag, *, timeout=7200, poll_seconds=15):
         time.sleep(min(poll_seconds, max(0, deadline - time.monotonic())))
 
 
+def _nightly_origin(run, tag):
+    title = run.get('display_title')
+    if not isinstance(title, str):
+        return None
+    match = re.fullmatch('Nightly release ' + re.escape(tag) + r' coordinator ([1-9][0-9]*)', title)
+    return int(match[1]) if match else None
+
+
 def coordinate_packages(api, source_sha, tag, coordinator_run_id, build, *, timeout=120, poll_seconds=5):
     """Retain the original exact-tag package handoff instead of rebuilding on retry."""
     workflow = api.workflow(PACKAGE_WORKFLOW)
@@ -158,7 +171,7 @@ def coordinate_packages(api, source_sha, tag, coordinator_run_id, build, *, time
                          '/runs?head_sha=' + source_sha + '&per_page=100', paginate=True)
         runs = [run for page in pages for run in page['workflow_runs']
                 if run.get('head_sha') == source_sha and run.get('head_branch') == tag
-                and run.get('event') == 'workflow_dispatch']
+                and run.get('event') == 'workflow_dispatch' and _nightly_origin(run, tag) is not None]
         if runs:
             run = min(runs, key=lambda value: value['id'])
             _run_identity(api, run, run['id'], source_sha, workflow)
@@ -168,8 +181,8 @@ def coordinate_packages(api, source_sha, tag, coordinator_run_id, build, *, time
                 raise ValueError('Unknown original package run status')
             return {'workflowId': workflow['id'], 'workflowPath': PACKAGE_WORKFLOW,
                     'runId': run['id'], 'runAttempt': run['run_attempt'], 'ref': tag,
-                    'sourceSha': source_sha, 'coordinatorRunId': coordinator_run_id,
-                    'reused': not dispatched}
+                    'sourceSha': source_sha, 'coordinatorRunId': _nightly_origin(run, tag),
+                    'status': run['status'], 'reused': not dispatched}
         if not dispatched:
             api.dispatch(PACKAGE_WORKFLOW, tag, {'tag': tag, 'publish': True, 'nightly': True,
                 'source_sha': source_sha, 'build_run_id': str(build.get('runId', '')),

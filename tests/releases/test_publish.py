@@ -228,7 +228,7 @@ class NightlyPublicationTest(unittest.TestCase):
                 (46, 13, github_evidence.PACKAGE_WORKFLOW, github_evidence.PACKAGE_JOBS)]:
             self.runs[run_id] = {'id': run_id, 'workflow_id': workflow_id, 'path': path,
                 'head_sha': 'a' * 40, 'repository': {'full_name': 'fixture/putgd'},
-                'head_repository': {'full_name': 'fixture/putgd'}, 'run_attempt': 1,
+                'head_repository': {'full_name': 'fixture/putgd'}, 'run_attempt': 1, 'event': 'workflow_dispatch',
                 'status': 'completed' if run_id == 45 else 'in_progress',
                 'conclusion': 'success' if run_id == 45 else None}
             self.jobs[run_id] = [{'id': i + 100, 'name': name, 'status': 'completed',
@@ -238,11 +238,11 @@ class NightlyPublicationTest(unittest.TestCase):
         self.changed_final_attempt = False
 
     def metadata_for(self, draft, names=None):
+        ordered = sorted(self.files)
         return {'id': 42, 'tag_name': self.tag, 'draft': draft, 'prerelease': True,
-            'assets': [{'id': i + 1, 'name': name, 'size': len(self.files[name]),
+            'assets': [{'id': ordered.index(name) + 1, 'name': name, 'size': len(self.files[name]),
                         'state': 'uploaded', 'updated_at': '2026-10-12T00:00:00Z'}
-                       for name in (sorted(self.files) if names is None else names)
-                       for i in [sorted(self.files).index(name)]]}
+                       for name in (ordered if names is None else names)]}
 
     def output(self, command, **kwargs):
         endpoint = next(value for value in command if value.startswith('repos/'))

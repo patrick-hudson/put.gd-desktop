@@ -65,6 +65,14 @@ class ReleaseChannels(unittest.TestCase):
             self.assertEqual((directory / 'nightly-execution.log').read_text(),
                              'synthetic dispatch failure\n')
 
+    def test_final_publication_receipt_and_owned_mode_are_retained(self):
+        release = (ROOT / '.github/workflows/release.yml').read_text()
+        self.assertIn("inputs.nightly && inputs.publish && inputs.coordinator_run_id && 'Nightly'", release)
+        step = release.split('      - name: Retain final publication evidence', 1)[1]
+        for text in ('if: always()', 'publication-${{ github.run_id }}-${{ github.run_attempt }}',
+                     'build/publish/publication.json', 'if-no-files-found: warn', 'retention-days: 90'):
+            self.assertIn(text, step)
+
     def test_package_recipe_and_nightly_publisher_inputs_are_bound(self):
         release = (ROOT / '.github/workflows/release.yml').read_text()
         for text in ('nightly:', 'build_run_id:', 'build_workflow_id:', 'source_sha:',

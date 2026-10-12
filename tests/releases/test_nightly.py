@@ -30,7 +30,7 @@ class API:
         self.run = {'id': 45, 'workflow_id': 12, 'path': '.github/workflows/build.yml',
                     'head_sha': SHA, 'repository': {'full_name': REPO},
                     'head_repository': {'full_name': REPO}, 'status': 'completed',
-                    'conclusion': 'success', 'run_attempt': 1}
+                    'conclusion': 'success', 'run_attempt': 1, 'event': 'push'}
         self.runs = [self.run]
         self.jobs = [{'id': i + 1, 'name': name, 'status': 'completed', 'conclusion': 'success'}
                      for i, name in enumerate(evidence.BUILD_JOBS)]
@@ -59,7 +59,9 @@ class API:
     def dispatch(self, path, tag, inputs):
         self.dispatched.append((path, tag, inputs))
         if path.endswith('release.yml'):
-            run = dict(self.run, id=46, workflow_id=13, path=path, head_branch=tag, event='workflow_dispatch')
+            run = dict(self.run, id=46, workflow_id=13, path=path, head_branch=tag, event='workflow_dispatch',
+                       display_title='Nightly release ' + tag + ' coordinator ' + inputs['coordinator_run_id'],
+                       status='in_progress', conclusion=None)
             self.package_runs = [run]
         else:
             self.runs = [self.run]
@@ -132,6 +134,19 @@ class BuildEvidence(unittest.TestCase):
         self.assertEqual(receipt['runId'], 45)
         self.assertEqual(api.dispatched, [])
 
+    def test_pull_request_merge_build_is_not_exact_source_evidence(self):
+        api = API()
+        api.run['event'] = 'pull_request'
+        with self.assertRaises(ValueError):
+            evidence.verify_ci(api, 45, SHA, evidence.BUILD_WORKFLOW, evidence.BUILD_JOBS)
+
+    def test_only_pr_build_dispatches_exact_tag_instead_of_reusing_merge(self):
+        api = API()
+        api.runs = [dict(api.run, id=44, event='pull_request')]
+        receipt = evidence.coordinate_build(api, SHA, 'v0.1.1', timeout=1)
+        self.assertEqual(receipt['runId'], 45)
+        self.assertEqual(len(api.dispatched), 1)
+
     def test_absent_build_dispatches_only_on_immutable_tag(self):
         api = API()
         api.runs = []
@@ -182,6 +197,19 @@ class BuildEvidence(unittest.TestCase):
         with self.assertRaises(ValueError):
             evidence.verify_package_jobs(api, 45, SHA)
 
+    def test_manual_package_only_run_does_not_absorb_nightly_dispatch(self):
+        for title in ('Linux release v0.1.1 coordinator manual',
+                      'Linux release v0.1.1 coordinator 70',
+                      'Nightly release v0.1.1 coordinator 0', ''):
+            with self.subTest(title=title):
+                api = API()
+                api.package_runs = [dict(api.run, id=44, workflow_id=13,
+                    path=evidence.PACKAGE_WORKFLOW, head_branch='v0.1.1',
+                    event='workflow_dispatch', display_title=title)]
+                receipt = evidence.coordinate_packages(api, SHA, 'v0.1.1', 71, {}, timeout=0)
+                self.assertEqual(receipt['runId'], 46)
+                self.assertEqual(len(api.dispatched), 1)
+
     def test_packages_dispatch_exact_tag_once_and_reuse_original_run(self):
         api = API()
         build = {'runId': 45, 'workflowId': 12}
@@ -192,8 +220,9 @@ class BuildEvidence(unittest.TestCase):
         retry = evidence.coordinate_packages(api, SHA, 'v0.1.1', 72, build, timeout=0)
         self.assertTrue(retry['reused'])
         self.assertEqual(retry['runId'], receipt['runId'])
+        self.assertEqual(retry['coordinatorRunId'], 71)
         self.assertEqual(len(api.dispatched), 1)
-        api.package_runs[0]['conclusion'] = 'failure'
+        api.package_runs[0].update(status='completed', conclusion='failure')
         with self.assertRaisesRegex(ValueError, 'recovery: 46'):
             evidence.coordinate_packages(api, SHA, 'v0.1.1', 72, build, timeout=0)
         self.assertEqual(len(api.dispatched), 1)
@@ -277,6 +306,35 @@ class PinnedSource(unittest.TestCase):
         self.assertEqual(api.dispatched[0][2]['source_sha'], self.sha)
         self.assertEqual(api.dispatched[0][2]['build_run_id'], '')
         self.assertEqual(api.dispatched[0][2]['build_workflow_id'], '')
+
+    def test_completed_handoff_without_public_nightly_reports_original_run(self):
+        api = API()
+        prepared = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
+                                              'runId': 72, 'sourceSha': self.sha})
+        release = {'tag': prepared['tag'], 'channel': 'nightly', 'gitCommit': self.sha}
+        api.package_runs = [dict(api.run, id=46, workflow_id=13,
+            path=evidence.PACKAGE_WORKFLOW, head_sha=self.sha, head_branch=prepared['tag'],
+            event='workflow_dispatch',
+            display_title='Nightly release ' + prepared['tag'] + ' coordinator 71')]
+        with patch.object(nightly, 'ensure_tag', return_value=release), \
+             patch.object(nightly, 'published_nightly', return_value=None):
+            with self.assertRaisesRegex(ValueError, 'without verified public nightly: 46'):
+                nightly.execute(api, self.root, prepared)
+        self.assertEqual(api.dispatched, [])
+
+    def test_completed_handoff_rechecks_publication_race(self):
+        api = API()
+        prepared = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
+                                              'runId': 72, 'sourceSha': self.sha})
+        release = {'tag': prepared['tag'], 'channel': 'nightly', 'gitCommit': self.sha}
+        handoff = {'runId': 46, 'status': 'completed', 'coordinatorRunId': 71}
+        public = {'releaseId': 66}
+        with patch.object(nightly, 'ensure_tag', return_value=release), \
+             patch.object(nightly, 'published_nightly', side_effect=[None, public]), \
+             patch.object(nightly, 'coordinate_packages', return_value=handoff):
+            result = nightly.execute(api, self.root, prepared)
+        self.assertEqual(result['publishedNightly'], public)
+        self.assertEqual(result['packageDispatch'], handoff)
 
     def test_release_ci_accepts_pinned_source_without_prewaited_build(self):
         self.git('tag', 'v0.1.1')

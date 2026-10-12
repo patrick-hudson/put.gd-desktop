@@ -187,6 +187,12 @@ def execute(api, root, receipt):
     # Release's CI coordinator observes Build in parallel with native/AppImage jobs.
     result['packageDispatch'] = coordinate_packages(api, prepared['sourceSha'], prepared['tag'],
                                                     prepared['runId'], {})
+    if result['packageDispatch']['status'] == 'completed':
+        # Publication may have finished after our first public snapshot.
+        result['publishedNightly'] = published_nightly(api, prepared['tag'], release)
+        if not result['publishedNightly']:
+            raise ValueError('Original package run completed without verified public nightly: '
+                             + str(result['packageDispatch']['runId']))
     return result
 
 
