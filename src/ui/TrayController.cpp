@@ -100,10 +100,20 @@ void TrayController::showView(const QString& view) {
  const auto open = openView_;
  open(view);
 }
-void TrayController::invokeAction(const QString& action) {
- operations_.invoke(action, [guard = QPointer<TrayController>(this)](Error error, QJsonObject) {
+void TrayController::invokeShortcut(const QString& action) { invokeAction(action, true); }
+void TrayController::invokeAction(const QString& action, bool fromShortcut) {
+ operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut](Error error, QJsonObject) {
   if (guard && error) {
-   guard->showActivity();
+   qWarning("Action rejected: %s", qPrintable(error.code));
+   if (fromShortcut) {
+    // Re-entry must not map a view over selection or startup recovery.
+    if (error.code == "busy_selecting" || error.code == "initializing") return;
+    if (guard->shortcutFeedbackClock_.isValid() && guard->lastShortcutError_ == error.code &&
+        guard->shortcutFeedbackClock_.elapsed() < 2000) return;
+    guard->lastShortcutError_ = error.code;
+    guard->shortcutFeedbackClock_.start();
+   }
+   if (!fromShortcut) guard->showActivity();
    if (guard) guard->notifyFailure(error);
   }
  });

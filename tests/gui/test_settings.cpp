@@ -26,6 +26,23 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void savingOnlyAShortcutPreservesEveryUploadDestination() {
+  QTemporaryDir directory;CredentialStore secrets;S3Provider provider(secrets);
+  SettingsService settings(directory.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});
+  QVERIFY(settings.save(Settings::developmentTemplate(),{}));
+  const auto before=settings.document()["actions"].toObject();
+  UiSessionFixture fixture(settings,secrets);QTRY_VERIFY(fixture.session.ready());
+  SettingsWindow window(fixture.session);
+  window.findChild<QLineEdit*>("shortcutRegion")->setText("Ctrl+1");
+  window.findChild<QPushButton*>("saveSettings")->click();
+  QTRY_COMPARE(settings.snapshot().actions["region"].shortcut,QString("Ctrl+1"));
+  const auto after=settings.document()["actions"].toObject();
+  for(const auto& name:Settings::actionNames()){
+   QCOMPARE(after[name].toObject()["profileId"],before[name].toObject()["profileId"]);
+   QCOMPARE(after[name].toObject()["destination"],before[name].toObject()["destination"]);
+   if(name!="region")QCOMPARE(after[name],before[name]);
+  }
+ }
  void simpleDestinationAndCredentialFieldsShareAlignment(){
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);window.show();QTest::qWait(20);
   auto* bucket=window.findChild<QLineEdit*>("s3Bucket");auto* access=window.findChild<QLineEdit*>("credentialAccessKey");auto* advanced=window.findChild<QToolButton*>("advancedSettings");
@@ -307,6 +324,17 @@ private slots:
   editor.setStatus({{"available",true},{"bindings",QJsonObject{{"region",QJsonObject{{"requested","Ctrl+Shift+1"},{"actual",QJsonArray{"Ctrl+Alt+R","Meta+R"}},{"bound",true},{"state","bound"}}},{"window",QJsonObject{{"requested","Ctrl+Shift+2"},{"bound",false},{"state","pending"}}}}}});
   QVERIFY(status("Region")->text().contains("Ctrl+Alt+R"));QVERIFY(status("Region")->text().contains("Meta+R"));QVERIFY(status("Window")->text().contains("Binding"));QVERIFY(!status("Desktop")->text().contains("Active"));
   editor.setStatus({{"available",false},{"bindings",QJsonObject{}}});for(auto action:QStringList{"Region","Window","Desktop","Clipboard"})QVERIFY(status(action)->text().contains("Unavailable"));QCOMPARE(editor.actions({}),draft);
+ }
+
+ void shortcutLayoutErrorsDoNotCallValidDraftInvalid() {
+  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());const auto draft=editor.actions({});
+  for(const auto& code:QStringList{"shortcut_unsupported","shortcut_unmapped","shortcut_ambiguous","shortcut_unavailable"}){
+   const auto state=code=="shortcut_ambiguous"?QString("shortcut_unmapped"):code;
+   const QJsonObject diagnostics{{"available",true},{"bindings",QJsonObject{{"region",QJsonObject{{"requested","Ctrl+Shift+1"},{"bound",false},{"state",state},{"error",code}}}}}};
+   editor.setStatus(diagnostics);auto* label=editor.findChild<QLabel*>("shortcutRegionStatus");QVERIFY(label);QVERIFY(!label->text().contains("Invalid shortcut"));QVERIFY(!label->text().contains("Enter a single"));QVERIFY(!label->text().contains("Try one key"));
+   QVERIFY(label->text().contains(code=="shortcut_unsupported"?"Unsupported":"Unavailable"));QCOMPARE(editor.actions({}),draft);
+   auto* details=editor.findChild<QPlainTextEdit*>("shortcutDetails");QVERIFY(details);QCOMPARE(QJsonDocument::fromJson(details->toPlainText().toUtf8()).object(),diagnostics);
+  }
  }
 
  void sectionsAreKeyboardReachableAndFooterStaysInsideCompactWindow() {

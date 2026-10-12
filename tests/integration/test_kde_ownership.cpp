@@ -10,6 +10,9 @@
 #include <QDir>
 #include <QFile>
 #include <QTemporaryDir>
+#include <QTemporaryFile>
+#include <xkbcommon/xkbcommon.h>
+#include <cstdlib>
 #include <QGuiApplication>
 #include <QSocketNotifier>
 #include <QMap>
@@ -38,12 +41,17 @@ class NativeOutputFixture final:public QObject {
   QString name="DP-1";QRect rectangle=QRect(0,0,2560,1440);QSize mode=QSize(3840,2160);int scale=2,transform=0;bool sendMode=true;
  } output_{this,nullptr,{},{}};
  struct Logical {Output* output;wl_resource* resource;wl_resource* native;};
- QTemporaryDir directory_{"/tmp/pgo-XXXXXX"};wl_display* display_=nullptr;QSocketNotifier* notifier_=nullptr;int version_;QString error_;
+ QTemporaryDir directory_{"/tmp/pgo-XXXXXX"};wl_display* display_=nullptr;QSocketNotifier* notifier_=nullptr;int version_;QString error_;wl_global* seatGlobal_=nullptr;QList<wl_resource*> keyboards_,seats_;QByteArray keyboardText_;
  static void destroyRequest(wl_client*,wl_resource* resource){wl_resource_destroy(resource);}
  static void outputDestroyed(wl_resource* resource){auto* output=static_cast<Output*>(wl_resource_get_user_data(resource));output->native.removeOne(resource);}
  static void logicalDestroyed(wl_resource* resource){auto* logical=static_cast<Logical*>(wl_resource_get_user_data(resource));logical->output->logical.removeOne(logical);delete logical;}
  static void sendGeometry(Output& output,wl_resource* resource){wl_output_send_geometry(resource,0,0,0,0,WL_OUTPUT_SUBPIXEL_UNKNOWN,"fixture","fixture",output.transform);}
  static void sendLogical(Logical* logical){const auto rect=logical->output->rectangle;zxdg_output_v1_send_logical_position(logical->resource,rect.x(),rect.y());zxdg_output_v1_send_logical_size(logical->resource,rect.width(),rect.height());}
+ static void keyboardDestroyed(wl_resource* resource){auto* self=static_cast<NativeOutputFixture*>(wl_resource_get_user_data(resource));self->keyboards_.removeOne(resource);}
+ void sendKeymap(wl_resource* keyboard){QTemporaryFile file;if(!file.open()||file.write(keyboardText_)!=keyboardText_.size()||!file.flush())return;wl_keyboard_send_keymap(keyboard,WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,file.handle(),uint32_t(keyboardText_.size()));}
+ static void getKeyboard(wl_client* client,wl_resource* seat,uint32_t id){auto* self=static_cast<NativeOutputFixture*>(wl_resource_get_user_data(seat));auto* keyboard=wl_resource_create(client,&wl_keyboard_interface,wl_resource_get_version(seat),id);static const struct wl_keyboard_interface implementation={destroyRequest};wl_resource_set_implementation(keyboard,&implementation,self,keyboardDestroyed);self->keyboards_.append(keyboard);self->sendKeymap(keyboard);}
+ static void seatDestroyed(wl_resource* resource){auto* self=static_cast<NativeOutputFixture*>(wl_resource_get_user_data(resource));self->seats_.removeOne(resource);}
+ static void bindSeat(wl_client* client,void* data,uint32_t version,uint32_t id){auto* self=static_cast<NativeOutputFixture*>(data);auto* seat=wl_resource_create(client,&wl_seat_interface,int(version),id);static const struct wl_seat_interface implementation={nullptr,getKeyboard,nullptr,destroyRequest};wl_resource_set_implementation(seat,&implementation,data,seatDestroyed);self->seats_.append(seat);wl_seat_send_capabilities(seat,WL_SEAT_CAPABILITY_KEYBOARD);}
  static void bindOutput(wl_client* client,void* data,uint32_t version,uint32_t id){
   auto* output=static_cast<Output*>(data);auto* resource=wl_resource_create(client,&wl_output_interface,int(version),id);
   static const struct wl_output_interface implementation={destroyRequest};wl_resource_set_implementation(resource,&implementation,output,outputDestroyed);output->native.append(resource);
@@ -65,19 +73,25 @@ class NativeOutputFixture final:public QObject {
  }
  void flush(){if(display_)wl_display_flush_clients(display_);}
 public:
- explicit NativeOutputFixture(int version=3,bool sendMode=true,int nativeVersion=4):version_(version){
+ explicit NativeOutputFixture(int version=3,bool sendMode=true,int nativeVersion=4,bool keyboard=false,int seatVersion=5):version_(version){
   struct stat metadata{};
   if(!directory_.isValid()||lstat(directory_.path().toUtf8().constData(),&metadata)<0||!S_ISDIR(metadata.st_mode)||metadata.st_uid!=geteuid()||(metadata.st_mode&077)!=0){error_="Fixture runtime directory is not private and owned";return;}
   const auto socketPath=directory_.filePath("wayland-test").toUtf8();
   if(socketPath.size()>107){error_="Fixture Unix socket exceeds Linux byte limit";return;}
   environment_.set("XDG_RUNTIME_DIR",directory_.path().toUtf8());environment_.set("WAYLAND_DISPLAY","wayland-test");environment_.set("XDG_SESSION_TYPE","wayland");environment_.set("XDG_CURRENT_DESKTOP","KDE");environment_.set("QT_QPA_PLATFORM","wayland");
   display_=wl_display_create();if(!display_||wl_display_add_socket(display_,"wayland-test")<0){error_="Cannot bind private native-output fixture socket";return;}
+  if(keyboard){keyboardLayout("us");seatGlobal_=wl_global_create(display_,&wl_seat_interface,seatVersion,this,bindSeat);}
   output_.sendMode=sendMode;output_.global=wl_global_create(display_,&wl_output_interface,nativeVersion,&output_,bindOutput);
   wl_global_create(display_,&zxdg_output_manager_v1_interface,version_,this,bindManager);
   auto* loop=wl_display_get_event_loop(display_);notifier_=new QSocketNotifier(wl_event_loop_get_fd(loop),QSocketNotifier::Read,this);
   connect(notifier_,&QSocketNotifier::activated,this,[this,loop]{wl_event_loop_dispatch(loop,0);flush();});
  }
  ~NativeOutputFixture() override{if(notifier_){notifier_->setEnabled(false);delete notifier_;}if(display_){wl_display_destroy_clients(display_);wl_display_destroy(display_);}}
+ int keyboardCount()const{return keyboards_.size();}
+ void keyboardCapability(bool present){for(auto* seat:seats_)wl_seat_send_capabilities(seat,present?WL_SEAT_CAPABILITY_KEYBOARD:0);flush();}
+ void keyboardLayout(const char* layouts){auto* context=xkb_context_new(XKB_CONTEXT_NO_ENVIRONMENT_NAMES);xkb_rule_names names{};names.layout=layouts;auto* map=xkb_keymap_new_from_names(context,&names,XKB_KEYMAP_COMPILE_NO_FLAGS);if(map){char* text=xkb_keymap_get_as_string(map,XKB_KEYMAP_FORMAT_TEXT_V1);keyboardText_=QByteArray(text);keyboardText_.append(char(0));free(text);xkb_keymap_unref(map);}xkb_context_unref(context);for(auto* keyboard:keyboards_)sendKeymap(keyboard);flush();}
+ void malformedKeyboardMap(){keyboardText_=QByteArray("bad\0",4);for(auto* keyboard:keyboards_)sendKeymap(keyboard);flush();}
+ void removeKeyboardSeat(){if(seatGlobal_){wl_global_destroy(seatGlobal_);seatGlobal_=nullptr;}flush();}
  bool ready()const{return display_&&error_.isEmpty();}QString error()const{return error_;}
  bool discovered()const{return !output_.native.isEmpty()&&!output_.logical.isEmpty();}
  void logical(QRect rect,bool complete){output_.rectangle=rect;for(auto* logical:output_.logical){sendLogical(logical);if(complete){if(version_>=3)wl_output_send_done(logical->native);else zxdg_output_v1_send_done(logical->resource);}}flush();}
@@ -139,6 +153,23 @@ private slots:
  }
  void cleanupTestCase(){QDBusConnection::disconnectFromBus("putgd-kde-ownership-fixture");}
  void init(){screenshot_.captures=0;screenshot_.windowId=frozenId;info_.queries.clear();info_.info={{"uuid",frozenId},{"resourceClass","external-fixture"},{"desktopFile","external-fixture"}};info_.fail=false;info_.delayMs=0;}
+ void keyboardMapDiscoveryReplacementAndRemoval(){
+  NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;QSignalSpy changed(&clipboard,&DataControlClipboard::keyboardChanged);
+  QTRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));
+  // Holding a reference must remain safe across map replacement.
+  auto* previous=xkb_keymap_ref(clipboard.keyboardMap());compositor.keyboardLayout("us,fr");QTRY_COMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(2));QCOMPARE(xkb_keymap_num_layouts(previous),xkb_layout_index_t(1));xkb_keymap_unref(previous);
+  const auto count=changed.count();compositor.malformedKeyboardMap();QTRY_VERIFY(!clipboard.keyboardMap());QVERIFY(changed.count()>count);
+  compositor.keyboardLayout("us");QTRY_VERIFY(clipboard.keyboardMap());compositor.removeKeyboardSeat();QTRY_VERIFY(!clipboard.keyboardMap());
+ }
+ void keyboardCapabilityCyclesReleaseLiveServerResources(){
+  NativeOutputFixture compositor(3,true,4,true);QVERIFY(compositor.ready());DataControlClipboard clipboard;QTRY_VERIFY(clipboard.keyboardMap());QTRY_COMPARE(compositor.keyboardCount(),1);
+  for(int cycle=0;cycle<3;++cycle){compositor.keyboardCapability(false);QTRY_VERIFY(!clipboard.keyboardMap());QTRY_COMPARE(compositor.keyboardCount(),0);compositor.keyboardCapability(true);QTRY_VERIFY(clipboard.keyboardMap());QTRY_COMPARE(compositor.keyboardCount(),1);}
+ }
+ void legacySeatStillDiscoversKeyboardMap(){NativeOutputFixture compositor(3,true,4,true,2);QVERIFY(compositor.ready());DataControlClipboard clipboard;QTRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));}
+ void keyboardMapConnectionLossAndReconnect(){
+  NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;QTRY_VERIFY(clipboard.keyboardMap());
+  compositor.disconnectClients();QTRY_VERIFY(!clipboard.keyboardMap());QTRY_VERIFY(clipboard.keyboardMap());
+ }
  void outputConnectionLossAndReconnectNotifyStatus(){
   NativeOutputFixture compositor;QVERIFY2(compositor.ready(),qPrintable(compositor.error()));KdeOutputs outputs;
   QTRY_VERIFY(outputs.status()["available"].toBool());QSignalSpy changed(&outputs,&KdeOutputs::changed);
