@@ -70,6 +70,10 @@ target_link_libraries(putgd_credentials PUBLIC putgd_core PRIVATE qt6keychain)
 # The resident facade and credential cache carry no SDK link requirement.
 add_library(putgd_s3_wire STATIC src/storage/s3/S3WorkerProtocol.cpp src/storage/s3/IpAddress.cpp src/storage/s3/PublicUrl.cpp)
 target_link_libraries(putgd_s3_wire PUBLIC putgd_core)
+# Non-Linux uses QHostAddress; the Linux resident keeps its native parser.
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_link_libraries(putgd_s3_wire PRIVATE Qt6::Network)
+endif()
 add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_sources(putgd_s3 PRIVATE src/storage/s3/S3ProcessDriver.cpp)
