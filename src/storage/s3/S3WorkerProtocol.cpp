@@ -115,6 +115,12 @@ bool errorDetails(const QJsonObject& details) {
     if (details.contains("serviceCode") && !choice(details["serviceCode"], {"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId",
             "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked",
             "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "Unclassified"})) return false;
+    if (details.contains("sdkErrorType") && !integer(details["sdkErrorType"], -1, 65535)) return false;
+    if (details.contains("curlCode") && !integer(details["curlCode"], -1, 999)) return false;
+    if (details.contains("sdkRetryable") && !details["sdkRetryable"].isBool()) return false;
+    if (details.contains("elapsedMs") && !integer(details["elapsedMs"], 0, 86400000)) return false;
+    if (details.contains("requestStage") && !choice(details["requestStage"], {"name_head", "object_head", "current_head", "upload_put",
+            "delete_versioning", "delete_current_head", "delete_marker", "delete_version", "delete_object"})) return false;
     if (details.contains("itemIndex") && !integer(details["itemIndex"], 0, 9999)) return false;
     if (details.contains("offset") && !integer(details["offset"], 0, maximumFrameBytes)) return false;
     if (details.contains("path") && !text(details["path"], 1, 4096)) return false;

@@ -1,4 +1,5 @@
 #include "storage/s3/SdkRuntime.h"
+#include "storage/s3/S3ErrorDiagnostics.h"
 #include <aws/core/client/ClientConfiguration.h>
 #include <aws/core/http/HttpClient.h>
 #include <aws/core/http/HttpClientFactory.h>
@@ -15,6 +16,15 @@
 class SdkContract final : public QObject {
     Q_OBJECT
 private slots:
+    void transportCodeDoesNotExportSdkMessage() {
+        QCOMPARE(putgd::sdkCurlCode("curlCode: 7, private endpoint and secret"), 7);
+        QCOMPARE(putgd::sdkCurlCode("curlCode: 35, TLS details"), 35);
+        QCOMPARE(putgd::sdkCurlCode("curlCode: 999, future transport"), 999);
+        for (const auto input : {"prefix curlCode: 7, secret", "curlCode: -1, secret", "curlCode: +7, secret",
+                "curlCode: 7secret, detail", "curlCode: 1000, detail", "curlCode: 7", "curlCode: , detail",
+                "curlCode:  7, detail", "curlCode: 7\n, detail", "ordinary SDK failure"})
+            QCOMPARE(putgd::sdkCurlCode(input), -1);
+    }
     void deferredOwnerLifecycle() {
         using Runtime = putgd::SdkRuntime;
         QVERIFY_EXCEPTION_THROWN(Runtime::ensureInitialized(), std::logic_error);

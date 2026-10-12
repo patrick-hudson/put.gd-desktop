@@ -2,6 +2,8 @@
 #include "S3SdkContext.h"
 #include "PublicUrl.h"
 #include "SdkRuntime.h"
+#include "S3ErrorDiagnostics.h"
+#include <QElapsedTimer>
 #include <aws/core/auth/AWSCredentials.h>
 #include <aws/core/http/HttpClientFactory.h>
 #include <aws/core/http/HttpClient.h>
@@ -40,7 +42,7 @@ Error cancelled() {
     return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}};
 }
 Error accessError() { return {"credential_setup_required", "Restore explicit credentials for this original destination", {}}; }
-template<class E> Error wireError(const E& error) {
+template<class E> Error wireError(const E& error, const char* stage, qint64 elapsedMs) {
     const auto name = qt(error.GetExceptionName());
     const int status = int(error.GetResponseCode());
     QString code = "s3_request_failed";
@@ -53,7 +55,10 @@ template<class E> Error wireError(const E& error) {
     else if (status == 409 || status == 412) code = "precondition_changed";
     else if (status < 200 || status >= 500) code = "s3_transport_unknown";
     return {code, "S3 request failed; check destination access, ACL and retention settings",
-            {{"httpStatus", status}, {"serviceCode", QStringList{"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable"}.contains(name) ? name : QString("Unclassified")}}};
+            {{"httpStatus", status}, {"sdkErrorType", int(error.GetErrorType())},
+             {"curlCode", sdkCurlCode({error.GetMessage().data(), error.GetMessage().size()})},
+             {"sdkRetryable", error.ShouldRetry()}, {"requestStage", QString::fromLatin1(stage)},
+             {"elapsedMs", qMin(elapsedMs, qint64(86400000))}, {"serviceCode", QStringList{"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable"}.contains(name) ? name : QString("Unclassified")}}};
 }
 template<class E> bool absent(const E& error) { return int(error.GetResponseCode()) == 404; }
 template<class E> bool ambiguous(const E& error) {
@@ -131,10 +136,12 @@ StorageReceipt receipt(const Destination& destination, const QString& key, const
 StatResult inspect(Client& client, const StorageReceipt& expected, bool current = false) {
     const auto key = expected.objectReference["key"].toString();
     const auto version = current ? QString{} : expected.objectReference["versionId"].toString();
+    QElapsedTimer requestTimer;
+    requestTimer.start();
     const auto outcome = head(client, expected.destination, key, version);
     if (!outcome.IsSuccess()) {
         if (absent(outcome.GetError())) return {"missing", {}, {}};
-        return {"unknown", {}, wireError(outcome.GetError())};
+        return {"unknown", {}, wireError(outcome.GetError(), current ? "current_head" : "object_head", requestTimer.elapsed())};
     }
     const auto& result = outcome.GetResult();
     if (result.GetDeleteMarker()) return {"missing", {}, {}};
@@ -219,11 +226,13 @@ void NetworkS3Driver::checkName(const Destination& destination, const QString& c
         reply({"inconclusive", {}, {}, {"s3_key_invalid", "S3 key exceeds its byte limit", {}}});
         return;
     }
+    QElapsedTimer requestTimer;
+    requestTimer.start();
     const auto outcome = head(*client, destination, key);
     QJsonObject reference{{"schemaVersion", 1}, {"key", key}};
     if (!outcome.IsSuccess()) {
         if (absent(outcome.GetError())) reply({"absent", reference, {}, {}});
-        else reply({"inconclusive", {}, {}, wireError(outcome.GetError())});
+        else reply({"inconclusive", {}, {}, wireError(outcome.GetError(), "name_head", requestTimer.elapsed())});
     } else {
         reference["versionId"] = qt(outcome.GetResult().GetVersionId());
         reply({"present", reference, qt(outcome.GetResult().GetETag()), {}});
@@ -310,13 +319,15 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             return;
         }
         put.SetBody(stream);
+        QElapsedTimer requestTimer;
+        requestTimer.start();
         const auto outcome = client->PutObject(put);
         if (outcome.IsSuccess()) {
             reply({"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes,
                                          qt(outcome.GetResult().GetETag()), qt(outcome.GetResult().GetVersionId())), {}});
                                          return;
         }
-        const auto error = wireError(outcome.GetError());
+        const auto error = wireError(outcome.GetError(), "upload_put", requestTimer.elapsed());
         const bool conflict = int(outcome.GetError().GetResponseCode()) == 412 || int(outcome.GetError().GetResponseCode()) == 409;
         if (!ambiguous(outcome.GetError()) && !conflict) {
             reply({uncertain ? "unknown" : "failed", {}, error});
@@ -436,9 +447,11 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
     }
     Aws::S3::Model::GetBucketVersioningRequest versioning;
     versioning.SetBucket(aws(destination.settings["bucket"].toString()));
+    QElapsedTimer versioningTimer;
+    versioningTimer.start();
     auto bucket = client->GetBucketVersioning(versioning);
     if (!bucket.IsSuccess()) {
-        finish("unknown", wireError(bucket.GetError()));
+        finish("unknown", wireError(bucket.GetError(), "delete_versioning", versioningTimer.elapsed()));
         return;
     }
     auto state = bucket.GetResult().GetStatus();
@@ -461,9 +474,11 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             return;
         }
         if (phase != "marker_done" && phase != "version_intent" && phase != "version_unknown") {
+            QElapsedTimer currentTimer;
+            currentTimer.start();
             const auto current = head(*client, destination, key);
             if (!current.IsSuccess() && !absent(current.GetError())) {
-                finish("unknown", wireError(current.GetError()));
+                finish("unknown", wireError(current.GetError(), "delete_current_head", currentTimer.elapsed()));
                 return;
             }
             const bool isCurrent = current.IsSuccess() && qt(current.GetResult().GetVersionId()) == version;
@@ -500,14 +515,17 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                     finish("failed", cancelled());
                     return;
                 }
+                QElapsedTimer markerTimer;
+                markerTimer.start();
                 const auto marked = erase({}, expected.concurrencyToken);
+                const auto markerElapsedMs = markerTimer.elapsed();
                 if (!marked.IsSuccess()) {
                     const bool unknown = ambiguous(marked.GetError());
                     if (auto error = persist(unknown ? "marker_unknown" : "marker_failed")) {
                         finish("unknown", error);
                         return;
                     }
-                    finish(unknown ? "unknown" : (int(marked.GetError().GetResponseCode()) == 412 || int(marked.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(marked.GetError()));
+                    finish(unknown ? "unknown" : (int(marked.GetError().GetResponseCode()) == 412 || int(marked.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(marked.GetError(), "delete_marker", markerElapsedMs));
                     return;
                 }
                 if (!marked.GetResult().GetDeleteMarker() || qt(marked.GetResult().GetVersionId()).isEmpty()) {
@@ -547,11 +565,14 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish(progress.contains("markerVersionId") ? "hidden_version_retained" : "failed", cancelled());
             return;
         }
+        QElapsedTimer removeTimer;
+        removeTimer.start();
         const auto removed = erase(version, {});
+        const auto removeElapsedMs = removeTimer.elapsed();
         if (!removed.IsSuccess()) {
             const bool unknown = ambiguous(removed.GetError());
             persist(unknown ? "version_unknown" : "version_failed");
-            finish(progress.contains("markerVersionId") ? "hidden_version_retained" : (unknown ? "unknown" : "failed"), wireError(removed.GetError()));
+            finish(progress.contains("markerVersionId") ? "hidden_version_retained" : (unknown ? "unknown" : "failed"), wireError(removed.GetError(), "delete_version", removeElapsedMs));
             return;
         }
     } else {
@@ -574,11 +595,14 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish("failed", cancelled());
             return;
         }
+        QElapsedTimer removeTimer;
+        removeTimer.start();
         const auto removed = erase(version, expected.concurrencyToken);
+        const auto removeElapsedMs = removeTimer.elapsed();
         if (!removed.IsSuccess()) {
             const bool unknown = ambiguous(removed.GetError());
             persist(unknown ? "object_unknown" : "object_failed");
-            finish(unknown ? "unknown" : (int(removed.GetError().GetResponseCode()) == 412 || int(removed.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(removed.GetError()));
+            finish(unknown ? "unknown" : (int(removed.GetError().GetResponseCode()) == 412 || int(removed.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(removed.GetError(), "delete_object", removeElapsedMs));
             return;
         }
     }
