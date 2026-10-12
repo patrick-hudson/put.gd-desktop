@@ -1,5 +1,6 @@
 # Refresh on every normal build; configure_file writes only when identity changes.
 # This handles commits, index changes and working-tree edits without a reconfigure.
+set(PUTGD_RELEASE_TAG "" CACHE STRING "Exact clean Git release tag: v<base> or v<base>-rc.N")
 set(PUTGD_SOURCE_COMMIT "" CACHE STRING "Full commit for an exported source archive")
 set(PUTGD_SOURCE_TREE "" CACHE STRING "Full committed tree for an exported source archive")
 set(PUTGD_SOURCE_COMMIT_COUNT "" CACHE STRING "Commit count for an exported source archive")
@@ -8,6 +9,7 @@ set(identity_command "${CMAKE_COMMAND}"
   "-DSOURCE_DIR=${PROJECT_SOURCE_DIR}"
   "-DOUTPUT_DIR=${PUTGD_BUILD_IDENTITY_DIR}"
   "-DBASE_VERSION=${PROJECT_VERSION}"
+  "-DRELEASE_TAG=${PUTGD_RELEASE_TAG}"
   "-DSUPPLIED_COMMIT=${PUTGD_SOURCE_COMMIT}"
   "-DSUPPLIED_TREE=${PUTGD_SOURCE_TREE}"
   "-DSUPPLIED_COUNT=${PUTGD_SOURCE_COMMIT_COUNT}"

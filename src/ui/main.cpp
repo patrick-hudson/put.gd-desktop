@@ -11,6 +11,9 @@
 #include <cstring>
 #include <memory>
 int main(int argc,char** argv){
+ if(argc==2&&std::strcmp(argv[1],"--version-json")==0){
+  std::printf("%s\n",putgd::buildManifestJson());return 0;
+ }
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)){
   std::printf("putgd-ui %s\n",putgd::buildVersion());return 0;
  }

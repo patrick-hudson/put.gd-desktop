@@ -10,8 +10,8 @@ no C++ file changed. It does not require clearing the cache or configuring again
 The base in `project(... VERSION ...)` follows semantic versioning. Increment its
 patch for a compatible bug-fix release, minor for compatible functionality and
 major for incompatible changes. Do not bump it merely to allocate a commit ID;
-the generated commit identity does that. These builds remain development versions;
-this change does not create release tags or rewrite old commits.
+the generated commit identity does that. A build remains a development version
+unless the builder explicitly selects a verified release tag.
 
 Inspect the compiled build through:
 
@@ -19,11 +19,14 @@ Inspect the compiled build through:
 ./build/dev/putgd --version
 ./build/dev/putgd-cli --version
 ./build/dev/putgd-ui --version
+./build/dev/putgd --version-json
 ./build/dev/putgd-cli diagnostics
 cat build/dev/build-identity/build-info.json
 ```
 
-All three version commands work without a graphical session or running resident.
+All product executables support `--version` and `--version-json` without a
+graphical session, control pipes or running resident. The JSON command prints the
+embedded build manifest, including the full commit, without starting services.
 The tray's **About put.gd** action shows the version; its details contain the
 manifest. About is modeless, so it leaves capture input available. Opening it again
 reuses the visible dialog. The UI helper exits when its last primary window closes;
@@ -40,11 +43,43 @@ do not enter the identity. No source contents, paths, user identity or timestamp
 are exported. A dirty version is not a unique fingerprint of every working edit;
 retain binary/archive SHA-256 values for experiments as before.
 
+## Tagged releases
+
+A release build requires the explicit CMake option `PUTGD_RELEASE_TAG`. Supported
+tags are `vMAJOR.MINOR.PATCH` for stable releases and
+`vMAJOR.MINOR.PATCH-rc.N` for release candidates. Components have no leading zeros;
+`N` is positive. The tag's base must match `project(... VERSION ...)`, the working
+tree must be clean, and that exact tag must resolve to the checked-out commit.
+Both annotated and lightweight tags work. A missing tag, another commit's tag,
+a dirty tree or an archive source fails configuration and subsequent identity
+refresh rather than relabeling the binary. Tags do not change ordinary development
+builds automatically.
+
+After committing the intended release source, an example prerelease build is:
+
+```sh
+git tag -a v0.1.1-rc.1 -m "put.gd 0.1.1 release candidate 1"
+cmake --preset release -DPUTGD_RELEASE_TAG=v0.1.1-rc.1
+cmake --build --preset release
+cpack --config build/release/CPackConfig.cmake
+```
+
+The compiled version is `0.1.1-rc.1`; a stable tag produces `0.1.1`.
+The full commit, committed tree, commit count and observed clean Git provenance
+remain in the manifest. GitHub release assets must retain that manifest and their
+checksums; the release name alone does not identify their binary bytes. Changing
+or advancing Git while this option remains set fails the next build. To return
+that build directory to development numbering, configure with
+`-DPUTGD_RELEASE_TAG=` and rebuild all product executables. Release publishing
+and package acceptance are described in the release workflow documentation.
+
 ## Packages and ordering
 
 CPack and `cmake --install` use the built manifest and check `putgd`, `putgd-cli`
 and `putgd-ui`, plus `putgd-kde-region` when that target is built, before installing
-files. The selector version command also works without a display.
+files. They compare both the printable version and the full embedded manifest,
+so a reused release label cannot hide executables compiled from different commits.
+The selector identity commands also work without a display.
 Advancing Git without rebuilding leaves the old binaries and their old package
 identity intact. Project runtime assets, including the GNOME extension, and
 packaged metadata, notices and licenses are copied into the build directory during
@@ -69,8 +104,11 @@ cpack --config build/release/CPackConfig.cmake
 dpkg-deb --field build/release/putgd_*.deb Version
 ```
 
-Debian uses `0.1.1~dev.123+g0123456789ab`, with the same optional `.dirty` suffix.
-The tilde places a development package before final `0.1.1`; the count orders
+Debian and RPM use `0.1.1~dev.123+g0123456789ab`, with the same optional `.dirty`
+suffix. Tagged candidates map to `0.1.1~rc.1`; stable releases map to `0.1.1`.
+RPM uses package release `1`. The tilde places development packages and release
+candidates before final `0.1.1`, and numeric candidate components order
+`rc.2` before `rc.10`; the count orders
 ordinary successive commits in a full-history lineage. SemVer's `+g...` metadata
 distinguishes builds but does not affect SemVer precedence. Hashes do not give a
 chronological order across branches, and shallow history can change the count.
@@ -84,7 +122,9 @@ binary equality.
 Source archives have no `.git`. Supply the exact commit, tree and commit count from
 the repository that produced the archive. This is explicit provenance supplied by
 the builder, recorded as `sourceProvenance: "supplied"` with `dirty: null`; it is
-not claimed as locally observed clean Git state. All builds keep the `-dev` label.
+not claimed as locally observed clean Git state. Archive builds keep the `-dev`
+label and reject `PUTGD_RELEASE_TAG`; tagged release publishing uses a full Git
+checkout instead of an archive assertion.
 The three values must be supplied together, and hashes must be full lowercase Git
 object IDs. A Git checkout rejects archive overrides.
 
@@ -117,7 +157,9 @@ intended code first rather than expecting it to include local edits.
 
 `version_contract` creates small temporary Git repositories and uses normal
 CMake/Ninja builds. It checks all three executable versions and embedded manifests
-immediately after a commit-only rebuild. It also covers dirty state,
+immediately after a commit-only rebuild. It also covers same-version release binaries from different commits, explicit
+clean stable/RC tags, malformed tags, mismatched base and
+commit, dirty/archive release rejection, package ordering, dirty state,
 embedded/installed manifest agreement, package identity and runtime asset snapshots
 after Git advances,
 mixed executable rejection (including stale UI and KDE region helpers in ordinary

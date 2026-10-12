@@ -1,3 +1,4 @@
+#include <cstring>
 #include "app/LocalServer.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
@@ -7,6 +8,9 @@
 #include <QUuid>
 #include <cstdio>
 int main(int argc,char** argv) {
+ if(argc==2&&std::strcmp(argv[1],"--version-json")==0){
+  std::printf("%s\n",putgd::buildManifestJson());return 0;
+ }
  QCoreApplication app(argc,argv);QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-cli");QCoreApplication::setApplicationVersion(putgd::buildVersion());
  QCommandLineParser parser;parser.setApplicationDescription("JSON client for the resident put.gd session");parser.addHelpOption();parser.addVersionOption();parser.addOption({"socket","Session socket path","path"});parser.addOption({"request-id","Correlation ID","id"});parser.addPositionalArgument("method","Versioned session method");parser.addPositionalArgument("params","JSON parameter object (default {})","[params]");parser.process(app);
  const auto args=parser.positionalArguments();const auto id=parser.isSet("request-id")?parser.value("request-id"):QUuid::createUuid().toString(QUuid::WithoutBraces);
