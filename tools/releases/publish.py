@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Stage a verified GitHub prerelease; publish only after package acceptance."""
+"""Stage verified releases; publish accepted packages or exact-source nightlies."""
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 
 from collect import sha256
 from verify_tag import verify
+from github_evidence import GitHub, BUILD_WORKFLOW, BUILD_JOBS, verify_ci, verify_package_jobs
+from nightly import published_nightly, public_inventory
+from release_identity import parse_tag
 
 
 
@@ -63,12 +67,14 @@ def verify_uploaded_assets(assets, expected):
                 raise ValueError('Remote draft bytes differ from accepted assets: ' + name)
 
 
-def verify_remote_draft(tag, directory, listed, commit):
+def verify_remote_draft(tag, directory, listed, commit, *, nightly=False):
     """Verify the uploaded draft, including checksums, before the public mutation."""
     drafts = matching_releases(tag)
     if len(drafts) != 1 or drafts[0]['draft'] is not True:
         raise ValueError('Publication requires exactly one matching existing draft')
     before = drafts[0]
+    if nightly and before.get('prerelease') is not True:
+        raise ValueError('Nightly draft must be a prerelease')
     endpoint = 'repos/{owner}/{repo}/releases/' + str(before['id'])
     if remote_tag_commit(tag) != commit:
         raise ValueError('Remote tag differs from the accepted source commit')
@@ -79,7 +85,8 @@ def verify_remote_draft(tag, directory, listed, commit):
     verify_uploaded_assets(assets, expected)
     after = github_json(endpoint)
     if (after['id'] != before['id'] or after['tag_name'] != tag or after['draft'] is not True
-            or asset_snapshot(after, expected, directory) != assets or remote_tag_commit(tag) != commit):
+            or asset_snapshot(after, expected, directory) != assets or remote_tag_commit(tag) != commit
+            or (nightly and after.get('prerelease') is not True)):
         raise ValueError('Remote draft or tag changed during verification')
     return {'releaseId': before['id'], 'assets': assets, 'sha256': expected}
 
@@ -96,13 +103,24 @@ def stage_draft(tag, directory, listed, release, notes):
                    '--title', 'put.gd ' + release['version'], '--notes-file', str(notes)]
         if release['prerelease']:
             command.append('--prerelease')
+        if release.get('channel') == 'nightly':
+            command.append('--latest=false')
         subprocess.run(command, check=True)
         matches = matching_releases(tag)
         if len(matches) != 1 or matches[0]['draft'] is not True:
             raise ValueError('Created draft could not be uniquely verified')
+    if release.get('channel') == 'nightly' and matches[0].get('prerelease') is not True:
+        raise ValueError('Nightly draft must be a prerelease')
     expected = {**listed, 'SHA256SUMS': sha256(directory / 'SHA256SUMS')}
     assets = asset_snapshot(matches[0], expected, directory)
     verify_uploaded_assets(assets, expected)
+    if release.get('channel') == 'nightly':
+        after = matching_releases(tag)
+        if (len(after) != 1 or after[0].get('id') != matches[0]['id']
+                or after[0].get('draft') is not True or after[0].get('prerelease') is not True
+                or asset_snapshot(after[0], expected, directory) != assets
+                or remote_tag_commit(tag) != release['gitCommit']):
+            raise ValueError('Nightly draft or tag changed during staging verification')
     missing = sorted(set(expected) - set(assets))
     if missing:
         subprocess.run(['gh', 'release', 'upload', tag, *[str(directory / name) for name in missing]], check=True)
@@ -110,14 +128,89 @@ def stage_draft(tag, directory, listed, release, notes):
     # missing files are added. Incomplete/conflicting assets require inspection.
 
 
+def publish_nightly(args, release, listed):
+    """Publish one automated nightly, retaining exact producer and byte evidence."""
+    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
+        raise ValueError('Collected nightly inventory must contain all nine public assets')
+    identifiers = (args.build_run_id, args.build_workflow_id, args.package_run_id, args.coordinator_run_id)
+    if any(type(value) is not int or value <= 0 for value in identifiers):
+        raise ValueError('Nightly publication requires positive producer and coordinator IDs')
+    api = GitHub(os.environ['GITHUB_REPOSITORY'])
+
+    def producers():
+        build = verify_ci(api, args.build_run_id, release['gitCommit'], BUILD_WORKFLOW, BUILD_JOBS)
+        if build['workflowId'] != args.build_workflow_id:
+            raise ValueError('Build workflow ID differs from supplied producer')
+        packages = verify_package_jobs(api, args.package_run_id, release['gitCommit'])
+        return build, packages
+
+    build, packages = producers()
+    expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
+    public = published_nightly(api, args.tag, release)
+    if public and public['assetSha256'] != expected:
+        raise ValueError('Public nightly bytes conflict with original collected inventory')
+    receipt = {'schemaVersion': 1, 'tag': args.tag, 'channel': 'nightly',
+               'gitCommit': release['gitCommit'], 'source': release,
+               'verificationClass': 'automated-build-and-package',
+               'buildProducer': build, 'packageProducer': packages,
+               'coordinatorRunId': args.coordinator_run_id}
+    if public:
+        receipt.update(published=True, unchanged=True, verifiedPublishedNightly=public)
+    else:
+        notes = args.directory / 'release-notes.md'
+        notes.write_text('Build-tested nightly development release.\n\n'
+            'Automated coverage: Linux test suites, Windows/macOS portable compilation, '
+            'Ubuntu 24.04/26.04 DEB and Fedora 44 RPM audits, AppImage packaging, '
+            'and production compilation of the exact curated source tarball. '
+            'This does not certify current graphical compositor behavior, memory acceptance or live S3 behavior.\n\n'
+            'Individual DEBs, RPM, AppImage, source tarball, GNOME ZIP, release-builds.json, '
+            'combined ZIP and SHA256SUMS are available separately. DEB/RPM use distro Qt. '
+            'AppImage bundles dynamically linked Qt 6.8.3 and requires glibc 2.39 or newer. '
+            'GNOME 50 requires the included host extension.\n\n'
+            + 'Channel/source and automated producer evidence:\n\n```json\n'
+            + json.dumps(receipt, indent=2) + '\n```\n')
+        stage_draft(args.tag, args.directory, listed, release, notes)
+        verified = verify_remote_draft(args.tag, args.directory, listed, release['gitCommit'], nightly=True)
+        # Bytes can take time to download. Recheck both latest producer attempts
+        # immediately before making the release public.
+        if producers() != (build, packages):
+            raise ValueError('Nightly producers changed before publication')
+        final = matching_releases(args.tag)
+        if (len(final) != 1 or final[0].get('id') != verified['releaseId']
+                or final[0].get('draft') is not True or final[0].get('prerelease') is not True
+                or asset_snapshot(final[0], expected, args.directory) != verified['assets']
+                or remote_tag_commit(args.tag) != release['gitCommit']):
+            raise ValueError('Nightly draft or tag changed before publication')
+        subprocess.run(['gh', 'release', 'edit', args.tag, '--draft=false',
+                        '--prerelease', '--latest=false'], check=True)
+        public = published_nightly(api, args.tag, release)
+        if (not public or public['releaseId'] != verified['releaseId']
+                or public['assetSha256'] != expected):
+            raise ValueError('Published nightly metadata or bytes could not be verified')
+        receipt.update(verifiedRemoteDraft=verified, verifiedPublishedNightly=public, published=True)
+    (args.directory / 'publication.json').write_text(json.dumps(receipt, indent=2) + '\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--tag', required=True)
     parser.add_argument('--directory', required=True, type=Path)
-    parser.add_argument('--publish', action='store_true', help='Publish the existing draft after acceptance')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--publish', action='store_true', help='Publish the existing draft after acceptance')
+    mode.add_argument('--nightly', action='store_true', help='Publish a strict nightly after automated verification')
+    parser.add_argument('--build-run-id', type=int)
+    parser.add_argument('--build-workflow-id', type=int)
+    parser.add_argument('--package-run-id', type=int)
+    parser.add_argument('--coordinator-run-id', type=int)
     parser.add_argument('--acceptance', type=Path, help='Current package acceptance receipt')
     args = parser.parse_args()
     release = verify(Path.cwd(), args.tag)
+    if args.nightly and (parse_tag(args.tag).channel != 'nightly' or release.get('channel') != 'nightly'):
+        raise ValueError('Automated nightly publication requires a verified strict nightly tag')
+    if args.nightly and args.acceptance:
+        parser.error('--nightly uses automated evidence, not package acceptance')
+    if args.publish and release.get('channel') == 'nightly':
+        parser.error('Nightly publication requires --nightly and verified producer IDs')
     bundle = json.loads((args.directory / 'release-builds.json').read_text())
     if bundle['release'] != release:
         raise ValueError('Collected release source identity changed')
@@ -129,6 +222,9 @@ def main():
         if name in listed:
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
+    if args.nightly:
+        publish_nightly(args, release, listed)
+        return
     if args.publish:
         if not args.acceptance:
             parser.error('--acceptance is required to publish a tested draft')

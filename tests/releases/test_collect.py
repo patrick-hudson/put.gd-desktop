@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import collect
@@ -211,6 +212,78 @@ class ReleaseCollection(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'identity'):
             self.run_collection()
         self.assertFalse(self.output.exists())
+
+    def nightly_inputs(self):
+        # U1 covers exact Git-tag verification; this fixture starts at its verified
+        # identity boundary and tests the real collector/archive byte pipeline.
+        utc = datetime.fromtimestamp(int(self.git_show_commit_time()), timezone.utc).strftime('%Y%m%d%H%M%S')
+        tag = f"v0.1.1-dev.{self.release['commitCount']}.{utc}+g{self.release['gitCommit'][:12]}"
+        version = tag[1:]
+        self.release.update(tag=tag, version=version, packageVersion=version.replace('-dev.', '~dev.'), channel='nightly')
+        for receipt_path in self.inputs.glob('*/native-audit.json'):
+            receipt = json.loads(receipt_path.read_text())
+            receipt['manifest'].update(version=version, packageVersion=self.release['packageVersion'])
+            receipt_path.write_text(json.dumps(receipt))
+        receipt_path = self.inputs / 'release-appimage/appimage-build.json'
+        receipt = json.loads(receipt_path.read_text())
+        receipt['build'].update(version=version, packageVersion=self.release['packageVersion'])
+        receipt_path.write_text(json.dumps(receipt))
+        directory = self.inputs / 'release-native-ubuntu24.04'
+        archive = directory / ('putgd-' + version + '-source.tar.gz')
+        self.source_receipt = create_archive(self.root, archive, receipt['build'])
+        (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
+        return tag, archive
+
+    def test_nightly_cli_preserves_all_nine_raw_assets_and_exact_compiled_source(self):
+        tag, source = self.nightly_inputs()
+        (self.inputs / 'credentials.txt').write_text('synthetic excluded fixture')
+        argv = ['collect.py', '--tag', tag, '--root', str(self.root),
+                '--inputs', str(self.inputs), '--output', str(self.output)]
+        with patch.object(sys, 'argv', argv), patch('builtins.print'), \
+             patch.object(collect, 'verify', return_value=self.release):
+            collect.main()
+        files = {path.name for path in self.output.iterdir()}
+        from release_bundle import expected_members
+        expected = set(expected_members(self.release['version']) +
+                       ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS'])
+        self.assertEqual(files, expected)
+        self.assertEqual(len(files), 9)
+        self.assertEqual((self.output / source.name).read_bytes(), source.read_bytes())
+        builds = json.loads((self.output / 'release-builds.json').read_text())
+        self.assertEqual(builds['release']['channel'], 'nightly')
+        self.assertEqual(builds['receipts']['sourceBuild'], self.source_result)
+        self.assertEqual(builds['receipts']['sourceBuild']['compiledBuild']['sourceProvenance'], 'supplied')
+        self.assertNotEqual(builds['receipts']['sourceBuild']['compiledBuild']['version'], self.release['version'])
+        with zipfile.ZipFile(self.output / ('putgd-' + self.release['version'] + '-release.zip')) as archive:
+            for name in expected - {'SHA256SUMS', 'putgd-' + self.release['version'] + '-release.zip'}:
+                self.assertEqual(archive.read(name), (self.output / name).read_bytes())
+            self.assertNotIn('credentials.txt', archive.namelist())
+        for line in (self.output / 'SHA256SUMS').read_text().splitlines():
+            digest, name = line.split('  ', 1)
+            self.assertEqual(digest, hashlib.sha256((self.output / name).read_bytes()).hexdigest())
+        second = self.root / 'build/nightly-repeat'
+        with patch.object(collect, 'verify', return_value=self.release):
+            collect.collect(self.root, self.inputs, second, tag)
+        for path in self.output.iterdir():
+            self.assertEqual(path.read_bytes(), (second / path.name).read_bytes(), path.name)
+
+    def test_nightly_failed_source_compile_and_mixed_package_source_reject_before_output(self):
+        tag, _ = self.nightly_inputs()
+        receipt_path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
+        receipt_path.write_text(json.dumps({**self.source_result, 'passed': False}))
+        with patch.object(collect, 'verify', return_value=self.release):
+            with self.assertRaisesRegex(ValueError, 'successful production build'):
+                collect.collect(self.root, self.inputs, self.output, tag)
+            self.assertFalse(self.output.exists())
+            receipt_path.write_text(json.dumps(self.source_result))
+            receipt_path = self.inputs / 'release-native-fedora44/native-audit.json'
+            receipt = json.loads(receipt_path.read_text())
+            receipt['manifest']['gitCommit'] = '0' * 40
+            receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, 'identity'):
+                collect.collect(self.root, self.inputs, self.output, tag)
+            self.assertFalse(self.output.exists())
+
 
 
 if __name__ == '__main__':
