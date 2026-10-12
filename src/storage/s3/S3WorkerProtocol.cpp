@@ -224,10 +224,50 @@ bool decode(const QJsonObject& object, UploadRequest& request) {
     request = std::move(value);
     return true;
 }
+bool decodeReconcileRequest(const QJsonObject& object, UploadRequest& request) {
+    UploadRequest value;
+    if (!bounded(object) || !keys(object, {"destination", "artifact", "candidate", "publicationId", "condition", "objectReference", "concurrencyToken"}) ||
+        !object["destination"].isObject() || !decode(object["destination"].toObject(), value.destination) ||
+        !object["artifact"].isObject() || !object["objectReference"].isObject() ||
+        !text(object["publicationId"], 1, maximumFrameBytes) || !object["candidate"].isString() ||
+        !object["condition"].isString() || !object["concurrencyToken"].isString()) return false;
+    const auto artifact = object["artifact"].toObject();
+    if (!keys(artifact, {"id", "path", "name", "mime", "category", "bytes", "sha256", "originalFile", "previewPath", "namingPrepared"}) ||
+        !hash(artifact["sha256"]) || !integer(artifact["bytes"], 0, maximumArtifactBytes) ||
+        !artifact["originalFile"].isBool() || !artifact["namingPrepared"].isBool()) return false;
+    for (const auto* field : {"id", "path", "name", "mime", "category", "previewPath"})
+        if (!artifact[QLatin1String(field)].isString()) return false;
+    const auto reference = object["objectReference"].toObject();
+    if (!text(reference["key"], 1, 1024)) return false;
+    value.artifact = Artifact::fromJson(artifact);
+    value.candidate = object["candidate"].toString();
+    value.publicationId = object["publicationId"].toString();
+    value.condition = object["condition"].toString();
+    value.objectReference = reference;
+    value.concurrencyToken = object["concurrencyToken"].toString();
+    request = std::move(value);
+    return true;
+}
+bool decodeReceiptRequest(const QJsonObject& object, StorageReceipt& receipt) {
+    Destination destination;
+    if (!bounded(object) || !keys(object, {"schemaVersion", "destination", "objectReference", "concurrencyToken", "publicationId", "directUrl"}) ||
+        !integer(object["schemaVersion"], 1, 1) || !object["destination"].isObject() ||
+        !decode(object["destination"].toObject(), destination) || !object["objectReference"].isObject() ||
+        !text(object["concurrencyToken"], 0, maximumFrameBytes) || !text(object["publicationId"], 0, maximumFrameBytes) ||
+        !object["directUrl"].isString()) return false;
+    const auto reference = object["objectReference"].toObject();
+    if (!text(reference["key"], 0, 1024) ||
+        (reference.contains("versionId") && !text(reference["versionId"], 0, maximumFrameBytes)) ||
+        (reference.contains("sha256") && !reference["sha256"].isString()) ||
+        (reference.contains("bytes") && !integer(reference["bytes"], 0, maximumArtifactBytes)) ||
+        (reference.contains("schemaVersion") && !integer(reference["schemaVersion"], 0, std::numeric_limits<int>::max()))) return false;
+    receipt = StorageReceipt::fromJson(object);
+    return true;
+}
 bool decode(const QJsonObject& object, DeleteRequest& request) {
     DeleteRequest value;
-    if (!bounded(object) || !keys(object, {"id", "receipt", "progress"}) || !text(object["id"], 1, 256) ||
-        !object["receipt"].isObject() || !decode(object["receipt"].toObject(), value.receipt) ||
+    if (!bounded(object) || !keys(object, {"id", "receipt", "progress"}) || !object["id"].isString() ||
+        !object["receipt"].isObject() || !decodeReceiptRequest(object["receipt"].toObject(), value.receipt) ||
         !object["progress"].isObject()) return false;
     value.id = object["id"].toString();
     value.progress = object["progress"].toObject();
@@ -290,13 +330,14 @@ bool decode(const QJsonObject& object, DeleteResult& result) {
 }
 bool validateRequest(const QString& method, const QJsonObject& object) {
     if (!bounded(object)) return false;
-    if (method == QStringLiteral("upload") || method == QStringLiteral("reconcile")) {
+    if (method == QStringLiteral("upload")) {
         UploadRequest request;
         return decode(object, request);
     }
+    if (method == QStringLiteral("reconcile")) { UploadRequest request; return decodeReconcileRequest(object, request); }
     if (method == QStringLiteral("stat")) {
         StorageReceipt receipt;
-        return decode(object, receipt);
+        return decodeReceiptRequest(object, receipt);
     }
     if (method == QStringLiteral("remove")) {
         DeleteRequest request;

@@ -1,4 +1,5 @@
 #include "storage/s3/S3Module.h"
+#include "fixtures/S3Fixture.h"
 #include "storage/s3/S3ProcessDriver.h"
 #include <QCryptographicHash>
 #include "storage/s3/S3Provider.h"
@@ -15,6 +16,7 @@
 #include <chrono>
 #include <future>
 #include <thread>
+#include <vector>
 #ifdef Q_OS_UNIX
 #include <cerrno>
 #include <csignal>
@@ -56,7 +58,7 @@ private slots:
     void faultyChildren_data() {
         QTest::addColumn<QString>("mode");
         for (const auto* mode : {"normal", "wrong_build", "duplicate_ready", "wrong_nonce", "normal_missing_terminal",
-                                 "terminal_then_crash", "oversized", "truncated", "ready_then_crash", "activated_wrong_nonce", "ready_ignores_activate", "activated_silent", "cancel_ignores_alive", "prepared_cleanup"})
+                                 "terminal_then_crash", "oversized", "truncated", "ready_then_crash", "activated_wrong_nonce", "ready_ignores_activate", "activated_silent", "cancel_ignores_alive", "invalid_upload", "invalid_remove", "prepared_cleanup"})
             QTest::newRow(mode) << QString::fromLatin1(mode);
     }
     void faultyChildren() {
@@ -87,7 +89,7 @@ private slots:
         environment.insert("PUTGD_S3_FAULT_STATE", root.filePath("worker-state.json"));
         child.setProcessEnvironment(environment);
         child.setProcessChannelMode(QProcess::SeparateChannels);
-        child.start(executable, {mode == "prepared_cleanup" ? "isolatedPreparedCleanup" : mode == "cancel_ignores_alive" ? "isolatedCancelledWorker" : "isolatedFaultCase"});
+        child.start(executable, {mode == "prepared_cleanup" ? "isolatedPreparedCleanup" : mode == "cancel_ignores_alive" ? "isolatedCancelledWorker" : mode.startsWith("invalid_") ? "isolatedInvalidRequest" : "isolatedFaultCase"});
         QVERIFY(child.waitForStarted(5000));
         if (!child.waitForFinished(25000)) {
             child.kill();
@@ -143,6 +145,197 @@ private slots:
         const auto snapshot = state();
         QVERIFY(!processExists(snapshot["pid"].toString().toLongLong()));
         QCOMPARE(callbacks.load(), 1);
+    }
+    void slowInlineCheckpointDoesNotLookLikeChildSilence() {
+        test::S3Fixture fixture;
+        auto uploaded = fixture.upload(fixture.request("slow-inline.txt"));
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        Error error;
+        auto driver = std::unique_ptr<S3Driver>(createS3ProcessDriver(S3Module::defaultPath(),
+            [&](const QString& profile, const QJsonObject& reference) { return fixture.credentials.cached(profile, reference); },
+            [&](const Destination& value) { return fixture.provider.readiness(value); }, error, {0, 1500}));
+        QVERIFY(driver && !error);
+        int callbacks = 0, checkpoints = 0; DeleteResult result;
+        driver->remove({"slow-inline-delete", uploaded.receipt, {}, {}}, [&](auto, auto ack) {
+            ++checkpoints;
+            // Real host save/fsync callbacks can block their caller. During this
+            // interval the healthy child's heartbeats cannot be read by Qt.
+            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+            ack({});
+        }, [&](DeleteResult value) { ++callbacks; result = std::move(value); });
+        QCOMPARE(callbacks, 1);
+        QCOMPARE(result.status, QString("removed"));
+        QVERIFY(!result.error);
+        QCOMPARE(checkpoints, 2);
+        QCOMPARE(fixture.events("DELETE").size(), 1);
+    }
+    void asynchronousCheckpointWaitDoesNotRequireChildHeartbeats() {
+        test::S3Fixture fixture;
+        auto uploaded = fixture.upload(fixture.request("async-ack.txt"));
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        Error error;
+        auto driver = std::unique_ptr<S3Driver>(createS3ProcessDriver(S3Module::defaultPath(),
+            [&](const QString& profile, const QJsonObject& reference) { return fixture.credentials.cached(profile, reference); },
+            [&](const Destination& value) { return fixture.provider.readiness(value); }, error, {0, 1500}));
+        QVERIFY(driver && !error);
+        std::vector<std::thread> acknowledgements;
+        int callbacks = 0; DeleteResult result;
+        driver->remove({"async-ack-delete", uploaded.receipt, {}, {}}, [&](auto, auto ack) {
+            acknowledgements.emplace_back([ack = std::move(ack)] {
+                std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+                ack({});
+            });
+        }, [&](DeleteResult value) { ++callbacks; result = std::move(value); });
+        // Join before assertions/timeout returns; the callback owns only its
+        // shared acknowledgement mailbox, never transport or test-stack state.
+        for (auto& acknowledgement : acknowledgements) acknowledgement.join();
+        QCOMPARE(callbacks, 1);
+        QCOMPARE(result.status, QString("removed"));
+        QVERIFY(!result.error);
+        QCOMPARE(acknowledgements.size(), size_t(2));
+        QCOMPARE(fixture.events("DELETE").size(), 1);
+    }
+    void checkpointDeadlineRejectsMissingAndLateAcknowledgement_data() {
+        QTest::addColumn<bool>("lateAcknowledgement");
+        QTest::newRow("missing") << false;
+        QTest::newRow("late") << true;
+    }
+    void checkpointDeadlineRejectsMissingAndLateAcknowledgement() {
+        QFETCH(bool, lateAcknowledgement);
+        test::S3Fixture fixture;
+        auto uploaded = fixture.upload(fixture.request("ack-deadline.txt"));
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        Error error;
+        auto driver = std::unique_ptr<S3Driver>(createS3ProcessDriver(S3Module::defaultPath(),
+            [&](const QString& profile, const QJsonObject& reference) { return fixture.credentials.cached(profile, reference); },
+            [&](const Destination& value) { return fixture.provider.readiness(value); }, error, {0, 0, 100}));
+        QVERIFY(driver && !error);
+        std::vector<std::thread> acknowledgements;
+        int callbacks = 0, checkpoints = 0; DeleteResult result;
+        driver->remove({"ack-deadline-delete", uploaded.receipt, {}, {}}, [&](auto, auto ack) {
+            ++checkpoints;
+            if(lateAcknowledgement) acknowledgements.emplace_back([ack = std::move(ack)] {
+                std::this_thread::sleep_for(std::chrono::milliseconds(300));
+                ack({});
+            });
+        }, [&](DeleteResult value) { ++callbacks; result = std::move(value); });
+        for(auto& acknowledgement : acknowledgements) acknowledgement.join();
+        QCOMPARE(callbacks, 1);
+        QCOMPARE(checkpoints, 1);
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(result.error.code, QString("s3_transport_unknown"));
+        QVERIFY(result.progress.isEmpty());
+        QCOMPARE(fixture.events("DELETE").size(), 0);
+    }
+    void minimalReconcileAndHistoricalUrlRequestsKeepParity() {
+        test::S3Fixture fixture;
+        const auto request = fixture.request("historical-url.txt");
+        auto uploaded = fixture.upload(request);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        Error error;
+        auto driver = std::unique_ptr<S3Driver>(createS3ProcessDriver(S3Module::defaultPath(),
+            [&](const QString& profile, const QJsonObject& reference) { return fixture.credentials.cached(profile, reference); },
+            [&](const Destination& value) { return fixture.provider.readiness(value); }, error));
+        QVERIFY(driver && !error);
+        UploadRequest minimal;
+        minimal.destination = uploaded.receipt.destination;
+        minimal.publicationId = uploaded.receipt.publicationId;
+        minimal.artifact.sha256 = uploaded.receipt.objectReference["sha256"].toString();
+        minimal.artifact.bytes = uploaded.receipt.objectReference["bytes"].toInteger();
+        minimal.artifact.path = "relative-unused-path";
+        minimal.objectReference = {{"key", uploaded.receipt.objectReference["key"]}};
+        StatResult reconciled;
+        driver->reconcile(minimal, [&](StatResult value) { reconciled = std::move(value); });
+        QCOMPARE(reconciled.status, QString("own"));
+        QVERIFY(!reconciled.error);
+        QCOMPARE(reconciled.receipt.publicationId, uploaded.receipt.publicationId);
+        auto historical = uploaded.receipt;
+        historical.directUrl = "https://old.example.invalid/legacy-object?old-link=1";
+        auto optionalToken = historical; optionalToken.concurrencyToken.clear();
+        StatResult inspected;
+        driver->stat(optionalToken, [&](StatResult value) { inspected = std::move(value); });
+        QCOMPARE(inspected.status, QString("own"));
+        QVERIFY(!inspected.error);
+        QCOMPARE(inspected.receipt.directUrl, uploaded.receipt.directUrl);
+        const QJsonObject progress{{"schemaVersion", 1}, {"phase", "object_intent"}, {"target", historical.toJson()}};
+        int callbacks = 0; DeleteResult removed;
+        driver->remove({"", historical, progress, {}}, [](auto, auto ack) { ack({}); },
+            [&](DeleteResult value) { ++callbacks; removed = std::move(value); });
+        QCOMPARE(callbacks, 1);
+        QCOMPARE(removed.status, QString("removed"));
+        QCOMPARE(removed.progress["target"].toObject(), historical.toJson());
+        QCOMPARE(fixture.events("DELETE").size(), 1);
+        QCOMPARE(fixture.events("DELETE")[0].toObject()["bucket"].toString(), QString("isolated-fixture"));
+    }
+    void invalidWireRequestsNeverHaveRemoteEffects() {
+        test::S3Fixture fixture;
+        auto request = fixture.request("invalid-wire.txt");
+        auto uploaded = fixture.upload(request);
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const auto before = fixture.events().size();
+        Error error;
+        auto driver = std::unique_ptr<S3Driver>(createS3ProcessDriver(S3Module::defaultPath(),
+            [&](const QString& profile, const QJsonObject& reference) { return fixture.credentials.cached(profile, reference); },
+            [&](const Destination& value) { return fixture.provider.readiness(value); }, error));
+        QVERIFY(driver && !error);
+        request.artifact.mime.clear();
+        int callbacks = 0; UploadResult badUpload;
+        driver->upload(request, [&](UploadResult value) { ++callbacks; badUpload = std::move(value); });
+        QCOMPARE(callbacks, 1);
+        QCOMPARE(badUpload.status, QString("failed"));
+        QCOMPARE(badUpload.error.code, QString("artifact_invalid"));
+        QCOMPARE(fixture.events().size(), before);
+        auto receipt = uploaded.receipt; receipt.schemaVersion = 2;
+        QJsonObject progress{{"schemaVersion", 1}, {"phase", "object_intent"}, {"target", uploaded.receipt.toJson()}};
+        DeleteResult badDelete;
+        driver->remove({"invalid-receipt-delete", receipt, progress, {}}, [](auto, auto ack) { ack({}); },
+            [&](DeleteResult value) { ++callbacks; badDelete = std::move(value); });
+        QCOMPARE(callbacks, 2);
+        QCOMPARE(badDelete.status, QString("failed"));
+        QCOMPARE(badDelete.error.code, QString("receipt_invalid"));
+        QCOMPARE(badDelete.progress, progress);
+        QCOMPARE(fixture.events().size(), before);
+        QCOMPARE(fixture.events("DELETE").size(), 0);
+        NameCheck invalidKey;
+        driver->checkName(fixture.destination, QString("bad") + QChar(0) + "key", [&](NameCheck value) { ++callbacks; invalidKey = std::move(value); });
+        QCOMPARE(invalidKey.status, QString("inconclusive"));
+        QCOMPARE(invalidKey.error.code, QString("s3_key_invalid"));
+        QCOMPARE(fixture.events().size(), before);
+        auto longPrefix = fixture.destination;
+        longPrefix.settings["objectPrefix"] = QString(1022, 'p');
+        driver->checkName(longPrefix, "ab", [&](NameCheck value) { ++callbacks; invalidKey = std::move(value); });
+        QCOMPARE(invalidKey.error.code, QString("s3_key_invalid"));
+        QCOMPARE(callbacks, 4);
+        QCOMPARE(fixture.events().size(), before);
+    }
+    void isolatedInvalidRequest() {
+        if (qEnvironmentVariable("PUTGD_S3_FAULT_CHILD") != "1") QSKIP("Runs only in the relocated isolated child");
+        Error error;
+        auto driver = std::unique_ptr<S3Driver>(createS3ProcessDriver("/missing-test-module", [](auto, auto) -> std::optional<Credentials> { return {}; },
+            [](auto) { return Error{}; }, error));
+        QVERIFY(driver && !error);
+        int callbacks = 0;
+        if (qEnvironmentVariable("PUTGD_S3_FAULT") == "invalid_upload") {
+            UploadRequest request; request.destination = destination();
+            UploadResult result;
+            driver->upload(request, [&](UploadResult value) { ++callbacks; result = std::move(value); });
+            QCOMPARE(result.status, QString("failed"));
+            QCOMPARE(result.error.code, QString("artifact_invalid"));
+        } else {
+            DeleteRequest request; request.id = "invalid-delete"; request.receipt.destination = destination();
+            request.progress = {{"opaque", "original-progress"}};
+            DeleteResult result;
+            driver->remove(request, [](auto, auto ack) { ack({}); }, [&](DeleteResult value) { ++callbacks; result = std::move(value); });
+            QCOMPARE(result.status, QString("failed"));
+            QCOMPARE(result.error.code, QString("receipt_invalid"));
+            QCOMPARE(result.progress, request.progress);
+        }
+        driver.reset();
+        QCOMPARE(callbacks, 1);
+        const auto snapshot = state();
+        QVERIFY(!snapshot["activated"].toBool());
+        QVERIFY(snapshot["shutdown"].toBool());
+        QVERIFY(!processExists(snapshot["pid"].toString().toLongLong()));
     }
     void isolatedCancelledWorker() {
         if (qEnvironmentVariable("PUTGD_S3_FAULT_CHILD") != "1") QSKIP("Runs only in the relocated isolated child");

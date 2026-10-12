@@ -28,6 +28,10 @@ bool decode(const QJsonObject&, StorageReceipt&);
 bool decode(const QJsonObject&, Artifact&);
 bool decode(const QJsonObject&, Error&);
 bool decode(const QJsonObject&, Credentials&);
+// Request-only codecs preserve fields ignored by the SDK and historical links.
+// Response receipt decoding above still requires complete canonical receipts.
+bool decodeReconcileRequest(const QJsonObject&, UploadRequest&);
+bool decodeReceiptRequest(const QJsonObject&, StorageReceipt&);
 bool validateRequest(const QString& method, const QJsonObject&);
 // Validate the actual synthetic-test result shapes without changing the payload.
 bool decodeTestDestinationResult(const QJsonObject&);

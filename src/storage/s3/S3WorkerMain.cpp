@@ -24,7 +24,7 @@ public:
   QObject::connect(&control_,&UiControl::failed,&app_,[this](Error){fail();});
   QObject::connect(&control_,&UiControl::frame,&app_,[this](const QString& type,const QString&,const QJsonObject& object){receive(type,object);});
   heartbeat_.setInterval(1000);QObject::connect(&heartbeat_,&QTimer::timeout,&app_,[this]{
-   if(!active_||terminal_||failed_)return;
+   if(!active_||terminal_||failed_||pendingKind_=="checkpoint")return;
    auto object=envelope();object["kind"]="alive";object["data"]=QJsonObject{};if(control_.send("observed",object).isEmpty())fail();
   });
   deadline_.setSingleShot(true);deadline_.start(10000);QObject::connect(&deadline_,&QTimer::timeout,&app_,[this]{fail();});
@@ -118,8 +118,8 @@ private:
    auto checkpoint=[this](const QJsonObject& progress,std::function<void(Error)> ack){auto data=exchange("checkpoint",{{"progress",progress}});Error error;if(data.size()!=1||!data["error"].isObject()||!s3wire::decode(data["error"].toObject(),error))error=uncertain();ack(error);};
    try{
     if(method=="checkName"){Destination destination;s3wire::decode(request["destination"].toObject(),destination);driver_->checkName(destination,request["candidate"].toString(),[&](NameCheck value){if(!delivered){result=s3wire::encode(value);delivered=true;}});}
-    else if(method=="upload"||method=="reconcile"){UploadRequest value;s3wire::decode(request,value);value.cancellation=cancellation_;if(method=="upload")driver_->upload(value,[&](UploadResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});else driver_->reconcile(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
-    else if(method=="stat"){StorageReceipt value;s3wire::decode(request,value);driver_->stat(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
+    else if(method=="upload"||method=="reconcile"){UploadRequest value;if(method=="reconcile")s3wire::decodeReconcileRequest(request,value);else s3wire::decode(request,value);value.cancellation=cancellation_;if(method=="upload")driver_->upload(value,[&](UploadResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});else driver_->reconcile(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
+    else if(method=="stat"){StorageReceipt value;s3wire::decodeReceiptRequest(request,value);driver_->stat(value,[&](StatResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
     else if(method=="remove"){DeleteRequest value;s3wire::decode(request,value);value.cancellation=cancellation_;driver_->remove(value,checkpoint,[&](DeleteResult reply){if(!delivered){result=s3wire::encode(reply);delivered=true;}});}
     else if(method=="testDestination"){Destination destination;s3wire::decode(request["destination"].toObject(),destination);driver_->testDestination(destination,checkpoint,[&](QJsonObject value,Error error){if(!delivered){result={{"result",value},{"error",s3wire::encode(error)}};delivered=true;}});}
    }catch(...){delivered=false;}
