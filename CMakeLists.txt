@@ -31,7 +31,7 @@ else()
 endif()
 
 find_package(Threads REQUIRED)
-add_library(putgd_s3_runtime STATIC src/storage/s3/SdkRuntime.cpp)
+add_library(putgd_s3_runtime STATIC src/storage/s3/SdkRuntime.cpp src/storage/s3/TlsCompatibility.cpp)
 set_target_properties(putgd_s3_runtime PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_s3_runtime PUBLIC src)
 target_link_libraries(putgd_s3_runtime PRIVATE ${AWSSDK_LINK_LIBRARIES} PUBLIC putgd_build_options)
@@ -47,6 +47,11 @@ int main() { Aws::Http::CurlHttpClient::InitGlobalState(); Aws::Http::CurlHttpCl
   if(PUTGD_SDK_CURL_TRANSPORT)
     target_compile_definitions(putgd_s3_runtime PRIVATE PUTGD_SDK_CURL_TRANSPORT=1)
     target_link_libraries(putgd_s3_runtime PRIVATE CURL::libcurl)
+    find_package(OpenSSL QUIET COMPONENTS Crypto)
+    if(OpenSSL_FOUND)
+      target_compile_definitions(putgd_s3_runtime PUBLIC PUTGD_OPENSSL_GROUP_POLICY=1)
+      target_link_libraries(putgd_s3_runtime PRIVATE OpenSSL::Crypto)
+    endif()
   endif()
 endif()
 
@@ -79,13 +84,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_options(putgd_s3_module PRIVATE "LINKER:--exclude-libs,ALL")
 endif()
 # Private C++/Qt ABI requires this exact source, toolchain and transport contract.
-set(s3_contract "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};${Qt6_VERSION};${AWSSDK_VERSION};${CMAKE_BUILD_TYPE};${PUTGD_SANITIZER};${PUTGD_SDK_CURL_TRANSPORT};${CMAKE_SYSTEM_PROCESSOR};${CMAKE_CXX_FLAGS};${CMAKE_CXX_FLAGS_DEBUG};${CMAKE_CXX_FLAGS_RELEASE}")
+set(s3_contract "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};${Qt6_VERSION};${AWSSDK_VERSION};${CMAKE_BUILD_TYPE};${PUTGD_SANITIZER};${PUTGD_SDK_CURL_TRANSPORT};${OpenSSL_FOUND};${OPENSSL_VERSION};${CMAKE_SYSTEM_PROCESSOR};${CMAKE_CXX_FLAGS};${CMAKE_CXX_FLAGS_DEBUG};${CMAKE_CXX_FLAGS_RELEASE}")
 foreach(s3_contract_file src/storage/s3/S3Driver.h src/storage/s3/S3Driver.cpp
     src/storage/s3/S3ProcessDriver.h src/storage/s3/S3ProcessDriver.cpp
     src/storage/s3/S3WorkerProtocol.h src/storage/s3/S3WorkerProtocol.cpp src/storage/s3/S3WorkerMain.cpp
     src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp src/storage/s3/IpAddress.cpp src/storage/s3/IpAddress.h
     src/storage/s3/S3SdkContext.h src/storage/s3/S3SdkContext.cpp src/storage/s3/SdkRuntime.h
-    src/storage/s3/SdkRuntime.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
+    src/storage/s3/SdkRuntime.cpp src/storage/s3/TlsCompatibility.h src/storage/s3/TlsCompatibility.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
     src/core/StorageProvider.h src/core/StorageReceipt.h src/core/ArtifactStore.h
     src/core/Error.h src/core/ClipboardPayload.h src/secrets/CredentialStore.h cmake/dependency-lock.json)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${s3_contract_file}")
@@ -518,6 +523,9 @@ if(BUILD_TESTING)
   add_test(NAME s3_worker_protocol COMMAND test_s3_worker_protocol)
   add_executable(test_sdk_contract tests/storage/s3/test_sdk_contract.cpp)
   target_link_libraries(test_sdk_contract PRIVATE putgd_s3_runtime Qt6::Test ${AWSSDK_LINK_LIBRARIES})
+  if(PUTGD_SDK_CURL_TRANSPORT AND OpenSSL_FOUND)
+    target_link_libraries(test_sdk_contract PRIVATE OpenSSL::Crypto)
+  endif()
   add_test(NAME sdk_contract COMMAND test_sdk_contract)
   set_tests_properties(sdk_contract PROPERTIES TIMEOUT 30)
   foreach(contract payload archive upload_naming history operations)

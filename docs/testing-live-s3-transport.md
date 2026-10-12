@@ -136,3 +136,54 @@ See `lab-storage.md` for capacity gates, current-plus-one-rollback retention,
 restoration and future immutable-base migration.
 
 Committed evidence is under [source108](evidence/live-s3-transport/source108/). Raw frames, payloads, protected login inputs and credentials remain outside these archives.
+
+
+## OpenSSL 3.5 handshake compatibility follow-up
+
+Cinnamon passed the source108 live upload/delete gate. GNOME and KDE alone
+reported intermittent Curl35 / SDK99 before an HTTP response. This follow-up
+isolated a transport trigger, rather than treating their runs as memory passes.
+On the existing KDE guest, 32 interleaved, unauthenticated `openssl s_client`
+connections to `s3.us-east-2.amazonaws.com:443` failed 7 times with the default
+first handshake and zero times with `-groups '?X25519MLKEM768:DEFAULT'`.
+Certificate and hostname verification were required in both variants; no retries,
+credentials, uploads, packet bodies or HTTP headers were involved. A separate
+metadata-only message probe measured logical first ClientHello lengths of 1563
+bytes by default and 343 bytes with the smaller predicted share. Failed default
+connections reported errno 104. These are message lengths, not packet captures;
+the exact peer or middlebox causing the reset remains unidentified.
+
+Successful connections in the peer-metadata probe negotiated TLS1.3 and
+X25519MLKEM768 in both variants. The smaller first share can require a
+HelloRetryRequest and another round trip. This is the compatibility measure
+[documented by OpenSSL](https://docs.openssl.org/3.5/man3/SSL_CTX_set1_curves/).
+It changes prediction of the initial share, not certificate verification, TLS
+versions, cipher policy, the advertised built-in group list or request retries.
+
+The SDK's supported Curl per-handle option hook applies this only with Curl 7.73+
+and an active OpenSSL 3.5+ backend. Older and other TLS backends keep their defaults.
+OpenSSL's built-in `DEFAULT` group list must not override explicit administrator
+policy. The guard uses OpenSSL's `NCONF` parser, including file inclusions and
+variable expansion, to inspect the configured `system_default` section. Explicit
+`Groups`/`Curves`, unreadable or malformed configuration, unresolved sections and
+pre-existing library errors disable the override. Configuration values and paths
+are never logged. The inspector does not load configuration modules or providers.
+The guard resides in the transient S3 worker; the resident loads no additional
+TLS library. Destructive requests still require fresh, non-reused connections.
+
+Reproduction parameters: existing KDE p2k-a1, Curl 8.18/OpenSSL 3.5.5, verified S3
+regional hostname above, 8-second connection timeout, 32 interleaved pairs,
+reverse variant order on odd iterations. Capture subprocess output in memory;
+serialize only attempt index, variant, elapsed time, process status, connected,
+verified, protocol and bounded numeric error codes. Never store raw TLS messages
+or process output. Product verification uses a separate new profile and 20 small
+synthetic text uploads with exact public-body/hash checks, native URL paste and
+receipt-guarded production deletion, under a 32-object/2 MiB ledger. No automatic
+retries or broad desktop matrix precede that targeted KDE gate. Passing the TLS
+probe does not establish product parity; product results will be recorded below.
+
+The SDK contract suite checks backend/version boundaries, a custom P-256 group
+policy, Curves aliases, dotted command keys, includes/variables, absent group
+policy, missing/malformed files and preservation of a prior OpenSSL error. The
+custom-policy test failed against the former unconditional override and passed
+with the guard. The focused SDK, worker-protocol and deletion safety checks passed.
