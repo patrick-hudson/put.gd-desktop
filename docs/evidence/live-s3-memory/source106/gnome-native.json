@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "candidateId": "issue7-candidate2",
+  "candidateBuild": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.106+g76467a75b18e",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.106+g76467a75b18e",
+    "gitCommit": "76467a75b18edc56fd473c63cdf3bb5b17796354",
+    "gitTree": "5c121599b69174bc7b997cf39308805a8afc4b58",
+    "commitCount": 106,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "candidatePinSha256": "fafca4a7492eb47942501b3ccf9f5d76143f136954af07b5ab32567e4262aad8",
+  "packageSha256": "251a15dfe1854c307a22067b9aed9169e329e2ae6df150500d3d0ba541208a1b",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "5fe182038ee59acfe1ce2eb85f07b2b9c6c89213386ebba71bcd0e6eba4715e5",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd-ui": "fa6322c322fb42b01458c841ac26aabe07155af64f26a02b0a30ebed79d5de5f",
+    "/usr/bin/putgd-cli": "41fabc863deefe35405b1f995e5cb8524f36fae4354e9fa1951f71e3a3d7f765",
+    "/usr/bin/putgd-capture": "b10b7ff3249ff30cd00f903db3742711b424bca5f36131f3655ca7aab7b7a608",
+    "/usr/bin/putgd-s3-worker": "9f336b589d770d803458e667db34ff893dd3d216bb9c67822db9ad4bcd0715d2",
+    "/usr/bin/putgd-kde-region": "464c25cbe654dc23dada45c0014744c140f87acf98a37f938ed6330e6e7da893",
+    "/usr/bin/putgd-desktop-fixture": "9c66cbd3aff8391cfe12d79cdee301594d582e4afb53d6bca12cb7ecb08cd750"
+  },
+  "functionalPassed": true,
+  "memoryExecuted": false,
+  "siblingsExecuted": true,
+  "desktop": "gnome-wayland",
+  "physicalPreviewTouched": false,
+  "resident": {
+    "pid": 175429,
+    "startTicks": 5916209,
+    "sha256": "5fe182038ee59acfe1ce2eb85f07b2b9c6c89213386ebba71bcd0e6eba4715e5"
+  },
+  "matrix": {
+    "path": "/home/patrick/work/put.gd/work/live-s3-memory/c2g-native106/evidence/a-0bfbd8170710/receipt.json",
+    "sha256": "26bae4eac59a83d9f62e91d0103ef6cc3bd1f94e9f469b84b68485d866a94e37"
+  },
+  "quiet": {
+    "path": "/home/patrick/work/put.gd/work/live-s3-memory/c2g-native106/evidence/a-d0357aa921dd/receipt.json",
+    "sha256": "8fae5a0bac2614f5de3d8aafa5e74e297d8a7a40b93830b37ea1dbcd27e99d82"
+  },
+  "visualReview": {
+    "path": "/home/patrick/work/put.gd/work/live-s3-memory/c2g-native106/visual-review.json",
+    "sha256": "d84fa24d7a8d787c7c7ad91f54522c5da716af1f2f3681a1e8238b914f975e5e"
+  },
+  "finalizedUtc": "2026-10-12T09:56:10.289540+00:00",
+  "scope": "Current-version real gnome-wayland synthetic local-only functional checks. Parent owns separate live-S3 workload, fixed memory gates, and any cross-desktop expansion."
+}

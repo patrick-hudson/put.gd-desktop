@@ -1,0 +1,95 @@
+{
+  "action": "region",
+  "cancelled": false,
+  "clipboardRevision": "31",
+  "copyStatus": "no_result",
+  "created": "2026-10-12T10:14:18.647Z",
+  "destination": {
+    "credentials": {
+      "mode": "session",
+      "reference": null
+    },
+    "profileId": "issue7-s3",
+    "profileRevision": "62cacd65aa678712df623e32cc1e321dfc5c9a930d1475d68619126cf8967907",
+    "providerId": "s3",
+    "settings": {
+      "aclMode": "public-read",
+      "addressing": "path",
+      "bucket": "put.gd",
+      "connectTimeoutMs": 5000,
+      "endpoint": "https://s3.us-east-2.amazonaws.com",
+      "lowSpeedBytesPerSecond": 1,
+      "lowSpeedTimeSeconds": 30,
+      "objectPrefix": "",
+      "publicUrlBase": "https://put.gd",
+      "region": "us-east-2",
+      "requestTimeoutMs": 60000,
+      "storageClass": "STANDARD"
+    }
+  },
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "id": "4e370b20-e516-481f-8a6b-3b464e60a43e",
+  "invocation": "19",
+  "items": [
+    {
+      "artifact": {
+        "bytes": 329,
+        "category": "images",
+        "id": "e7a29029-2a97-4ec9-abcd-67808ba9ceeb",
+        "mime": "image/png",
+        "name": "putgd-issue7-c355f769327b41af97da0d457325f1c9-Screen-Capture-e7a29029-2a97-4ec9-abcd-67808ba9ceeb.png",
+        "namingPrepared": true,
+        "originalFile": false,
+        "previewPath": "/home/lab/putgd-lab/data/putgd/putgd/artifacts/../previews/e7a29029-2a97-4ec9-abcd-67808ba9ceeb.png",
+        "sha256": "88d7891ee771e706cfa9caf12e9cd1381988a9f9f28a1e32ade2ef26d0857917"
+      },
+      "candidate": "putgd-issue7-c355f769327b41af97da0d457325f1c9-Screen-Capture-e7a29029-2a97-4ec9-abcd-67808ba9ceeb.png",
+      "concurrencyToken": "",
+      "condition": "absent",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "local": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "path": "/home/lab/putgd-lab/archive/images/putgd-issue7-c355f769327b41af97da0d457325f1c9-Screen-Capture-e7a29029-2a97-4ec9-abcd-67808ba9ceeb.png",
+        "status": "saved"
+      },
+      "objectReference": {
+        "key": "putgd-issue7-c355f769327b41af97da0d457325f1c9-Screen-Capture-e7a29029-2a97-4ec9-abcd-67808ba9ceeb.png",
+        "schemaVersion": 1
+      },
+      "publicationId": "618b3fe7-984d-4951-b1c2-9553ec9c2863",
+      "receipt": {
+        "concurrencyToken": "",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "directUrl": "",
+        "objectReference": {},
+        "publicationId": "",
+        "schemaVersion": 1
+      },
+      "remoteStatus": "not_requested",
+      "uploadStatus": "unknown"
+    }
+  ],
+  "settingsRevision": "62cacd65aa678712df623e32cc1e321dfc5c9a930d1475d68619126cf8967907",
+  "state": "partial"
+}

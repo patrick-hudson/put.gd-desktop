@@ -66,3 +66,7 @@ See [live-S3 evidence](evidence/live-s3-memory/README.md) and
 7. Recompute structured samples independently, persist the result marker and experiment log, and record acceptance limits before advancing. [Saved-evidence replay](evidence/kde-source63/reproduction.md) uses Python’s standard library and can run in CI; it verifies records, not a new compositor.
 
 Detailed contracts: [architecture](architecture.md), [UI process protocol](ui-process-protocol.md), [native listener](native-listener.md), [GNOME boundary](gnome-core-resident.md), [KDE boundary](kde-resident-boundary.md), [image worker](image-worker.md), [memory tests](testing-memory.md), and [lab lifecycle](vm-lab.md).
+
+## Source106 live-S3 checkpoint
+
+The cumulative transient SDK worker reached 28.953 and 28.852 MiB in two complete Cinnamon live-S3 workloads, versus 49.445 MiB on source102. Current GNOME/KDE native and graphical checks passed, but production SDK failures blocked both complete live workloads and KDE production deletion. The candidate remains preserved on its experiment branch; global acceptance is pending. See [the source106 checkpoint and replayable evidence](evidence/live-s3-memory/source106/README.md). This result does not replace the earlier local-only desktop results or claim current GNOME/KDE post-S3 memory acceptance.

@@ -1,0 +1,30 @@
+{
+  "scope": "Preserved production failures; no successful acceptance or causal attribution",
+  "sourceCommit": "76467a75b18edc56fd473c63cdf3bb5b17796354",
+  "proofs": [
+    {
+      "kind": "gnome-preput-head",
+      "path": "c2g-native106/live-a106/batch-50d5a2e746/operation-2.json",
+      "sha256": "6d2eb9fc0964331fea794474f14de737f54375f2147767e682a50066af7c0d03",
+      "bytes": 2788
+    },
+    {
+      "kind": "gnome-unknown-put",
+      "path": "c2g-native106/live-recovery106/batch-3e950b013d/operation-2.json",
+      "sha256": "9adea8bae22fe0df1283983466e09ff09f6eb2d7c501f8a1ca2d0abd89de14a6",
+      "bytes": 3080
+    },
+    {
+      "kind": "kde-preput-head",
+      "path": "c2k106/live-a106/batch-20a59f7325/operation-4.json",
+      "sha256": "5d5cb09da513d7f2032a16d7591a75576e5e6aae91f815197e3c82467ae2f108",
+      "bytes": 2789
+    },
+    {
+      "kind": "kde-production-delete",
+      "path": "c2k106/live-a106/failed-cleanup-progress.json",
+      "sha256": "2bdbce85e6d7c5aef7aa904df56d54b84c431276485969b6f2f334677a364d7b",
+      "bytes": 93333
+    }
+  ]
+}

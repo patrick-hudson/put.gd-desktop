@@ -1,0 +1,50 @@
+{
+  "scope": "Private read-only officialAWS-SDK exact-key HEAD attribution, unchangedoriginalSdkRuntime and effectiveproductionconfig; notacceptance/newcandidate",
+  "startedUtc": "2026-10-12T10:33:36.974729+00:00",
+  "elapsedSeconds": 2.4224407490110025,
+  "exitCode": 0,
+  "stderrBytes": 0,
+  "maxHeads": 6,
+  "hardRuntimeCapSeconds": 60,
+  "numericResults": [
+    {
+      "index": 0,
+      "httpStatus": 404,
+      "sdkErrorType": 16,
+      "curlCode": -1
+    },
+    {
+      "index": 1,
+      "httpStatus": 404,
+      "sdkErrorType": 16,
+      "curlCode": -1
+    },
+    {
+      "index": 2,
+      "httpStatus": 404,
+      "sdkErrorType": 16,
+      "curlCode": -1
+    },
+    {
+      "index": 3,
+      "httpStatus": 404,
+      "sdkErrorType": 16,
+      "curlCode": -1
+    },
+    {
+      "index": 4,
+      "httpStatus": 404,
+      "sdkErrorType": 16,
+      "curlCode": -1
+    },
+    {
+      "index": 5,
+      "httpStatus": 404,
+      "sdkErrorType": 16,
+      "curlCode": -1
+    }
+  ],
+  "credentialsTransport": "Ownedprivateinput readonlyinmemory; encryptedSSHstdin; nofiles/argv/env/logs",
+  "coreLimitZero": true,
+  "remoteCommand": "ulimit -c 0; exec timeout --signal=TERM 60s /home/lab/pgs3106-sdk-head-probe/build/sdk-head-probe"
+}
