@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Validate a release label against the actual clean Git checkout and project base."""
 import argparse
+import datetime
 import json
 from pathlib import Path
 import re
 import subprocess
 
+from release_identity import parse_tag
+
 
 def verify(root, tag):
-    pattern = r'v((?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))(?:-rc\.([1-9][0-9]*))?'
-    match = re.fullmatch(pattern, tag)
-    if not match:
-        raise ValueError('Expected vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-rc.N')
+    identity = parse_tag(tag)
     project = re.search(r'project\(\s*putgd\s+VERSION\s+([0-9.]+)', (root / 'CMakeLists.txt').read_text())
-    if not project or match[1] != project[1]:
+    if not project or identity.base_version != project[1]:
         raise ValueError('Release tag must match the project base version')
     def git(*args):
         return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
@@ -22,10 +22,19 @@ def verify(root, tag):
     commit = git('rev-parse', 'HEAD')
     if git('rev-parse', '--verify', 'refs/tags/' + tag + '^{commit}') != commit:
         raise ValueError('Release tag must identify the current checkout')
-    return {'schemaVersion': 1, 'tag': tag, 'version': tag[1:], 'baseVersion': match[1],
-            'packageVersion': match[1] + ('~rc.' + match[2] if match[2] else ''), 'prerelease': bool(match[2]),
-            'gitCommit': commit, 'gitTree': git('rev-parse', 'HEAD^{tree}'),
-            'commitCount': int(git('rev-list', '--count', 'HEAD'))}
+    count = int(git('rev-list', '--count', 'HEAD'))
+    if identity.channel == 'nightly':
+        if git('rev-parse', '--is-shallow-repository') != 'false':
+            raise ValueError('Nightly identity requires full Git history')
+        utc = datetime.datetime.fromtimestamp(int(git('show', '-s', '--format=%ct', 'HEAD')),
+                                              datetime.timezone.utc).strftime('%Y%m%d%H%M%S')
+        if (identity.count != count or identity.short_commit != commit[:12]
+                or identity.utc != utc):
+            raise ValueError('Nightly tag count, UTC timestamp and short hash must match source HEAD')
+    return {'schemaVersion': 1, 'tag': tag, 'version': identity.version,
+            'baseVersion': identity.base_version, 'packageVersion': identity.package_version,
+            'channel': identity.channel, 'prerelease': identity.prerelease,
+            'gitCommit': commit, 'gitTree': git('rev-parse', 'HEAD^{tree}'), 'commitCount': count}
 
 
 def main():

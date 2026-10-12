@@ -9,10 +9,11 @@ import re
 import stat
 import zipfile
 
+from release_identity import parse_version
+
 
 def expected_members(version):
-    if not isinstance(version, str) or not re.fullmatch(r'(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-rc\.[1-9][0-9]*)?', version):
-        raise ValueError('exact release version required')
+    parse_version(version)
     return [
         'putgd-' + version + '-ubuntu24.04-x86_64.deb',
         'putgd-' + version + '-ubuntu26.04-x86_64.deb',
@@ -191,5 +192,6 @@ def create_release_bundle(directory, output_file, version, timestamp, member_nam
         output_file.unlink()
         raise ValueError('inner ZIP checksums differ from archived inputs')
     result['version'] = version
+    result['channel'] = parse_version(version).channel
     result['innerChecksumScope'] = 'seven underlying files only; excludes SHA256SUMS and the combined ZIP'
     return result
