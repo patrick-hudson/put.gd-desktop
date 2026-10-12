@@ -1,4 +1,7 @@
 #include "S3Module.h"
+#if defined(Q_OS_LINUX) && !defined(PUTGD_S3_WORKER_HOST)
+#include "S3ProcessDriver.h"
+#endif
 #if defined(PUTGD_S3_MODULE_EXPORTS)
 extern "C" Q_DECL_EXPORT const putgd::S3ModuleApi* putgd_s3_module_v1() {
     static const putgd::S3ModuleApi api{
@@ -110,6 +113,14 @@ S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck re
         error = unavailable();
         return nullptr;
     }
+#if defined(Q_OS_LINUX) && !defined(PUTGD_S3_WORKER_HOST)
+    try {
+        if (auto driver = createS3ProcessDriver(state_->path, std::move(credentials), std::move(readiness), error)) {
+            ++state_->liveDrivers;
+            return driver;
+        }
+    } catch (...) {}
+#else
     if (state_->load()) {
         try {
             if (auto driver = state_->api->create(std::move(credentials), std::move(readiness))) {
@@ -120,12 +131,17 @@ S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck re
             // Never expose SDK diagnostics or cached credential material.
         }
     }
+    #endif
     error = unavailable();
     return nullptr;
 }
 void S3Module::destroyDriver(S3Driver* driver) {
     auto destroy = [this, driver] {
+#if defined(Q_OS_LINUX) && !defined(PUTGD_S3_WORKER_HOST)
+        delete driver;
+#else
         state_->api->destroy(driver);
+#endif
         --state_->liveDrivers;
     };
     if (std::this_thread::get_id() == state_->worker.get_id()) {

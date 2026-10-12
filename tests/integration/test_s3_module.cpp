@@ -132,6 +132,11 @@ private slots:
         const auto executable = QDir(bin).filePath("module-contract");
         QVERIFY(QFile::copy(QCoreApplication::applicationFilePath(), executable));
         QVERIFY(QFile::setPermissions(executable, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+#ifdef Q_OS_LINUX
+        const auto helper = QDir(bin).filePath("putgd-s3-worker");
+        QVERIFY(QFile::copy(QDir(QCoreApplication::applicationDirPath()).filePath("putgd-s3-worker"), helper));
+        QVERIFY(QFile::setPermissions(helper, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+#endif
         if (!modulePath.isEmpty()) {
             const auto module = QDir(bin).absoluteFilePath(QString::fromUtf8(S3_MODULE_INSTALL_RELATIVE));
             QVERIFY(QDir().mkpath(QFileInfo(module).absolutePath()));
@@ -206,7 +211,7 @@ private slots:
         }
         QCOMPARE(fixture.events("HEAD").size(), 3);
 #ifdef Q_OS_LINUX
-        QVERIFY(sdkMapped()); // SDK DSOs stay pinned; live runtime does not.
+        QVERIFY(!sdkMapped()); // Linux SDK mappings belong only to the exited child.
 #endif
     }
     void callbackAdmissionKeepsDriverUntilSuccessorDrains() {
@@ -289,7 +294,7 @@ private slots:
         QCOMPARE(failures.load(), 0);
         QVERIFY(worker != std::this_thread::get_id());
 #ifdef Q_OS_LINUX
-        QVERIFY(sdkMapped());
+        QVERIFY(!sdkMapped());
 #endif
         // QThreadPool's old default idle expiry is 30 seconds. SDK ownership must
         // still use the same permanent worker after this interval.
@@ -352,6 +357,14 @@ private slots:
         QCOMPARE(removed.status, QString("unknown"));
         QCOMPARE(removed.error.code, QString("s3_transport_unknown"));
         QVERIFY(removed.progress.isEmpty());
+        QCOMPARE(fixture.events("DELETE").size(), 0);
+        auto acknowledgedThenThrown = fixture.remove(uploaded.receipt, {}, [](auto, auto ack) {
+            ack({});
+            throw std::runtime_error("synthetic exception after checkpoint acknowledgement");
+        });
+        QCOMPARE(acknowledgedThenThrown.status, QString("unknown"));
+        QCOMPARE(acknowledgedThenThrown.error.code, QString("s3_transport_unknown"));
+        QVERIFY(acknowledgedThenThrown.progress.isEmpty());
         QCOMPARE(fixture.events("DELETE").size(), 0);
     }
     void newRuntimeGenerationAfterDrain() {

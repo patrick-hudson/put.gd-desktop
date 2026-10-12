@@ -63,8 +63,13 @@ target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity
 add_library(putgd_credentials STATIC src/secrets/CredentialStore.cpp)
 target_link_libraries(putgd_credentials PUBLIC putgd_core PRIVATE qt6keychain)
 # The resident facade and credential cache carry no SDK link requirement.
-add_library(putgd_s3 STATIC src/storage/s3/IpAddress.cpp src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp src/storage/s3/PublicUrl.cpp)
-target_link_libraries(putgd_s3 PUBLIC putgd_core putgd_credentials PRIVATE Threads::Threads)
+add_library(putgd_s3_wire STATIC src/storage/s3/S3WorkerProtocol.cpp src/storage/s3/IpAddress.cpp src/storage/s3/PublicUrl.cpp)
+target_link_libraries(putgd_s3_wire PUBLIC putgd_core)
+add_library(putgd_s3 STATIC src/storage/s3/S3Provider.cpp src/storage/s3/S3Module.cpp)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_sources(putgd_s3 PRIVATE src/storage/s3/S3ProcessDriver.cpp)
+endif()
+target_link_libraries(putgd_s3 PUBLIC putgd_core putgd_credentials putgd_s3_wire PRIVATE Threads::Threads putgd_ui_control)
 add_library(putgd_s3_module MODULE src/storage/s3/S3Module.cpp src/storage/s3/S3Driver.cpp
   src/storage/s3/S3SdkContext.cpp src/storage/s3/PublicUrl.cpp)
 target_link_libraries(putgd_s3_module PRIVATE putgd_core putgd_s3_runtime ${AWSSDK_LINK_LIBRARIES} Threads::Threads Qt6::Network)
@@ -76,6 +81,8 @@ endif()
 # Private C++/Qt ABI requires this exact source, toolchain and transport contract.
 set(s3_contract "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};${Qt6_VERSION};${AWSSDK_VERSION};${CMAKE_BUILD_TYPE};${PUTGD_SANITIZER};${PUTGD_SDK_CURL_TRANSPORT};${CMAKE_SYSTEM_PROCESSOR};${CMAKE_CXX_FLAGS};${CMAKE_CXX_FLAGS_DEBUG};${CMAKE_CXX_FLAGS_RELEASE}")
 foreach(s3_contract_file src/storage/s3/S3Driver.h src/storage/s3/S3Driver.cpp
+    src/storage/s3/S3ProcessDriver.h src/storage/s3/S3ProcessDriver.cpp
+    src/storage/s3/S3WorkerProtocol.h src/storage/s3/S3WorkerProtocol.cpp src/storage/s3/S3WorkerMain.cpp
     src/storage/s3/S3Module.h src/storage/s3/S3Module.cpp src/storage/s3/S3Provider.cpp src/storage/s3/IpAddress.cpp src/storage/s3/IpAddress.h
     src/storage/s3/S3SdkContext.h src/storage/s3/S3SdkContext.cpp src/storage/s3/SdkRuntime.h
     src/storage/s3/SdkRuntime.cpp src/storage/s3/PublicUrl.h src/storage/s3/PublicUrl.cpp
@@ -102,6 +109,38 @@ target_compile_definitions(putgd_s3 PRIVATE
   PUTGD_S3_BUILD_APP_DIR="${CMAKE_CURRENT_BINARY_DIR}"
   PUTGD_S3_BUILD_MODULE_PATH="$<TARGET_FILE:putgd_s3_module>"
   PUTGD_S3_INSTALL_MODULE_RELATIVE="${s3_install_relative}")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  add_library(putgd_s3_worker_host STATIC src/storage/s3/S3Module.cpp)
+  target_link_libraries(putgd_s3_worker_host PUBLIC putgd_core PRIVATE Threads::Threads)
+  target_compile_definitions(putgd_s3_worker_host PRIVATE PUTGD_S3_WORKER_HOST=1
+    PUTGD_S3_BUILD_ID="${PUTGD_S3_BUILD_ID}" PUTGD_SDK_CURL_TRANSPORT=${s3_safe_delete}
+    PUTGD_S3_BUILD_APP_DIR="${CMAKE_CURRENT_BINARY_DIR}"
+    PUTGD_S3_BUILD_MODULE_PATH="$<TARGET_FILE:putgd_s3_module>"
+    PUTGD_S3_INSTALL_MODULE_RELATIVE="${s3_install_relative}")
+  add_executable(putgd-s3-worker src/storage/s3/S3WorkerMain.cpp)
+  target_link_libraries(putgd-s3-worker PRIVATE putgd_s3_worker_host putgd_s3_wire putgd_ui_control putgd_build_identity)
+  target_compile_definitions(putgd-s3-worker PRIVATE PUTGD_S3_BUILD_ID="${PUTGD_S3_BUILD_ID}" PUTGD_SDK_CURL_TRANSPORT=${s3_safe_delete})
+  target_compile_definitions(putgd_s3 PRIVATE PUTGD_S3_WORKER_PATH="$<TARGET_FILE:putgd-s3-worker>")
+  add_dependencies(putgd-s3-worker putgd_s3_module)
+  add_dependencies(putgd_s3 putgd-s3-worker)
+  set(worker_identity_check [=[
+    file(READ "@PUTGD_BUILD_IDENTITY_DIR@/build-info.json" expected_worker_manifest)
+    execute_process(COMMAND "$<TARGET_FILE:putgd-s3-worker>" --version-json
+      RESULT_VARIABLE worker_identity_result OUTPUT_VARIABLE worker_manifest
+      ERROR_VARIABLE worker_identity_error OUTPUT_STRIP_TRAILING_WHITESPACE TIMEOUT 15)
+    if(NOT worker_identity_result EQUAL 0)
+      message(FATAL_ERROR "Build the S3 worker before installation or packaging")
+    endif()
+    string(JSON expected_worker_identity GET "${expected_worker_manifest}")
+    string(JSON actual_worker_identity GET "${worker_manifest}")
+    if(NOT actual_worker_identity STREQUAL expected_worker_identity)
+      message(FATAL_ERROR "S3 worker does not match the compiled build manifest; build all product executables")
+    endif()
+  ]=])
+  string(CONFIGURE "${worker_identity_check}" worker_identity_check @ONLY)
+  install(CODE "${worker_identity_check}")
+  install(TARGETS putgd-s3-worker RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+endif()
 add_dependencies(putgd_s3 putgd_s3_module)
 install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 
@@ -462,6 +501,19 @@ if(BUILD_TESTING)
     Qt6::Test Qt6::Widgets Qt6::Sql qt6keychain)
   add_test(NAME build_contract COMMAND test_build_contract)
   set_tests_properties(build_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_executable(test_s3_worker_fixture tests/fixtures/s3_worker_fixture.cpp)
+    target_link_libraries(test_s3_worker_fixture PRIVATE putgd_s3_wire putgd_ui_control putgd_build_identity)
+    add_executable(test_s3_worker tests/storage/s3/test_s3_worker.cpp)
+    target_link_libraries(test_s3_worker PRIVATE putgd_s3 Qt6::Test)
+    target_compile_definitions(test_s3_worker PRIVATE S3_WORKER_FIXTURE_PATH="$<TARGET_FILE:test_s3_worker_fixture>")
+    add_dependencies(test_s3_worker test_s3_worker_fixture)
+    add_test(NAME s3_worker_supervision COMMAND test_s3_worker)
+    set_tests_properties(s3_worker_supervision PROPERTIES TIMEOUT 180)
+  endif()
+  add_executable(test_s3_worker_protocol tests/storage/s3/test_s3_worker_protocol.cpp)
+  target_link_libraries(test_s3_worker_protocol PRIVATE putgd_s3_wire Qt6::Test)
+  add_test(NAME s3_worker_protocol COMMAND test_s3_worker_protocol)
   add_executable(test_sdk_contract tests/storage/s3/test_sdk_contract.cpp)
   target_link_libraries(test_sdk_contract PRIVATE putgd_s3_runtime Qt6::Test ${AWSSDK_LINK_LIBRARIES})
   add_test(NAME sdk_contract COMMAND test_sdk_contract)

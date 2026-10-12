@@ -40,6 +40,23 @@ The local checks cover native captures/clipboard, tray/menu, native fonts/dialog
 
 ## Repeatable optimization and acceptance
 
+The local results above do not establish post-S3 residency. Issue #7's actual
+live-S3 Cinnamon workload measured 49.445 MiB on source102. Source104 releases
+inactive S3 drivers, clients and runtime on their original owner worker, after
+accepted requests drain. It keeps SDK libraries pinned rather than unloading
+code under existing callbacks. SDK destruction runs outside the admission lock,
+so a new action or diagnostics request does not wait on shutdown while holding
+that lock.
+
+Two independent source104 runs measured 47.879 and 46.996 MiB after 30 operations
+and 31 verified objects each. Both passed native/public-byte/link/cleanup gates;
+the worse run saves 1.566 MiB. This useful cumulative change still misses 40 MiB.
+Zero idle driver/client counters do not mean their mapped libraries disappeared.
+The next approved candidate isolates SDK work in a temporary process; it is an
+experiment until its safety, normal-exit and whole-family measurements pass.
+See [live-S3 evidence](evidence/live-s3-memory/README.md) and
+[the repeatable protocol](testing-live-s3-memory.md).
+
 1. Freeze a clean candidate and save its commit, tree, generated version, compiled manifest and executable hashes. Build with the documented CMake presets, Ninja, distribution Qt and official AWS SDK.
 2. Attribute the actual workload before changing code. Separate private heap, shared mappings, loaded codecs and legitimate retained clipboard bytes. A mapped library is not a removable-byte forecast.
 3. Preserve approved features and compare the combined candidate against the matched baseline. Changes may accumulate; do not invent per-change savings from different diagnostic workloads.
