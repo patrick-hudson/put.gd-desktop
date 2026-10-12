@@ -49,15 +49,20 @@ struct S3Provider::State {
         if (driver) module->destroyDriver(driver);
     }
     void complete(bool releaseIdleDriver = true) {
-        std::lock_guard lock(mutex);
-        if (releaseIdleDriver && queued == 1 && driver) {
-            // The final accepted job owns this worker until clients and the last
-            // SDK runtime finish shutting down. Keep admission and the visible
-            // queue count occupied until cleanup is complete.
+        bool release = false;
+        {
+            std::lock_guard lock(mutex);
+            release = releaseIdleDriver && queued == 1 && driver;
+        }
+        if (release) {
+            // Keep this job counted until SDK shutdown finishes on its owner.
+            // New admissions need not wait: their work is FIFO-queued behind
+            // this cleanup and cannot access the driver until it returns.
             module->destroyDriver(driver);
             driver = nullptr;
             retainedDriver.store(false);
         }
+        std::lock_guard lock(mutex);
         --queued;
         queuedSnapshot.store(queued);
         drained.notify_all();

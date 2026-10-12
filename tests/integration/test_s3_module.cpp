@@ -222,7 +222,9 @@ private slots:
         auto observed = std::make_shared<Observations>();
         auto result = fixture.await<NameCheck>([&](auto reply) {
             fixture.provider.checkName(fixture.destination, "reentrant-first.txt",
-                [module, provider = &fixture.provider, destination = fixture.destination, observed, reply](NameCheck first) {
+                // Accepted jobs keep the provider/module alive until they drain.
+                // Borrow here so a timeout cannot leave the worker as last owner.
+                [module = module.get(), provider = &fixture.provider, destination = fixture.destination, observed, reply](NameCheck first) {
                     ++observed->callbacks;
                     if (first.error || first.status != "absent") ++observed->failures;
                     observed->worker = std::this_thread::get_id();
