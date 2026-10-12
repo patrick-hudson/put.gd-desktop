@@ -9,6 +9,7 @@
 #include <QStandardPaths>
 #include <QFileInfo>
 #include <QFile>
+#include <QDir>
 #include <QProcess>
 #include <unistd.h>
 #include <fcntl.h>
@@ -17,7 +18,13 @@ namespace putgd {
 namespace {
 const QString service="org.kde.KWin.ScreenShot2",path="/org/kde/KWin/ScreenShot2",iface=service;
 bool installedEntryMatches(){
- const auto entries=QStandardPaths::locateAll(QStandardPaths::GenericDataLocation,"applications/putgd.desktop");
+ auto entries=QStandardPaths::locateAll(QStandardPaths::GenericDataLocation,"applications/putgd.desktop");
+ // AppImage mounts vary by launch. AppRun registers a private, temporary
+ // permission entry on the host; the same canonical executable check applies.
+ for(const auto& location:QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation)) {
+  QDir applications(QDir(location).filePath("applications"));
+  for(const auto& name:applications.entryList({"putgd-appimage-*.desktop"},QDir::Files))entries.append(applications.filePath(name));
+ }
  const auto actual=QFileInfo(QCoreApplication::applicationFilePath()).canonicalFilePath();
  for(const auto& entry:entries){QFile file(entry);if(!file.open(QIODevice::ReadOnly))continue;QString exec,restricted;bool section=false;
   while(!file.atEnd()){const auto line=QString::fromUtf8(file.readLine()).trimmed();if(line.startsWith('[')){section=line=="[Desktop Entry]";continue;}if(!section)continue;if(line.startsWith("Exec="))exec=line.mid(5);if(line.startsWith("X-KDE-DBUS-Restricted-Interfaces="))restricted=line.section('=',1);}

@@ -151,3 +151,19 @@ The experiment Git objects are local until its branch is deliberately published;
 documentation commits identify source49 without claiming their binaries were
 measured. Never discard the measured candidate or its failure records to restart
 its clock, and never lower the capture timing guard to accept the memory saving.
+
+## Release and CI work
+
+Read [release.md](release.md), [versioning.md](versioning.md) and [ci.md](ci.md)
+before changing version identity, package formats or workflow coverage. Build
+with normal presets; DEB/RPM use their own distro Qt/SDK ABI, while AppImage
+dynamically bundles its locked runtime. `--version-json` is a headless identity
+command on current product entrypoints; inspect an older binary's capabilities
+before assuming it supports the new option.
+
+Packaging artifacts and source114 replay are not current desktop proof. Keep
+Cinnamon-first gates, immutable VM bases, visible consoles, bounded socket paths
+and exact source/package identities. A release tag must match a clean checkout;
+never relabel a prior binary with the current HEAD or source114 results. Public
+release publication follows exact-asset acceptance, with curated logs/parameters
+and no credentials or private login/payload data. Flatpak is deferred to issue #14.

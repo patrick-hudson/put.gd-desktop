@@ -1,0 +1,233 @@
+name: Linux release
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - 'packaging/**'
+      - 'tools/releases/**'
+      - 'cmake/BuildVersion.cmake'
+      - 'cmake/GenerateBuildInfo.cmake'
+      - 'cmake/CheckBuildIdentity.cmake.in'
+      - 'cmake/PackageBuildIdentity.cmake.in'
+      - 'LICENSE'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing exact release tag
+        required: true
+        type: string
+      publish:
+        description: Stage a draft after all package audits pass
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: linux-release-${{ github.event.pull_request.number || inputs.tag || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ubuntu24.04
+            format: DEB
+            image: ubuntu:24.04@sha256:534baea6a22c03a63003dbc8dbe78fe34bc0d7e595d9a9dc9834884ff530eb55
+            kde: ''
+          - name: ubuntu26.04
+            format: DEB
+            image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
+            kde: --require-kde
+          - name: fedora44
+            format: RPM
+            image: fedora:44@sha256:43b29f65a41eb9c35e1cd5323e3bdf3b655c2357a9f4f1ff2f9c2798e5045d80
+            kde: --require-kde
+    steps:
+      - name: Bootstrap checkout tools
+        run: |
+          if command -v apt-get >/dev/null; then
+            apt-get update
+            apt-get install -y git ca-certificates python3 tar gzip
+          else
+            dnf install -y git ca-certificates python3 tar gzip
+          fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || inputs.tag || github.ref }}
+      - name: Standard distro dependencies
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          bash tools/releases/install-native-deps.sh
+      - name: Validate exact release source
+        if: github.event_name != 'pull_request'
+        run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
+      - name: Verify package and cache contracts
+        run: |
+          python3 tests/releases/test_native_audit.py
+          python3 tests/releases/test_source_archive.py
+          python3 tests/releases/test_release_bundle.py
+          python3 tests/releases/test_collect.py
+          python3 tests/releases/test_publish.py
+          python3 tests/ci/test_sdk_cache.py
+      - name: Identify release dependency environment
+        id: sdk-key
+        run: python3 tools/ci/sdk_cache.py key --contract .github/workflows/release.yml --contract tools/releases/provision-sdk.sh
+      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        id: sdk-cache
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Verify pinned SDK source
+        run: |
+          git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
+          python3 tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
+      - name: Verify restored prefix
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        run: python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Build official SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          bash tools/releases/provision-sdk.sh
+          python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Build production release and audit native package
+        env:
+          FORMAT: ${{ matrix.format }}
+          KDE_REQUIREMENT: ${{ matrix.kde }}
+        run: |
+          release_tag="$RELEASE_TAG"
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then release_tag=; fi
+          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$release_tag" -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build --preset release
+          python3 tools/releases/native.py --build build/release --format "$FORMAT" --output "$PWD/build/release-packages" $KDE_REQUIREMENT
+      - name: Compile the curated source export with standard presets
+        if: matrix.name == 'ubuntu24.04'
+        run: |
+          python3 tools/releases/source_archive.py --root "$PWD" --identity build/release/build-identity/build-info.json --output-dir build/source-export
+          python3 tools/releases/check_source_build.py --receipt build/source-export/source-archive.json --sdk-prefix "$PWD/build/sdk" --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" --output build/source-build
+      - name: Stage flat native artifact evidence
+        if: always()
+        run: python3 tools/releases/stage_artifacts.py --kind native
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: release-native-${{ matrix.name }}
+          path: build/release-artifact/
+          if-no-files-found: warn
+          retention-days: 30
+  appimage:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || inputs.tag || github.ref }}
+      - name: Standard build dependencies
+        run: |
+          sudo bash tools/releases/install-native-deps.sh
+          sudo apt-get install -y patchelf libgtk-3-dev libsecret-1-dev qt6-base-private-dev libx11-xcb-dev libxcb-cursor-dev libxcb-icccm4-dev libxcb-render-util0-dev libxcb-sync-dev
+      - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: '6.8.3'
+          arch: linux_gcc_64
+          modules: qtimageformats
+          cache: true
+      - name: Validate exact release source
+        if: github.event_name != 'pull_request'
+        run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
+      - name: Adapter contracts
+        run: |
+          python3 tests/unit/test_portable_appimage.py
+          python3 tests/releases/test_native_audit.py
+          python3 tests/releases/test_source_archive.py
+          python3 tests/releases/test_release_bundle.py
+          python3 tests/releases/test_collect.py
+          python3 tests/releases/test_publish.py
+      - name: Verify pinned SDK source
+        run: |
+          git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
+          python3 tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
+      - name: Identify AppImage dependency environment
+        id: sdk-key
+        run: python3 tools/ci/sdk_cache.py key --contract .github/workflows/release.yml --contract tools/releases/provision-sdk.sh --contract tools/releases/provision-appimage.py --contract packaging/appimage/tools.lock.json
+      - uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        id: sdk-cache
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+            build/appimage-deps
+            build/appimage-deps-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Verify restored AppImage dependencies and fresh notices
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        run: |
+          python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
+          python3 tools/ci/sdk_cache.py verify --prefix build/appimage-deps --manifest build/appimage-deps-cache.json --key '${{ steps.sdk-key.outputs.key }}'
+          python3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR" --skip-build
+      - name: Standard upstream dependency builds
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          bash tools/releases/provision-sdk.sh
+          python3 tools/releases/provision-appimage.py --qt-root "$QT_ROOT_DIR"
+          python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+          python3 tools/ci/sdk_cache.py seal --prefix build/appimage-deps --manifest build/appimage-deps-cache.json --key '${{ steps.sdk-key.outputs.key }}'
+      - uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+            build/appimage-deps
+            build/appimage-deps-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Build and audit AppImage
+        run: bash tools/releases/build-appimage.sh
+      - name: Stage flat AppImage artifact evidence
+        if: always()
+        run: python3 tools/releases/stage_artifacts.py --kind appimage
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: release-appimage
+          path: build/release-artifact/
+          if-no-files-found: warn
+          retention-days: 30
+  publish:
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
+    needs: [native, appimage]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: build/downloaded
+      - name: Verify and collect exact release assets
+        run: python3 tools/releases/collect.py --tag "$RELEASE_TAG" --inputs build/downloaded --output build/publish
+      - name: Stage verified GitHub draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/releases/publish.py --tag "$RELEASE_TAG" --directory build/publish

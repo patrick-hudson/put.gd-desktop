@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "architecture": "x86_64",
+  "tools": [
+    {
+      "name": "linuxdeploy-x86_64.AppImage",
+      "repository": "linuxdeploy/linuxdeploy",
+      "release": "1-alpha-20251107-1",
+      "url": "https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage",
+      "sha256": "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d"
+    },
+    {
+      "name": "linuxdeploy-plugin-qt-x86_64.AppImage",
+      "repository": "linuxdeploy/linuxdeploy-plugin-qt",
+      "release": "1-alpha-20250213-1",
+      "url": "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/1-alpha-20250213-1/linuxdeploy-plugin-qt-x86_64.AppImage",
+      "sha256": "15106be885c1c48a021198e7e1e9a48ce9d02a86dd0a1848f00bdbf3c1c92724"
+    },
+    {
+      "name": "appimagetool-x86_64.AppImage",
+      "repository": "AppImage/appimagetool",
+      "release": "1.9.1",
+      "url": "https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage",
+      "sha256": "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0"
+    },
+    {
+      "name": "runtime-x86_64",
+      "repository": "AppImage/type2-runtime",
+      "release": "20251108",
+      "commit": "dd6cebedcbddde9c82f89b011e8e1d40b6e43868",
+      "url": "https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-x86_64",
+      "sha256": "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"
+    },
+    {
+      "name": "runtime-LICENSE",
+      "repository": "AppImage/type2-runtime",
+      "release": "20251108",
+      "commit": "dd6cebedcbddde9c82f89b011e8e1d40b6e43868",
+      "url": "https://raw.githubusercontent.com/AppImage/type2-runtime/dd6cebedcbddde9c82f89b011e8e1d40b6e43868/LICENSE",
+      "sha256": "aa154fc9070614bbe7921f89db11efd1dba7a1f3a41685958110e2230f9c0ca1",
+      "executable": false
+    }
+  ],
+  "buildInputs": {
+    "distribution": "Ubuntu 24.04",
+    "qt": "6.8.3",
+    "layerShellQt": {
+      "repository": "https://github.com/KDE/layer-shell-qt.git",
+      "release": "6.4.6",
+      "commit": "b1317ba122420dd0542ad12f4780b02ba7b6288f"
+    },
+    "extraCmakeModules": {
+      "repository": "https://github.com/KDE/extra-cmake-modules.git",
+      "release": "6.14.0",
+      "commit": "a5f0366eb92baa2a31b24e65f754fe4bc48ca28e"
+    },
+    "qtLicenseSources": [
+      {
+        "repository": "https://github.com/qt/qtbase.git",
+        "release": "6.8.3",
+        "commit": "c07c2d5a527a644d36e7853d55132ae38921682f"
+      },
+      {
+        "repository": "https://github.com/qt/qtwayland.git",
+        "release": "6.8.3",
+        "commit": "8ab0d5b4cd2db654eb01eb74c9a8bbf7efc87d94"
+      },
+      {
+        "repository": "https://github.com/qt/qtdeclarative.git",
+        "release": "6.8.3",
+        "commit": "2ec235a2235a119887683e55787b93f99dc5f12f"
+      },
+      {
+        "repository": "https://github.com/qt/qtsvg.git",
+        "release": "6.8.3",
+        "commit": "c75099a75e81df35e7347a65e301bbf1011831a5"
+      },
+      {
+        "repository": "https://github.com/qt/qtimageformats.git",
+        "release": "6.8.3",
+        "commit": "3b6b1fb96041f1bc85a8f42593bef2ee7bcdca6c"
+      }
+    ],
+    "qtKeychain": {
+      "repository": "https://github.com/frankosterfeld/qtkeychain.git",
+      "commit": "8eac9889775ca45c106d077bb0d3744754a1570a"
+    }
+  }
+}

@@ -81,6 +81,9 @@ QJsonObject nativeCursorSeed(){
 }
 }
 int main(int argc,char** argv){
+ if(argc==2&&std::strcmp(argv[1],"--version-json")==0){
+  std::printf("%s\n",putgd::buildManifestJson());return 0;
+ }
  if(argc==2&&(std::strcmp(argv[1],"--version")==0||std::strcmp(argv[1],"-v")==0)){std::printf("putgd-capture %s\n",putgd::buildVersion());return 0;}
  putgd::UiControlPipes handles;if(!handles.valid())return 2;
  // This text-free X11 helper paints raster overlays only. Avoid initializing

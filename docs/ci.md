@@ -71,3 +71,31 @@ identity and test names first. Cache hits are dependency reuse, never applicatio
 acceptance evidence. A workflow scheduling or cache change requires hosted
 validation on both Linux distributions and both portable compilers before it is
 reported green.
+
+## Verified cache restoration (source117)
+
+Hosted Build run `38292139041` passed all four jobs at
+`a91a7ce1dc2a1ef8cefa1ed34c5abac9b4a1bb8a`. Its second attempt restored and
+validated the exact SDK prefix on every platform, reverified AWS 1.11.907 and
+all 15 pinned submodules, and skipped SDK provisioning. Windows/macOS also
+restored Qt. Both Linux jobs retained 57 tests. One matched cold/warm pair:
+
+| Job | Cold seconds | Warm seconds |
+| --- | ---: | ---: |
+| Ubuntu 24.04 | 861 | 633 |
+| Ubuntu 26.04 | 918 | 766 |
+| Windows 2022 | 426 | 334 |
+| macOS 14 | 344 | 261 |
+
+Warm Linux CTest times were 159.22 and 173.27 seconds. These are observed hosted
+job durations, including their normal setup/artifact work, not promises about
+future runner performance or new graphical acceptance. The run's retained
+JUnit, cache/environment manifests and logs provide the detailed record.
+
+The collision-policy fixture waits for a terminal operation with an explicit
+15-second limit. Its former five-second polling helper silently returned a
+`running` operation: the controlled 32-HEAD exhaustion row completed at 5,056 ms
+on the local release work run. The no-PUT, exact 32-HEAD, no-copy and final
+`collision_exhausted` assertions remain unchanged; this is a test synchronization
+bound, not a relaxed production timeout or memory benchmark. Numeric terminal
+timings accompany the fixture's normal retained test output.

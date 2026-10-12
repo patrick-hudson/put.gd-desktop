@@ -24,12 +24,18 @@ class CollisionTest : public QObject {
     }
     static Operation waitOperation(OperationService& operations, const QString& id) {
         Operation result;
-        for (int poll = 0; poll < 200; ++poll) {
+        QElapsedTimer elapsed;elapsed.start();
+        // Thirty-two guarded HEAD probes include durable checkpoints and worker IPC.
+        while (elapsed.elapsed() < 15000) {
             QTest::qWait(25);
             HistoryStore store(operations.databasePath());
             result = store.operation(id);
-            if (QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.state)) return result;
+            if (QStringList{"completed", "partial", "failed", "cancelled"}.contains(result.state)) {
+                qInfo("collision_fixture_terminal_ms=%lld",elapsed.elapsed());
+                return result;
+            }
         }
+        QTest::qFail("Operation did not reach a terminal state within 15 seconds",__FILE__,__LINE__);
         return result;
     }
 private slots:

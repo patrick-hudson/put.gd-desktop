@@ -82,7 +82,8 @@ foreach(aws_component aws-crt-cpp aws-crt-cpp/crt/aws-c-auth aws-crt-cpp/crt/aws
     message(FATAL_ERROR "Pinned SDK component LICENSE missing: ${aws_component}")
   endif()
 endforeach()
-set(CPACK_GENERATOR DEB)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/LICENSE" "${CMAKE_INSTALL_DATADIR}/doc/putgd")
+set(CPACK_GENERATOR DEB) # Select -G RPM for a native Fedora build.
 set(CPACK_PACKAGE_NAME putgd)
 set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
 configure_file("${PROJECT_SOURCE_DIR}/cmake/PackageBuildIdentity.cmake.in" package-identity.cmake @ONLY)
@@ -94,4 +95,15 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libqt6sql6-sqlite, qt6-qpa-plugins, qt6-wayland")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+# Resolve system SONAMEs on Fedora; Qt's platform/SQL plugins are loaded at runtime.
+set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
+set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase-sqlite, qt6-qtwayland")
+set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
+# Private AWS libraries satisfy only this app, never another RPM. Keep automatic
+# detection of their system dependencies; filter only the bundled SONAMEs.
+# RPM's default stripping also changes bytes after our runtime digest is written.
+set(CPACK_RPM_SPEC_MORE_DEFINE
+  "%global __provides_exclude_from ^${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n)[.]so.*$\n%define __spec_install_post /bin/true")
 include(CPack)
