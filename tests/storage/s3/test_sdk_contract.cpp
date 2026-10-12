@@ -53,11 +53,11 @@ private slots:
         };
         QVERIFY(write("openssl_conf=init\n[init]\nssl_conf=ssl\n[ssl]\nsystem_default=policy\n[policy]\nGroups=P-256\n"));
         QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(path)));
-        for (const auto name : {"Curves", "1.Groups", "2.Curves"}) {
+        for (const auto name : {"Curves", "1.Groups", "2.Curves", "groups", "CURVES", "1.gRoUpS"}) {
             QVERIFY(write(QByteArray("openssl_conf=init\n[init]\nssl_conf=ssl\n[ssl]\nsystem_default=policy\n[policy]\n") + name + "=P-256\n"));
             QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(path)));
         }
-        for (const auto module : {"ssl_conf.1", "ssl_conf.2"}) {
+        for (const auto module : {"ssl_conf.1", "ssl_conf.2", "ssl", "ssl.1"}) {
             QVERIFY(write(QByteArray("openssl_conf=init\n[init]\n") + module + "=ssl\n[ssl]\nsystem_default=policy\n[policy]\nGroups=P-256\n"));
             QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(path)));
         }

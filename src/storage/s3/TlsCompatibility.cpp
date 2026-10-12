@@ -38,7 +38,8 @@ bool defaultSystemTlsGroups(const char* configuration) {
     if (!init) return false;
     for (int i = 0; i < sk_CONF_VALUE_num(init); ++i) {
         const auto* module = sk_CONF_VALUE_value(init, i);
-        if (moduleName(module->name) != "ssl_conf") continue;
+        // OpenSSL resolves module names by prefix, after removing an instance suffix.
+        if (!std::string_view("ssl_conf").starts_with(moduleName(module->name))) continue;
         const auto* ssl = NCONF_get_section(conf.get(), module->value);
         if (!ssl) return false;
         for (int j = 0; j < sk_CONF_VALUE_num(ssl); ++j) {
@@ -48,7 +49,8 @@ bool defaultSystemTlsGroups(const char* configuration) {
             if (!commands) return false;
             for (int k = 0; k < sk_CONF_VALUE_num(commands); ++k) {
                 const auto name = commandName(sk_CONF_VALUE_value(commands, k)->name);
-                if (name == "Groups" || name == "Curves") return false;
+                if (OPENSSL_strcasecmp(name.data(), "Groups") == 0 ||
+                    OPENSSL_strcasecmp(name.data(), "Curves") == 0) return false;
             }
         }
     }

@@ -197,3 +197,10 @@ validation handle. The guard separately parses module instance suffixes such
 as `ssl_conf.1` and SSL command prefixes such as `1.Groups`. The module-instance
 regression failed before that distinction was added. Source111 was superseded
 before any guest build, deployment or live product operation.
+
+Independent Anthropic review identified OpenSSL's case-insensitive file-command
+matching and prefix-based module lookup. The guard now mirrors those semantics;
+`groups`, `CURVES`, `1.gRoUpS`, `ssl` and `ssl.1` are covered as well. The command
+alias regression failed before the correction. These cases affect only policy
+preservation; source112's native KDE build completed, but no product launch or
+live upload was performed with that superseded version.
