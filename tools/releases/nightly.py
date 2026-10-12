@@ -10,7 +10,7 @@ import re
 import subprocess
 from urllib.parse import quote
 
-from github_evidence import (GitHub, BUILD_JOBS, BUILD_WORKFLOW, PACKAGE_WORKFLOW,
+from github_evidence import (GitHub, BUILD_JOBS, BUILD_WORKFLOW,
                              coordinate_build, coordinate_packages, full_sha, remote_tag_commit, verify_ci)
 from release_bundle import expected_members
 from release_identity import parse_tag

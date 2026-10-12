@@ -9,6 +9,7 @@ BUILD_WORKFLOW = '.github/workflows/build.yml'
 PACKAGE_WORKFLOW = '.github/workflows/release.yml'
 BUILD_JOBS = ('linux (24.04)', 'linux (26.04)', 'portable (windows-2022)', 'portable (macos-14)')
 PACKAGE_JOBS = ('native (ubuntu24.04)', 'native (ubuntu26.04)', 'native (fedora44)', 'appimage')
+_PENDING_STATUSES = ('queued', 'in_progress', 'waiting', 'pending', 'requested')
 
 
 def full_sha(value):
@@ -127,7 +128,7 @@ def coordinate_build(api, source_sha, tag, *, timeout=7200, poll_seconds=15):
             for run in runs:
                 _run_identity(api, run, run.get('id'), source_sha, workflow)
             successful = [run for run in runs if run.get('status') == 'completed' and run.get('conclusion') == 'success']
-            pending = [run for run in runs if run.get('status') in ('queued', 'in_progress', 'waiting', 'pending', 'requested')]
+            pending = [run for run in runs if run.get('status') in _PENDING_STATUSES]
             candidates = successful or pending or runs
             if candidates:
                 selected = max(candidates, key=lambda run: run['id'])['id']
@@ -140,7 +141,7 @@ def coordinate_build(api, source_sha, tag, *, timeout=7200, poll_seconds=15):
             _run_identity(api, run, selected, source_sha, workflow)
             if run.get('status') == 'completed':
                 return verify_ci(api, selected, source_sha, BUILD_WORKFLOW, BUILD_JOBS)
-            if run.get('status') not in ('queued', 'in_progress', 'waiting', 'pending', 'requested'):
+            if run.get('status') not in _PENDING_STATUSES:
                 raise ValueError('Unknown required Build status')
         if time.monotonic() >= deadline:
             raise TimeoutError('Exact-source Build verification deadline exceeded; producer=' + str(selected))
@@ -163,7 +164,7 @@ def coordinate_packages(api, source_sha, tag, coordinator_run_id, build, *, time
             _run_identity(api, run, run['id'], source_sha, workflow)
             if run.get('status') == 'completed' and run.get('conclusion') != 'success':
                 raise ValueError('Original exact-tag package run requires recovery: ' + str(run['id']))
-            if run.get('status') not in ('completed', 'queued', 'in_progress', 'waiting', 'pending', 'requested'):
+            if run.get('status') not in ('completed',) + _PENDING_STATUSES:
                 raise ValueError('Unknown original package run status')
             return {'workflowId': workflow['id'], 'workflowPath': PACKAGE_WORKFLOW,
                     'runId': run['id'], 'runAttempt': run['run_attempt'], 'ref': tag,

@@ -1,6 +1,9 @@
 """Hosted workflow boundaries; actionlint separately parses the workflow syntax."""
 from pathlib import Path
 import unittest
+import os
+import subprocess
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -37,6 +40,30 @@ class ReleaseChannels(unittest.TestCase):
         self.assertIn('ref: ${{ steps.pin.outputs.source_sha }}', nightly)
         self.assertIn('actions: write', nightly)
         self.assertIn('contents: write', nightly)
+
+    def test_failed_dispatch_remains_failed_while_its_log_is_retained(self):
+        lines = (ROOT / '.github/workflows/nightly.yml').read_text().splitlines()
+        start = next(i for i, line in enumerate(lines) if 'name: Verify public no-op' in line)
+        end = next(i for i in range(start + 1, len(lines)) if lines[i].startswith('      - '))
+        step = lines[start:end]
+        run = next(line.split('run: ', 1)[1] for line in step if 'run: ' in line)
+        explicit_bash = any(line.strip() == 'shell: bash' for line in step)
+        # Execute the actual workflow pipeline with a synthetic failing dispatcher.
+        # These are GitHub's documented default/explicit Bash invocation options.
+        shell = ['/bin/bash', '--noprofile', '--norc', '-e']
+        if explicit_bash:
+            shell += ['-o', 'pipefail']
+        with tempfile.TemporaryDirectory(prefix='pgsh-') as temporary:
+            directory = Path(temporary)
+            dispatcher = directory / 'python3'
+            dispatcher.write_text('#!/bin/sh\nprintf "synthetic dispatch failure\\n" >&2\nexit 17\n')
+            dispatcher.chmod(0o755)
+            result = subprocess.run([*shell, '-c', run], capture_output=True, text=True,
+                env={**os.environ, 'PATH': temporary + os.pathsep + os.environ['PATH'],
+                     'RUNNER_TEMP': temporary})
+            self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
+            self.assertEqual((directory / 'nightly-execution.log').read_text(),
+                             'synthetic dispatch failure\n')
 
     def test_package_recipe_and_nightly_publisher_inputs_are_bound(self):
         release = (ROOT / '.github/workflows/release.yml').read_text()
