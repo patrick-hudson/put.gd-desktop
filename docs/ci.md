@@ -1,7 +1,8 @@
 # CI coverage and runtime
 
-The Build workflow checks every pull request, default-branch push and manual run.
-Branch pushes with an open PR no longer create a second identical matrix. New
+The Build workflow checks every pull request, `main`/`nightly` push and manual run.
+Ordinary feature-branch pushes with an open PR do not create a second matrix.
+Promotion PRs still validate their merge source independently of integration pushes. New
 runs cancel obsolete runs for the same PR/ref; cancellation is not a passing result.
 
 ## Coverage kept
@@ -18,11 +19,35 @@ separate from Linux distro dependencies. The S3 wire parser links Qt Network on
 these platforms because it uses QHostAddress; Linux uses its native parser and
 keeps Qt Network out of the resident link requirements.
 
-Each Linux job also verifies the independent Release configuration without
-QtTest, lab fixtures or benchmark dependencies. Saved live-S3 numeric receipts
+For ordinary runs, each Linux job also verifies the independent Release
+configuration without QtTest, lab fixtures or benchmark dependencies.
+Package-coordinated runs use the audited native package builds for that
+configuration instead of compiling the same Linux production targets twice;
+Debug tests and portable checks remain mandatory. Saved live-S3 numeric receipts
 are replayed once on Ubuntu 24.04; this is platform-independent historical
 validation, not a fresh cloud or desktop run. Lab identity/storage and process
 observer safety contracts retain their structured reports.
+
+## Pipeline coordination
+
+A plain `main` push runs general CI; packaging runs on relevant PRs, release tags
+and explicit tagged dispatches. Fewer jobs after a plain merge reflect these
+triggers, not deleted tests. Nightly's thin coordinator explicitly dispatches the
+package workflow for a newly changed source, using its exact tag and workflow recipe.
+
+The exact-source Build producer and four package jobs run in parallel. Publication
+requires both; a skipped publication job on a PR is expected. Producer verification
+checks repository, workflow ID/path, full source, latest attempt and every named
+required job. Existing successful push/manual Build evidence is reused. PR merge builds are
+not exact-source evidence, even when Actions reports the branch head SHA. Missing evidence triggers
+one exact-tag dispatch rather than another moving-branch build. Main, candidate,
+stable and nightly paths share the coordination rules and speed improvements.
+
+Two generic Linux production compiles are omitted only when package builds cover
+them. Qt/distribution ABI, compiler, flags and tagged identities remain separate;
+there is no application-binary cache or debug-to-release binary substitution.
+Record actual hosted timings before claiming savings. The nightly dispatcher uses
+explicit Bash pipefail semantics so preserving a failure log cannot mask its exit.
 
 ## Speed changes
 

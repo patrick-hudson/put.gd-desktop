@@ -164,6 +164,18 @@ before assuming it supports the new option.
 Packaging artifacts and source114 replay are not current desktop proof. Keep
 Cinnamon-first gates, immutable VM bases, visible consoles, bounded socket paths
 and exact source/package identities. A release tag must match a clean checkout;
-never relabel a prior binary with the current HEAD or source114 results. Public
-release publication follows exact-asset acceptance, with curated logs/parameters
-and no credentials or private login/payload data. Flatpak is deferred to issue #14.
+never relabel a prior binary with the current HEAD or source114 results. Stable
+and candidate publication follows exact-asset acceptance. Nightlies use a separate
+automated build/package class and do not establish current desktop certification.
+Retain curated logs/parameters without credentials or private login/payload data.
+Flatpak is deferred to issue #14.
+
+`main` is stable source and `nightly` the development integration branch. Read the
+release runbook before branch/tag operations. Inspect existing runs and immutable
+source identities before dispatching; a scheduled controller can have a main head
+different from its pinned nightly source. Build and package producer evidence must
+match the actual source. Preserve the first preparation and original package
+handoffs on retries. Missing evidence or byte conflicts remain failures; never
+retag unchanged source, replace public assets or treat a draft as successful.
+Use the shared CI implementation for both branches, preserving all valuable
+checks when removing duplicate compilation. Future update-channel UI is separate work.
