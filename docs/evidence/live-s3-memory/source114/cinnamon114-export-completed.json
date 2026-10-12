@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+  "exportedDesktop": "cinnamon-x11",
+  "metadataOnly": true,
+  "memberCount": 140,
+  "uncompressedBytes": 2137811,
+  "exactOriginalResultBytesRetained": true,
+  "exactFrozenEvaluatorBytesRetained": true,
+  "exactFrozenObserverBytesRetained": true,
+  "actualExtractedProtectedValueScanPassed": true,
+  "protectedValueCount": 2,
+  "portableJoinedManifestReplayPassed": true,
+  "replayedPeakRssPlusSwapMiB": 29.05859375,
+  "replayedQuietSeconds": 300.09133694799675,
+  "replayedProductionObjectsVerifiedRemoved": 31,
+  "sourceCleanAndUntouched": true,
+  "guestOrCloudActions": false,
+  "references": {
+    "cinnamon114.tar.gz": {
+      "path": "cinnamon114.tar.gz",
+      "bytes": 121211,
+      "sha256": "a2c63ada09b760127bb4de55135e0f10d21a0907bf869084c168c18e040bb782"
+    },
+    "cinnamon114.tar.gz.manifest.json": {
+      "path": "cinnamon114.tar.gz.manifest.json",
+      "bytes": 25090,
+      "sha256": "475b2a181f0c9b8b74800eed4736bbfcae08be7f19e16a0e0ae35109db4e6611"
+    },
+    "manifest.json": {
+      "path": "manifest.json",
+      "bytes": 28020,
+      "sha256": "14fd8b9c80d0ec6cc7bbdf3d760cc603139ca308dbf778eb4ca683690d10047a"
+    },
+    "cinnamon114.evaluate.py": {
+      "path": "cinnamon114.evaluate.py",
+      "bytes": 6023,
+      "sha256": "8d0dba1ae1928a25eaae88fbfc22ba109f09d61b65ab0b457dfbbf6689e7f066"
+    },
+    "cinnamon114.observe_guest.py": {
+      "path": "cinnamon114.observe_guest.py",
+      "bytes": 5086,
+      "sha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af"
+    },
+    "export_numeric.py": {
+      "path": "export_numeric.py",
+      "bytes": 10614,
+      "sha256": "16acf139cd7b697cf492ab7b8a9628697fe56ef456d302f283c998d73cf634c1"
+    },
+    "replay.py": {
+      "path": "replay.py",
+      "bytes": 4111,
+      "sha256": "2847393667fc8a4d44d2a9bd986e69f6ea3a860207b848b62376e7761d37e530"
+    },
+    "README.md": {
+      "path": "README.md",
+      "bytes": 2961,
+      "sha256": "44fb77276e877f8a0a27d874275fbddefbdc2da5d787ae77d063ca9d168c5d95"
+    },
+    "export-validation.json": {
+      "path": "export-validation.json",
+      "bytes": 1235,
+      "sha256": "a144801543cb9e949ce0caf275e57cbb21fca192bb5bbee5e633e8768d668266"
+    },
+    "portable-replay.json": {
+      "path": "portable-replay.json",
+      "bytes": 6131,
+      "sha256": "552a97d556e5ea1c8301dc44cc9d467e7e4763bd2d9feca118574dd66d373ce5"
+    },
+    "joined-replay-final.json": {
+      "path": "joined-replay-final.json",
+      "bytes": 6131,
+      "sha256": "552a97d556e5ea1c8301dc44cc9d467e7e4763bd2d9feca118574dd66d373ce5"
+    }
+  },
+  "limits": [
+    "Historical numeric replay only; no fresh compositor/cloud proof.",
+    "GUI images remain private and unbundled; only their hashes and actual-review receipts are present.",
+    "Earlier native failures and late/controlled XFixes evidence remain separately qualified; original private files are preserved.",
+    "Full-run exporter requires completed30/31 runs and canonical functional/final acceptance fields; partial failures require a separate export scope."
+  ],
+  "completedUtc": "2026-10-12T17:36:42.918399+00:00"
+}

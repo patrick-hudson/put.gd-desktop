@@ -1,0 +1,27 @@
+{
+  "sourceCommit": "76467a75b18edc56fd473c63cdf3bb5b17796354",
+  "lastResident": {
+    "pid": 174725,
+    "startTicks": 6076775,
+    "sha256": "935183c24d9a9ed10005e9436957374d56767509a5206313b6d19f92456fcaf4"
+  },
+  "ownedProductFamily": [],
+  "residentNormalQuitAccepted": true,
+  "fixtureVisibleAltF4Closed": true,
+  "exactFailedOperationSpoolRemoved": 1,
+  "exactManagedArtifactsRemoved": 2,
+  "artifactRootEmpty": true,
+  "historyMetadataUnmodified": true,
+  "localArchiveRemoved": 29,
+  "successfulSpoolsRemovedThroughCLI": 27,
+  "knownRemoteCreated": 28,
+  "productionRemoteRemoved": 16,
+  "emergencyConditionalRemoteRemoved": 12,
+  "remoteRemaining": 0,
+  "productionUnknownHistoryPreserved": 12,
+  "fullLiveAcceptance": false,
+  "fixedQuietExecuted": false,
+  "native12Gui8Passed": true,
+  "completedUTC": "2026-10-12T10:45:08.344935+00:00",
+  "sourcePinReleased": true
+}

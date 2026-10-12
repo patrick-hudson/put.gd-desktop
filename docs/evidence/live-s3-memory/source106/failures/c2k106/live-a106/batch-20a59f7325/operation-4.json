@@ -1,0 +1,92 @@
+{
+  "action": "clipboard",
+  "cancelled": false,
+  "clipboardRevision": "23",
+  "copyStatus": "no_result",
+  "created": "2026-10-12T10:04:16.649Z",
+  "destination": {
+    "credentials": {
+      "mode": "session",
+      "reference": null
+    },
+    "profileId": "issue7-s3",
+    "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+    "providerId": "s3",
+    "settings": {
+      "aclMode": "public-read",
+      "addressing": "path",
+      "bucket": "put.gd",
+      "connectTimeoutMs": 5000,
+      "endpoint": "https://s3.us-east-2.amazonaws.com",
+      "lowSpeedBytesPerSecond": 1,
+      "lowSpeedTimeSeconds": 30,
+      "objectPrefix": "",
+      "publicUrlBase": "https://put.gd",
+      "region": "us-east-2",
+      "requestTimeoutMs": 60000,
+      "storageClass": "STANDARD"
+    }
+  },
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "id": "a8a1ef4d-fff4-4705-baf7-257de7aa4da1",
+  "invocation": "11",
+  "items": [
+    {
+      "artifact": {
+        "bytes": 30,
+        "category": "text",
+        "id": "4653d9a4-8a6f-457e-887b-9a7285acaaca",
+        "mime": "text/plain",
+        "name": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-4653d9a4-8a6f-457e-887b-9a7285acaaca.txt",
+        "namingPrepared": true,
+        "originalFile": false,
+        "previewPath": "",
+        "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185"
+      },
+      "candidate": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-4653d9a4-8a6f-457e-887b-9a7285acaaca.txt",
+      "concurrencyToken": "",
+      "condition": "",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "local": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "path": "/home/lab/putgd-lab/archive/text/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-4653d9a4-8a6f-457e-887b-9a7285acaaca.txt",
+        "status": "saved"
+      },
+      "objectReference": {},
+      "publicationId": "537f9208-7fef-40c3-983c-c787f3c4c294",
+      "receipt": {
+        "concurrencyToken": "",
+        "destination": {
+          "credentials": {},
+          "profileId": "",
+          "profileRevision": "",
+          "providerId": "",
+          "settings": {}
+        },
+        "directUrl": "",
+        "objectReference": {},
+        "publicationId": "",
+        "schemaVersion": 1
+      },
+      "remoteStatus": "not_requested",
+      "uploadStatus": "failed"
+    }
+  ],
+  "settingsRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+  "state": "partial"
+}

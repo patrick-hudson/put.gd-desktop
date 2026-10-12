@@ -1,0 +1,48 @@
+{
+  "sourceCommit": "76467a75b18edc56fd473c63cdf3bb5b17796354",
+  "version": "0.1.1-dev.106+g76467a75b18e",
+  "baselineMiB": 49.4453125,
+  "cinnamonRunsMiB": [
+    28.953125,
+    28.8515625
+  ],
+  "worstSavingMiB": 20.4921875,
+  "worstSavingPercent": 41.444145,
+  "allDesktopAcceptance": false,
+  "gnomeKdeBlocker": "Production S3 transport failures; full live workloads incomplete, KDE deletion failures",
+  "checkpoint": "/home/patrick/work/put.gd/work/live-s3-memory/checkpoint106.md",
+  "checkpointSha256": "9c68136865636f2b6098256cbfb19890931094164e2e171930e7bfb2c5827704",
+  "createdAt": "2026-10-12T10:41:02.313717+00:00",
+  "cleanup": {
+    "experimentCreated": 170,
+    "experimentRemoved": 170,
+    "cinnamonBothCandidates": 124,
+    "gnome": {
+      "created": 18,
+      "productionRemoved": 12,
+      "emergencyRemoved": 6,
+      "knownRemaining": 0,
+      "unknownPutAuthenticatedMissing": true,
+      "unknownArtifactRetainedBytes": 329
+    },
+    "kde": {
+      "created": 28,
+      "productionRemoved": 16,
+      "emergencyRemoved": 12,
+      "knownRemaining": 0
+    },
+    "policyOrExistingUserObjectsModified": false
+  },
+  "globalKeep": false,
+  "bestQualifiedSource": 104,
+  "candidatePreservedSource": 106,
+  "testingDeadline": "2026-10-12T10:46:42.197005Z",
+  "stopReason": "Approved testing window exhausted; GNOME/KDE live correctness gates failed. Candidate preserved; wrap-up user choice pending.",
+  "budget": {
+    "reservedObjects": 187,
+    "reservedBytes": 41091072,
+    "objectLimit": 256,
+    "byteLimit": 67108864,
+    "failedOrUnusedReservationsRefunded": false
+  }
+}

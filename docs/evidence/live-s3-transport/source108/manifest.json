@@ -1,0 +1,60 @@
+{
+  "sourceCommit": "b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a",
+  "sourceVersion": "0.1.1-dev.108+gb4e16ba9971c",
+  "overallWaylandLiveAcceptance": false,
+  "underlyingTlsReason": "unknown",
+  "files": {
+    "gnome108.tar.gz": {
+      "bytes": 40596,
+      "sha256": "e438764e45f5c6a74ff42b345573febb029dd351f14f08a78ce92d314c6495a7"
+    },
+    "cinnamon108.manifest.json": {
+      "bytes": 19367,
+      "sha256": "de07f45225f1ccf0121fe613419869e1299b775a66e6bbe327d9e0aec1af25a3"
+    },
+    "kde108-manifest.json": {
+      "bytes": 16337,
+      "sha256": "46f187aeb3d480071db7e19e2cacd10de4cb137942bc9fc4ed084bd53429393a"
+    },
+    "gnome108-scan.json": {
+      "bytes": 5122,
+      "sha256": "50b77ad7e611bad321e3c7f443d2d6199ce8ee869d84d735ecec72f83d2ab97e"
+    },
+    "cinnamon108-result.json": {
+      "bytes": 2397,
+      "sha256": "1a2162acc8381dcfae3191b6fad7ced324b42c80bf7063b179b2151db048a811"
+    },
+    "gnome108-result.json": {
+      "bytes": 5404,
+      "sha256": "01baeb4bc56558c66777e7b0a75380b42ba548464cd7487a1ea9fa77c78f4f79"
+    },
+    "storage-cleanup-summary.json": {
+      "bytes": 3476,
+      "sha256": "e0ab2d12596c8b13596875238acda249bd5eab419bbff115e0f764e96f39d009"
+    },
+    "kde108-replay.json": {
+      "bytes": 1026,
+      "sha256": "29102c6a13e5aab2be20ed5648dac72498a1b087d85d4b25d8b385b61adc5f92"
+    },
+    "kde108-result.json": {
+      "bytes": 6039,
+      "sha256": "46e6af856b5dde426700ebc2bd7997d77a9dcb439e9a897a71e06dbe67e3a551"
+    },
+    "kde108-sdk-failures.json": {
+      "bytes": 6652,
+      "sha256": "2a67d8a0fb62d3e2615a203179b0bd5ac9a74e5ab8c8f02b7fb94bc7ad4bad8a"
+    },
+    "cinnamon108.tar.gz": {
+      "bytes": 116511,
+      "sha256": "53d24d212a0d72fcf427bfdf42dba8b4e49f57cd2e29518c2fe12e8ec9640fd6"
+    },
+    "kde108.tar.gz": {
+      "bytes": 124279,
+      "sha256": "94b02c2409d92a3dca445592c92497c653e075e94fd856545723aeba5df92afc"
+    },
+    "transport-code-map.json": {
+      "bytes": 1307,
+      "sha256": "a6f9e411c36158ec6fb371d6b1829eba80b0ed7e481d41b52803db7d00b63e8f"
+    }
+  }
+}

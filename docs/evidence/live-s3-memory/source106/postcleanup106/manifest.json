@@ -1,0 +1,49 @@
+{
+  "scope": "Additional zero-upload postcleanup confirmation after bothbuildsdrained; notmatchedliveworkload comparison",
+  "sourceCommit": "76467a75b18edc56fd473c63cdf3bb5b17796354",
+  "members": [
+    {
+      "file": "parameters.json.gz",
+      "bytes": 617,
+      "sha256": "42b90933f046bcff80e6f322c5735b2f7ee320849327da37ecb8502a475ba4a7",
+      "uncompressedBytes": 1200,
+      "uncompressedSha256": "bfb749abee662330e5383a63252699ad2ed81627675a5d35aed1a6f77edf2bff"
+    },
+    {
+      "file": "samples.jsonl.gz",
+      "bytes": 12620,
+      "sha256": "f07bc954f6205eab92e93e38ef522a88bd9b344be6baa3dac0cca0520bb5a233",
+      "uncompressedBytes": 629483,
+      "uncompressedSha256": "80ca0b2c909d23ea57a549d70d635d38e5f1d4fb513d4fee915c35073bf2227e"
+    },
+    {
+      "file": "completed.json.gz",
+      "bytes": 100,
+      "sha256": "02b77166f3c3fa784fd40b768ee51902db16d64dec84db15e7a31d3abce1d5b8",
+      "uncompressedBytes": 90,
+      "uncompressedSha256": "d7445de3b6b812b85b8f788fcdf0b07f2cdbc7180e231543411b34a0879b8e4a"
+    },
+    {
+      "file": "evaluated-confirmation.json.gz",
+      "bytes": 365,
+      "sha256": "14d4353834fa7db757d992897ec642644d4888d7be21e619e32234e3f8dbafe3",
+      "uncompressedBytes": 575,
+      "uncompressedSha256": "06436a5f9c228b2a6c4d695baeb01fcf0a96ba6b35104a1304a47b401cfe8506"
+    },
+    {
+      "file": "start.json.gz",
+      "bytes": 1711,
+      "sha256": "be69245cf016fc7dfce9c2b6823c7de1bdd51aa437a0ce290cde7eb9fb9dcab6",
+      "uncompressedBytes": 7360,
+      "uncompressedSha256": "abd6f78f0bb5758cc935e3326245fc865d1ea36b8528336a423d0437bdeb0e82"
+    },
+    {
+      "file": "command.json.gz",
+      "bytes": 258,
+      "sha256": "7834890d7be26d33cbdf2084919fd8a9d3ec115f5c6a8e50bbcaec08f706ae51",
+      "uncompressedBytes": 399,
+      "uncompressedSha256": "8b010d3e1e375f3e0e30280424fe5b25f2348be594c6197ce9bc1e483ea528a7"
+    }
+  ],
+  "actualProtectedValueScanPassed": true
+}

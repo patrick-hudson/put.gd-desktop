@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "task": "Cinnamon gate for safe S3 diagnostic108 retest",
+  "finishedUTC": "2026-10-12T12:37:06.013043+00:00",
+  "candidateBuild": {
+    "baseVersion": "0.1.1",
+    "commitCount": 108,
+    "dirty": false,
+    "gitCommit": "b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a",
+    "gitTree": "ba1b5ccff5967d9e5493b27e6b5788305f66b441",
+    "packageVersion": "0.1.1~dev.108+gb4e16ba9971c",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.108+gb4e16ba9971c"
+  },
+  "resident": {
+    "pid": 226138,
+    "startTicks": 6914854,
+    "sha256": "57608bcc033f98a1a32a752be3fd856adcf34a07c51b31b5eeb21c28cc6c938d"
+  },
+  "nativeFunctional": {
+    "path": "/home/patrick/work/put.gd/work/s3-debug/c1/cinnamon-functional.json",
+    "sha256": "66e183bce07948bf6c69909c0cd38c8452ac16f014a4f00fdcf0db2360da4efa",
+    "matrixCases": 12,
+    "guiCases": 8
+  },
+  "liveMemory": {
+    "path": "/home/patrick/work/put.gd/work/s3-debug/c1/live108/evaluated-result.json",
+    "sha256": "a4a3fb0a38248f29e988e1dd89acbf257044a5d4d1e27a8e68427888c0b1ff2c",
+    "rssPlusSwapMiB": 28.90625,
+    "idleCPUPercentOneCore": 0.00999660028033581,
+    "quietSeconds": 300.1020262759994
+  },
+  "cleanup": {
+    "remoteObjectsRemoved": 31,
+    "localArchiveRemoved": 31,
+    "successfulArtifactSpoolsCleared": 30,
+    "historyMetadataPreserved": true,
+    "allHistoryLinksUnavailable": true
+  },
+  "safeDiagnosticEvents": {
+    "path": "/home/patrick/work/put.gd/work/s3-debug/c1/live108/diagnostic-events.jsonl",
+    "sha256": "b13676bcd4dc2e3562ee60a2585b8aa8c2449bb97e705afb71e55898ddc30fb4",
+    "terminalOperations": 30,
+    "SDKRequestFailures": 0,
+    "automaticRetries": 0,
+    "workerExitCodeIndependentlyObserved": false,
+    "workerNormalExitSourceContract": "Production validates normal0exit before typed result; separate exit telemetry not exposed"
+  },
+  "pixelOracle": {
+    "path": "/home/patrick/work/put.gd/work/s3-debug/c1/live108/public-region-pixel-oracle.json",
+    "sha256": "71a950936b914ddf47040e6473f7e8ec173dfc11c1956ea49f546f02ea9ed066",
+    "cases": 15
+  },
+  "functionalAndMemoryGatePassed": true,
+  "oldTrayFailureQualification": "Initial absentmenu frames and targeted input attempts preserved.15s currentservice methodheader trace then realmenu/normal Escape succeeded; no source/desktop changes. Cause unknown, not claimed fixed by S3 diagnostics."
+}

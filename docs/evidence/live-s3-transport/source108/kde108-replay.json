@@ -1,0 +1,27 @@
+{
+  "utc": "2026-10-12T14:30:14.939592+00:00",
+  "archivePath": "/home/patrick/work/put.gd/work/s3diag/k1/kde108-numeric.tar.gz",
+  "archiveSha256": "94b02c2409d92a3dca445592c92497c653e075e94fd856545723aeba5df92afc",
+  "members": 78,
+  "safeFreshExtractionAndStandaloneReplayPassed": true,
+  "replay": {
+    "sourceCommit": "b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a",
+    "version": "0.1.1-dev.108+gb4e16ba9971c",
+    "fixedQuietSeconds": 300.1009646619932,
+    "quietSamples": 301,
+    "diagnosticSamples": 30,
+    "sampleMaxGapSeconds": 1.0009098019945668,
+    "rssPlusSwapMiB": 31.37890625,
+    "swapMiB": 0.0,
+    "idleCpuPercentOneCore": 0.01332884752471636,
+    "familyMax": 1,
+    "uiPidMax": 0,
+    "activeOperationsMax": 0,
+    "memoryNumericGatePassed": true,
+    "overallLiveAcceptancePassed": false,
+    "scope": "Numeric-only replay; production cleanup gate remains blocked. No guest/network/credential access."
+  },
+  "guestOrNetworkAccess": false,
+  "runtimeSourceChecks": false,
+  "globalPinsReleased": true
+}

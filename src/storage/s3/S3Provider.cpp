@@ -32,6 +32,8 @@ struct S3Provider::State {
     CredentialStore& credentials;
     std::shared_ptr<S3Module> module = S3Module::acquire();
     S3Driver* driver = nullptr; // Only the permanent module worker accesses this.
+    std::atomic_bool retainedDriver = false;
+    std::atomic_int queuedSnapshot = 0;
     std::mutex mutex;
     std::condition_variable drained;
     int queued = 0;
@@ -46,9 +48,23 @@ struct S3Provider::State {
         // Destroy clients and the last SDK owner on the same worker that made them.
         if (driver) module->destroyDriver(driver);
     }
-    void complete() {
+    void complete(bool releaseIdleDriver = true) {
+        bool release = false;
+        {
+            std::lock_guard lock(mutex);
+            release = releaseIdleDriver && queued == 1 && driver;
+        }
+        if (release) {
+            // Keep this job counted until SDK shutdown finishes on its owner.
+            // New admissions need not wait: their work is FIFO-queued behind
+            // this cleanup and cannot access the driver until it returns.
+            module->destroyDriver(driver);
+            driver = nullptr;
+            retainedDriver.store(false);
+        }
         std::lock_guard lock(mutex);
         --queued;
+        queuedSnapshot.store(queued);
         drained.notify_all();
     }
     template<class Work, class Fail>
@@ -62,6 +78,7 @@ struct S3Provider::State {
                 return;
             }
             ++queued;
+            queuedSnapshot.store(queued);
         }
         try {
             module->post([this, &owner, destination, cancellation, work = std::move(work), fail] {
@@ -75,6 +92,7 @@ struct S3Provider::State {
                             [this](const QString& profile, const QJsonObject& reference) {
                                 return credentials.cached(profile, reference);
                             }, [&owner](const Destination& value) { return owner.readiness(value); }, error);
+                        retainedDriver.store(driver != nullptr);
                         if (driver) work(*driver);
                         else fail(error);
                     }
@@ -85,13 +103,25 @@ struct S3Provider::State {
                 }
             });
         } catch (...) {
-            complete();
+            // A failed post completes on its caller, not the module worker.
+            // Never block that caller on worker destruction while holding this
+            // admission mutex: another provider's callback can re-enter us.
+            // Rare allocation failures may retain an idle driver until the next
+            // accepted job or provider destruction, without losing admission.
+            complete(false);
             fail({"s3_module_unavailable", "S3 support could not start; retry or reinstall this build of put.gd", {}});
         }
     }
 };
 S3Provider::S3Provider(CredentialStore& credentials) : state_(std::make_unique<State>(credentials)) {}
 S3Provider::~S3Provider() = default;
+QJsonObject S3Provider::diagnostics() const {
+    // Resource snapshots never block the GUI during SDK shutdown or thread joins.
+    return {{"queuedRequests", state_->queuedSnapshot.load()},
+            {"retainedDrivers", state_->retainedDriver.load() ? 1 : 0},
+            {"moduleLiveDrivers", state_->module->liveDriverCount()},
+            {"workerStarted", state_->module->workerStarted()}};
+}
 ProviderCapabilities S3Provider::capabilities(const Destination& destination) const {
     const auto prefix = destination.settings["objectPrefix"].toString().toUtf8().size();
     return {true, true, s3SafeDeleteTransport, true, true, s3SafeDeleteTransport, true, int(qMax(1, 1024 - prefix - (prefix ? 1 : 0))),

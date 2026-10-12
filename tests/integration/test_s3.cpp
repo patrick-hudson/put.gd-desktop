@@ -5,6 +5,27 @@ using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
 private slots:
+    void failedNameHeadRetainsSafeTransportDiagnostics() {
+        S3Fixture f;
+        f.process.terminate();
+        QVERIFY(f.process.waitForFinished());
+        const auto result = f.await<NameCheck>([&](auto cb) { f.provider.checkName(f.destination, "synthetic.txt", cb); });
+        QCOMPARE(result.status, QString("inconclusive"));
+        QCOMPARE(result.error.code, QString("s3_transport_unknown"));
+        QCOMPARE(result.error.details["httpStatus"].toInt(), -1);
+        QVERIFY(result.error.details.contains("sdkErrorType"));
+        QVERIFY(result.error.details["curlCode"].isDouble());
+        const auto curlCode = result.error.details["curlCode"].toInt();
+        // SDK builds with a different HTTP backend have no Curl message prefix.
+        QVERIFY(curlCode == -1 || curlCode == 7);
+        QCOMPARE(result.error.details["requestStage"].toString(), QString("name_head"));
+        QVERIFY(result.error.details["elapsedMs"].toInteger() >= 0);
+        const auto encoded = QJsonDocument(result.error.toJson()).toJson();
+        QVERIFY(!encoded.contains("putgd-synthetic-secret-not-a-real-key"));
+        QVERIFY(!encoded.contains("PUTGD_SYNTHETIC_ACCESS"));
+        QVERIFY(!encoded.contains(f.endpoint.toUtf8()));
+        QVERIFY(!encoded.contains("synthetic.txt"));
+    }
     void routingSignedBodyAndPublicUrl() {
         S3Fixture f;
         f.reset();

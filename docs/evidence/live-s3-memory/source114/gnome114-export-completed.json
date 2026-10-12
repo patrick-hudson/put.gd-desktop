@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+  "authoritativeFinalGnomeReceiptSha256": "25048dfdc8661e934344e44f07424c4f8040b5dc2a8d10ae3aad424a3789a151",
+  "archive": "gnome114.tar.gz",
+  "archiveSha256": "e6e3691f9f145b6078a3bd24fd137d7cfab774a0aab18a2f2ee03d32558221a0",
+  "archiveBytes": 125461,
+  "memberCount": 131,
+  "uncompressedBytes": 2418378,
+  "actualExtractedProtectedValueScanPassed": true,
+  "protectedValueCount": 2,
+  "scannedArchives": [
+    {
+      "file": "cinnamon114.tar.gz",
+      "actualMembersScanned": 140,
+      "archiveSha256": "a2c63ada09b760127bb4de55135e0f10d21a0907bf869084c168c18e040bb782"
+    },
+    {
+      "file": "kde114.tar.gz",
+      "actualMembersScanned": 132,
+      "archiveSha256": "8e413effebf9f58410d741906f055cbc68a0659075c1c8d42a871f60a21e6c71"
+    },
+    {
+      "file": "gnome114.tar.gz",
+      "actualMembersScanned": 131,
+      "archiveSha256": "e6e3691f9f145b6078a3bd24fd137d7cfab774a0aab18a2f2ee03d32558221a0"
+    }
+  ],
+  "exactOriginalGnomeResultBytesRetained": true,
+  "frozenEvaluatorSha256": "9485979ebbb816fc6f10c703042de37bab2ea006a1c6f018fabe8edfe802b1b9",
+  "frozenObserverSha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af",
+  "portableJoinedReplayExactAllThreeResults": true,
+  "replayedPeakMiB": {
+    "cinnamon": 29.05859375,
+    "kde": 31.28515625,
+    "gnome": 36.078125
+  },
+  "gnomeQuietSeconds": 300.1240222810011,
+  "productionDeletesByDesktop": 31,
+  "totalProductionDeletesVerified": 93,
+  "noMissingAuditAliasesCreated": true,
+  "firstMissingOptionalExtrasAttemptPreserved": "gnome-extras-first-rejection.json",
+  "observerExportCopyHasOriginAndMatchedActualParameters": true,
+  "joinedManifestSha256": "4bd2566f6f4e3b94b6faf144cbaef6253163752fcbaae83406a5fb82e0a02047",
+  "joinedReplaySha256": "cca83f4692af5cc8ed71d1a4ba42a7f716359a941a9f0e55899b328e2007a491",
+  "guestSourceOrCloudChanges": false,
+  "scope": "Metadata-only saved evidence; no new desktop/cloud proof. Native screenshots remain private; original receipts remain authoritative.",
+  "completedUtc": "2026-10-12T18:02:54.048053+00:00"
+}

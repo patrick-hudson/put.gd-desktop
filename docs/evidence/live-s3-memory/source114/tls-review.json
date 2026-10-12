@@ -1,0 +1,94 @@
+{
+  "status": "complete",
+  "verdict": "Ready to merge",
+  "verdictScope": "Independent scoped TLS code review only; this is not completion of the entire review pipeline or cross-desktop runtime acceptance.",
+  "scope": {
+    "base": "944b6761242a7c7344f756144cfa7cf54732af0e",
+    "branch": "codex/debug-s3-transport",
+    "head_sha": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+    "pr_url": null,
+    "files_changed": 5,
+    "paths": [
+      "CMakeLists.txt",
+      "src/storage/s3/SdkRuntime.cpp",
+      "src/storage/s3/TlsCompatibility.h",
+      "src/storage/s3/TlsCompatibility.cpp",
+      "tests/storage/s3/test_sdk_contract.cpp"
+    ],
+    "diffSha256": "bd70bdb27bba4d081ce4f2d1376a2191b598c53b6b9f410c10ac2bd50f6d24a6",
+    "fileSha256": {
+      "CMakeLists.txt": "74691882f3624d065873265780954ccbd6e394f9c616e3fa39e9b65695d4f4e8",
+      "src/storage/s3/SdkRuntime.cpp": "85489b8fe544ebb230795370a28f39523de8ebe406aaea72cd242bf735b5fd22",
+      "src/storage/s3/TlsCompatibility.h": "bf859684d5134f26072e6c7d46d6366f840df08692df37cec33facaae524324e",
+      "src/storage/s3/TlsCompatibility.cpp": "53f4dc24d5e6f658a34290eae3815f7ac87df7b778f4f892006683fb5c9d238f",
+      "tests/storage/s3/test_sdk_contract.cpp": "6f7a8f69a2efa057efa58d2a121e6bedb4a70e0fa41e3d6ed314704c155a8a45"
+    }
+  },
+  "intent": "Avoid OpenSSL3.5 hybrid predicted-keyshare compatibility failures in the isolated S3 transport without replacing an explicitly configured Groups/Curves policy, weakening certificate verification, adding request replay, or linking the AWS SDK into the resident.",
+  "intent_confidence": "explicit",
+  "reviewers": [
+    "independent-correctness-and-TLS-policy"
+  ],
+  "findings": [],
+  "actionable_findings": [],
+  "triage_groups": [],
+  "pre_existing_findings": [],
+  "requirements_completeness": null,
+  "learnings": [],
+  "agent_native_gaps": [],
+  "deployment_notes": [],
+  "residual_risks": [
+    "The exact network/firewall cause of the original curl35 failures is not established by static review; this receipt supports the bounded compatibility implementation, not a claimed root cause.",
+    "Future OpenSSL major versions are allowed by the >=3.5 check; current default-group semantics and unusual custom library-context policies require their own runtime support evidence."
+  ],
+  "testing_gaps": [
+    "No new builds, tests, network requests, allocation-failure injection or guest interactions were performed during sibling scored windows. Backend/policy tests were reviewed, not re-executed by this review.",
+    "Per-handle setopt allocation failure and fallback reset are not directly fault-injected in test_sdk_contract; their current nonthrowing path is small and the secure-default fallback is explicitly reviewed."
+  ],
+  "coverage": {
+    "depth": "scoped-agent",
+    "mode": "mode:agent",
+    "callerOverride": "Parent explicitly requested one independent bounded leaf read with no additional agents/external model review and artifacts in its private root. Full skill dispatch/merge/validator and source artifact writes were not performed.",
+    "criteria": [
+      "AGENTS.md user instructions: provider-neutral boundaries, dynamic distro Qt, no credential material, immutable tested source"
+    ],
+    "compoundPacksApplied": false,
+    "checked": [
+      "Strict exact OpenSSL backend/version parser and curl7.73 compile/runtime guards; unsupported or missing configuration disables the change.",
+      "Own temporary CURL probe is cleaned by RAII before request handles/headers; its result only enables a later supported hook.",
+      "OpenSSL CONF objects and allocated default path have bounded RAII/free ownership. Pre-existing thread-local error queue disables override without clearing it; inspection-generated errors clear at scope exit. Successful optional ENOENT is accepted; other warnings/read/section failures fail closed.",
+      "Groups/Curves case aliases, numeric command prefixes, SSL module suffix/prefix aliases, includes/variable resolution are covered; policy values never leave the process.",
+      "Pooled-handle hook is noexcept and uses no throwing allocation; fallback resets only group selection, not certificate checks. Original DELETE fresh-connect/no-reuse and thread-local request scope are untouched.",
+      "Local pinned AWS SDK a9f0ffcc276664b475230206fa554841ad5bc3de CurlHttpClient implementation acquires handle/headers before hook, performs certificate verification setup before hook, and releases/destroys after perform; explains avoiding hook throws.",
+      "CMake sources/definitions/linkage attach compatibility and Crypto only to S3 runtime/module and tests. Actual current dev resident link rule has no AWS SDK/S3 runtime/Curl/Crypto linkage; provider facade remains unchanged. Contract fingerprint includes new helper files and OpenSSL discovery/version."
+    ],
+    "notAssessed": [
+      "Entire cumulative diff",
+      "Full product plan completeness",
+      "External review receipt",
+      "GNOME/KDE live gates currently owned by siblings",
+      "Learnings/deployment/agent-native personas"
+    ]
+  },
+  "primarySources": [
+    {
+      "title": "curl CURLOPT_SSL_EC_CURVES",
+      "url": "https://curl.se/libcurl/c/CURLOPT_SSL_EC_CURVES.html",
+      "supports": "option availability7.73, copied string lifetime, last-setting behavior, NULL reset"
+    },
+    {
+      "title": "OpenSSL3.5 SSL_CTX_set1_curves",
+      "url": "https://docs.openssl.org/3.5/man3/SSL_CTX_set1_curves/",
+      "supports": "DEFAULT duplicate suppression/keyshare workaround and retained hybrid HRR support"
+    },
+    {
+      "title": "OpenSSL3.5.5 conf_mod.c",
+      "url": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.5/crypto/conf/conf_mod.c",
+      "supports": "module lookup strips last-dot instance suffix and compares prefix"
+    }
+  ],
+  "artifact_path": "${PRIVATE_REVIEW}/final-review114",
+  "run_id": "final-review114",
+  "completedUtc": "2026-10-12T17:30:12.656968+00:00",
+  "sourceCleanAtCompletion": true
+}

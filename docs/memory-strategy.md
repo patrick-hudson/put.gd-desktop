@@ -40,6 +40,23 @@ The local checks cover native captures/clipboard, tray/menu, native fonts/dialog
 
 ## Repeatable optimization and acceptance
 
+The local results above do not establish post-S3 residency. Issue #7's actual
+live-S3 Cinnamon workload measured 49.445 MiB on source102. Source104 releases
+inactive S3 drivers, clients and runtime on their original owner worker, after
+accepted requests drain. It keeps SDK libraries pinned rather than unloading
+code under existing callbacks. SDK destruction runs outside the admission lock,
+so a new action or diagnostics request does not wait on shutdown while holding
+that lock.
+
+Two independent source104 runs measured 47.879 and 46.996 MiB after 30 operations
+and 31 verified objects each. Both passed native/public-byte/link/cleanup gates;
+the worse run saves 1.566 MiB. This useful cumulative change still misses 40 MiB.
+Zero idle driver/client counters do not mean their mapped libraries disappeared.
+The next approved candidate isolates SDK work in a temporary process; it is an
+experiment until its safety, normal-exit and whole-family measurements pass.
+See [live-S3 evidence](evidence/live-s3-memory/README.md) and
+[the repeatable protocol](testing-live-s3-memory.md).
+
 1. Freeze a clean candidate and save its commit, tree, generated version, compiled manifest and executable hashes. Build with the documented CMake presets, Ninja, distribution Qt and official AWS SDK.
 2. Attribute the actual workload before changing code. Separate private heap, shared mappings, loaded codecs and legitimate retained clipboard bytes. A mapped library is not a removable-byte forecast.
 3. Preserve approved features and compare the combined candidate against the matched baseline. Changes may accumulate; do not invent per-change savings from different diagnostic workloads.
@@ -49,3 +66,39 @@ The local checks cover native captures/clipboard, tray/menu, native fonts/dialog
 7. Recompute structured samples independently, persist the result marker and experiment log, and record acceptance limits before advancing. [Saved-evidence replay](evidence/kde-source63/reproduction.md) uses Python’s standard library and can run in CI; it verifies records, not a new compositor.
 
 Detailed contracts: [architecture](architecture.md), [UI process protocol](ui-process-protocol.md), [native listener](native-listener.md), [GNOME boundary](gnome-core-resident.md), [KDE boundary](kde-resident-boundary.md), [image worker](image-worker.md), [memory tests](testing-memory.md), and [lab lifecycle](vm-lab.md).
+
+## Source106 live-S3 checkpoint
+
+The cumulative transient SDK worker reached 28.953 and 28.852 MiB in two complete Cinnamon live-S3 workloads, versus 49.445 MiB on source102. Current GNOME/KDE native and graphical checks passed, but production SDK failures blocked both complete live workloads and KDE production deletion. The candidate remains preserved on its experiment branch; global acceptance is pending. See [the source106 checkpoint and replayable evidence](evidence/live-s3-memory/source106/README.md). This result does not replace the earlier local-only desktop results or claim current GNOME/KDE post-S3 memory acceptance.
+
+## Source114: post-S3 memory and transport
+
+The cumulative change meets the quiet 40 MiB live-S3 target on all three tested
+Linux desktops. Measured runtime: `0.1.1-dev.114+g0258600b752d`.
+
+| Desktop | Five-minute peak RSS + swap | Swap | CPU, one core |
+| --- | --- | --- | --- |
+| Cinnamon/X11 | 29.059 MiB | 0 | 0.0100% |
+| GNOME/Wayland | 36.078 MiB | 0 | 0.0167% |
+| KDE/Wayland | 31.285 MiB | 0 | 0.0200% |
+
+Owner-thread idle cleanup is retained. The official SDK now runs in a transient
+worker, releasing its TLS/SDK mappings on normal exit. Credentials use private
+pipes; the resident keeps the operation journal and acknowledges durable
+checkpoints before effects. CLI and MCP clients still use that same pipeline.
+The OpenSSL 3.5 compatibility guard preserves explicit group policies,
+certificate verification and hybrid negotiation while reducing the initial
+predicted key share. No uncertain mutation is automatically replayed.
+
+The matched Cinnamon source102 peak was 49.445 MiB; 29.059 MiB saves about 20.386 MiB
+(41.23%). This is a cumulative result, not an isolated library/TLS-guard saving.
+Each desktop passed 12 native and 8 GUI checks and the full workload of 30 operations and 31 objects,
+with exact public content, native URL paste, pixel checks and production deletion.
+
+The earlier source104/source106 paragraphs describe historical checkpoints.
+Current GNOME/KDE live gates now pass. This is one source114 full regression per
+desktop; the two source106 Cinnamon profiles remain separate. Open views/active
+work, a new fresh-repeat optimization decision and full release/fresh-agent
+acceptance are outside this claim. Later documentation commits do not relabel
+the measured runtime. See [source114 evidence](evidence/live-s3-memory/source114/README.md)
+and [transport diagnosis](testing-live-s3-transport.md).

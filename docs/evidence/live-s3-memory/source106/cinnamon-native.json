@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "candidateId": "issue7-candidate2",
+  "candidateBuild": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.106+g76467a75b18e",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.106+g76467a75b18e",
+    "gitCommit": "76467a75b18edc56fd473c63cdf3bb5b17796354",
+    "gitTree": "5c121599b69174bc7b997cf39308805a8afc4b58",
+    "commitCount": 106,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "candidatePinSha256": "62bfb4123b95ed4d8837adb64cd16129f2ac9870f9c0eb338ab0534ac2832a14",
+  "packageSha256": "ba2657b4d19198173a036158997b02d35e41b1118f6b28c74c88aef2289e96bf",
+  "installedBinarySha256": {
+    "/usr/bin/putgd": "02d3698fe70227e17ae61ccc64961552a196639565b6492f8116e43db160bc0e",
+    "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+    "/usr/bin/putgd-ui": "ca3ff711f6cfdc5d4e3a9244e48e85179d90fc4504f2d33352fdf60c8b8320e6",
+    "/usr/bin/putgd-cli": "58f640fe276bc0f246d2fd020ce5bbf331f3d7ca97985ebb8e88a9f18503f6af",
+    "/usr/bin/putgd-capture": "f7df971e5503cd2d4e50a89bdc8b83b4534546c09fc396fb508c77fbca2650f9",
+    "/usr/bin/putgd-s3-worker": "7cbc3abdfb3582ca07e266f337da9c54e09d9cb0e93a480746f3bfef7f73ed72",
+    "/usr/bin/putgd-kde-region": "c4a853aba209841357bcafb4549620d52624003b11226d1dd927c8065c3edc34",
+    "/usr/bin/putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc"
+  },
+  "functionalPassed": true,
+  "memoryExecuted": false,
+  "siblingsExecuted": false,
+  "physicalPreviewTouched": false,
+  "resident": {
+    "pid": 157211,
+    "startTicks": 5429188,
+    "sha256": "02d3698fe70227e17ae61ccc64961552a196639565b6492f8116e43db160bc0e"
+  },
+  "matrix": {
+    "path": "/home/patrick/work/put.gd/work/live-s3-memory/c2f106/evidence/a-7ff356dde3e8/receipt.json",
+    "sha256": "9dc34b2bc4ffbe48fb979be0adf1ed57bd78543d5a2f0de4c6bfb7405660f8b2"
+  },
+  "quiet": {
+    "path": "/home/patrick/work/put.gd/work/live-s3-memory/c2f106/evidence/a-0c20bc2cab8e/receipt.json",
+    "sha256": "bd4352c0f0f823df92e1297c20e3b0f351d6fd4e6d101681496784642d95da50"
+  },
+  "visualReview": {
+    "path": "/home/patrick/work/put.gd/work/live-s3-memory/c2f106/visual-review.json",
+    "sha256": "59f4ec2cc6cb4d4b2c71e0c6c046a03c3ab94bf813c00c1e0eaaa049d7fa90ee"
+  },
+  "finalizedUtc": "2026-10-12T08:36:27.916086+00:00",
+  "scope": "Current-version real Cinnamon synthetic local-only functional checks. Parent owns separate live-S3 workload, fixed memory gates, and any cross-desktop expansion."
+}

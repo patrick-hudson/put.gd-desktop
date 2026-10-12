@@ -1,6 +1,8 @@
 #include "SdkRuntime.h"
+#include "TlsCompatibility.h"
 #include <aws/core/Aws.h>
 #include <mutex>
+#include <memory>
 #include <condition_variable>
 #include <exception>
 #include <thread>
@@ -25,7 +27,19 @@ thread_local bool destructiveRequest = false;
 class NonReplayingCurlClient final : public Aws::Http::CurlHttpClient {
 public:
     explicit NonReplayingCurlClient(const Aws::Client::ClientConfiguration& config)
-        : Aws::Http::CurlHttpClient(config) {}
+        : Aws::Http::CurlHttpClient(config) {
+#if LIBCURL_VERSION_NUM >= 0x074900
+        const auto* version = curl_version_info(CURLVERSION_NOW);
+        smallInitialShare_ = version && version->ssl_version &&
+            smallInitialTlsShare(version->version_num, version->ssl_version) && defaultSystemTlsGroups();
+        if (smallInitialShare_) {
+            // Validate before the SDK acquires any request handle or headers.
+            std::unique_ptr<CURL, decltype(&curl_easy_cleanup)> probe(curl_easy_init(), curl_easy_cleanup);
+            smallInitialShare_ = probe &&
+                curl_easy_setopt(probe.get(), CURLOPT_SSL_EC_CURVES, "?X25519MLKEM768:DEFAULT") == CURLE_OK;
+        }
+#endif
+    }
     std::shared_ptr<Aws::Http::HttpResponse> MakeRequest(const std::shared_ptr<Aws::Http::HttpRequest>& request,
         Aws::Utils::RateLimits::RateLimiterInterface* read = nullptr,
         Aws::Utils::RateLimits::RateLimiterInterface* write = nullptr) const override {
@@ -37,12 +51,21 @@ public:
         return Aws::Http::CurlHttpClient::MakeRequest(request, read, write);
     }
 protected:
-    void OverrideOptionsOnConnectionHandle(CURL* handle) const override {
+    void OverrideOptionsOnConnectionHandle(CURL* handle) const noexcept override {
+#if LIBCURL_VERSION_NUM >= 0x074900
+        if (smallInitialShare_ &&
+            curl_easy_setopt(handle, CURLOPT_SSL_EC_CURVES, "?X25519MLKEM768:DEFAULT") != CURLE_OK)
+            // Never throw from this SDK hook: it owns an acquired pooled handle.
+            // If allocation fails, retain secure TLS defaults and normal errors.
+            (void)curl_easy_setopt(handle, CURLOPT_SSL_EC_CURVES, nullptr);
+#endif
         if (destructiveRequest) {
             curl_easy_setopt(handle, CURLOPT_FRESH_CONNECT, 1L);
             curl_easy_setopt(handle, CURLOPT_FORBID_REUSE, 1L);
         }
     }
+private:
+    bool smallInitialShare_ = false;
 };
 class NonReplayingHttpFactory final : public Aws::Http::HttpClientFactory {
 public:

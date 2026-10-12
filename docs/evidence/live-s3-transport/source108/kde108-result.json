@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "finalizedUtc": "2026-10-12T14:17:14.902625+00:00",
+  "sourceCommit": "b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a",
+  "version": "0.1.1-dev.108+gb4e16ba9971c",
+  "desktop": "kde-wayland",
+  "nativeFunctionalPassed": true,
+  "nativeCases": 12,
+  "GUIWitnesses": 8,
+  "completeLiveUploadWorkloadPassed": true,
+  "allSixSourceTypesPassed": true,
+  "acceptedOperations": 30,
+  "remoteObjectsCreated": 31,
+  "publicBytesNativePastePassed": true,
+  "regionPixelOracles": 15,
+  "memory": {
+    "sourceCommit": "b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a",
+    "version": "0.1.1-dev.108+gb4e16ba9971c",
+    "scope": "Numeric cost attribution for complete all6/30op31object workload; overall KDE acceptance remains blocked by production History8unknown deletion results. Original evaluator is unmodified and intentionally lacks cleanup-completed.json.",
+    "quietSeconds": 300.1009646619932,
+    "quietSamples": 301,
+    "diagnosticSamples": 30,
+    "sampleMaxGapSeconds": 1.0009098019945668,
+    "maxFamilyRssPlusSwapMiB": 31.37890625,
+    "maxSwapMiB": 0.0,
+    "idleCpuPercentOneCore": 0.01332884752471636,
+    "familyMax": 1,
+    "uiPidMax": 0,
+    "activeOperationsMax": 0,
+    "memoryNumericGatePassed": true,
+    "overallAcceptancePassed": false,
+    "cleanupGatePassed": false
+  },
+  "overallLiveAcceptancePassed": false,
+  "productionDeleteGatePassed": false,
+  "productionRemoved": 23,
+  "productionUnknownHistoryPreserved": 8,
+  "emergencyConditionalRemoved": 8,
+  "alreadyOriginMissing": 0,
+  "remainingRemoteTargets": 0,
+  "localArchivesRemoved": 31,
+  "successfulSpoolsCleared": 30,
+  "SDKErrorSignature": {
+    "sdkErrorType": 99,
+    "curlCode": 35,
+    "httpStatus": -1,
+    "sdkRetryable": true,
+    "elapsedMsRange": [
+      108,
+      154
+    ],
+    "requestStages": {
+      "object_head": 5,
+      "delete_object": 3
+    },
+    "underlyingTLSReason": "unknown; no raw SDK trace/messages/headers collected"
+  },
+  "deleteOperationId": "12a94c17-002b-4e78-9136-06fe25ae99b4",
+  "noProductionReplayOrHistoryModification": true,
+  "sourcePinReleased": true,
+  "ownedProductFamilyAfter": [],
+  "unchangedEvaluatorIntentionallyBlocked": "Requires actual31productionremoved statuses; cleanup-completed.json/evaluated-result.json not manufactured.",
+  "qualifications": [
+    "Original native Escape cancellation was correct but its paste witness SCP failed; preserved failure and late digest, one authorized unchanged full12 repeat passed.",
+    "New host supplemental scaffold originally matched sanitized outputs; preserved originalscript/hash/failure, corrected raw numeric operation filter; accepted uploads/reservations were never replayed. Extra text-to-region pause recorded.",
+    "Upload workload had zero SDK errors; already-confirmed31-target cleanup settled23removed/8unknown before first failure observation. Emergency cleanup does not establish production History acceptance.",
+    "Supplemental process observer stopped before fixed quiet;107 observed process identities and no actual zombie wait statuses; disappearance does not imply exit0.",
+    "No desktop power/compositor settings, dependencies, bases or VM disks changed. Five proven obsolete generatedbuilddirectories removed with101CMake/CTest metadata preserved."
+  ],
+  "evidence": {
+    "memory-attribution.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/memory-attribution.json",
+      "sha256": "2d319703f96b07890db1a1bcfd01b12295c61fe5b532ee6c3252867a8b8bd73b"
+    },
+    "cleanup-sdk-failures-safe.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/cleanup-sdk-failures-safe.json",
+      "sha256": "2a67d8a0fb62d3e2615a203179b0bd5ac9a74e5ab8c8f02b7fb94bc7ad4bad8a"
+    },
+    "cleanup-progress.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/cleanup-progress.json",
+      "sha256": "be0dc5eb8275b42e51346906ab54920cd8f40a29485b658b1142bf83fbbd00b1"
+    },
+    "emergency-cleanup-summary.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/emergency-cleanup-summary.json",
+      "sha256": "4ccea5e2338b6d99658b67ecafec96c111a648b20fa857c9f583c71944efc62f"
+    },
+    "local-cleanup-before-drain.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/local-cleanup-before-drain.json",
+      "sha256": "216f5f8b1dde7db1312f38f8f0f6d6581a38d8cca95e9ab9e56761968884081c"
+    },
+    "normal-runtime-drain.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/normal-runtime-drain.json",
+      "sha256": "085ba651e62d2a3db8e1ab03004f777998ee318fcd708fe397271182f9140d3d"
+    },
+    "safe-transport-summary.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/safe-transport-summary.json",
+      "sha256": "bbb311de1155ed0d1ce360e177440a00607b944e77b66b0d3ad11ca735d1bea0"
+    },
+    "diagnostic-sampler-drained.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/diagnostic-sampler-drained.json",
+      "sha256": "ed5ce4973b57b281e2ab712d786016fbb9c6df6182cdcf36600c6275928171d0"
+    },
+    "public-region-pixel-oracle.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/public-region-pixel-oracle.json",
+      "sha256": "f8e1413bc4437f4c482c74b23e10af09a9ec7890b1dc03500e22ba6137546bad"
+    },
+    "expected-cleanup-targets.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/expected-cleanup-targets.json",
+      "sha256": "e30799eaeb30421b10ce3e19b6be8e8864b7f42eada96bb338637846889838a2"
+    },
+    "parameters.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/parameters.json",
+      "sha256": "9728b56346a8cf90bef59378cba04330bada4a40da3e634daa1c5e9a8b0d81a3"
+    },
+    "samples.jsonl": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/samples.jsonl",
+      "sha256": "5a90ba7ea1e7867304d9a5ec3caf3f0072f66e1954b83d02d847dde0b450eaba"
+    },
+    "completed.json": {
+      "path": "/home/patrick/work/put.gd/work/s3diag/k1/a1/completed.json",
+      "sha256": "ccfebea6d8503adc818c567d48f3c2ca035cefe67fcbf006387449b1a493118e"
+    }
+  }
+}

@@ -1,0 +1,2373 @@
+{
+  "acknowledgement": "22fc3b1f8f3bb618dde8224937832aafda5d012e3ab6065b4d7a825e24038ec3",
+  "cancelled": false,
+  "created": "2026-10-12T10:32:07.746Z",
+  "id": "ea51e70f-0e9e-425b-bcef-c1e53194601d",
+  "items": [
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "20a41c36-6cfe-4e91-a58b-b96cc25daff5",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-20a41c36-6cfe-4e91-a58b-b96cc25daff5.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-20a41c36-6cfe-4e91-a58b-b96cc25daff5.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "bb678135-cba1-431b-87bb-98ed03ab6e0d",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-20a41c36-6cfe-4e91-a58b-b96cc25daff5.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-20a41c36-6cfe-4e91-a58b-b96cc25daff5.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "bb678135-cba1-431b-87bb-98ed03ab6e0d",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "a20f43cc-8de1-461c-9fb3-ad9106170cfa",
+      "progress": {
+        "phase": "object_unknown",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-a20f43cc-8de1-461c-9fb3-ad9106170cfa.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-a20f43cc-8de1-461c-9fb3-ad9106170cfa.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "eca9995c-fda0-4f04-a789-406dd96d4794",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-a20f43cc-8de1-461c-9fb3-ad9106170cfa.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-a20f43cc-8de1-461c-9fb3-ad9106170cfa.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "eca9995c-fda0-4f04-a789-406dd96d4794",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "3377f915-89cc-4a83-9540-09700003ba49",
+      "progress": {
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-3377f915-89cc-4a83-9540-09700003ba49.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-3377f915-89cc-4a83-9540-09700003ba49.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "cb3e2eb1-9047-48f2-a760-74ec10562853",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-3377f915-89cc-4a83-9540-09700003ba49.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-3377f915-89cc-4a83-9540-09700003ba49.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "cb3e2eb1-9047-48f2-a760-74ec10562853",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "cea14814-e1ef-4317-8bec-341969785fc6",
+      "progress": {
+        "schemaVersion": 1
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-cea14814-e1ef-4317-8bec-341969785fc6.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-cea14814-e1ef-4317-8bec-341969785fc6.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "0bd8c93f-fc3c-441d-9fc9-3686d823f367",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "e00ece3b-f3fc-46e8-99b4-2898d645f817",
+      "progress": {
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e00ece3b-f3fc-46e8-99b4-2898d645f817.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e00ece3b-f3fc-46e8-99b4-2898d645f817.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "4d7bfe5f-2364-44bb-a3e4-1c757a7cbf21",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e00ece3b-f3fc-46e8-99b4-2898d645f817.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e00ece3b-f3fc-46e8-99b4-2898d645f817.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "4d7bfe5f-2364-44bb-a3e4-1c757a7cbf21",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "7f890feb-f1b5-401b-9c46-e57474a36103",
+      "progress": {
+        "phase": "object_unknown",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-7f890feb-f1b5-401b-9c46-e57474a36103.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-7f890feb-f1b5-401b-9c46-e57474a36103.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "97b935d3-953e-447e-b77b-eefcb5cc267b",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-7f890feb-f1b5-401b-9c46-e57474a36103.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-7f890feb-f1b5-401b-9c46-e57474a36103.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "97b935d3-953e-447e-b77b-eefcb5cc267b",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "ebc127da-ed83-447a-b2eb-de56b25083ef",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-ebc127da-ed83-447a-b2eb-de56b25083ef.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-ebc127da-ed83-447a-b2eb-de56b25083ef.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "ed1f7c50-acb7-478c-906a-6d27329f6397",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-ebc127da-ed83-447a-b2eb-de56b25083ef.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-ebc127da-ed83-447a-b2eb-de56b25083ef.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "ed1f7c50-acb7-478c-906a-6d27329f6397",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "eeeb1896-f79d-4185-a6e9-660333a9353a",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-eeeb1896-f79d-4185-a6e9-660333a9353a.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-eeeb1896-f79d-4185-a6e9-660333a9353a.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "c20207e8-4d88-4682-a28b-837ada7fbf1e",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-eeeb1896-f79d-4185-a6e9-660333a9353a.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-eeeb1896-f79d-4185-a6e9-660333a9353a.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "c20207e8-4d88-4682-a28b-837ada7fbf1e",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "2387c972-c5d1-4b10-9d05-6363d5bdd660",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-2387c972-c5d1-4b10-9d05-6363d5bdd660.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-2387c972-c5d1-4b10-9d05-6363d5bdd660.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "8ca62315-539b-4760-9390-0abcd8c4da41",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-2387c972-c5d1-4b10-9d05-6363d5bdd660.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-2387c972-c5d1-4b10-9d05-6363d5bdd660.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "8ca62315-539b-4760-9390-0abcd8c4da41",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "15b636bd-95f5-4faf-b4a0-118ddff0778f",
+      "progress": {
+        "schemaVersion": 1
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-15b636bd-95f5-4faf-b4a0-118ddff0778f.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-15b636bd-95f5-4faf-b4a0-118ddff0778f.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "a63e75a2-3246-4ec6-89b9-26f14450ee6a",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "69491f08-ff6f-421d-afee-86033ee96d50",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-69491f08-ff6f-421d-afee-86033ee96d50.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-69491f08-ff6f-421d-afee-86033ee96d50.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "5d9f279e-7236-47e4-8a66-7a56612b2c26",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-69491f08-ff6f-421d-afee-86033ee96d50.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-69491f08-ff6f-421d-afee-86033ee96d50.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "5d9f279e-7236-47e4-8a66-7a56612b2c26",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "6cbb6d4b-1544-474e-b1ca-97ec91d9bc78",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-6cbb6d4b-1544-474e-b1ca-97ec91d9bc78.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-6cbb6d4b-1544-474e-b1ca-97ec91d9bc78.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "0e2dc3cc-de11-458d-9905-c0b7b4a29492",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-6cbb6d4b-1544-474e-b1ca-97ec91d9bc78.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-6cbb6d4b-1544-474e-b1ca-97ec91d9bc78.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "0e2dc3cc-de11-458d-9905-c0b7b4a29492",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "e2bccb22-798f-4600-8799-609692419dda",
+      "progress": {
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"637c286a551ed8d14bfa7056532327b2\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Image-e2bccb22-798f-4600-8799-609692419dda.png",
+          "objectReference": {
+            "bytes": 234,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Image-e2bccb22-798f-4600-8799-609692419dda.png",
+            "schemaVersion": 1,
+            "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+            "versionId": ""
+          },
+          "publicationId": "680f5355-e024-443e-981b-264cb40b0093",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"637c286a551ed8d14bfa7056532327b2\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Image-e2bccb22-798f-4600-8799-609692419dda.png",
+        "objectReference": {
+          "bytes": 234,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Image-e2bccb22-798f-4600-8799-609692419dda.png",
+          "schemaVersion": 1,
+          "sha256": "8d5810dd5c9c8b1b5648e611d0e43971e01b6b03e2839bad028ad384ec998316",
+          "versionId": ""
+        },
+        "publicationId": "680f5355-e024-443e-981b-264cb40b0093",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "3eb605da-2c08-4d57-9482-0b248bc2fa16",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-3eb605da-2c08-4d57-9482-0b248bc2fa16.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-3eb605da-2c08-4d57-9482-0b248bc2fa16.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "42b82c54-fc9f-4e0f-8ab8-f22902f1e226",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-3eb605da-2c08-4d57-9482-0b248bc2fa16.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-3eb605da-2c08-4d57-9482-0b248bc2fa16.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "42b82c54-fc9f-4e0f-8ab8-f22902f1e226",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "5960f65e-73eb-4760-9b86-a7cc4ce0d927",
+      "progress": {
+        "phase": "object_unknown",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-5960f65e-73eb-4760-9b86-a7cc4ce0d927.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-5960f65e-73eb-4760-9b86-a7cc4ce0d927.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "bc8e1b69-0232-4c3f-8812-a1fb6e8a20e4",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-5960f65e-73eb-4760-9b86-a7cc4ce0d927.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-5960f65e-73eb-4760-9b86-a7cc4ce0d927.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "bc8e1b69-0232-4c3f-8812-a1fb6e8a20e4",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "4653d9a4-8a6f-457e-887b-9a7285acaaca",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-4653d9a4-8a6f-457e-887b-9a7285acaaca.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-4653d9a4-8a6f-457e-887b-9a7285acaaca.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "537f9208-7fef-40c3-983c-c787f3c4c294",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-4653d9a4-8a6f-457e-887b-9a7285acaaca.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-4653d9a4-8a6f-457e-887b-9a7285acaaca.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "537f9208-7fef-40c3-983c-c787f3c4c294",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "7e99b601-3f21-4a88-bbfa-2458e2f5a991",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-7e99b601-3f21-4a88-bbfa-2458e2f5a991.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-7e99b601-3f21-4a88-bbfa-2458e2f5a991.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "69addb25-3747-49df-a7c6-86e2048f7895",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-7e99b601-3f21-4a88-bbfa-2458e2f5a991.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-7e99b601-3f21-4a88-bbfa-2458e2f5a991.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "69addb25-3747-49df-a7c6-86e2048f7895",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "e2b3d915-a1a7-41d8-a803-474025137ce7",
+      "progress": {
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e2b3d915-a1a7-41d8-a803-474025137ce7.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e2b3d915-a1a7-41d8-a803-474025137ce7.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "ee1b3497-82df-43cb-b07d-1c2bbdd5718d",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e2b3d915-a1a7-41d8-a803-474025137ce7.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-e2b3d915-a1a7-41d8-a803-474025137ce7.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "ee1b3497-82df-43cb-b07d-1c2bbdd5718d",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "f7786286-6ef3-40eb-8643-1e77614ae5c5",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-f7786286-6ef3-40eb-8643-1e77614ae5c5.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-f7786286-6ef3-40eb-8643-1e77614ae5c5.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "a209389e-b04d-4954-b65a-16317518e23e",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-f7786286-6ef3-40eb-8643-1e77614ae5c5.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-f7786286-6ef3-40eb-8643-1e77614ae5c5.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "a209389e-b04d-4954-b65a-16317518e23e",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "8a6b7066-7064-403d-bd73-5791c86d2f0e",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a6b7066-7064-403d-bd73-5791c86d2f0e.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a6b7066-7064-403d-bd73-5791c86d2f0e.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "5f04dc42-7477-4249-9ddc-733782a4a0a8",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a6b7066-7064-403d-bd73-5791c86d2f0e.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a6b7066-7064-403d-bd73-5791c86d2f0e.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "5f04dc42-7477-4249-9ddc-733782a4a0a8",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "8a38466d-21cd-4dcb-999b-89146078921d",
+      "progress": {
+        "phase": "object_unknown",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a38466d-21cd-4dcb-999b-89146078921d.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a38466d-21cd-4dcb-999b-89146078921d.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "b47b7f02-a08e-426c-997f-6fb8251c2c3f",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a38466d-21cd-4dcb-999b-89146078921d.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-8a38466d-21cd-4dcb-999b-89146078921d.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "b47b7f02-a08e-426c-997f-6fb8251c2c3f",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "707d1e22-ab3b-409d-a30b-efb65ee1b31f",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-707d1e22-ab3b-409d-a30b-efb65ee1b31f.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-707d1e22-ab3b-409d-a30b-efb65ee1b31f.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "5463e930-e486-4baa-9cea-efbe3981feac",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-707d1e22-ab3b-409d-a30b-efb65ee1b31f.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-707d1e22-ab3b-409d-a30b-efb65ee1b31f.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "5463e930-e486-4baa-9cea-efbe3981feac",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "36e2a434-dd1d-4b65-baa9-9a468c965a0b",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-36e2a434-dd1d-4b65-baa9-9a468c965a0b.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-36e2a434-dd1d-4b65-baa9-9a468c965a0b.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "fb745ec2-4722-49fd-b702-a34bcf5cbf7e",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-36e2a434-dd1d-4b65-baa9-9a468c965a0b.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-36e2a434-dd1d-4b65-baa9-9a468c965a0b.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "fb745ec2-4722-49fd-b702-a34bcf5cbf7e",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "95fe4f6e-e645-48b4-b876-dcb780d27365",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-95fe4f6e-e645-48b4-b876-dcb780d27365.txt",
+          "objectReference": {
+            "bytes": 30,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-95fe4f6e-e645-48b4-b876-dcb780d27365.txt",
+            "schemaVersion": 1,
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+            "versionId": ""
+          },
+          "publicationId": "307fe905-7506-4263-9a16-72352289b0b6",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-95fe4f6e-e645-48b4-b876-dcb780d27365.txt",
+        "objectReference": {
+          "bytes": 30,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Text-95fe4f6e-e645-48b4-b876-dcb780d27365.txt",
+          "schemaVersion": 1,
+          "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+          "versionId": ""
+        },
+        "publicationId": "307fe905-7506-4263-9a16-72352289b0b6",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "9f10baae-837e-411a-b8ff-95a6e64a5b21",
+      "progress": {
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-9f10baae-837e-411a-b8ff-95a6e64a5b21.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-9f10baae-837e-411a-b8ff-95a6e64a5b21.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "f96ae12c-6899-42c8-bc5d-c8cae25b932c",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-9f10baae-837e-411a-b8ff-95a6e64a5b21.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-9f10baae-837e-411a-b8ff-95a6e64a5b21.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "f96ae12c-6899-42c8-bc5d-c8cae25b932c",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "httpStatus": -1,
+          "serviceCode": "Unclassified"
+        },
+        "message": "S3 request failed; check destination access, ACL and retention settings"
+      },
+      "historyId": "b2c1556d-9547-4749-aa80-7e9ee7c9e3b2",
+      "progress": {
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-b2c1556d-9547-4749-aa80-7e9ee7c9e3b2.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-b2c1556d-9547-4749-aa80-7e9ee7c9e3b2.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "d1511816-3766-4564-91a3-d541022a5895",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-b2c1556d-9547-4749-aa80-7e9ee7c9e3b2.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-b2c1556d-9547-4749-aa80-7e9ee7c9e3b2.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "d1511816-3766-4564-91a3-d541022a5895",
+        "schemaVersion": 1
+      },
+      "status": "unknown"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "aaeeb94d-c6b9-4630-9d79-c4b3b162d244",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-aaeeb94d-c6b9-4630-9d79-c4b3b162d244.png",
+          "objectReference": {
+            "bytes": 235,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-aaeeb94d-c6b9-4630-9d79-c4b3b162d244.png",
+            "schemaVersion": 1,
+            "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+            "versionId": ""
+          },
+          "publicationId": "07fb3fd3-e4ef-4dc1-97d2-e9af72581388",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"1a9130e3a8757af9890c7936b404ec84\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-aaeeb94d-c6b9-4630-9d79-c4b3b162d244.png",
+        "objectReference": {
+          "bytes": 235,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-Screen-Capture-aaeeb94d-c6b9-4630-9d79-c4b3b162d244.png",
+          "schemaVersion": 1,
+          "sha256": "4d3addfda16d30b149df4fbfa81edfffb296d1bb7eea90f916e3db65c8ec8a4c",
+          "versionId": ""
+        },
+        "publicationId": "07fb3fd3-e4ef-4dc1-97d2-e9af72581388",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    },
+    {
+      "effect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "historyId": "9ed44055-2c0f-4783-88e0-4f05639fecf5",
+      "progress": {
+        "phase": "done",
+        "schemaVersion": 1,
+        "target": {
+          "concurrencyToken": "\"512aa5b3bb0687b33c61f5b4f2a6f091\"",
+          "destination": {
+            "credentials": {
+              "mode": "session",
+              "reference": null
+            },
+            "profileId": "issue7-s3",
+            "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+            "providerId": "s3",
+            "settings": {
+              "aclMode": "public-read",
+              "addressing": "path",
+              "bucket": "put.gd",
+              "connectTimeoutMs": 5000,
+              "endpoint": "https://s3.us-east-2.amazonaws.com",
+              "lowSpeedBytesPerSecond": 1,
+              "lowSpeedTimeSeconds": 30,
+              "objectPrefix": "",
+              "publicUrlBase": "https://put.gd",
+              "region": "us-east-2",
+              "requestTimeoutMs": 60000,
+              "storageClass": "STANDARD"
+            }
+          },
+          "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-synthetic-1-9ed44055-2c0f-4783-88e0-4f05639fecf5.txt",
+          "objectReference": {
+            "bytes": 23,
+            "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-synthetic-1-9ed44055-2c0f-4783-88e0-4f05639fecf5.txt",
+            "schemaVersion": 1,
+            "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+            "versionId": ""
+          },
+          "publicationId": "744671cf-22ea-4441-8a73-e2d896b4e59b",
+          "schemaVersion": 1
+        }
+      },
+      "receipt": {
+        "concurrencyToken": "\"512aa5b3bb0687b33c61f5b4f2a6f091\"",
+        "destination": {
+          "credentials": {
+            "mode": "session",
+            "reference": null
+          },
+          "profileId": "issue7-s3",
+          "profileRevision": "77054d67c3d3ca0cdd0970f266c7bb4809b031312d6825dfb668548fbdbf76d4",
+          "providerId": "s3",
+          "settings": {
+            "aclMode": "public-read",
+            "addressing": "path",
+            "bucket": "put.gd",
+            "connectTimeoutMs": 5000,
+            "endpoint": "https://s3.us-east-2.amazonaws.com",
+            "lowSpeedBytesPerSecond": 1,
+            "lowSpeedTimeSeconds": 30,
+            "objectPrefix": "",
+            "publicUrlBase": "https://put.gd",
+            "region": "us-east-2",
+            "requestTimeoutMs": 60000,
+            "storageClass": "STANDARD"
+          }
+        },
+        "directUrl": "https://put.gd/putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-synthetic-1-9ed44055-2c0f-4783-88e0-4f05639fecf5.txt",
+        "objectReference": {
+          "bytes": 23,
+          "key": "putgd-issue7-ce3c0d32e6a24ef382d9d7c77237fbf1-synthetic-1-9ed44055-2c0f-4783-88e0-4f05639fecf5.txt",
+          "schemaVersion": 1,
+          "sha256": "5b19eebc3f2265be7fb729e7c911c784093eebf706a89beaa356e82ce2222427",
+          "versionId": ""
+        },
+        "publicationId": "744671cf-22ea-4441-8a73-e2d896b4e59b",
+        "schemaVersion": 1
+      },
+      "status": "removed"
+    }
+  ],
+  "state": "completed"
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "actualSource": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+  "nondefaultHelperPathsPassed": true,
+  "optionalAbsentCinnamonAuditFilesPassed": true,
+  "dummyOrAliasRecordsCreated": false,
+  "allActual30Operation31ObjectInputsVerified": true,
+  "exactSavedResultReproduced": true,
+  "peakRssPlusSwapMiB": 29.05859375,
+  "originalCinnamonArchiveUnchanged": true,
+  "originalCinnamonManifestUnchanged": true,
+  "preservedOriginalExporterSha256": "16acf139cd7b697cf492ab7b8a9628697fe56ef456d302f283c998d73cf634c1",
+  "currentExporterSha256": "fd32389ac877fa4beb9e79876a8aa694160afa761bcdeb9ab18e61387037cdf8",
+  "currentReplaySha256": "2847393667fc8a4d44d2a9bd986e69f6ea3a860207b848b62376e7761d37e530",
+  "negativeChecks": [
+    {
+      "case": "helper-outside-base",
+      "rejected": true
+    },
+    {
+      "case": "wrong-helper-hash",
+      "rejected": true
+    }
+  ],
+  "adapterArchive": {
+    "archive": "/home/patrick/work/put.gd/work/s3-fix/export114/adapter-validation-output/cinnamon114adapter.tar.gz",
+    "sha256": "2d1efe2adf50508e112846b9bcae81be5ec774d856b2e68db84b5a9ca5340dac",
+    "bytes": 81387,
+    "memberCount": 111,
+    "uncompressedBytes": 1733443
+  },
+  "scope": "Private host-only adapter validation using actual finalized Cinnamon metadata; no new desktop/cloud acceptance"
+}
