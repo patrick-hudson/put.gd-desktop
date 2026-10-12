@@ -4,6 +4,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <cstdlib>
+#include <cerrno>
 #include <memory>
 
 namespace putgd {
@@ -30,8 +31,12 @@ bool defaultSystemTlsGroups(const char* configuration) {
     if (!configuration) return false;
     if (!*configuration) return true; // OPENSSL_CONF="" disables configuration.
     std::unique_ptr<CONF, decltype(&NCONF_free)> conf(NCONF_new(nullptr), NCONF_free);
-    if (!conf || NCONF_load(conf.get(), configuration, nullptr) != 1 ||
-        ERR_peek_error() != 0) return false;
+    if (!conf || NCONF_load(conf.get(), configuration, nullptr) != 1) return false;
+    // OpenSSL accepts absent optional includes but leaves ENOENT on its queue.
+    // Inspect the successfully parsed policy instead of disabling compatibility.
+    // Other warnings remain conservative; only this documented case is accepted.
+    for (auto error = ERR_get_error(); error != 0; error = ERR_get_error())
+        if (ERR_GET_LIB(error) != ERR_LIB_SYS || ERR_GET_REASON(error) != ENOENT) return false;
     const auto* initName = NCONF_get_string(conf.get(), nullptr, "openssl_conf");
     if (!initName) return true;
     const auto* init = NCONF_get_section(conf.get(), initName);

@@ -76,6 +76,10 @@ private slots:
         QVERIFY(!putgd::defaultSystemTlsGroups(nullptr));
         QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(directory.filePath("missing.cnf"))));
         QVERIFY(write(".include " + directory.filePath("missing-include.cnf").toUtf8() + "\n"));
+        // OpenSSL accepts missing optional includes; a successful load still uses
+        // the parsed policies. This warning must not disable the default fix.
+        QVERIFY(putgd::defaultSystemTlsGroups(qPrintable(path)));
+        QVERIFY(write(".include " + directory.filePath("missing-include.cnf").toUtf8() + "\nopenssl_conf=init\n[init]\nssl_conf=ssl\n[ssl]\nsystem_default=policy\n[policy]\ngroups=P-256\n"));
         QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(path)));
         QVERIFY(write("openssl_conf=missing\n"));
         QVERIFY(!putgd::defaultSystemTlsGroups(qPrintable(path)));

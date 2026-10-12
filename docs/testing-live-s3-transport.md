@@ -204,3 +204,31 @@ matching and prefix-based module lookup. The guard now mirrors those semantics;
 alias regression failed before the correction. These cases affect only policy
 preservation; source112's native KDE build completed, but no product launch or
 live upload was performed with that superseded version.
+
+
+### Product guard correction after source113
+
+Source113 passed57 host tests but failed the KDE targeted live gate: three text
+uploads completed, then a fourth failed at name_head with SDK99/Curl35 in144ms.
+The three published objects were removed through receipt-guarded production
+deletion; the failed fourth History entry and30-byte local artifact remain.
+This result does not count as a transport or memory acceptance pass.
+
+A copied-source, no-network KDE probe reproduced the same-thread immediate SDK
+initialization and client construction. Curl/backend eligibility was true,
+pre-existing OpenSSL errors were zero, but the group-policy guard was false in
+all three constructions. A second numeric-only probe showed NCONF_load returned1
+(success), followed by system error0x80000002 (ENOENT). The blanket post-load
+error check rejected the configuration before inspecting its actual policies.
+OpenSSL's parser deliberately treats missing includes as nonfatal while leaving
+that warning on its error queue; see its
+[include handling](https://raw.githubusercontent.com/openssl/openssl/openssl-3.5.5/crypto/conf/conf_def.c).
+
+The correction accepts only ENOENT warnings following a successful NCONF load
+and still inspects every parsed Groups/Curves policy. Main-file load failure,
+malformed configuration, unresolved policy sections, other warning types and
+pre-existing errors still disable the override. Regression coverage requires a
+missing optional include without a group policy to enable compatibility, and
+the same warning with an explicit P-256 policy to keep that policy untouched.
+The former case failed on source113 before the correction. The production
+source and frozen performance harness remained unchanged during the probes.
