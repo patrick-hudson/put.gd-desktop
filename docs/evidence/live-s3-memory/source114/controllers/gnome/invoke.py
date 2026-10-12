@@ -1,0 +1,3 @@
+import sys,subprocess,json,os
+from pathlib import Path
+os.umask(0o077);root=Path(__file__).resolve().parent;label=sys.argv[1];phase=sys.argv[2];steps=root/'steps.json';s=json.loads(steps.read_text()) if steps.exists() else {};assert label not in s;cmd=['python3',str(root/'prepared/driver.py'),phase,'--go',str(root/'go.json'),*sys.argv[3:]];p=subprocess.run(cmd,capture_output=True,text=True);out=root/('command-'+label+'.json');out.write_text(json.dumps({'argv':cmd,'exitCode':p.returncode,'stdout':p.stdout,'stderr':p.stderr},indent=2));print(p.stdout);print(p.stderr);assert p.returncode==0;v=json.loads(p.stdout);s[label]=v['receipt'];steps.write_text(json.dumps(s,indent=2));print(json.dumps({'label':label,'receipt':v['receipt']}))

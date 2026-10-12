@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "archive": "cinnamon114.tar.gz",
+  "archiveSha256": "a2c63ada09b760127bb4de55135e0f10d21a0907bf869084c168c18e040bb782",
+  "archiveMemberCount": 140,
+  "protectedCredentialValuesScanned": 2,
+  "actualExtractedMembersScanned": true,
+  "frozenHelperFilesScanned": true,
+  "credentialValuesWritten": false,
+  "payloadImagesRawConfigurationExcluded": true,
+  "portableReplayExactResultMatched": true,
+  "helperBoundsChecks": [
+    {
+      "case": "duplicate-member-count",
+      "rejected": true,
+      "exitCode": 1
+    },
+    {
+      "case": "uncompressed-size-bound",
+      "rejected": true,
+      "exitCode": 1
+    },
+    {
+      "case": "changed-evaluator",
+      "rejected": true,
+      "exitCode": 1
+    },
+    {
+      "case": "portable-joined-manifest-selection",
+      "passed": true,
+      "exactSavedResultMatched": true
+    }
+  ],
+  "frozenEvaluatorSha256": "8d0dba1ae1928a25eaae88fbfc22ba109f09d61b65ab0b457dfbbf6689e7f066",
+  "frozenObserverSha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af",
+  "peakRssPlusSwapMiB": 29.05859375,
+  "quietSeconds": 300.09133694799675,
+  "confirmedObjects": 31,
+  "scope": "Export/replay validation only; no guest, desktop or cloud actions"
+}

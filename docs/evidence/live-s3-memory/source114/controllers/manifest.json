@@ -1,0 +1,492 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+  "sourceVersion": "0.1.1-dev.114+g0258600b752d",
+  "files": [
+    {
+      "path": "cinnamon/candidate_run.py",
+      "bytes": 14899,
+      "sha256": "8be333029e915b6158ede5e833af704b45a986e119ae7c8882d6d0de0ea46453",
+      "originProjectRelativePath": "work/s3-fix/c1/candidate_run.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.candidate_run.py",
+        "expectedSha256": "8be333029e915b6158ede5e833af704b45a986e119ae7c8882d6d0de0ea46453"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/lab_run.py",
+      "bytes": 15834,
+      "sha256": "b26c3f803cb76b11b669ded94a0f9146bd3b05e96700b9dc746c7fd60b54aa25",
+      "originProjectRelativePath": "work/s3-fix/c1/lab_run.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.lab_run.py",
+        "expectedSha256": "b26c3f803cb76b11b669ded94a0f9146bd3b05e96700b9dc746c7fd60b54aa25"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/frozen-lab_run.py",
+      "bytes": 13332,
+      "sha256": "811a2eb255e3eb044cc9bc0184fb09f529e6ac5b2f8c88639e15868780860d5e",
+      "originProjectRelativePath": "work/s3-fix/c1/frozen-lab_run.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.frozen-lab_run.py",
+        "expectedSha256": "811a2eb255e3eb044cc9bc0184fb09f529e6ac5b2f8c88639e15868780860d5e"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/observe_guest.py",
+      "bytes": 5086,
+      "sha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af",
+      "originProjectRelativePath": "work/s3-fix/c1/observe_guest.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.observe_guest.py",
+        "expectedSha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/evaluate.py",
+      "bytes": 6023,
+      "sha256": "8d0dba1ae1928a25eaae88fbfc22ba109f09d61b65ab0b457dfbbf6689e7f066",
+      "originProjectRelativePath": "work/s3-fix/c1/evaluate.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.evaluate.py",
+        "expectedSha256": "8d0dba1ae1928a25eaae88fbfc22ba109f09d61b65ab0b457dfbbf6689e7f066"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/run_remaining.py",
+      "bytes": 1592,
+      "sha256": "04347f0da4f97cf5094931bd24d9f0d80f2642ce611d1b615d6d32cb32f94080",
+      "originProjectRelativePath": "work/s3-fix/c1/run_remaining.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.run_remaining.py",
+        "expectedSha256": "04347f0da4f97cf5094931bd24d9f0d80f2642ce611d1b615d6d32cb32f94080"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/prepare_live_candidate.py",
+      "bytes": 2231,
+      "sha256": "ee50c583f90a1352b542741c41a711d0634e9dab8c7a2f2edef8df102037eb08",
+      "originProjectRelativePath": "work/s3-fix/c1/prepare_live_candidate.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.prepare_live_candidate.py",
+        "expectedSha256": "ee50c583f90a1352b542741c41a711d0634e9dab8c7a2f2edef8df102037eb08"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/budget.py",
+      "bytes": 2915,
+      "sha256": "ad32b28b45a00318560325d5b2d0ab366a3280465cbce45b487e8a43d21c7a3c",
+      "originProjectRelativePath": "work/s3-fix/c1/budget.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.budget.py",
+        "expectedSha256": "ad32b28b45a00318560325d5b2d0ab366a3280465cbce45b487e8a43d21c7a3c"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/prepared/driver.py",
+      "bytes": 20174,
+      "sha256": "24be0d60cada3e0e13a690f309b41e7076a30f4251d7c6f7cbf7f0e5c412ad26",
+      "originProjectRelativePath": "work/s3-fix/c1/prepared/driver.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.prepared/driver.py",
+        "expectedSha256": "24be0d60cada3e0e13a690f309b41e7076a30f4251d7c6f7cbf7f0e5c412ad26"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/prepared/finalize.py",
+      "bytes": 4065,
+      "sha256": "66e0d330b68e5d12de1aa1b4977e0a0c2f6cdecfdb4424d878b6603f344dfa77",
+      "originProjectRelativePath": "work/s3-fix/c1/prepared/finalize.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.prepared/finalize.py",
+        "expectedSha256": "66e0d330b68e5d12de1aa1b4977e0a0c2f6cdecfdb4424d878b6603f344dfa77"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "cinnamon/inputs/make-input.py",
+      "bytes": 1171,
+      "sha256": "d589d34a303a09a3fb09b023572969a36379db0adf564e6b42f8618af57a45b6",
+      "originProjectRelativePath": "work/s3-fix/c1/inputs/make-input.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.inputs/make-input.py",
+        "expectedSha256": "d589d34a303a09a3fb09b023572969a36379db0adf564e6b42f8618af57a45b6"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/run_remaining.py",
+      "bytes": 1722,
+      "sha256": "6825a616de5d6ddc34c0354c518a626f815fc78aecc4e09915a217784f083b9d",
+      "originProjectRelativePath": "work/s3-fix/gfull1/run_remaining.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.run_remaining.py",
+        "expectedSha256": "6825a616de5d6ddc34c0354c518a626f815fc78aecc4e09915a217784f083b9d"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/live-prepared/candidate_run.py",
+      "bytes": 16097,
+      "sha256": "4a56620d20657117000b4905566b9585508b3cbc49aa0916bc40577627adc362",
+      "originProjectRelativePath": "work/s3-fix/gfull1/live-prepared/candidate_run.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.live-prepared/candidate_run.py",
+        "expectedSha256": "4a56620d20657117000b4905566b9585508b3cbc49aa0916bc40577627adc362"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/live-prepared/lab_run.py",
+      "bytes": 16928,
+      "sha256": "89a0508e1501abc5791cfe550167acfef0539910ef71d504e1535b221d319ef6",
+      "originProjectRelativePath": "work/s3-fix/gfull1/live-prepared/lab_run.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.live-prepared/lab_run.py",
+        "expectedSha256": "89a0508e1501abc5791cfe550167acfef0539910ef71d504e1535b221d319ef6"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/live-prepared/evaluate.py",
+      "bytes": 6833,
+      "sha256": "9485979ebbb816fc6f10c703042de37bab2ea006a1c6f018fabe8edfe802b1b9",
+      "originProjectRelativePath": "work/s3-fix/gfull1/live-prepared/evaluate.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.live-prepared/evaluate.py",
+        "expectedSha256": "9485979ebbb816fc6f10c703042de37bab2ea006a1c6f018fabe8edfe802b1b9"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/budget.py",
+      "bytes": 2915,
+      "sha256": "ad32b28b45a00318560325d5b2d0ab366a3280465cbce45b487e8a43d21c7a3c",
+      "originProjectRelativePath": "work/s3-fix/gfull1/budget.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.budget.py",
+        "expectedSha256": "ad32b28b45a00318560325d5b2d0ab366a3280465cbce45b487e8a43d21c7a3c"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/prepared/driver.py",
+      "bytes": 24068,
+      "sha256": "86888fd1404086205937e9a21d5d9faea4939b157b3058bb13f2fdb8cb375eb6",
+      "originProjectRelativePath": "work/s3-fix/gfull1/prepared/driver.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.prepared/driver.py",
+        "expectedSha256": "86888fd1404086205937e9a21d5d9faea4939b157b3058bb13f2fdb8cb375eb6"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/prepared/finalize.py",
+      "bytes": 4106,
+      "sha256": "aca59b899210099d810fb87f1617c5037c1b629d744784b944e1e904ee91de64",
+      "originProjectRelativePath": "work/s3-fix/gfull1/prepared/finalize.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.prepared/finalize.py",
+        "expectedSha256": "aca59b899210099d810fb87f1617c5037c1b629d744784b944e1e904ee91de64"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/invoke.py",
+      "bytes": 739,
+      "sha256": "4b970ca692d357508c2cf4d05061e0b4aaa00904e8e0c1dc42ca089c7a044854",
+      "originProjectRelativePath": "work/s3-fix/gfull1/invoke.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.invoke.py",
+        "expectedSha256": "4b970ca692d357508c2cf4d05061e0b4aaa00904e8e0c1dc42ca089c7a044854"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/gesture.py",
+      "bytes": 385,
+      "sha256": "60b3c2d8a02507dbad878dc27afe1d1fee0a0352433efe7520a6840e92909ba3",
+      "originProjectRelativePath": "work/s3-fix/gfull1/gesture.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.gesture.py",
+        "expectedSha256": "60b3c2d8a02507dbad878dc27afe1d1fee0a0352433efe7520a6840e92909ba3"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/inputs/make-input.py",
+      "bytes": 1171,
+      "sha256": "d589d34a303a09a3fb09b023572969a36379db0adf564e6b42f8618af57a45b6",
+      "originProjectRelativePath": "work/s3-fix/gfull1/inputs/make-input.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/preparation-check.json",
+        "field": "preparedFiles.inputs/make-input.py",
+        "expectedSha256": "d589d34a303a09a3fb09b023572969a36379db0adf564e6b42f8618af57a45b6"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "gnome/shared-original/observe_guest.py",
+      "bytes": 5086,
+      "sha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af",
+      "originProjectRelativePath": "work/live-s3-memory/observe_guest.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/gfull1/live114/parameters.json",
+        "field": "observerSha256",
+        "expectedSha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": "Actual original helper referenced by live-prepared/candidate_run.py ORIGINAL_BASE; copied for inspection, not a new runtime alias."
+    },
+    {
+      "path": "kde/prepared/driver.py",
+      "bytes": 23963,
+      "sha256": "bba17a2ef86970a917be2c51c07996d31dc2905788f320ed17dabad6c595d849",
+      "originProjectRelativePath": "work/s3-fix/kf/prepared/driver.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.prepared/driver.py",
+        "expectedSha256": "bba17a2ef86970a917be2c51c07996d31dc2905788f320ed17dabad6c595d849"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/prepared/finalize.py",
+      "bytes": 4099,
+      "sha256": "7b051abf73c0c1e5cc2726d0898bc74fee3eea0389efbbee074dc9e8f3563014",
+      "originProjectRelativePath": "work/s3-fix/kf/prepared/finalize.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.prepared/finalize.py",
+        "expectedSha256": "7b051abf73c0c1e5cc2726d0898bc74fee3eea0389efbbee074dc9e8f3563014"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/live-prepared/candidate_run.py",
+      "bytes": 15082,
+      "sha256": "b9865038ccc4268119a3e198241f484aaa499437cd0b022b89053bd39a2bdacb",
+      "originProjectRelativePath": "work/s3-fix/kf/live-prepared/candidate_run.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.live-prepared/candidate_run.py",
+        "expectedSha256": "b9865038ccc4268119a3e198241f484aaa499437cd0b022b89053bd39a2bdacb"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/live-prepared/lab_run.py",
+      "bytes": 14614,
+      "sha256": "6eee38237f8cb41b71a65771c55c1d1b63d489182665bbdfe4e53526a220118d",
+      "originProjectRelativePath": "work/s3-fix/kf/live-prepared/lab_run.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.live-prepared/lab_run.py",
+        "expectedSha256": "6eee38237f8cb41b71a65771c55c1d1b63d489182665bbdfe4e53526a220118d"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/live-prepared/evaluate.py",
+      "bytes": 6831,
+      "sha256": "1b94aed5a0e257cec4eb578f5c77d8524ed37e5f2df2c642110bfe2838990937",
+      "originProjectRelativePath": "work/s3-fix/kf/live-prepared/evaluate.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.live-prepared/evaluate.py",
+        "expectedSha256": "1b94aed5a0e257cec4eb578f5c77d8524ed37e5f2df2c642110bfe2838990937"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/observe_processes.py",
+      "bytes": 4882,
+      "sha256": "ecc76db1912826bc17958bf509ee97642d58751e445becff1294d65577f6b1fa",
+      "originProjectRelativePath": "work/s3-fix/kf/observe_processes.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.observe_processes.py",
+        "expectedSha256": "ecc76db1912826bc17958bf509ee97642d58751e445becff1294d65577f6b1fa"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/normalize_operation.py",
+      "bytes": 2773,
+      "sha256": "e14e123f2d1f8159b90a08c1f1a732174906b1da063ce9b1d41c25e0421edeea",
+      "originProjectRelativePath": "work/s3-fix/kf/normalize_operation.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.normalize_operation.py",
+        "expectedSha256": "e14e123f2d1f8159b90a08c1f1a732174906b1da063ce9b1d41c25e0421edeea"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/run_full_workload.py",
+      "bytes": 2567,
+      "sha256": "7e18dbce78802095085d1e9c370108b0f837f09156cfb08877a2a4768402ab3f",
+      "originProjectRelativePath": "work/s3-fix/kf/run_full_workload.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/test-parameters114.json",
+        "field": "controllerSha256.run_full_workload.py",
+        "expectedSha256": "7e18dbce78802095085d1e9c370108b0f837f09156cfb08877a2a4768402ab3f"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": ""
+    },
+    {
+      "path": "kde/budget.py",
+      "bytes": 2915,
+      "sha256": "ad32b28b45a00318560325d5b2d0ab366a3280465cbce45b487e8a43d21c7a3c",
+      "originProjectRelativePath": "work/s3-fix/kf/budget.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/c1/reproduction-contract114.json",
+        "field": "preservedDriverFiles.budget.py",
+        "expectedSha256": "ad32b28b45a00318560325d5b2d0ab366a3280465cbce45b487e8a43d21c7a3c"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": "Cross-receipt byte hash anchor: KDE test-parameters independently records the same32/10MiB cap; it does not itself contain this budget SHA."
+    },
+    {
+      "path": "kde/shared-original/observe_guest.py",
+      "bytes": 5086,
+      "sha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af",
+      "originProjectRelativePath": "work/live-s3-memory/observe_guest.py",
+      "hashAnchor": {
+        "path": "work/s3-fix/kf/a1/parameters.json",
+        "field": "observerSha256",
+        "expectedSha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af"
+      },
+      "byteIdentical": true,
+      "protectedValueScanPassed": true,
+      "note": "Actual original helper referenced by live-prepared/candidate_run.py ORIGINAL_BASE; frozen copy, no new runtime record."
+    }
+  ],
+  "fileCount": 32,
+  "totalBytes": 250184,
+  "originalAnchorHashes": {
+    "work/s3-fix/c1/reproduction-contract114.json": "a22b9066dad34e21164f2656c4fae0f93ff2d9a67bea3e08ee76492b7691fc2d",
+    "work/s3-fix/gfull1/preparation-check.json": "8ed955909faa2dddd972c6c05a4fde718e386d6da2e2344c0aae4a86b4064281",
+    "work/s3-fix/gfull1/live114/parameters.json": "c1ab45dc1cf2ab2786c76339db805f5e1017f40e56d905cc3be27af0f8dbcd19",
+    "work/s3-fix/gfull1/live114/batch-520c793e96/receipt.json": "51620223082aa19d3fd59f6f4774d17b21ecb1b68170bcf8985b2ea771456cf1",
+    "work/s3-fix/gfull1/live114/batch-0c901d07d3/receipt.json": "467a237e643993f9de011df25523aa78071438f3706495d732eb2d3b213f700c",
+    "work/s3-fix/gfull1/live114/batch-0f5b33dc17/receipt.json": "72530dba91990e46d4760569d65128f1d36c34b2417c5ea0d85236782a9f1ca8",
+    "work/s3-fix/gfull1/live114/batch-ecff485cfc/receipt.json": "bab93ae9aa419aecf1d83b9eca7c17b37b43f2abfde9874ebf0cc06a1a46d7df",
+    "work/s3-fix/gfull1/live114/batch-5839af973e/receipt.json": "6c20d7ed25fa45ef2d4b3935e06df304714476889c35a3305f7893cb78d3e73e",
+    "work/s3-fix/gfull1/live114/batch-d0afb28f70/receipt.json": "324a5eb7db25be080fb518650e40512a35ef3a1dece2f532d789ec02969da50c",
+    "work/s3-fix/gfull1/live114/batch-541961bfeb/receipt.json": "377db5213cb238539419da61dac44541628269f30612fb67b4faeb0f307b81c5",
+    "work/s3-fix/gfull1/live114/batch-725cef0651/receipt.json": "99483e385d2b6d5e7cbf44b1f6cb975f9e464889194029bc9d753d449ced1793",
+    "work/s3-fix/gfull1/live114/batch-e5177a9d65/receipt.json": "91bd90da93d6f19c22b8e2368a667bd4eb35707970262127a8ef85a807222596",
+    "work/s3-fix/gfull1/live114/batch-8499ad727e/receipt.json": "358e9b00d4dca61749e73fd692a56822380626f961682a421b6da790037d6353",
+    "work/s3-fix/kf/a1/test-parameters114.json": "5754ce8e4b87bf6e7bd16702b289795bf1599be99772681e697064eb55a2e720",
+    "work/s3-fix/kf/a1/parameters.json": "784721a9428553f786fcf23404b78414ce4583d1ae10db1258e2922c25d58c58",
+    "work/s3-fix/kf/a1/batch-934a20fcd0/receipt.json": "579cf050fbc3e250eb7e5656527306b38d932d1f3a54c12722a206d68c2250c8",
+    "work/s3-fix/kf/a1/batch-6bc7c585fa/receipt.json": "acadd565b6524bf938e840c22709e73cb825094ab18c3c1e0c19f768c0fb43c2",
+    "work/s3-fix/kf/a1/batch-24d716b669/receipt.json": "5eab2aeaa74ec489f00d302bfabe6a2e0921e470f7694600d564c98d070c0ea7",
+    "work/s3-fix/kf/a1/batch-fc1efbe2e4/receipt.json": "526b5e87769bb63f23a5d5b24f267c38aa366f0aeebca6f8192d56c471dab7b5",
+    "work/s3-fix/kf/a1/batch-02f44c9258/receipt.json": "30380d265ba70d4bacc8732d6e8a9f2973fd08acfac97944609f0762c758c33f",
+    "work/s3-fix/kf/a1/batch-2f180ead89/receipt.json": "1978134760bfe0fd0c9e80bfd362168f5a564b2471ab4e8e35ed66cf17e1e37b",
+    "work/s3-fix/kf/a1/batch-8a1b3a104f/receipt.json": "05881e9279b30c55b235c66f1b41b5de85376d890433630b8417c18d161c553e",
+    "work/s3-fix/kf/a1/batch-b1ce8ab303/receipt.json": "d02af202493a2f1af2523ef574c5804820750d19b5732b5a2fa457d10c32c3b6",
+    "work/s3-fix/kf/a1/batch-3f660feac6/receipt.json": "eb532966411a785b336d1f295bd83f0231dbe848299b67e61111216a948b6a4d",
+    "work/s3-fix/kf/a1/batch-982f60d8e6/receipt.json": "af5694c218305127672c54754bd1d1b41ab61858e471dc89d8df191f5feb7604"
+  },
+  "protectedCredentialValuesScannedInMemory": 2,
+  "actualCredentialValuesWritten": false,
+  "allCopiesByteIdenticalAndReadOnly": true,
+  "controllerExecuted": false,
+  "guestCloudOrSourceInteractions": false,
+  "configPayloadImagesLoginInputsExcluded": true,
+  "scope": "Historical exact code for inspection/reconstruction; hard-coded paths and private GO/lab/config dependencies prevent these copies from being a fresh acceptance CLI.",
+  "completedUtc": "2026-10-12T17:57:28.517682+00:00"
+}

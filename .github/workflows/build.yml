@@ -70,6 +70,28 @@ jobs:
           PY
           chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
           runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml"
+      - name: Replay saved live-S3 numeric evidence
+        if: always()
+        run: |
+          mkdir -p build/dev
+          chown -R putgd-ci:putgd-ci build/dev
+          runuser -u putgd-ci -- python3 - <<'PYREPLAY'
+          import json, pathlib, subprocess
+          command = ['python3', 'docs/evidence/live-s3-memory/source114/replay.py',
+                     '--manifest', 'docs/evidence/live-s3-memory/source114/manifest.json',
+                     '--require-target']
+          result = subprocess.run(command, capture_output=True, text=True)
+          root = pathlib.Path('build/dev')
+          (root / 'live-s3-evidence-replay.log').write_text(result.stdout + result.stderr)
+          (root / 'live-s3-evidence-replay.json').write_text(json.dumps({
+              'command': command, 'exitCode': result.returncode,
+              'scope': 'Saved numeric evidence replay only; no fresh desktop or cloud acceptance',
+              'result': json.loads(result.stdout) if result.returncode == 0 else None
+          }, indent=2) + '\n')
+          print(result.stdout, end='')
+          print(result.stderr, end='')
+          raise SystemExit(result.returncode)
+          PYREPLAY
       - name: Verify lab identity and protocol contracts
         if: always()
         run: |
@@ -156,6 +178,8 @@ jobs:
             build/dev/ctest-observed-uid
             build/dev/Testing/Temporary/LastTest.log
             build/dev/Testing/Temporary/LastTestsFailed.log
+            build/dev/live-s3-evidence-replay.json
+            build/dev/live-s3-evidence-replay.log
             build/dev/lab-contracts.log
             build/dev/lab-contracts.json
             build/dev/cold-family-contracts.log

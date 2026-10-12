@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "manifestSha256": "dbb0d246692e8ffa1d1ed8328466f9bbefd862067c01ddcc7fd3d18ab105295d",
+  "readmeSha256": "95059dceec7a7bacc5a9c99137897e08bd9a76f6698a5326bccdd2fb9cede590",
+  "fileCount": 32,
+  "totalBytes": 250184,
+  "allActualCopiedBytesAndModesVerified": true,
+  "actualCopiedFileProtectedValueScanPassed": true,
+  "protectedValueCount": 2,
+  "executedControllerCount": 0,
+  "scope": "Byte-preserving historical source export only"
+}

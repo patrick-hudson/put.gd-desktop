@@ -1,4 +1,47 @@
-# Live S3 transport retest: source108
+# Live S3 transport
+
+## Source114: complete live-S3 regressions
+
+The measured implementation is `0258600b752dae6304ba61d48b67d56883dfb6b2`,
+version `0.1.1-dev.114+g0258600b752d`. Later documentation or CI commits do not
+relabel these binaries. All three desktops passed the complete current-source
+workload with no SDK errors, automatic retries or emergency cleanup.
+
+| Desktop | Peak quiet RSS + swap | Swap | Idle CPU, one core | Production objects removed |
+| --- | --- | --- | --- | --- |
+| Cinnamon/X11 | 29.059 MiB | 0 | 0.0100% | 31 |
+| GNOME/Wayland | 36.078 MiB | 0 | 0.0167% | 31 |
+| KDE/Wayland | 31.285 MiB | 0 | 0.0200% | 31 |
+
+Each desktop passed twelve real native cases, eight reviewed GUI cases and the
+fixed workload of 30 operations and 31 objects across all six sources.
+The actual public responses matched their lengths and SHA-256 receipts; copied
+URLs were pasted through native input. Fifteen regions per desktop matched every
+80-by-60 pixel, and independent window/desktop frame checks passed. The first
+complete five-minute quiet window had one resident, no helpers or active jobs,
+zero swap and unchanged process identity. All 31 objects per desktop were removed
+through production History deletion; local synthetic copies and successful
+spools were cleared, and the product families drained normally.
+
+The preceding KDE target passed twelve additional uploads and twelve production
+deletions. Source114 therefore published and removed 105 synthetic objects without
+SDK errors. The failed source113 target published three objects, which were also
+removed through production deletion. Its failed fourth operation/local artifact
+and all historical failure states remain preserved. The debug campaign reserved
+125 objects/28.4375 MiB against 128/32 MiB; failed reservations were not refunded.
+
+This is one current-source regression per desktop. The two earlier independent
+source106 Cinnamon profiles remain separately recorded. These results do not
+claim a new fresh-repeat optimization decision, full release/fresh-agent
+acceptance, or a universal 40 MiB ceiling during active work or open views.
+
+See [the source114 evidence and replay](evidence/live-s3-memory/source114/README.md).
+The original resetting network peer remains unidentified. The controlled TLS
+comparison and successful SDK regressions support the bounded compatibility fix;
+they do not prove packet fragmentation or a particular firewall defect.
+
+## Historical source108 diagnostic retest
+
 
 Measured source: `b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a`, tree
 `ba1b5ccff5967d9e5493b27e6b5788305f66b441`, generated version

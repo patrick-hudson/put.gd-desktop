@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "0258600b752dae6304ba61d48b67d56883dfb6b2",
+  "authoritativeFinalKdeReceiptSha256": "de69df19b7bdda4ebca4c76d13e9515f7477bb75108c528496f34e9abd3e4a7a",
+  "archive": "kde114.tar.gz",
+  "archiveSha256": "8e413effebf9f58410d741906f055cbc68a0659075c1c8d42a871f60a21e6c71",
+  "archiveBytes": 110508,
+  "memberCount": 132,
+  "uncompressedBytes": 2029272,
+  "actualExtractedProtectedValueScanPassed": true,
+  "protectedValueCount": 2,
+  "scannedArchives": [
+    {
+      "file": "cinnamon114.tar.gz",
+      "actualMembersScanned": 140,
+      "archiveSha256": "a2c63ada09b760127bb4de55135e0f10d21a0907bf869084c168c18e040bb782"
+    },
+    {
+      "file": "kde114.tar.gz",
+      "actualMembersScanned": 132,
+      "archiveSha256": "8e413effebf9f58410d741906f055cbc68a0659075c1c8d42a871f60a21e6c71"
+    }
+  ],
+  "exactOriginalKdeResultBytesRetained": true,
+  "frozenEvaluatorSha256": "1b94aed5a0e257cec4eb578f5c77d8524ed37e5f2df2c642110bfe2838990937",
+  "frozenObserverSha256": "2e82299b1ad8d0fb762cd5a8f7f19e6401ec4ce4559c042922556f9fc9ce40af",
+  "portableJoinedReplayExactBothResults": true,
+  "replayedPeakMiB": {
+    "cinnamon": 29.05859375,
+    "kde": 31.28515625
+  },
+  "kdeQuietSeconds": 300.115195254999,
+  "kdeProductionDeletes": 31,
+  "noMissingAuditAliasesCreated": true,
+  "observerExportCopyHasOriginAndMatchedActualParameters": true,
+  "joinedManifestSha256": "5fe2d406c8c254f9138e3e92105b5c4a45ebd88bea46f617c73454abe030708c",
+  "joinedReplaySha256": "0a09dd853f3d42c11d7afd957bd85f5d765369b988e21d56d784a0ba97072170",
+  "guestSourceOrCloudChanges": false,
+  "scope": "Metadata-only saved evidence; no new desktop/cloud proof. Native screenshots remain private; original receipts remain authoritative.",
+  "completedUtc": "2026-10-12T17:43:46.081432+00:00"
+}

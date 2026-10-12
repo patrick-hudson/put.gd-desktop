@@ -1,6 +1,6 @@
 # Live-S3 memory acceptance
 
-The [source108 transport retest](testing-live-s3-transport.md) reproduces SDK99/cURL35 TLS failures on GNOME and KDE. Their live-S3 acceptance remains blocked; Cinnamon passes and KDE's31.38 MiB result is numeric attribution only. All confirmed test objects are removed. [Lab storage safeguards](lab-storage.md) now gate capacity and document verified retention.
+The [source114 transport regressions](testing-live-s3-transport.md) pass on Cinnamon, GNOME and KDE, including live upload, production History deletion and five-minute post-use memory. Historical failures remain recorded. [Replayable source114 evidence](evidence/live-s3-memory/source114/README.md) preserves exact versions and qualifications; [lab storage safeguards](lab-storage.md) gate capacity and retention.
 
 This protocol tests closed-view residency after real uploads. It does not promise a fixed ceiling during active capture/upload or while Settings/History is open. Use synthetic inputs, a unique test namespace, and exact receipt-guarded cleanup. No bucket policy, versioning or existing objects may change.
 

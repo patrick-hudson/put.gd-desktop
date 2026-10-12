@@ -70,3 +70,35 @@ Detailed contracts: [architecture](architecture.md), [UI process protocol](ui-pr
 ## Source106 live-S3 checkpoint
 
 The cumulative transient SDK worker reached 28.953 and 28.852 MiB in two complete Cinnamon live-S3 workloads, versus 49.445 MiB on source102. Current GNOME/KDE native and graphical checks passed, but production SDK failures blocked both complete live workloads and KDE production deletion. The candidate remains preserved on its experiment branch; global acceptance is pending. See [the source106 checkpoint and replayable evidence](evidence/live-s3-memory/source106/README.md). This result does not replace the earlier local-only desktop results or claim current GNOME/KDE post-S3 memory acceptance.
+
+## Source114: post-S3 memory and transport
+
+The cumulative change meets the quiet 40 MiB live-S3 target on all three tested
+Linux desktops. Measured runtime: `0.1.1-dev.114+g0258600b752d`.
+
+| Desktop | Five-minute peak RSS + swap | Swap | CPU, one core |
+| --- | --- | --- | --- |
+| Cinnamon/X11 | 29.059 MiB | 0 | 0.0100% |
+| GNOME/Wayland | 36.078 MiB | 0 | 0.0167% |
+| KDE/Wayland | 31.285 MiB | 0 | 0.0200% |
+
+Owner-thread idle cleanup is retained. The official SDK now runs in a transient
+worker, releasing its TLS/SDK mappings on normal exit. Credentials use private
+pipes; the resident keeps the operation journal and acknowledges durable
+checkpoints before effects. CLI and MCP clients still use that same pipeline.
+The OpenSSL 3.5 compatibility guard preserves explicit group policies,
+certificate verification and hybrid negotiation while reducing the initial
+predicted key share. No uncertain mutation is automatically replayed.
+
+The matched Cinnamon source102 peak was 49.445 MiB; 29.059 MiB saves about 20.386 MiB
+(41.23%). This is a cumulative result, not an isolated library/TLS-guard saving.
+Each desktop passed 12 native and 8 GUI checks and the full workload of 30 operations and 31 objects,
+with exact public content, native URL paste, pixel checks and production deletion.
+
+The earlier source104/source106 paragraphs describe historical checkpoints.
+Current GNOME/KDE live gates now pass. This is one source114 full regression per
+desktop; the two source106 Cinnamon profiles remain separate. Open views/active
+work, a new fresh-repeat optimization decision and full release/fresh-agent
+acceptance are outside this claim. Later documentation commits do not relabel
+the measured runtime. See [source114 evidence](evidence/live-s3-memory/source114/README.md)
+and [transport diagnosis](testing-live-s3-transport.md).
