@@ -14,7 +14,8 @@ full release/lifecycle scenarios and from new package-format acceptance.
 
 Linux prerelease packaging produces distro-specific DEBs, a Fedora RPM and an
 AppImage as individual GitHub release downloads, alongside a curated buildable
-source tarball, compiled source identities, dependency inventories and checksums.
+source tarball, a combined ZIP, compiled source identities, dependency inventories
+and checksums.
 See [release instructions](docs/release.md) and [versioning](docs/versioning.md).
 Flatpak's host capture integration is tracked separately in
 [issue #14](https://github.com/patrick-hudson/put.gd-desktop/issues/14).

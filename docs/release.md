@@ -32,7 +32,12 @@ native support claim.
 The GitHub Release page publishes each installer as an individual download:
 Ubuntu 24.04 and 26.04 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
 publishes `putgd-VERSION-source.tar.gz`, the GNOME extension ZIP, full build
-receipts and `SHA256SUMS`. Actions artifact ZIPs are the internal build handoff;
+receipts and `SHA256SUMS`. `putgd-VERSION-release.zip` contains these seven
+underlying files and an inner checksum list; the outer checksum list also covers
+the combined ZIP. ZIP timestamps and modes are fixed from the source commit,
+so repeating collection preserves the bytes needed to resume a draft. Extract the
+combined ZIP into a new directory; its inner checksum list covers the contents,
+while the separately downloaded outer list also covers the ZIP itself. Actions artifact ZIPs are the internal build handoff;
 the final release assets are the raw files.
 
 The curated source tarball exports committed files from a positive allowlist:

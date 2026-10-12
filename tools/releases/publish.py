@@ -148,7 +148,7 @@ def main():
     if not any(run['headSha'] == release['gitCommit'] and run['status'] == 'completed' and run['conclusion'] == 'success' for run in runs):
         raise ValueError('No passing Build workflow for this exact release commit')
     notes = args.directory / 'release-notes.md'
-    notes.write_text('Linux x86_64 prerelease with individual Ubuntu DEBs, a Fedora RPM, an AppImage and a buildable source tarball.\n\n'
+    notes.write_text('Linux x86_64 prerelease with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
                      'GNOME 50 requires the included host extension. Flatpak is tracked in issue #14.\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '

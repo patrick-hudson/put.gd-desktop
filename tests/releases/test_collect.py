@@ -1,11 +1,14 @@
 """Release collection rejects bytes/source mismatches before exposing any output."""
 import hashlib
+from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import collect
@@ -65,6 +68,10 @@ class ReleaseCollection(unittest.TestCase):
         (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
         self.output = self.root / 'build/output'
 
+    def git_show_commit_time(self):
+        return subprocess.check_output(['git', '-C', str(self.root), 'show', '-s', '--format=%ct',
+                                        self.release['gitCommit']], text=True).strip()
+
     def run_collection(self):
         return collect.collect(self.root, self.inputs, self.output, 'v0.1.1-rc.1')
 
@@ -77,12 +84,37 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-0.1.1-rc.1-source.tar.gz', files)
         self.assertIn('putgd-0.1.1-rc.1-fedora44-x86_64.rpm', files)
         self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage', files)
-        self.assertEqual(len(lines), 7)
+        self.assertEqual(len(lines), 8)
         self.assertEqual((self.output / 'putgd-0.1.1-rc.1-source.tar.gz').read_bytes(),
                          (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
+        combined = self.output / 'putgd-0.1.1-rc.1-release.zip'
+        self.assertTrue(combined.is_file())
+        commit_epoch = int(self.git_show_commit_time())
+        utc = datetime.fromtimestamp(commit_epoch, timezone.utc)
+        expected_time = (utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second - utc.second % 2)
+        with zipfile.ZipFile(combined) as archive:
+            self.assertTrue(all(item.date_time == expected_time for item in archive.infolist()))
+            underlying = files - {combined.name, 'SHA256SUMS'}
+            self.assertEqual(set(archive.namelist()), underlying | {'SHA256SUMS'})
+            for line in archive.read('SHA256SUMS').decode().splitlines():
+                digest, name = line.split('  ', 1)
+                self.assertIn(name, underlying)
+                self.assertEqual(archive.read(name), (self.output / name).read_bytes())
+                self.assertEqual(digest, hashlib.sha256(archive.read(name)).hexdigest())
+        with zipfile.ZipFile(self.output / 'putgd-gnome50-0.1.1-rc.1.zip') as archive:
+            self.assertTrue(all(item.date_time == expected_time for item in archive.infolist()))
         for line in lines:
             digest, name = line.split('  ', 1)
             self.assertEqual(digest, hashlib.sha256((self.output / name).read_bytes()).hexdigest())
+
+    def test_repeat_collection_is_identical_despite_checkout_mtimes(self):
+        self.run_collection()
+        for name in ('LICENSE', 'integrations/gnome/extension.js', 'integrations/gnome/metadata.json'):
+            os.utime(self.root / name, (1234567890, 1234567890))
+        second = self.root / 'build/second'
+        collect.collect(self.root, self.inputs, second, 'v0.1.1-rc.1')
+        for path in self.output.iterdir():
+            self.assertEqual(path.read_bytes(), (second / path.name).read_bytes(), path.name)
 
     def test_native_artifact_staging_is_flat_and_allowlisted(self):
         build = self.root / 'build/native-staging'

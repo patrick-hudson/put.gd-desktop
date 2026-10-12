@@ -73,6 +73,7 @@ jobs:
         run: |
           python3 tests/releases/test_native_audit.py
           python3 tests/releases/test_source_archive.py
+          python3 tests/releases/test_release_bundle.py
           python3 tests/releases/test_collect.py
           python3 tests/releases/test_publish.py
           python3 tests/ci/test_sdk_cache.py
@@ -155,6 +156,7 @@ jobs:
           python3 tests/unit/test_portable_appimage.py
           python3 tests/releases/test_native_audit.py
           python3 tests/releases/test_source_archive.py
+          python3 tests/releases/test_release_bundle.py
           python3 tests/releases/test_collect.py
           python3 tests/releases/test_publish.py
       - name: Verify pinned SDK source

@@ -4,10 +4,11 @@ import argparse
 import json
 from pathlib import Path
 import shutil
-import zipfile
+import subprocess
 
 from audit_native import PROGRAMS, sha256
 from verify_tag import verify
+from release_bundle import create_gnome_zip, create_release_bundle
 
 
 def identity_matches(manifest, release):
@@ -53,6 +54,8 @@ def verified_source(directory, release):
 
 def collect(root, inputs, output, tag):
     release = verify(root, tag)
+    timestamp = int(subprocess.check_output(['git', '-C', str(root), 'show', '-s', '--format=%ct',
+                                             release['gitCommit']], text=True).strip())
     # Resolve everything before making an output directory or copying assets.
     selected = []
     receipts = {}
@@ -86,13 +89,13 @@ def collect(root, inputs, output, tag):
         shutil.copy2(path, output / name)
     # GNOME integration is a host extension, including for AppImage users.
     extension = output / ('putgd-gnome50-' + release['version'] + '.zip')
-    with zipfile.ZipFile(extension, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-        for name in ('extension.js', 'metadata.json'):
-            archive.write(root / 'integrations/gnome' / name, name)
-        archive.write(root / 'LICENSE', 'LICENSE')
+    create_gnome_zip(root, extension, timestamp)
     (output / 'release-builds.json').write_text(json.dumps({'schemaVersion': 1, 'release': release, 'receipts': receipts}, indent=2) + '\n')
-    files = sorted(path for path in output.iterdir() if path.is_file())
-    (output / 'SHA256SUMS').write_text(''.join(sha256(path) + '  ' + path.name + '\n' for path in files))
+    member_names = [name for _, name in selected] + [extension.name, 'release-builds.json']
+    combined = output / ('putgd-' + release['version'] + '-release.zip')
+    create_release_bundle(output, combined, release['version'], timestamp, member_names)
+    (output / 'SHA256SUMS').write_text(''.join(sha256(output / name) + '  ' + name + '\n'
+        for name in sorted([*member_names, combined.name])), encoding='ascii')
     return release
 
 
