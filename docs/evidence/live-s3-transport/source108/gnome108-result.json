@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "scope": "GNOME108 diagnosis retest; original full workload stopped at first actual SDK failure, no full live/memory acceptance",
+  "sourceCommit": "b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a",
+  "gitTree": "ba1b5ccff5967d9e5493b27e6b5788305f66b441",
+  "version": "0.1.1-dev.108+gb4e16ba9971c",
+  "nativeFunctionalPassed": true,
+  "fullGuestDevTestsPassed": 58,
+  "nativeMatrixCasesPassed": 12,
+  "guiWitnessesPassed": 8,
+  "fullLiveAcceptance": false,
+  "scoredMemoryGateExecuted": false,
+  "acceptedOperationIds": [
+    "10c4c533-efbb-436a-8a9f-76027824b5f8",
+    "ef503ec4-62fc-4fb9-99f5-11e3e58534de",
+    "1a80738a-4683-4ecd-a63c-a711c785b71d",
+    "dfcbd64d-a98a-4e89-acd5-6943150c840e",
+    "f85b06af-66d2-4879-a044-360aa066d62b",
+    "b2112223-4552-4dd4-916d-ed1937be7895",
+    "c9a91cde-8438-42bb-ac26-116d9f998229",
+    "d7bac328-13ca-46fd-ba05-dfab4d4071d9",
+    "47ff8a6e-8b69-4d51-9a87-f1cd71bf2d7b",
+    "37b464b3-20d4-46e9-90a6-f3fc9eb4c51c",
+    "8548876a-2c32-4819-a725-ebe29ac90dad",
+    "d440879f-9f47-4321-9498-d9b5f4b71e62",
+    "408de35d-099d-4573-83bb-7a853336aa37"
+  ],
+  "successfulOperations": 12,
+  "confirmedRemoteObjects": 12,
+  "firstSdkFailure": {
+    "event": "operation_terminal",
+    "phase": "batch-6d140955ec",
+    "kind": "region",
+    "index": 1,
+    "operationId": "408de35d-099d-4573-83bb-7a853336aa37",
+    "operationState": "partial",
+    "copyStatus": "no_result",
+    "controllerElapsedMs": 3431,
+    "items": [
+      {
+        "uploadStatus": "failed",
+        "remoteStatus": "not_requested",
+        "error": {
+          "code": "s3_transport_unknown",
+          "details": {
+            "curlCode": 35,
+            "elapsedMs": 148,
+            "httpStatus": -1,
+            "sdkErrorType": 99,
+            "sdkRetryable": true,
+            "requestStage": "name_head"
+          }
+        }
+      }
+    ],
+    "worker": {
+      "moduleLiveDrivers": 0,
+      "queuedRequests": 0,
+      "retainedDrivers": 0,
+      "workerStarted": true
+    },
+    "workerExitCodeUnavailable": true,
+    "workerResultContract": "typed_sdk_result_requires_source_verified_normal_exit_zero",
+    "schemaVersion": 1,
+    "utc": "2026-10-12T14:06:46.328309+00:00"
+  },
+  "cleanupSdkFailures": [
+    {
+      "historyId": "5d66b713-11bb-4c8a-a2ec-79e89ebdb09d",
+      "error": {
+        "code": "s3_transport_unknown",
+        "details": {
+          "curlCode": 35,
+          "elapsedMs": 138,
+          "httpStatus": -1,
+          "sdkErrorType": 99,
+          "sdkRetryable": true,
+          "requestStage": "object_head"
+        }
+      }
+    }
+  ],
+  "sdkFailureInterpretation": "SDK99 NETWORK_CONNECTION and curl35 SSL connect error; TLS setup failed before an HTTP response. Underlying cause remains unknown. Not cancellation code42/SDK102.",
+  "cleanup": {
+    "knownCreated": 12,
+    "productionRemoved": 11,
+    "productionUnknownHistoryPreserved": 1,
+    "emergencyConditionalRemoved": 1,
+    "knownRemoteLeftovers": 0,
+    "localCopiesRemoved": 12,
+    "completedSpoolsCleared": 12,
+    "failedArtifactBytesRetained": 329,
+    "noProductionRetryOrHistoryRewrite": true
+  },
+  "observer": {
+    "samples": 475,
+    "scope": "Partial diagnostic series, not a fresh/scored300-second quiet window",
+    "sourceFileSha256": "6d481cb55501bb51e52bd459e8a96d9c1457d8ab2dd6e5b6a08ea8a0659dcf55"
+  },
+  "workerTelemetry": {
+    "independentExitCode": null,
+    "actualProcessPidStartObservations": "operation-diagnostic-joins.json;1Hz sampling observed workers in9of13 operations and may miss short-lived children",
+    "workerHash": "Expected package identity only; not independently measured for each child",
+    "typedResultNormalExit": "Source contract verifies normal worker exit0 before result delivery; not independent telemetry"
+  },
+  "runtimeLibraryVersions": [
+    {
+      "package": "libc6:amd64",
+      "version": "2.43-2ubuntu2.4",
+      "installed": true
+    },
+    {
+      "package": "libcurl3t64-gnutls:amd64",
+      "version": "8.18.0-1ubuntu2.7",
+      "installed": true
+    },
+    {
+      "package": "libcurl4-openssl-dev:amd64",
+      "version": "8.18.0-1ubuntu2.7",
+      "installed": true
+    },
+    {
+      "package": "libcurl4t64:amd64",
+      "version": "8.18.0-1ubuntu2.7",
+      "installed": true
+    },
+    {
+      "package": "libqt6core6t64:amd64",
+      "version": "6.10.2+dfsg-7",
+      "installed": true
+    },
+    {
+      "package": "libssl-dev:amd64",
+      "version": "3.5.5-1ubuntu3.7",
+      "installed": true
+    },
+    {
+      "package": "libssl3t64:amd64",
+      "version": "3.5.5-1ubuntu3.7",
+      "installed": true
+    }
+  ],
+  "productFamilyAtEnd": [],
+  "sourcePinReleased": true,
+  "guestStorageAtEnd": {
+    "failedArtifactRetained": true,
+    "homeAvailableBytes": 5055782912,
+    "tmpAvailableBytes": 2828390400
+  },
+  "previousAttemptsPreserved": [
+    "original106 SDK failures",
+    "108OS-modal focus failure before capture",
+    "108 eight-case matrix interrupted by authorized storage pause"
+  ],
+  "finalizedUtc": "2026-10-12T14:25:44.370717+00:00",
+  "successfulSourceKindsObserved": [
+    "clipboard-text",
+    "region"
+  ],
+  "plannedAllSixSourcesCompleted": false,
+  "workloadCounts": {
+    "clipboardTextSuccessful": 11,
+    "regionSuccessful": 1,
+    "regionFailedBeforePut": 1,
+    "clipboardImageNotRun": 1,
+    "clipboardFilesNotRun": 1,
+    "windowNotRun": 1,
+    "desktopNotRun": 1
+  }
+}

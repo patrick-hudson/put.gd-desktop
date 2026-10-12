@@ -1,0 +1,115 @@
+{
+  "gnomeBytesReclaimed": 4441849856,
+  "kdeBytesReclaimed": 4892082176,
+  "hostBytesReclaimed": 12594475008,
+  "rawFramesLosslesslyCompressed": 5052,
+  "VMImagesModified": false,
+  "referencedOldGnomeKdeDisksPreserved": true,
+  "capacityReceipt": {
+    "schemaVersion": 1,
+    "timestampUtc": "2026-10-12T13:37:53.685519+00:00",
+    "hostAvailableBytes": 60210683904,
+    "hostPassed": true,
+    "hostAvailableInodes": 28102791,
+    "hostExpectedGrowthBytes": 0,
+    "hostReserveGiB": 10,
+    "guestReserveGiB": 2,
+    "expectedBuildGiB": 0,
+    "guests": [
+      {
+        "run": "/home/patrick/work/put.gd/work/lab-runs/p2c-a1",
+        "filesystems": {
+          "home": {
+            "availableBytes": 18680659968,
+            "totalBytes": 33103331328,
+            "availableInodes": 1580932
+          },
+          "tmp": {
+            "availableBytes": 18680659968,
+            "totalBytes": 33103331328,
+            "availableInodes": 1580932
+          }
+        },
+        "passed": true
+      },
+      {
+        "run": "/home/patrick/work/put.gd/work/lab-runs/p2g-a1",
+        "filesystems": {
+          "home": {
+            "availableBytes": 5057773568,
+            "totalBytes": 33632829440,
+            "availableInodes": 1655482
+          },
+          "tmp": {
+            "availableBytes": 2828390400,
+            "totalBytes": 2835709952,
+            "availableInodes": 1048455
+          }
+        },
+        "passed": true
+      },
+      {
+        "run": "/home/patrick/work/put.gd/work/lab-runs/p2k-a1",
+        "filesystems": {
+          "home": {
+            "availableBytes": 8864083968,
+            "totalBytes": 33634926592,
+            "availableInodes": 1542417
+          },
+          "tmp": {
+            "availableBytes": 3097014272,
+            "totalBytes": 3104141312,
+            "availableInodes": 1048490
+          }
+        },
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "readOnly": true
+  },
+  "privatePerFileManifestSha256": "e8bbd4dd37ce58a48d4dff1b04cf9f4a886d45ae00542bcb0506a0aa267bdea8",
+  "toolReview": {
+    "utc": "2026-10-12T13:44:05.101072+00:00",
+    "scope": [
+      "storage_preflight.py",
+      "restore_evidence.py",
+      "test_storage_preflight.py",
+      "lab-storage-policy.md"
+    ],
+    "reviewer": "cinnamon_s3_diagnostic_gate",
+    "initialFindings": 3,
+    "closed": 3,
+    "remainingFindings": 0,
+    "runtimeSourceChanged": false,
+    "testReceipt": "storage-tool-checks-reviewed.json"
+  },
+  "hostTestReceipt": {
+    "testsPassed": 6,
+    "events": [
+      {
+        "utc": "2026-10-12T13:46:03.857647+00:00",
+        "command": [
+          "python3",
+          "work/s3-debug/test_storage_preflight.py"
+        ],
+        "returncode": 0,
+        "output": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.001s\n\nOK\n",
+        "scriptSha256": "90ae20a1515807f96d537f550cee142628b4bc6310d0f91cec5ffc36007c12fd",
+        "hostContractsOnly": true
+      },
+      {
+        "utc": "2026-10-12T13:46:04.054430+00:00",
+        "command": [
+          "python3",
+          "work/s3-debug/test_restore_evidence.py"
+        ],
+        "returncode": 0,
+        "output": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.081s\n\nOK\n",
+        "scriptSha256": "48b4b49bc12b6d0f1dbd2fd8286488530664ee8ab9fd17467b1c4f9afef2bf5f",
+        "hostContractsOnly": true
+      }
+    ],
+    "noGuestActions": true
+  }
+}

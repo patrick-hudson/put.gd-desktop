@@ -1,0 +1,148 @@
+{
+  "archive": "/home/patrick/work/put.gd/work/s3-debug/g1/gnome108-numeric-evidence.tar.gz",
+  "archiveSha256": "e438764e45f5c6a74ff42b345573febb029dd351f14f08a78ce92d314c6495a7",
+  "archiveBytes": 40596,
+  "members": [
+    {
+      "name": "build108/build-drained.json",
+      "bytes": 329,
+      "sha256": "f09a717af319d7cdcf4091e3fd8b3d6c4869116968ffc20bdddfd9610d84ebb2"
+    },
+    {
+      "name": "build108/collected/release-audit108.json",
+      "bytes": 6060,
+      "sha256": "d4c779144737ac5e3161d838a0d56c6000ec43a4e6ce08dc8c6e74654835637e"
+    },
+    {
+      "name": "build108/collection-receipt.json",
+      "bytes": 2564,
+      "sha256": "dcdd00ee1a610eb5fe3c18d624e3511885e7bf9fe7a98e19acb305f06d89c461"
+    },
+    {
+      "name": "final-gnome-result.json",
+      "bytes": 5404,
+      "sha256": "01baeb4bc56558c66777e7b0a75380b42ba548464cd7487a1ea9fa77c78f4f79"
+    },
+    {
+      "name": "gnome-wayland-functional.json",
+      "bytes": 2537,
+      "sha256": "cc787e5d361d4e080e359b6abafa46f30b9e811c98db5b0fd3ff36770afb98c9"
+    },
+    {
+      "name": "live108/completed.json",
+      "bytes": 89,
+      "sha256": "30789b167fced91572e37c7622de3547a09b0c0e51ab59ef43a4116352279490"
+    },
+    {
+      "name": "live108/core-limits-before-credentials.json",
+      "bytes": 246,
+      "sha256": "bb77ce355d00c55a218f0562c9069cbee4223335f9d38058cbda142482343ef6"
+    },
+    {
+      "name": "live108/diagnostic-events.jsonl",
+      "bytes": 11807,
+      "sha256": "a7da45b5213b05d7e658838f6b706181c62230f3d1c5590c2959cdeef9bf808a"
+    },
+    {
+      "name": "live108/emergency-cleanup-summary.json",
+      "bytes": 432,
+      "sha256": "d60f72b9e208c86b3d7b11880f1a3cc2556e4cef2fa7da388136ec3e5563c916"
+    },
+    {
+      "name": "live108/emergency-guard-numeric.json",
+      "bytes": 594,
+      "sha256": "e8db1133c35d229de82e66cdd6083a2cd38da54da9e976a08dc58c4ead88dd59"
+    },
+    {
+      "name": "live108/failed-operation-journal-artifact-metadata.json",
+      "bytes": 1070,
+      "sha256": "01aa8f523aac214f4a43789b5a4466b5471f4d29e8cecba0ee8c393cb315cff5"
+    },
+    {
+      "name": "live108/failed-run-local-cleanup.json",
+      "bytes": 4639,
+      "sha256": "aa6ad2e9812bbeaefde2badb8701111bcc1ae0c3fd8f5ed9a3c2842265aac985"
+    },
+    {
+      "name": "live108/observer-failed-workload-stop.json",
+      "bytes": 4553,
+      "sha256": "dba8a69125efaf93a703b92aebea9b0a789efdf67c1e0ddcb976145307efa6e4"
+    },
+    {
+      "name": "live108/operation-diagnostic-joins.json",
+      "bytes": 14816,
+      "sha256": "e6301c94b12af3dc9f837bc8bac46bab064a9f027f1cd75f75c368d5f2b8695c"
+    },
+    {
+      "name": "live108/parameters.json",
+      "bytes": 1200,
+      "sha256": "6458db0b768cf51c27f96dc419bc6cd780edf434688111eba7a00e565bb0cac5"
+    },
+    {
+      "name": "live108/samples.jsonl",
+      "bytes": 900472,
+      "sha256": "6d481cb55501bb51e52bd459e8a96d9c1457d8ab2dd6e5b6a08ea8a0659dcf55"
+    },
+    {
+      "name": "native-stop-and-live-storage.json",
+      "bytes": 361,
+      "sha256": "6f800ee693f646823be11f0400f4edaa158b3d2021553760c6adfebf980f916c"
+    },
+    {
+      "name": "runtime-library-versions.json",
+      "bytes": 913,
+      "sha256": "559e5b84210f828982abda6d164e825a59cd6bfa12fd73124a9bcdf7415846d9"
+    },
+    {
+      "name": "source-pin-release.json",
+      "bytes": 843,
+      "sha256": "4444903f7216476065ff30e2c51cbb589bca04a7a85eeddffeaaa9d9f039c495"
+    },
+    {
+      "name": "storage/before.json",
+      "bytes": 6746,
+      "sha256": "63a72f2c6c3e971e99d567a007c0526a631a4ddfd3dde15492d9cce4422b4b8d"
+    },
+    {
+      "name": "storage/cleanup-command.json",
+      "bytes": 788,
+      "sha256": "5b530dfa4d6263277d17f7d9c195604cd99635c7ad10f00d83eacda64e2b67e3"
+    },
+    {
+      "name": "storage/cleanup-result.json",
+      "bytes": 608,
+      "sha256": "b68962d5accf5a328c4a2911e7eb1421e07945096dec838691163c69146e5745"
+    },
+    {
+      "name": "storage/current-dependency-reference-audit.json",
+      "bytes": 15707,
+      "sha256": "741f396e6793f2770dea53853059eac4b69b4baa1c62b318f8e3430287a85ca7"
+    },
+    {
+      "name": "storage/evidence-coverage.json",
+      "bytes": 7403,
+      "sha256": "42d079eae0f8da3e4b25a613474b8a3a6ad9c9de3baefc35346a01a69e1466e2"
+    },
+    {
+      "name": "storage/interrupted-test-provenance.json",
+      "bytes": 1387,
+      "sha256": "32f88382a8cdacf52c3eae1120c34901f73f93181dd30aebe6aa65caeac6b349"
+    },
+    {
+      "name": "transport-code-map.json",
+      "bytes": 1307,
+      "sha256": "a6f9e411c36158ec6fb371d6b1829eba80b0ed7e481d41b52803db7d00b63e8f"
+    }
+  ],
+  "memberCount": 26,
+  "uncompressedBytes": 992875,
+  "protectedCredentialValuesScanned": 2,
+  "accessKeyAndCredentialHeaderPatternsAbsent": true,
+  "payloadsScreenshotsRawSdkMessagesAndHeadersExcluded": true,
+  "actualCredentialValuesWritten": false,
+  "allExtractedMemberHashesVerified": true,
+  "fullLiveAcceptance": false,
+  "scoredMemoryGateExecuted": false,
+  "executedExportScriptSha256": "8cc60d5356c355171f31eae0a14085ff717a81bf0a6f8d3bcf8a85a6a5e4a440",
+  "finalResultSha256": "01baeb4bc56558c66777e7b0a75380b42ba548464cd7487a1ea9fa77c78f4f79"
+}

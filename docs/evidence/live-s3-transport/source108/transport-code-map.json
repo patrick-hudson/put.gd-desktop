@@ -1,0 +1,38 @@
+{
+  "scope": "Interpretation aid from installed official SDK source and system Curl headers; no production cause established",
+  "sdkVersion": "1.11.907",
+  "sdkTypes": {
+    "99": "NETWORK_CONNECTION",
+    "102": "USER_CANCELLED",
+    "103": "ENDPOINT_RESOLUTION_FAILURE"
+  },
+  "curlCodes": {
+    "6": "COULDNT_RESOLVE_HOST",
+    "7": "COULDNT_CONNECT",
+    "16": "HTTP2",
+    "28": "OPERATION_TIMEDOUT",
+    "35": "SSL_CONNECT_ERROR",
+    "42": "ABORTED_BY_CALLBACK",
+    "52": "GOT_NOTHING",
+    "55": "SEND_ERROR",
+    "56": "RECV_ERROR",
+    "60": "PEER_FAILED_VERIFICATION",
+    "77": "SSL_CACERT_BADFILE",
+    "92": "HTTP2_STREAM"
+  },
+  "unavailableCurlCode": -1,
+  "sourceFiles": [
+    {
+      "path": "/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp/src/aws-cpp-sdk-core/source/http/curl/CurlHttpClient.cpp",
+      "sha256": "3452803a35f0f4b02f22bb332f90e902db5735510f746539a392f3cc45530279"
+    },
+    {
+      "path": "/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp/src/aws-cpp-sdk-core/include/aws/core/client/CoreErrors.h",
+      "sha256": "3ced66b398a7cb6b7a09ce49a49713694add0e8692990954b7c532b51a7cbea5"
+    },
+    {
+      "path": "/usr/include/x86_64-linux-gnu/curl/curl.h",
+      "sha256": "78fee056d817bf955a32562063d0b1f83eddf4b4d5cc0824777a7736473c643b"
+    }
+  ]
+}

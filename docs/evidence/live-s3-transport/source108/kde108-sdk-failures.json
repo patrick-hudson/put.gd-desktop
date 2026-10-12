@@ -1,0 +1,185 @@
+{
+  "utc": "2026-10-12T14:01:52.471199+00:00",
+  "sourceCommit": "b4e16ba9971c2cd943c6fb0ec39d6ac421685a8a",
+  "version": "0.1.1-dev.108+gb4e16ba9971c",
+  "deleteOperationId": "12a94c17-002b-4e78-9136-06fe25ae99b4",
+  "deletionState": "completed",
+  "confirmedRemoved": 23,
+  "unknown": [
+    {
+      "historyId": "1b13aacd-31f4-49f4-b88c-ff2e58406a7c",
+      "originOperationId": "bf39acb9-a527-4d06-ab0c-aaaf2061c06a",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "object_head",
+        "elapsedMs": 137
+      },
+      "progressPhase": null,
+      "progressFields": [
+        "schemaVersion"
+      ],
+      "receiptSha256": "975f473d003b1ed0c3bd97ec444dc24dad55c21f275192769dc5fe8f691e4d3f",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    },
+    {
+      "historyId": "abb9e6e6-5ce4-430e-90ef-b6efd1a946f2",
+      "originOperationId": "99aef25a-80ac-4d0a-b59a-5af9f8326701",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "delete_object",
+        "elapsedMs": 108
+      },
+      "progressPhase": "object_unknown",
+      "progressFields": [
+        "phase",
+        "schemaVersion",
+        "target"
+      ],
+      "receiptSha256": "2635cb92054e7a0e9dac5debdde8fc4d4bc04f9eca801938c47389270fc40a2b",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    },
+    {
+      "historyId": "7056f070-812a-4924-80f2-669e9e589f64",
+      "originOperationId": "9902d426-d4c4-44ce-987d-5f0ad54c4034",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "object_head",
+        "elapsedMs": 132
+      },
+      "progressPhase": null,
+      "progressFields": [
+        "schemaVersion",
+        "target"
+      ],
+      "receiptSha256": "7b2c69116e91d20d124eea7ccfd441057beafe0b62188c5667b02d0b40940739",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    },
+    {
+      "historyId": "9d178a58-9b7c-460c-b6b3-a20391e02227",
+      "originOperationId": "6d2f4eea-dc14-4328-937f-75fc91bee1d9",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "object_head",
+        "elapsedMs": 135
+      },
+      "progressPhase": null,
+      "progressFields": [
+        "schemaVersion",
+        "target"
+      ],
+      "receiptSha256": "db6e831eedb52d8368a0069540f71d10a1a8456f62e728971847b8fff8dc1782",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    },
+    {
+      "historyId": "cc12d775-91b7-4aff-8549-eaeadd3cd3de",
+      "originOperationId": "d9a47c1c-2db2-4c36-91f6-385ced4238bd",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "object_head",
+        "elapsedMs": 123
+      },
+      "progressPhase": null,
+      "progressFields": [
+        "schemaVersion",
+        "target"
+      ],
+      "receiptSha256": "e92e417622e469c63b92e6dadbf93b2694a7a53c66b612e0743da12d9108db8a",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    },
+    {
+      "historyId": "48f82837-452f-440f-8128-054265363659",
+      "originOperationId": "6cf3c2d4-9d41-4aab-931d-b0566bf41767",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "object_head",
+        "elapsedMs": 154
+      },
+      "progressPhase": null,
+      "progressFields": [
+        "schemaVersion",
+        "target"
+      ],
+      "receiptSha256": "8f0e6bbcf30cc0d9c29d43d81a377213ff916db8b65b8e958578688cfd240590",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    },
+    {
+      "historyId": "7c0b9ce2-3fc2-4191-ae28-a954c9696380",
+      "originOperationId": "dd5171f0-503a-49da-98aa-9f17e1c303ee",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "delete_object",
+        "elapsedMs": 111
+      },
+      "progressPhase": "object_unknown",
+      "progressFields": [
+        "phase",
+        "schemaVersion",
+        "target"
+      ],
+      "receiptSha256": "cd258b1411c89daa8ebc02210fdf7b761e5b6fb1c7aede3f0d11e67806341d0f",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    },
+    {
+      "historyId": "55abc9bd-39e9-40a7-87d7-29ce3249b919",
+      "originOperationId": "1f026173-3082-4269-93b1-bdff420068a6",
+      "status": "unknown",
+      "errorCode": "s3_transport_unknown",
+      "numericDetails": {
+        "httpStatus": -1,
+        "sdkErrorType": 99,
+        "curlCode": 35,
+        "sdkRetryable": true,
+        "requestStage": "delete_object",
+        "elapsedMs": 112
+      },
+      "progressPhase": "object_unknown",
+      "progressFields": [
+        "phase",
+        "schemaVersion",
+        "target"
+      ],
+      "receiptSha256": "e8a13668e7d4bc3104b3549920062c97e746100f2ddc5dcf8279050c6a2b7fd0",
+      "conditionalEffect": "Already accepted exact guarded origin removal; current result unknown. No blind replay."
+    }
+  ],
+  "finalCleanupGatePassed": false,
+  "retriesAfterFailure": 0,
+  "rawResultSha256": "be0dc5eb8275b42e51346906ab54920cd8f40a29485b658b1142bf83fbbd00b1",
+  "wholeBulkOperationWasAlreadyAcceptedBeforeFirstFailureWasObserved": true,
+  "independentWorkerExitTelemetryDuringCleanup": "Unavailable; supplemental sampler was stopped before scored quiet. Source callback guard validated typed result normal0, not independent kernel exit observation."
+}

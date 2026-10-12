@@ -1,5 +1,7 @@
 # Implementation evidence
 
+The [source108 transport retest](testing-live-s3-transport.md) reproduces SDK99/cURL35 TLS failures on GNOME and KDE. Their live-S3 acceptance remains blocked; Cinnamon passes and KDE's31.38 MiB result is numeric attribution only. All confirmed test objects are removed. [Lab storage safeguards](lab-storage.md) now gate capacity and document verified retention.
+
 Evidence below records observed checks, not the remaining release scope. The full
 contract is [issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1).
 

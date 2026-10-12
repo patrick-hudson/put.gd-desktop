@@ -1,5 +1,7 @@
 # Live-S3 memory acceptance
 
+The [source108 transport retest](testing-live-s3-transport.md) reproduces SDK99/cURL35 TLS failures on GNOME and KDE. Their live-S3 acceptance remains blocked; Cinnamon passes and KDE's31.38 MiB result is numeric attribution only. All confirmed test objects are removed. [Lab storage safeguards](lab-storage.md) now gate capacity and document verified retention.
+
 This protocol tests closed-view residency after real uploads. It does not promise a fixed ceiling during active capture/upload or while Settings/History is open. Use synthetic inputs, a unique test namespace, and exact receipt-guarded cleanup. No bucket policy, versioning or existing objects may change.
 
 Freeze the candidate first: save the clean source commit/tree, generated version, full build manifest, installed executable/module/SDK hashes, package hash and runtime PID/start ticks. Build with the standard CMake presets/Ninja and official pinned SDK. A partial target rebuild can mix identities; build all targets consistently before acceptance.
