@@ -1,4 +1,5 @@
 name: Linux release
+run-name: ${{ inputs.nightly && inputs.publish && inputs.coordinator_run_id && 'Nightly' || 'Linux' }} release ${{ inputs.tag || github.ref_name }} coordinator ${{ inputs.coordinator_run_id || 'manual' }}
 on:
   push:
     tags: ['v*']
@@ -22,15 +23,66 @@ on:
         description: Stage a draft after all package audits pass
         default: false
         type: boolean
+      nightly:
+        description: Automated nightly publication class (strict nightly tags only)
+        default: false
+        type: boolean
+      source_sha:
+        description: Coordinator pinned full source SHA
+        default: ''
+        type: string
+      build_run_id:
+        description: Exact verified Build producer run ID
+        default: ''
+        type: string
+      build_workflow_id:
+        description: Exact verified Build workflow ID
+        default: ''
+        type: string
+      coordinator_run_id:
+        description: Originating nightly coordinator run ID
+        default: ''
+        type: string
 permissions:
   contents: read
 concurrency:
-  group: linux-release-${{ github.event.pull_request.number || inputs.tag || github.ref }}
+  group: ${{ inputs.nightly && 'nightly-package-publication' || format('linux-release-{0}', github.event.pull_request.number || inputs.tag || github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 jobs:
+  ci:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: write
+    outputs:
+      build_run_id: ${{ steps.ci.outputs.build_run_id }}
+      build_workflow_id: ${{ steps.ci.outputs.build_workflow_id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
+      - name: Reuse or coordinate exact-source required CI
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          BUILD_WORKFLOW_ID: ${{ inputs.build_workflow_id }}
+        run: python3 tools/releases/nightly.py release-ci --output "$RUNNER_TEMP/ci-producer.json"
+      - name: Retain independent Build producer evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ci-producer-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci-producer.json
+          if-no-files-found: warn
+          retention-days: 90
   native:
+    name: native (${{ matrix.name }})
     runs-on: ubuntu-24.04
     container: ${{ matrix.image }}
     strategy:
@@ -68,7 +120,9 @@ jobs:
           bash tools/releases/install-native-deps.sh
       - name: Validate exact release source
         if: github.event_name != 'pull_request'
-        run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
+        run: |
+          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+          python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Verify package and cache contracts
         run: |
           python3 tests/releases/test_native_audit.py
@@ -76,6 +130,9 @@ jobs:
           python3 tests/releases/test_release_bundle.py
           python3 tests/releases/test_collect.py
           python3 tests/releases/test_publish.py
+          python3 tests/releases/test_verify_tag.py
+          python3 tests/releases/test_nightly.py
+          python3 tests/ci/test_release_channels.py
           python3 tests/ci/test_sdk_cache.py
       - name: Identify release dependency environment
         id: sdk-key
@@ -150,7 +207,9 @@ jobs:
           cache: true
       - name: Validate exact release source
         if: github.event_name != 'pull_request'
-        run: python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
+        run: |
+          test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"
+          python3 tools/releases/verify_tag.py --tag "$RELEASE_TAG"
       - name: Adapter contracts
         run: |
           python3 tests/unit/test_portable_appimage.py
@@ -159,6 +218,9 @@ jobs:
           python3 tests/releases/test_release_bundle.py
           python3 tests/releases/test_collect.py
           python3 tests/releases/test_publish.py
+          python3 tests/releases/test_verify_tag.py
+          python3 tests/releases/test_nightly.py
+          python3 tests/ci/test_release_channels.py
       - name: Verify pinned SDK source
         run: |
           git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
@@ -211,7 +273,7 @@ jobs:
           retention-days: 30
   publish:
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish)
-    needs: [native, appimage]
+    needs: [ci, native, appimage]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -230,4 +292,21 @@ jobs:
       - name: Stage verified GitHub draft
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tools/releases/publish.py --tag "$RELEASE_TAG" --directory build/publish
+          NIGHTLY: ${{ inputs.nightly }}
+          BUILD_RUN_ID: ${{ needs.ci.outputs.build_run_id }}
+          BUILD_WORKFLOW_ID: ${{ needs.ci.outputs.build_workflow_id }}
+          COORDINATOR_RUN_ID: ${{ inputs.coordinator_run_id }}
+        run: |
+          if [ "$NIGHTLY" = true ]; then
+            python3 tools/releases/publish.py --tag "$RELEASE_TAG" --directory build/publish --nightly --build-run-id "$BUILD_RUN_ID" --build-workflow-id "$BUILD_WORKFLOW_ID" --package-run-id "$GITHUB_RUN_ID" --coordinator-run-id "$COORDINATOR_RUN_ID"
+          else
+            python3 tools/releases/publish.py --tag "$RELEASE_TAG" --directory build/publish
+          fi
+      - name: Retain final publication evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/publish/publication.json
+          if-no-files-found: warn
+          retention-days: 90

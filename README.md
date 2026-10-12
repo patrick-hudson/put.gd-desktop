@@ -16,6 +16,9 @@ Linux prerelease packaging produces distro-specific DEBs, a Fedora RPM and an
 AppImage as individual GitHub release downloads, alongside a curated buildable
 source tarball, a combined ZIP, compiled source identities, dependency inventories
 and checksums.
+`main` is the stable source branch; `nightly` is the development integration
+branch. Changed nightly commits publish tagged, build-tested GitHub prereleases.
+The daily catch-up skips source already published successfully.
 See [release instructions](docs/release.md) and [versioning](docs/versioning.md).
 Flatpak's host capture integration is tracked separately in
 [issue #14](https://github.com/patrick-hudson/put.gd-desktop/issues/14).

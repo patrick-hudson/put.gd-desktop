@@ -47,7 +47,11 @@ retain binary/archive SHA-256 values for experiments as before.
 
 A release build requires the explicit CMake option `PUTGD_RELEASE_TAG`. Supported
 tags are `vMAJOR.MINOR.PATCH` for stable releases and
-`vMAJOR.MINOR.PATCH-rc.N` for release candidates. Components have no leading zeros;
+`vMAJOR.MINOR.PATCH-rc.N` for release candidates, and
+`vMAJOR.MINOR.PATCH-dev.COUNT.UTC+gSHORT` for tagged nightlies. Nightly `COUNT`,
+14-digit source committer UTC and 12-character hash must match the clean full-history
+checkout. UTC is formatted `YYYYMMDDHHMMSS`; it does not come from a run clock.
+The ordinary untagged development identity remains unchanged. Components have no leading zeros;
 `N` is positive. The tag's base must match `project(... VERSION ...)`, the working
 tree must be clean, and that exact tag must resolve to the checked-out commit.
 Both annotated and lightweight tags work. A missing tag, another commit's tag,
@@ -106,7 +110,12 @@ dpkg-deb --field build/release/putgd_*.deb Version
 
 Debian and RPM use `0.1.1~dev.123+g0123456789ab`, with the same optional `.dirty`
 suffix. Tagged candidates map to `0.1.1~rc.1`; stable releases map to `0.1.1`.
-RPM uses package release `1`. The tilde places development packages and release
+Tagged nightlies map to `0.1.1~dev.COUNT.UTC+gSHORT`; the source commit count
+orders successive append-only development commits, with the hash retained as identity.
+Actual Debian and RPM comparisons cover dev, successive nightly, RC and stable ordering.
+A same-base stable-to-nightly switch is an explicit package downgrade; bump the next
+development base deliberately after a stable release. No updater or automatic downgrade
+policy is implemented here. RPM uses package release `1`. The tilde places development packages and release
 candidates before final `0.1.1`, and numeric candidate components order
 `rc.2` before `rc.10`; the count orders
 ordinary successive commits in a full-history lineage. SemVer's `+g...` metadata

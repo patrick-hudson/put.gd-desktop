@@ -132,6 +132,29 @@ class Bundle(unittest.TestCase):
                 self.build()
         self.assertFalse(self.output.exists())
 
+    def test_nightly_positive_inventory_and_channel(self):
+        version = '0.1.1-dev.42.20261012184001+g0123456789ab'
+        names = [name.replace(VERSION, version) for name in self.names]
+        for old, new in zip(self.names, names):
+            (self.first / new).write_bytes((self.first / old).read_bytes())
+        (self.first / 'release-builds.json').write_text(json.dumps({'release': {'version': version}}))
+        output = self.first / ('putgd-' + version + '-release.zip')
+        receipt = release_bundle.create_release_bundle(self.first, output, version, EPOCH, names)
+        self.assertEqual(release_bundle.expected_members(version), names)
+        self.assertEqual(receipt['channel'], 'nightly')
+        with zipfile.ZipFile(output) as archive:
+            self.assertEqual(archive.namelist(), sorted(names + ['SHA256SUMS']))
+            self.assertNotIn('credentials.txt', archive.namelist())
+
+    def test_unrelated_or_malformed_versions_rejected(self):
+        for version in ['0.1.1-dev.42+g0123456789ab', '0.1.1-beta.1',
+                        '0.1.1-dev.042.20261012184001+g0123456789ab',
+                        '0.1.1-dev.42.20260230184001+g0123456789ab',
+                        '0.1.1-dev.42.20261012184001+g0123456789AB',
+                        '../0.1.1', '0.1.1/other', '0.1.1-rc.01']:
+            with self.subTest(version=version), self.assertRaises(ValueError):
+                release_bundle.expected_members(version)
+
     def test_gnome_zip_deterministic_from_explicit_three_files(self):
         source = self.root / 'source'; extension = source / 'integrations/gnome'; extension.mkdir(parents=True)
         for p, data in [(extension/'extension.js', b'// synthetic extension'),

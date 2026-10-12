@@ -5,6 +5,84 @@ and native packaging tools. The application is MIT licensed. The first public
 track is a prerelease. Flatpak is separate work in GitHub issue #14; its selected
 host capture companion must preserve the current hotkey workflow.
 
+## Stable and nightly channels
+
+`main` is the stable source branch. `nightly` is the development integration
+branch; ordinary feature PRs can target it, followed by an explicit promotion PR
+into `main`. Promotion is never automatic. Keep both histories append-only and
+fast-forward normal branch updates; do not force-push or move published tags.
+
+| Channel | Tag | Publication |
+| --- | --- | --- |
+| Stable | `vBASE` | deliberate publication after exact-package acceptance |
+| Candidate | `vBASE-rc.N` | prerelease after exact-package acceptance |
+| Nightly | `vBASE-dev.COUNT.UTC+gSHORT` | automated, build-tested prerelease |
+
+`UTC` is the source commit's 14-digit UTC committer time, not the runner clock.
+`COUNT` is its full-history commit count; `SHORT` is its first 12 lowercase hash
+characters. The tag, base, full commit, tree and count must match the clean source.
+Nightlies never replace GitHub's Latest stable release. They retain all nine
+individual downloads listed below, including both raw DEBs, RPM and the exact
+compiled curated source archive.
+
+`.github/workflows/nightly.yml` checks pushes to `nightly` and has a daily
+05:23 UTC catch-up schedule on default `main`. GitHub can delay scheduled work;
+this is not a delivery-time guarantee. The schedule skips an unchanged source
+only after verifying its existing public nightly, source identity, complete
+asset inventory and checksums. A tag, draft or failed run alone is not success.
+
+The coordinator saves a preparation receipt before fan-out and pins its source
+on retries. It dispatches `release.yml` on that immutable tag so the packaging
+workflow definition comes from the same source as its code. Token-created tag
+pushes do not start another workflow. CI and package builders run concurrently;
+publication waits for the verified exact-source producers and all package audits.
+Existing successful CI is reused. Coordinated builds omit only the two generic
+Linux production compiles already covered by native package builds. These rules
+are shared by `main` and `nightly`, including coordinated candidate/stable runs.
+
+Nightly notes state automated coverage: Linux test suites, portable compilation,
+package audits and the extracted-source production build. They are development
+releases, not new graphical, memory or live-S3 certification. Stable/candidate
+publication retains the exact-package acceptance gate below.
+
+### Bootstrap and manual recovery
+
+Activate the branch only after these compatible workflows have merged into
+`main`. If `nightly` already exists, inspect its history and use an ordinary
+reviewed merge; do not reset it. For the first branch, resolve and retain the
+actual merged main SHA, then create the reference and run the coordinator:
+
+```sh
+release_main_sha=$(gh api repos/patrick-hudson/put.gd-desktop/git/ref/heads/main --jq .object.sha)
+gh api --method POST repos/patrick-hudson/put.gd-desktop/git/refs -f ref=refs/heads/nightly -f "sha=$release_main_sha"
+gh workflow run nightly.yml --ref main --repo patrick-hudson/put.gd-desktop
+```
+
+The manual route uses the same preparation path as the schedule. Check existing
+coordinator runs first to avoid a redundant manual dispatch. Retain the
+coordinator run ID, `nightly-preparation-RUN_ID`, orchestration receipt and the
+separate package run ID. Coordinator IDs trace the caller; independently verified
+Build and package IDs establish the publication gates. The coordinator proves dispatch or unchanged-source
+skip; the package run and verified public release prove publication.
+
+Use GitHub's rerun controls on the original failed run. A retry must recover its
+original preparation; a missing or contradictory receipt stops it rather than
+selecting a newer branch. Only marked nightly-publication runs are eligible package handoffs; manual
+package-only runs are excluded. Reuse preserves the original coordinator and run
+IDs. Failed runs, or completed runs without a verified public nightly, report
+the original run ID for recovery. Rerun cancelled required CI before retrying
+the original package workflow. Partial publication requires the original
+audited artifacts: matching uploaded bytes are retained and only missing files
+are uploaded. Missing handoffs or conflicting rebuilt bytes block recovery;
+never replace public assets or allocate a new tag for the unchanged source.
+Preparation/orchestration and final publication receipts are retained for 90 days; package handoffs
+for 30 days. Durable public `release-builds.json`, checksums and release notes
+remain the source of truth after Actions artifacts expire.
+
+Record the first observed manual publication and unchanged-source skip separately
+from the first real scheduled event. A manual run does not prove the scheduler
+has fired. [CI coverage](ci.md) describes retained checks and evidence.
+
 ## Formats and build environments
 
 | Asset | Builder | Qt distribution |
@@ -109,7 +187,8 @@ The release collector requires three native assets and the AppImage from one
 clean tagged commit/tree/count/version. It recalculates each artifact SHA256
 against its build receipt and assigns distro-specific filenames so the two
 DEBs cannot overwrite each other. Full receipts and SHA256SUMS accompany the
-packages. Only the final staging job has contents-write permission.
+packages. Package builders retain read-only permissions. The nightly coordinator creates
+immutable tags and dispatches workflows; only the publisher uploads release assets.
 
 A successful exact-commit Build workflow is required before staging a GitHub
 draft. Tags alone do not prove current compilation or package acceptance. Draft
@@ -118,7 +197,9 @@ A rerun can resume a partial draft: existing uploaded bytes must match exactly,
 and only missing assets are uploaded. Incomplete/conflicting assets or an
 already published release are rejected for inspection; existing assets are
 never silently replaced.
-Public publication is the last step after actual package-specific acceptance.
+For stable and candidate releases, public publication is the last step after
+actual package-specific acceptance. Nightlies use the explicit automated class
+described above; `--nightly` cannot publish stable or candidate tags.
 The publisher downloads the exact draft assets, checks every accepted checksum
 and the checksum file, and rejects missing/extra assets, a different remote tag,
 or assets changed during verification. GitHub does not offer an atomic lock
