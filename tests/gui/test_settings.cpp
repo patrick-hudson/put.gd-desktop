@@ -326,6 +326,17 @@ private slots:
   editor.setStatus({{"available",false},{"bindings",QJsonObject{}}});for(auto action:QStringList{"Region","Window","Desktop","Clipboard"})QVERIFY(status(action)->text().contains("Unavailable"));QCOMPARE(editor.actions({}),draft);
  }
 
+ void shortcutLayoutErrorsDoNotCallValidDraftInvalid() {
+  ShortcutEditor editor;editor.setActions(Settings::defaults()["actions"].toObject());const auto draft=editor.actions({});
+  for(const auto& code:QStringList{"shortcut_unsupported","shortcut_unmapped","shortcut_ambiguous","shortcut_unavailable"}){
+   const auto state=code=="shortcut_ambiguous"?QString("shortcut_unmapped"):code;
+   const QJsonObject diagnostics{{"available",true},{"bindings",QJsonObject{{"region",QJsonObject{{"requested","Ctrl+Shift+1"},{"bound",false},{"state",state},{"error",code}}}}}};
+   editor.setStatus(diagnostics);auto* label=editor.findChild<QLabel*>("shortcutRegionStatus");QVERIFY(label);QVERIFY(!label->text().contains("Invalid shortcut"));QVERIFY(!label->text().contains("Enter a single"));QVERIFY(!label->text().contains("Try one key"));
+   QVERIFY(label->text().contains(code=="shortcut_unsupported"?"Unsupported":"Unavailable"));QCOMPARE(editor.actions({}),draft);
+   auto* details=editor.findChild<QPlainTextEdit*>("shortcutDetails");QVERIFY(details);QCOMPARE(QJsonDocument::fromJson(details->toPlainText().toUtf8()).object(),diagnostics);
+  }
+ }
+
  void sectionsAreKeyboardReachableAndFooterStaysInsideCompactWindow() {
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
   window.resize(1000,700);window.show();QTest::qWait(20);

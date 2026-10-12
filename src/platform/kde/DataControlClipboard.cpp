@@ -1,4 +1,6 @@
 #include "DataControlClipboard.h"
+#include "KdeKeyboardMap.h"
+#include <xkbcommon/xkbcommon.h>
 #include "KWinTransfer.h"
 #include "KdeClipboardFormats.h"
 #include "core/ImageFormat.h"
@@ -43,7 +45,7 @@ public:
 };
 }
 struct DataControlClipboard::Impl:QObject {
- DataControlClipboard& q;wl_display* display=nullptr;wl_callback* initialSync=nullptr;wl_registry* registry=nullptr;wl_seat* seat=nullptr;ext_data_control_manager_v1* manager=nullptr;ext_data_control_device_v1* device=nullptr;
+ DataControlClipboard& q;wl_display* display=nullptr;wl_callback* initialSync=nullptr;wl_registry* registry=nullptr;wl_seat* seat=nullptr;wl_keyboard* keyboard=nullptr;xkb_keymap* keyboardMap=nullptr;ext_data_control_manager_v1* manager=nullptr;ext_data_control_device_v1* device=nullptr;
  uint32_t managerName=0,seatName=0;QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect,copyTimer;bool closing=false,dispatching=false,lossPending=false,selectionReady=false;quint64 revision=0,generation=0;
  QString error="Native Wayland data control has not connected";QHash<ext_data_control_offer_v1*,QStringList> offers;ext_data_control_offer_v1* selection=nullptr;
  struct Source {Impl* owner;ext_data_control_source_v1* native;QHash<QString,QByteArray> data;QString token;};QHash<ext_data_control_source_v1*,Source*> sources;
@@ -71,19 +73,49 @@ struct DataControlClipboard::Impl:QObject {
  void reset(){
   if(readNotifier){readNotifier->setEnabled(false);delete readNotifier;readNotifier=nullptr;}if(writeNotifier){writeNotifier->setEnabled(false);delete writeNotifier;writeNotifier=nullptr;}
   selectionReady=false;selection=nullptr;for(auto* offer:offers.keys())ext_data_control_offer_v1_destroy(offer);offers.clear();for(auto* source:sources){ext_data_control_source_v1_destroy(source->native);delete source;}sources.clear();
-  if(initialSync){wl_callback_destroy(initialSync);initialSync=nullptr;}if(device){ext_data_control_device_v1_destroy(device);device=nullptr;}if(manager){ext_data_control_manager_v1_destroy(manager);manager=nullptr;}if(seat){wl_seat_destroy(seat);seat=nullptr;}if(registry){wl_registry_destroy(registry);registry=nullptr;}if(display){wl_display_disconnect(display);display=nullptr;}managerName=seatName=0;
+  if(initialSync){wl_callback_destroy(initialSync);initialSync=nullptr;}if(device){ext_data_control_device_v1_destroy(device);device=nullptr;}if(manager){ext_data_control_manager_v1_destroy(manager);manager=nullptr;}clearKeyboard();if(seat){if(wl_seat_get_version(seat)>=WL_SEAT_RELEASE_SINCE_VERSION)wl_seat_release(seat);else wl_seat_destroy(seat);seat=nullptr;}if(registry){wl_registry_destroy(registry);registry=nullptr;}if(display){wl_display_disconnect(display);display=nullptr;}managerName=seatName=0;
  }
  void lost(){if(dispatching){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}selectionReady=false;error="Wayland data-control connection closed; restart the app if the Qt session also disconnected";++revision;cancel();finishCopy({"clipboard_unavailable",error,{}});reset();notify();}
  void makeDevice(){if(device||!manager||!seat)return;device=ext_data_control_manager_v1_get_data_device(manager,seat);
   static const ext_data_control_device_v1_listener listener={offer,selected,finished,primary};ext_data_control_device_v1_add_listener(device,&listener,this);error.clear();notify();flush();
  }
+ void clearKeyboard(){
+  if(keyboard){if(wl_keyboard_get_version(keyboard)>=WL_KEYBOARD_RELEASE_SINCE_VERSION)wl_keyboard_release(keyboard);else wl_keyboard_destroy(keyboard);keyboard=nullptr;}
+  if(keyboardMap){xkb_keymap_unref(keyboardMap);keyboardMap=nullptr;}
+  if(!closing)emit q.keyboardChanged();
+ }
+ static void seatCapabilities(void* data,wl_seat* seat,uint32_t capabilities){
+  auto* self=static_cast<Impl*>(data);
+  if(!(capabilities&WL_SEAT_CAPABILITY_KEYBOARD)){self->clearKeyboard();return;}
+  if(self->keyboard)return;
+  self->keyboard=wl_seat_get_keyboard(seat);
+  static const wl_keyboard_listener listener={
+   [](void* data,wl_keyboard*,uint32_t format,int fd,uint32_t size){
+    auto* self=static_cast<Impl*>(data);
+    // Each map owns its context. Reusing a context would retain interned
+    // names from every prior map even after those maps were released.
+    auto* context=xkb_context_new(xkb_context_flags(XKB_CONTEXT_NO_ENVIRONMENT_NAMES|XKB_CONTEXT_NO_DEFAULT_INCLUDES));
+    if(context)xkb_context_set_log_fn(context,[](xkb_context*,xkb_log_level,const char*,va_list){});
+    auto* next=readKdeKeyboardMap(context,format,fd,size);
+    if(context)xkb_context_unref(context);
+    if(self->keyboardMap)xkb_keymap_unref(self->keyboardMap);
+    self->keyboardMap=next;emit self->q.keyboardChanged();
+   },
+   [](void*,wl_keyboard*,uint32_t,wl_surface*,wl_array*){},
+   [](void*,wl_keyboard*,uint32_t,wl_surface*){},
+   [](void*,wl_keyboard*,uint32_t,uint32_t,uint32_t,uint32_t){},
+   [](void*,wl_keyboard*,uint32_t,uint32_t,uint32_t,uint32_t,uint32_t){},
+   [](void*,wl_keyboard*,int32_t,int32_t){}
+  };
+  wl_keyboard_add_listener(self->keyboard,&listener,self);self->flush();
+ }
  static void global(void* data,wl_registry* r,uint32_t name,const char* iface,uint32_t version){auto* s=static_cast<Impl*>(data);if(QByteArray(iface)==ext_data_control_manager_v1_interface.name&&!s->manager){s->manager=static_cast<ext_data_control_manager_v1*>(wl_registry_bind(r,name,&ext_data_control_manager_v1_interface,1));s->managerName=name;}
-  else if(QByteArray(iface)==wl_seat_interface.name&&!s->seat){s->seat=static_cast<wl_seat*>(wl_registry_bind(r,name,&wl_seat_interface,std::min(uint32_t(2),version)));s->seatName=name;static const wl_seat_listener seatListener={[](void*,wl_seat*,uint32_t){},[](void*,wl_seat*,const char*){}};wl_seat_add_listener(s->seat,&seatListener,s);}
+  else if(QByteArray(iface)==wl_seat_interface.name&&!s->seat){s->seat=static_cast<wl_seat*>(wl_registry_bind(r,name,&wl_seat_interface,std::min(uint32_t(5),version)));s->seatName=name;static const wl_seat_listener seatListener={seatCapabilities,[](void*,wl_seat*,const char*){}};wl_seat_add_listener(s->seat,&seatListener,s);}
   s->makeDevice();
  }
  static void removed(void* data,wl_registry*,uint32_t name){auto* s=static_cast<Impl*>(data);if(name!=s->managerName&&name!=s->seatName)return;s->selectionReady=false;s->error="Data-control manager or seat was removed";++s->revision;s->cancel();s->finishCopy({"clipboard_unavailable",s->error,{}});
   if(s->device){ext_data_control_device_v1_destroy(s->device);s->device=nullptr;}s->selection=nullptr;for(auto* offer:s->offers.keys())ext_data_control_offer_v1_destroy(offer);s->offers.clear();
-  if(name==s->managerName){ext_data_control_manager_v1_destroy(s->manager);s->manager=nullptr;s->managerName=0;}if(name==s->seatName){wl_seat_destroy(s->seat);s->seat=nullptr;s->seatName=0;}s->notify();
+  if(name==s->managerName){ext_data_control_manager_v1_destroy(s->manager);s->manager=nullptr;s->managerName=0;}if(name==s->seatName){s->clearKeyboard();if(wl_seat_get_version(s->seat)>=WL_SEAT_RELEASE_SINCE_VERSION)wl_seat_release(s->seat);else wl_seat_destroy(s->seat);s->seat=nullptr;s->seatName=0;}s->notify();
  }
  static void offer(void* data,ext_data_control_device_v1*,ext_data_control_offer_v1* o){auto* s=static_cast<Impl*>(data);s->offers.insert(o,{});static const ext_data_control_offer_v1_listener listener={[](void* data,ext_data_control_offer_v1* offer,const char* mime){auto* s=static_cast<Impl*>(data);auto& types=s->offers[offer];if(types.size()<1024&&qstrlen(mime)<4096)types.append(QString::fromUtf8(mime));}};ext_data_control_offer_v1_add_listener(o,&listener,s);}
  static void selected(void* data,ext_data_control_device_v1*,ext_data_control_offer_v1* o){auto* s=static_cast<Impl*>(data);auto* prior=s->selection;const bool initial=!s->selectionReady;s->selectionReady=true;s->selection=o;s->error.clear();++s->revision;if(initial)s->notify();if(prior&&prior!=o){s->offers.remove(prior);ext_data_control_offer_v1_destroy(prior);}
@@ -172,6 +204,7 @@ struct DataControlClipboard::Impl:QObject {
 };
 DataControlClipboard::DataControlClipboard(QObject* parent):QObject(parent),d_(std::make_unique<Impl>(*this)){}
 DataControlClipboard::~DataControlClipboard()=default;
+xkb_keymap* DataControlClipboard::keyboardMap()const{return d_->keyboardMap;}
 bool DataControlClipboard::available()const{return d_->available();}
 quint64 DataControlClipboard::revision()const{d_->events();return d_->revision;}
 QJsonObject DataControlClipboard::status()const{return {{"available",available()},{"types",QJsonArray{"files","image","text"}},{"import","ext-data-control-v1"},{"result","ext-data-control-v1-clipboard-only"},{"protocol_version",d_->manager?1:0},{"error",d_->error}};}

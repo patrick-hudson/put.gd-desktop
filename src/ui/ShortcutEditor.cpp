@@ -34,7 +34,7 @@ BindingPresentation bindingPresentation(const QJsonObject& status,const QJsonObj
  if(state=="shortcut_invalid"||error=="shortcut_invalid")
   return {"Invalid shortcut  ·  Enter a single key combination.","error"};
  if(state=="shortcut_unsupported"||error=="shortcut_unsupported")
-  return {"Unsupported shortcut  ·  Try one key with modifiers.","warning"};
+  return {"Unsupported shortcut  ·  Your desktop cannot use this key combination.","warning"};
  if(state=="shortcut_unmapped"||error=="shortcut_unmapped")
   return {"Unavailable  ·  Your desktop cannot map this key combination.","warning"};
  if(state=="shortcut_unavailable"||error=="shortcut_unavailable"||error=="helper_unavailable")

@@ -72,3 +72,64 @@ Activity records accepted operations only. If desktop notification support is
 unavailable, a native admission error remains in the application log; the tray
 menu retains its existing Activity fallback without a rejected-operation row.
 This delivery limitation is distinct from a shortcut registration failure.
+
+## KDE shifted keys and keyboard layouts
+
+KGlobalAccel reporting a bound shortcut is insufficient proof of native delivery.
+The KDE test at version 100 exposed an older registration defect: the configured
+`Ctrl+Shift+1` was sent as a literal Qt key combination, while the same physical
+press on the guest's US layout reached KWin as `Ctrl+!`. An explicit `Ctrl+!`
+registration delivered that press; plain `Ctrl+1` also delivered. The failed
+native default-key attempt remains a failure, separate from these diagnostic
+controls. Earlier KDE evidence using F9–F12 did not qualify the default chords.
+
+For printable ASCII number and punctuation keys with explicit Shift, registration derives the
+effective symbol and consumed Shift from the compositor-provided XKB map and
+current KDE layout. Unshifted symbols (including AltGr-produced ones), letters, special keys and
+keypad/group-switch chords retain their existing
+literal wire translation, including Qt/KWin handling of Latin shortcuts in non-Latin layouts.
+This change does not recreate Qt's private key-conversion implementation. Settings retain the original
+requested text. Diagnostics expose the effective sequence separately. The
+existing private Wayland connection subscribes to its seat's keyboard map;
+no graphical application, surface or clipboard ownership change is needed.
+An incoming map is limited to 1 MiB, read from a checked regular descriptor and
+compiled once; its text buffer is released immediately. Each replacement gets
+a fresh compilation context, released with the map, so interned names from old
+keyboard maps cannot accumulate in a long-lived shared context. Every incoming descriptor
+is closed on success or failure. The resident retains one compiled map, shared
+by reference with shortcut registration, without a per-key cache.
+
+A client without keyboard focus cannot depend on Wayland modifier events for
+its current global layout. Registration queries `org.kde.keyboard` at `/Layouts`
+using `org.kde.KeyboardLayouts.getLayout` for multi-group maps. A map with one
+group determines group zero directly, regardless of its language or layout-service
+availability. Valid layout-change signals recompute immediately; unchanged effective
+registrations remain live. Unknown multi-group state leaves bindings unavailable.
+Failed discovery retries use capped backoff without repeated teardown or diagnostics
+refresh. Async generation checks reject stale query and registration replies.
+A returned or externally changed sequence must match the effective request before
+it can be reported as bound.
+
+The `kde_shortcut_normalization` unit suite checks symbols and consumed modifiers
+across synthetic US/French layouts and Latin-1 shifted symbols such as £, § and ·. `kde_keyboard_map` checks malformed, truncated,
+unsupported and oversized maps and descriptor cleanup. `kde_shortcuts_integration`
+uses a disposable D-Bus fixture to check registration, layout changes, conflicts
+and lifecycle races, including a layout change while the initial event-subscription
+lookup is pending. Normalization failures retain specific status/error codes rather
+than being mislabeled as syntax errors; the GUI preserves the saved draft and exact
+diagnostics. These are protocol/unit checks, not Plasma acceptance.
+
+For native acceptance, preserve the recorded source revision and executable hash;
+start with the unmodified default four shortcuts and invoke each with actual keys.
+Check exactly one delivery, then edit region to `Ctrl+1` and `Ctrl+Alt+1`, verifying
+old-chord removal and unchanged actions. Check the requested and effective fields
+separately. Repeat a controlled layout switch while the app is unfocused, restoring
+the prior layout afterward. Capture and clipboard cases retain their full-pixel
+and paste oracles. Only after functional checks pass, run the unchanged serial
+whole-process-family memory sampler. Keep all failed attempts and diagnostic
+controls labeled separately. Do not substitute function keys for failed defaults.
+
+Implementation references: the public [Wayland keyboard keymap protocol](https://wayland.freedesktop.org/docs/html/apa.html#protocol-spec-wl_keyboard),
+[libxkbcommon consumed-modifier API](https://xkbcommon.org/doc/current/group__state.html),
+and KDE's [keyboard layout D-Bus interface](https://github.com/KDE/kwin/blob/v6.6.6/src/keyboard_layout.h)
+and [shortcut event processing](https://github.com/KDE/kwin/blob/v6.6.6/src/xkb.cpp).

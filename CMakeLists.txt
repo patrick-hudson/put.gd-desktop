@@ -132,6 +132,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(putgd_gnome STATIC src/platform/gnome/GnomeProtocol.cpp src/platform/gnome/GnomeAdapter.cpp)
   target_link_libraries(putgd_gnome PUBLIC putgd_app Qt6::DBus)
   pkg_check_modules(PUTGD_WAYLAND REQUIRED IMPORTED_TARGET wayland-client)
+  pkg_check_modules(PUTGD_XKBCOMMON REQUIRED IMPORTED_TARGET xkbcommon>=1.0.0)
   find_program(PUTGD_WAYLAND_SCANNER wayland-scanner REQUIRED)
   set(data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml")
   set(protocol_dir "${CMAKE_CURRENT_BINARY_DIR}/wayland-protocols")
@@ -157,12 +158,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_libraries(putgd_kde_region_process PUBLIC putgd_app putgd_capture_control putgd_build_identity)
   find_package(Threads REQUIRED)
   add_library(putgd_kde STATIC src/platform/kde/KWinTransfer.cpp src/platform/kde/KWinCapture.cpp
-    src/platform/kde/KdeShortcuts.cpp src/platform/kde/DataControlClipboard.cpp
+    src/platform/kde/KdeShortcuts.cpp src/platform/kde/KdeShortcutNormalization.cpp
+    src/platform/kde/KdeKeyboardMap.cpp src/platform/kde/DataControlClipboard.cpp
     src/platform/kde/KdeRegionOverlay.cpp src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KdeOutputs.cpp
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
   target_include_directories(putgd_kde PRIVATE "${protocol_dir}")
-  target_link_libraries(putgd_kde PUBLIC putgd_app putgd_kde_region_process Qt6::Widgets Qt6::DBus PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
+  target_link_libraries(putgd_kde PUBLIC putgd_app putgd_kde_region_process Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
   if(Qt6_VERSION VERSION_GREATER_EQUAL "6.5")
     find_package(LayerShellQt QUIET CONFIG)
     if(TARGET LayerShellQt::Interface)
@@ -291,6 +293,15 @@ if(BUILD_TESTING)
     -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/cmake/version_contract.cmake")
   set_tests_properties(version_contract PROPERTIES TIMEOUT 90)
   if(TARGET putgd_kde)
+    add_executable(test_kde_shortcut_normalization tests/unit/test_kde_shortcut_normalization.cpp)
+    target_link_libraries(test_kde_shortcut_normalization PRIVATE putgd_kde Qt6::Test)
+    add_test(NAME kde_shortcut_normalization COMMAND test_kde_shortcut_normalization)
+    add_executable(test_kde_shortcuts tests/integration/test_kde_shortcuts.cpp)
+    target_link_libraries(test_kde_shortcuts PRIVATE putgd_kde Qt6::Test)
+    add_test(NAME kde_shortcuts_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kde_shortcuts>)
+    add_executable(test_kde_keyboard_map tests/unit/test_kde_keyboard_map.cpp)
+    target_link_libraries(test_kde_keyboard_map PRIVATE putgd_kde Qt6::Test)
+    add_test(NAME kde_keyboard_map COMMAND test_kde_keyboard_map)
     pkg_check_modules(PUTGD_WAYLAND_TEST_SERVER REQUIRED IMPORTED_TARGET wayland-server)
     add_custom_command(OUTPUT "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
       COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
