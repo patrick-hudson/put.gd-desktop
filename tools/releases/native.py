@@ -95,10 +95,11 @@ def main():
         extracted = output / "extracted"
         extract_package(package, args.format, extracted)
         result = audit_tree(extracted, expected, require_kde=args.require_kde)
-        result["package"] = {**metadata, "file": package.name, "sha256": sha256(package), "size": package.stat().st_size}
+        package_digest = sha256(package)
+        result["package"] = {**metadata, "file": package.name, "sha256": package_digest, "size": package.stat().st_size}
         (output / "native-audit.json").write_text(json.dumps(result, indent=2) + "\n")
         shutil.copy2(build / "build-identity/build-info.json", output / "build-info.json")
-        (output / "SHA256SUMS").write_text(sha256(package) + "  " + package.name + "\n")
+        (output / "SHA256SUMS").write_text(package_digest + "  " + package.name + "\n")
         print(json.dumps({"package": str(package), "audit": str(output / "native-audit.json")}))
     finally:
         os.umask(previous_umask)

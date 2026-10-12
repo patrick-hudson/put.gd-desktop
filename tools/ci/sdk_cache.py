@@ -15,7 +15,7 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def fingerprint(root):
+def fingerprint(root, contracts=()):
     commands = [['cmake', '--version']]
     if platform.system() == 'Windows':
         commands.append(['cl'])
@@ -38,6 +38,7 @@ def fingerprint(root):
         observations.append({'command': command, 'output': result.stdout + result.stderr})
     inputs = ['cmake/dependency-lock.json', '.github/workflows/build.yml',
               'tools/ci/sdk_cache.py']
+    inputs.extend(contracts)
     value = {
         'schemaVersion': 1, 'system': platform.system(), 'machine': platform.machine(),
         'workspace': str(root.resolve()),
@@ -87,9 +88,10 @@ def main():
     parser.add_argument('--prefix', type=Path, default=Path('build/sdk'))
     parser.add_argument('--manifest', type=Path, default=Path('build/sdk-cache.json'))
     parser.add_argument('--key')
+    parser.add_argument('--contract', action='append', default=[], help='Additional repository build recipe/lock used by this dependency prefix')
     args = parser.parse_args()
     if args.action == 'key':
-        key, value = fingerprint(args.root)
+        key, value = fingerprint(args.root, args.contract)
         output = args.root / 'build/ci-sdk-environment.json'
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(dict(value, key=key), indent=2) + '\n')

@@ -1,0 +1,59 @@
+#!/bin/sh
+# AppImage supplies APPDIR and APPIMAGE. Do not replace the user's settings paths.
+set -eu
+appdir=${APPDIR:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+host_library_path=${LD_LIBRARY_PATH-}
+host_plugin_path=${QT_PLUGIN_PATH-}
+host_cache() {
+    LD_LIBRARY_PATH="$host_library_path" QT_PLUGIN_PATH="$host_plugin_path" \
+        kbuildsycoca6 --noincremental >/dev/null 2>&1
+}
+export LD_LIBRARY_PATH="$appdir/usr/lib:$appdir/usr/lib/putgd${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QT_PLUGIN_PATH="$appdir/usr/plugins:$appdir/usr/lib/qt6/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
+# Identity queries are headless; they need no host desktop registration.
+if [ "$#" -eq 1 ]; then
+    case $1 in
+        --version|--version-json|-v) exec "$appdir/usr/bin/putgd-launcher" "$@" ;;
+    esac
+fi
+permission_entry=
+child=
+cleanup() {
+    if [ -n "$permission_entry" ]; then
+        rm -f -- "$permission_entry"
+        host_cache || :
+    fi
+}
+trap cleanup EXIT
+# KWin authorizes the *resident executable*, not the outer AppImage launcher.
+# Register only the current mount; never overwrite an existing desktop entry.
+case ${XDG_CURRENT_DESKTOP:-} in
+    *KDE*|*Plasma*)
+        if ! command -v kbuildsycoca6 >/dev/null 2>&1; then
+            printf '%s\n' 'put.gd requires kbuildsycoca6 for native KDE capture.' >&2
+            exit 1
+        fi
+        applications=${XDG_DATA_HOME:-"$HOME/.local/share"}/applications
+        mkdir -p -- "$applications"
+        permission_entry=$(umask 077; mktemp "$applications/putgd-appimage-XXXXXXXX.desktop")
+        escaped=$(printf '%s' "$appdir/usr/bin/putgd" | sed 's/[\\"$`]/\\&/g; s/%/%%/g')
+        printf '[Desktop Entry]\nType=Application\nName=put.gd AppImage capture\nExec="%s"\nIcon=putgd\nNoDisplay=true\nX-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2\n' "$escaped" >"$permission_entry"
+        if ! host_cache; then
+            printf '%s\n' 'put.gd could not register native KDE capture permission.' >&2
+            exit 1
+        fi
+        ;;
+esac
+# No host permission entry is needed on Cinnamon/GNOME; avoid a supervisor.
+if [ -z "$permission_entry" ]; then
+    exec "$appdir/usr/bin/putgd-launcher" "$@"
+fi
+# Waiting keeps the mount and its permission entry alive; forward termination
+# to this exact child, then remove only the entry created by this launch.
+"$appdir/usr/bin/putgd-launcher" "$@" &
+child=$!
+trap 'kill -TERM "$child" 2>/dev/null || :; wait "$child" || :; exit 143' TERM HUP
+trap 'kill -TERM "$child" 2>/dev/null || :; wait "$child" || :; exit 130' INT
+status=0
+wait "$child" || status=$?
+exit "$status"

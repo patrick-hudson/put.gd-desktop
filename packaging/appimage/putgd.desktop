@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=put.gd
+Comment=Capture and share screen regions and clipboard content
+Exec=putgd-launcher
+Icon=putgd
+Terminal=false
+Categories=Utility;Graphics;
+StartupNotify=true

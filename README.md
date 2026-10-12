@@ -1,18 +1,29 @@
 # put.gd desktop
 
-A Qt/C++ desktop sharing app being built for Linux. The planned workflow captures a
-region, focused window, or full desktop, or uploads clipboard files/images/text to S3
-and copies a public link. Settings, local archives, upload history, remote deletion,
-CLI, and MCP use shared services. Additional storage providers fit the same contract.
+A Qt/C++ sharing app for Linux: capture a region, active window or desktop, or
+upload clipboard files, images and text. Configurable global hotkeys upload to
+S3 and copy the public URL. Settings, local archives, naming rules, upload history,
+remote deletion, CLI and optional MCP use shared services. The storage interface
+supports adding other providers.
 
-Implementation is in progress. The shared operation journal, JSON settings, local
-archives, indexed history, private previews, and resident JSON CLI are implemented
-and tested with synthetic sources/providers. The native X11 adapter, official AWS S3
-provider, settings/activity/history GUI, optional stdio MCP helper, and disposable
-QEMU lab/development package are implemented. Cinnamon/X11 still needs real graphical
-acceptance; GNOME Wayland and Plasma Wayland integrations are the next implementation units.
+The Linux implementation includes Cinnamon/X11, GNOME Shell 50 and KDE Plasma
+Wayland integrations. Recorded source114 live-S3 acceptance covers all three
+with exact remote cleanup and quiet resident-family memory below 40 MiB.
+[Verification](docs/verification.md) distinguishes that evidence from remaining
+full release/lifecycle scenarios and from new package-format acceptance.
 
-See [build instructions](docs/build.md) and [implementation issue](https://github.com/patrick-hudson/put.gd-desktop/issues/1).
+Linux prerelease packaging produces distro-specific DEBs, a Fedora RPM and an
+AppImage with compiled source identities, dependency inventories and checksums.
+See [release instructions](docs/release.md) and [versioning](docs/versioning.md).
+Flatpak's host capture integration is tracked separately in
+[issue #14](https://github.com/patrick-hudson/put.gd-desktop/issues/14).
+
+Build with C++20, Qt 6, CMake presets, Ninja and the pinned official AWS C++ SDK.
+Start with [build instructions](docs/build.md) and the
+[implementation contract](https://github.com/patrick-hudson/put.gd-desktop/issues/1).
 The [CLI](docs/cli.md), [configuration](docs/configuration.md),
-[shared architecture](docs/architecture.md), and [verification record](docs/verification.md)
-describe the current interfaces and observed checks.
+[architecture](docs/architecture.md), [agent guide](docs/agents.md), and
+[CI coverage](docs/ci.md) describe the interfaces and reproducible checks.
+
+The application is [MIT licensed](LICENSE); bundled dependencies retain their
+own licenses and notices.

@@ -14,9 +14,21 @@ Error LoginStartup::apply(const QString& root,const QString& executable,bool ena
   existing.close();
  }
  if(!enabled)return existing.exists()&&!existing.remove()?Error{"autostart_io","Cannot remove login startup entry",{}}:Error{};
- if(!QFileInfo(executable).isAbsolute()||executable.contains('\n')||executable.contains('\r'))return {"autostart_io","Login startup requires an absolute executable path",{}};
+ auto startupExecutable=executable;
+#ifdef Q_OS_LINUX
+ // An AppImage mount is temporary; persist the user's original image instead.
+ const auto appImage=qEnvironmentVariable("APPIMAGE"),appDirectory=qEnvironmentVariable("APPDIR");
+ const auto mountedLauncher=QDir(appDirectory).filePath("usr/bin/putgd-launcher");
+ if(!appImage.isEmpty()&&!appDirectory.isEmpty()&&QFileInfo(appDirectory).isAbsolute()&&
+    QDir::cleanPath(executable)==QDir::cleanPath(mountedLauncher)) {
+  const QFileInfo image(appImage);
+  if(!image.isAbsolute()||!image.isFile()||!image.isExecutable())return {"autostart_io","Login startup requires an accessible AppImage file",{}};
+  startupExecutable=appImage;
+ }
+#endif
+ if(!QFileInfo(startupExecutable).isAbsolute()||startupExecutable.contains('\n')||startupExecutable.contains('\r'))return {"autostart_io","Login startup requires an absolute executable path",{}};
  if(!QDir().mkpath(directory))return {"autostart_io","Cannot create login startup directory",{}};
- auto escaped=executable;escaped.replace("\\","\\\\");escaped.replace("\"","\\\"");escaped.replace("$","\\$");escaped.replace("`","\\`");escaped.replace("%","%%");
+ auto escaped=startupExecutable;escaped.replace("\\","\\\\");escaped.replace("\"","\\\"");escaped.replace("$","\\$");escaped.replace("`","\\`");escaped.replace("%","%%");
  const auto bytes=("[Desktop Entry]\nType=Application\nName=put.gd\nExec=\""+escaped+"\" --background\nTerminal=false\nX-putgd-Managed=true\n").toUtf8();
  if(current==bytes)return {};
  QSaveFile file(path);file.setDirectWriteFallback(false);
