@@ -27,6 +27,33 @@ Minimum-Qt DEB compatibility compilation is separate from GNOME/KDE compositor
 qualification. Windows/macOS CI compilation is future-platform evidence, not a
 native support claim.
 
+## GitHub downloads and source
+
+The GitHub Release page publishes each installer as an individual download:
+Ubuntu 24.04 and 26.04 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
+publishes `putgd-VERSION-source.tar.gz`, the GNOME extension ZIP, full build
+receipts and `SHA256SUMS`. Actions artifact ZIPs are the internal build handoff;
+the final release assets are the raw files.
+
+The curated source tarball exports committed files from a positive allowlist:
+the application's `src/`, CMake files/presets, native packaging, GNOME integration,
+licenses, dependency provisioning/verifier and build instructions. It contains
+no `work/`, builds, credentials, agent context, plans/reviews/evidence, lab images,
+run logs or test artifacts. Its generated `source-info.json` records the original
+commit/tree/count and every included file hash. Archive timestamps, modes and
+ownership are deterministic.
+
+`README_SOURCE.md` gives normal CMake/Ninja commands for the extracted source.
+No Git history or third-party SDK binary prefix is bundled; provision the official
+pinned AWS SDK separately. Extracted builds use the existing supplied-provenance
+CMake flags, retaining the original commit/count with a development version.
+They do not claim locally observed clean Git or an exact release-tag build.
+Official binary release assets continue to come from a clean tagged checkout.
+The Ubuntu 24.04 packaging job also compiles an extracted export with the normal
+release preset, verifying the archive contains the required compilation inputs.
+The collector requires that successful compilation receipt and publishes the exact
+archive bytes that were tested.
+
 ## Version identity
 
 Normal builds remain `0.1.1-dev.N+gHASH`; each commit changes their identity.

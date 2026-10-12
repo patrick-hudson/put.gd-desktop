@@ -10,6 +10,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import collect
 from stage_artifacts import stage
+from source_archive import create_archive
 
 
 class ReleaseCollection(unittest.TestCase):
@@ -20,6 +21,12 @@ class ReleaseCollection(unittest.TestCase):
         (self.root / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1 LANGUAGES C CXX)\n')
         (self.root / '.gitignore').write_text('/build/\n')
         (self.root / 'LICENSE').write_text('synthetic license fixture\n')
+        (self.root / 'CMakePresets.json').write_text('{}\n')
+        (self.root / 'THIRD_PARTY_NOTICES.md').write_text('synthetic notices fixture\n')
+        for name in ('src/main.cpp', 'cmake/Dependencies.cmake', 'packaging/linux/CMakeLists.txt'):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('// synthetic compilation-closure fixture\n')
         extension = self.root / 'integrations/gnome'
         extension.mkdir(parents=True)
         (extension / 'extension.js').write_text('// synthetic extension fixture\n')
@@ -46,6 +53,16 @@ class ReleaseCollection(unittest.TestCase):
         path = directory / 'synthetic.AppImage'
         path.write_bytes(b'byte-integrity fixture, not an AppImage')
         (directory / 'appimage-build.json').write_text(json.dumps({'format': 'AppImage', 'architecture': 'x86_64', 'build': identity, 'artifact': {'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'bytes': path.stat().st_size}}))
+        directory = self.inputs / 'release-native-ubuntu24.04'
+        archive = directory / ('putgd-' + identity['version'] + '-source.tar.gz')
+        self.source_receipt = create_archive(self.root, archive, identity)
+        (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
+        compiled = {**identity, 'dirty': None, 'sourceProvenance': 'supplied',
+                    'version': self.source_receipt['localBuild']['version'],
+                    'packageVersion': identity['baseVersion'] + '~dev.' + str(identity['commitCount']) + '+g' + identity['gitCommit'][:12]}
+        self.source_result = {'passed': True, 'compiledBuild': compiled,
+                              'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker']}
+        (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
         self.output = self.root / 'build/output'
 
     def run_collection(self):
@@ -57,7 +74,12 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-0.1.1-rc.1-ubuntu24.04-x86_64.deb', files)
         self.assertIn('putgd-0.1.1-rc.1-ubuntu26.04-x86_64.deb', files)
         lines = (self.output / 'SHA256SUMS').read_text().splitlines()
-        self.assertEqual(len(lines), 6)
+        self.assertIn('putgd-0.1.1-rc.1-source.tar.gz', files)
+        self.assertIn('putgd-0.1.1-rc.1-fedora44-x86_64.rpm', files)
+        self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage', files)
+        self.assertEqual(len(lines), 7)
+        self.assertEqual((self.output / 'putgd-0.1.1-rc.1-source.tar.gz').read_bytes(),
+                         (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
         for line in lines:
             digest, name = line.split('  ', 1)
             self.assertEqual(digest, hashlib.sha256((self.output / name).read_bytes()).hexdigest())
@@ -76,6 +98,47 @@ class ReleaseCollection(unittest.TestCase):
                          {'native-audit.json', 'build-info.json', 'cpack.log', 'sample.deb', 'release-tag.json'})
         self.assertEqual((output / 'sample.deb').read_bytes(), b'sample.deb')
         self.assertFalse((output / 'release-packages').exists())
+
+    def test_source_staging_retains_exact_archive_and_build_evidence_only(self):
+        build = self.root / 'build/source-staging'
+        export = build / 'source-export'
+        export.mkdir(parents=True)
+        for name in ('source-archive.json', 'putgd-0.1.1-rc.1-source.tar.gz', 'private-context.txt'):
+            (export / name).write_bytes(name.encode())
+        compile_dir = build / 'source-build'
+        compile_dir.mkdir()
+        for name in ('results.json', 'parameters.json', 'build.log', 'private-context.txt'):
+            (compile_dir / name).write_bytes(name.encode())
+        output = build / 'artifact'
+        stage(build, output, 'native')
+        self.assertEqual({p.name for p in output.iterdir()}, {'source-archive.json',
+            'putgd-0.1.1-rc.1-source.tar.gz', 'source-build-results.json', 'source-build-parameters.json', 'source-build.log'})
+        self.assertEqual((output / 'source-build-results.json').read_bytes(), b'results.json')
+
+    def test_corrupt_source_archive_rejected_before_output(self):
+        archive = self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']
+        original = archive.read_bytes()
+        archive.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+        self.assertEqual(archive.stat().st_size, len(original))
+        with self.assertRaisesRegex(ValueError, 'Source archive bytes'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+
+    def test_missing_source_build_receipt_rejected_before_output(self):
+        (self.inputs / 'release-native-ubuntu24.04/source-build-results.json').unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+
+    def test_failed_other_commit_or_missing_helper_source_build_rejected(self):
+        path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
+        for changed in ({'passed': False}, {'compiledBuild': {**self.source_result['compiledBuild'], 'gitCommit': '0' * 40}},
+                        {'identityMatchedPrograms': ['putgd']}):
+            with self.subTest(changed=changed):
+                path.write_text(json.dumps({**self.source_result, **changed}))
+                with self.assertRaisesRegex(ValueError, 'successful production build'):
+                    self.run_collection()
+                self.assertFalse(self.output.exists())
 
     def test_appimage_staging_preserves_flat_consumer_paths(self):
         build = self.root / 'build/appimage-staging'

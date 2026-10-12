@@ -12,6 +12,8 @@ def stage(build, output, kind):
         packages = build / 'release-packages'
         selected += [packages / name for name in ('native-audit.json', 'build-info.json', 'cpack.log')]
         selected += list(packages.glob('*.deb')) + list(packages.glob('*.rpm'))
+        selected += [build / 'source-export/source-archive.json']
+        selected += list((build / 'source-export').glob('*-source.tar.gz'))
     else:
         packages = build / 'appimage-output'
         selected += [packages / 'appimage-build.json', build / 'appimage-dependencies.json',
@@ -22,6 +24,11 @@ def stage(build, output, kind):
     for source in selected:
         if source.is_file() and not source.is_symlink():
             shutil.copy2(source, output / source.name)
+    if kind == 'native':
+        for source_name, target_name in [('results.json', 'source-build-results.json'), ('parameters.json', 'source-build-parameters.json'), ('build.log', 'source-build.log')]:
+            source = build / 'source-build' / source_name
+            if source.is_file() and not source.is_symlink():
+                shutil.copy2(source, output / target_name)
 
 
 if __name__ == '__main__':

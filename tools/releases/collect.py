@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import zipfile
 
-from audit_native import sha256
+from audit_native import PROGRAMS, sha256
 from verify_tag import verify
 
 
@@ -23,6 +23,32 @@ def asset_path(directory, filename, suffix):
     if not path.is_file() or path.is_symlink():
         raise ValueError('Release asset is missing or is a symlink')
     return path
+
+
+
+def verified_source(directory, release):
+    receipt = json.loads((directory / 'source-archive.json').read_text())
+    if receipt.get('format') != 'source.tar.gz' or not identity_matches(receipt['identity'], release):
+        raise ValueError('Source archive identity differs from release')
+    artifact = receipt['artifact']
+    archive = asset_path(directory, artifact['file'], '-source.tar.gz')
+    if sha256(archive) != artifact['sha256'] or archive.stat().st_size != artifact['bytes']:
+        raise ValueError('Source archive bytes differ from compiled receipt')
+    build = json.loads((directory / 'source-build-results.json').read_text())
+    version_suffix = f"dev.{release['commitCount']}+g{release['gitCommit'][:12]}"
+    expected = {'schemaVersion': 1, 'version': release['baseVersion'] + '-' + version_suffix,
+                'baseVersion': release['baseVersion'], 'packageVersion': release['baseVersion'] + '~' + version_suffix,
+                'gitCommit': release['gitCommit'], 'gitTree': release['gitTree'], 'commitCount': release['commitCount'],
+                'dirty': None, 'sourceProvenance': 'supplied'}
+    programs = build.get('identityMatchedPrograms')
+    required = set(PROGRAMS) - {'putgd-launcher'}
+    allowed = required | {'putgd-kde-region'}
+    if (build.get('passed') is not True or build.get('compiledBuild') != expected
+            or not isinstance(programs, list) or not all(isinstance(name, str) for name in programs)
+            or len(programs) != len(set(programs)) or not required.issubset(programs)
+            or not set(programs).issubset(allowed)):
+        raise ValueError('Source archive has no matching successful production build')
+    return archive, receipt, build
 
 
 def collect(root, inputs, output, tag):
@@ -51,6 +77,10 @@ def collect(root, inputs, output, tag):
         raise ValueError('AppImage bytes differ from audited receipt')
     selected.append((image, 'putgd-' + release['version'] + '-x86_64.AppImage'))
     receipts['appimage'] = receipt
+    source, source_receipt, source_build = verified_source(inputs / 'release-native-ubuntu24.04', release)
+    selected.append((source, 'putgd-' + release['version'] + '-source.tar.gz'))
+    receipts['source'] = source_receipt
+    receipts['sourceBuild'] = source_build
     output.mkdir(parents=True, exist_ok=False)
     for path, name in selected:
         shutil.copy2(path, output / name)
