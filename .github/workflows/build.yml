@@ -1,10 +1,14 @@
 name: Build
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   linux:
@@ -31,13 +35,42 @@ jobs:
           fetch-depth: 0
       - name: Trust container checkout for build identity
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Provision pinned AWS SDK
+      - name: Verify dependency cache contracts
+        shell: bash
+        run: python3 tests/ci/test_sdk_cache.py
+      - name: Identify exact dependency cache environment
+        id: sdk-key
+        run: python3 tools/ci/sdk_cache.py key
+      - name: Restore verified dependency prefix
+        id: sdk-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Verify pinned AWS source
         run: |
           git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
           python3 tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
+      - name: Verify restored dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        run: python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Provision pinned AWS SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
           cmake -S build/dependencies/aws-sdk-cpp -B build/aws -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/sdk" -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF -DAUTORUN_UNIT_TESTS=OFF -DENABLE_UNITY_BUILD=ON -DUSE_OPENSSL=ON
           cmake --build build/aws --parallel 2
           cmake --install build/aws
+          python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Save verified dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
       - name: Build and test
         run: |
           cmake --preset dev
@@ -69,9 +102,9 @@ jobs:
           }, indent=2) + '\n')
           PY
           chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
-          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --parallel 2 --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml"
       - name: Replay saved live-S3 numeric evidence
-        if: always()
+        if: always() && matrix.distribution == '24.04'
         run: |
           mkdir -p build/dev
           chown -R putgd-ci:putgd-ci build/dev
@@ -186,6 +219,8 @@ jobs:
             build/dev/cold-family-contracts.json
             build/dev/cold-family-unit/**/*.json
             build/dev/build-identity/build-info.json
+            build/ci-sdk-environment.json
+            build/sdk-cache.json
           if-no-files-found: warn
           retention-days: 30
       - name: Build without test dependencies
@@ -212,8 +247,33 @@ jobs:
       - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: '6.8.3'
-          cache: false
+          cache: true
+      - name: Verify dependency cache contracts
+        shell: bash
+        run: python tests/ci/test_sdk_cache.py
+      - name: Identify exact dependency cache environment
+        id: sdk-key
+        shell: bash
+        run: python tools/ci/sdk_cache.py key
+      - name: Restore verified dependency prefix
+        id: sdk-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Verify pinned AWS source
+        shell: bash
+        run: |
+          git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
+          python tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
+      - name: Verify restored dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: python tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
       - name: Build QtKeychain and AWS SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           git clone https://github.com/frankosterfeld/qtkeychain.git build/dependencies/qtkeychain
@@ -221,11 +281,18 @@ jobs:
           cmake -S build/dependencies/qtkeychain -B build/keychain -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/sdk" -DBUILD_WITH_QT6=ON -DBUILD_TEST_APPLICATION=OFF -DBUILD_TRANSLATIONS=OFF
           cmake --build build/keychain --parallel 2
           cmake --install build/keychain
-          git clone --depth 1 --branch 1.11.907 --recurse-submodules --shallow-submodules https://github.com/aws/aws-sdk-cpp.git build/dependencies/aws-sdk-cpp
-          python tools/verify_dependencies.py build/dependencies/aws-sdk-cpp
           cmake -S build/dependencies/aws-sdk-cpp -B build/aws -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/build/sdk" -DBUILD_ONLY=s3 -DBUILD_SHARED_LIBS=ON -DENABLE_TESTING=OFF -DAUTORUN_UNIT_TESTS=OFF -DENABLE_UNITY_BUILD=ON
           cmake --build build/aws --parallel 2
           cmake --install build/aws
+          python tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Save verified dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
       - name: Compile shared application
         shell: bash
         run: |
@@ -243,6 +310,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: build-identity-${{ matrix.os }}
-          path: build/release/build-identity/build-info.json
+          path: |
+            build/release/build-identity/build-info.json
+            build/ci-sdk-environment.json
+            build/sdk-cache.json
           if-no-files-found: warn
           retention-days: 30
