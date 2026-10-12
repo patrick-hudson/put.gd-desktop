@@ -1,0 +1,53 @@
+name: Nightly coordinator
+on:
+  push:
+    branches: [nightly]
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: nightly-publication
+  cancel-in-progress: false
+jobs:
+  coordinate:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Pin source or recover original run preparation
+        id: pin
+        run: python3 tools/releases/nightly.py pin --receipt "$RUNNER_TEMP/nightly-preparation.json"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.pin.outputs.source_sha }}
+      - name: Prepare immutable source identity using pinned tooling
+        run: python3 tools/releases/nightly.py prepare --receipt "$RUNNER_TEMP/nightly-preparation.json"
+      - name: Retain first preparation before fan-out
+        if: github.run_attempt == 1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nightly-preparation-${{ github.run_id }}
+          path: ${{ runner.temp }}/nightly-preparation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Verify public no-op or coordinate exact-tag recipes
+        run: python3 tools/releases/nightly.py execute --receipt "$RUNNER_TEMP/nightly-preparation.json" --output "$RUNNER_TEMP/nightly-orchestration.json" 2>&1 | tee "$RUNNER_TEMP/nightly-execution.log"
+      - name: Preserve orchestration identities and failure log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nightly-orchestration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/nightly-orchestration.json
+            ${{ runner.temp }}/nightly-execution.log
+          if-no-files-found: warn
+          retention-days: 90

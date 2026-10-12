@@ -1,9 +1,14 @@
 name: Build
 on:
   push:
-    branches: [main]
+    branches: [main, nightly]
   pull_request:
   workflow_dispatch:
+    inputs:
+      package_tag:
+        description: Exact tag whose package pipeline supplies Linux production builds
+        default: ''
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   linux:
+    name: linux (${{ matrix.distribution }})
     runs-on: ubuntu-24.04
     container: ubuntu:${{ matrix.distribution }}
     env:
@@ -35,6 +41,15 @@ jobs:
           fetch-depth: 0
       - name: Trust container checkout for build identity
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Verify coordinated production source
+        id: package-gate
+        env:
+          PACKAGE_TAG: ${{ inputs.package_tag }}
+        run: python3 tools/releases/nightly.py build-mode
+      - name: Verify release orchestration contracts
+        run: |
+          python3 tests/releases/test_nightly.py
+          python3 tests/ci/test_release_channels.py
       - name: Verify dependency cache contracts
         shell: bash
         run: python3 tests/ci/test_sdk_cache.py
@@ -224,11 +239,13 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
       - name: Build without test dependencies
+        if: steps.package-gate.outputs.coordinated != 'true'
         run: |
           cmake --preset release -DBUILD_TESTING=OFF
           cmake --build --preset release
 
   portable:
+    name: portable (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
