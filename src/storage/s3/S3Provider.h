@@ -6,6 +6,7 @@ class S3Provider final : public StorageProvider {
 public:
     explicit S3Provider(CredentialStore&);
     ~S3Provider() override;
+    QJsonObject diagnostics() const override;
     bool reconcilesDeleteProgress() const override { return true; }
     ProviderCapabilities capabilities(const Destination&) const override;
     QString serializationKey(const Destination&, const QJsonObject&, const QString&) const override;

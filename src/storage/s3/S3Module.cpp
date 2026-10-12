@@ -13,6 +13,7 @@ extern "C" Q_DECL_EXPORT const putgd::S3ModuleApi* putgd_s3_module_v1() {
 #include <QDir>
 #include <QFileInfo>
 #include <QLibrary>
+#include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <future>
@@ -34,6 +35,8 @@ struct S3Module::State {
     std::deque<std::function<void()>> queue;
     std::thread worker;
     bool stopping = false;
+    std::atomic_int liveDrivers = 0;
+    std::atomic_bool workerWasStarted = false;
     explicit State(QString location) : path(std::move(location)), library(path) {
         // Retain code and SDK DSOs after first use. No idle unload or static SDK owner.
         library.setLoadHints(QLibrary::ResolveAllSymbolsHint | QLibrary::PreventUnloadHint);
@@ -95,7 +98,10 @@ S3Module::~S3Module() {
 }
 void S3Module::post(std::function<void()> work) {
     std::lock_guard lock(state_->mutex);
-    if (!state_->worker.joinable()) state_->worker = std::thread([this] { state_->loop(); });
+    if (!state_->worker.joinable()) {
+        state_->worker = std::thread([this] { state_->loop(); });
+        state_->workerWasStarted.store(true);
+    }
     state_->queue.push_back(std::move(work));
     state_->changed.notify_one();
 }
@@ -106,7 +112,10 @@ S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck re
     }
     if (state_->load()) {
         try {
-            if (auto driver = state_->api->create(std::move(credentials), std::move(readiness))) return driver;
+            if (auto driver = state_->api->create(std::move(credentials), std::move(readiness))) {
+                ++state_->liveDrivers;
+                return driver;
+            }
         } catch (...) {
             // Never expose SDK diagnostics or cached credential material.
         }
@@ -115,13 +124,27 @@ S3Driver* S3Module::createDriver(CredentialLookup credentials, ReadinessCheck re
     return nullptr;
 }
 void S3Module::destroyDriver(S3Driver* driver) {
+    auto destroy = [this, driver] {
+        state_->api->destroy(driver);
+        --state_->liveDrivers;
+    };
+    if (std::this_thread::get_id() == state_->worker.get_id()) {
+        destroy();
+        return;
+    }
     auto done = std::make_shared<std::promise<void>>();
     auto finished = done->get_future();
-    post([this, driver, done] {
-        state_->api->destroy(driver);
-        done->set_value();
+    post([destroy = std::move(destroy), done] {
+        try {
+            destroy();
+            done->set_value();
+        } catch (...) {
+            done->set_exception(std::current_exception());
+        }
     });
     finished.get();
 }
+int S3Module::liveDriverCount() const { return state_->liveDrivers.load(); }
+bool S3Module::workerStarted() const { return state_->workerWasStarted.load(); }
 }
 #endif

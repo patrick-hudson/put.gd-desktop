@@ -41,6 +41,8 @@ class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
  virtual bool reconcilesDeleteProgress() const { return false; }
+ // Bounded non-secret resource counters only; no settings, payloads or credentials.
+ virtual QJsonObject diagnostics() const { return {}; }
  virtual ProviderCapabilities capabilities(const Destination&) const=0;
  virtual QString serializationKey(const Destination&,const QJsonObject& objectReference,const QString& candidate) const=0;
  virtual Error validateSettings(const QJsonObject&) const=0;
@@ -56,6 +58,7 @@ public:
  std::shared_ptr<StorageProvider> find(const QString&) const;
  Error validate(const QString&,const QJsonObject&) const;
  QJsonObject capabilities() const;
+ QJsonObject diagnostics() const;
 private: QHash<QString,std::shared_ptr<StorageProvider>> providers_;
 };
 }

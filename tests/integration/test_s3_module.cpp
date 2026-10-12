@@ -168,6 +168,102 @@ private slots:
         QCOMPARE(failures.load(), 0);
         QVERIFY(!sdkMapped());
     }
+    void idleRequestsReleaseDriver() {
+        test::S3Fixture fixture;
+        auto module = S3Module::acquire();
+        QCOMPARE(module->liveDriverCount(), 0);
+        const auto before = fixture.provider.diagnostics();
+        QCOMPARE(before["queuedRequests"].toInt(), 0);
+        QCOMPARE(before["retainedDrivers"].toInt(), 0);
+        std::thread::id worker;
+        std::atomic_int lifecycleFailures = 0;
+        for (int generation = 0; generation < 3; ++generation) {
+            auto result = fixture.await<NameCheck>([&](auto reply) {
+                fixture.provider.checkName(fixture.destination, "idle-generation.txt", [&, reply](NameCheck value) {
+                    // The real network driver's callback is still inside its owned job.
+                    if (module->liveDriverCount() != 1) ++lifecycleFailures;
+                    const auto active = fixture.provider.diagnostics();
+                    if (active["queuedRequests"].toInt() != 1 || active["retainedDrivers"].toInt() != 1) ++lifecycleFailures;
+                    if (worker == std::thread::id{}) worker = std::this_thread::get_id();
+                    else if (std::this_thread::get_id() != worker) ++lifecycleFailures;
+                    reply(std::move(value));
+                });
+            });
+            QCOMPARE(result.status, QString("absent"));
+            QVERIFY(!result.error);
+            QCOMPARE(lifecycleFailures.load(), 0);
+            // FIFO barrier runs after callback return and completion, avoiding a
+            // callback-versus-destructor race in the idle assertions.
+            auto drained = std::make_shared<std::promise<void>>();
+            auto completed = drained->get_future();
+            module->post([drained] { drained->set_value(); });
+            QVERIFY(completed.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+            const auto idle = fixture.provider.diagnostics();
+            QCOMPARE(idle["queuedRequests"].toInt(), 0);
+            QCOMPARE(idle["retainedDrivers"].toInt(), 0);
+            QCOMPARE(module->liveDriverCount(), 0);
+            QVERIFY(idle["workerStarted"].toBool());
+        }
+        QCOMPARE(fixture.events("HEAD").size(), 3);
+#ifdef Q_OS_LINUX
+        QVERIFY(sdkMapped()); // SDK DSOs stay pinned; live runtime does not.
+#endif
+    }
+    void callbackAdmissionKeepsDriverUntilSuccessorDrains() {
+        test::S3Fixture fixture;
+        auto module = S3Module::acquire();
+        QCOMPARE(module->liveDriverCount(), 0);
+        struct Observations {
+            std::atomic_int callbacks = 0;
+            std::atomic_int failures = 0;
+            std::atomic_int betweenJobs = 0;
+            std::thread::id worker;
+        };
+        auto observed = std::make_shared<Observations>();
+        auto result = fixture.await<NameCheck>([&](auto reply) {
+            fixture.provider.checkName(fixture.destination, "reentrant-first.txt",
+                [module, provider = &fixture.provider, destination = fixture.destination, observed, reply](NameCheck first) {
+                    ++observed->callbacks;
+                    if (first.error || first.status != "absent") ++observed->failures;
+                    observed->worker = std::this_thread::get_id();
+                    // This observer is before the successor in the FIFO, but runs
+                    // after the first job's completion. It catches destroying and
+                    // recreating a driver between accepted jobs, not only leaks.
+                    module->post([module, provider, observed] {
+                        const auto pending = provider->diagnostics();
+                        if (pending["queuedRequests"].toInt() != 1 ||
+                            pending["retainedDrivers"].toInt() != 1 || module->liveDriverCount() != 1 ||
+                            std::this_thread::get_id() != observed->worker) ++observed->failures;
+                        ++observed->betweenJobs;
+                    });
+                    provider->checkName(destination, "reentrant-second.txt",
+                        [module, provider, observed, reply](NameCheck second) {
+                            ++observed->callbacks;
+                            const auto active = provider->diagnostics();
+                            if (active["queuedRequests"].toInt() != 1 ||
+                                active["retainedDrivers"].toInt() != 1 || module->liveDriverCount() != 1 ||
+                                std::this_thread::get_id() != observed->worker) ++observed->failures;
+                            reply(std::move(second));
+                        });
+                    if (provider->diagnostics()["queuedRequests"].toInt() != 2) ++observed->failures;
+                });
+        });
+        QCOMPARE(result.status, QString("absent"));
+        QVERIFY(!result.error);
+        auto drained = std::make_shared<std::promise<void>>();
+        auto completed = drained->get_future();
+        module->post([drained] { drained->set_value(); });
+        QVERIFY(completed.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+        QCOMPARE(observed->callbacks.load(), 2);
+        QCOMPARE(observed->betweenJobs.load(), 1);
+        QCOMPARE(observed->failures.load(), 0);
+        QVERIFY(observed->worker != std::this_thread::get_id());
+        const auto idle = fixture.provider.diagnostics();
+        QCOMPARE(idle["queuedRequests"].toInt(), 0);
+        QCOMPARE(idle["retainedDrivers"].toInt(), 0);
+        QCOMPARE(module->liveDriverCount(), 0);
+        QCOMPARE(fixture.events("HEAD").size(), 2);
+    }
     void concurrentProvidersAndPermanentWorker() {
         test::S3Fixture fixture;
         auto other = std::make_unique<S3Provider>(fixture.credentials);

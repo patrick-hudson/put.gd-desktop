@@ -18,9 +18,12 @@ public:
     explicit S3Module(QString absolutePath = defaultPath());
     ~S3Module();
     void post(std::function<void()>);
-    // Creation is called only by this owner's worker; destruction queues and drains.
+    // Creation is worker-only. Destruction runs directly there, or queues and drains
+    // for external callers; clients and SDK runtime stay on their original owner.
     S3Driver* createDriver(CredentialLookup, ReadinessCheck, Error&);
     void destroyDriver(S3Driver*);
+    int liveDriverCount() const;
+    bool workerStarted() const;
     S3Module(const S3Module&) = delete;
     S3Module& operator=(const S3Module&) = delete;
 private:
