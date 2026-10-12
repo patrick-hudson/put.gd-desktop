@@ -78,15 +78,19 @@ jobs:
           runuser -u putgd-ci -- python3 - <<'PY'
           import json, pathlib, subprocess
           pathlib.Path('build/dev').mkdir(parents=True, exist_ok=True)
-          command = ['python3', 'tests/desktop/test_lab.py']
-          result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-          pathlib.Path('build/dev/lab-contracts.log').write_text(result.stdout)
+          commands = [['python3', 'tests/desktop/' + suite] for suite in (
+              'test_lab.py', 'test_storage_preflight.py', 'test_restore_evidence.py')]
+          results = [subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True) for command in commands]
+          output = ''.join(result.stdout for result in results)
+          pathlib.Path('build/dev/lab-contracts.log').write_text(output)
           pathlib.Path('build/dev/lab-contracts.json').write_text(json.dumps({
-              'command': command, 'exitCode': result.returncode,
-              'scope': 'Host protocol contracts only; no graphical desktop acceptance'
+              'suites': [{'command': command, 'exitCode': result.returncode}
+                        for command, result in zip(commands, results)],
+              'scope': 'Host protocol and storage safety contracts only; no graphical desktop acceptance'
           }, indent=2) + '\n')
-          print(result.stdout, end='')
-          raise SystemExit(result.returncode)
+          print(output, end='')
+          raise SystemExit(next((result.returncode for result in results if result.returncode), 0))
           PY
       - name: Verify cold-family observer contracts
         if: always()

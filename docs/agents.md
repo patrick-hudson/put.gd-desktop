@@ -82,6 +82,8 @@ hosts lack GJS. Its Shell dependencies are mocked, so native graphical cases
 remain required. See [startup replay](testing-view-startup.md) for the fixed
 on-demand workload, exact identities and quiet measurement policy.
 
+Before guest builds or graphical campaigns, run the read-only [storage preflight](lab-storage.md) and retain its JSON receipt. Budget expected build growth on both guest and host filesystems. Keep current and one rollback build; archive metadata and check references before removing obsolete builds. Never retire a disk without checking the complete backing chain and live QEMU references.
+
 Before launching an isolated test, count the complete resolved Unix socket path
 in UTF-8 bytes, including any harness-added directories and filenames. Linux's
 limit is 107 bytes excluding NUL. Keep private run roots short; descriptive
