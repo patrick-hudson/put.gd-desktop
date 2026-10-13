@@ -5,7 +5,9 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
+import time
 
 from collect import sha256
 from verify_tag import verify
@@ -106,7 +108,20 @@ def stage_draft(tag, directory, listed, release, notes):
         if release.get('channel') == 'nightly':
             command.append('--latest=false')
         subprocess.run(command, check=True)
-        matches = matching_releases(tag)
+        # GitHub may briefly omit a newly created draft from List releases.
+        # Retry only missing results; never repeat creation or hide conflicts/errors.
+        for attempt in range(5):
+            if attempt:
+                delay = 2 ** (attempt - 1)
+                print(f'Waiting {delay}s for created draft visibility ({attempt + 1}/5)',
+                      file=sys.stderr, flush=True)
+                time.sleep(delay)
+            matches = matching_releases(tag)
+            if matches:
+                break
+        if not matches:
+            raise ValueError('Draft creation succeeded, but the draft is still not visible after five reads; '
+                             'inspect existing drafts before rerunning')
         if len(matches) != 1 or matches[0]['draft'] is not True:
             raise ValueError('Created draft could not be uniquely verified')
     if release.get('channel') == 'nightly' and matches[0].get('prerelease') is not True:
