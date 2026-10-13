@@ -9,6 +9,13 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ReleaseChannels(unittest.TestCase):
+    def test_appimage_installer_uses_external_logging_configuration(self):
+        release = (ROOT / '.github/workflows/release.yml').read_text()
+        appimage = release.split('  appimage:\n', 1)[1].split('  publish:\n', 1)[0]
+        install = appimage.split('      - uses: jurplel/install-qt-action@', 1)[1]
+        install = install.split('      - name:', 1)[0]
+        self.assertIn('LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini', install)
+
     def test_existing_build_and_package_proofs_remain(self):
         build = (ROOT / '.github/workflows/build.yml').read_text()
         release = (ROOT / '.github/workflows/release.yml').read_text()

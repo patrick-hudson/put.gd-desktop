@@ -79,6 +79,26 @@ class ReleaseIdentity(unittest.TestCase):
                              'gitCommit', 'gitTree', 'commitCount', 'dirty', 'sourceProvenance'})
         return receipt
 
+    def test_qt_installer_logging_keeps_tagged_source_clean(self):
+        self.git('tag', self.nightly)
+        self.both(self.nightly, True, f'{BASE}~dev.2.{UTC}+g{self.short}')
+        runner = self.directory / 'runner'
+        runner.mkdir()
+        config = REPO / 'tools/ci/aqt-logging.ini'
+        subprocess.run([sys.executable, '-c',
+            "import logging, logging.config, sys; "
+            "logging.config.fileConfig(sys.argv[1]); "
+            "logging.getLogger('aqt').debug('synthetic installer diagnostic')",
+            str(config)], cwd=self.source, check=True, capture_output=True,
+            env=dict(os.environ, RUNNER_TEMP=str(runner)))
+        self.assertIn('synthetic installer diagnostic', (runner / 'aqtinstall.log').read_text())
+        self.assertFalse((self.source / 'aqtinstall.log').exists())
+        self.assertEqual(self.git('status', '--porcelain', '--untracked-files=normal'), '')
+        self.both(self.nightly, True, f'{BASE}~dev.2.{UTC}+g{self.short}')
+        # The logging override must not hide actual source changes.
+        (self.source / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1)\n# mutation\n')
+        self.both(self.nightly, False)
+
     def test_stable_rc_characterization(self):
         for tag, package, prerelease in [('v0.1.1', '0.1.1', False),
                                         ('v0.1.1-rc.2', '0.1.1~rc.2', True),
