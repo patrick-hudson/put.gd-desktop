@@ -1,3 +1,4 @@
+#include "ui/SelectionOutline.h"
 #include "RegionOverlay.h"
 #include <QPainter>
 #include <QMouseEvent>
@@ -5,26 +6,20 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QCursor>
-#include <QRegion>
 namespace putgd {
 class RegionOverlay::Surface final:public QWidget {
 public:
  Surface(RegionOverlay& owner,const CaptureFrame& frame):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint|Qt::X11BypassWindowManagerHint|Qt::WindowDoesNotAcceptFocus),owner_(owner),logicalRect_(frame.logicalRect){setObjectName("putgd-region-overlay");setAttribute(Qt::WA_TranslucentBackground);for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){setScreen(screen);break;}setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);}
- void updateSelection(const QRectF& previous){const auto changed=outlineRegion(previous)|outlineRegion(owner_.selection_);if(!changed.isEmpty())update(changed);}
+ // X11 compositors can sample newer pixels using an earlier damage clip.
+ // Full-surface damage keeps an outward-moving edge inside that clip.
+ void updateSelection(const QRectF& previous){if(!previous.intersected(logicalRect_).isEmpty()||!owner_.selection_.intersected(logicalRect_).isEmpty())update();}
 protected:
- void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());painter.setPen(QPen(Qt::white,1));painter.drawRect(local.adjusted(0,0,-1,-1));}}
+ void paintEvent(QPaintEvent*) override {QPainter painter(this);painter.setCompositionMode(QPainter::CompositionMode_Source);painter.fillRect(rect(),Qt::transparent);painter.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const QRectF local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(painter,local);}}
  void mousePressEvent(QMouseEvent* e) override {if(e->button()==Qt::RightButton){owner_.cancel();return;}if(e->button()==Qt::LeftButton){owner_.press(e->globalPosition());grabMouse();}}
  void mouseMoveEvent(QMouseEvent* e) override {owner_.move(e->globalPosition());}
  void mouseReleaseEvent(QMouseEvent* e) override {if(e->button()==Qt::LeftButton){releaseMouse();owner_.release(e->globalPosition());}}
  void keyPressEvent(QKeyEvent* e) override {if(e->key()==Qt::Key_Escape)owner_.cancel();}
 private:
- QRegion outlineRegion(const QRectF& selection)const {
-  const auto clipped=selection.intersected(logicalRect_);if(clipped.isEmpty())return {};
-  const auto local=clipped.translated(-logicalRect_.topLeft()).toAlignedRect();
-  // Include pen/raster rounding at either edge, while leaving the transparent
-  // interior out of backing-store clears and uploads on each pointer move.
-  return QRegion(local.adjusted(-1,-1,1,1)).subtracted(QRegion(local.adjusted(2,2,-2,-2)));
- }
  RegionOverlay& owner_;
  QRectF logicalRect_;
 };

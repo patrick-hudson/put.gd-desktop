@@ -160,23 +160,33 @@ void NativeRegionOverlay::events(){
  if(connection_&&!finished_){if(xcb_connection_has_error(connection_)){cancel(unavailable());return;}xcb_flush(connection_);}
 }
 void NativeRegionOverlay::draw(Surface& surface){
- if(!surface.outline.isEmpty()){
-  const auto outer=surface.outline.adjusted(-surface.pen,-surface.pen,surface.pen,surface.pen);
-  const auto inner=surface.outline.adjusted(surface.pen+1,surface.pen+1,-surface.pen-1,-surface.pen-1);
-  const QRegion oldOutline=QRegion(outer).subtracted(QRegion(inner));
-  for(const auto& strip:oldOutline){const auto bounded=strip.intersected(QRect(QPoint{},surface.frame.nativeRect.size()));if(!bounded.isEmpty())xcb_clear_area(connection_,false,surface.window,int16_t(bounded.x()),int16_t(bounded.y()),uint16_t(bounded.width()),uint16_t(bounded.height()));}
- }
+ // The compositor can consume damage bounds before sampling this drawable's
+ // newer pixels. Tight old/new stroke damage then clips an advancing edge.
+ // Damage the complete transient surface so every sampled outline fits the
+ // repaint area, even when several pointer events arrive before presentation.
+ // Core X clears allocate no client-side monitor-sized backing image.
+ xcb_clear_area(connection_,false,surface.window,0,0,0,0);
  const auto clipped=selection_.intersected(surface.frame.logicalRect);
  if(clipped.isEmpty()){surface.outline={};return;}
  const auto local=clipped.translated(-surface.frame.logicalRect.topLeft());const qreal sx=qreal(surface.frame.nativeRect.width())/surface.frame.logicalRect.width(),sy=qreal(surface.frame.nativeRect.height())/surface.frame.logicalRect.height();
  surface.outline=QRectF(local.x()*sx,local.y()*sy,local.width()*sx,local.height()*sy).toAlignedRect().intersected(QRect(QPoint{},surface.frame.nativeRect.size()));
- const uint32_t pen=uint32_t(surface.pen);xcb_change_gc(connection_,gc_,XCB_GC_LINE_WIDTH,&pen);
- // Keep the stroke inside the requested region, including HiDPI pen rounding.
- const int inset=surface.pen/2;const auto box=surface.outline.adjusted(inset,inset,-(surface.pen-inset),-(surface.pen-inset));
- if(box.width()<=0||box.height()<=0)return;
- const xcb_rectangle_t rectangle{int16_t(box.x()),int16_t(box.y()),uint16_t(box.width()),uint16_t(box.height())};xcb_poly_rectangle(connection_,surface.window,gc_,1,&rectangle);
+ // Integer filled strips stay within the selection even for one-pixel drags.
+ auto ring=[&](QRect r,int width,uint32_t color){
+  if(r.isEmpty())return;
+  const int x=std::min(width,r.width()),y=std::min(width,r.height());
+  const xcb_rectangle_t strips[]={
+   {int16_t(r.x()),int16_t(r.y()),uint16_t(r.width()),uint16_t(y)},
+   {int16_t(r.x()),int16_t(r.y()+r.height()-y),uint16_t(r.width()),uint16_t(y)},
+   {int16_t(r.x()),int16_t(r.y()),uint16_t(x),uint16_t(r.height())},
+   {int16_t(r.x()+r.width()-x),int16_t(r.y()),uint16_t(x),uint16_t(r.height())}};
+  xcb_change_gc(connection_,gc_,XCB_GC_FOREGROUND,&color);
+  xcb_poly_fill_rectangle(connection_,surface.window,gc_,4,strips);
+ };
+ ring(surface.outline,3*surface.pen,0xff000000);
+ const int inset=surface.pen;
+ ring(surface.outline.adjusted(inset,inset,-inset,-inset),surface.pen,0xffffffff);
 }
-void NativeRegionOverlay::move(QPointF point){if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();for(auto& surface:surfaces_)draw(surface);xcb_flush(connection_);}
+void NativeRegionOverlay::move(QPointF point){if(!dragging_||finished_)return;selection_=QRectF(anchor_,point).normalized();for(auto& surface:surfaces_)if(!surface.outline.isEmpty()||!selection_.intersected(surface.frame.logicalRect).isEmpty())draw(surface);xcb_flush(connection_);}
 void NativeRegionOverlay::release(QPointF point){if(!dragging_||finished_)return;move(point);if(selection_.width()<1||selection_.height()<1){cancel();return;}const auto result=selection_;QPointer<NativeRegionOverlay> guard(this);finish();if(guard)emit selected(result);}
 void NativeRegionOverlay::finish(){
  if(finished_)return;
