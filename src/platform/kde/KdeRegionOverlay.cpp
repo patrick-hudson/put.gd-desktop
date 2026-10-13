@@ -1,3 +1,4 @@
+#include "ui/SelectionOutline.h"
 #include "KdeRegionOverlay.h"
 #include <QGuiApplication>
 #include <QScreen>
@@ -28,7 +29,7 @@ public:
 #endif
  }
 protected:
- void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());p.setPen(QPen(Qt::white,1));p.drawRect(local.adjusted(0,0,-1,-1));}}
+ void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
  void mouseMoveEvent(QMouseEvent* e) override{owner_.move(logicalRect_.topLeft()+e->position());}
  void mouseReleaseEvent(QMouseEvent* e) override{if(e->button()==Qt::LeftButton)owner_.release(logicalRect_.topLeft()+e->position());}

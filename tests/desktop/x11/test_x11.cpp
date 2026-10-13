@@ -18,6 +18,7 @@
 #include <QKeySequence>
 #include <QPaintEvent>
 #include "ui/RegionOverlay.h"
+#include "ui/SelectionOutline.h"
 #include "../../fixtures/X11SelectionFixture.h"
 #include "../../fixtures/X11DesktopFixture.h"
 #include "../../fixtures/X11MappingBarrier.h"
@@ -88,6 +89,22 @@ private slots:
   auto chord=[&]{send(XK_Control_L,true);send(XK_Shift_L,true);send(XK_1,true);send(XK_1,false);send(XK_Shift_L,false);send(XK_Control_L,false);};
   chord();QTRY_COMPARE(activated,1);send(XK_Caps_Lock,true);send(XK_Caps_Lock,false);send(XK_Num_Lock,true);send(XK_Num_Lock,false);chord();QTRY_COMPARE(activated,2);send(XK_Caps_Lock,true);send(XK_Caps_Lock,false);send(XK_Num_Lock,true);send(XK_Num_Lock,false);xcb_key_symbols_free(symbols);xcb_disconnect(c);
  }
+ void selectionOutlineStaysInsideTinyAndScaledBounds(){
+  for(qreal scale:{1.0,1.25,1.5,2.0})for(int width:{1,2,3,6,30})for(int height:{1,2,3,6,30}){
+   QImage image(100,100,QImage::Format_ARGB32_Premultiplied);image.fill(Qt::transparent);
+   const QRectF bounds(8,8,width,height);
+   {QPainter painter(&image);painter.scale(scale,scale);paintSelectionOutline(painter,bounds);}
+   const QRect allowed=QRectF(bounds.x()*scale,bounds.y()*scale,width*scale,height*scale).toAlignedRect();
+   bool dark=false,light=false;
+   for(int y=0;y<image.height();++y)for(int x=0;x<image.width();++x){
+    const auto color=image.pixelColor(x,y);if(!color.alpha())continue;
+    QVERIFY2(allowed.contains(x,y),"The outline must not extend outside the capture geometry");
+    dark|=color==QColor(Qt::black);light|=color==QColor(Qt::white);
+   }
+   QVERIFY(dark);if(width>=6&&height>=6)QVERIFY(light);
+   if(width>=10&&height>=10)QCOMPARE(image.pixelColor(qRound(bounds.center().x()*scale),qRound(bounds.center().y()*scale)).alpha(),0);
+  }
+ }
  void regionCancellationAndExactSelection() {
   CaptureFrame frame{"fixture",QRectF(0,0,100,100),QRect(0,0,100,100),1,0,QImage(100,100,QImage::Format_ARGB32)};frame.pixels.fill(Qt::red);
   auto surface=[]()->QWidget*{for(auto* w:QApplication::topLevelWidgets())if(w->objectName()=="putgd-region-overlay"&&w->isVisible())return w;return nullptr;};
@@ -97,19 +114,20 @@ private slots:
    auto rendered=[w]{QImage image(w->size(),QImage::Format_ARGB32);image.fill(Qt::transparent);w->render(&image);return image;};
    QCOMPARE(rendered().pixelColor(30,40).alpha(),0);
    QTest::mousePress(w,Qt::LeftButton,Qt::NoModifier,QPoint(10,20));QTest::mouseMove(w,QPoint(60,70));
-   const auto dragging=rendered();QCOMPARE(dragging.pixelColor(30,40).alpha(),0);QCOMPARE(dragging.pixelColor(80,80).alpha(),0);QCOMPARE(dragging.pixelColor(10,20),QColor(Qt::white));
+   const auto dragging=rendered();QCOMPARE(dragging.pixelColor(30,40).alpha(),0);QCOMPARE(dragging.pixelColor(80,80).alpha(),0);QCOMPARE(dragging.pixelColor(10,20),QColor(Qt::black));QCOMPARE(dragging.pixelColor(11,21),QColor(Qt::white));
    // Observe actual queued paints and backing pixels: render() would repaint
-   // the full widget and hide a stale stroke left by an incomplete dirty region.
+   // the full widget and hide stale strokes or incomplete damage. Full damage
+   // is intentional: the compositor may sample a newer, larger outline.
    QTest::qWait(20);RegionPaintProbe paints;w->installEventFilter(&paints);
    auto* connection=xcb_connect(nullptr,nullptr);
    auto backing=[&]{QImage image;auto* reply=xcb_get_image_reply(connection,xcb_get_image(connection,XCB_IMAGE_FORMAT_Z_PIXMAP,w->winId(),0,0,w->width(),w->height(),~0u),nullptr);
     if(reply&&reply->depth==32&&xcb_get_image_data_length(reply)>=w->width()*w->height()*4){image=QImage(xcb_get_image_data(reply),w->width(),w->height(),w->width()*4,QImage::Format_ARGB32).copy();}free(reply);return image;};
    QTest::mouseMove(w,QPoint(90,90));QTRY_VERIFY(paints.count>0);
-   QVERIFY(!paints.painted.contains(QPoint(30,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
-   auto grown=backing();QVERIFY(!grown.isNull());QCOMPARE(grown.pixelColor(59,40).alpha(),0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::white));
+   QVERIFY(paints.painted.contains(w->rect()));QVERIFY(paints.painted.contains(QPoint(59,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));
+   auto grown=backing();QVERIFY(!grown.isNull());QCOMPARE(grown.pixelColor(59,40).alpha(),0);QCOMPARE(grown.pixelColor(30,69).alpha(),0);QCOMPARE(grown.pixelColor(89,40),QColor(Qt::black));QCOMPARE(grown.pixelColor(88,40),QColor(Qt::white));
    paints.painted={};paints.count=0;QTest::mouseMove(w,QPoint(60,70));QTRY_VERIFY(paints.count>0);
-   QVERIFY(!paints.painted.contains(QPoint(30,40)));QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
-   auto shrunk=backing();QVERIFY(!shrunk.isNull());QCOMPARE(shrunk.pixelColor(89,40).alpha(),0);QCOMPARE(shrunk.pixelColor(30,89).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::white));
+   QVERIFY(paints.painted.contains(w->rect()));QVERIFY(paints.painted.contains(QPoint(89,40)));QVERIFY(paints.painted.contains(QPoint(59,40)));
+   auto shrunk=backing();QVERIFY(!shrunk.isNull());QCOMPARE(shrunk.pixelColor(89,40).alpha(),0);QCOMPARE(shrunk.pixelColor(30,89).alpha(),0);QCOMPARE(shrunk.pixelColor(59,40),QColor(Qt::black));QCOMPARE(shrunk.pixelColor(58,40),QColor(Qt::white));
    w->removeEventFilter(&paints);xcb_disconnect(connection);
    QTest::mouseRelease(w,Qt::LeftButton,Qt::NoModifier,QPoint(60,70));QCOMPARE(selected,QRectF(10,20,50,50));QVERIFY(!surface());Error error;auto image=composeFrames({frame},selected,100000,error);QVERIFY(!error);QCOMPARE(image.size(),QSize(50,50));QCOMPARE(image.pixelColor(2,2),QColor(Qt::red));}
   const CaptureFrame native{"fixture",QRectF(30,40,10,8),QRect(30,40,10,8),1,0,{}};

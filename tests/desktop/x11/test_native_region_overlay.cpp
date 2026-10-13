@@ -101,7 +101,20 @@ private slots:
  void transparentDrawablesAndLogicalSelection(){
   NativeRegionOverlay overlay(frames());int selected=0,cancelled=0;QRectF selection;connect(&overlay,&RegionSelector::selected,this,[&](const QRectF& r){selection=r;++selected;});connect(&overlay,&RegionSelector::cancelled,this,[&](const Error&){++cancelled;});overlay.start();QTRY_COMPARE(drawables().size(),2);QCOMPARE(cancelled,0);
   for(const auto& frame:frames()){const auto w=at(frame.nativeRect.center());QVERIFY(w);auto g=x11::reply(xcb_get_geometry_reply(connection_,xcb_get_geometry(connection_,w),nullptr));QCOMPARE(g->depth,uint8_t(32));QCOMPARE(pixels(frame.nativeRect.topLeft()+QPoint(20,20)),QByteArray(4,'\0'));}
-  motion({40,40});button(1,true);motion({1200,600});QTRY_VERIFY(white({42,40}));QTRY_VERIFY(white({642,80}));button(1,false);QTRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));QTRY_COMPARE(drawables().size(),0);availableGrabs();
+  motion({40,40});button(1,true);motion({1200,600});QTRY_VERIFY(white({44,41}));QTRY_VERIFY(white({646,82}));button(1,false);QTRY_COMPARE(selected,1);QCOMPARE(cancelled,0);QCOMPARE(selection,QRectF(40,40,880,260));QTRY_COMPARE(drawables().size(),0);availableGrabs();
+ }
+ void outlineContrastsWithBothWhiteAndBlack(){
+  NativeRegionOverlay overlay(frames());overlay.start();QTRY_COMPARE(drawables().size(),2);
+  motion({40,40});button(1,true);motion({400,300});QTRY_VERIFY(white({100,41}));
+  bool dark=false,light=false;
+  for(int y=38;y<47;++y){const auto b=pixels({100,y});if(b.size()!=4)continue;
+   const int alpha=quint8(b[3]);
+   dark|=alpha==255&&quint8(b[0])<64&&quint8(b[1])<64&&quint8(b[2])<64;
+   light|=alpha==255&&quint8(b[0])>192&&quint8(b[1])>192&&quint8(b[2])>192;
+  }
+  overlay.cancel();button(1,false);QTRY_COMPARE(drawables().size(),0);availableGrabs();
+  QVERIFY2(dark,"The outline needs opaque dark pixels to remain visible over white content");
+  QVERIFY2(light,"The outline needs opaque light pixels to remain visible over dark content");
  }
  void movingOutlineClearsPreviousPixels(){
   NativeRegionOverlay overlay(frames());overlay.start();QTRY_COMPARE(drawables().size(),2);motion({40,40});button(1,true);motion({1200,600});

@@ -73,8 +73,10 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         super._init({reactive: true, visible: false, x: 0, y: 0});
         this.add_constraint(new Clutter.BindConstraint({source: global.stage, coordinate: Clutter.BindCoordinate.ALL}));
         this.set_cursor_type(Clutter.CursorType.CROSSHAIR);
-        this._rectangle = new St.Widget({visible: false, style: 'border: 2px solid #8bc6ff; background-color: transparent;'});
+        this._rectangle = new St.Widget({visible: false, clip_to_allocation: true, style: 'border: 3px solid black; background-color: transparent;'});
         this.add_child(this._rectangle);
+        this._contrast = new St.Widget({visible: false, clip_to_allocation: true, style: 'border: 1px solid white; background-color: transparent;'});
+        this.add_child(this._contrast);
         this._start = null;
         this._finish = null;
         this._grab = null;
@@ -124,6 +126,16 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
         this._rectangle.set_position(rect.x, rect.y);
         this._rectangle.set_size(rect.width, rect.height);
         this._rectangle.show();
+        // CSS lengths follow the theme scale; actor positions use stage coordinates.
+        // Clip the strokes to their allocations for drags smaller than a border.
+        const inset = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        if (rect.width > 2 * inset && rect.height > 2 * inset) {
+            this._contrast.set_position(rect.x + inset, rect.y + inset);
+            this._contrast.set_size(rect.width - 2 * inset, rect.height - 2 * inset);
+            this._contrast.show();
+        } else {
+            this._contrast.hide();
+        }
     }
     selectAsync() {
         return new Promise((resolve, reject) => {
