@@ -11,6 +11,7 @@ struct ProviderCapabilities {
  bool urls=false;
  int maximumNameBytes=255;
  QString deletionEffect;
+ bool sharing=false,privateUploads=false;
  QJsonObject toJson() const;
 };
 struct NameCheck {
@@ -37,15 +38,28 @@ struct DeleteResult { QString status; QJsonObject progress; Error error; }; // r
 // A driver must await a successful durable checkpoint callback BEFORE the associated
 // destructive network step. Progress is versioned opaque adapter-owned data.
 using DurableCheckpoint=std::function<void(const QJsonObject&,std::function<void(Error)>)>;
+struct ShareRequest {
+ QString id,action; // create, revoke, inspect
+ StorageReceipt receipt;
+ QJsonObject options,progress; // non-secret options and opaque driver progress
+ std::shared_ptr<std::atomic_bool> cancellation;
+};
+struct ShareResult { QString status; StorageReceipt receipt; QJsonObject progress; Error error; };
+bool shareResultMatchesReceipt(const ShareResult&,const StorageReceipt&);
 class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
  virtual bool reconcilesDeleteProgress() const { return false; }
+ virtual QString defaultPublicationMode(const Destination&) const { return "share"; }
+ virtual void share(const ShareRequest& request,DurableCheckpoint,std::function<void(ShareResult)> reply) {
+  reply({"unsupported",request.receipt,{}, {"sharing_unsupported","This provider cannot create or revoke share links",{}}});
+ }
  // Bounded non-secret resource counters only; no settings, payloads or credentials.
  virtual QJsonObject diagnostics() const { return {}; }
  virtual ProviderCapabilities capabilities(const Destination&) const=0;
  virtual QString serializationKey(const Destination&,const QJsonObject& objectReference,const QString& candidate) const=0;
  virtual Error validateSettings(const QJsonObject&) const=0;
+ virtual Error validateCredentials(const QJsonObject&) const { return {}; }
  virtual void checkName(const Destination&,const QString&,std::function<void(NameCheck)>)=0;
  virtual void upload(const UploadRequest&,std::function<void(UploadResult)>)=0;
  virtual void stat(const StorageReceipt&,std::function<void(StatResult)>)=0;
@@ -57,6 +71,7 @@ public:
  void add(const QString&,std::shared_ptr<StorageProvider>);
  std::shared_ptr<StorageProvider> find(const QString&) const;
  Error validate(const QString&,const QJsonObject&) const;
+ Error validateCredentials(const QString&,const QJsonObject&) const;
  QJsonObject capabilities() const;
  QJsonObject diagnostics() const;
 private: QHash<QString,std::shared_ptr<StorageProvider>> providers_;

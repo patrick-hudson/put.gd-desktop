@@ -1,6 +1,7 @@
 #include "ui/VisualStyle.h"
 #include "core/BuildInfo.h"
 #include "storage/s3/S3Provider.h"
+#include "storage/proton/ProtonProvider.h"
 #include "app/LocalServer.h"
 #include "app/LoginStartup.h"
 #include "app/UiProcessController.h"
@@ -138,7 +139,8 @@ int main(int argc,char* argv[]) {
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
- putgd::SettingsService settings(QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath("config.json"),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);});
+ auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
+ putgd::SettingsService settings(QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath("config.json"),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
  const auto bindings=[&settings]{QHash<QString,QString> result;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)result.insert(i.key(),i.value().shortcut);return result;};
@@ -192,6 +194,11 @@ int main(int argc,char* argv[]) {
  };
  QJsonObject loginStatus;
  putgd::SetupService setup(settings,credentials,tester);
+ setup.setProviderSetup([&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
+  if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
+  const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
+  operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
+ });
  server.setSetupService(&setup);
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;
@@ -266,6 +273,6 @@ int main(int argc,char* argv[]) {
   if(tray.availabilityKnown()){if(!tray.available())showInitialView();}
   else QObject::connect(&tray,&putgd::TrayController::availabilityResolved,&tray,[&tray]{if(!tray.available())tray.showSettings();},Qt::SingleShotConnection);
  }
- QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,&putgd::OperationService::shutdown);
+ QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
  return app.exec();
 }

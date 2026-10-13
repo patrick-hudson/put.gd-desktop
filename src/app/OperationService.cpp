@@ -180,6 +180,9 @@ Operation OperationService::run(Job job) {
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";op.state="completed";for(const auto& item:op.items) if(item.local.status!="saved")op.state="failed";save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.state="failed";save();return op;}
  const auto capabilities=provider->capabilities(op.destination);
+ auto publicationMode=op.settings.actions.value(op.action).publicationMode;
+ if(publicationMode=="default")publicationMode=provider->defaultPublicationMode(op.destination);
+ if(publicationMode=="private"&&!capabilities.privateUploads){op.error={"unsupported_capability","This provider cannot perform a private upload",{}};op.state="failed";save();return op;}
  if(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace)) {op.error={"unsupported_capability","Provider cannot enforce this collision policy",{}};op.state="failed";save();return op;}
  bool needsNames=job.acquire;for(const auto& item:op.items)if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
  if(needsNames) {QList<Artifact> list;for(const auto& item:op.items)list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,op.settings.collisionPolicy,capabilities.maximumNameBytes);for(int i=0;i<op.items.size();++i) {if(!op.items[i].candidate.isEmpty())continue;op.items[i].candidate=names[i].name;if(names[i].status!="pending")op.items[i].uploadStatus=names[i].status;}
@@ -242,8 +245,41 @@ Operation OperationService::run(Job job) {
    if(attempts==31) {item.uploadStatus="failed";item.error={"collision_exhausted","Collision search exhausted",{}};saveItem(item);}
   }
  }
+ // Persist the uploaded receipt before the separate sharing mutation. Sharing
+ // failure leaves an uploaded file and resumes only the link step on explicit retry.
+ for(auto& item:op.items) {
+  if(item.uploadStatus!="uploaded"||job.cancelled->load())continue;
+  if(!capabilities.sharing)continue;
+  auto lock=objectLock(item.receipt.destination,item.receipt.objectReference,{});std::unique_lock guard(*lock);
+  const auto current=store.detail(item.artifact.id);
+  if(current.contains("shareStatus")){item.shareStatus=current["shareStatus"].toString();item.shareIntent=current["shareIntent"].toString();item.shareIntentOptions=current["shareIntentOptions"].toObject();item.receipt=StorageReceipt::fromJson(current["receipt"].toObject());}
+  if(!QStringList{"not_requested","unknown"}.contains(item.shareStatus)&&!(QStringList{"private","failed"}.contains(item.shareStatus)&&item.shareIntent=="create"))continue;
+  if(publicationMode=="private"&&item.shareStatus!="unknown"&&item.shareIntent!="create"){item.shareStatus="private";if(!saveItem(item))return op;continue;}
+  if(!item.receipt.directUrl.isEmpty())continue;
+  const auto shareId=uuid();
+  QJsonObject doc{{"id",shareId},{"historyId",item.artifact.id},{"action","create"},{"state","running"},{"status","pending"},{"receipt",item.receipt.toJson()},{"progress",QJsonObject{}},{"options",item.shareIntentOptions}};
+  if(item.shareStatus=="unknown")doc["action"]="inspect";
+  if(auto e=store.saveSharing(doc)){item.error=e;op.state="partial";saveItem(item);return op;}
+  const auto path=root_+"/history.sqlite";
+  auto checkpoint=[path,&doc](const QJsonObject& progress,std::function<void(Error)> ack){
+   auto proposed=doc;proposed["progress"]=progress;HistoryStore durable(path);const auto e=durable.saveSharing(proposed);if(!e)doc=std::move(proposed);ack(e);
+  };
+  ShareRequest request{shareId,doc["action"].toString(),item.receipt,doc["options"].toObject(),doc["progress"].toObject(),job.cancelled};
+  auto result=awaitProvider<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
+  if(!shareResultMatchesReceipt(result,item.receipt)){result.status="unknown";result.receipt=item.receipt;result.receipt.directUrl.clear();result.error={"share_identity_changed","Sharing returned a different publication identity",{}};}
+  if(result.status!="shared")result.receipt.directUrl.clear();
+  item.receipt=result.receipt;item.shareStatus=result.status;item.error=result.error;
+  doc["state"]="completed";doc["status"]=result.status;doc["receipt"]=result.receipt.toJson();doc["progress"]=result.progress;doc["error"]=result.error.toJson();
+  if(auto e=store.saveSharing(doc)){
+   item.error=e;op.state="partial";
+   QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner,doc,e]{if(owner)emit owner->sharingStopped(doc,e);},Qt::QueuedConnection);
+   return op;
+  }
+  const auto committed=store.sharing(shareId);if(result.status=="shared"||result.status=="revoked"||result.status=="changed"){item.shareIntent.clear();item.shareIntentOptions={};}else if(committed["action"]=="create"){item.shareIntent="create";item.shareIntentOptions=committed["options"].toObject();}
+  if(!saveItem(item))return op;
+ }
  op.cancelled=op.cancelled||job.cancelled->load();
- op.state=op.cancelled?"cancelled":"completed";for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown")op.state=op.cancelled?"cancelled":"partial";
+ op.state=op.cancelled?"cancelled":"completed";for(const auto& item:op.items) if(item.uploadStatus=="failed"||item.uploadStatus=="unknown"||item.shareStatus=="failed"||item.shareStatus=="unknown"||item.shareStatus=="changed"||item.shareIntent=="create")op.state=op.cancelled?"cancelled":"partial";
  save();return op;
 }
 void OperationService::releaseActive(const QString& id) {
@@ -279,7 +315,8 @@ void OperationService::retry(const QString& id,JsonReply reply) {
  if(active_.contains(id)) {reply({"operation_busy","Operation is already active",{}},{});return;}
  auto reserved=std::make_shared<std::atomic_bool>(false);active_.insert(id,reserved);const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,id,reserved](Error e,QJsonObject doc) {
   if(e) {active_.remove(id);reply(e,{});return;}auto op=Operation::fromJson(doc);if(op.items.isEmpty()) {active_.remove(id);reply({"artifact_missing","No acquired artifacts; invoke a new action",{}},{});return;}
-  bool pending=false;for(const auto& i:op.items)if(!terminalUpload(i.uploadStatus))pending=true;
+  auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=op.settings.actions.value(op.action).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
+  bool pending=false;for(const auto& i:op.items)if(!terminalUpload(i.uploadStatus)||(sharing&&i.uploadStatus=="uploaded"&&(i.shareStatus=="unknown"||(i.shareStatus=="private"&&i.shareIntent=="create")||(mode=="share"&&(i.shareStatus=="not_requested"||(i.shareStatus=="failed"&&i.shareIntent=="create"))))))pending=true;
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
   op.cancelled=reserved->load();op.error={};enqueue({op,{},false,reserved,{}});reply({},{{"operationId",op.id},{"retryAccepted",true}});
  });

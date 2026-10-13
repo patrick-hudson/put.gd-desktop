@@ -78,7 +78,7 @@ QJsonObject Settings::developmentTemplate() {
     auto actions=document["actions"].toObject();for(const auto& name:actionNames()) {auto action=actions[name].toObject();action["profileId"]="development-s3";actions[name]=action;}document["actions"]=actions;return document;
 }
 
-Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validateProfile) {
+Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validateProfile, const CredentialValidator& validateCredentials) {
     if (!keys(doc, {"schemaVersion", "actions", "profiles", "archive", "naming", "limits", "retention", "preferences"}))
         return invalid("/", "Configuration has missing or unsupported fields.");
     if (!integer(doc["schemaVersion"], 1, 1)) return invalid("/schemaVersion", "Unsupported configuration schema version.");
@@ -102,16 +102,20 @@ Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validat
             return invalid("/profiles/credentials", "Use a keychain reference or explicitly selected session credentials.");
         if (!validateProfile) return invalid("/profiles/provider", "Provider validation is unavailable.");
         if (auto error = validateProfile(profile["provider"].toString(), profile["settings"].toObject())) return error;
+        if (validateCredentials)
+            if (auto error = validateCredentials(profile["provider"].toString(), credentials)) return error;
     }
     if (!doc["actions"].isObject() || !keys(doc["actions"].toObject(), actionNames()))
         return invalid("/actions", "Define exactly region, window, desktop, and clipboard actions.");
     for (const auto& name : actionNames()) {
         const auto value = doc["actions"].toObject()[name];
         const auto action = value.toObject();
-        if (!value.isObject() || !keys(action, {"destination", "profileId", "shortcut"}) ||
+        if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
             !choice(action["destination"], {"upload", "local"}) || !text(action["shortcut"], 0, 128) ||
             !(action["profileId"].isNull() || (identifier(action["profileId"]) && profileIds.contains(action["profileId"].toString()))))
             return invalid("/actions/" + name, "Action fields or profile references are invalid.");
+        if(action.contains("publicationMode") && !choice(action["publicationMode"],{"default","share","private"}))
+            return invalid("/actions/"+name+"/publicationMode","Choose default, share or private publication.");
         if (!action["shortcut"].toString().isEmpty()) {
             const auto sequence = QKeySequence::fromString(action["shortcut"].toString(), QKeySequence::PortableText);
             if (sequence.count() != 1 || sequence[0].key() == Qt::Key_unknown || sequence[0].key() == 0)
@@ -176,7 +180,7 @@ Settings Settings::fromValidated(const QJsonObject& doc) {
     const auto actions = doc["actions"].toObject();
     for (const auto& name : actionNames()) {
         const auto action = actions[name].toObject();
-        settings.actions.insert(name, {action["destination"].toString(), action["profileId"].toString(), action["shortcut"].toString()});
+        settings.actions.insert(name, {action["destination"].toString(), action["profileId"].toString(), action["shortcut"].toString(),action["publicationMode"].toString("default")});
     }
     for (const auto& entry : doc["profiles"].toArray()) settings.profiles.insert(entry.toObject()["id"].toString(), entry.toObject());
     const auto archive = doc["archive"].toObject();

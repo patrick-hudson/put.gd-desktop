@@ -19,7 +19,9 @@ private:
  QString pendingPreviewPath_;
  void startPreview();
  void updateInspectorLayout();
+ void changeSharing(const QString&);void pollSharing();
  void selectionChanged();void prepareDelete();void pollDeletion();QStringList selectedIds()const;
- UiSession& session_;QStringList restoreSelection_;bool restoringSelection_=false,deleteAccepting_=false;HistoryModel* model_;QTableView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_;QPlainTextEdit *details_,*summary_;QPushButton *copy_,*open_;QString deletionId_;QTimer* deletionTimer_=nullptr;quint64 selectionRequest_=0;bool deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
+ UiSession& session_;QStringList restoreSelection_;bool restoringSelection_=false,deleteAccepting_=false;HistoryModel* model_;QTableView* table_;QSplitter* split_=nullptr;QScrollArea* inspectorScroll_=nullptr;QStackedWidget* list_;QLabel *status_,*count_,*preview_,*empty_;QPlainTextEdit *details_,*summary_;QPushButton *copy_,*open_,*share_,*revoke_,*inspectLink_;QString sharingId_,sharingFeedback_;bool sharingFeedbackError_=false;
+ bool sharingStopped_=false;QTimer* sharingTimer_=nullptr;bool sharingAccepting_=false,sharingPollActive_=false;QString deletionId_;QTimer* deletionTimer_=nullptr;quint64 selectionRequest_=0;bool deletionPollActive_=false,awaitingInitialization_=false,previewLoading_=false;
 };
 }

@@ -1,0 +1,15 @@
+{
+  "name": "putgd-proton-runtime-build",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "bun": "1.4.2",
+    "@protontech/drive-sdk": "0.22.2",
+    "@protontech/crypto": "2.0.0",
+    "ky": "1.14.3"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "typescript": "5.9.3"
+  }
+}

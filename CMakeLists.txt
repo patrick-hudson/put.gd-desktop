@@ -642,3 +642,6 @@ if(BUILD_TESTING AND TARGET putgd-capture)
   add_test(NAME capture_preparation_x11 COMMAND ${PUTGD_XVFB_RUN} -a -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_capture_preparation>)
   set_tests_properties(capture_preparation_x11 PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 30)
 endif()
+
+
+include(cmake/Proton.cmake)

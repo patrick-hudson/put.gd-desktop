@@ -34,7 +34,7 @@ QJsonObject overlay(const QJsonObject& original, const QJsonObject& patch) {
     return result;
 }
 struct LoadedSettings { QJsonObject candidate; QString revision; Error error; };
-LoadedSettings loadValidated(const QString& path,const ProfileValidator& validator) {
+LoadedSettings loadValidated(const QString& path,const ProfileValidator& validator,const CredentialValidator& credentialValidator) {
     LoadedSettings loaded;
     QByteArray bytes;
     bool exists = false;
@@ -49,13 +49,13 @@ LoadedSettings loadValidated(const QString& path,const ProfileValidator& validat
             error = {"config_invalid", "Configuration must be a valid JSON object.", {{"offset", parseError.offset}}};
         else {
             candidate = json.object();
-            error = Settings::validate(candidate, validator);
+            error = Settings::validate(candidate, validator, credentialValidator);
         }
     }
     loaded.candidate=candidate;loaded.error=error;return loaded;
 }
-Error writeCandidate(const QString& path,const ProfileValidator& validator,const QJsonObject& candidate,const QString& expectedRevision) {
-    if (auto error = Settings::validate(candidate, validator)) return error;
+Error writeCandidate(const QString& path,const ProfileValidator& validator,const CredentialValidator& credentialValidator,const QJsonObject& candidate,const QString& expectedRevision) {
+    if (auto error = Settings::validate(candidate, validator, credentialValidator)) return error;
     const auto bytes = QJsonDocument(candidate).toJson(QJsonDocument::Indented);
     if (bytes.size() > maximumConfigBytes) return {"config_too_large", "Configuration exceeds the 1 MiB limit.", {}};
     const auto parent = QFileInfo(path).absolutePath();
@@ -86,8 +86,8 @@ Error writeCandidate(const QString& path,const ProfileValidator& validator,const
 
 }
 
-SettingsService::SettingsService(QString path, ProfileValidator validator, QObject* parent)
-    : QObject(parent), path_(QFileInfo(path).absoluteFilePath()), validator_(std::move(validator)),
+SettingsService::SettingsService(QString path, ProfileValidator validator, QObject* parent, CredentialValidator credentialValidator)
+    : QObject(parent), path_(QFileInfo(path).absoluteFilePath()), validator_(std::move(validator)), credentialValidator_(std::move(credentialValidator)),
       settings_(Settings::fromValidated(Settings::defaults())) {
     debounce_.setSingleShot(true);
     debounce_.setInterval(75);
@@ -125,23 +125,23 @@ Result SettingsService::acceptLoaded(const QJsonObject& candidate,const QString&
     lastError_=error;armWatcher();if(changed)emit accepted(acceptedRevision_);emit statusChanged();return {error,changed};
 }
 Result SettingsService::reload() {
-    std::lock_guard guard(ioMutex_);auto loaded=loadValidated(path_,validator_);
+    std::lock_guard guard(ioMutex_);auto loaded=loadValidated(path_,validator_,credentialValidator_);
     return acceptLoaded(loaded.candidate,loaded.revision,loaded.error,++sequence_);
 }
 Result SettingsService::save(const QJsonObject& candidate,const QString& expectedRevision) {
-    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,candidate,expectedRevision))return {error};return reload();
+    std::lock_guard guard(ioMutex_);if(auto error=writeCandidate(path_,validator_,credentialValidator_,candidate,expectedRevision))return {error};return reload();
 }
 Result SettingsService::patch(const QJsonObject& patchObject, const QString& expectedRevision) {
     return save(overlay(document(), patchObject), expectedRevision);
 }
 SettingsService::~SettingsService() {workerThread_.quit();workerThread_.wait();}
 void SettingsService::asyncLoad(const QJsonObject& candidate,const QString& expected,bool write,std::function<void(Result)> callback) {
-    QPointer<SettingsService> guarded(this);const auto path=path_;const auto validator=validator_;
-    QMetaObject::invokeMethod(worker_,[guarded,path,validator,candidate,expected,write,callback] {
+    QPointer<SettingsService> guarded(this);const auto path=path_;const auto validator=validator_;const auto credentialValidator=credentialValidator_;
+    QMetaObject::invokeMethod(worker_,[guarded,path,validator,credentialValidator,candidate,expected,write,callback] {
         if(!guarded)return;
         std::lock_guard guard(guarded->ioMutex_);
-        Error error;if(write)error=writeCandidate(path,validator,candidate,expected);
-        LoadedSettings loaded;if(!error)loaded=loadValidated(path,validator);
+        Error error;if(write)error=writeCandidate(path,validator,credentialValidator,candidate,expected);
+        LoadedSettings loaded;if(!error)loaded=loadValidated(path,validator,credentialValidator);
         const auto sequence=++guarded->sequence_;
         QMetaObject::invokeMethod(guarded,[guarded,loaded,error,sequence,callback] {
             if(!guarded)return;

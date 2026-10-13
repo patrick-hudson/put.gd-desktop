@@ -9,6 +9,9 @@ struct OperationItem {
  QJsonObject objectReference;
  StorageReceipt receipt; LocalCopy local;
  QString remoteStatus="not_requested";
+ QString shareStatus="not_requested";
+ QString shareIntent; // pending explicit create; inspection must not erase it
+ QJsonObject shareIntentOptions; // non-secret options of that original intent
  Error error;
  QJsonObject toJson() const;
  static OperationItem fromJson(const QJsonObject&);

@@ -7,11 +7,13 @@
 
 namespace putgd {
 using ProfileValidator = std::function<Error(const QString&, const QJsonObject&)>;
+using CredentialValidator = std::function<Error(const QString&, const QJsonObject&)>;
 
 struct ActionSettings {
     QString destination;
     QString profileId;
     QString shortcut;
+    QString publicationMode="default";
 };
 struct ArchiveSettings {
     bool keepUploads = false;
@@ -52,7 +54,7 @@ struct Settings {
 
     static QJsonObject defaults();
     static QJsonObject developmentTemplate();
-    static Error validate(const QJsonObject&, const ProfileValidator& = {});
+    static Error validate(const QJsonObject&, const ProfileValidator& = {}, const CredentialValidator& = {});
     static Settings fromValidated(const QJsonObject&);
     static QStringList actionNames();
 };

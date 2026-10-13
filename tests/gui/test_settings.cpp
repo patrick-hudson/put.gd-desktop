@@ -18,6 +18,8 @@
 #include <QPaintEvent>
 #include <QKeyEvent>
 #include "storage/s3/S3Provider.h"
+#include "storage/proton/ProtonProvider.h"
+#include <QCheckBox>
 using namespace putgd;using namespace putgd::test;
 class SettingsPaintObserver final:public QObject {
 public:int paints=0;QRegion region;
@@ -27,6 +29,22 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void s3SessionCredentialsRemainSupported() {
+  QTemporaryDir directory;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
+  SettingsService service(directory.filePath("config.json"),[&](auto id,auto settings){return registry.validate(id,settings);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});
+  auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto profile=profiles.first().toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;document["profiles"]=profiles;QVERIFY(service.save(document,{}));
+ }
+ void protonDraftKeepsDefaultsAndNeverExportsPassword() {
+  QTemporaryDir d;CredentialStore secrets;ProtonProvider proton;S3Provider s3(secrets);
+  SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="proton-drive"?proton.validateSettings(values):s3.validateSettings(values);});
+  UiSessionFixture fixture(service,secrets);QTRY_VERIFY(fixture.session.ready());SettingsWindow window(fixture.session);window.show();
+  auto* provider=window.findChild<QComboBox*>("storageProvider");QVERIFY(provider);provider->setCurrentIndex(provider->findData("proton-drive"));
+  QVERIFY(window.findChild<QCheckBox*>("protonShareDefault")->isChecked());QVERIFY(window.findChild<QWidget*>("protonDestinationEditor")->isVisible());QVERIFY(!window.findChild<QWidget*>("credentialsEditor")->isVisible());QVERIFY(!window.findChild<QComboBox*>("s3RegionChoices")->isVisible());
+  auto state=window.saveViewState();QVERIFY(!state.contains("stateError"));const auto profile=state["draft"].toObject()["profiles"].toArray().first().toObject();QCOMPARE(profile["provider"].toString(),QString("proton-drive"));QCOMPARE(profile["settings"].toObject(),ProtonProvider::defaults());
+  window.findChild<QToolButton*>("advancedSettings")->setChecked(true);auto* password=window.findChild<QLineEdit*>("protonSharePassword");password->setText("synthetic-secret-not-exported");auto snapshot=window.saveViewState();QVERIFY(!QJsonDocument(snapshot).toJson().contains("synthetic-secret-not-exported"));
+  SettingsWindow restored(fixture.session);QVERIFY(restored.restoreViewState(snapshot));QVERIFY(restored.findChild<QLineEdit*>("protonSharePassword")->text().isEmpty());
+  window.findChild<QPushButton*>("saveSettings")->click();QTRY_COMPARE(service.document()["profiles"].toArray().first().toObject()["provider"].toString(),QString("proton-drive"));
+ }
  void savingOnlyAShortcutPreservesEveryUploadDestination() {
   QTemporaryDir directory;CredentialStore secrets;S3Provider provider(secrets);
   SettingsService settings(directory.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});

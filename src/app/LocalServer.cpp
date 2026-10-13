@@ -89,6 +89,11 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="action.invoke") {if(!fields(p,{"action"})||!string(p,"action"))reply(invalid(),{});else operations_.invoke(p["action"].toString(),reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
  if(method.startsWith("operation.")) {if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="operation.inspect")operations_.inspect(id,reply);else if(method=="operation.cancel")operations_.cancel(id,reply);else if(method=="operation.retry")operations_.retry(id,reply);else if(method=="operation.copy")operations_.copyResult(id,reply);else if(method=="operation.retryLocalSave")operations_.retryLocalSave(id,reply);else reply({"unknown_method","Unknown operation method",{}},{});return;}
+ if(method=="history.share"||method=="history.revokeLink"||method=="history.inspectLink") {
+  if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
+  history_.changeSharing(p["id"].toString(),method=="history.share"?"create":method=="history.revokeLink"?"revoke":"inspect",{},std::move(reply));return;
+ }
+ if(method=="share.inspect") {if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}history_.inspectSharing(p["id"].toString(),std::move(reply));return;}
  if(method=="history.list") {
   const QStringList allowed{"limit","offset","search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};if(!fields(p,{},allowed)) {reply(invalid(),{});return;}
   for(auto it=p.begin();it!=p.end();++it) {if(it.key()=="limit"||it.key()=="offset") {if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()>INT_MAX||it.value().toDouble()<0) {reply(invalid(),{});return;}}else if(!it.value().isString()||it.value().toString().size()>256) {reply(invalid(),{});return;}}
@@ -101,6 +106,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!fields(p,method=="delete.confirm"?QStringList{"ids","acknowledgement"}:QStringList{"ids"})||!p["ids"].isArray()||p["ids"].toArray().size()>1000||(method=="delete.confirm"&&!string(p,"acknowledgement",64))) {reply(invalid(),{});return;}
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128) {reply(invalid(),{});return;}ids.append(id.toString());}
   if(method=="delete.prepare")history_.prepareDelete(ids,reply);else history_.deleteConfirmed(ids,p["acknowledgement"].toString(),reply);return;
+ }
+ if(QStringList{"setup.connectAccount","setup.inspectAccount","setup.createFolder","setup.storeSharePassword"}.contains(method)) {
+  const bool hasInput=method=="setup.createFolder"||method=="setup.storeSharePassword";
+  if(!fields(p,hasInput?QStringList{"profileId","expectedRevision","input"}:QStringList{"profileId","expectedRevision"})||!string(p,"profileId")||!p["expectedRevision"].isString()||(hasInput&&!p["input"].isObject())){reply(invalid(),{});return;}
+  if(!setup_){reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
+  setup_->start(method.mid(6),p["profileId"].toString(),p["expectedRevision"].toString(),p["input"].toObject(),std::move(reply));return;
  }
  if(method=="setup.storeCredentials"||method=="setup.unlockCredentials"||method=="setup.testDestination") {
   const bool store=method=="setup.storeCredentials";
@@ -122,7 +133,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!fields(p,{"expectedRevision"})||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
   QPointer<LocalServer> guarded(this);settings_.saveAsync(Settings::developmentTemplate(),p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,guarded->settings_.metadata());});return;
  }
- if(method=="settings.validate") {if(!fields(p,{"document"})||!p["document"].isObject()) {reply(invalid(),{});return;}auto error=Settings::validate(p["document"].toObject(),[this](const auto& id,const auto& s) {return operations_.providers().validate(id,s);});reply(error,{{"valid",!error}});return;}
+ if(method=="settings.validate") {if(!fields(p,{"document"})||!p["document"].isObject()) {reply(invalid(),{});return;}auto error=Settings::validate(p["document"].toObject(),[this](const auto& id,const auto& s) {return operations_.providers().validate(id,s);},[this](const auto& id,const auto& reference){return operations_.providers().validateCredentials(id,reference);});reply(error,{{"valid",!error}});return;}
  if(!p.isEmpty()) {reply(invalid(),{});return;}
  if(method=="ui.snapshot")reply({},{{"build",QJsonDocument::fromJson(buildManifestJson()).object()},{"residentEpoch",residentEpoch_},{"operationsReady",operations_.ready()},{"settings",QJsonObject{{"document",settings_.document()},{"metadata",settings_.metadata()}}},{"diagnostics",uiDiagnostics_?uiDiagnostics_():operations_.diagnostics()}});
  else if(method=="settings.get")reply({},{{"document",settings_.document()},{"metadata",settings_.metadata()}});

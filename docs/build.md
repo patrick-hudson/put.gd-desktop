@@ -130,3 +130,17 @@ module; non-Linux builds retain Qt local sockets. The native IPC contracts join
 the ordinary `ctest --preset dev` run and its existing CI JUnit artifact. Physical
 Cinnamon RSS measurements use the separate procedure in
 [testing-memory.md](testing-memory.md), not a headless CI substitute.
+
+Proton-enabled Linux x86-64 builds additionally provision the private runtime:
+
+```sh
+python3 tools/proton/provision_runtime.py
+cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON
+cmake --build --preset dev
+ctest --preset dev
+```
+
+Use the same bundle option with Release when packaging. Provisioning is explicit;
+CMake does not fetch it. Users receive the executable in the package and need no
+separate CLI/runtime installation. See [Proton Drive](proton-drive.md) for the
+account, sharing, unsupported deletion and current acceptance limits.

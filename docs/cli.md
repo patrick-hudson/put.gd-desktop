@@ -98,3 +98,10 @@ no payloads or addresses; measure RSS separately using [testing-memory.md](testi
 Other allocators report unsupported and keep the existing cleanup behavior.
 
 `setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint.
+
+Proton link management uses `history.share`, `history.revokeLink` and
+`history.inspectLink` with an exact history `id`. They return `shareOperationId`;
+read `share.inspect` with that ID until its durable outcome is known. Revoke
+removes URL access only. See [Proton Drive](proton-drive.md). Account setup and
+password entry belong in Settings; the CLI rejects `setup.storeSharePassword`
+so passwords are never passed as process arguments.

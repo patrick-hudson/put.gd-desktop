@@ -95,6 +95,7 @@ public:
 signals:
  void initialized();
  void changed(const QString& id);
+ void sharingStopped(const QJsonObject& document,const putgd::Error& error);
 private:
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
  void enqueue(Job);
