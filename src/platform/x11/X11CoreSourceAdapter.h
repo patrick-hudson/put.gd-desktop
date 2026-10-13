@@ -19,6 +19,7 @@ public:
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)override;
  void cancelAcquisition()override;
  void copy(const CopyPayload&,std::function<void(Error)>)override;
+ void setShortcutRecording(bool active,std::function<void(Error)> reply){shortcuts_.setRecording(active,std::move(reply));}
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64 pid)override{uiProcess_=pid>0?pid:0;}
 signals:

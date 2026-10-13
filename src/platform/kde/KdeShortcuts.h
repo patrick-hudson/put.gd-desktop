@@ -1,5 +1,7 @@
 #pragma once
 #include <QObject>
+#include "core/Error.h"
+#include <functional>
 #include <QHash>
 #include <QJsonObject>
 #include <QKeySequence>
@@ -17,7 +19,8 @@ class KdeShortcuts final:public QObject {
 public:
  explicit KdeShortcuts(QObject* parent=nullptr);
  ~KdeShortcuts() override;
- void bind(const QHash<QString,QString>&);
+ void bind(const QHash<QString,QString>&,std::function<void(Error)> reply={});
+ void setRecording(bool,std::function<void(Error)>);
  void setKeyboardMap(xkb_keymap*);
  bool available()const{return available_;}QJsonObject status()const{return status_;}
 signals:
@@ -31,7 +34,8 @@ private:
  void refreshLayout();
  void queryLayout();
  void applyLayout(xkb_layout_index_t);
- void connectComponent(quint64);void bindOne(QString,QString,quint64);
+ void connectComponent(quint64);void bindOne(QString,QString,quint64,std::function<void(Error)> complete={});
+ bool recording_=false;
  QHash<QString,QString> requested_;QJsonObject status_;bool available_=false,apiReady_=false;quint64 generation_=0;
  QHash<QString,QKeySequence> effective_;
  xkb_keymap* keymap_=nullptr;xkb_layout_index_t layout_=XKB_LAYOUT_INVALID;quint64 layoutGeneration_=0;

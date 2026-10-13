@@ -73,6 +73,31 @@ window happens to have focus after the first reply. Missing identity while the
 helper is live fails window capture explicitly. See the isolated ownership tests;
 native compositor evidence is a separate gate.
 
+## Shortcut recording
+
+Shortcut recording uses only the supervised helper's private pipe. The helper
+sends `shortcutRecording` with one boolean `active` field. The resident replies
+with `shortcutRecordingChanged`, the request's `replyTo`, the acknowledged
+`active` value, and an error object. An absent private controller fails recording
+explicitly. The UI must wait for the successful pause acknowledgement before
+accepting a chord; capture state and provisional keys never enter checkpoints.
+
+The resident suppresses action dispatch before asking the native adapter to
+release global shortcuts. X11 removes passive and active keyboard grabs, waits
+for a server roundtrip, and discards queued shortcut presses. GNOME awaits the
+extension's `Bind` reply with empty accelerators. KDE awaits `setInactive` for
+each registered action. Desired configuration remains separate from effective
+registrations; settings changes and native service reconnection retain the pause.
+Completion, cancellation, helper failure, pipe failure and helper exit restore
+the latest saved bindings. A rejected partial pause restores those bindings
+before returning its error. Native restore failures remain explicit errors.
+The UI bounds its acknowledgement wait at twelve seconds and sends an ordered
+restore request on timeout. Late replies cannot begin a timed-out capture.
+
+Controller/widget and synthetic D-Bus tests verify these state transitions;
+X11 fixture tests verify grab release/restoration. These checks do not replace
+visible Cinnamon, GNOME or KDE acceptance and memory evidence.
+
 ## Process and close lifecycle
 
 Only the resident launches the helper. Bootstrap carries the socket path, resident

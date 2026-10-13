@@ -23,6 +23,9 @@ public:
  SessionClient::RequestId request(const QString&,const QJsonObject&,QObject*,SessionClient::Reply);
  void saveAsync(const QJsonObject&,const QString&,std::function<void(Result)>);
  void reloadAsync(std::function<void(Result)>);
+ using ShortcutRecordingHandler=std::function<void(bool,std::function<void(Error)>)>;
+ void setShortcutRecordingHandler(ShortcutRecordingHandler handler){shortcutRecording_=std::move(handler);}
+ void setShortcutRecording(bool active,QObject* receiver,std::function<void(Error)> reply);
  void background(std::function<QJsonObject(Error&)>,QObject*,SessionClient::Reply);
 signals:
  void accepted(QString revision);
@@ -33,6 +36,7 @@ signals:
  void stateChanged();
 private:
  void applySettings(const QJsonObject&);
+ ShortcutRecordingHandler shortcutRecording_;
  SessionClient& client_;
  QJsonObject document_,metadata_,diagnostics_,build_;
  QString epoch_;

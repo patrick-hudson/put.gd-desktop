@@ -23,6 +23,7 @@ UiProcessController::UiProcessController(QString socket,QString epoch,QString he
  connect(&stopDeadline_,&QTimer::timeout,this,[this]{if(process_)process_->kill();else completeShutdown();});
 }
 UiProcessController::~UiProcessController(){
+ restoreShortcuts();
  if(control_)control_->stop();
  if(process_){disconnect(process_,nullptr,this,nullptr);process_->kill();process_->waitForFinished(1000);}
 }
@@ -104,6 +105,10 @@ Error UiProcessController::storeState(const QJsonObject& state){
 }
 void UiProcessController::receive(const QString& type,const QString& sequence,const QJsonObject& payload){
  if(stopping_)return;
+ if(type=="shortcutRecording"){
+  if(phase_!=Phase::Ready||payload.size()!=1||!payload["active"].isBool()||recordingRequests_.size()>=8){fail(unavailable("ui_protocol"));return;}
+  recordingRequests_.append({sequence,payload["active"].toBool()});updateShortcutRecording();return;
+ }
  if(type=="incompatible"){fail(unavailable("ui_incompatible"));return;}
  if(type=="ready"){
   if(phase_!=Phase::Starting||payload["build"].toObject()!=build()||payload["residentEpoch"]!=epoch_){fail(unavailable("ui_incompatible"));return;}
@@ -158,6 +163,38 @@ void UiProcessController::receive(const QString& type,const QString& sequence,co
  }
  fail(unavailable("ui_protocol"));
 }
+void UiProcessController::updateShortcutRecording(){
+ if(recordingRequestActive_||recordingRequests_.isEmpty()||!control_)return;
+ recordingRequestActive_=true;const auto request=recordingRequests_.first();const auto generation=recordingGeneration_;
+ // Retain ownership even while native suspension is pending so helper failure
+ // always cancels that attempt and restores the saved bindings.
+ if(request.active)shortcutRecording_=true;
+ QPointer<UiProcessController> guard(this);
+ auto complete=[guard,generation,request](Error error){
+  if(!guard||guard->recordingGeneration_!=generation)return;
+  guard->recordingRequestActive_=false;guard->recordingRequests_.removeFirst();
+  if(!request.active||error)guard->shortcutRecording_=false;
+  if(guard->control_)guard->control_->send("shortcutRecordingChanged",{{"replyTo",request.sequence},{"active",!error&&request.active},{"error",error.toJson()}});
+  if(guard)guard->updateShortcutRecording();
+ };
+ if(!shortcutRecordingHandler_){complete({"shortcut_recording_unavailable","Global shortcut recording is unavailable in this session.",{}});return;}
+ shortcutRecordingHandler_(request.active,[guard,generation,request,complete](Error error){
+  if(!guard||guard->recordingGeneration_!=generation)return;
+  if(error&&request.active){
+   // A partial native failure may have released some grabs. Restore all saved
+   // bindings before reporting rejection or processing a later request.
+   guard->shortcutRecordingHandler_(false,[complete,error](Error restoreError)mutable{if(restoreError)error.details["restoreError"]=restoreError.toJson();complete(error);});
+  }else complete(error);
+ });
+}
+void UiProcessController::restoreShortcuts(){
+ ++recordingGeneration_;recordingRequests_.clear();recordingRequestActive_=false;
+ if(!std::exchange(shortcutRecording_,false)||!shortcutRecordingHandler_)return;
+ QPointer<UiProcessController> guard(this);
+ shortcutRecordingHandler_(false,[guard](Error error){
+  if(guard&&error&&error.code!="shortcut_recording_interrupted")QMetaObject::invokeMethod(guard,[guard,error]{if(guard&&!guard->shortcutRecording_)emit guard->failure(error);},Qt::QueuedConnection);
+ });
+}
 void UiProcessController::failActivations(Error error){
  auto pending=std::exchange(pending_,{});auto active=std::exchange(activations_,{});
  activationDeadline_.stop();
@@ -166,6 +203,7 @@ void UiProcessController::failActivations(Error error){
 }
 void UiProcessController::fail(Error error){
  if(phase_==Phase::Failed||stopping_)return;
+ restoreShortcuts();
  phase_=Phase::Failed;startup_.stop();activationDeadline_.stop();closeDeadline_.stop();
  if(control_)control_->stop();
  if(process_&&process_->state()!=QProcess::NotRunning)process_->kill();
@@ -174,6 +212,7 @@ void UiProcessController::fail(Error error){
 }
 void UiProcessController::finished(QProcess* child,quint64 generation,int code,QProcess::ExitStatus exitStatus){
  if(process_!=child||processGeneration_!=generation)return;
+ restoreShortcuts();
  lastExit_={{"generation",qint64(generation)},{"code",code},{"status",exitStatus==QProcess::NormalExit?"normal":"crash"}};
  const bool expected=(phase_==Phase::Closing&&closeConfirmed_&&code==0&&exitStatus==QProcess::NormalExit)||phase_==Phase::Failed||stopping_;
  startup_.stop();stopDeadline_.stop();closeDeadline_.stop();
@@ -202,6 +241,7 @@ void UiProcessController::finished(QProcess* child,quint64 generation,int code,Q
 }
 void UiProcessController::shutdown(std::function<void()> done){
  if(stopping_){if(done){auto previous=std::move(stopped_);stopped_=[previous=std::move(previous),done=std::move(done)]{if(previous)previous();done();};}return;}
+ restoreShortcuts();
  stopping_=true;stopped_=std::move(done);phase_=Phase::Stopping;startup_.stop();closeDeadline_.stop();
  QPointer<UiProcessController> guard(this);failActivations(unavailable("ui_stopping"));
  if(!guard)return;

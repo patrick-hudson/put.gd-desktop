@@ -12,6 +12,8 @@ public:
  using Validator=std::function<Error(const QJsonObject&)>;
  UiProcessController(QString socketPath,QString residentEpoch,QString helperPath,Validator,QObject* parent=nullptr);
  ~UiProcessController() override;
+ using ShortcutRecordingHandler=std::function<void(bool,Reply)>;
+ void setShortcutRecordingHandler(ShortcutRecordingHandler handler){shortcutRecordingHandler_=std::move(handler);}
  void activate(const QString& view,Reply reply={});
  void invalidate();
  void shutdown(std::function<void()> finished={});
@@ -25,7 +27,13 @@ private:
  void launch();void flushActivations();void sendInvalidation();
  void receive(const QString& type,const QString& sequence,const QJsonObject& payload);
  void fail(Error);void failActivations(Error);void finished(QProcess*,quint64,int,QProcess::ExitStatus);
+ void updateShortcutRecording();void restoreShortcuts();
  Error storeState(const QJsonObject&);void completeShutdown();
+ struct RecordingRequest {QString sequence;bool active;};
+ QList<RecordingRequest> recordingRequests_;
+ ShortcutRecordingHandler shortcutRecordingHandler_;
+ bool shortcutRecording_=false,recordingRequestActive_=false;
+ quint64 recordingGeneration_=0;
  QString socketPath_,epoch_,helperPath_;Validator validate_;
  QProcess* process_=nullptr;UiControl* control_=nullptr;
  QTimer startup_,stopDeadline_,activationDeadline_,closeDeadline_;

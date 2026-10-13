@@ -24,6 +24,12 @@ void UiSession::saveAsync(const QJsonObject& document,const QString& expected,st
 void UiSession::reloadAsync(std::function<void(Result)> callback){
  ++mutations_;++generation_;request("settings.reload",{},this,[this,callback=std::move(callback)](Error reloadError,QJsonObject){request("settings.get",{},this,[this,reloadError,callback](Error e,QJsonObject data){const auto previous=revision();if(!e)applySettings(data);--mutations_;callback({reloadError?reloadError:e,!reloadError&&!e});if(previous!=revision())emit accepted(revision());emit statusChanged();if(snapshotPending_)refreshSnapshot();});});
 }
+void UiSession::setShortcutRecording(bool active,QObject* receiver,std::function<void(Error)> reply){
+ QPointer<QObject> guard(receiver);
+ auto complete=[guard,reply=std::move(reply)](Error error){if(guard&&reply)reply(error);};
+ if(!shortcutRecording_){complete({"shortcut_recording_unavailable","Shortcut recording requires the resident interface connection.",{}});return;}
+ shortcutRecording_(active,std::move(complete));
+}
 void UiSession::background(std::function<QJsonObject(Error&)> work,QObject* receiver,SessionClient::Reply reply){
  QPointer<QObject> guard(receiver);previews_.start(QRunnable::create([this,guard,work=std::move(work),reply=std::move(reply)]{Error error;auto result=work(error);QMetaObject::invokeMethod(this,[guard,reply,error,result]{if(guard)reply(error,result);},Qt::QueuedConnection);}));
 }

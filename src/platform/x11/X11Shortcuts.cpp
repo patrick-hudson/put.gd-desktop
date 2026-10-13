@@ -15,7 +15,9 @@ bool X11Shortcuts::available()const{return notifier_&&connection_&&!xcb_connecti
 uint16_t X11Shortcuts::modifier(const xcb_get_modifier_mapping_reply_t* map,xcb_keysym_t one,xcb_keysym_t two){if(!map)return 0;auto* codes=xcb_get_modifier_mapping_keycodes(map);uint16_t result=0;for(int m=0;m<8;++m)for(int i=0;i<map->keycodes_per_modifier;++i){auto code=codes[m*map->keycodes_per_modifier+i];if(!code)continue;for(int col=0;col<4;++col){auto sym=xcb_key_symbols_get_keysym(symbols_,code,col);if(sym==one||sym==two)result|=uint16_t(1<<m);}}return result;}
 void X11Shortcuts::clear(){if(!connection_)return;for(const auto& grab:grabs_)xcb_ungrab_key(connection_,grab.code,root_,grab.modifiers);grabs_.clear();xcb_flush(connection_);}
 void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
- requested_=bindings;status_={};if(!available()){clear();for(auto it=bindings.begin();it!=bindings.end();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"bound",false},{"error","shortcut_unavailable"}};emit bindingsChanged();return;}
+ requested_=bindings;status_={};
+ if(recording_){for(auto it=bindings.begin();it!=bindings.end();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"bound",false},{"state","recording"}};emit bindingsChanged();return;}
+ if(!available()){clear();for(auto it=bindings.begin();it!=bindings.end();++it)status_[it.key()]=QJsonObject{{"requested",it.value()},{"bound",false},{"error","shortcut_unavailable"}};emit bindingsChanged();return;}
  const auto identity=[](xcb_keycode_t code,uint16_t modifiers){return QString::number(code)+":"+QString::number(modifiers);};
  QSet<QString> existing;for(const auto& grab:grabs_)existing.insert(identity(grab.code,grab.modifiers));
  QList<Grab> next;
@@ -61,7 +63,26 @@ void X11Shortcuts::bind(const QHash<QString,QString>& bindings){
  grabs_=std::move(next);
  xcb_flush(connection_);emit bindingsChanged();
 }
-void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){const auto type=raw->response_type&127;if(type==XCB_KEY_PRESS){const auto* key=reinterpret_cast<xcb_key_press_event_t*>(raw);for(const auto& grab:grabs_)if(grab.code==key->detail&&grab.modifiers==(key->state&255)){// Release this connection's active passive-key grab before the selector
+void X11Shortcuts::setRecording(bool active,std::function<void(Error)> reply){
+ if(active){
+  recording_=true;clear();
+  if(!available()){reply({"shortcut_unavailable","Global shortcuts cannot be paused in this session.",{}});return;}
+  xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);
+  auto* sync=xcb_get_input_focus_reply(connection_,xcb_get_input_focus(connection_),nullptr);
+  const bool acknowledged=sync&&!xcb_connection_has_error(connection_);free(sync);
+  // Discard shortcut presses queued before ungrabbing, including those read
+  // during the roundtrip. Mapping events may update the saved bindings only.
+  events();bind(requested_);
+  reply(acknowledged?Error{}:Error{"shortcut_unavailable","The desktop did not acknowledge pausing global shortcuts.",{}});
+ }else{
+  if(available())events();
+  recording_=false;bind(requested_);
+  Error error;if(!available())error={"shortcut_unavailable","Global shortcuts could not be restored.",{}};
+  else for(auto it=status_.begin();it!=status_.end();++it){const auto entry=it.value().toObject();if(!entry["requested"].toString().isEmpty()&&!entry["bound"].toBool()){error={"shortcut_restore_failed","A saved global shortcut could not be restored.",{}};break;}}
+  reply(error);
+ }
+}
+void X11Shortcuts::events(){while(auto* raw=xcb_poll_for_event(connection_)){const auto type=raw->response_type&127;if(type==XCB_KEY_PRESS&&!recording_){const auto* key=reinterpret_cast<xcb_key_press_event_t*>(raw);for(const auto& grab:grabs_)if(grab.code==key->detail&&grab.modifiers==(key->state&255)){// Release this connection's active passive-key grab before the selector
  // requests its own keyboard grab. Roundtrip to establish cross-connection
  // ordering even while the user's trigger keys remain physically held.
  xcb_ungrab_keyboard(connection_,XCB_CURRENT_TIME);

@@ -21,6 +21,33 @@ public:
 class UiApplicationTest:public QObject {
  Q_OBJECT
 private slots:
+ void shortcutRecordingRequiresMatchingResidentAcknowledgement(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  bool completed=false;Error error;fixture.session.setShortcutRecording(true,this,[&](Error value){error=value;completed=true;});
+  const auto request=device.last("shortcutRecording");QVERIFY(!request.isEmpty());QVERIFY(request["payload"].toObject()["active"].toBool());QVERIFY(!completed);
+  device.send("shortcutRecordingChanged",{{"replyTo","unknown"},{"active",true}});QVERIFY(!completed);
+  device.send("shortcutRecordingChanged",{{"replyTo",request["sequence"]},{"active",true}});QVERIFY(completed);QVERIFY(!error);
+  completed=false;fixture.session.setShortcutRecording(false,this,[&](Error value){error=value;completed=true;});QVERIFY(!completed);
+  device.send("shortcutRecordingChanged",{{"replyTo",device.last("shortcutRecording")["sequence"]},{"active",false},{"error",QJsonObject{{"code","restore_failed"},{"message","Synthetic failure"}}}});
+  QVERIFY(completed);QCOMPARE(error.code,QString("restore_failed"));
+ }
+ void shortcutRecordingTimeoutRestoresAndIgnoresLateAcknowledgement(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
+  int completions=0;Error error;fixture.session.setShortcutRecording(true,this,[&](Error value){error=value;++completions;});
+  const auto request=device.last("shortcutRecording");QVERIFY(request["payload"].toObject()["active"].toBool());
+  QTRY_COMPARE_WITH_TIMEOUT(completions,1,14000);QCOMPARE(error.code,QString("shortcut_recording_timeout"));
+  const auto restore=device.last("shortcutRecording");QVERIFY(restore["sequence"]!=request["sequence"]);QCOMPARE(restore["payload"].toObject()["active"],QJsonValue(false));
+  device.send("shortcutRecordingChanged",{{"replyTo",request["sequence"]},{"active",true}});QCOMPARE(completions,1);
+  device.send("shortcutRecordingChanged",{{"replyTo",restore["sequence"]},{"active",false}});QCOMPARE(completions,1);
+ }
+ void shortcutRecordingFailsWithoutPrivateControlAndDropsDeadReceiver(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
+  bool completed=false;Error error;fixture.session.setShortcutRecording(true,this,[&](Error value){completed=true;error=value;});QVERIFY(completed);QCOMPARE(error.code,QString("shortcut_recording_unavailable"));
+  std::function<void(Error)> pending;fixture.session.setShortcutRecordingHandler([&](bool,auto reply){pending=std::move(reply);});
+  completed=false;auto* receiver=new QObject;fixture.session.setShortcutRecording(true,receiver,[&](Error){completed=true;});delete receiver;pending({});QVERIFY(!completed);
+ }
  void finalCloseWaitsForAnOutstandingLargeCheckpoint(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
   const QJsonObject activity{{"selectedId",QString(6*1024*1024,'x')},{"selectedItemId",""},{"collapsedIds",QJsonArray{}},{"geometry",QJsonArray{0,0,500,400}}};

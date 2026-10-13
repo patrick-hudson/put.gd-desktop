@@ -14,6 +14,17 @@ Existing file names and auto-rename are the defaults. Captures use names such as
 
 ## Settings edits and operations
 
+In **Advanced settings → Shortcuts**, choose **Record shortcut** beside an action,
+press its key combination, and release all keys to keep it in the draft. Modifier-only
+presses wait for a key. **Escape** always cancels recording, even while modifiers
+are held; the row's **Cancel** button does the same. Moving focus away or closing
+the window also cancels. **Clear** leaves the action unassigned. Use **Save settings**
+to apply the draft, or Settings **Cancel** to keep previously saved bindings.
+The app pauses its global shortcuts while recording so entering an existing chord
+does not start a capture or upload. The status beneath each row reports the actual
+desktop binding and any conflict or unsupported key. Agents can still edit the
+single-chord PortableText value in JSON, such as `Ctrl+1`.
+
 Settings shows the exact canonical configuration path and accepted revision. All non-secret settings are saved together through the shared validator. Invalid fields keep the accepted configuration active. Clean forms refresh after accepted external edits. An unsaved form preserves its draft and displays a conflict when external configuration is accepted; discard/reload before saving. Pending operations and historical receipts keep their original destination snapshot. See [configuration.md](configuration.md) for the JSON format and cooperative locking conventions.
 
 Preferences controls notifications, launch at login, resource limits, recent activity size, failed artifact retention, preview cache size, and optional history expiry. Blank history retention keeps history indefinitely. Notification/tray/launch-at-login behavior needs real-session acceptance on the declared desktop.
