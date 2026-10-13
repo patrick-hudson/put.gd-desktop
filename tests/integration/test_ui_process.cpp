@@ -8,6 +8,34 @@ class UiProcessTest:public QObject {
 private slots:
  void init(){qunsetenv("PUTGD_TEST_UI_MODE");}
  void cleanup(){qunsetenv("PUTGD_TEST_UI_MODE");}
+ void recordingWaitsForNativeAcknowledgementAndRestores(){
+  qputenv("PUTGD_TEST_UI_MODE","recording-cycle");UiProcessController controller("/unused","epoch",helper(),valid);
+  QList<bool> requests;UiProcessController::Reply suspension;
+  controller.setShortcutRecordingHandler([&](bool active,auto reply){requests.append(active);if(active)suspension=std::move(reply);else reply({});});
+  controller.activate("settings");QTRY_COMPARE(requests,QList<bool>{true});QTest::qWait(50);QCOMPARE(requests.size(),1);
+  QVERIFY(suspension);suspension({});QTRY_COMPARE(requests,(QList<bool>{true,false}));
+  bool stopped=false;controller.shutdown([&]{stopped=true;});QTRY_VERIFY(stopped);QCOMPARE(requests.size(),2);
+ }
+ void helperCrashRestoresPendingAndAcknowledgedSuspension_data(){
+  QTest::addColumn<QByteArray>("mode");QTest::newRow("pending")<<QByteArray("recording-crash-pending");QTest::newRow("acknowledged")<<QByteArray("recording-crash");
+ }
+ void helperCrashRestoresPendingAndAcknowledgedSuspension(){
+  QFETCH(QByteArray,mode);qputenv("PUTGD_TEST_UI_MODE",mode);UiProcessController controller("/unused","epoch",helper(),valid);
+  QList<bool> requests;UiProcessController::Reply late;
+  controller.setShortcutRecordingHandler([&](bool active,auto reply){requests.append(active);if(active&&mode=="recording-crash-pending")late=std::move(reply);else reply({});});
+  controller.activate("settings");QTRY_COMPARE(requests,(QList<bool>{true,false}));QTRY_COMPARE(controller.status()["pid"].toInteger(),qint64(0));
+  if(late)late({});
+  QCOMPARE(requests.size(),2);
+ }
+ void nativeSuspensionFailureRestoresBeforeRejecting(){
+  qputenv("PUTGD_TEST_UI_MODE","recording-rejected");UiProcessController controller("/unused","epoch",helper(),valid);QList<bool> requests;UiProcessController::Reply restore;
+  controller.setShortcutRecordingHandler([&](bool active,auto reply){requests.append(active);if(active)reply({"synthetic_failure","Native pause rejected",{}});else restore=std::move(reply);});
+  controller.activate("settings");QTRY_COMPARE(requests,(QList<bool>{true,false}));QTest::qWait(100);QCOMPARE(requests.size(),2);
+  // The fixture exits only upon rejection: it must remain alive until the
+  // asynchronous native restoration has actually completed.
+  QVERIFY(controller.status()["pid"].toInteger()>0);QVERIFY(restore);restore({});
+  QTRY_COMPARE(controller.status()["pid"].toInteger(),qint64(0));QCOMPARE(requests.size(),2);
+ }
  void confirmedCloseStillReportsAnAbnormalExit(){
   qputenv("PUTGD_TEST_UI_MODE","crash-after-close");UiProcessController controller("/unused","epoch",helper(),valid);QSignalSpy failures(&controller,&UiProcessController::failure);bool shown=false;
   controller.activate("settings",[&](Error e){QVERIFY(!e);shown=true;});QTRY_VERIFY(shown);QTRY_COMPARE(controller.status()["pid"].toInteger(),qint64(0));QCOMPARE(failures.size(),1);QCOMPARE(controller.status()["lastExit"].toObject()["code"].toInt(),77);

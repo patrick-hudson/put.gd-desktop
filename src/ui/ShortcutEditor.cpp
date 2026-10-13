@@ -7,6 +7,9 @@
 #include <QJsonDocument>
 #include <QLabel>
 #include <QLineEdit>
+#include <QKeyEvent>
+#include <QPointer>
+#include <QPushButton>
 #include <QPlainTextEdit>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -25,6 +28,7 @@ BindingPresentation bindingPresentation(const QJsonObject& status,const QJsonObj
  const auto state=entry["state"].toString();
  const auto error=entry["error"].isObject()?entry["error"].toObject()["code"].toString():entry["error"].toString();
  const auto actual=actualBinding(entry["actual"]);
+ if(state=="recording")return {"Paused  ·  Recording a shortcut.","muted"};
  if(error=="disabled"||(state=="unbound"&&entry["requested"].toString().isEmpty()))
   return {"Disabled  ·  No global shortcut is assigned.","muted"};
  if(status.contains("available")&&!status["available"].toBool())
@@ -52,23 +56,90 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  VisualStyle::apply(*qApp);
  auto* layout=new QVBoxLayout(this);layout->setContentsMargins(0,0,0,0);layout->setSpacing(16);
  status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"muted");layout->addWidget(status_);
+ recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);VisualStyle::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* form=new QFormLayout;VisualStyle::styleForm(form);layout->addLayout(form);
  const QHash<QString,QString> labels{{"region","Screen region"},{"window","Active window"},{"desktop","Full desktop"},{"clipboard","Clipboard"}};
  const auto defaultActions=Settings::defaults()["actions"].toObject();
  for(const auto& action:Settings::actionNames()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(6);
-  auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setPlaceholderText("For example: Ctrl+Shift+1");editors_[action]=input;fieldLayout->addWidget(input);
+  auto* row=new QHBoxLayout;fieldLayout->addLayout(row);
+  auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setPlaceholderText("Disabled");input->setAccessibleDescription("Choose Record shortcut, press one key with modifiers, then release all keys. Escape cancels. Save settings applies the draft.");editors_[action]=input;row->addWidget(input,1);
+  auto* record=new QPushButton("Record shortcut",field);record->setObjectName("record"+title(action)+"Shortcut");record->setAccessibleName("Record "+labels.value(action).toLower()+" shortcut");recordButtons_[action]=record;row->addWidget(record);
+  auto* clear=new QPushButton("Clear",field);clear->setObjectName("clear"+title(action)+"Shortcut");clear->setAccessibleName("Clear "+labels.value(action).toLower()+" shortcut");clear->setToolTip("Disable this shortcut after saving settings.");row->addWidget(clear);
+  connect(record,&QPushButton::clicked,this,[this,action]{if(recordingAction_==action)cancelRecording();else startRecording(action);});
+  connect(clear,&QPushButton::clicked,this,[this,input]{cancelRecording();input->clear();});
   auto* binding=new QLabel(field);binding->setObjectName("shortcut"+title(action)+"Status");binding->setAccessibleName(action+" actual shortcut status");binding->setWordWrap(true);VisualStyle::role(binding,"binding");bindingStates_[action]=binding;fieldLayout->addWidget(binding);
   const auto defaultShortcut=defaultActions[action].toObject()["shortcut"].toString();
   const auto label=labels.value(action)+" shortcut";
-  form->addRow(VisualStyle::settingLabel(label,"The global key combination for the "+labels.value(action).toLower()+" action. The default is "+(defaultShortcut.isEmpty()?QString("unassigned"):defaultShortcut)+". Leave it empty to disable this shortcut. Enter one combination, such as Ctrl+Shift+1; save settings to request it from the desktop. The status below reports the actual binding, including conflicts or unsupported keys.",input,this),field);
+  form->addRow(VisualStyle::settingLabel(label,"The global key combination for the "+labels.value(action).toLower()+" action. The default is "+(defaultShortcut.isEmpty()?QString("unassigned"):defaultShortcut)+". Choose Record shortcut, press one key with optional modifiers, then release all keys to keep it in the draft. Escape or Cancel stops recording without changing the draft. Clear disables the shortcut. Save settings requests the draft from the desktop; cancelling Settings keeps saved bindings. The status below reports the actual binding, including conflicts or unsupported keys. JSON configuration still accepts portable text such as Ctrl+Shift+1.",input,this),field);
  }
  auto* toggle=new QToolButton(this);toggle->setObjectName("shortcutDetailsToggle");toggle->setAccessibleName("Show exact desktop shortcut diagnostics");toggle->setText("Advanced binding details");toggle->setCheckable(true);toggle->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);toggle->setArrowType(Qt::RightArrow);layout->addWidget(toggle);
  details_=new QPlainTextEdit(this);details_->setObjectName("shortcutDetails");details_->setAccessibleName("Exact desktop shortcut diagnostics JSON");details_->setReadOnly(true);details_->setMinimumHeight(120);details_->setMaximumHeight(220);layout->addWidget(details_);details_->hide();
  connect(toggle,&QToolButton::toggled,this,[this,toggle](bool visible){details_->setVisible(visible);toggle->setArrowType(visible?Qt::DownArrow:Qt::RightArrow);});
  setStatus({});
 }
-void ShortcutEditor::setActions(const QJsonObject& actions){for(auto it=editors_.begin();it!=editors_.end();++it)it.value()->setText(actions[it.key()].toObject()["shortcut"].toString());}
+ShortcutEditor::~ShortcutEditor(){cancelRecording();}
+void ShortcutEditor::setActions(const QJsonObject& actions){cancelRecording();for(auto it=editors_.begin();it!=editors_.end();++it)it.value()->setText(actions[it.key()].toObject()["shortcut"].toString());}
+void ShortcutEditor::startRecording(const QString& action){
+ cancelRecording();recordingAction_=action;recordingReady_=false;chord_={};pressed_.clear();
+ const auto generation=++recordingGeneration_;
+ recordButtons_[action]->setText("Cancel");recordButtons_[action]->setFocusPolicy(Qt::NoFocus);
+ recordingStatus_->setText("Preparing to record… Escape cancels.");recordingStatus_->show();
+ editors_[action]->setFocus();qApp->installEventFilter(this);
+ if(!recordingControl_){finishRecording("Recording is unavailable. Reopen Settings from the running app.");return;}
+ QPointer<ShortcutEditor> guard(this);
+ recordingControl_(true,[guard,generation](Error error){
+  if(!guard||generation!=guard->recordingGeneration_)return;
+  if(error){guard->finishRecording("Cannot record: "+error.message);return;}
+  guard->recordingReady_=true;
+  guard->recordingStatus_->setText("Press shortcut… Release all keys to keep it. Escape cancels.");
+ });
+}
+void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishRecording("Recording cancelled. The draft shortcut is unchanged.");}
+void ShortcutEditor::finishRecording(const QString& message){
+ if(recordingAction_.isEmpty())return;
+ ++recordingGeneration_;recordingReady_=false;qApp->removeEventFilter(this);
+ recordButtons_[recordingAction_]->setText("Record shortcut");recordButtons_[recordingAction_]->setFocusPolicy(Qt::StrongFocus);recordingAction_.clear();pressed_.clear();chord_={};
+ recordingStatus_->setText(message);
+ if(recordingControl_){QPointer<ShortcutEditor> guard(this);const auto generation=recordingGeneration_;recordingControl_(false,[guard,generation](Error error){
+  // Saving settings can supersede this restore. The newer binding request owns
+  // its result, which is reported by the actual desktop binding labels.
+  if(guard&&generation==guard->recordingGeneration_&&error&&error.code!="shortcut_recording_interrupted")guard->recordingStatus_->setText("Could not restore shortcuts: "+error.message);
+ });}
+}
+bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
+ if(recordingAction_.isEmpty())return false;
+ auto* input=editors_[recordingAction_];
+ if((object==input&&event->type()==QEvent::FocusOut)||(object==this&&event->type()==QEvent::Hide)||(object==window()&&(event->type()==QEvent::WindowDeactivate||event->type()==QEvent::Close||event->type()==QEvent::Hide))||event->type()==QEvent::ApplicationDeactivate){cancelRecording();return false;}
+ if(event->type()!=QEvent::ShortcutOverride&&event->type()!=QEvent::KeyPress&&event->type()!=QEvent::KeyRelease)return false;
+ auto* key=static_cast<QKeyEvent*>(event);event->accept();
+ if(event->type()==QEvent::ShortcutOverride)return true;
+ if(key->key()==Qt::Key_Escape){cancelRecording();return true;}
+ if(!recordingReady_||key->isAutoRepeat())return true;
+ // Shift can change a key's Qt symbol between press and release. Native scan
+ // codes keep that physical key (and left/right modifiers) paired correctly.
+ const quint64 identity=key->nativeScanCode()?quint64(key->nativeScanCode()):(quint64(1)<<32)|quint32(key->key());
+ const auto modifier=[&]{switch(key->key()){case Qt::Key_Control:return Qt::ControlModifier;case Qt::Key_Shift:return Qt::ShiftModifier;case Qt::Key_Alt:return Qt::AltModifier;case Qt::Key_Meta:return Qt::MetaModifier;default:return Qt::NoModifier;}}();
+ if(event->type()==QEvent::KeyPress){
+  if(pressed_.contains(identity))return true;
+  pressed_.insert(identity);
+  if(modifier!=Qt::NoModifier)return true;
+  if(key->key()==Qt::Key_unknown||key->key()==0||key->key()==Qt::Key_AltGr||key->modifiers().testFlag(Qt::GroupSwitchModifier)){
+   finishRecording("Unsupported key. Choose another shortcut.");return true;
+  }
+  if(!chord_.isEmpty()&&chord_[0].key()!=key->key()){finishRecording("Use one key with modifiers. The draft shortcut is unchanged.");return true;}
+  chord_=QKeySequence(key->keyCombination());
+  recordingStatus_->setText(chord_.toString(QKeySequence::NativeText)+" — release all keys to keep it. Escape cancels.");
+ }else{
+  pressed_.remove(identity);
+  const auto heldModifiers=key->modifiers()&(Qt::ControlModifier|Qt::ShiftModifier|Qt::AltModifier|Qt::MetaModifier)&~Qt::KeyboardModifiers(modifier);
+  if(!chord_.isEmpty()&&pressed_.isEmpty()&&heldModifiers==Qt::NoModifier){
+   const auto text=chord_.toString(QKeySequence::PortableText);
+   input->setText(text);finishRecording(text+" recorded. Save settings to apply.");
+  }
+ }
+ return true;
+}
 QJsonObject ShortcutEditor::actions(const QJsonObject& base) const {auto actions=base;for(auto it=editors_.begin();it!=editors_.end();++it){auto action=actions[it.key()].toObject();action["shortcut"]=it.value()->text();actions[it.key()]=action;}return actions;}
 void ShortcutEditor::setStatus(const QJsonObject& status) {
  if(!status.contains("available"))status_->setText("Desktop bindings have not been reported. Refresh desktop support to check them.");

@@ -1,6 +1,7 @@
 #include "platform/gnome/GnomeProtocol.h"
 #include "platform/gnome/GnomeAdapter.h"
 #include <QTest>
+#include <QSignalSpy>
 #include <QBuffer>
 #include <QImage>
 #include <QTemporaryDir>
@@ -172,6 +173,18 @@ private slots:
   qputenv("XDG_CURRENT_DESKTOP","KDE");GnomeAdapter source;
   QVERIFY(!helperAvailable(source));QCOMPARE(source.capabilities()["helper"].toObject()["error"].toObject()["code"].toString(),QString("session_unsupported"));
   QVERIFY(!QDBusConnection::sessionBus().interface()->isServiceRegistered("org.putgd.App.Gnome50").value());
+ }
+ void recordingSuspendsNativeBindingsAcrossSettingsAndOwnerChanges(){
+  GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.bindShortcuts({{"window","Ctrl+1"}});
+  QTRY_VERIFY(!state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString().isEmpty());
+  bool done=false;Error error;source.setShortcutRecording(true,[&](Error value){error=value;done=true;});QVERIFY(!done);QTRY_VERIFY(done);QVERIFY2(!error,qPrintable(error.code));
+  QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString{});
+  QSignalSpy invoked(&source,&GnomeAdapter::actionRequested);control("TriggerWindow",{QUuid::createUuid().toString(QUuid::WithoutBraces)});QTest::qWait(50);QCOMPARE(invoked.size(),0);
+  source.bindShortcuts({{"window","Ctrl+2"}});QTest::qWait(50);QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString{});
+  stopFixture();QTRY_VERIFY(!helperAvailable(source));QVERIFY(startFixture());QTRY_VERIFY(windowAvailable(source));QTRY_VERIFY(state()["binds"].toInt()>0);
+  QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString{});
+  done=false;source.setShortcutRecording(false,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QVERIFY(!error);
+  QCOMPARE(state()["lastBindings"].toObject()["window"].toObject()["accelerator"].toString(),QString("<Control>2"));
  }
  void clearFailureRecoversWithoutUiReopen(){
   GnomeAdapter source;QTRY_VERIFY(windowAvailable(source));source.setUiProcess(1234);

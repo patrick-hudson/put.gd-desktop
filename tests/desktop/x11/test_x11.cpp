@@ -293,6 +293,22 @@ private slots:
   CinnamonScreenshotFixture fixture;QVERIFY(fixture.registered);CaptureFrame frame{"fixture",QRectF(0,0,10,8),QRect(0,0,10,8),1,0,{}};auto* request=new CinnamonRegionCapture({frame},{});bool settled=false;Error error;
   connect(request,&CinnamonRegionCapture::acquired,this,[&](QList<CaptureFrame>,Error value){error=value;settled=true;});const int before=heartbeats;request->start();QTRY_COMPARE(fixture.requests,1);QTRY_VERIFY_WITH_TIMEOUT(settled,12000);QCOMPARE(error.code,QString("capture_timeout"));QVERIFY(heartbeats-before>50);QVERIFY(!QFileInfo::exists(fixture.path));fixture.close();
  }
+ void recordingDiscardsShortcutPressQueuedBeforeNativePause() {
+  X11DesktopFixture desktop;X11Shortcuts shortcuts;int activated=0;connect(&shortcuts,&X11Shortcuts::activated,this,[&](const QString&){++activated;});
+  shortcuts.bind({{"region","Ctrl+1"}});QVERIFY(shortcuts.status()["region"].toObject()["bound"].toBool());
+  desktop.key(XK_Control_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Control_L,false);desktop.inputFocus();
+  Error error;shortcuts.setRecording(true,[&](Error value){error=value;});QVERIFY(!error);QTest::qWait(20);QCOMPARE(activated,0);
+  shortcuts.setRecording(false,[&](Error value){error=value;});QVERIFY(!error);QTest::qWait(20);QCOMPARE(activated,0);
+  desktop.key(XK_Control_L,true);desktop.key(XK_1,true);desktop.key(XK_1,false);desktop.key(XK_Control_L,false);QTRY_COMPARE(activated,1);
+ }
+ void recordingReleasesGrabsAndRestoresLatestSavedBindings() {
+  X11Shortcuts saved,competitor;saved.bind({{"region","Ctrl+Shift+1"}});QVERIFY(saved.status()["region"].toObject()["bound"].toBool());
+  bool acknowledged=false;Error error;saved.setRecording(true,[&](Error value){error=value;acknowledged=true;});QVERIFY(acknowledged);QVERIFY(!error);
+  competitor.bind({{"region","Ctrl+Shift+1"}});QVERIFY(competitor.status()["region"].toObject()["bound"].toBool());
+  saved.bind({{"region","Ctrl+Shift+2"}});QCOMPARE(saved.status()["region"].toObject()["requested"].toString(),QString("Ctrl+Shift+2"));QVERIFY(!saved.status()["region"].toObject()["bound"].toBool());
+  competitor.bind({});saved.setRecording(false,[&](Error value){error=value;});QVERIFY(!error);QVERIFY(saved.status()["region"].toObject()["bound"].toBool());
+  competitor.bind({{"old","Ctrl+Shift+1"},{"new","Ctrl+Shift+2"}});QVERIFY(competitor.status()["old"].toObject()["bound"].toBool());QVERIFY(!competitor.status()["new"].toObject()["bound"].toBool());
+ }
  void conflictsAreReported() {
   X11Shortcuts first,second;QVERIFY(first.available());QVERIFY(second.available());
   first.bind({{"region","Ctrl+Shift+1"}});second.bind({{"region","Ctrl+Shift+1"}});

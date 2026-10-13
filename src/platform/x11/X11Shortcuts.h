@@ -1,5 +1,7 @@
 #pragma once
 #include <QObject>
+#include "core/Error.h"
+#include <functional>
 #include <QHash>
 #include <QJsonObject>
 #include <QSocketNotifier>
@@ -12,6 +14,7 @@ public:
  explicit X11Shortcuts(QObject* parent=nullptr);
  ~X11Shortcuts() override;
  bool available()const;
+ void setRecording(bool,std::function<void(Error)>);
  void bind(const QHash<QString,QString>&);
  QJsonObject status()const{return status_;}
 signals:
@@ -30,5 +33,6 @@ private:
  QHash<QString,QString> requested_;
  QJsonObject status_;
  uint16_t locks_=0;
+ bool recording_=false;
 };
 }

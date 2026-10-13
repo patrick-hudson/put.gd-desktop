@@ -8,9 +8,24 @@
 #include <QCloseEvent>
 #include <QMessageBox>
 #include <QWindow>
+#include <utility>
 namespace putgd {
 UiApplicationController::UiApplicationController(UiSession& session,UiControl& control,QJsonObject state,QObject* parent)
  :QObject(parent),session_(session),control_(control),saved_(std::move(state)) {
+ recordingDeadline_.setSingleShot(true);recordingDeadline_.setInterval(12000);
+ connect(&recordingDeadline_,&QTimer::timeout,this,[this]{
+  // A timeout is not evidence of suspension: discard capture and restore via
+  // the ordered private pipe. The supervisor also restores if this pipe dies.
+  control_.send("shortcutRecording",{{"active",false}});
+  finishShortcutRecordingRequests({"shortcut_recording_timeout","Global shortcuts could not be paused. Try recording again.",{}});
+ });
+ session_.setShortcutRecordingHandler([this](bool active,std::function<void(Error)> reply){
+  if(exiting_){reply({"ui_stopping","The interface is closing.",{}});return;}
+  const auto sequence=control_.send("shortcutRecording",{{"active",active}});
+  if(sequence.isEmpty()){reply({"ui_unavailable","The interface connection is unavailable.",{}});return;}
+  recordingRequests_.insert(sequence,{active,std::move(reply)});recordingDeadline_.start();
+ });
+ connect(&control_,&UiControl::failed,this,[this](Error error){finishShortcutRecordingRequests(error);});
  checkpointDelay_.setSingleShot(true);checkpointDelay_.setInterval(250);
  closeDeadline_.setSingleShot(true);closeDeadline_.setInterval(5000);
  connect(&checkpointDelay_,&QTimer::timeout,this,&UiApplicationController::checkpoint);
@@ -26,7 +41,7 @@ UiApplicationController::UiApplicationController(UiSession& session,UiControl& c
  connect(&control_,&UiControl::frame,this,&UiApplicationController::receive);
 }
 UiApplicationController::~UiApplicationController(){
- exiting_=true;checkpointDelay_.stop();closeDeadline_.stop();
+ exiting_=true;session_.setShortcutRecordingHandler({});finishShortcutRecordingRequests({"ui_stopping","The interface is closing.",{}});checkpointDelay_.stop();closeDeadline_.stop();
  disconnect(&control_,nullptr,this,nullptr);
  // QWidget destruction emits hide events. Remove filters and callbacks before
  // state/timer members are destroyed, then let the view owners release widgets.
@@ -96,9 +111,21 @@ void UiApplicationController::allowClose(){
  if(history_)history_->releasePreview();
  emit exitRequested();
 }
+void UiApplicationController::finishShortcutRecordingRequests(Error error){
+ recordingDeadline_.stop();auto requests=std::exchange(recordingRequests_,{});
+ for(auto& request:requests)if(request.reply)request.reply(error);
+}
 void UiApplicationController::receive(const QString& type,const QString& sequence,const QJsonObject& payload){
  if(exiting_)return;
  if(type=="shutdown"){allowClose();return;}
+ if(type=="shortcutRecordingChanged"){
+  auto it=recordingRequests_.find(payload["replyTo"].toString());if(it==recordingRequests_.end())return;
+  const auto request=std::move(it.value());recordingRequests_.erase(it);if(recordingRequests_.isEmpty())recordingDeadline_.stop();
+  const auto value=payload["error"].toObject();Error error{value["code"].toString(),value["message"].toString(),value["details"].toObject()};
+  if(!error&&payload["active"]!=request.active)error={"ui_protocol","Invalid shortcut recording acknowledgement.",{}};
+  if(request.reply)request.reply(error);
+  return;
+ }
  if(type=="activate"){
   const auto name=payload["view"].toString();
   auto* window=closing_?nullptr:view(name);

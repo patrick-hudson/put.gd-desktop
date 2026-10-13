@@ -16,6 +16,7 @@ public:
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override;
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
+ void setShortcutRecording(bool,std::function<void(Error)>);
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64) override;
  void invalidateCopyEligibility() override;
@@ -30,6 +31,7 @@ private:
  using Reply=std::function<void(Error,QJsonObject)>;
  struct Transfer {QString id;ResourceLimits limits;QJsonObject metadata;QByteArray bytes;std::function<void(PayloadResult)> reply;quint64 generation=0;};
  void discover();
+ void applyShortcutBindings(std::function<void(Error)> reply={});
  void invalidateShortcutBindings();
  void call(const QString& method,const QVariantList&,Reply,int timeout=5000);
  QJsonObject sync(const QString& method,const QVariantList&,Error&,int timeout=1000);
@@ -53,6 +55,7 @@ private:
  QList<QThread*> workers_;
  quint64 revision_=0,generation_=0,helperRevision_=0,copyGeneration_=0;
  QHash<quint64,Reply> pending_;quint64 callSerial_=0;
+ bool recording_=false;quint64 bindingGeneration_=0;
  bool ownsName_=false,ready_=false,stopping_=false;
 };
 }

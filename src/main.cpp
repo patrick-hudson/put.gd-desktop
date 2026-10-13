@@ -194,7 +194,24 @@ int main(int argc,char* argv[]) {
  putgd::SetupService setup(settings,credentials,tester);
  server.setSetupService(&setup);
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
+ bool recordingShortcut=false;
  putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);
+ ui.setShortcutRecordingHandler([&](bool active,std::function<void(putgd::Error)> reply){
+  // Gate dispatch before asking native services to release their registrations.
+  // The adapter acknowledgement, not this flag, makes capture safe to start.
+  recordingShortcut=active;
+#ifdef PUTGD_NATIVE_X11
+  if(coreNative){coreNative->setShortcutRecording(active,std::move(reply));return;}
+  if(native){native->setShortcutRecording(active,std::move(reply));return;}
+#endif
+#ifdef PUTGD_NATIVE_GNOME
+  if(gnome){gnome->setShortcutRecording(active,std::move(reply));return;}
+#endif
+#ifdef PUTGD_NATIVE_KDE
+  if(kde){kde->setShortcutRecording(active,std::move(reply));return;}
+#endif
+  reply(active?putgd::Error{"shortcut_recording_unavailable","Global shortcut recording is unavailable in this session.",{}}:putgd::Error{});
+ });
  QObject::connect(&ui,&putgd::UiProcessController::helperPidChanged,&app,[&](qint64 pid){source->setUiProcess(pid);});
  const auto refreshSettingsDiagnostics=[&]{ui.invalidate();};
 #ifdef PUTGD_NATIVE_X11
@@ -210,7 +227,7 @@ int main(int argc,char* argv[]) {
  const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
  putgd::TrayController tray(operations,[&](const QString& requested){ui.activate(requested);},quitApplication);
  // Native shortcuts use the tray feedback with selection-safe re-entry handling.
- const auto requested=[&tray](const QString& action){tray.invokeShortcut(action);};
+ const auto requested=[&tray,&recordingShortcut](const QString& action){if(!recordingShortcut)tray.invokeShortcut(action);};
 #ifdef PUTGD_NATIVE_X11
  if(coreNative)QObject::connect(coreNative,&putgd::X11CoreSourceAdapter::actionRequested,&tray,requested);
  if(native)QObject::connect(native,&putgd::X11SourceAdapter::actionRequested,&tray,requested);

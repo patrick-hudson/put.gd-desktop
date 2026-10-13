@@ -30,6 +30,7 @@ public:
  void setResidentRegionCursor(quint32 cursor){residentRegionCursor_=cursor;}
  void cancelAcquisition() override;
  void copy(const CopyPayload&,std::function<void(Error)>) override;
+ void setShortcutRecording(bool active,std::function<void(Error)> reply){shortcuts_.setRecording(active,std::move(reply));}
  void bindShortcuts(const QHash<QString,QString>&);
  void setUiProcess(qint64 pid) override {capture_.setUiProcess(pid);}
 signals:

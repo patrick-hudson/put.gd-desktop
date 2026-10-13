@@ -6,6 +6,8 @@
 #include <QDBusConnection>
 #include <QDBusContext>
 #include <QDBusMessage>
+#include <QDBusObjectPath>
+#include <QDBusMetaType>
 #include <QDBusUnixFileDescriptor>
 #include <QDir>
 #include <QFile>
@@ -137,22 +139,51 @@ public slots:
   return info;
  }
 };
+class ShortcutFixture final:public QObject,protected QDBusContext {
+ Q_OBJECT
+ Q_CLASSINFO("D-Bus Interface","org.kde.KGlobalAccel")
+public:
+ QHash<QString,QList<KdeKeySequence>> bindings;QSet<QString> active;
+ int inactiveDelay=0,inactiveCalls=0,setterDelay=0,setterCalls=0;bool failInactive=false,rejectKeys=false;
+public slots:
+ void doRegister(const QStringList& id){active.insert(id[1]);}
+ QList<putgd::KdeKeySequence> setShortcutKeys(const QStringList& id,const QList<putgd::KdeKeySequence>& keys,uint){
+  ++setterCalls;if(rejectKeys){bindings[id[1]]={};active.remove(id[1]);return {};}bindings[id[1]]=keys;active.insert(id[1]);
+  if(setterDelay){const auto request=message();const auto bus=connection();setDelayedReply(true);QTimer::singleShot(setterDelay,this,[request,bus,keys]{bus.send(request.createReply(QVariant::fromValue(keys)));});return {};}
+  return keys;
+ }
+ void setInactive(const QStringList& id){
+  ++inactiveCalls;
+  if(failInactive){sendErrorReply("org.putgd.SyntheticFailure","Synthetic inactive failure");return;}
+  if(!inactiveDelay){active.remove(id[1]);return;}
+  const auto request=message();const auto bus=connection();const auto action=id[1];setDelayedReply(true);
+  QTimer::singleShot(inactiveDelay,this,[this,request,bus,action]{active.remove(action);bus.send(request.createReply());});
+ }
+ QDBusObjectPath getComponent(const QString&){return QDBusObjectPath("/component/putgd");}
+};
 class KdeOwnershipTest final:public QObject {
  Q_OBJECT
  QTemporaryDir data_;
- ScreenshotFixture screenshot_;WindowInfoFixture info_;
+ ScreenshotFixture screenshot_;WindowInfoFixture info_;ShortcutFixture shortcuts_;
+ static bool keyboardMap(KdeShortcuts& source,const char* layout="us"){
+  auto* context=xkb_context_new(XKB_CONTEXT_NO_ENVIRONMENT_NAMES);if(!context)return false;
+  xkb_rule_names names{};names.layout=layout;auto* map=xkb_keymap_new_from_names(context,&names,XKB_KEYMAP_COMPILE_NO_FLAGS);
+  if(map){source.setKeyboardMap(map);xkb_keymap_unref(map);}xkb_context_unref(context);return map!=nullptr;
+ }
 private slots:
  void initTestCase(){
+  qDBusRegisterMetaType<putgd::KdeKeySequence>();qDBusRegisterMetaType<QList<putgd::KdeKeySequence>>();
   QVERIFY(data_.isValid());qputenv("XDG_DATA_HOME",data_.path().toUtf8());QVERIFY(QDir().mkpath(data_.filePath("applications")));
   QFile entry(data_.filePath("applications/putgd.desktop"));QVERIFY(entry.open(QIODevice::WriteOnly));
   entry.write("[Desktop Entry]\nExec=\""+QCoreApplication::applicationFilePath().toUtf8()+"\"\nX-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2;\n");entry.close();
   // A distinct connection forces the native wire path instead of Qt local-call dispatch.
   auto bus=QDBusConnection::connectToBus(QDBusConnection::SessionBus,"putgd-kde-ownership-fixture");QVERIFY(bus.isConnected());
+  QVERIFY(bus.registerObject("/kglobalaccel",&shortcuts_,QDBusConnection::ExportAllSlots));QVERIFY(bus.registerService("org.kde.kglobalaccel"));
   QVERIFY(bus.registerObject("/org/kde/KWin/ScreenShot2",&screenshot_,QDBusConnection::ExportAllSlots|QDBusConnection::ExportAllProperties));QVERIFY(bus.registerService("org.kde.KWin.ScreenShot2"));
   QVERIFY(bus.registerObject("/KWin",&info_,QDBusConnection::ExportAllSlots));QVERIFY(bus.registerService("org.kde.KWin"));
  }
  void cleanupTestCase(){QDBusConnection::disconnectFromBus("putgd-kde-ownership-fixture");}
- void init(){screenshot_.captures=0;screenshot_.windowId=frozenId;info_.queries.clear();info_.info={{"uuid",frozenId},{"resourceClass","external-fixture"},{"desktopFile","external-fixture"}};info_.fail=false;info_.delayMs=0;}
+ void init(){screenshot_.captures=0;screenshot_.windowId=frozenId;info_.queries.clear();info_.info={{"uuid",frozenId},{"resourceClass","external-fixture"},{"desktopFile","external-fixture"}};info_.fail=false;info_.delayMs=0;shortcuts_.inactiveDelay=0;shortcuts_.setterDelay=0;shortcuts_.failInactive=false;shortcuts_.rejectKeys=false;}
  void keyboardMapDiscoveryReplacementAndRemoval(){
   NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;QSignalSpy changed(&clipboard,&DataControlClipboard::keyboardChanged);
   QTRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));
@@ -334,6 +365,53 @@ private slots:
  void unknownNonImageOffersKeepDiscoveryFallback(){
   int discoveries=0;const auto discover=[&]{++discoveries;return QList<QByteArray>{"application/x-unknown"};};
   QCOMPARE(kdeClipboardImportFormats({"application/x-unknown","text/plain"},discover),QStringList({"application/x-unknown","text/plain"}));QCOMPARE(discoveries,1);
+ }
+ void recordingWaitsForNativeInactiveAndRestoresLatestBindings(){
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());QVERIFY(shortcuts_.active.contains("window"));
+  shortcuts_.inactiveDelay=50;bool done=false;Error error;source.setRecording(true,[&](Error value){error=value;done=true;});QVERIFY(!done);QVERIFY(shortcuts_.active.contains("window"));QTRY_VERIFY(done);QVERIFY(!error);QVERIFY(!shortcuts_.active.contains("window"));
+  source.bind({{"window","Ctrl+2"}});QVERIFY(keyboardMap(source,"de"));QTest::qWait(50);QVERIFY(!shortcuts_.active.contains("window"));QCOMPARE(source.status()["window"].toObject()["requested"].toString(),QString("Ctrl+2"));
+  shortcuts_.inactiveDelay=0;done=false;source.setRecording(false,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QVERIFY(!error);QVERIFY(shortcuts_.active.contains("window"));
+  QCOMPARE(shortcuts_.bindings["window"].first().keys.first(),QKeySequence("Ctrl+2")[0].toCombined());
+ }
+ void recordingRejectsNativeReleaseFailure(){
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  shortcuts_.failInactive=true;bool done=false;Error error;source.setRecording(true,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QCOMPARE(error.code,QString("shortcut_recording_failed"));
+  shortcuts_.failInactive=false;done=false;source.setRecording(false,[&](Error value){error=value;done=true;});QTRY_VERIFY(done);QVERIFY(!error);
+ }
+ void recordingSurvivesShortcutServiceRestart(){
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.available());QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  bool done=false;source.setRecording(true,[&](Error error){QVERIFY(!error);done=true;});QTRY_VERIFY(done);
+  auto bus=QDBusConnection("putgd-kde-ownership-fixture");QVERIFY(bus.unregisterService("org.kde.kglobalaccel"));QTRY_VERIFY(!source.available());
+  // A replacement daemon starts without the previous daemon's registrations.
+  shortcuts_.active.clear();shortcuts_.bindings.clear();source.bind({{"window","Ctrl+2"}});const auto inactive=shortcuts_.inactiveCalls;
+  QVERIFY(bus.registerService("org.kde.kglobalaccel"));QTRY_VERIFY(shortcuts_.inactiveCalls>inactive);QVERIFY(shortcuts_.active.isEmpty());QCOMPARE(source.status()["window"].toObject()["state"].toString(),QString("recording"));
+  done=false;source.setRecording(false,[&](Error error){QVERIFY(!error);done=true;});QTRY_VERIFY(done);QVERIFY(shortcuts_.active.contains("window"));QCOMPARE(shortcuts_.bindings["window"].first().keys.first(),QKeySequence("Ctrl+2")[0].toCombined());
+ }
+ void recordingRejectsStaleServiceReply_data(){
+  QTest::addColumn<bool>("restoring");QTest::newRow("pending-pause")<<false;QTest::newRow("pending-restore")<<true;
+ }
+ void recordingRejectsStaleServiceReply(){
+  QFETCH(bool,restoring);KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  QSignalSpy activated(&source,&KdeShortcuts::activated);
+  if(restoring){bool paused=false;source.setRecording(true,[&](Error error){QVERIFY(!error);paused=true;});QTRY_VERIFY(paused);shortcuts_.setterDelay=300;}
+  else shortcuts_.inactiveDelay=300;
+  const auto calls=restoring?shortcuts_.setterCalls:shortcuts_.inactiveCalls;int completed=0;Error result;
+  source.setRecording(!restoring,[&](Error error){result=error;++completed;});
+  QTRY_VERIFY((restoring?shortcuts_.setterCalls:shortcuts_.inactiveCalls)>calls);QCOMPARE(completed,0);
+  auto bus=QDBusConnection("putgd-kde-ownership-fixture");QVERIFY(bus.unregisterService("org.kde.kglobalaccel"));QTRY_VERIFY(!source.available());
+  shortcuts_.active.clear();shortcuts_.bindings.clear();shortcuts_.inactiveDelay=0;shortcuts_.setterDelay=0;
+  QVERIFY(bus.registerService("org.kde.kglobalaccel"));QTRY_COMPARE(completed,1);QCOMPARE(result.code,QString("shortcut_recording_interrupted"));
+  if(!restoring){QVERIFY(shortcuts_.active.isEmpty());QCOMPARE(source.status()["window"].toObject()["state"].toString(),QString("recording"));bool resumed=false;source.setRecording(false,[&](Error error){QVERIFY(!error);resumed=true;});QTRY_VERIFY(resumed);}
+  QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  auto signal=QDBusMessage::createSignal("/component/putgd","org.kde.kglobalaccel.Component","globalShortcutPressed");signal.setArguments({QString("putgd"),QString("window"),QVariant::fromValue(qlonglong(1))});
+  // Retry signal delivery only until the asynchronous component lookup reconnects.
+  QTRY_VERIFY(([&]{bus.send(signal);return activated.count()>0;})());QTest::qWait(30);QCOMPARE(completed,1);
+ }
+ void recordingReportsConflictingRestore(){
+  KdeShortcuts source;QVERIFY(keyboardMap(source));source.bind({{"window","Ctrl+1"}});QTRY_VERIFY(source.status()["window"].toObject()["bound"].toBool());
+  bool done=false;source.setRecording(true,[&](Error error){QVERIFY(!error);done=true;});QTRY_VERIFY(done);
+  shortcuts_.rejectKeys=true;done=false;Error result;source.setRecording(false,[&](Error error){result=error;done=true;});QTRY_VERIFY(done);shortcuts_.rejectKeys=false;
+  QCOMPARE(result.code,QString("shortcut_conflict"));QVERIFY(!source.status()["window"].toObject()["bound"].toBool());QVERIFY(!shortcuts_.active.contains("window"));
  }
  void externalWindowCaptureRemainsNative(){
   KdeSourceAdapter source;QTRY_VERIFY(source.capabilities()["capture"].toObject()["window"].toObject()["available"].toBool());source.setUiProcess(424242);

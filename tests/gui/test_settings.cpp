@@ -16,6 +16,7 @@
 #include <QPointer>
 #include <QDialog>
 #include <QPaintEvent>
+#include <QKeyEvent>
 #include "storage/s3/S3Provider.h"
 using namespace putgd;using namespace putgd::test;
 class SettingsPaintObserver final:public QObject {
@@ -42,6 +43,89 @@ private slots:
    QCOMPARE(after[name].toObject()["destination"],before[name].toObject()["destination"]);
    if(name!="region")QCOMPARE(after[name],before[name]);
   }
+ }
+ void shortcutRecordsOnReleaseAndEscapePreservesDraft(){
+  ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  auto* record=editor.findChild<QPushButton*>("recordRegionShortcut");QVERIFY(record);
+  auto* input=editor.editors().value("region");const auto previous=input->text();
+  record->click();QTest::keyPress(input,Qt::Key_Control);QTest::keyPress(input,Qt::Key_1,Qt::ControlModifier);
+  QCOMPARE(input->text(),previous);
+  QKeyEvent releaseOne(QEvent::KeyRelease,Qt::Key_1,Qt::ControlModifier);QApplication::sendEvent(input,&releaseOne);QCOMPARE(input->text(),previous);
+  QTest::keyRelease(input,Qt::Key_Control);QCOMPARE(input->text(),QString("Ctrl+1"));
+  record->click();QTest::keyPress(input,Qt::Key_Control);QTest::keyPress(input,Qt::Key_2,Qt::ControlModifier);
+  QTest::keyClick(input,Qt::Key_Escape,Qt::ControlModifier);QTest::keyRelease(input,Qt::Key_2,Qt::ControlModifier);QTest::keyRelease(input,Qt::Key_Control);
+  QCOMPARE(input->text(),QString("Ctrl+1"));
+ }
+ void shortcutRecordingNormalizesEveryActionAndIgnoresRepeat(){
+  ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  for(const auto& action:Settings::actionNames()){
+   const auto title=action.left(1).toUpper()+action.mid(1);auto* input=editor.editors().value(action);const auto old=input->text();
+   editor.findChild<QPushButton*>("record"+title+"Shortcut")->click();
+   QTest::keyPress(input,Qt::Key_Control);QTest::keyRelease(input,Qt::Key_Control);QCOMPARE(input->text(),old);
+   QTest::keyPress(input,Qt::Key_Control);QTest::keyPress(input,Qt::Key_Shift,Qt::ControlModifier);QTest::keyPress(input,Qt::Key_F8,Qt::ControlModifier|Qt::ShiftModifier);
+   QKeyEvent repeatedPress(QEvent::KeyPress,Qt::Key_F8,Qt::ControlModifier|Qt::ShiftModifier,{},true);QApplication::sendEvent(input,&repeatedPress);
+   QKeyEvent repeatedRelease(QEvent::KeyRelease,Qt::Key_F8,Qt::ControlModifier|Qt::ShiftModifier,{},true);QApplication::sendEvent(input,&repeatedRelease);QCOMPARE(input->text(),old);
+   QTest::keyRelease(input,Qt::Key_Control,Qt::ShiftModifier);QTest::keyRelease(input,Qt::Key_Shift);QCOMPARE(input->text(),old);
+   QTest::keyRelease(input,Qt::Key_F8);QCOMPARE(input->text(),QString("Ctrl+Shift+F8"));
+   QCOMPARE(editor.actions({})[action].toObject()["shortcut"].toString(),QString("Ctrl+Shift+F8"));
+   QTest::keyClick(input,Qt::Key_Tab);QVERIFY(QApplication::focusWidget()!=input);
+   editor.findChild<QPushButton*>("clear"+title+"Shortcut")->click();QVERIFY(input->text().isEmpty());
+  }
+ }
+ void shortcutRecordingTracksPhysicalKeysAcrossModifierRelease(){
+  ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
+  auto* record=editor.findChild<QPushButton*>("recordRegionShortcut");auto* input=editor.editors().value("region");const auto old=input->text();record->click();
+  const auto send=[&](QEvent::Type type,int key,Qt::KeyboardModifiers modifiers,quint32 scan){QKeyEvent event(type,key,modifiers,scan,0,0);QApplication::sendEvent(input,&event);};
+  send(QEvent::KeyPress,Qt::Key_Shift,Qt::ShiftModifier,50);send(QEvent::KeyPress,Qt::Key_Exclam,Qt::ShiftModifier,10);
+  send(QEvent::KeyRelease,Qt::Key_Shift,Qt::NoModifier,50);QCOMPARE(input->text(),old);
+  // X11 can report a repeated key with a new symbol when modifiers change.
+  send(QEvent::KeyPress,Qt::Key_1,Qt::NoModifier,10);QCOMPARE(record->text(),QString("Cancel"));
+  send(QEvent::KeyRelease,Qt::Key_1,Qt::NoModifier,10);QCOMPARE(input->text(),QString("Shift+!"));QCOMPARE(record->text(),QString("Record shortcut"));
+  record->click();send(QEvent::KeyPress,Qt::Key_1,Qt::KeypadModifier,87);send(QEvent::KeyRelease,Qt::Key_1,Qt::KeypadModifier,87);
+  QCOMPARE(input->text(),QKeySequence(QKeyCombination(Qt::KeypadModifier,Qt::Key_1)).toString(QKeySequence::PortableText));QCOMPARE(record->text(),QString("Record shortcut"));
+  for(const auto modifierFirst:{false,true}){
+   record->click();send(QEvent::KeyPress,Qt::Key_Control,Qt::ControlModifier,37);send(QEvent::KeyPress,Qt::Key_2,Qt::ControlModifier|Qt::KeypadModifier,88);
+   if(modifierFirst){send(QEvent::KeyRelease,Qt::Key_Control,Qt::NoModifier,37);send(QEvent::KeyRelease,Qt::Key_2,Qt::KeypadModifier,88);}
+   else {send(QEvent::KeyRelease,Qt::Key_2,Qt::ControlModifier|Qt::KeypadModifier,88);send(QEvent::KeyRelease,Qt::Key_Control,Qt::NoModifier,37);}
+   QCOMPARE(input->text(),QKeySequence(QKeyCombination(Qt::ControlModifier|Qt::KeypadModifier,Qt::Key_2)).toString(QKeySequence::PortableText));QCOMPARE(record->text(),QString("Record shortcut"));
+  }
+ }
+ void shortcutRecordingCancellationAndFailuresReleaseSuspension(){
+  QList<bool> transitions;std::function<void(Error)> ready;ShortcutEditor editor;
+  editor.setRecordingControl([&](bool active,auto reply){transitions.append(active);if(active)ready=reply;else reply({});});
+  editor.setActions(Settings::defaults()["actions"].toObject());editor.show();QTest::qWait(1);
+  auto* input=editor.editors().value("region");auto* record=editor.findChild<QPushButton*>("recordRegionShortcut");const auto old=input->text();
+  record->click();QTest::keyClick(input,Qt::Key_1,Qt::ControlModifier);QCOMPARE(input->text(),old);
+  QTest::keyClick(input,Qt::Key_Escape);QCOMPARE(transitions,QList<bool>({true,false}));ready({});QCOMPARE(record->text(),QString("Record shortcut"));
+  record->click();ready({"shortcut_unavailable","Synthetic suspension failure",{}});QCOMPARE(transitions,QList<bool>({true,false,true,false}));QCOMPARE(input->text(),old);
+  record->click();ready({});QTest::keyPress(input,Qt::Key_Control);QTest::mouseClick(record,Qt::LeftButton);QCOMPARE(record->text(),QString("Record shortcut"));QCOMPARE(transitions.last(),false);
+  record->click();ready({});editor.editors().value("window")->setFocus();QCOMPARE(transitions.last(),false);QCOMPARE(input->text(),old);
+  record->click();ready({});QEvent deactivate(QEvent::WindowDeactivate);QApplication::sendEvent(&editor,&deactivate);QCOMPARE(transitions.last(),false);
+  record->click();ready({});QKeyEvent unsupported(QEvent::KeyPress,Qt::Key_unknown,Qt::NoModifier);QApplication::sendEvent(input,&unsupported);QCOMPARE(transitions.last(),false);QVERIFY(editor.findChild<QLabel*>("shortcutRecordingStatus")->text().contains("Unsupported"));
+  record->click();ready({});editor.hide();QCOMPARE(transitions.last(),false);QCOMPARE(input->text(),old);
+ }
+ void shortcutRecordingDistinguishesSupersededRestoreFromFailure(){
+  std::function<void(Error)> restored;ShortcutEditor editor;
+  editor.setRecordingControl([&](bool active,auto reply){if(active)reply({});else restored=std::move(reply);});
+  editor.setActions(Settings::defaults()["actions"].toObject());editor.show();QTest::qWait(1);
+  auto* record=editor.findChild<QPushButton*>("recordRegionShortcut");auto* input=editor.editors().value("region");auto* status=editor.findChild<QLabel*>("shortcutRecordingStatus");
+  record->click();QTest::keyClick(input,Qt::Key_1,Qt::ControlModifier);const auto recorded=status->text();
+  restored({"shortcut_recording_interrupted","Global shortcut configuration changed.",{}});QCOMPARE(status->text(),recorded);QCOMPARE(input->text(),QString("Ctrl+1"));
+  record->click();QTest::keyClick(input,Qt::Key_Escape);restored({"shortcut_restore_failed","Synthetic restore failure",{}});QVERIFY(status->text().contains("Could not restore shortcuts"));QCOMPARE(input->text(),QString("Ctrl+1"));
+ }
+ void shortcutRecordingPreservesDirtySettingsAndSaveCancelContract(){
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);QTRY_VERIFY(fixture.session.ready());
+  fixture.session.setShortcutRecordingHandler([](bool,auto reply){reply({});});
+  SettingsWindow window(fixture.session);window.show();window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
+  auto* navigation=window.findChild<QListWidget*>("settingsNavigation");for(int i=0;i<navigation->count();++i)if(navigation->item(i)->text()=="Shortcuts")navigation->setCurrentRow(i);
+  auto* input=window.findChild<QLineEdit*>("shortcutRegion");auto* record=window.findChild<QPushButton*>("recordRegionShortcut");
+  const auto saved=service.document();window.findChild<QLineEdit*>("archiveRoot")->setText(d.filePath("unsaved"));
+  record->click();QTest::keyClick(input,Qt::Key_1,Qt::ControlModifier);QCOMPARE(input->text(),QString("Ctrl+1"));QCOMPARE(service.document(),saved);
+  QVERIFY(service.patch({{"preferences",QJsonObject{{"notifications",false}}}},service.revision()));QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("changed"));QCOMPARE(input->text(),QString("Ctrl+1"));QCOMPARE(window.findChild<QLineEdit*>("archiveRoot")->text(),d.filePath("unsaved"));
+  window.findChild<QPushButton*>("cancelSettings")->click();QTRY_VERIFY(!window.isVisible());QCOMPARE(service.document()["actions"],saved["actions"]);
+  SettingsWindow second(fixture.session);second.show();second.findChild<QToolButton*>("advancedSettings")->setChecked(true);navigation=second.findChild<QListWidget*>("settingsNavigation");for(int i=0;i<navigation->count();++i)if(navigation->item(i)->text()=="Shortcuts")navigation->setCurrentRow(i);
+  input=second.findChild<QLineEdit*>("shortcutRegion");second.findChild<QPushButton*>("recordRegionShortcut")->click();QTest::keyClick(input,Qt::Key_1,Qt::ControlModifier);
+  second.findChild<QPushButton*>("saveSettings")->click();QTRY_COMPARE(service.document()["actions"].toObject()["region"].toObject()["shortcut"].toString(),QString("Ctrl+1"));
  }
  void simpleDestinationAndCredentialFieldsShareAlignment(){
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);window.show();QTest::qWait(20);
