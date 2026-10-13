@@ -77,7 +77,13 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      // thread, commits progress, then acknowledges; no Qt SQL connection crosses threads.
      auto checkpoint=[path,&doc,&items,index,committed](const QJsonObject& checkpoint,std::function<void(Error)> ack) {
       if(!checkpoint["schemaVersion"].isDouble()||checkpoint["schemaVersion"].toInt()<1) {ack({"delete_checkpoint_invalid","Driver progress requires a version",{}});return;}
-      auto target=items[index].toObject();target["progress"]=checkpoint;items[index]=target;doc["items"]=items;HistoryStore durable(path);const auto e=durable.saveDeletion(doc);if(!e)committed();ack(e);
+      auto proposedItems=items;
+      auto target=proposedItems[index].toObject();target["progress"]=checkpoint;proposedItems[index]=target;
+      auto proposedDoc=doc;proposedDoc["items"]=proposedItems;
+      HistoryStore durable(path);const auto e=durable.saveDeletion(proposedDoc);
+      // Empty provider results may reuse this state, so only retain acknowledged progress.
+      if(!e) {items=std::move(proposedItems);doc=std::move(proposedDoc);committed();}
+      ack(e);
      };
      DeleteRequest request{doc["id"].toString(),receipt,progress,cancelled};
      auto result=awaitProvider<DeleteResult>([&](auto cb) {provider->remove(request,checkpoint,cb);});outcome=result.status=="missing"?"already_missing":result.status;progress=result.progress.isEmpty()?items[index].toObject()["progress"].toObject():result.progress;e=result.error;

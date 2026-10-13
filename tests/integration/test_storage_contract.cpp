@@ -1,4 +1,5 @@
 #include "fixtures/U2Fixtures.h"
+#include <QSqlQuery>
 using namespace putgd;using namespace putgd::test;
 class StorageContract:public QObject {
  Q_OBJECT
@@ -47,6 +48,47 @@ private slots:
   // Remove the current profile: deletion still uses the recorded destination/reference.
   QVERIFY(settings.save(configuration(d.path(),true),settings.revision()));QJsonObject preview;history.prepareDelete({id},[&](Error e,QJsonObject r){QVERIFY(!e);preview=r;});QTRY_VERIFY(!preview.isEmpty());bool denied=false;history.deleteConfirmed({id},"wrong",[&](Error e,QJsonObject){QCOMPARE(e.code,QString("delete_confirmation_changed"));denied=true;});QTRY_VERIFY(denied);QCOMPARE(provider->deletes.load(),0);
   std::atomic_bool persisted{false};provider->checkpointObserver=[&](const DeleteRequest& request) {HistoryStore reopened(ops.databasePath());auto journal=reopened.deletion(request.id);persisted=journal["items"].toArray()[0].toObject()["progress"].toObject()["phase"]=="recorded-intent";};QString deletion;history.deleteConfirmed({id},preview["acknowledgement"].toString(),[&](Error e,QJsonObject r){QVERIFY(!e);deletion=r["deleteOperationId"].toString();});QTRY_VERIFY(!deletion.isEmpty());QTRY_COMPARE(store.detail(id)["remoteStatus"].toString(),QString("removed"));QVERIFY(persisted.load());QCOMPARE(provider->deletes.load(),1);QCOMPARE(provider->uploads.load(),1);QCOMPARE(store.detail(id)["receipt"].toObject(),receipt.toJson());QVERIFY(!store.detail(id).isEmpty());
+ }
+ void failedCheckpointDoesNotReplaceAcknowledgedProgress() {
+  QTemporaryDir directory;
+  ProviderRegistry registry;
+  auto provider=std::make_shared<OpaqueProvider>();
+  registry.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value) {return registry.validate(id,value);});
+  QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload=textPayload();
+  OperationService operations(directory.filePath("data"),settings,registry,source);
+  HistoryService history(operations);
+  QTRY_VERIFY(operations.ready());
+  QString operationId;
+  operations.invoke("clipboard",[&](Error error,QJsonObject result) {QVERIFY(!error);operationId=result["operationId"].toString();});
+  QTRY_COMPARE(source.copies,1);
+  HistoryStore store(operations.databasePath());
+  const auto item=store.operation(operationId).items[0];
+  const auto connection=QString("opaque-checkpoint-failure");
+  {
+   auto db=QSqlDatabase::addDatabase("QSQLITE",connection);
+   db.setDatabaseName(operations.databasePath());QVERIFY(db.open());QSqlQuery query(db);
+   QVERIFY(query.exec("CREATE TRIGGER fail_opaque_checkpoint BEFORE INSERT ON deletions "
+      "WHEN json_extract(NEW.data,'$.items[0].status')='deleting' "
+      "AND json_extract(NEW.data,'$.items[0].progress.phase')='recorded-intent' "
+      "BEGIN SELECT RAISE(ABORT,'synthetic checkpoint failure'); END"));
+  }
+  QSqlDatabase::removeDatabase(connection);
+  QJsonObject preview;
+  history.prepareDelete({item.artifact.id},[&](Error error,QJsonObject result) {QVERIFY(!error);preview=result;});
+  QTRY_VERIFY(!preview.isEmpty());
+  QString deletionId;
+  history.deleteConfirmed({item.artifact.id},preview["acknowledgement"].toString(),[&](Error error,QJsonObject result) {QVERIFY(!error);deletionId=result["deleteOperationId"].toString();});
+  QTRY_VERIFY(!deletionId.isEmpty());
+  QTRY_COMPARE(store.deletion(deletionId)["state"].toString(),QString("completed"));
+  const auto failed=store.deletion(deletionId)["items"].toArray()[0].toObject();
+  QCOMPARE(failed["status"].toString(),QString("failed"));
+  QVERIFY(!failed["error"].toObject()["code"].toString().isEmpty());
+  QCOMPARE(provider->deletes.load(),0);
+  // The provider returns no new progress after the failed acknowledgement.
+  // History must retain only its last committed checkpoint.
+  QCOMPARE(failed["progress"].toObject(),QJsonObject({{"schemaVersion",1}}));
  }
  void partialDeletionRetainsIdentityAndHistoryClearNeverCallsProvider() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload.kind="files";source.payload.files={fixture(d.path(),"a.txt","fixture a"),fixture(d.path(),"b.txt","fixture b")};QString deletion,unknownId;QStringList ids;
