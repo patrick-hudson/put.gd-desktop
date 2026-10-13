@@ -138,7 +138,34 @@ does not authenticate the resulting disk.
 The runner's `launch` generates a fresh SSH key per run and installs its public key
 using the bootstrap key, pins the presented SSH host key to that run after bootstrap
 verification, and then uses the fresh key. Pass the known-hosts file obtained during
-golden-image provisioning; bootstrap does not silently trust new hosts.
+golden-image provisioning; bootstrap does not silently trust new hosts. The file
+must contain the exact forwarded endpoint, such as `[127.0.0.1]:22220`, selected
+by `--ssh-port` (port 22 uses `127.0.0.1` without brackets). The runner
+checks for a matching entry before allocating a run. This catches a missing
+endpoint; it cannot authenticate an unbooted guest or prove a matching key is
+correct. SSH still verifies the presented key after boot.
+
+For a different port, explicitly select the **same golden guest's previously
+verified endpoint** and copy its pinned key to a new private file. Do not use an
+unauthenticated `ssh-keyscan` result, or select another desktop's key because it
+shares the same loopback address. For example, if this guest was authenticated
+at port 22220 and its new run will use 22431:
+
+```sh
+umask 077
+lab_hostkeys=$(mktemp -d /tmp/pgkeys-XXXXXXXX)
+ssh-keygen -F '[127.0.0.1]:22220' -f work/lab-bootstrap/known_hosts > "$lab_hostkeys/pinned"
+# Inspect the selected public-key fingerprint against the provisioning receipt.
+ssh-keygen -lf "$lab_hostkeys/pinned"
+awk '!/^#/ && NF >= 3 {if ($1 ~ /^@/) $2="[127.0.0.1]:22431"; else $1="[127.0.0.1]:22431"; print}' \
+  "$lab_hostkeys/pinned" > "$lab_hostkeys/known_hosts"
+```
+
+Use `--ssh-port 22431 --known-hosts "$lab_hostkeys/known_hosts"` for launch.
+Strict host-key verification still checks the guest's presented key. A missing
+or changed key requires resolving the provisioning identity; disabling checking
+is not a recovery step. Keep private run files under a unique directory when
+running concurrent campaigns.
 
 ## Package and run
 

@@ -50,6 +50,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
             self.fail('PUTGD_CLI must select the built production putgd-cli')
         self.directory = tempfile.TemporaryDirectory(prefix='putgd mcp socket ')
         self.socket = str(Path(self.directory.name) / 'session socket')
+        self.assertLessEqual(len(self.socket.encode('utf-8')), 107, 'Test socket exceeds Linux path limit')
         self.calls = []
         self.listener = await asyncio.start_unix_server(self.handle, self.socket)
 
@@ -148,7 +149,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(all(r['schemaVersion'] == 1 and r['session'] == self.socket for r in self.calls))
         self.listener.close()
         await self.listener.wait_closed()
-        Path(self.socket).unlink()
+        # Python 3.13+ removes the Unix socket when the asyncio server closes.
+        Path(self.socket).unlink(missing_ok=True)
         unavailable = await CliAdapter(self.cli, self.socket).call('capabilities', {})
         self.assertEqual(unavailable['error']['code'], 'session_unavailable')
 

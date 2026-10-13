@@ -198,6 +198,49 @@ class LabContracts(unittest.TestCase):
             self.assertFalse(entries[1]['ok'])
             self.assertTrue(all(entry.get('timestampUtc') for entry in entries))
 
+    def test_launch_rejects_wrong_host_key_endpoint_before_creating_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            golden = root / 'golden.qcow2'
+            golden.write_bytes(b'sealed test identity')
+            trusted = root / 'known_hosts'
+            trusted.write_text('[127.0.0.1]:22220 ssh-ed25519 AAAA\n')
+            run = root / 'new-run'
+            args = SimpleNamespace(profile='cinnamon-x11', golden=str(golden),
+                run=str(run), acceleration='tcg', ssh_port=22431,
+                known_hosts=str(trusted), bootstrap_key=str(root / 'identity'))
+            original_command = lab.command
+            def read_only_command(arguments, **kwargs):
+                if arguments[0] != 'ssh-keygen' or '-F' not in arguments:
+                    self.fail('Launch mutated resources before rejecting an unpinned endpoint')
+                return original_command(arguments, **kwargs)
+            with patch.object(lab, 'command', side_effect=read_only_command):
+                with self.assertRaisesRegex(lab.LabError, r'22431.*known.hosts'):
+                    lab.launch(args)
+            self.assertFalse(run.exists())
+            self.assertEqual(golden.read_bytes(), b'sealed test identity')
+
+    def test_launch_accepts_plain_and_hashed_pinned_endpoints(self):
+        for port, endpoint in ((22, '127.0.0.1'), (22431, '[127.0.0.1]:22431')):
+            for hashed in (False, True):
+                with self.subTest(port=port, hashed=hashed), tempfile.TemporaryDirectory() as directory:
+                    root = Path(directory)
+                    golden = root / 'golden.qcow2'
+                    golden.write_bytes(b'sealed test identity')
+                    trusted = root / 'known_hosts'
+                    trusted.write_text(endpoint + ' ssh-ed25519 AAAA\n')
+                    if hashed:
+                        lab.command(['ssh-keygen', '-H', '-f', trusted])
+                    run = root / 'existing-run'
+                    run.mkdir()
+                    args = SimpleNamespace(profile='cinnamon-x11', golden=str(golden),
+                        run=str(run), acceleration='tcg', ssh_port=port,
+                        known_hosts=str(trusted), bootstrap_key=str(root / 'identity'))
+                    # Passing preflight reaches the existing-run guard, before any allocation.
+                    with self.assertRaises(FileExistsError):
+                        lab.launch(args)
+                    self.assertEqual(list(run.iterdir()), [])
+
     def test_launch_is_disposable_and_control_channels_are_local(self):
         profile = lab.load_profile('cinnamon-x11')
         command = lab.qemu_command(profile, Path('/tmp/run'), Path('/tmp/run/disk.qcow2'), 22001, 9, 'kvm')

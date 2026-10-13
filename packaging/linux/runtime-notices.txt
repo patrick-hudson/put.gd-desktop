@@ -1,4 +1,4 @@
-put.gd development package dependency notice
+put.gd package dependency notice
 
 Qt 6 and QtKeychain are dynamically linked distribution packages. Their licenses,
 source and security updates are supplied through the distribution package manager.
@@ -15,6 +15,10 @@ The ext-data-control-v1 Wayland protocol notice is retained in
 wayland-ext-data-control-v1.xml beside this file, including its original
 copyright and permission text. Generated client bindings use that protocol.
 
-This development package and its optional synthetic fixture are inputs to graphical
-acceptance. Installation alone does not certify compositor support. Release lifecycle,
-complete license audit, integration assets and checksums remain U10 release gates.
+Native packages include desktop integration assets and dependency notices. Release
+artifacts have build identities, package inventories and published checksums. Verify
+these against the exact artifact being installed. Installation and artifact auditing
+alone do not certify compositor support or install/upgrade/removal behavior; consult
+https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/verification.md
+and https://github.com/patrick-hudson/put.gd-desktop/blob/main/docs/release.md
+for tested versions and remaining gates, including the complete release license audit.

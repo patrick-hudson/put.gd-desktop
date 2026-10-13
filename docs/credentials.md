@@ -1,5 +1,11 @@
 # Credentials
 
+Enter credentials through the saved profile in **Settings**, following
+[First setup](user-guide.md#first-setup). CLI/MCP configuration accepts credential
+references only; neither interface accepts raw keys. The C++ methods below are
+internal APIs, not CLI commands. A session-mode profile needs explicit credential
+entry again after the resident exits.
+
 S3 never uses the environment/profile/IMDS credential chain. Each effective request
 uses an explicit cached access key, secret key and optional session token. Credentials
 are resolved by an explicit setup action; uploads and hotkeys cannot trigger unlock.

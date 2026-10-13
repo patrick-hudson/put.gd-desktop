@@ -287,6 +287,12 @@ def launch(args):
         raise LabError('Install and shut down a golden guest first; see docs/vm-lab.md')
     if args.acceleration == 'kvm' and not os.access('/dev/kvm', os.R_OK | os.W_OK):
         raise LabError('KVM unavailable; request explicit --acceleration tcg for functional-only evidence')
+    # A provisioning key pinned to another forwarded port cannot authenticate
+    # this endpoint. Reject it before allocating an overlay or booting a guest.
+    endpoint = '127.0.0.1' if args.ssh_port == 22 else f'[127.0.0.1]:{args.ssh_port}'
+    pinned = command(['ssh-keygen', '-F', endpoint, '-f', args.known_hosts], check=False)
+    if pinned.returncode or not pinned.stdout.strip():
+        raise LabError(f'{endpoint} is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping')
     run = Path(args.run).resolve()
     run.mkdir(parents=True, mode=0o700, exist_ok=False)
     os.chmod(run, 0o700)
