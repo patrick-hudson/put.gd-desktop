@@ -373,6 +373,14 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         progress["phase"] = phase;
         return checkpoint(save, progress);
     };
+    auto persistIntent = [&](const QString& phase) {
+        // A rejected pre-effect checkpoint must not masquerade as a sent DELETE.
+        auto proposed = progress;
+        proposed["phase"] = phase;
+        auto error = checkpoint(save, proposed);
+        if (!error) progress = std::move(proposed);
+        return error;
+    };
     if (!SdkRuntime::safeDeleteTransport()) {
         finish("failed", {"unsupported_capability", "Safe destructive HTTP transport is unavailable on this SDK build", {}});
         return;
@@ -506,7 +514,7 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                     finish("failed", cancelled());
                     return;
                 }
-                if (auto error = persist("marker_intent")) {
+                if (auto error = persistIntent("marker_intent")) {
                     finish("failed", error);
                     return;
                 }
@@ -556,7 +564,7 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish(progress.contains("markerVersionId") ? "hidden_version_retained" : "failed", cancelled());
             return;
         }
-        if (auto error = persist("version_intent")) {
+        if (auto error = persistIntent("version_intent")) {
             finish(progress.contains("markerVersionId") ? "hidden_version_retained" : "failed", error);
             return;
         }
@@ -586,7 +594,7 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
             finish("failed", cancelled());
             return;
         }
-        if (auto error = persist("object_intent")) {
+        if (auto error = persistIntent("object_intent")) {
             finish("failed", error);
             return;
         }

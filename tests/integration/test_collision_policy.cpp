@@ -1,5 +1,6 @@
 #include "fixtures/S3Fixture.h"
 #include "fixtures/U2Fixtures.h"
+#include <QSqlQuery>
 using namespace putgd::test;
 class CollisionTest : public QObject {
     Q_OBJECT
@@ -199,6 +200,99 @@ private slots:
         for (auto event : events) {
             QVERIFY(event.toObject()["signatureValid"].toBool());
             QCOMPARE(event.toObject()["bucket"].toString(), QString("isolated-fixture"));
+        }
+    }
+    void failedDeletionCheckpointRemainsRetryableAfterReopen_data() {
+        QTest::addColumn<QString>("checkpointPhase");
+        QTest::addColumn<int>("initialDeletes");
+        QTest::newRow("before-marker") << QString("marker_intent") << 0;
+        QTest::newRow("after-marker") << QString("marker_done") << 1;
+        QTest::newRow("before-version") << QString("version_intent") << 1;
+    }
+    void failedDeletionCheckpointRemainsRetryableAfterReopen() {
+        QFETCH(QString, checkpointPhase);
+        QFETCH(int, initialDeletes);
+        S3Fixture f;
+        f.reset({{"versioning", "Enabled"}});
+        ProviderRegistry registry;
+        registry.add("s3", std::make_shared<S3Provider>(f.credentials));
+        SettingsService settings(f.directory.filePath("config.json"), [&](auto id, auto value) { return registry.validate(id, value); });
+        QVERIFY(settings.save(configuration(f, "rename", true), {}));
+        Source source;
+        source.payload.kind = "files";
+        source.payload.files = {putgd::test::fixture(f.directory.path(), "retry.txt", "synthetic deletion retry")};
+        const auto data = f.directory.filePath("data");
+        QString deletionId, historyId, localPath, databasePath;
+        QJsonObject originalReceipt, failedProgress;
+        const auto executeSql = [&](const QString& sql) {
+            const auto connection = QString("delete-failure-fixture");
+            bool ok = false;
+            {
+                auto db = QSqlDatabase::addDatabase("QSQLITE", connection);
+                db.setDatabaseName(databasePath);
+                if (db.open()) {
+                    QSqlQuery query(db);
+                    ok = query.exec(sql);
+                }
+            }
+            QSqlDatabase::removeDatabase(connection);
+            return ok;
+        };
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            QTRY_VERIFY(operations.ready());
+            databasePath = operations.databasePath();
+            QString operationId;
+            operations.invoke("clipboard", [&](auto error, auto value) { QVERIFY(!error); operationId = value["operationId"].toString(); });
+            QTRY_VERIFY(!operationId.isEmpty());
+            const auto uploaded = waitOperation(operations, operationId).items[0];
+            QCOMPARE(uploaded.uploadStatus, QString("uploaded"));
+            historyId = uploaded.artifact.id;
+            localPath = uploaded.local.path;
+            originalReceipt = uploaded.receipt.toJson();
+            QVERIFY(executeSql(QString("CREATE TRIGGER fail_marker_checkpoint BEFORE INSERT ON deletions "
+                "WHEN json_extract(NEW.data,'$.items[0].status')='deleting' "
+                "AND json_extract(NEW.data,'$.items[0].progress.phase')='%1' "
+                "BEGIN SELECT RAISE(ABORT,'synthetic journal failure'); END").arg(checkpointPhase)));
+            QJsonObject preview;
+            history.prepareDelete({historyId}, [&](auto error, auto value) { QVERIFY(!error); preview = value; });
+            QTRY_VERIFY(!preview.isEmpty());
+            history.deleteConfirmed({historyId}, preview["acknowledgement"].toString(), [&](auto error, auto value) {
+                QVERIFY(!error); deletionId = value["deleteOperationId"].toString();
+            });
+            QTRY_VERIFY(!deletionId.isEmpty());
+            HistoryStore store(databasePath);
+            QTRY_COMPARE(store.deletion(deletionId)["state"].toString(), QString("completed"));
+            const auto item = store.deletion(deletionId)["items"].toArray()[0].toObject();
+            QCOMPARE(item["status"].toString(), initialDeletes ? QString("hidden_version_retained") : QString("failed"));
+            QVERIFY(!item["error"].toObject()["code"].toString().isEmpty());
+            failedProgress = item["progress"].toObject();
+            QCOMPARE(f.events("DELETE").size(), initialDeletes);
+            if (initialDeletes) QVERIFY(!failedProgress["markerVersionId"].toString().isEmpty());
+            QCOMPARE(store.detail(historyId)["receipt"].toObject(), originalReceipt);
+            QVERIFY(QFile::exists(localPath));
+            qInfo("failed_checkpoint_phase=%s delete_requests=%d", qPrintable(failedProgress.value("phase").toString()), initialDeletes);
+            QVERIFY(executeSql("DROP TRIGGER fail_marker_checkpoint"));
+        }
+        {
+            OperationService operations(data, settings, registry, source);
+            HistoryService history(operations);
+            QTRY_VERIFY(operations.ready());
+            HistoryStore reopened(operations.databasePath());
+            QCOMPARE(reopened.deletion(deletionId)["items"].toArray()[0].toObject()["progress"].toObject(), failedProgress);
+            bool accepted = false;
+            history.retryDelete(deletionId, [&](auto error, auto value) { QVERIFY(!error); accepted = value["retryAccepted"].toBool(); });
+            QTRY_VERIFY(accepted);
+            QTRY_COMPARE(reopened.detail(historyId)["remoteStatus"].toString(), QString("removed"));
+            QTRY_COMPARE(reopened.deletion(deletionId)["state"].toString(), QString("completed"));
+            qInfo("reopened_retry_status=%s delete_requests=%lld", qPrintable(reopened.detail(historyId)["remoteStatus"].toString()), qint64(f.events("DELETE").size()));
+            QVERIFY(failedProgress.value("phase").toString() != "marker_intent");
+            const auto finalProgress = reopened.deletion(deletionId)["items"].toArray()[0].toObject()["progress"].toObject();
+            if (initialDeletes) QCOMPARE(finalProgress["markerVersionId"], failedProgress["markerVersionId"]);
+            QCOMPARE(f.events("DELETE").size(), 2);
+            QCOMPARE(reopened.detail(historyId)["receipt"].toObject(), originalReceipt);
+            QVERIFY(QFile::exists(localPath));
         }
     }
     void cancellationRetainsCommittedArchivesAndSuppressesCopy() {
