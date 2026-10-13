@@ -2,7 +2,7 @@
 
 Read [AGENTS.md](../AGENTS.md), [build](build.md), [architecture](architecture.md),
 [configuration](configuration.md), [CLI](cli.md), and [current evidence](verification.md).
-Read [resident memory strategy](memory-strategy.md) before changing process boundaries, codec loading or idle retention. Its linked source63 checkpoint distinguishes accepted local memory from pending remote/release acceptance.
+Read [resident memory strategy](memory-strategy.md) before changing process boundaries, codec loading or idle retention. Use the source114 live-S3 checkpoint below for the later cross-desktop transport evidence; source63 remains the earlier local-memory checkpoint.
 
 The implementation contract is issue #1 and the dated plan in `docs/plans/`.
 Implement its dependencies in order and record blocked acceptance separately from passing tests.
@@ -136,21 +136,32 @@ explicit acceptance artifacts. Read verification.md for what actually passed and
 still pending; package/release readiness waits for those gates, notices and checksums.
 
 
-## Preserved native listener experiment
+## Memory checkpoints and historical experiments
 
-The isolated branch `codex/optimize-resident-native-boundary` at source49
-`676f6e6` passed the physical Cinnamon 40 MiB cold/closed RSS target, with a native
-Qt Core listener/tray and disposable screenshot helper. It is not integrated
-because selector startup regresses; do not mistake the memory-only evaluator's
-keep recommendation for a release decision. Current-source native cases and
-post-use VM footprints were recorded for all three desktops. GNOME/KDE retain
-the graphical fallback and exceed 40 MiB RSS. Follow the
-[exact-source replay and limitations](testing-native-listener.md) and
-[hashed evidence](evidence/2026-10-09-native-listener.json) before continuing.
-The experiment Git objects are local until its branch is deliberately published;
-documentation commits identify source49 without claiming their binaries were
-measured. Never discard the measured candidate or its failure records to restart
-its clock, and never lower the capture timing guard to accept the memory saving.
+The native listener, disposable UI/capture helpers and transient S3 worker are
+integrated. Start with [memory strategy](memory-strategy.md) and the
+[source114 live-S3 checkpoint](evidence/live-s3-memory/source114/README.md),
+not the rejected source49 selector experiment. Source114 measured five-minute
+RSS + swap peaks of 29.059 MiB on Cinnamon, 36.078 MiB on GNOME and 31.285 MiB
+on KDE, with all 105 synthetic objects removed through production.
+These are exact-source, bounded workloads; they do not certify a newer binary,
+unlimited upload history, mixed displays or all release acceptance gates.
+
+Earlier source49, source57 and source63 records remain historical evidence.
+Their statements about unmerged code and open desktop targets describe those
+checkpoints, not the current implementation. Retain failed attempts and timing
+limits when comparing results. Do not restart an experiment clock or weaken a
+guard to make a memory change pass.
+
+## Evidence retention and housekeeping
+
+Follow [evidence retention](evidence-retention.md). Keep source identities,
+parameters, acceptance summaries, original failures and cleanup receipts readable.
+Cold bulk logs and transfer archives may be compressed only after verified
+round-trip checks, with an index explaining how to restore their original paths.
+Do not remove test source because its old results are redundant. Archive local
+work separately from sanitized, committed evidence; never publish private work
+or infer that a compressed artifact is safe to include in a review or release.
 
 ## Release and CI work
 
@@ -179,3 +190,10 @@ handoffs on retries. Missing evidence or byte conflicts remain failures; never
 retag unchanged source, replace public assets or treat a draft as successful.
 Use the shared CI implementation for both branches, preserving all valuable
 checks when removing duplicate compilation. Future update-channel UI is separate work.
+
+When only publication fails, inspect the failed job and existing draft before
+retrying. Reuse the verified package artifacts with a failed-job rerun when their
+source identities still match; do not rebuild successful packages merely to retry
+an API operation. A created draft is not a published release. Keep dependency
+installer logs outside the tagged checkout so clean-source verification remains
+meaningful. Do not assume an open workflow-fix PR has landed.

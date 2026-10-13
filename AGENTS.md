@@ -88,3 +88,9 @@ Apply the same immutable-base rule to provisioned Linux golden disks under
 or delete a disk referenced by overlays. Linux tests use fresh disks under
 `work/lab-runs/` through `tools/lab/lab.py`; provision a new golden disk for updates.
 See `docs/vm-lab.md`.
+
+Evidence retention is documented in `docs/evidence-retention.md`. Preserve merged
+acceptance summaries, exact identities, reproducible parameters, failure context
+and cleanup receipts. Compress cold bulk evidence only with verified checksums
+and a restore index; never delete test source as a substitute for archiving its
+results. Local work archives remain private and outside release source exports.
