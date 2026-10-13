@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/releases'))
@@ -108,6 +108,66 @@ class RemoteDraftTest(unittest.TestCase):
         self.assertEqual(upload[:4], ['gh', 'release', 'upload', 'v0.1.1-rc.1'])
         self.assertEqual({Path(path).name for path in upload[4:]}, set(self.files))
         self.assertNotIn('--clobber', upload)
+
+    def test_created_draft_visibility_delay_retries_reads_without_recreating(self):
+        draft = {**self.metadata, 'assets': []}
+        release = {'gitCommit': 'a' * 40, 'version': '0.1.1-rc.1', 'prerelease': True}
+        for missing_reads in (0, 2, 4):
+            with self.subTest(missing_reads=missing_reads), \
+                    patch.object(publish, 'remote_tag_commit', return_value='a' * 40), \
+                    patch.object(publish, 'matching_releases',
+                                 side_effect=[[]] + [[]] * missing_reads + [[draft]]) as lookup, \
+                    patch.object(publish.subprocess, 'run') as commands, patch('time.sleep') as sleep:
+                publish.stage_draft('v0.1.1-rc.1', self.directory, self.listed, release, self.directory / 'notes.md')
+                self.assertEqual(lookup.call_count, missing_reads + 2)
+                self.assertEqual(sleep.call_args_list, [call(2 ** i) for i in range(missing_reads)])
+                self.assertEqual([c.args[0][2] for c in commands.call_args_list], ['create', 'upload'])
+
+    def test_delayed_nightly_draft_still_requires_prerelease_and_staging_recheck(self):
+        tag = 'v0.1.1-dev.2.20261011153045+g' + 'a' * 12
+        release = {'gitCommit': 'a' * 40, 'version': tag[1:], 'prerelease': True, 'channel': 'nightly'}
+        for prerelease in (True, False):
+            draft = {**self.metadata, 'tag_name': tag, 'assets': [], 'prerelease': prerelease}
+            with self.subTest(prerelease=prerelease), \
+                    patch.object(publish, 'remote_tag_commit', return_value='a' * 40), \
+                    patch.object(publish, 'matching_releases', side_effect=[[], [], [draft], [draft]]) as lookup, \
+                    patch.object(publish.subprocess, 'run') as commands, patch('time.sleep') as sleep:
+                if prerelease:
+                    publish.stage_draft(tag, self.directory, self.listed, release, self.directory / 'notes.md')
+                    self.assertEqual(lookup.call_count, 4)
+                    self.assertEqual(commands.call_count, 2)
+                else:
+                    with self.assertRaisesRegex(ValueError, 'Nightly draft must be a prerelease'):
+                        publish.stage_draft(tag, self.directory, self.listed, release, self.directory / 'notes.md')
+                    self.assertEqual(lookup.call_count, 3)
+                    self.assertEqual(commands.call_count, 1)
+                sleep.assert_called_once_with(1)
+
+    def test_created_draft_visibility_retry_is_bounded_and_never_uploads_unverified(self):
+        release = {'gitCommit': 'a' * 40, 'version': '0.1.1-rc.1', 'prerelease': True}
+        with patch.object(publish, 'remote_tag_commit', return_value='a' * 40), \
+                patch.object(publish, 'matching_releases', return_value=[]) as lookup, \
+                patch.object(publish.subprocess, 'run') as commands, patch('time.sleep') as sleep:
+            with self.assertRaisesRegex(ValueError, 'Draft creation succeeded.*inspect existing drafts before rerunning'):
+                publish.stage_draft('v0.1.1-rc.1', self.directory, self.listed, release, self.directory / 'notes.md')
+        self.assertEqual(lookup.call_count, 6)  # Initial check plus five post-create reads.
+        self.assertEqual(sleep.call_args_list, [call(1), call(2), call(4), call(8)])
+        self.assertEqual(commands.call_count, 1)
+        self.assertEqual(commands.call_args.args[0][2], 'create')
+
+    def test_created_draft_conflicts_and_api_errors_are_not_retried(self):
+        release = {'gitCommit': 'a' * 40, 'version': '0.1.1-rc.1', 'prerelease': True}
+        error = subprocess.CalledProcessError(1, ['gh', 'api'])
+        for result in ([self.metadata, self.metadata], [{**self.metadata, 'draft': False}], error):
+            with self.subTest(result=result), \
+                    patch.object(publish, 'remote_tag_commit', return_value='a' * 40), \
+                    patch.object(publish, 'matching_releases', side_effect=[[], result]) as lookup, \
+                    patch.object(publish.subprocess, 'run') as commands, patch('time.sleep') as sleep:
+                with self.assertRaises(subprocess.CalledProcessError if result is error else ValueError):
+                    publish.stage_draft('v0.1.1-rc.1', self.directory, self.listed, release, self.directory / 'notes.md')
+                self.assertEqual(lookup.call_count, 2)
+                sleep.assert_not_called()
+                self.assertEqual(commands.call_count, 1)
 
     def test_partial_draft_resume_uploads_only_missing_verified_files(self):
         partial = copy.deepcopy(self.metadata)
