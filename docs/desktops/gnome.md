@@ -20,13 +20,36 @@ These sources establish API intent. They do not establish graphical acceptance.
 
 Use normal distro packages: `gnome-shell` 50, its GJS/Mutter GI runtime, the `gnome-extensions` command supplied by Shell, and the standard GLib runtime. The extension preferences GUI is optional. The application additionally links the distro Qt DBus module (`qt6-base-dev`) and needs the distro Wayland platform plugin (`qt6-wayland`). Root packaging installs the extension files; do not install a substitute Shell/GJS runtime.
 
-Install `integrations/gnome/` as `~/.local/share/gnome-shell/extensions/putgd@put.gd/`, then enable it with `gnome-extensions enable putgd@put.gd`. A fresh Wayland login may be needed for Shell to discover a newly installed extension. Run the resident application with `QT_QPA_PLATFORM=wayland`. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
+Native packages install the helper under
+`/usr/share/gnome-shell/extensions/putgd@put.gd/`. After installing the package,
+enable it with `gnome-extensions enable putgd@put.gd`; do not also copy the source
+directory into your user extension directory. A user copy can shadow a newer
+system package. Check `gnome-extensions info putgd@put.gd` and retain the loaded
+path/version in the acceptance receipt. If a previous manual installation exists,
+disable it and remove only that owned user copy before testing the package.
 
-Disable with `gnome-extensions disable putgd@put.gd`; remove only its own extension directory after disabling. Disable removes all helper bindings, signals, pending selectors, transfer buffers, and the exported endpoint. Re-enable recreates them once. Shell/session restart requires the resident application's helper discovery to reconnect and rebind accepted settings.
+For a standalone helper installation, install the release's matching GNOME ZIP
+with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, then
+enable it. Keep its identity aligned with the application. A fresh Wayland login
+may be needed for Shell to discover a newly installed extension. Run the resident application with `QT_QPA_PLATFORM=wayland`. Capture and clipboard actions remain available through the production CLI and GUI. Leave the clipboard shortcut unset until the user explicitly assigns one. Binding diagnostics report the actual result for every configured action; existing Shell/system bindings are never overwritten.
+
+Disable with `gnome-extensions disable putgd@put.gd`. Remove a packaged helper
+through the package manager; remove only its owned user directory for a manual
+installation. Disable removes all helper bindings, signals, pending selectors, transfer buffers, and the exported endpoint. Re-enable recreates them once. Shell/session restart requires the resident application's helper discovery to reconnect and rebind accepted settings.
 
 ## Acceptance boundary
 
-`tests/integration/test_gnome_bridge.cpp` proves bounded transfer decoding and request metadata validation. It does not run GNOME, prove global shortcuts, capture real Wayland pixels, or paste into another application. `tests/desktop/gnome.yaml` remains pending until genuine Ubuntu 26.04 / GNOME 50 VM checks record installed app/helper versions, native Qt Wayland backend, synthetic artifact bytes, and independent GTK/Qt paste evidence. Live upload/public URL verification is a separate gate.
+`tests/integration/test_gnome_bridge.cpp` proves bounded transfer decoding and
+request metadata validation. It does not run GNOME, prove global shortcuts,
+capture real Wayland pixels, or paste into another application. Real GNOME 50
+single-display capture, native paste, live upload and post-upload memory evidence
+is recorded in [source114](../evidence/live-s3-memory/source114/README.md), with a
+later bounded current-main check in
+[issue #4](https://github.com/patrick-hudson/put.gd-desktop/issues/4#issuecomment-6152173663).
+Those receipts identify the actual tested versions and cases; they do not mark
+every scenario in `tests/desktop/gnome.yaml` complete. Full display geometry,
+helper/package lifecycle and release acceptance remain separate gates in
+[verification](../verification.md).
 
 ## Bridge contract
 

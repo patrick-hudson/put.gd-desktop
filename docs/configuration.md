@@ -6,8 +6,9 @@ The schema is [config.schema.json](../schemas/config.schema.json). The shared
 `SettingsService` is the authoritative validator, including registered provider rules,
 absolute paths, shortcut syntax, and cross-profile references.
 
-The resident JSON CLI uses this service; full settings GUI/native integration belongs
-to its subsequent implementation units. Headless evidence is not desktop acceptance.
+The resident JSON CLI and Settings window use this service. Native acceptance must
+verify live edits in an installed desktop session; headless checks alone do not
+establish that behavior.
 
 The entire document is required and unknown fields are rejected. Schema version 1
 has no predecessor to migrate. Unsupported versions stay untouched for explicit recovery.

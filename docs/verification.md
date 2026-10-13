@@ -1,9 +1,28 @@
 # Implementation evidence
 
-The [source108 transport retest](testing-live-s3-transport.md) reproduces SDK99/cURL35 TLS failures on GNOME and KDE. Their live-S3 acceptance remains blocked; Cinnamon passes and KDE's31.38 MiB result is numeric attribution only. All confirmed test objects are removed. [Lab storage safeguards](lab-storage.md) now gate capacity and document verified retention.
+## Current acceptance index — 2026-10-13
 
-Evidence below records observed checks, not the remaining release scope. The full
-contract is [issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1).
+The historical source108 GNOME/KDE TLS failures were superseded by the passing
+[source114 transport retest](testing-live-s3-transport.md). Keep their failure
+receipts as diagnostic history; they are not current release blockers.
+
+| Scope | Latest linked evidence | Limit |
+| --- | --- | --- |
+| Build and automated contracts | [Main b1ed4ae Build run](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38438946727), all four jobs passed | Windows/macOS compile shared code only; CI is not compositor proof |
+| Cold first capture (#3) | [Unable-to-reproduce closure](https://github.com/patrick-hudson/put.gd-desktop/issues/3#issuecomment-6149342985): b75c0dd, 3/3 cold runs each on GNOME/KDE, exact image/native-paste comparisons | Does not prove the S3 fix caused the historical timeout to disappear or rule out a rare race |
+| Live S3 and retained memory (#4) | [Closure and exact scope](https://github.com/patrick-hudson/put.gd-desktop/issues/4#issuecomment-6152173663): source114 full workload plus bounded b1ed4ae-tree Cinnamon/GNOME/KDE checks | The newer check covers region/text publication, restart/history/deletion and two idle windows per desktop; it is not a new full geometry matrix |
+| Release and fresh-agent acceptance (#5) | [Dated audit](evidence/2026-10-13-issue5-acceptance.md): clean SDK/dev/release builds, production CLI/MCP/live S3, Cinnamon upgrade with 10,000 records | Initial unexplained auto-copy suppression blocks sibling expansion; physical hardware and full geometry/performance acceptance remain separate gates. Issue #5 remains open |
+
+Full release readiness has not been established. The requirements remain in the
+[approved plan](plans/2026-10-07-1926-feat-qt-linux-share-plan.md), even though
+[issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1) is closed.
+[Lab storage safeguards](lab-storage.md) gate capacity and verified retention.
+
+## Historical implementation checkpoints
+
+The entries below describe what was known at each implementation checkpoint.
+Their version-specific failures and pending statements are preserved as history;
+use the index above and later dated receipts to determine what superseded them.
 
 | Unit / slice | Observed evidence | Remaining gate |
 | --- | --- | --- |

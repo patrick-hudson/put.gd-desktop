@@ -114,8 +114,11 @@ Thread-checking setup and dependency instrumentation are documented in
 in [verification.md](verification.md).
 The S3 integration tests use an isolated local HTTP fixture with synthetic keys;
 keychain tests use an isolated D-Bus protocol peer or an unavailable service.
-They do not contact AWS or read the user's secret store. CI jobs are authored
-for Ubuntu 24.04/26.04, Windows, and macOS; they have not run yet.
+They do not contact AWS or read the user's secret store. The four hosted jobs
+passed for main `b1ed4ae6c2128ad189889b61c18798994ebf210c` in
+[Build run 38438946727](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38438946727):
+Ubuntu 24.04/26.04 build and test Linux, while Windows/macOS establish shared
+compile success only. These jobs do not certify native desktop behavior.
 
 U1 changes build configuration and introduces the skeleton. No prior implementation or
 tests existed. Replacement evidence is the actual dependency compile/link and runtime

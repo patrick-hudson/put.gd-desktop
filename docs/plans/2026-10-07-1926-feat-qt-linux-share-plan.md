@@ -23,6 +23,17 @@ Stop conditions: Do not substitute a different capture target or claim desktop s
 
 ---
 
+## Acceptance status — 2026-10-13
+
+Use the [current acceptance index](../verification.md#current-acceptance-index--2026-10-13)
+for the latest versioned evidence. Later source114 and current-main checks
+supersede the historical live-S3 blockers recorded in the execution notes below.
+Hosted Linux CI passes; Windows/macOS evidence remains compile-only. Closing
+feature-tracking issue #1 does not waive this plan's Verification Contract or
+establish release readiness. [Issue #5](https://github.com/patrick-hudson/put.gd-desktop/issues/5)
+tracks the remaining fresh-agent and Linux lifecycle acceptance. Historical
+measurements and failed attempts retain their original source identities.
+
 ## Product Contract
 
 ### Summary
@@ -747,7 +758,12 @@ Verification: Release evidence records every required profile/case, package inst
 | Desktop acceptance | Logged-in QEMU guests and physical host | Global keys, selection, focused target, native Wayland clipboard, paste | Every GPU/driver combination |
 | Live S3 smoke | Explicit synthetic fixture | PUT/ACL, unauthenticated public URL bytes, guarded fixture deletion and recorded effect | General capture correctness or instantaneous cache invalidation |
 
-U1 creates the dev/release/sanitizer CMake configure/build/test presets; U6 creates the lab profile runner; U10 creates package validation. These are future repository interfaces, not existing or already-run commands. Exact recipes belong in AGENTS.md and docs/testing.md once the tooling exists.
+Implementation checkpoint (2026-10-13): the CMake presets, U6 lab runner and
+native/AppImage release validators now exist. Follow [build](../build.md),
+[VM lab](../vm-lab.md) and [release](../release.md) for their actual commands.
+Tool availability is not acceptance: [verification](../verification.md) records
+which source/package identities and cases passed, and which U9/U10 gates remain
+open. The requirements below remain the release contract.
 
 ### Graphical Profiles
 
