@@ -31,8 +31,10 @@ supersede the historical live-S3 blockers recorded in the execution notes below.
 Hosted Linux CI passes; Windows/macOS evidence remains compile-only. Closing
 feature-tracking issue #1 does not waive this plan's Verification Contract or
 establish release readiness. [Issue #5](https://github.com/patrick-hudson/put.gd-desktop/issues/5)
-tracks the remaining fresh-agent and Linux lifecycle acceptance. Historical
-measurements and failed attempts retain their original source identities.
+records the completed validation audit and workflow corrections;
+[issue #24](https://github.com/patrick-hudson/put.gd-desktop/issues/24) carries the
+remaining findings and Linux release acceptance. Historical measurements and
+failed attempts retain their original source identities.
 
 ## Product Contract
 

@@ -157,8 +157,11 @@ integration file; no package script was added to traverse or delete user homes.
 
 ## Remaining acceptance
 
-Issue #5 remains open. This audit does not complete U9/U10 or certify a release.
-The following gates still lack passing evidence for the candidate:
+The completed audit and workflow corrections are recorded under issue #5. At the
+user's request, the remaining findings and acceptance work moved to
+[issue #24](https://github.com/patrick-hudson/put.gd-desktop/issues/24). Closing the
+audit issue does not complete U9/U10 or certify a release. The following gates
+still lack passing evidence for the candidate:
 
 - Explain or reproduce the initial Cinnamon automatic-copy suppression before
   expanding to new GNOME/KDE acceptance runs.
