@@ -5,6 +5,8 @@
 #include <QComboBox>
 #include <QStyleOptionComboBox>
 #include <QHash>
+#include <QHeaderView>
+#include <QResizeEvent>
 #include <QFormLayout>
 #include <QLabel>
 #include <QHBoxLayout>
@@ -20,6 +22,28 @@
 #include <QWheelEvent>
 namespace putgd::VisualStyle {
 namespace {
+// Fit the name column when the viewport changes, never while dragging a section.
+// Stretch mode would steal the drag distance from the first column instead.
+class ColumnSizer final:public QObject {
+public:
+ explicit ColumnSizer(QHeaderView* header):QObject(header),header_(header){
+  header_->setSectionResizeMode(QHeaderView::Interactive);header_->setStretchLastSection(false);
+  header_->viewport()->installEventFilter(this);
+ }
+protected:
+ bool eventFilter(QObject* watched,QEvent* event)override {
+  if(event->type()==QEvent::Resize){
+   const auto* resize=static_cast<QResizeEvent*>(event);
+   if(resize->size().width()!=resize->oldSize().width()&&header_->count()>0){
+    int remaining=resize->size().width();
+    for(int column=1;column<header_->count();++column)if(!header_->isSectionHidden(column))remaining-=header_->sectionSize(column);
+    header_->resizeSection(0,qMax(header_->minimumSectionSize(),remaining));
+   }
+  }
+  return QObject::eventFilter(watched,event);
+ }
+private:QHeaderView* header_;
+};
 class ChoiceBox final:public QComboBox {
 public:using QComboBox::QComboBox;
 protected:
@@ -52,6 +76,7 @@ public:StateDelegate(QList<int> columns,QObject* parent):QStyledItemDelegate(par
 private:QList<int> columns_;
 };
 }
+void configureColumns(QHeaderView* header){new ColumnSizer(header);}
 QComboBox* choiceBox(QWidget* parent){return new ChoiceBox(parent);}
 void role(QWidget* widget,const char* value){widget->setProperty("visualRole",value);widget->style()->unpolish(widget);widget->style()->polish(widget);}
 namespace {
