@@ -13,6 +13,7 @@ public:
  bool available()const;quint64 revision()const;QJsonObject status()const;
  void acquire(const ResourceLimits&,std::function<void(PayloadResult)>,quint64 expectedRevision);
  void copy(const CopyPayload&,std::function<void(Error)>);
+ std::optional<quint64> lastCopyRevision()const;
  void cancel();
  void invalidateCopyEligibility();
 signals:

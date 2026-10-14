@@ -63,10 +63,11 @@ first and skips completed uploads. Archive failure is independent of publication
 Local-only actions never call a provider. Archives are unique atomic user-owned files;
 retry reads private hash-verified spools, never a mutable archive.
 
-Automatic copy requires the latest invocation ticket and unchanged clipboard revision.
-Explicit operation/history copying invalidates previous automatic eligibility. Upload
-receipts survive copy suppression/failure. Interactive selection is guarded by its
-operation ID; cancelling another upload cannot cancel the active selector.
+Upload result copying follows the user-approved issue #32 policy, superseding issue #1's original KTD12 latest-invocation rule for upload links. The optional `preferences.uploadClipboardBehavior` defaults to `each_link`, including in legacy configurations. Each confirmed link is offered after its durable item checkpoint. `list` groups overlapping operations with the same saved mode, explicit-copy epoch and expected clipboard revision, then copies their available links in invocation/item order after every member settles. The list refreshes durable receipts before copying, so a known removed/revoked link is excluded.
+
+All clipboard commits are serialized. Native adapters expose the exact revision acknowledged by a successful app write; only pending snapshots which expected the overwritten revision advance to that acknowledgement. A later user edit remains distinct, even before the session processes the queued copy callback. New uploads do not invalidate earlier link copies. Explicit operation/history copies and local-only actions invalidate the older upload-copy epoch. Clipboard imports reserve the source until acquisition completes; a confirmed unsent native suppression caused by a new import is paused and retried after acquisition.
+
+Per-operation copy outcomes wait for all individual commits or their list group, while publication receipts remain durable independently. Partly copied results use `copyStatus=partial`; failed/suppressed copying never causes reupload. Local-only MIME copying retains its latest-invocation/revision guard. Interactive selection is guarded by its operation ID; cancelling another upload cannot cancel the active selector.
 
 History uses indexed SQLite filters and bounded LIMIT/OFFSET pages (1–200 records),
 without loading remote content. Image previews are private, bounded 256-pixel cache

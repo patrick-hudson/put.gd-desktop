@@ -171,7 +171,7 @@ void GnomeAdapter::copy(const CopyPayload& payload,std::function<void(Error)> re
 }
 void GnomeAdapter::writeCopy(const QString& id,const QByteArray& bytes,qsizetype offset,quint64 ticket,std::function<void(Error)> reply){
  if(ticket!=copyGeneration_){release(id);reply({"copy_suppressed","A newer invocation superseded GNOME result copying",{}});return;}
- if(offset==bytes.size()){call("CommitCopy",{id},[this,id,reply=std::move(reply)](Error error,QJsonObject result){release(id);if(!error)helperClipboardChanged(qulonglong(result["clipboardRevision"].toDouble()));reply(error);});return;}
+ if(offset==bytes.size()){call("CommitCopy",{id},[this,id,reply=std::move(reply)](Error error,QJsonObject result){release(id);if(!error){helperClipboardChanged(qulonglong(result["clipboardRevision"].toDouble()));lastCopyRevision_=revision_;}reply(error);});return;}
  const auto chunk=bytes.mid(offset,gnome::chunkBytes);call("WriteCopy",{id,qulonglong(offset),QString::fromLatin1(chunk.toBase64())},[this,id,bytes,offset,ticket,count=chunk.size(),reply=std::move(reply)](Error error,QJsonObject)mutable{if(error){release(id);reply(error);return;}writeCopy(id,bytes,offset+count,ticket,std::move(reply));});
 }
 void GnomeAdapter::invalidateCopyEligibility(){++copyGeneration_;if(ready_)call("InvalidateCopy",{},[](Error,QJsonObject){});}

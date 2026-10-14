@@ -153,7 +153,7 @@ endif()
 add_dependencies(putgd_s3 putgd_s3_module)
 install(TARGETS putgd_s3_module LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}/putgd")
 
-add_library(putgd_app STATIC src/app/OperationService.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp)
+add_library(putgd_app STATIC src/app/OperationService.cpp src/app/OperationClipboard.cpp src/app/HistoryService.cpp src/app/SetupService.cpp src/app/LocalServer.cpp src/app/LocalIpc.cpp src/app/LoginStartup.cpp)
 target_link_libraries(putgd_app PUBLIC putgd_core PRIVATE putgd_credentials)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   find_package(PkgConfig REQUIRED)

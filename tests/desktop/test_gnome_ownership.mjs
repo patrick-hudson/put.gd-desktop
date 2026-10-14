@@ -110,6 +110,54 @@ await prepared;
 assert.equal(helper.extension._requests.get(frozenId).window, external);
 print('PASS helper registration/focus changes do not replace frozen target');
 
+// Synthetic bridge transfer, not native compositor acceptance.
+function bridge(extension, method, parameters) {
+    return new Promise(resolve => extension[method](parameters, {
+        get_sender: () => resident, get_parameters: () => ({deep_unpack: () => parameters}),
+        return_value: value => resolve(JSON.parse(value.value[0])),
+    }));
+}
+GLib.Bytes = class {constructor(value) {this.value = value;}};
+GLib.base64_decode = () => new Uint8Array([1]);
+GLib.base64_encode = () => 'AQ==';
+let owned = 0;
+St.ClipboardType = {CLIPBOARD: 1};
+St.Clipboard = {get_default: () => ({set_content() {owned++;}})};
+for (const action of ['region', 'window', 'desktop']) {
+    const {extension} = fixture();
+    context.global.display.focus_window = focused(3000);
+    const copyId = id();
+    assert.deepEqual(await bridge(extension, 'BeginCopyAsync', [copyId, 'text/plain;charset=utf-8', 1]), {});
+    assert.deepEqual(await bridge(extension, 'WriteCopyAsync', [copyId, 0, 'AQ==']), {});
+    await extension._prepare(id(), action, resident);
+    const result = await bridge(extension, 'CommitCopyAsync', [copyId]);
+    assert.equal(result.error, undefined);
+    assert.equal(result.clipboardRevision, 1);
+    print(`PASS ${action} preparation preserves pending result copy`);
+}
+assert.equal(owned, 3);
+const imports = fixture().extension;
+const importCopy = id();
+await bridge(imports, 'BeginCopyAsync', [importCopy, 'text/plain;charset=utf-8', 1]);
+await bridge(imports, 'WriteCopyAsync', [importCopy, 0, 'AQ==']);
+await imports._prepare(id(), 'clipboard', resident);
+assert.equal((await bridge(imports, 'CommitCopyAsync', [importCopy])).error.code, 'copy_suppressed');
+print('PASS clipboard import still invalidates unsent result copy');
+const deliberate = fixture().extension;
+const deliberateCopy = id();
+await bridge(deliberate, 'BeginCopyAsync', [deliberateCopy, 'text/plain;charset=utf-8', 1]);
+await bridge(deliberate, 'WriteCopyAsync', [deliberateCopy, 0, 'AQ==']);
+await bridge(deliberate, 'InvalidateCopyAsync', []);
+assert.equal((await bridge(deliberate, 'CommitCopyAsync', [deliberateCopy])).error.code, 'copy_suppressed');
+print('PASS explicit invalidation still prevents unsent result copy');
+const changed = fixture().extension;
+const changedCopy = id();
+await bridge(changed, 'BeginCopyAsync', [changedCopy, 'text/plain;charset=utf-8', 1]);
+await bridge(changed, 'WriteCopyAsync', [changedCopy, 0, 'AQ==']);
+changed._revision++;
+assert.equal((await bridge(changed, 'CommitCopyAsync', [changedCopy])).error.code, 'copy_suppressed');
+print('PASS manual clipboard revision still prevents unsent result copy');
+
 // This is a synthetic Shell/SNI contract. It never creates a real tray host or
 // establishes hover rendering, desktop permission, service or memory acceptance.
 assert.equal(typeof globalThis.TrayTooltipCompanion, 'function');

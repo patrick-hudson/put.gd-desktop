@@ -159,7 +159,7 @@ private slots:
   OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();const auto blue=tray->icon().pixmap(24,24).toImage();
   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_COMPARE(source.copies,1);
-  controller.invokeShortcut("region");QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  operations.invalidateCopyEligibility();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryStore store(operations.databasePath());QCOMPARE(store.operation(id).copyStatus,QString("suppressed"));QCOMPARE(store.operation(id).state,QString("completed"));
   QElapsedTimer watch;watch.start();while(watch.elapsed()<1000){QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);QTest::qWait(20);}
  }

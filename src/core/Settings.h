@@ -49,6 +49,7 @@ struct Settings {
     int recentActivityLimit = 100;
     qint64 previewCacheBytes = 268435456LL;
     int historyRetentionDays = 0; // zero means no automatic expiry
+    QString uploadClipboardBehavior = "each_link";
     bool notifications = true;
     bool launchAtLogin = false;
 

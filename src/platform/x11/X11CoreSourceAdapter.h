@@ -11,6 +11,7 @@ public:
  explicit X11CoreSourceAdapter(QObject* parent=nullptr);
  ~X11CoreSourceAdapter() override;
  quint64 clipboardRevision()const override;
+ std::optional<quint64> lastCopyRevision()const override{return clipboard_.lastCopyRevision();}
  QJsonObject capabilities()const override;
  PreparedAcquisition prepareAcquisition(const QString&)override;
  PreparedAcquisition prepareAcquisition(const QString&,const ResourceLimits&)override;

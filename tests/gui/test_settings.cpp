@@ -35,13 +35,25 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void uploadClipboardChoiceSavesAndSurvivesViewState() {
+  QTemporaryDir d;SettingsService service(d.filePath("config.json"));QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;
+  UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* choice=window.findChild<QComboBox*>("uploadClipboardBehavior");QVERIFY(choice);
+  QCOMPARE(choice->currentData().toString(),QString("each_link"));QCOMPARE(choice->count(),2);
+  choice->setCurrentIndex(choice->findData("list"));const auto state=window.saveViewState();QVERIFY(!validateUiState({{"schemaVersion",1},{"settings",state}}));
+  SettingsWindow restored(fixture.session);QVERIFY(restored.restoreViewState(state));
+  QCOMPARE(restored.findChild<QComboBox*>("uploadClipboardBehavior")->currentData().toString(),QString("list"));
+  restored.findChild<QPushButton*>("saveSettings")->click();
+  QTRY_COMPARE(service.document()["preferences"].toObject()["uploadClipboardBehavior"].toString(),QString("list"));
+  SettingsWindow reopened(fixture.session);QCOMPARE(reopened.findChild<QComboBox*>("uploadClipboardBehavior")->currentData().toString(),QString("list"));
+ }
  void closedDropdownWheelPreservesValueAndScrollsPane_data() {
   QTest::addColumn<QString>("name");
   for(const auto& action:QStringList{"Region","Window","Desktop","Clipboard"})
    for(const auto& prefix:QStringList{"destination","profile","publication"}){
     const auto name=prefix+action;QTest::newRow(qPrintable(name))<<name;
    }
-  for(const auto& name:QStringList{"namingMode","collisionPolicy","destinationProfile","storageProvider","s3RegionChoices","s3AclMode","s3Addressing","credentialMode","protonFolder"})
+  for(const auto& name:QStringList{"uploadClipboardBehavior","namingMode","collisionPolicy","destinationProfile","storageProvider","s3RegionChoices","s3AclMode","s3Addressing","credentialMode","protonFolder"})
    QTest::newRow(qPrintable(name))<<name;
  }
  void closedDropdownWheelPreservesValueAndScrollsPane() {
@@ -496,7 +508,7 @@ private slots:
  }
  void everySettingHasDetailedKeyboardAccessibleHelp() {
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);window.show();window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
-  const QStringList names{"fileTemplate","captureTemplate","imageTemplate","textTemplate","pendingImageBytes","archiveRoot","keepUploadCopies","folderImages","folderVideos","folderText","folderOther","namingMode","collisionPolicy","destinationProfile","destinationId","destinationLabel","s3Bucket","s3Region","s3Endpoint","s3ObjectPrefix","s3StorageClass","s3PublicUrlBase","s3ConnectTimeoutMs","s3RequestTimeoutMs","s3LowSpeedBytesPerSecond","s3LowSpeedTimeSeconds","s3AclMode","s3Addressing","providerSettingsJson","credentialMode","credentialReference","credentialAccessKey","credentialSecretKey","credentialSessionToken","notifications","launchAtLogin","maxFiles","pendingOperations","concurrentUploads","maxFileBytes","maxBatchBytes","pendingArtifactBytes","clipboardTextBytes","imagePixels","imageBytes","failedArtifactDays","recentActivityLimit","previewCacheBytes","historyRetentionDays","shortcutRegion","shortcutWindow","shortcutDesktop","shortcutClipboard","destinationRegion","destinationWindow","destinationDesktop","destinationClipboard","profileRegion","profileWindow","profileDesktop","profileClipboard"};
+  const QStringList names{"fileTemplate","captureTemplate","imageTemplate","textTemplate","pendingImageBytes","archiveRoot","keepUploadCopies","folderImages","folderVideos","folderText","folderOther","uploadClipboardBehavior","namingMode","collisionPolicy","destinationProfile","destinationId","destinationLabel","s3Bucket","s3Region","s3Endpoint","s3ObjectPrefix","s3StorageClass","s3PublicUrlBase","s3ConnectTimeoutMs","s3RequestTimeoutMs","s3LowSpeedBytesPerSecond","s3LowSpeedTimeSeconds","s3AclMode","s3Addressing","providerSettingsJson","credentialMode","credentialReference","credentialAccessKey","credentialSecretKey","credentialSessionToken","notifications","launchAtLogin","maxFiles","pendingOperations","concurrentUploads","maxFileBytes","maxBatchBytes","pendingArtifactBytes","clipboardTextBytes","imagePixels","imageBytes","failedArtifactDays","recentActivityLimit","previewCacheBytes","historyRetentionDays","shortcutRegion","shortcutWindow","shortcutDesktop","shortcutClipboard","destinationRegion","destinationWindow","destinationDesktop","destinationClipboard","profileRegion","profileWindow","profileDesktop","profileClipboard"};
   for(const auto& name:names){auto* control=window.findChild<QWidget*>(name);QVERIFY2(control,qPrintable(name));QVERIFY2(control->toolTip().size()>40,qPrintable("Missing detailed help: "+name));QToolButton* help=nullptr;for(auto* button:window.findChildren<QToolButton*>())if(button->property("settingHelpFor").toString()==name)help=button;QVERIFY2(help,qPrintable("Missing info button: "+name));QVERIFY(help->focusPolicy()!=Qt::NoFocus);QVERIFY(help->accessibleName().contains("Help"));}
   window.findChild<QListWidget*>("settingsNavigation")->setCurrentRow(1);QToolButton* help=nullptr;for(auto* button:window.findChildren<QToolButton*>())if(button->property("settingHelpFor").toString()=="s3Bucket")help=button;QVERIFY(help);help->setFocus();QTest::keyClick(help,Qt::Key_Space);QPointer<QMessageBox> dialog=window.findChild<QMessageBox*>("settingHelpDialog");QTRY_VERIFY(dialog&&dialog->isVisible());QCOMPARE(dialog->informativeText(),window.findChild<QLineEdit*>("s3Bucket")->toolTip());dialog->close();QTRY_VERIFY(dialog.isNull());
  }

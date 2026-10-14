@@ -13,11 +13,13 @@ namespace putgd::test {
 class Source final:public SourceAdapter {
 public:
  quint64 revision=0;ClipboardPayload payload;int reads=0,copies=0;CopyPayload copied;bool defer=false;QList<std::function<void(PayloadResult)>> acquisitions;
+ std::optional<quint64> copiedRevision;
  quint64 clipboardRevision() const override {return revision;}
+ std::optional<quint64> lastCopyRevision() const override {return copiedRevision;}
  QJsonObject capabilities() const override {return {{"region",true},{"clipboardImport",QJsonArray{"files","image","text"}},{"clipboardResult",QJsonArray{"files","image","text"}}};}
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> cb) override {++reads;if(defer)acquisitions.append(cb);else cb({payload,{}});}
  void cancelAcquisition() override {if(!acquisitions.isEmpty()) {auto cb=acquisitions.takeFirst();cb({{}, {"source_cancelled","Selection cancelled",{}}});}}
- void copy(const CopyPayload& p,std::function<void(Error)> cb) override {++copies;copied=p;++revision;cb({});}
+ void copy(const CopyPayload& p,std::function<void(Error)> cb) override {++copies;copied=p;++revision;copiedRevision=revision;cb({});}
 };
 class OpaqueProvider final:public StorageProvider {
 public:
