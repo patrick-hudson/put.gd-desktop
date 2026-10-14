@@ -1,0 +1,41 @@
+{
+  "box": [
+    1087,
+    769,
+    1109,
+    791
+  ],
+  "resident": {
+    "pid": 2535,
+    "startTicks": 40847,
+    "sha256": "e88412a24b9d7408cf6452b926fae3222437dd2bbacc73b574ec5a9baa3d98d7"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 176,
+    "dirty": false,
+    "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+    "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+    "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.176+g061c2d9c569d"
+  },
+  "colors": {
+    "blue": [
+      155,
+      188,
+      255
+    ],
+    "green": [
+      98,
+      214,
+      155
+    ],
+    "red": [
+      255,
+      180,
+      171
+    ]
+  }
+}

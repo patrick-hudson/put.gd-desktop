@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "testId": "12396655784e459bbbc48ef1733a9263",
+  "profile": "cinnamon-x11",
+  "scenario": "clipboard-files-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 2535,
+    "startTicks": 40847,
+    "sha256": "e88412a24b9d7408cf6452b926fae3222437dd2bbacc73b574ec5a9baa3d98d7"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "gtk",
+  "gtkClient": {
+    "schemaVersion": 1,
+    "client": "GTK",
+    "version": "4.14",
+    "displayBackend": "X11Display"
+  },
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": "Ctrl+Shift+4",
+      "bound": true,
+      "requested": "Ctrl+Shift+4"
+    },
+    "desktop": {
+      "actual": "Ctrl+Shift+3",
+      "bound": true,
+      "requested": "Ctrl+Shift+3"
+    },
+    "region": {
+      "actual": "Ctrl+Shift+1",
+      "bound": true,
+      "requested": "Ctrl+Shift+1"
+    },
+    "window": {
+      "actual": "Ctrl+Shift+2",
+      "bound": true,
+      "requested": "Ctrl+Shift+2"
+    }
+  },
+  "independentPaintGeometry": {
+    "x": 319,
+    "y": 134,
+    "width": 640,
+    "height": 320
+  },
+  "parameters": "parameters.json",
+  "operationId": "e1508ef5-a3cc-404e-895e-0d14d65355b7",
+  "operationState": "completed",
+  "copyStatus": "copied",
+  "itemOutcomes": [
+    {
+      "uploadStatus": "local_only",
+      "localStatus": "saved",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      }
+    },
+    {
+      "uploadStatus": "local_only",
+      "localStatus": "saved",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      }
+    }
+  ],
+  "artifact": {
+    "ok": true
+  },
+  "pasteMetadata": {
+    "schemaVersion": 1,
+    "client": "GTK",
+    "formats": [
+      "text/uri-list"
+    ],
+    "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1-cb2b996e-c3f8-433c-8678-35e1da64092d.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2-347a1b5c-323a-46d2-8651-496957dab5f3.txt\r\n",
+    "urls": [
+      "file:///home/lab/putgd-lab/archive/text/synthetic-1-cb2b996e-c3f8-433c-8678-35e1da64092d.txt",
+      "file:///home/lab/putgd-lab/archive/text/synthetic-2-347a1b5c-323a-46d2-8651-496957dab5f3.txt"
+    ]
+  },
+  "paste": {
+    "ok": true
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/i33c1/final-head0.ppm",
+    "sha256": "d8626e326aefe3488197bf6fa7d4820164c8bed0f8fad3f044d185f39f178c18"
+  },
+  "elapsedSeconds": 9.410449611999866,
+  "evidenceDirectory": "tests/12396655784e459bbbc48ef1733a9263"
+}

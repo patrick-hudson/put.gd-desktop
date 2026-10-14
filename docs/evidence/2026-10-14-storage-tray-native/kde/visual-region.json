@@ -1,0 +1,47 @@
+{
+  "box": [
+    961,
+    761,
+    985,
+    785
+  ],
+  "resident": {
+    "pid": 15415,
+    "startTicks": 199232,
+    "sha256": "df5669c7ead18e883bab4435ab1229c01a25493ad98e4b223f8846cee4967b94"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 176,
+    "dirty": null,
+    "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+    "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+    "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.176+g061c2d9c569d"
+  },
+  "colors": {
+    "blue": [
+      155,
+      188,
+      255
+    ],
+    "green": [
+      98,
+      214,
+      155
+    ],
+    "red": [
+      255,
+      180,
+      171
+    ]
+  },
+  "background": [
+    57,
+    61,
+    65
+  ],
+  "pixelOracle": "Exact RGB on Cinnamon; inspected Wayland panel ARGB blend, alpha >= 0.35, max channel residual <= 3"
+}

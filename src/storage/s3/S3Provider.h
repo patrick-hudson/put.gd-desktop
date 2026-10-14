@@ -4,6 +4,7 @@
 namespace putgd {
 class S3Provider final : public StorageProvider {
 public:
+ bool reportsUploadProgress() const override {return true;}
     explicit S3Provider(CredentialStore&);
     ~S3Provider() override;
     QJsonObject diagnostics() const override;

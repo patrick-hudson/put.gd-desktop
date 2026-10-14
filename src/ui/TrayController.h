@@ -2,6 +2,8 @@
 #include "app/OperationService.h"
 #include <QObject>
 #include <QElapsedTimer>
+#include <QColor>
+#include <QTimer>
 #include <functional>
 #include <memory>
 
@@ -36,7 +38,10 @@ private:
  QElapsedTimer shortcutFeedbackClock_;
  void notifyMessage(const QString&, const QString&, bool warning);
  void refreshActivity();
- bool working_ = false;
+ void flashError();
+ QTimer errorFlashTimer_,errorRecoveryTimer_;
+ bool errorRed_=false;
+ QColor iconColor_=QColor("#9bbcff");
  QString activityText_;
  void showAbout();
  void showView(const QString&);

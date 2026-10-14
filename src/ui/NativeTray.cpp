@@ -107,14 +107,14 @@ NativeLayout menuLayout(int id, int depth, const QStringList& names) {
   result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(i, 0, names))));
  return result;
 }
-NativeImages brandIcon(bool working=false) {
+NativeImages brandIcon(const QColor& color=QColor("#9bbcff")) {
  NativeImages result;
  for (int scale : {1, 2, 3}) {
   QImage image(24 * scale, 24 * scale, QImage::Format_ARGB32);
   image.setDevicePixelRatio(scale); image.fill(Qt::transparent);
   QPainter painter(&image);
   painter.setRenderHint(QPainter::Antialiasing);
-  painter.setPen(QPen(QColor(working?"#62d69b":"#9bbcff"), 1.7, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+  painter.setPen(QPen(color, 1.7, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
   painter.setBrush(Qt::NoBrush);
   painter.drawRoundedRect(QRectF(3, 3, 18, 18), 5, 5);
   painter.drawLine(12, 17, 12, 7); painter.drawLine(12, 7, 8, 11); painter.drawLine(12, 7, 16, 11);
@@ -148,7 +148,7 @@ public:
  bool availabilityKnown() const { return availabilityKnown_; }
  QVariantMap properties(bool menu) const;
  void dispatch(const QString& action);
- void setActivity(bool working,const QString& description);
+ void setActivity(const QColor& color,const QString& description);
  void notify(const QString& title, const QString& message, bool warning);
 private slots:
  void hostChanged();
@@ -163,7 +163,7 @@ private:
  QDBusServiceWatcher watcher_;
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
- bool working_ = false;
+ QColor color_ = QColor("#9bbcff");
  QString activityText_;
  QTimer retry_;
  quint64 generation_ = 0, hostQuery_ = 0;
@@ -299,16 +299,18 @@ void NativeTrayPrivate::notify(const QString& title, const QString& message, boo
   --notificationsInFlight_; p->deleteLater();
  });
 }
-void NativeTrayPrivate::setActivity(bool working,const QString& description) {
- const bool iconChanged=working!=working_;
- if(!iconChanged&&description==activityText_)return;
- working_=working;activityText_=description;
- if(iconChanged)icons_=brandIcon(working);
- const auto props=properties(false);QVariantMap changed{{"ToolTip",props["ToolTip"]}};
+void NativeTrayPrivate::setActivity(const QColor& color,const QString& description) {
+ const bool iconChanged=color!=color_;
+ const bool textChanged=description!=activityText_;
+ if(!iconChanged&&!textChanged)return;
+ color_=color;activityText_=description;
+ if(iconChanged)icons_=brandIcon(color);
+ const auto props=properties(false);QVariantMap changed;
+ if(textChanged)changed.insert("ToolTip",props["ToolTip"]);
  if(iconChanged)changed.insert("IconPixmap",props["IconPixmap"]);
  auto signal=QDBusMessage::createSignal("/StatusNotifierItem","org.freedesktop.DBus.Properties","PropertiesChanged");
  signal.setArguments({QString::fromLatin1(itemInterface),changed,QStringList{}});bus_.send(signal);
- bus_.send(QDBusMessage::createSignal("/StatusNotifierItem",itemInterface,"NewToolTip"));
+ if(textChanged)bus_.send(QDBusMessage::createSignal("/StatusNotifierItem",itemInterface,"NewToolTip"));
  if(iconChanged)bus_.send(QDBusMessage::createSignal("/StatusNotifierItem",itemInterface,"NewIcon"));
 }
 QVariantMap NativeTrayPrivate::properties(bool menu) const {
@@ -318,7 +320,7 @@ QVariantMap NativeTrayPrivate::properties(bool menu) const {
   {"IconName", ""}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
-  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, working_?QString("put.gd — Working"):QString("put.gd — Share and local capture"), activityText_})}};
+  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, activityText_.isEmpty()?QString("put.gd — Share and local capture"):QString("put.gd — Working"), activityText_})}};
 }
 QString TrayExport::introspect(const QString&) const {
  QString xml = "<interface name=\"org.freedesktop.DBus.Properties\">"
@@ -453,7 +455,7 @@ NativeTray::NativeTray(const QDBusConnection& bus, QObject* parent): QObject(par
 NativeTray::~NativeTray() = default;
 bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
-void NativeTray::setActivity(bool working,const QString& description) {d_->setActivity(working,description);}
+void NativeTray::setActivity(const QColor& color,const QString& description) {d_->setActivity(color,description);}
 void NativeTray::notify(const QString& title, const QString& message, bool warning) { d_->notify(title, message, warning); }
 }
 #include "NativeTray.moc"

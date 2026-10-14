@@ -1,0 +1,2009 @@
+{
+  "resident": {
+    "pid": 2535,
+    "startTicks": 40847,
+    "sha256": "e88412a24b9d7408cf6452b926fae3222437dd2bbacc73b574ec5a9baa3d98d7"
+  },
+  "steps": [
+    {
+      "cycle": 0,
+      "view": "settings",
+      "acknowledgement": {
+        "shown": "settings"
+      },
+      "snapshot": {
+        "build": {
+          "baseVersion": "0.1.1",
+          "commitCount": 176,
+          "dirty": false,
+          "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+          "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+          "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.176+g061c2d9c569d"
+        },
+        "diagnostics": {
+          "activeOperations": 0,
+          "backend": "Qt",
+          "build": {
+            "baseVersion": "0.1.1",
+            "commitCount": 176,
+            "dirty": false,
+            "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+            "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+            "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "0.1.1-dev.176+g061c2d9c569d"
+          },
+          "capabilities": {
+            "providers": {
+              "proton-drive": {
+                "conditionalCreate": true,
+                "conditionalDelete": false,
+                "conditionalReplace": false,
+                "delete": false,
+                "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+                "maximumNameBytes": 255,
+                "privateUploads": true,
+                "sharing": true,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": false
+              },
+              "s3": {
+                "conditionalCreate": true,
+                "conditionalDelete": true,
+                "conditionalReplace": true,
+                "delete": true,
+                "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+                "maximumNameBytes": 1024,
+                "privateUploads": false,
+                "sharing": false,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": true
+              }
+            },
+            "source": {
+              "adapter": "cinnamon-core-x11",
+              "capture": {
+                "desktop": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "region": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "window": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                }
+              },
+              "clipboard": {
+                "available": true,
+                "import": "asynchronous-x11-selection",
+                "result": "native-x11-ownership",
+                "types": [
+                  "files",
+                  "image",
+                  "text"
+                ]
+              },
+              "shortcuts": {
+                "available": true,
+                "bindings": {
+                  "clipboard": {
+                    "actual": "Ctrl+Shift+4",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+4"
+                  },
+                  "desktop": {
+                    "actual": "Ctrl+Shift+3",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+3"
+                  },
+                  "region": {
+                    "actual": "Ctrl+Shift+1",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+1"
+                  },
+                  "window": {
+                    "actual": "Ctrl+Shift+2",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+2"
+                  }
+                }
+              }
+            }
+          },
+          "journalReady": true,
+          "loginStartup": {
+            "applied": true,
+            "enabled": false
+          },
+          "memory": {
+            "allocatorReclamationCount": 13,
+            "allocatorReclamationPending": false,
+            "allocatorReclamationSupported": true,
+            "lastAllocatorReclamationUsec": 470
+          },
+          "qtVersion": "6.4.2",
+          "schemaVersion": 1,
+          "shortcuts": {
+            "available": true,
+            "bindings": {
+              "clipboard": {
+                "actual": "Ctrl+Shift+4",
+                "bound": true,
+                "requested": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "actual": "Ctrl+Shift+3",
+                "bound": true,
+                "requested": "Ctrl+Shift+3"
+              },
+              "region": {
+                "actual": "Ctrl+Shift+1",
+                "bound": true,
+                "requested": "Ctrl+Shift+1"
+              },
+              "window": {
+                "actual": "Ctrl+Shift+2",
+                "bound": true,
+                "requested": "Ctrl+Shift+2"
+              }
+            }
+          },
+          "storage": {
+            "proton-drive": {
+              "activeHelpers": 0,
+              "protocolVersion": 1
+            },
+            "s3": {
+              "moduleLiveDrivers": 0,
+              "queuedRequests": 0,
+              "retainedDrivers": 0,
+              "workerStarted": false
+            }
+          },
+          "trayAvailable": true,
+          "ui": {
+            "checkpointBytes": 2467,
+            "lastExit": {
+              "code": 15,
+              "generation": 6,
+              "status": "crash"
+            },
+            "pid": 15367,
+            "state": "ready"
+          }
+        },
+        "operationsReady": true,
+        "residentEpoch": "3a5b95de-a347-4df1-adb3-74542bb93167",
+        "settings": {
+          "document": {
+            "actions": {
+              "clipboard": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+3"
+              },
+              "region": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+1"
+              },
+              "window": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+2"
+              }
+            },
+            "archive": {
+              "folders": {
+                "images": null,
+                "other": null,
+                "text": null,
+                "videos": null
+              },
+              "keepUploads": true,
+              "root": "/home/lab/putgd-lab/archive"
+            },
+            "limits": {
+              "clipboardTextBytes": 16777216,
+              "concurrentUploads": 1,
+              "imageBytes": 536870912,
+              "imagePixels": 100000000,
+              "maxBatchBytes": 2147483648,
+              "maxFileBytes": 2147483648,
+              "maxFiles": 100,
+              "pendingArtifactBytes": 2147483648,
+              "pendingImageBytes": 67108864,
+              "pendingOperations": 8
+            },
+            "naming": {
+              "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "collisionPolicy": "rename",
+              "fileTemplate": "{name}.{ext}",
+              "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "mode": "original",
+              "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+            },
+            "preferences": {
+              "launchAtLogin": false,
+              "notifications": true
+            },
+            "profiles": [],
+            "retention": {
+              "failedArtifactDays": 7,
+              "historyRetentionDays": null,
+              "previewCacheBytes": 268435456,
+              "recentActivityLimit": 100
+            },
+            "schemaVersion": 1
+          },
+          "metadata": {
+            "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "fallbackRescanMs": 2000,
+            "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "path": "/home/lab/putgd-lab/config/putgd/putgd/config.json",
+            "schemaVersion": 1,
+            "validation": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "ok": true
+            },
+            "watching": true
+          }
+        }
+      }
+    },
+    {
+      "cycle": 0,
+      "view": "history",
+      "acknowledgement": {
+        "shown": "history"
+      },
+      "snapshot": {
+        "build": {
+          "baseVersion": "0.1.1",
+          "commitCount": 176,
+          "dirty": false,
+          "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+          "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+          "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.176+g061c2d9c569d"
+        },
+        "diagnostics": {
+          "activeOperations": 0,
+          "backend": "Qt",
+          "build": {
+            "baseVersion": "0.1.1",
+            "commitCount": 176,
+            "dirty": false,
+            "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+            "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+            "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "0.1.1-dev.176+g061c2d9c569d"
+          },
+          "capabilities": {
+            "providers": {
+              "proton-drive": {
+                "conditionalCreate": true,
+                "conditionalDelete": false,
+                "conditionalReplace": false,
+                "delete": false,
+                "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+                "maximumNameBytes": 255,
+                "privateUploads": true,
+                "sharing": true,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": false
+              },
+              "s3": {
+                "conditionalCreate": true,
+                "conditionalDelete": true,
+                "conditionalReplace": true,
+                "delete": true,
+                "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+                "maximumNameBytes": 1024,
+                "privateUploads": false,
+                "sharing": false,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": true
+              }
+            },
+            "source": {
+              "adapter": "cinnamon-core-x11",
+              "capture": {
+                "desktop": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "region": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "window": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                }
+              },
+              "clipboard": {
+                "available": true,
+                "import": "asynchronous-x11-selection",
+                "result": "native-x11-ownership",
+                "types": [
+                  "files",
+                  "image",
+                  "text"
+                ]
+              },
+              "shortcuts": {
+                "available": true,
+                "bindings": {
+                  "clipboard": {
+                    "actual": "Ctrl+Shift+4",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+4"
+                  },
+                  "desktop": {
+                    "actual": "Ctrl+Shift+3",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+3"
+                  },
+                  "region": {
+                    "actual": "Ctrl+Shift+1",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+1"
+                  },
+                  "window": {
+                    "actual": "Ctrl+Shift+2",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+2"
+                  }
+                }
+              }
+            }
+          },
+          "journalReady": true,
+          "loginStartup": {
+            "applied": true,
+            "enabled": false
+          },
+          "memory": {
+            "allocatorReclamationCount": 13,
+            "allocatorReclamationPending": false,
+            "allocatorReclamationSupported": true,
+            "lastAllocatorReclamationUsec": 470
+          },
+          "qtVersion": "6.4.2",
+          "schemaVersion": 1,
+          "shortcuts": {
+            "available": true,
+            "bindings": {
+              "clipboard": {
+                "actual": "Ctrl+Shift+4",
+                "bound": true,
+                "requested": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "actual": "Ctrl+Shift+3",
+                "bound": true,
+                "requested": "Ctrl+Shift+3"
+              },
+              "region": {
+                "actual": "Ctrl+Shift+1",
+                "bound": true,
+                "requested": "Ctrl+Shift+1"
+              },
+              "window": {
+                "actual": "Ctrl+Shift+2",
+                "bound": true,
+                "requested": "Ctrl+Shift+2"
+              }
+            }
+          },
+          "storage": {
+            "proton-drive": {
+              "activeHelpers": 0,
+              "protocolVersion": 1
+            },
+            "s3": {
+              "moduleLiveDrivers": 0,
+              "queuedRequests": 0,
+              "retainedDrivers": 0,
+              "workerStarted": false
+            }
+          },
+          "trayAvailable": true,
+          "ui": {
+            "checkpointBytes": 2467,
+            "lastExit": {
+              "code": 0,
+              "generation": 7,
+              "status": "normal"
+            },
+            "pid": 15472,
+            "state": "ready"
+          }
+        },
+        "operationsReady": true,
+        "residentEpoch": "3a5b95de-a347-4df1-adb3-74542bb93167",
+        "settings": {
+          "document": {
+            "actions": {
+              "clipboard": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+3"
+              },
+              "region": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+1"
+              },
+              "window": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+2"
+              }
+            },
+            "archive": {
+              "folders": {
+                "images": null,
+                "other": null,
+                "text": null,
+                "videos": null
+              },
+              "keepUploads": true,
+              "root": "/home/lab/putgd-lab/archive"
+            },
+            "limits": {
+              "clipboardTextBytes": 16777216,
+              "concurrentUploads": 1,
+              "imageBytes": 536870912,
+              "imagePixels": 100000000,
+              "maxBatchBytes": 2147483648,
+              "maxFileBytes": 2147483648,
+              "maxFiles": 100,
+              "pendingArtifactBytes": 2147483648,
+              "pendingImageBytes": 67108864,
+              "pendingOperations": 8
+            },
+            "naming": {
+              "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "collisionPolicy": "rename",
+              "fileTemplate": "{name}.{ext}",
+              "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "mode": "original",
+              "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+            },
+            "preferences": {
+              "launchAtLogin": false,
+              "notifications": true
+            },
+            "profiles": [],
+            "retention": {
+              "failedArtifactDays": 7,
+              "historyRetentionDays": null,
+              "previewCacheBytes": 268435456,
+              "recentActivityLimit": 100
+            },
+            "schemaVersion": 1
+          },
+          "metadata": {
+            "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "fallbackRescanMs": 2000,
+            "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "path": "/home/lab/putgd-lab/config/putgd/putgd/config.json",
+            "schemaVersion": 1,
+            "validation": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "ok": true
+            },
+            "watching": true
+          }
+        }
+      }
+    },
+    {
+      "cycle": 0,
+      "view": "activity",
+      "acknowledgement": {
+        "shown": "activity"
+      },
+      "snapshot": {
+        "build": {
+          "baseVersion": "0.1.1",
+          "commitCount": 176,
+          "dirty": false,
+          "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+          "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+          "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.176+g061c2d9c569d"
+        },
+        "diagnostics": {
+          "activeOperations": 0,
+          "backend": "Qt",
+          "build": {
+            "baseVersion": "0.1.1",
+            "commitCount": 176,
+            "dirty": false,
+            "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+            "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+            "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "0.1.1-dev.176+g061c2d9c569d"
+          },
+          "capabilities": {
+            "providers": {
+              "proton-drive": {
+                "conditionalCreate": true,
+                "conditionalDelete": false,
+                "conditionalReplace": false,
+                "delete": false,
+                "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+                "maximumNameBytes": 255,
+                "privateUploads": true,
+                "sharing": true,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": false
+              },
+              "s3": {
+                "conditionalCreate": true,
+                "conditionalDelete": true,
+                "conditionalReplace": true,
+                "delete": true,
+                "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+                "maximumNameBytes": 1024,
+                "privateUploads": false,
+                "sharing": false,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": true
+              }
+            },
+            "source": {
+              "adapter": "cinnamon-core-x11",
+              "capture": {
+                "desktop": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "region": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "window": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                }
+              },
+              "clipboard": {
+                "available": true,
+                "import": "asynchronous-x11-selection",
+                "result": "native-x11-ownership",
+                "types": [
+                  "files",
+                  "image",
+                  "text"
+                ]
+              },
+              "shortcuts": {
+                "available": true,
+                "bindings": {
+                  "clipboard": {
+                    "actual": "Ctrl+Shift+4",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+4"
+                  },
+                  "desktop": {
+                    "actual": "Ctrl+Shift+3",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+3"
+                  },
+                  "region": {
+                    "actual": "Ctrl+Shift+1",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+1"
+                  },
+                  "window": {
+                    "actual": "Ctrl+Shift+2",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+2"
+                  }
+                }
+              }
+            }
+          },
+          "journalReady": true,
+          "loginStartup": {
+            "applied": true,
+            "enabled": false
+          },
+          "memory": {
+            "allocatorReclamationCount": 13,
+            "allocatorReclamationPending": false,
+            "allocatorReclamationSupported": true,
+            "lastAllocatorReclamationUsec": 470
+          },
+          "qtVersion": "6.4.2",
+          "schemaVersion": 1,
+          "shortcuts": {
+            "available": true,
+            "bindings": {
+              "clipboard": {
+                "actual": "Ctrl+Shift+4",
+                "bound": true,
+                "requested": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "actual": "Ctrl+Shift+3",
+                "bound": true,
+                "requested": "Ctrl+Shift+3"
+              },
+              "region": {
+                "actual": "Ctrl+Shift+1",
+                "bound": true,
+                "requested": "Ctrl+Shift+1"
+              },
+              "window": {
+                "actual": "Ctrl+Shift+2",
+                "bound": true,
+                "requested": "Ctrl+Shift+2"
+              }
+            }
+          },
+          "storage": {
+            "proton-drive": {
+              "activeHelpers": 0,
+              "protocolVersion": 1
+            },
+            "s3": {
+              "moduleLiveDrivers": 0,
+              "queuedRequests": 0,
+              "retainedDrivers": 0,
+              "workerStarted": false
+            }
+          },
+          "trayAvailable": true,
+          "ui": {
+            "checkpointBytes": 2467,
+            "lastExit": {
+              "code": 0,
+              "generation": 8,
+              "status": "normal"
+            },
+            "pid": 15579,
+            "state": "ready"
+          }
+        },
+        "operationsReady": true,
+        "residentEpoch": "3a5b95de-a347-4df1-adb3-74542bb93167",
+        "settings": {
+          "document": {
+            "actions": {
+              "clipboard": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+3"
+              },
+              "region": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+1"
+              },
+              "window": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+2"
+              }
+            },
+            "archive": {
+              "folders": {
+                "images": null,
+                "other": null,
+                "text": null,
+                "videos": null
+              },
+              "keepUploads": true,
+              "root": "/home/lab/putgd-lab/archive"
+            },
+            "limits": {
+              "clipboardTextBytes": 16777216,
+              "concurrentUploads": 1,
+              "imageBytes": 536870912,
+              "imagePixels": 100000000,
+              "maxBatchBytes": 2147483648,
+              "maxFileBytes": 2147483648,
+              "maxFiles": 100,
+              "pendingArtifactBytes": 2147483648,
+              "pendingImageBytes": 67108864,
+              "pendingOperations": 8
+            },
+            "naming": {
+              "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "collisionPolicy": "rename",
+              "fileTemplate": "{name}.{ext}",
+              "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "mode": "original",
+              "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+            },
+            "preferences": {
+              "launchAtLogin": false,
+              "notifications": true
+            },
+            "profiles": [],
+            "retention": {
+              "failedArtifactDays": 7,
+              "historyRetentionDays": null,
+              "previewCacheBytes": 268435456,
+              "recentActivityLimit": 100
+            },
+            "schemaVersion": 1
+          },
+          "metadata": {
+            "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "fallbackRescanMs": 2000,
+            "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "path": "/home/lab/putgd-lab/config/putgd/putgd/config.json",
+            "schemaVersion": 1,
+            "validation": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "ok": true
+            },
+            "watching": true
+          }
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "settings",
+      "acknowledgement": {
+        "shown": "settings"
+      },
+      "snapshot": {
+        "build": {
+          "baseVersion": "0.1.1",
+          "commitCount": 176,
+          "dirty": false,
+          "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+          "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+          "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.176+g061c2d9c569d"
+        },
+        "diagnostics": {
+          "activeOperations": 0,
+          "backend": "Qt",
+          "build": {
+            "baseVersion": "0.1.1",
+            "commitCount": 176,
+            "dirty": false,
+            "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+            "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+            "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "0.1.1-dev.176+g061c2d9c569d"
+          },
+          "capabilities": {
+            "providers": {
+              "proton-drive": {
+                "conditionalCreate": true,
+                "conditionalDelete": false,
+                "conditionalReplace": false,
+                "delete": false,
+                "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+                "maximumNameBytes": 255,
+                "privateUploads": true,
+                "sharing": true,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": false
+              },
+              "s3": {
+                "conditionalCreate": true,
+                "conditionalDelete": true,
+                "conditionalReplace": true,
+                "delete": true,
+                "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+                "maximumNameBytes": 1024,
+                "privateUploads": false,
+                "sharing": false,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": true
+              }
+            },
+            "source": {
+              "adapter": "cinnamon-core-x11",
+              "capture": {
+                "desktop": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "region": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "window": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                }
+              },
+              "clipboard": {
+                "available": true,
+                "import": "asynchronous-x11-selection",
+                "result": "native-x11-ownership",
+                "types": [
+                  "files",
+                  "image",
+                  "text"
+                ]
+              },
+              "shortcuts": {
+                "available": true,
+                "bindings": {
+                  "clipboard": {
+                    "actual": "Ctrl+Shift+4",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+4"
+                  },
+                  "desktop": {
+                    "actual": "Ctrl+Shift+3",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+3"
+                  },
+                  "region": {
+                    "actual": "Ctrl+Shift+1",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+1"
+                  },
+                  "window": {
+                    "actual": "Ctrl+Shift+2",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+2"
+                  }
+                }
+              }
+            }
+          },
+          "journalReady": true,
+          "loginStartup": {
+            "applied": true,
+            "enabled": false
+          },
+          "memory": {
+            "allocatorReclamationCount": 13,
+            "allocatorReclamationPending": false,
+            "allocatorReclamationSupported": true,
+            "lastAllocatorReclamationUsec": 470
+          },
+          "qtVersion": "6.4.2",
+          "schemaVersion": 1,
+          "shortcuts": {
+            "available": true,
+            "bindings": {
+              "clipboard": {
+                "actual": "Ctrl+Shift+4",
+                "bound": true,
+                "requested": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "actual": "Ctrl+Shift+3",
+                "bound": true,
+                "requested": "Ctrl+Shift+3"
+              },
+              "region": {
+                "actual": "Ctrl+Shift+1",
+                "bound": true,
+                "requested": "Ctrl+Shift+1"
+              },
+              "window": {
+                "actual": "Ctrl+Shift+2",
+                "bound": true,
+                "requested": "Ctrl+Shift+2"
+              }
+            }
+          },
+          "storage": {
+            "proton-drive": {
+              "activeHelpers": 0,
+              "protocolVersion": 1
+            },
+            "s3": {
+              "moduleLiveDrivers": 0,
+              "queuedRequests": 0,
+              "retainedDrivers": 0,
+              "workerStarted": false
+            }
+          },
+          "trayAvailable": true,
+          "ui": {
+            "checkpointBytes": 2467,
+            "lastExit": {
+              "code": 0,
+              "generation": 9,
+              "status": "normal"
+            },
+            "pid": 15686,
+            "state": "ready"
+          }
+        },
+        "operationsReady": true,
+        "residentEpoch": "3a5b95de-a347-4df1-adb3-74542bb93167",
+        "settings": {
+          "document": {
+            "actions": {
+              "clipboard": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+3"
+              },
+              "region": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+1"
+              },
+              "window": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+2"
+              }
+            },
+            "archive": {
+              "folders": {
+                "images": null,
+                "other": null,
+                "text": null,
+                "videos": null
+              },
+              "keepUploads": true,
+              "root": "/home/lab/putgd-lab/archive"
+            },
+            "limits": {
+              "clipboardTextBytes": 16777216,
+              "concurrentUploads": 1,
+              "imageBytes": 536870912,
+              "imagePixels": 100000000,
+              "maxBatchBytes": 2147483648,
+              "maxFileBytes": 2147483648,
+              "maxFiles": 100,
+              "pendingArtifactBytes": 2147483648,
+              "pendingImageBytes": 67108864,
+              "pendingOperations": 8
+            },
+            "naming": {
+              "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "collisionPolicy": "rename",
+              "fileTemplate": "{name}.{ext}",
+              "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "mode": "original",
+              "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+            },
+            "preferences": {
+              "launchAtLogin": false,
+              "notifications": true
+            },
+            "profiles": [],
+            "retention": {
+              "failedArtifactDays": 7,
+              "historyRetentionDays": null,
+              "previewCacheBytes": 268435456,
+              "recentActivityLimit": 100
+            },
+            "schemaVersion": 1
+          },
+          "metadata": {
+            "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "fallbackRescanMs": 2000,
+            "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "path": "/home/lab/putgd-lab/config/putgd/putgd/config.json",
+            "schemaVersion": 1,
+            "validation": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "ok": true
+            },
+            "watching": true
+          }
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "history",
+      "acknowledgement": {
+        "shown": "history"
+      },
+      "snapshot": {
+        "build": {
+          "baseVersion": "0.1.1",
+          "commitCount": 176,
+          "dirty": false,
+          "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+          "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+          "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.176+g061c2d9c569d"
+        },
+        "diagnostics": {
+          "activeOperations": 0,
+          "backend": "Qt",
+          "build": {
+            "baseVersion": "0.1.1",
+            "commitCount": 176,
+            "dirty": false,
+            "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+            "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+            "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "0.1.1-dev.176+g061c2d9c569d"
+          },
+          "capabilities": {
+            "providers": {
+              "proton-drive": {
+                "conditionalCreate": true,
+                "conditionalDelete": false,
+                "conditionalReplace": false,
+                "delete": false,
+                "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+                "maximumNameBytes": 255,
+                "privateUploads": true,
+                "sharing": true,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": false
+              },
+              "s3": {
+                "conditionalCreate": true,
+                "conditionalDelete": true,
+                "conditionalReplace": true,
+                "delete": true,
+                "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+                "maximumNameBytes": 1024,
+                "privateUploads": false,
+                "sharing": false,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": true
+              }
+            },
+            "source": {
+              "adapter": "cinnamon-core-x11",
+              "capture": {
+                "desktop": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "region": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "window": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                }
+              },
+              "clipboard": {
+                "available": true,
+                "import": "asynchronous-x11-selection",
+                "result": "native-x11-ownership",
+                "types": [
+                  "files",
+                  "image",
+                  "text"
+                ]
+              },
+              "shortcuts": {
+                "available": true,
+                "bindings": {
+                  "clipboard": {
+                    "actual": "Ctrl+Shift+4",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+4"
+                  },
+                  "desktop": {
+                    "actual": "Ctrl+Shift+3",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+3"
+                  },
+                  "region": {
+                    "actual": "Ctrl+Shift+1",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+1"
+                  },
+                  "window": {
+                    "actual": "Ctrl+Shift+2",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+2"
+                  }
+                }
+              }
+            }
+          },
+          "journalReady": true,
+          "loginStartup": {
+            "applied": true,
+            "enabled": false
+          },
+          "memory": {
+            "allocatorReclamationCount": 13,
+            "allocatorReclamationPending": false,
+            "allocatorReclamationSupported": true,
+            "lastAllocatorReclamationUsec": 470
+          },
+          "qtVersion": "6.4.2",
+          "schemaVersion": 1,
+          "shortcuts": {
+            "available": true,
+            "bindings": {
+              "clipboard": {
+                "actual": "Ctrl+Shift+4",
+                "bound": true,
+                "requested": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "actual": "Ctrl+Shift+3",
+                "bound": true,
+                "requested": "Ctrl+Shift+3"
+              },
+              "region": {
+                "actual": "Ctrl+Shift+1",
+                "bound": true,
+                "requested": "Ctrl+Shift+1"
+              },
+              "window": {
+                "actual": "Ctrl+Shift+2",
+                "bound": true,
+                "requested": "Ctrl+Shift+2"
+              }
+            }
+          },
+          "storage": {
+            "proton-drive": {
+              "activeHelpers": 0,
+              "protocolVersion": 1
+            },
+            "s3": {
+              "moduleLiveDrivers": 0,
+              "queuedRequests": 0,
+              "retainedDrivers": 0,
+              "workerStarted": false
+            }
+          },
+          "trayAvailable": true,
+          "ui": {
+            "checkpointBytes": 2467,
+            "lastExit": {
+              "code": 0,
+              "generation": 10,
+              "status": "normal"
+            },
+            "pid": 15791,
+            "state": "ready"
+          }
+        },
+        "operationsReady": true,
+        "residentEpoch": "3a5b95de-a347-4df1-adb3-74542bb93167",
+        "settings": {
+          "document": {
+            "actions": {
+              "clipboard": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+3"
+              },
+              "region": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+1"
+              },
+              "window": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+2"
+              }
+            },
+            "archive": {
+              "folders": {
+                "images": null,
+                "other": null,
+                "text": null,
+                "videos": null
+              },
+              "keepUploads": true,
+              "root": "/home/lab/putgd-lab/archive"
+            },
+            "limits": {
+              "clipboardTextBytes": 16777216,
+              "concurrentUploads": 1,
+              "imageBytes": 536870912,
+              "imagePixels": 100000000,
+              "maxBatchBytes": 2147483648,
+              "maxFileBytes": 2147483648,
+              "maxFiles": 100,
+              "pendingArtifactBytes": 2147483648,
+              "pendingImageBytes": 67108864,
+              "pendingOperations": 8
+            },
+            "naming": {
+              "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "collisionPolicy": "rename",
+              "fileTemplate": "{name}.{ext}",
+              "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "mode": "original",
+              "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+            },
+            "preferences": {
+              "launchAtLogin": false,
+              "notifications": true
+            },
+            "profiles": [],
+            "retention": {
+              "failedArtifactDays": 7,
+              "historyRetentionDays": null,
+              "previewCacheBytes": 268435456,
+              "recentActivityLimit": 100
+            },
+            "schemaVersion": 1
+          },
+          "metadata": {
+            "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "fallbackRescanMs": 2000,
+            "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "path": "/home/lab/putgd-lab/config/putgd/putgd/config.json",
+            "schemaVersion": 1,
+            "validation": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "ok": true
+            },
+            "watching": true
+          }
+        }
+      }
+    },
+    {
+      "cycle": 1,
+      "view": "activity",
+      "acknowledgement": {
+        "shown": "activity"
+      },
+      "snapshot": {
+        "build": {
+          "baseVersion": "0.1.1",
+          "commitCount": 176,
+          "dirty": false,
+          "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+          "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+          "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+          "schemaVersion": 1,
+          "sourceProvenance": "git",
+          "version": "0.1.1-dev.176+g061c2d9c569d"
+        },
+        "diagnostics": {
+          "activeOperations": 0,
+          "backend": "Qt",
+          "build": {
+            "baseVersion": "0.1.1",
+            "commitCount": 176,
+            "dirty": false,
+            "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+            "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+            "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+            "schemaVersion": 1,
+            "sourceProvenance": "git",
+            "version": "0.1.1-dev.176+g061c2d9c569d"
+          },
+          "capabilities": {
+            "providers": {
+              "proton-drive": {
+                "conditionalCreate": true,
+                "conditionalDelete": false,
+                "conditionalReplace": false,
+                "delete": false,
+                "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+                "maximumNameBytes": 255,
+                "privateUploads": true,
+                "sharing": true,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": false
+              },
+              "s3": {
+                "conditionalCreate": true,
+                "conditionalDelete": true,
+                "conditionalReplace": true,
+                "delete": true,
+                "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+                "maximumNameBytes": 1024,
+                "privateUploads": false,
+                "sharing": false,
+                "stat": true,
+                "urls": true,
+                "versionAddressing": true
+              }
+            },
+            "source": {
+              "adapter": "cinnamon-core-x11",
+              "capture": {
+                "desktop": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "region": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                },
+                "window": {
+                  "available": true,
+                  "consent": "none",
+                  "helper": {
+                    "active": false,
+                    "build": {
+                      "baseVersion": "0.1.1",
+                      "commitCount": 176,
+                      "dirty": false,
+                      "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+                      "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+                      "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+                      "schemaVersion": 1,
+                      "sourceProvenance": "git",
+                      "version": "0.1.1-dev.176+g061c2d9c569d"
+                    },
+                    "lastExit": {
+                      "code": 0,
+                      "generation": "6",
+                      "processId": 6632,
+                      "startTicks": "48390",
+                      "status": "normal"
+                    },
+                    "processId": 0
+                  },
+                  "mode": "visible-pixels"
+                }
+              },
+              "clipboard": {
+                "available": true,
+                "import": "asynchronous-x11-selection",
+                "result": "native-x11-ownership",
+                "types": [
+                  "files",
+                  "image",
+                  "text"
+                ]
+              },
+              "shortcuts": {
+                "available": true,
+                "bindings": {
+                  "clipboard": {
+                    "actual": "Ctrl+Shift+4",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+4"
+                  },
+                  "desktop": {
+                    "actual": "Ctrl+Shift+3",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+3"
+                  },
+                  "region": {
+                    "actual": "Ctrl+Shift+1",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+1"
+                  },
+                  "window": {
+                    "actual": "Ctrl+Shift+2",
+                    "bound": true,
+                    "requested": "Ctrl+Shift+2"
+                  }
+                }
+              }
+            }
+          },
+          "journalReady": true,
+          "loginStartup": {
+            "applied": true,
+            "enabled": false
+          },
+          "memory": {
+            "allocatorReclamationCount": 13,
+            "allocatorReclamationPending": false,
+            "allocatorReclamationSupported": true,
+            "lastAllocatorReclamationUsec": 470
+          },
+          "qtVersion": "6.4.2",
+          "schemaVersion": 1,
+          "shortcuts": {
+            "available": true,
+            "bindings": {
+              "clipboard": {
+                "actual": "Ctrl+Shift+4",
+                "bound": true,
+                "requested": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "actual": "Ctrl+Shift+3",
+                "bound": true,
+                "requested": "Ctrl+Shift+3"
+              },
+              "region": {
+                "actual": "Ctrl+Shift+1",
+                "bound": true,
+                "requested": "Ctrl+Shift+1"
+              },
+              "window": {
+                "actual": "Ctrl+Shift+2",
+                "bound": true,
+                "requested": "Ctrl+Shift+2"
+              }
+            }
+          },
+          "storage": {
+            "proton-drive": {
+              "activeHelpers": 0,
+              "protocolVersion": 1
+            },
+            "s3": {
+              "moduleLiveDrivers": 0,
+              "queuedRequests": 0,
+              "retainedDrivers": 0,
+              "workerStarted": false
+            }
+          },
+          "trayAvailable": true,
+          "ui": {
+            "checkpointBytes": 2467,
+            "lastExit": {
+              "code": 0,
+              "generation": 11,
+              "status": "normal"
+            },
+            "pid": 15898,
+            "state": "ready"
+          }
+        },
+        "operationsReady": true,
+        "residentEpoch": "3a5b95de-a347-4df1-adb3-74542bb93167",
+        "settings": {
+          "document": {
+            "actions": {
+              "clipboard": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+4"
+              },
+              "desktop": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+3"
+              },
+              "region": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+1"
+              },
+              "window": {
+                "destination": "local",
+                "profileId": null,
+                "shortcut": "Ctrl+Shift+2"
+              }
+            },
+            "archive": {
+              "folders": {
+                "images": null,
+                "other": null,
+                "text": null,
+                "videos": null
+              },
+              "keepUploads": true,
+              "root": "/home/lab/putgd-lab/archive"
+            },
+            "limits": {
+              "clipboardTextBytes": 16777216,
+              "concurrentUploads": 1,
+              "imageBytes": 536870912,
+              "imagePixels": 100000000,
+              "maxBatchBytes": 2147483648,
+              "maxFileBytes": 2147483648,
+              "maxFiles": 100,
+              "pendingArtifactBytes": 2147483648,
+              "pendingImageBytes": 67108864,
+              "pendingOperations": 8
+            },
+            "naming": {
+              "captureTemplate": "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "collisionPolicy": "rename",
+              "fileTemplate": "{name}.{ext}",
+              "imageTemplate": "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}",
+              "mode": "original",
+              "textTemplate": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+            },
+            "preferences": {
+              "launchAtLogin": false,
+              "notifications": true
+            },
+            "profiles": [],
+            "retention": {
+              "failedArtifactDays": 7,
+              "historyRetentionDays": null,
+              "previewCacheBytes": 268435456,
+              "recentActivityLimit": 100
+            },
+            "schemaVersion": 1
+          },
+          "metadata": {
+            "acceptedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "fallbackRescanMs": 2000,
+            "observedRevision": "6c298fd5e530092ded509a2114797c8cd52a88d4ce2c5abfc9c8ecf02ccb2d54",
+            "path": "/home/lab/putgd-lab/config/putgd/putgd/config.json",
+            "schemaVersion": 1,
+            "validation": {
+              "error": {
+                "code": "",
+                "details": {},
+                "message": ""
+              },
+              "ok": true
+            },
+            "watching": true
+          }
+        }
+      }
+    }
+  ],
+  "scope": "native Settings/History/Activity reopen and last-window helper exit",
+  "passed": true
+}

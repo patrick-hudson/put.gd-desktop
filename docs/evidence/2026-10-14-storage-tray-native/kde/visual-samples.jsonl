@@ -1,0 +1,246 @@
+{"time": 16328.832704982, "phase": "idle", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-000-idle-blue.png"}
+{"time": 16328.952804341, "phase": "idle", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16329.072912092, "phase": "idle", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16329.368384128, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16329.488471439, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16329.608593423, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16329.728728264, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16329.848831025, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16329.968981217, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.089049975, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.209126224, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.329216571, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.449330714, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.569423504, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.689515899, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.80958615, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16330.929715807, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.049829483, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.169923566, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.290023382, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.410082305, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.530185102, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.650258491, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.770332737, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16331.890431838, "phase": "selecting", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.01050939, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.130635333, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.250705478, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.370785835, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.490935591, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.611113519, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.731225583, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.851301682, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16332.971405884, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16333.091498605, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16333.21159938, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16333.331725442, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}, "witness": "transition-001-upload-success-green.png"}
+{"time": 16333.451828979, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16333.571923011, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16333.692044306, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16333.812069973, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16333.932155756, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.052226878, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.172299044, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.292382286, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.41247159, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.532624811, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.652702157, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.772777073, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16334.89289007, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-002-upload-success-blue.png"}
+{"time": 16335.012960205, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16335.133099291, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}, "witness": "transition-003-upload-success-green.png"}
+{"time": 16335.2531687, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16335.373255551, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16335.49333447, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16335.613442836, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16335.73394307, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16335.854077378, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16335.974215613, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.094318156, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.21442453, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.334557399, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.454676148, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.574813372, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.694953848, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.81504073, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16336.935147909, "phase": "upload-success", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-004-upload-success-blue.png"}
+{"time": 16337.05526467, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16337.17533409, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16337.295410561, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16337.415524436, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16337.535662697, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16337.655763192, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16337.775869026, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16337.895947348, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16338.016074619, "phase": "error", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}, "witness": "transition-005-error-green.png"}
+{"time": 16338.13610048, "phase": "error", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16338.256201835, "phase": "error", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16338.376277531, "phase": "error", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16338.496351608, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-006-error-blue.png"}
+{"time": 16338.616450223, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16338.736528028, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-007-error-red.png"}
+{"time": 16338.85660138, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16338.976705347, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-008-error-blue.png"}
+{"time": 16339.096848865, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16339.216953932, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16339.337040455, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-009-error-red.png"}
+{"time": 16339.457141976, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16339.577212273, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-010-error-blue.png"}
+{"time": 16339.697356526, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16339.817452567, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16339.937556792, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-011-error-red.png"}
+{"time": 16340.057665364, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16340.177776005, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-012-error-blue.png"}
+{"time": 16340.297858323, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16340.417926706, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16340.537998317, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-013-error-red.png"}
+{"time": 16340.658052168, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16340.778126133, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-014-error-blue.png"}
+{"time": 16340.898218238, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16341.018330901, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16341.138408976, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-015-error-red.png"}
+{"time": 16341.260477992, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16341.380570835, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-016-error-blue.png"}
+{"time": 16341.54559112, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16341.665692387, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16341.785810977, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16341.905943439, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.026060895, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.146158608, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.266274086, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.386363713, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.506449178, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.626522387, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.746623385, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.866697765, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16342.986771691, "phase": "error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.106867395, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.226949758, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.347057852, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.467134856, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.587208196, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.707289061, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.827391732, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16343.947473452, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16344.067565546, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16344.18766614, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}, "witness": "transition-017-overlap-green.png"}
+{"time": 16344.364447871, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16344.484543011, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16344.604639401, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16344.724760281, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-018-overlap-blue.png"}
+{"time": 16344.844832238, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16344.964906413, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16345.085031573, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}, "witness": "transition-019-overlap-green.png"}
+{"time": 16345.205129949, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16345.325201053, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16345.445271387, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16345.565352922, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16345.685418751, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16345.805526105, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16345.925631146, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16346.045705515, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-020-overlap-red.png"}
+{"time": 16346.165823426, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16346.285962777, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16346.406056073, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-021-overlap-blue.png"}
+{"time": 16346.526113443, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16346.646184549, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-022-overlap-red.png"}
+{"time": 16346.766274094, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16346.886381387, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16347.006506153, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-023-overlap-blue.png"}
+{"time": 16347.1504751, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16347.270562759, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-024-overlap-red.png"}
+{"time": 16347.399882001, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16347.520021377, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-025-overlap-blue.png"}
+{"time": 16347.641195771, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16347.761322209, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16347.881413805, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-026-overlap-red.png"}
+{"time": 16348.004491698, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16348.124574572, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-027-overlap-blue.png"}
+{"time": 16348.260593845, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16348.380705509, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16348.500826734, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-028-overlap-red.png"}
+{"time": 16348.622420779, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16348.742561749, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-029-overlap-blue.png"}
+{"time": 16348.873774797, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16348.993917795, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16349.114053421, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}, "witness": "transition-030-overlap-green.png"}
+{"time": 16349.242295336, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16349.362429008, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16349.48251062, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16349.602617609, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16349.722766336, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16349.842902985, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16349.963019311, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.083101852, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.203185449, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.323272114, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.443404376, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.563514155, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.683610655, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.803732812, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16350.923818576, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.043956359, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.164334166, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.284442514, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.404551117, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.524673463, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.644757721, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.764860599, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16351.884961994, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.005039589, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.125188296, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.245265078, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.365364691, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.485433119, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.605602607, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.725724557, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.845821722, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 142, "red": 0}}
+{"time": 16352.965987903, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-031-overlap-blue.png"}
+{"time": 16353.086021271, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16353.206101974, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16353.326182599, "phase": "overlap", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16353.446279372, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16353.566383961, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16353.686478068, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16353.806581934, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16353.926682515, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.046767155, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.166906631, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.28701318, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.407091372, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.527173132, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.64723767, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.767304992, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16354.887437198, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-032-local-error-red.png"}
+{"time": 16355.00750891, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16355.127632794, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-033-local-error-blue.png"}
+{"time": 16355.247706507, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16355.367815964, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16355.487891672, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-034-local-error-red.png"}
+{"time": 16355.608023499, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16355.72814656, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-035-local-error-blue.png"}
+{"time": 16355.848232646, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16355.968311289, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16356.088390563, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-036-local-error-red.png"}
+{"time": 16356.208507783, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16356.328641377, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-037-local-error-blue.png"}
+{"time": 16356.452143733, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16356.572235258, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16356.692331332, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-038-local-error-red.png"}
+{"time": 16356.818123845, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16356.938199283, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-039-local-error-blue.png"}
+{"time": 16357.058299585, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16357.178392429, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16357.29851486, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}, "witness": "transition-040-local-error-red.png"}
+{"time": 16357.418619359, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 142}}
+{"time": 16357.538723549, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}, "witness": "transition-041-local-error-blue.png"}
+{"time": 16357.658826325, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16357.778892976, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16357.898990992, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16358.019056616, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16358.139121056, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16358.259186804, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16358.379254112, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16358.499362045, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}
+{"time": 16358.619450499, "phase": "local-error", "color": "blue", "counts": {"blue": 142, "green": 0, "red": 0}}

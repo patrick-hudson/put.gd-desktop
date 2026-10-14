@@ -1,0 +1,181 @@
+{"time": 16033.989415983, "phase": "idle", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-000-idle-blue.png"}
+{"time": 16034.222246553, "phase": "idle", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16034.342339818, "phase": "idle", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16034.462443921, "phase": "idle", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16034.582575102, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16034.702769482, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16034.822868629, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16034.942981451, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.063077351, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.183189305, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.303288792, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.423393685, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.543460754, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.663527944, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.783642118, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16035.903747516, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.023847745, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.143928841, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.264076317, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.384153775, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.504233274, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.624317869, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.744392561, "phase": "selecting", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.864505104, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16036.984665654, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16037.104734306, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16037.224800836, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16037.34489802, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16037.465073636, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16037.585155572, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16037.705305339, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}, "witness": "transition-001-upload-success-green.png"}
+{"time": 16037.951142097, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.071211002, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.191283139, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.311363205, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.43149069, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.551570167, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.67167575, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.791780666, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16038.911897926, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16039.031996256, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16039.152096788, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16039.272178979, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-002-upload-success-blue.png"}
+{"time": 16040.057841595, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}, "witness": "transition-003-upload-success-green.png"}
+{"time": 16040.886037783, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.006141448, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.126252241, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.246325455, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.366396296, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.486470072, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.606579199, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.726693188, "phase": "upload-success", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16041.846801701, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-004-upload-success-blue.png"}
+{"time": 16042.144443254, "phase": "upload-success", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16042.264546312, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16042.384651014, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16042.504761144, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16042.624850685, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16042.744974624, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16042.865020148, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16042.985084434, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16043.105158004, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16043.225248866, "phase": "error", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}, "witness": "transition-005-error-green.png"}
+{"time": 16043.741898602, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-006-error-blue.png"}
+{"time": 16044.192978301, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-007-error-red.png"}
+{"time": 16044.490441701, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-008-error-blue.png"}
+{"time": 16044.718733071, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-009-error-red.png"}
+{"time": 16045.014234038, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-010-error-blue.png"}
+{"time": 16045.307017077, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-011-error-red.png"}
+{"time": 16045.545171226, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}}
+{"time": 16045.665238236, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-012-error-blue.png"}
+{"time": 16045.895601868, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-013-error-red.png"}
+{"time": 16046.122686044, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}}
+{"time": 16046.242828601, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-014-error-blue.png"}
+{"time": 16046.506072198, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-015-error-red.png"}
+{"time": 16046.724321642, "phase": "error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}}
+{"time": 16046.844426011, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-016-error-blue.png"}
+{"time": 16047.077203323, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16047.197267907, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16047.317379882, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16047.43744875, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16047.55757877, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16047.677689647, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16047.797788939, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16047.917892718, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.03799714, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.15811914, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.278201297, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.435102191, "phase": "error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.555162751, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.6752684, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.795354266, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16048.915464167, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16049.035565893, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16049.155688914, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16049.275779821, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16049.395873587, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16049.515992428, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}, "witness": "transition-017-overlap-green.png"}
+{"time": 16049.770775142, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16049.89085575, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16050.01097666, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16050.131101689, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16050.251173145, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16050.37128163, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16050.491396846, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16050.611520132, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16050.731628872, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-018-overlap-blue.png"}
+{"time": 16050.97024322, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}, "witness": "transition-019-overlap-green.png"}
+{"time": 16051.209815568, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16051.329891204, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16051.450065342, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16051.570132522, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16051.690208245, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-020-overlap-blue.png"}
+{"time": 16052.008845862, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-021-overlap-red.png"}
+{"time": 16052.295961682, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-022-overlap-blue.png"}
+{"time": 16052.564707747, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-023-overlap-red.png"}
+{"time": 16053.078647581, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}}
+{"time": 16053.198790392, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}}
+{"time": 16053.318944831, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-024-overlap-blue.png"}
+{"time": 16053.998593551, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16054.118738609, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16054.238839252, "phase": "overlap", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-025-overlap-red.png"}
+{"time": 16054.961574539, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}, "witness": "transition-026-overlap-green.png"}
+{"time": 16055.728515822, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16055.848625753, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16055.968765779, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.088873383, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.208960251, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.329084802, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.449200157, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.569283573, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.689399148, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.809526205, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16056.929773094, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16057.233846484, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16057.353961564, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16057.474134202, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16057.594225107, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16057.714321877, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16057.834433312, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16057.954501605, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16058.074617162, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16058.194716517, "phase": "overlap", "color": "green", "counts": {"blue": 0, "green": 96, "red": 0}}
+{"time": 16058.314845729, "phase": "overlap", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-027-overlap-blue.png"}
+{"time": 16058.548004832, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16058.668084454, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16058.788226766, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16058.908296014, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.028397458, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.14846508, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.268538002, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.388611068, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.508681606, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.628784498, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.748890318, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16059.868993789, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16060.013350822, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16060.133422208, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16060.25351126, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16060.373622252, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16060.493722037, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-028-local-error-red.png"}
+{"time": 16060.727978909, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-029-local-error-blue.png"}
+{"time": 16060.946786774, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16061.066857376, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-030-local-error-red.png"}
+{"time": 16061.307994207, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}}
+{"time": 16061.428111192, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-031-local-error-blue.png"}
+{"time": 16061.665578167, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-032-local-error-red.png"}
+{"time": 16061.895011066, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}}
+{"time": 16062.01509889, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-033-local-error-blue.png"}
+{"time": 16062.24384073, "phase": "local-error", "color": "red", "counts": {"blue": 0, "green": 0, "red": 96}, "witness": "transition-034-local-error-red.png"}
+{"time": 16062.609820749, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}, "witness": "transition-035-local-error-blue.png"}
+{"time": 16063.133107781, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16063.253202445, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16063.37327941, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16063.493364732, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16063.61344833, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16063.733516475, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16063.85364705, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16063.973770053, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16064.093875525, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
+{"time": 16064.213946364, "phase": "local-error", "color": "blue", "counts": {"blue": 96, "green": 0, "red": 0}}
