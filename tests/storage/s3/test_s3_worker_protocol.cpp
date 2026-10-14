@@ -40,12 +40,15 @@ class S3WorkerProtocolTest final : public QObject {
     Q_OBJECT
 private slots:
     void requestsRoundTripAndCancellationStaysLocal() {
-        const auto original = upload();
+        auto original = upload();
+        original.progress = [](const UploadProgress&) {};
         UploadRequest decoded;
         QVERIFY(wire::decode(wire::encode(original), decoded));
         QCOMPARE(wire::encode(decoded), wire::encode(original));
         QVERIFY(!decoded.cancellation);
+        QVERIFY(!decoded.progress);
         QVERIFY(!wire::encode(original).contains("cancellation"));
+        QVERIFY(!wire::encode(original).contains("progress"));
         QVERIFY(wire::validateRequest("upload", wire::encode(original)));
         QVERIFY(wire::validateRequest("reconcile", wire::encode(original)));
         auto replace = original;

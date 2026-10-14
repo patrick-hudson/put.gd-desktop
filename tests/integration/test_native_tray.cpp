@@ -24,6 +24,10 @@ using namespace putgd::test;
 struct WireLayout { int id = 0; QVariantMap props; QList<QDBusVariant> children; };
 struct WireImage { int width = 0, height = 0; QByteArray bytes; };
 using WireImages = QList<WireImage>;
+struct WireTooltip {QString icon;WireImages images;QString title,description;};
+Q_DECLARE_METATYPE(WireTooltip)
+QDBusArgument& operator<<(QDBusArgument& a,const WireTooltip& v){a.beginStructure();a<<v.icon<<v.images<<v.title<<v.description;a.endStructure();return a;}
+const QDBusArgument& operator>>(const QDBusArgument& a,WireTooltip& v){a.beginStructure();a>>v.icon>>v.images>>v.title>>v.description;a.endStructure();return a;}
 struct WireEvent { int id = 0; QString event; QDBusVariant data; uint time = 0; };
 using WireEvents = QList<WireEvent>;
 Q_DECLARE_METATYPE(WireLayout)
@@ -79,6 +83,12 @@ public slots:
  }
 };
 
+class ActivitySignalPeer final:public QObject {
+ Q_OBJECT
+public:int icons=0,tooltips=0;
+public slots:void iconChanged(){++icons;}void tooltipChanged(){++tooltips;}
+};
+
 class NativeTrayWire final : public QObject {
  Q_OBJECT
  WatcherPeer watcher;
@@ -105,7 +115,7 @@ private slots:
   QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
   QVERIFY(peer.isConnected()); QVERIFY(client.isConnected());
   qDBusRegisterMetaType<WireLayout>(); qDBusRegisterMetaType<WireImage>(); qDBusRegisterMetaType<WireImages>();
-  qDBusRegisterMetaType<WireEvent>(); qDBusRegisterMetaType<WireEvents>(); qDBusRegisterMetaType<QList<int>>();
+  qDBusRegisterMetaType<WireTooltip>(); qDBusRegisterMetaType<WireEvent>(); qDBusRegisterMetaType<WireEvents>(); qDBusRegisterMetaType<QList<int>>();
   QVERIFY(peer.registerObject("/StatusNotifierWatcher", &watcher, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllProperties | QDBusConnection::ExportAllSignals));
   QVERIFY(peer.registerObject("/org/freedesktop/Notifications", &notifications, QDBusConnection::ExportAllSlots));
   QVERIFY(peer.registerService("org.freedesktop.Notifications"));
@@ -176,6 +186,44 @@ private slots:
   QVERIFY(request("ui.quit")["quitting"].toBool());
   QTRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
   QCOMPARE(resident.exitCode(), 0);
+ }
+ void coreControllerExportsLiveUploadStatusAndReturnsIdle() {
+  QTemporaryDir directory;ProviderRegistry providers;
+  auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload.kind="text";source.payload.bytes=QByteArray(4*1024*1024,'x');
+  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  QStringList views;TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});QTRY_VERIFY(controller.available());
+  auto properties=[&]{auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});return result.type()==QDBusMessage::ReplyMessage?qdbus_cast<QVariantMap>(result.arguments().first()):QVariantMap{};};
+  const auto idle=properties();const auto idleIcon=qdbus_cast<WireImages>(idle["IconPixmap"]).first().bytes;
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});
+  struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
+  QTRY_COMPARE(provider->requests.size(),1);
+  provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
+  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MiB of 4 MiB"));
+  const auto activeIcon=qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;QVERIFY(activeIcon!=idleIcon);
+  QVERIFY(views.isEmpty());QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
+  provider->completions.takeFirst()();
+  QTRY_COMPARE(qdbus_cast<WireTooltip>(properties()["ToolTip"]).title,qdbus_cast<WireTooltip>(idle["ToolTip"]).title);
+  QCOMPARE(qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes,idleIcon);
+ }
+ void activitySignalsChangeOnlyTheAffectedPropertiesAndSurviveHostRestart() {
+  NativeTray tray;QTRY_VERIFY(tray.available());ActivitySignalPeer observer;
+  const auto service=watcher.registrations.last();
+  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
+  QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
+  tray.setActivity(true,"Uploading: 2 MiB of 4 MiB (50%)");QTRY_COMPARE(observer.icons,1);QTRY_COMPARE(observer.tooltips,1);
+  tray.setActivity(true,"Uploading: 3 MiB of 4 MiB (75%)");QTRY_COMPARE(observer.tooltips,2);QCOMPARE(observer.icons,1);
+  tray.setActivity(true,"Uploading: 3 MiB of 4 MiB (75%)");QTest::qWait(50);QCOMPARE(observer.tooltips,2);
+  changeHost(false);QTRY_VERIFY(!tray.available());tray.setActivity(true,"Finalizing: 4 MiB of 4 MiB (100%)");
+  changeHost(true);QTRY_VERIFY(tray.available());
+  auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
+  const auto props=qdbus_cast<QVariantMap>(result.arguments().first());
+  QCOMPARE(qdbus_cast<WireTooltip>(props["ToolTip"]).description,QString("Finalizing: 4 MiB of 4 MiB (100%)"));
+  const auto pixels=qdbus_cast<WireImages>(props["IconPixmap"]).first().bytes;int opaqueGreen=0;
+  for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==98&&uchar(pixels[index+2])==214&&uchar(pixels[index+3])==155)++opaqueGreen;
+  QVERIFY(opaqueGreen>10);
+  tray.setActivity(false,{});QTRY_COMPARE(observer.icons,2);
  }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
   NativeTray tray; QVERIFY(!tray.availabilityKnown()); QTRY_VERIFY(tray.availabilityKnown()); QTRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);

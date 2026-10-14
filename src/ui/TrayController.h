@@ -35,6 +35,9 @@ private:
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;
  void notifyMessage(const QString&, const QString&, bool warning);
+ void refreshActivity();
+ bool working_ = false;
+ QString activityText_;
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;

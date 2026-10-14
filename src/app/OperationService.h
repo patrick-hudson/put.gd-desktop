@@ -75,6 +75,8 @@ public:
  void invoke(const QString& action,JsonReply);
  void inspect(const QString& id,JsonReply);
  void recent(JsonReply);
+ // Session-thread snapshot of bounded live observations; no SQL or provider IO.
+ QJsonArray activeObservations() const;
  Settings settingsSnapshot() const {return settings_.snapshot();}
  void cancel(const QString& id,JsonReply);
  void retry(const QString& id,JsonReply);
@@ -95,6 +97,8 @@ public:
 signals:
  void initialized();
  void changed(const QString& id);
+ // One notification for a live observation batch, independent of durable results.
+ void observationsChanged();
  // A terminal/copy result is durably observable; progress never emits this.
  void resultReady(const QString& id);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);

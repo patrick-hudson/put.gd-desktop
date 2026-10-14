@@ -265,6 +265,16 @@ void NetworkS3Driver::reconcile(const UploadRequest& request, std::function<void
     reply(inspect(*client, expected, true));
 }
 void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
+    auto report = [&](const QString& phase, qint64 transferred) {
+        // Informational callbacks cannot affect the publication result. Curl's
+        // data-sent handler counts request-body bytes read, not HTTP framing or
+        // acknowledgement by the remote service.
+        if (request.progress) {
+            try { request.progress({phase, transferred, request.artifact.bytes}); }
+            catch (...) {}
+        }
+    };
+    report("preparing", 0);
     if (auto error = state_->readiness(request.destination)) {
         reply({"failed", {}, error});
         return;
@@ -319,9 +329,29 @@ void NetworkS3Driver::upload(const UploadRequest& request, std::function<void(Up
             return;
         }
         put.SetBody(stream);
+        qint64 transferred = 0;
+        report("uploading", transferred);
+        // A new signed SDK request or our bounded outer retry sends the body
+        // afresh. Keep each attempt's total equal to the retained artifact.
+        put.SetRequestSignedHandler([&](const Aws::Http::HttpRequest&) {
+            transferred = 0;
+            report("uploading", transferred);
+        });
+        put.SetDataSentEventHandler([&](const Aws::Http::HttpRequest*, long long amount) {
+            if (amount <= 0) return;
+            // Curl can rewind this seekable body on a redirect without signing
+            // a new request. Query the buffer position rather than accumulating
+            // retransmissions; pubseekoff also works after a short EOF read sets
+            // the stream's failbit, when tellg() would incorrectly return -1.
+            const auto position = stream->rdbuf()->pubseekoff(0, std::ios::cur, std::ios::in);
+            if (position < 0 || position > request.artifact.bytes) return;
+            transferred = qint64(position);
+            report("uploading", transferred);
+        });
         QElapsedTimer requestTimer;
         requestTimer.start();
         const auto outcome = client->PutObject(put);
+        report("finalizing", transferred);
         if (outcome.IsSuccess()) {
             reply({"uploaded", receipt(request.destination, key, request.publicationId, request.artifact.sha256, request.artifact.bytes,
                                          qt(outcome.GetResult().GetETag()), qt(outcome.GetResult().GetVersionId())), {}});

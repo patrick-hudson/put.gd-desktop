@@ -93,6 +93,8 @@ class Handler(BaseHTTPRequestHandler):
                 lock.release()
                 time.sleep(rule['delay'])
                 lock.acquire()
+            if rule and rule.get('redirect'):
+                self.respond(307, headers={'Location': self.path}); return
             if rule and rule.get('status'):
                 self.error(rule['status'], rule.get('code', 'AccessDenied')); return
             versions = state['objects'].setdefault(key, []) if key else []

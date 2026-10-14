@@ -514,8 +514,10 @@ if(BUILD_TESTING)
     add_executable(test_s3_worker_fixture tests/fixtures/s3_worker_fixture.cpp)
     target_link_libraries(test_s3_worker_fixture PRIVATE putgd_s3_wire putgd_ui_control putgd_build_identity)
     add_executable(test_s3_worker tests/storage/s3/test_s3_worker.cpp)
-    target_link_libraries(test_s3_worker PRIVATE putgd_s3 Qt6::Test Qt6::Network)
-    target_compile_definitions(test_s3_worker PRIVATE S3_WORKER_FIXTURE_PATH="$<TARGET_FILE:test_s3_worker_fixture>")
+    target_link_libraries(test_s3_worker PRIVATE putgd_s3 putgd_s3_wire putgd_ui_control Qt6::Test Qt6::Network)
+    target_compile_definitions(test_s3_worker PRIVATE S3_WORKER_FIXTURE_PATH="$<TARGET_FILE:test_s3_worker_fixture>"
+      S3_REAL_WORKER_PATH="$<TARGET_FILE:putgd-s3-worker>"
+      PUTGD_S3_BUILD_ID="${PUTGD_S3_BUILD_ID}" PUTGD_SDK_CURL_TRANSPORT=${s3_safe_delete})
     target_include_directories(test_s3_worker PRIVATE tests)
     target_compile_definitions(test_s3_worker PRIVATE S3_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/s3_server.py")
     add_dependencies(test_s3_worker test_s3_worker_fixture)

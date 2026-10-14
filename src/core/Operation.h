@@ -32,5 +32,6 @@ struct Operation {
  QJsonObject toJson() const;
  QJsonObject publicJson() const;
  static Operation fromJson(const QJsonObject&);
+ static bool activeState(const QString&);
 };
 }

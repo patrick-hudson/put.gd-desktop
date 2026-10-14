@@ -1,6 +1,6 @@
 #include "RecentOperations.h"
 #include "ViewState.h"
-#include "core/StorageProvider.h"
+#include "core/Operation.h"
 #include <QJsonArray>
 #include "VisualStyle.h"
 #include "ByteSize.h"
@@ -25,7 +25,7 @@ QString transferSummary(const QJsonObject& item){
  if(value->bytesTotal&&*value->bytesTotal>0)text+=QString(" of %1 (%2%)").arg(ByteSize::summary(*value->bytesTotal)).arg(int(100.0 * *value->bytesTransferred / *value->bytesTotal));
  return text;
 }
-bool activeOperation(const QJsonObject& operation){return QStringList{"accepted","acquiring","stored","running"}.contains(operation["state"].toString());}
+bool activeOperation(const QJsonObject& operation){return Operation::activeState(operation["state"].toString());}
 QString itemProgress(const QJsonObject& item,bool active){
  if(!active)return item["uploadStatus"].toString();
  const auto phase=item["phase"].toString(item["uploadStatus"].toString());auto text=readableState(phase);
