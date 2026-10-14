@@ -254,6 +254,19 @@ def private_settings(path, profile_id, provider, marker):
     return patch
 
 
+
+def native_display_prefix():
+    # GNOME creates its Wayland display after compositor startup, so it may be
+    # absent from /proc/gnome-shell/environ. The session manager has the updated
+    # value. Preserve that real socket before changing the private runtime root.
+    return """if [ "${XDG_SESSION_TYPE:-}" = wayland ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+ native_wayland=$(systemctl --user show-environment | sed -n 's/^WAYLAND_DISPLAY=//p')
+ [ -n "$native_wayland" ] || exit 70
+ export WAYLAND_DISPLAY="$native_wayland"
+fi
+case "${WAYLAND_DISPLAY:-}" in ""|/*) ;; *) export WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY";; esac
+"""
+
 class Replay:
     def __init__(self, args):
         self.args = args
@@ -292,7 +305,7 @@ class Replay:
     def session(self, body):
         # Preserve a relative Wayland socket before switching the app's private
         # runtime root. The real desktop's bus and display remain in use.
-        prefix = 'case "${WAYLAND_DISPLAY:-}" in ""|/*) ;; *) export WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY";; esac\n'
+        prefix = native_display_prefix()
         prefix += '\n'.join('export ' + name + '=' + shlex.quote(self.guest + suffix) for name, suffix in
                            [('XDG_CONFIG_HOME', '/c'), ('XDG_DATA_HOME', '/d'), ('XDG_RUNTIME_DIR', '/r')]) + '\n'
         return lab.guest_session(self.run, prefix + body)
@@ -490,7 +503,7 @@ class Replay:
         manifests = [json.loads(lab.ssh(self.run, path + ' --version-json\n'))
                      for path in ('/usr/bin/putgd', '/usr/bin/putgd-cli')]
         check_build_manifests(manifests, self.args.expected_commit)
-        native = json.loads(lab.guest_session(self.run, '''python3 - <<'PY'
+        native = json.loads(lab.guest_session(self.run, native_display_prefix() + '''python3 - <<'PY'
 import json, os, urllib.parse
 paths = []
 wayland = os.environ.get('WAYLAND_DISPLAY', '')

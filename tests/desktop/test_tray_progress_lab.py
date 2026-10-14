@@ -290,5 +290,19 @@ class TrayProgressContracts(unittest.TestCase):
         with self.assertRaisesRegex(tray.TrayProgressError, 'receipt'): replay.recover_proton_busy(initial)
 
 
+    def test_wayland_display_uses_updated_session_environment_before_private_runtime(self):
+        import os, subprocess
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); binary = root/'systemctl'
+            binary.write_text("#!/bin/sh\nprintf '%s\\n' 'WAYLAND_DISPLAY=wayland-0'\n")
+            binary.chmod(0o700)
+            env = {**os.environ, 'PATH': str(root)+':'+os.environ['PATH'],
+                   'XDG_SESSION_TYPE': 'wayland', 'XDG_RUNTIME_DIR': str(root/'native')}
+            env.pop('WAYLAND_DISPLAY', None)
+            command = tray.native_display_prefix()+"export XDG_RUNTIME_DIR=/tmp/private\nprintf '%s' \"$WAYLAND_DISPLAY\"\n"
+            result = subprocess.check_output(['sh', '-c', command], env=env, text=True)
+            self.assertEqual(result, str(root/'native/wayland-0'))
+
+
 if __name__ == '__main__':
     unittest.main()
