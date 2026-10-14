@@ -176,5 +176,26 @@ class LiveCredentialContracts(unittest.TestCase):
                 guest.assert_not_called()
 
 
+    def test_one_time_provisioning_requires_a_reference_receipt_before_import(self):
+        request = {'provider': 's3', 'run': '/unused', 'guestBroker': '/unused',
+                   'credentialsFile': '/unused'}
+        with patch.object(bridge, 'read_private_credentials', return_value='Access key ID: a\nSecret access key: b'), \
+                patch.object(bridge, 'guest_call', return_value={'ok': True}) as guest:
+            with self.assertRaises(bridge.ProvisionError): bridge.provision(request)
+            guest.assert_not_called()
+
+    def test_ambiguous_host_import_retains_exact_recovery_reference(self):
+        def host(_broker, provider, request):
+            if request['op'] == 'export': return {'ok': True, 'snapshot': SNAPSHOT}
+            raise bridge.ProvisionError('withheld')
+        with patch.object(bridge, 'host_call', side_effect=host):
+            chain = bridge.ProtonSessionChain('/unused', 'existing-host-reference')
+            with self.assertRaises(bridge.ProvisionError): chain.carry_back(new_lab_reference=True)
+            self.assertEqual(len(chain.host_owned), 1)
+            reference, status = next(iter(chain.host_owned.items()))
+            bridge.validate_reference(reference, lab_only=True)
+            self.assertEqual(status, 'import_pending')
+
+
 if __name__ == '__main__':
     unittest.main()

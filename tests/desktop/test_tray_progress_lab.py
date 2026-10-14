@@ -122,6 +122,7 @@ class TrayProgressContracts(unittest.TestCase):
             cases = [{key: 'synthetic'} for key in
                      ('accessKey', 'secretKey', 'accessToken', 'refreshToken', 'userKeyPassword', 'snapshot')]
             cases += [{'endpoint': 'https://synthetic:synthetic@example.invalid/'},
+                      {'endpoint': 'HTTPS://synthetic:synthetic@example.invalid/'},
                       {'publicUrlBase': 'https://example.invalid/?token=synthetic'},
                       {'publicUrlBase': 'https://example.invalid/#synthetic'}]
             for extra in cases:

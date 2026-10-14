@@ -2,7 +2,7 @@
 """Stdin-only provisioning for disposable Linux lab keychains. Never print secrets.
 
 The public CLI consumes one bounded JSON request and prints a generic status. A
-request may name a new private receipt path for credential references/settings.
+request must name a new private receipt path for credential references/settings.
 For rotating Proton sessions, use ProtonSessionChain in one host process: export,
 provision one guest, collect its refreshed snapshot, then provision the next.
 """
@@ -314,6 +314,7 @@ class ProtonSessionChain:
         self.current = self.baseline
         self.active = None
         self.owned = {}
+        self.host_owned = {}
 
     def provision(self, run, guest_broker):
         if self.active is not None:
@@ -338,11 +339,14 @@ class ProtonSessionChain:
         if new_lab_reference:
             reference = 'putgd-lab-' + str(uuid.uuid4())
             request = {'op': 'import', 'reference': reference, 'snapshot': self.current}
+            self.host_owned[reference] = 'import_pending'
         else:
             reference = self.source_reference
             request = {'op': 'replace', 'reference': reference, 'expectedSnapshot': self.baseline, 'snapshot': self.current}
         host_call(self.host_broker, 'proton', request)
-        if not new_lab_reference:
+        if new_lab_reference:
+            self.host_owned[reference] = 'import_confirmed'
+        else:
             self.baseline = self.current
         return reference
 
@@ -357,8 +361,8 @@ def provision(request):
     if not isinstance(request, dict):
         _fail()
     provider = request.get('provider')
-    required = {'provider', 'run', 'guestBroker'} | ({'credentialsFile'} if provider == 's3' else {'hostBroker', 'sourceReference'})
-    if provider not in ('s3', 'proton') or set(request) - required - {'receipt'} or not required <= set(request):
+    required = {'provider', 'run', 'guestBroker', 'receipt'} | ({'credentialsFile'} if provider == 's3' else {'hostBroker', 'sourceReference'})
+    if provider not in ('s3', 'proton') or set(request) - required or not required <= set(request):
         _fail()
     reference = 'putgd-lab-' + str(uuid.uuid4())
     result = {'provider': provider, 'credentialReference': {'mode': 'keychain', 'reference': reference}}

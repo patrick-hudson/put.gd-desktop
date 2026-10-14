@@ -47,12 +47,12 @@ current entry differs. Delete removes only the local lab keychain entry.
 
 The public `python3 -B tools/lab/provision_live_credentials.py` command reads
 one bounded JSON request from stdin and prints only `provisioned` or
-`provisioning_failed` status JSON. Supply a fresh `receipt` path to retain its
+`provisioning_failed` status JSON. A fresh `receipt` path is required to retain its
 **nonsecret** generated reference and S3 settings in a new mode-0600 file.
 This receipt is written before import, so it preserves the cleanup reference
 if the SSH result is ambiguous; its existence alone does not prove success.
 The S3 request fields are `provider`, `run`, `guestBroker`, `credentialsFile`
-and optional `receipt`. `credentialsFile` is opened without following a
+and `receipt`. `credentialsFile` is opened without following a
 symlink, must be an owned mode-0600 regular file, and is never copied to a VM.
 Only named colon-style access key, secret key, optional session token,
 bucket/bucket name/bucketName, region and endpoint fields are parsed. Values
@@ -62,7 +62,7 @@ fragment are rejected before retaining settings, matching the production S3
 contract. No input is printed or hashed.
 
 A one-time Proton request has `provider`, `run`, `guestBroker`, `hostBroker`,
-`sourceReference` and optional `receipt`. The exact source reference must come
+`sourceReference` and `receipt`. The exact source reference must come
 from the user-approved host put.gd profile, not an official CLI account or a
 guessed keychain name. A raw snapshot is validated as an opaque JSON string
 with `session.uid`, `session.accessToken` and `userKeyPassword`, preserving
@@ -91,8 +91,9 @@ chain.cleanup(run_b, guest_broker_b, next_reference)
 ```
 
 `carry_back(new_lab_reference=True)` instead creates a new host LAB reference
-and returns its nonsecret name. The caller owns later local cleanup of that
-entry. A host baseline conflict is a failure, never an unguarded overwrite;
+and returns its nonsecret name. The chain retains its exact reference in `host_owned` before the import,
+with `import_pending` or `import_confirmed` status. The caller owns exact local
+cleanup of that entry even if the import reply is ambiguous. A host baseline conflict is a failure, never an unguarded overwrite;
 retain the chain in memory while resolving it. A failed guest import retains
 its nonsecret reference in `chain.active`/`chain.owned`, since a failed SSH
 reply may be ambiguous. The controller must inspect that reference and decide

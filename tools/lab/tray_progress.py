@@ -192,7 +192,7 @@ def private_settings(path, profile_id, provider, marker):
             return bool(names & forbidden) or any(contains_secret(child) for child in value.values())
         if isinstance(value, list):
             return any(contains_secret(child) for child in value)
-        if isinstance(value, str) and value.startswith(('http://', 'https://')):
+        if isinstance(value, str) and value.casefold().startswith(('http://', 'https://')):
             try:
                 url = urlsplit(value)
                 return bool(url.username is not None or url.password is not None or url.query or url.fragment)
