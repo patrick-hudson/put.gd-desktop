@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.24)
+project(putgd_tray_probe LANGUAGES CXX)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Core DBus)
+add_executable(putgd-tray-probe main.cpp)
+target_compile_features(putgd-tray-probe PRIVATE cxx_std_20)
+target_link_libraries(putgd-tray-probe PRIVATE Qt6::Core Qt6::DBus)
