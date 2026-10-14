@@ -16,7 +16,7 @@ if(PUTGD_BUNDLE_PROTON)
   endif()
   # A valid old executable is still stale after changing the helper or lock.
   # Verify known source members only; manifest paths cannot escape the source tree.
-  set(proton_sources account.ts protocol.ts provision_runtime.py runtime.ts stdout.ts)
+  set(proton_sources account.ts crypto-cache.ts protocol.ts provision_runtime.py runtime.ts stdout.ts)
   string(JSON proton_source_count LENGTH "${proton_manifest}" helperSourceSha256)
   list(LENGTH proton_sources proton_expected_count)
   if(NOT proton_source_count EQUAL proton_expected_count)
@@ -81,6 +81,8 @@ target_compile_definitions(putgd_proton PRIVATE
 target_link_libraries(putgd PRIVATE putgd_proton)
 target_link_libraries(putgd_ui PRIVATE putgd_proton)
 if(BUILD_TESTING)
+  add_executable(proton_latency_probe EXCLUDE_FROM_ALL tests/performance/proton_latency.cpp)
+  target_link_libraries(proton_latency_probe PRIVATE putgd_proton)
   add_executable(test_proton tests/integration/test_proton.cpp)
   target_include_directories(test_proton PRIVATE tests)
   target_compile_definitions(test_proton PRIVATE PUTGD_TEST_PROTON_BUNDLED=$<BOOL:${PUTGD_BUNDLE_PROTON}>)

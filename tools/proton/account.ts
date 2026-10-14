@@ -4,7 +4,7 @@ import path from 'node:path';
 import { CryptoProxy } from '@protontech/crypto';
 import { Api as CryptoApi } from '@protontech/crypto/proxy/endpoint/api.ts';
 import { computeKeyPassword, generateKeySalt, getRandomSrpVerifier, getSrp } from '@protontech/crypto/srp';
-import { ProtonDriveClient, OpenPGPCryptoWithCryptoProxy } from '@protontech/drive-sdk';
+import { ProtonDriveClient, OpenPGPCryptoWithCryptoProxy, type ProtonDriveCryptoCache } from '@protontech/drive-sdk';
 import { NullCache } from '@protontech/drive-sdk/cache';
 import { Telemetry } from '@protontech/drive-sdk/telemetry';
 import { ApiClient, initAccount } from 'proton-drive-sdk-account';
@@ -17,6 +17,7 @@ import { DriveAccountAdapter } from './upstream/cli/src/api/driveAccountAdapter'
 import { getOrGenerateClientUid } from './upstream/cli/src/clientUid';
 import { processDriveRequirementHeaders, SUPPORTED_REQUIREMENT_MASK_BY_SCOPE } from './upstream/cli/src/api/apiRequirements';
 import { ProtocolError, type JsonObject } from './protocol';
+import { RequestCryptoCache } from './crypto-cache';
 export const APP_VERSION = 'external-drive-put_gd@0.1.1-alpha';
 export const SDK_VERSION = 'js@0.22.2';
 export const SECRET_SERVICE = 'ch.proton.drive/putgd';
@@ -28,6 +29,7 @@ export async function privateDataDirectory(): Promise<string> {
         await realpath(input) !== path.resolve(input)) throw new ProtocolError('unsafe_data_directory');
     return input;
 }
+export function createCryptoCache(): ProtonDriveCryptoCache { return new RequestCryptoCache(); }
 export async function initialize(request: JsonObject) {
     const dataDir = await privateDataDirectory();
     configureCredentialsReference(request.destination.credentials.reference);
@@ -64,8 +66,9 @@ export async function initialize(request: JsonObject) {
     const sdk = new ProtonDriveClient({ config: { baseUrl: 'drive-api.proton.me', clientUid },
         httpClient: new HTTPClient(apiClient), telemetry, account: new DriveAccountAdapter(account.addresses),
         srpModule: account.srp, openPGPCryptoModule: new OpenPGPCryptoWithCryptoProxy(CryptoProxy),
-        // No persisted entities, decrypted keys or names. Every read reaches current server state.
-        entitiesCache: new NullCache(), cryptoCache: new NullCache(),
+        // No persisted entities, decrypted keys or names. Entity reads reach the API;
+        // parent keys may be reused only inside this bounded request.
+        entitiesCache: new NullCache(), cryptoCache: createCryptoCache(),
         featureFlagProvider: { isEnabled: async () => false } });
     return { sdk, auth: account.auth, accountReferenceExists };
 }

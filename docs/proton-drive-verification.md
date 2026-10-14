@@ -133,3 +133,70 @@ It reviewed the earlier fix snapshot; the confirmed schema finding was then
 applied and reverified. No finding remains unapplied. Native restart/name-backfill
 results are retained privately under the local test run rather than committing
 account folder names or IDs.
+
+
+## Upload latency and completion notification follow-up
+
+The local test configuration had `preferences.notifications:false`; the tray was
+available. A revision-checked patch enabled that global preference without changing
+other preferences. No notification code change was needed. The existing native
+tray fixture covers one completion notification when enabled and suppression when
+disabled; it is not evidence that a host desktop visibly displayed a toast.
+
+Two original-runtime and two optimized-runtime runs used the production C++
+adapter, account lock, authenticated helper transport and an isolated connected
+Proton folder. Each created a unique synthetic 65,536-byte file and a new link,
+then revoked only that link. Files remain private in the isolated test folder.
+Probe evidence contains numeric timings and generic statuses; private identities,
+credential references and recovery journals are excluded from this document.
+
+| Stage | Original runs (seconds) | Optimized runs (seconds) |
+| --- | --- | --- |
+| Name preflight | 6.004, 4.886 | 2.950, 2.959 |
+| Upload | 9.884, 6.308 | 6.666, 5.972 |
+| Create share link | 12.991, 15.547 | 7.107, 7.034 |
+| Ready after preflight, upload and sharing | 28.879, 26.741 | 16.723, 15.965 |
+| Revoke probe link (after readiness) | 11.845, 16.062 | 6.049, 4.497 |
+
+Mean readiness fell from 27.810 to 16.344 seconds (41.23%). This is a small
+local pilot with service/network variation, not a large-file throughput claim or
+a capture/encoding/archive/desktop timing. The intermediate key-cache-only run
+was 22.609 seconds. A first candidate configuration omitted runtime bundling and
+failed before dispatch with runtime unavailable; that failure was preserved and
+corrected with explicit `PUTGD_BUNDLE_PROTON=ON` before live candidate timing.
+
+The helper now retains at most 64 opaque SDK crypto-key entries within one
+request. Entity metadata remains uncached, so ownership and revision reads still
+reach the service. The cache has explicit invalidation, tagged enumeration and
+bounded LRU eviction and never persists or crosses helper requests. Name
+preflight uses the SDK's public `getAvailableName` encrypted hash query instead
+of decrypting all folder children. SDK create collision handling remains final;
+reconciliation and proof of missing still use their existing scoped checks.
+
+The cache-retention regression failed with the original NullCache. The direct
+availability regressions failed with the original folder-listing preflight. All
+23 helper tests / 105 assertions now pass, along with seven compiled stdio cases
+and the complete 1,048,337-byte stdout drain. The optimized runtime SHA-256 is
+`146f1aa4c0e474dc76361385bd2125be1f2bf4857f1441742cccbc56bcb0e783`.
+The full dev-preset app build passed. Full TypeScript checking still reports the
+same four upstream Crypto/Bun stream declaration errors and no helper diagnostics.
+
+Three fix-scoped simplification reviews found no required change. One suggestion
+to remove the malformed-SDK-result guard was skipped to retain defensive boundary
+validation. The independent fix review covered crypto-cache lifetime, fresh
+metadata/signature checks, supported name availability and benchmark privacy.
+Completed receipt: `20261013-193135-10909ddb`, with six local reviewers and an
+independent Anthropic pass; no code finding remained. Review did not execute the
+benchmarks. A warmed real-SDK cache followed by changed metadata/signatures and a
+live occupied-name preflight remain focused coverage gaps; pinned SDK source and
+existing signature/changed-identity regressions support the current boundary.
+
+Sixteen dev-preset targets passed in 172.32 seconds: `native_tray_integration`,
+`gui_tray`, `collision_policy_integration`, `upload_naming_contract`,
+`history_contract`, `operations_contract`, `storage_contract_integration`,
+`proton_contract`, `proton_transport`, `gui_settings`, `gui_history_view`,
+`settings_contract`, `config_reload_integration`, `cli_integration`,
+`gui_application` and `ui_native_lifecycle_integration`. Socket preflight passed
+with a 75-byte maximum. The full 59-target suite was not repeated for this fix.
+Authenticated helper/total-process memory, recipient downloads, password/expiry
+recovery and current Cinnamon/GNOME/KDE release acceptance remain pending.

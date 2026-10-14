@@ -57,7 +57,13 @@ Ownership includes folder, node, name, revision, encrypted publication marker
 and checksum. Key, name and revision content authors must have successful SDK
 signature verification; decrypted marker data alone does not prove ownership.
 Denial never proves absence. Name checks return `absent`,
-`present` or `inconclusive`.
+`present` or `inconclusive`. They use the public SDK's hashed name-availability
+query; lookup failures remain inconclusive. Atomic SDK creation still decides
+collisions, and missing-file reconciliation still requires a complete listing.
+
+Each request uses a bounded 64-entry SDK crypto-key cache. It has no disk or
+cross-request lifetime. Entity metadata uses NullCache, preserving fresh
+server identity/revision reads before and after sharing.
 
 Share takes the receipt and `options:{action:"create"|"revoke"|"inspect",
 expirationDays,passwordReference}`. The caller persists its mutation checkpoint
@@ -81,3 +87,22 @@ timeouts and final/error completions. Provisioning runs pure protocol/identity
 tests, compiled no-account smoke checks, and a separately compiled synthetic
 large-output fixture using the same production writer. These checks do not prove
 live account or graphical desktop acceptance.
+
+
+## Opt-in latency probe
+
+`cmake --build --preset dev --target proton_latency_probe` builds a non-installed
+probe using the production C++ adapter and bundled helper. Its two arguments are
+the configuration file and a new, owned private output directory. The config must
+contain exactly one Proton profile with an isolated `put.gd-` test folder. Resolve
+and preflight the actual keychain D-Bus Unix socket with
+`tools/diagnostics/check_socket_paths.py --socket` before running; set `TMPDIR` to
+the new short output directory. No put.gd session socket is created by this probe.
+
+It creates one unique synthetic 64 KiB file, times collision preflight, upload,
+sharing and revocation, and revokes only its own new test link. It leaves the
+private file in the isolated folder. Stdout contains stage timings and generic
+status/error codes only. Private journals retain exact object identities and
+credential references for recovery; exclude those journals and the source config
+from diagnostics or review packets. Capability URLs are omitted from the probe's
+retained receipts. On failure inspect the retained intent before another mutation.

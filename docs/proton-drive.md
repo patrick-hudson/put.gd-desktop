@@ -51,8 +51,9 @@ an explicitly revoked link does not restore it. A failed journal commit stops
 polling, clears any unconfirmed URL and permits explicit inspection after the
 journal becomes writable.
 
-Uploads are create-only. The SDK's atomic name collision result supports rename
-or skip; overwrite is rejected. Exact completion node/revision IDs and an
+Uploads are create-only. Name preflight uses the SDK's encrypted name-availability
+query rather than decrypting every file in the destination. The SDK's atomic
+name collision result supports rename or skip; overwrite is rejected. Exact completion node/revision IDs and an
 authenticated encrypted publication/checksum marker establish ownership during
 reconciliation. Missing requires a complete successful scoped listing; denial
 is uncertain. Sharing checks the recorded account, folder, name, node, revision
@@ -66,9 +67,11 @@ use link revocation or manage deletion in Proton. The helper never empties Trash
 
 All helper operations for the same keychain reference serialize across put.gd
 processes, including token refresh. Helper requests use bounded stdin/stdout;
-passwords and sessions never use argv. Fresh per-request SDK caches are not
-persisted. Timeouts/cancellation can leave an uncertain mutation, which the
-journal reconciles instead of hiding with another upload. SDK transport retries
+passwords and sessions never use argv. Each helper request keeps at most 64
+SDK crypto-key entries in memory to avoid repeated parent-key decryption. Entity
+metadata stays uncached, so identity/revision checks still read from the service.
+The key cache is discarded with the helper process and is never persisted.
+Timeouts/cancellation can leave an uncertain mutation, which the journal reconciles instead of hiding with another upload. SDK transport retries
 are separate from application-level operation replay.
 
 ## Building and verification

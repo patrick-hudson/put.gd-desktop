@@ -67,11 +67,14 @@ async function findCandidate(ctx: Context, request: JsonObject): Promise<NodeEnt
     }
     return found;
 }
-async function checkName(ctx: Context, request: JsonObject) {
+export async function checkName(ctx: Context, request: JsonObject) {
     try {
-        const node = await findCandidate(ctx, request);
-        return status(node ? 'present' : 'absent', { objectReference: reference(request, node?.uid, node?.activeRevision?.uid),
-            concurrencyToken: node?.activeRevision?.uid ?? '' });
+        const folder = await destinationFolder(ctx, request);
+        const candidate = name(request.candidate);
+        const available = await ctx.sdk.getAvailableName(folder.uid, candidate);
+        if (typeof available !== 'string' || !available) return status('inconclusive');
+        return status(available === candidate ? 'absent' : 'present', {
+            objectReference: reference(request), concurrencyToken: '' });
     } catch { return status('inconclusive'); }
 }
 export async function stat(ctx: Context, request: JsonObject) {

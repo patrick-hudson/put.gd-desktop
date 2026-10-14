@@ -109,7 +109,7 @@ def main():
                'export * from "openpgp/lightweight";', 'export * from "openpgp";')
     patch_once(work / 'node_modules/@protontech/crypto/src/pmcrypto/pmcrypto.d.ts',
                '} from "openpgp/lightweight";', '} from "openpgp";')
-    for filename in ['runtime.ts', 'runtime.test.ts', 'account.ts', 'protocol.ts', 'protocol.test.ts', 'stdout.ts', 'stdout_fixture.ts']:
+    for filename in ['runtime.ts', 'runtime.test.ts', 'account.ts', 'crypto-cache.ts', 'crypto-cache.test.ts', 'protocol.ts', 'protocol.test.ts', 'stdout.ts', 'stdout_fixture.ts']:
         shutil.copyfile(ROOT / filename, work / filename)
     config = {'compilerOptions': {'target': 'ESNext', 'module': 'ESNext', 'moduleResolution': 'Bundler',
               'strict': True, 'skipLibCheck': True, 'allowImportingTsExtensions': True, 'noEmit': True,
@@ -120,9 +120,9 @@ def main():
                   '@protontech/crypto/*': ['./node_modules/@protontech/crypto/src/*'],
                   '@protontech/drive-sdk': ['./node_modules/@protontech/drive-sdk/src/index.ts'],
                   '@protontech/drive-sdk/*': ['./node_modules/@protontech/drive-sdk/src/*']}},
-              'include': ['runtime.ts', 'runtime.test.ts', 'account.ts', 'protocol.ts', 'protocol.test.ts', 'stdout.ts', 'stdout_fixture.ts']}
+              'include': ['runtime.ts', 'runtime.test.ts', 'account.ts', 'crypto-cache.ts', 'crypto-cache.test.ts', 'protocol.ts', 'protocol.test.ts', 'stdout.ts', 'stdout_fixture.ts']}
     (work / 'tsconfig.json').write_text(json.dumps(config, indent=2) + '\n')
-    run([str(bun), 'test', './protocol.test.ts', './runtime.test.ts'], work)
+    run([str(bun), 'test', './protocol.test.ts', './runtime.test.ts', './crypto-cache.test.ts'], work)
     candidate = output / 'putgd-proton-runtime.new'
     run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts',
          f'--outfile={candidate}'], work)
@@ -154,7 +154,7 @@ def main():
                 'bunVersion': version['bunVersion'], 'protocolVersion': 1,
                 'dependencyLockSha256': sha256(ROOT / 'package-lock.json'),
                 'dependencyNotices': notices.name, 'dependencyNoticesSha256': sha256(notices),
-                'helperSourceSha256': {name: sha256(ROOT / name) for name in ['runtime.ts', 'account.ts', 'protocol.ts', 'stdout.ts', 'provision_runtime.py']}}
+                'helperSourceSha256': {name: sha256(ROOT / name) for name in ['runtime.ts', 'account.ts', 'crypto-cache.ts', 'protocol.ts', 'stdout.ts', 'provision_runtime.py']}}
     (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     print(json.dumps({'artifact': str(artifact), 'manifest': str(output / 'manifest.json'), 'sha256': manifest['sha256']}))
 

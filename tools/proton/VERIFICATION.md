@@ -104,3 +104,29 @@ compiled stdio/stdout checks. Updated runtime SHA-256:
 The C++ compiled parser rejection also includes the optional hint and reaches
 its intended no-account input validation error. Full type checking retains the
 same four upstream errors; no helper diagnostics were reported.
+
+
+## Request cache and name preflight follow-up
+
+The helper now uses a 64-entry in-memory LRU crypto-key cache for one request;
+entity metadata still uses NullCache. Key invalidation, request isolation, the
+fixed bound, replacement/tags/enumeration and clearing are covered by tests.
+The original NullCache failed the retention regression. The name preflight now
+uses the supported SDK `getAvailableName` query. Original-name, occupied-name
+and failed-query regressions failed against the previous folder-listing path,
+then passed; failures remain inconclusive and upload creation remains atomic.
+
+Offline provisioning passed 23 tests / 105 assertions, seven compiled stdio
+cases and the complete stdout drain. Runtime SHA-256:
+`146f1aa4c0e474dc76361385bd2125be1f2bf4857f1441742cccbc56bcb0e783`.
+The source manifest and CMake guard now include `crypto-cache.ts`. Full type
+checking retains the same four upstream stream declaration errors and no helper
+source diagnostics. No configured lint command exists for this helper.
+
+The integrating caller exercised live synthetic upload/create-link/revoke using
+the actual C++ adapter in an isolated authenticated local folder. Two samples
+per variant reduced mean preflight/upload/share readiness from 27.810 to 16.344
+seconds. This later live evidence supplements the initial helper-only unit above;
+it does not prove recipient download bytes, password/expiry recovery, total-process
+memory or supported compositor acceptance. See the integration verification for
+the per-stage timings, review and remaining gates.

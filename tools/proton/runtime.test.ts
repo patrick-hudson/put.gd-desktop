@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { MemberRole, NodeType, type NodeEntity } from '@protontech/drive-sdk';
-import { createFolder, destinationFolder, inspectAccount, stat } from './runtime';
+import { checkName, createFolder, destinationFolder, inspectAccount, stat } from './runtime';
 import { makeReceipt, type JsonObject } from './protocol';
 
 type Context = Parameters<typeof inspectAccount>[0];
@@ -88,4 +88,22 @@ test('failed or incomplete destination UID listing cannot establish absence', as
     const stub = context({ listedUids: ['other-node'], listThrows: true });
     expect((await stat(stub.ctx, statRequest())).status).toBe('unknown');
     expect(stub.listCompleted()).toBe(false);
+});
+
+test('name preflight uses SDK hashed availability without listing unrelated folder contents', async () => {
+    for (const available of ['photo.png', 'photo (1).png']) {
+        const stub = context();
+        (stub.ctx.sdk as any).getAvailableName = async (...args: unknown[]) => { stub.calls.push({ method: 'available', args }); return available; };
+        const request = { ...setup, destination: { ...destination, settings: { accountRootUid: 'root', folderUid: 'folder' } }, candidate: 'photo.png' };
+        const result = await checkName(stub.ctx, request);
+        expect(result.status).toBe(available === 'photo.png' ? 'absent' : 'present');
+        expect(stub.calls.map(call => call.method)).toEqual(['root', 'node', 'available']);
+        expect(stub.calls[2].args).toEqual(['folder', 'photo.png']);
+    }
+});
+test('failed name availability is inconclusive rather than permission-as-absence', async () => {
+    const stub = context();
+    (stub.ctx.sdk as any).getAvailableName = async () => { throw new Error('Synthetic denied name lookup'); };
+    const request = { ...setup, destination: { ...destination, settings: { accountRootUid: 'root', folderUid: 'folder' } }, candidate: 'photo.png' };
+    expect((await checkName(stub.ctx, request)).status).toBe('inconclusive');
 });
