@@ -2,6 +2,11 @@
 #include "ui/ShortcutEditor.h"
 #include "fixtures/UiSessionFixture.h"
 #include "ui/ViewState.h"
+#include "ui/VisualStyle.h"
+#include <QAbstractItemView>
+#include <QScrollBar>
+#include <QWheelEvent>
+#include <QtTest/qtestspontaneevent.h>
 #include <QComboBox>
 #include <QLineEdit>
 #include <QPushButton>
@@ -30,6 +35,75 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void closedDropdownWheelPreservesValueAndScrollsPane_data() {
+  QTest::addColumn<QString>("name");
+  for(const auto& action:QStringList{"Region","Window","Desktop","Clipboard"})
+   for(const auto& prefix:QStringList{"destination","profile","publication"}){
+    const auto name=prefix+action;QTest::newRow(qPrintable(name))<<name;
+   }
+  for(const auto& name:QStringList{"namingMode","collisionPolicy","destinationProfile","storageProvider","s3RegionChoices","s3AclMode","s3Addressing","credentialMode","protonFolder"})
+   QTest::newRow(qPrintable(name))<<name;
+ }
+ void closedDropdownWheelPreservesValueAndScrollsPane() {
+  QFETCH(QString,name);
+  QTemporaryDir directory;SettingsService service(directory.filePath("config.json"));CredentialStore secrets;
+  UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  window.findChild<QPushButton*>("addS3Destination")->click();
+  window.findChild<QPushButton*>("addS3Destination")->click();
+  window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
+  if(name=="protonFolder"){
+   auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));
+   auto* folders=window.findChild<QComboBox*>("protonFolder");folders->addItem("Synthetic folder A","folder-a");folders->addItem("Synthetic folder B","folder-b");
+  }
+  auto* combo=window.findChild<QComboBox*>(name);QVERIFY(combo);QVERIFY(combo->count()>1);
+  auto* pages=window.findChild<QStackedWidget*>("settingsPages");
+  QScrollArea* scroll=nullptr;
+  for(int i=0;i<pages->count();++i)if(pages->widget(i)->isAncestorOf(combo)){
+   window.findChild<QListWidget*>("settingsNavigation")->setCurrentRow(i);scroll=qobject_cast<QScrollArea*>(pages->widget(i));break;
+  }
+  QVERIFY(scroll);window.resize(1000,700);window.show();QTRY_VERIFY(combo->isVisible());
+  scroll->ensureWidgetVisible(combo);QCoreApplication::processEvents();
+  auto* bar=scroll->verticalScrollBar();QVERIFY(bar->maximum()>0);
+  for(bool focused:{false,true}){
+   if(focused)combo->setFocus();else window.findChild<QPushButton*>("saveSettings")->setFocus();
+   QTRY_COMPARE(combo->hasFocus(),focused);
+   const auto index=combo->currentIndex();const auto text=combo->currentText();
+   QSignalSpy changes(combo,&QComboBox::currentIndexChanged);
+   // Deliver to the embedded editor too: it is the wheel target over editable text.
+   QWidget* target=combo->isEditable()?static_cast<QWidget*>(combo->lineEdit()):combo;
+   for(int delta:{-120,120}){
+    scroll->ensureWidgetVisible(combo);const auto before=bar->value();
+    const bool canScroll=delta<0?before<bar->maximum():before>bar->minimum();
+    const QPoint point=target->rect().center();
+    QWheelEvent wheel(point,target->mapToGlobal(point),{},QPoint(0,delta),Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);
+    // Qt propagates only spontaneous wheel input; use the same marker as QtTest mouse helpers.
+    QSpontaneKeyEvent::setSpontaneous(&wheel);qApp->notify(target,&wheel);
+    QCOMPARE(combo->currentIndex(),index);QCOMPARE(combo->currentText(),text);QCOMPARE(changes.count(),0);
+    if(canScroll)QVERIFY2(delta<0?bar->value()>before:bar->value()<before,"Wheel over a closed dropdown must scroll its containing pane");
+    else QCOMPARE(bar->value(),before);
+   }
+  }
+ }
+ void dropdownMouseAndKeyboardSelection_data() {
+  QTest::addColumn<bool>("editable");QTest::newRow("plain")<<false;QTest::newRow("editable")<<true;
+ }
+ void dropdownMouseAndKeyboardSelection() {
+  QFETCH(bool,editable);
+  QWidget window;auto* combo=VisualStyle::choiceBox(&window);combo->setEditable(editable);
+  combo->addItems({"First","Second","Third"});combo->resize(200,35);window.resize(250,100);window.show();
+  combo->setFocus();QTRY_VERIFY(combo->hasFocus());
+  QTest::keyClick(combo,Qt::Key_Down);QCOMPARE(combo->currentIndex(),1);
+  QTest::keyClick(combo,Qt::Key_Up);QCOMPARE(combo->currentIndex(),0);
+  QTest::mouseClick(combo,Qt::LeftButton,Qt::NoModifier,QPoint(combo->width()-12,combo->height()/2));
+  auto* view=combo->view();QTRY_VERIFY(view->isVisible());
+  const auto item=combo->model()->index(2,0);view->scrollTo(item);
+  QTest::qWait(QApplication::doubleClickInterval()+1);
+  QTest::mouseMove(view->viewport(),view->visualRect(item).center());
+  QTest::mouseClick(view->viewport(),Qt::LeftButton,Qt::NoModifier,view->visualRect(item).center());
+  QTRY_COMPARE(combo->currentIndex(),2);QTRY_VERIFY(!view->isVisible());
+  if(editable){combo->lineEdit()->selectAll();QTest::keyClicks(combo->lineEdit(),"custom-region");QCOMPARE(combo->currentText(),QString("custom-region"));}
+ }
+
  void createdProtonFolderNameSurvivesSaveRefreshAndReopen() {
   QTemporaryDir directory;CredentialStore secrets;ProtonProvider provider;
   SettingsService service(directory.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);},nullptr,[&](auto,auto reference){return provider.validateCredentials(reference);});

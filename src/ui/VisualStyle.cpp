@@ -17,11 +17,14 @@
 #include <QStyledItemDelegate>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWheelEvent>
 namespace putgd::VisualStyle {
 namespace {
 class ChoiceBox final:public QComboBox {
 public:using QComboBox::QComboBox;
 protected:
+ // Leave wheel input to the containing pane. The open popup handles its own scrolling.
+ void wheelEvent(QWheelEvent* event)override {event->ignore();}
  void paintEvent(QPaintEvent* event)override {
   QComboBox::paintEvent(event);
   QStyleOptionComboBox option;initStyleOption(&option);
