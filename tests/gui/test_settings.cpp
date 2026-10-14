@@ -29,6 +29,27 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void createdProtonFolderNameSurvivesSaveRefreshAndReopen() {
+  QTemporaryDir directory;CredentialStore secrets;ProtonProvider provider;
+  SettingsService service(directory.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);},nullptr,[&](auto,auto reference){return provider.validateCredentials(reference);});
+  const QString root=QString(22,'a')+"~"+QString(22,'b'),created=QString(22,'a')+"~"+QString(22,'c');
+  auto document=configuration(directory.path());auto profile=document["profiles"].toArray().first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/synthetic-folder-test"}};document["profiles"]=QJsonArray{profile};QVERIFY(service.save(document,{}));
+  UiSessionFixture fixture(service,secrets);int creates=0,inspections=0;QString createdName;const QString refreshedName=QString::fromUtf8("Synthetic folder – 📁");
+  fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject& input,JsonReply reply,auto){
+   if(kind=="createFolder"){++creates;createdName=input["name"].toString();reply({},{{"accountRootUid",root},{"uid",created},{"name",input["name"]}});}
+   else if(kind=="inspectAccount"){++inspections;reply({},{{"accountRootUid",root},{"folders",QJsonArray{QJsonObject{{"uid",created},{"name",refreshedName}}}}});}
+   else reply({"unexpected_setup","Unexpected synthetic action",{}},{});
+  });
+  QJsonObject retained;
+  {SettingsWindow window(fixture.session);auto* folders=window.findChild<QComboBox*>("protonFolder");auto* save=window.findChild<QPushButton*>("saveSettings");
+   window.findChild<QPushButton*>("createProtonFolder")->click();QTRY_COMPARE(folders->currentData().toString(),created);QTRY_VERIFY(window.saveViewState()["setupJobs"].toArray().isEmpty());QCOMPARE(creates,1);QCOMPARE(folders->currentText(),createdName);
+   save->click();QTRY_COMPARE(service.document()["profiles"].toArray().first().toObject()["settings"].toObject()["folderUid"].toString(),created);QTRY_VERIFY(!window.saveViewState().contains("stateError"));QCOMPARE(folders->currentData().toString(),created);QCOMPARE(folders->currentText(),createdName);
+   window.findChild<QPushButton*>("inspectProtonAccount")->click();QTRY_COMPARE(inspections,1);QTRY_VERIFY(window.saveViewState()["setupJobs"].toArray().isEmpty());QCOMPARE(folders->currentData().toString(),created);QCOMPARE(folders->currentText(),refreshedName);
+   save->click();QTRY_VERIFY(!window.saveViewState().contains("stateError"));QVERIFY(!window.saveViewState()["dirty"].toBool());QCOMPARE(folders->currentText(),refreshedName);retained=window.saveViewState();
+  }
+  SettingsWindow reopened(fixture.session);QCOMPARE(reopened.findChild<QComboBox*>("protonFolder")->currentText(),refreshedName);QVERIFY(reopened.restoreViewState(retained));QCOMPARE(reopened.findChild<QComboBox*>("protonFolder")->currentText(),refreshedName);QCOMPARE(reopened.findChild<QComboBox*>("protonFolder")->currentData().toString(),created);QCOMPARE(creates,1);
+  SettingsService reloaded(service.path(),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(reloaded.metadata()["validation"].toObject()["ok"].toBool());QCOMPARE(reloaded.document()["profiles"].toArray().first().toObject()["settings"].toObject()["folderUid"].toString(),created);QCOMPARE(reloaded.document()["profiles"].toArray().first().toObject()["settings"].toObject()["folderName"].toString(),refreshedName);
+ }
  void s3SessionCredentialsRemainSupported() {
   QTemporaryDir directory;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
   SettingsService service(directory.filePath("config.json"),[&](auto id,auto settings){return registry.validate(id,settings);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});

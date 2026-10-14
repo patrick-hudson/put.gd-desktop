@@ -16,7 +16,10 @@ In Settings, add a destination, choose Proton Drive and save it. Connect the
 account through the browser. Authentication stays in the desktop secret service
 under put.gd's own namespace; it does not use the official Drive CLI's session.
 Choose a top-level folder in My files or explicitly create a new put.gd folder,
-then save the updated destination. Account setup never uploads a file.
+then save the updated destination. Settings retain its display name alongside
+the folder ID so the picker still shows the selected folder after reopening.
+Refresh folders updates a renamed folder’s display name; uploads use the ID.
+Existing configurations without a name keep working. Account setup never uploads a file.
 
 Sharing is the destination default. Clear that choice for private uploads, or
 use Advanced settings to override publication per app action. Private upload

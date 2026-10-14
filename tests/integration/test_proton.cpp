@@ -129,6 +129,7 @@ private slots:
  void compiledRuntimeRejectsInvalidInputWithoutAccountAccess() {
 #if PUTGD_TEST_PROTON_BUNDLED
   ProtonProvider provider;Destination destination{"proton-drive","synthetic","revision",ProtonProvider::defaults(),{{"mode","keychain"},{"reference","putgd/proton/synthetic-parser-test"}}};Error error;
+  destination.settings["accountRootUid"]=QString(22,'a')+"~"+QString(22,'b');destination.settings["folderUid"]=QString(22,'a')+"~"+QString(22,'c');destination.settings["folderName"]="Synthetic folder";
   provider.setup("storeSharePassword",destination,{{"reference","synthetic-reference"},{"password",""}},error);
   QCOMPARE(error.code,QString("invalid_request"));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
 #else
@@ -142,6 +143,14 @@ private slots:
   ProtonProvider provider;auto settings=provider.defaults();QVERIFY(!provider.validateSettings(settings));
   settings["password"]="must-not-be-settings";QVERIFY(provider.validateSettings(settings));
   const auto caps=provider.capabilities({});QVERIFY(caps.conditionalCreate);QVERIFY(caps.sharing);QVERIFY(caps.privateUploads);QVERIFY(!caps.conditionalReplace);QVERIFY(!caps.remove);QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+ }
+
+ void optionalFolderDisplayNamePreservesExistingConfigurations() {
+  ProtonProvider provider;auto settings=provider.defaults();QVERIFY(!provider.validateSettings(settings));
+  settings["accountRootUid"]=QString(22,'a')+"~"+QString(22,'b');settings["folderUid"]=QString(22,'a')+"~"+QString(22,'c');
+  settings["folderName"]=QString::fromUtf8("Synthetic folder – 📁");QVERIFY(!provider.validateSettings(settings));
+  for(const auto& invalid:QJsonArray{42,QJsonValue::Null,"",QString(256,'x'),QString::fromUtf8("é").repeated(128),QString(QChar(0))}){auto bad=settings;bad["folderName"]=invalid;QVERIFY(provider.validateSettings(bad));}
+  auto missing=settings;missing["folderUid"]="";QVERIFY(provider.validateSettings(missing));
  }
  void serializationIgnoresProfileEditsAndVersions() {
   ProtonProvider provider;Destination a{"proton-drive","a","r1",{{"accountRootUid","account"},{"folderUid","folder"}},{}};

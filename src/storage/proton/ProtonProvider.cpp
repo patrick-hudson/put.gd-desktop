@@ -54,9 +54,12 @@ QString ProtonProvider::serializationKey(const Destination& d,const QJsonObject&
  return QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(QJsonArray{root,folder,name}).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
 }
 Error ProtonProvider::validateSettings(const QJsonObject& s) const {
- const auto expected=defaults().keys();if(s.keys()!=expected)return {"config_invalid","Proton settings have missing or unsupported fields",{}};
+ const auto expected=defaults().keys();auto required=s;required.remove("folderName");if(required.keys()!=expected)return {"config_invalid","Proton settings have missing or unsupported fields",{}};
  const auto root=s["accountRootUid"].toString(),folder=s["folderUid"].toString();
  if(!s["accountRootUid"].isString()||!s["folderUid"].isString()||(!root.isEmpty()&&!nodeUid(root))||(!folder.isEmpty()&&!nodeUid(folder))||(root.isEmpty()&&!folder.isEmpty()))return {"config_invalid","Proton account and folder identifiers are invalid",{}};
+ // The optional name is a display hint; storage identity remains the folder UID.
+ const auto name=s["folderName"];
+ if(!name.isUndefined()&&(!name.isString()||name.toString().isEmpty()||name.toString().toUtf8().size()>255||name.toString().contains(QRegularExpression("[\\x00-\\x1f\\x7f]"))||folder.isEmpty()))return {"config_invalid","Proton folder display name is invalid",{}};
  const auto days=s["linkExpirationDays"].toDouble(-1),timeout=s["requestTimeoutMs"].toDouble(-1);
  if(!s["shareByDefault"].isBool()||days<0||days>365||days!=int(days)||timeout<1000||timeout>600000||timeout!=int(timeout))return {"config_invalid","Proton sharing or timeout settings are invalid",{}};
  const auto password=s["sharePasswordReference"];

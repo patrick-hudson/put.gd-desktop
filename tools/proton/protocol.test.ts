@@ -22,6 +22,16 @@ test('single bounded JSON and strict UTF-8, provider and keychain references', (
         encode({ ...request, schemaVersion: 2 }), encode({ ...request, destination: { ...destination, credentials: { mode: 'unsafe_file' } } })])
         expect(() => parseRequest(data)).toThrow(ProtocolError);
 });
+test('optional folder display name survives receipts without changing folder identity', () => {
+    const named = { ...request, destination: { ...destination, settings: { ...destination.settings, folderName: 'Synthetic folder – 📁' } } };
+    expect(parseRequest(encode(named))).toEqual(named);
+    const proof = makeReceipt(named, 'file-node', 'file-revision');
+    expect(receipt({ ...named, receipt: proof })).toEqual(proof);
+    expect(proof.objectReference.folderUid).toBe('folder');
+    for (const folderName of [null, 42, '', 'x'.repeat(256), 'é'.repeat(128), '\x00'])
+        expect(() => parseRequest(encode({ ...named, destination: { ...named.destination,
+            settings: { ...named.destination.settings, folderName } } }))).toThrow();
+});
 test('raw passwords accepted only by storeSharePassword', () => {
     expect(() => parseRequest(encode({ ...request, options: { password: 'test-only' } }))).toThrow();
     expect(() => parseRequest(encode({ ...request, destination: { ...destination,

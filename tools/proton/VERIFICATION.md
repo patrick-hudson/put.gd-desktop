@@ -15,7 +15,7 @@ python3 tools/proton/provision_runtime.py --source /tmp/putgd-proton-sdk --offli
 ```
 
 The first provisioning installed integrity-locked registry packages. Subsequent
-offline provisioning reused them. The final build and repeated identical offline
+offline provisioning reused them. The initial committed build and repeated identical offline
 build produced SHA-256
 `81d8600d7af30973b9b7019c0ec823f1bc814364348e9b18679d8fdd4d913735`.
 Artifact: `build/dependencies/proton-runtime/putgd-proton-runtime`.
@@ -91,3 +91,16 @@ The helper never replays mutations or reuploads at the application level; the
 official SDK retains its internal HTTP retries.
 Uncertain outcomes require the caller's saved mutation checkpoint and explicit
 reconciliation. Destination scope is MyFiles or its immediate child folder.
+
+## Optional folder display name follow-up
+
+The protocol now accepts an optional `folderName` display hint, bounded to a
+nonempty string of at most 255 UTF-8 bytes without control characters. It does
+not participate in folder identity. The new parser regression verifies legacy
+absence, Unicode names, invalid values, receipt preservation and unchanged folder
+UIDs. Offline provisioning passed 17 tests / 88 assertions and all existing
+compiled stdio/stdout checks. Updated runtime SHA-256:
+`9b147e7849474fef4fc99a4e38bc4a6758f10187e08ac56e8fe2936a91e86d68`.
+The C++ compiled parser rejection also includes the optional hint and reaches
+its intended no-account input validation error. Full type checking retains the
+same four upstream errors; no helper diagnostics were reported.

@@ -719,6 +719,15 @@
           "type": "string",
           "maxLength": 512
         },
+        "folderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "not": {
+            "pattern": "[\\u0000-\\u001F\\u007F]"
+          },
+          "description": "Optional display hint for folderUid, limited to 255 UTF-8 bytes by the provider validator. Uploads use folderUid."
+        },
         "shareByDefault": {
           "type": "boolean",
           "default": true

@@ -18,7 +18,7 @@ cmake --build --preset dev
 ctest --preset dev
 ```
 
-The final helper and an identical repeated offline build produced SHA-256
+The initial committed helper and an identical repeated offline build produced SHA-256
 `81d8600d7af30973b9b7019c0ec823f1bc814364348e9b18679d8fdd4d913735`.
 It uses official SDK `js@0.22.2`, Crypto 2.0.0 and Bun 1.4.2, pinned upstream
 commit `8ffae007b0fbb8bcef53514719d6f093bb32dcf9` and protocol 1.
@@ -75,10 +75,11 @@ skipped because it did not justify another runtime change.
 
 ## Acceptance still pending
 
-No live Proton login or remote mutation has been established for this candidate.
-Local browser authentication needs the user. Initial live testing must use a new
-isolated folder and synthetic files, verify downloaded bytes and recipient
-access, and exercise upload/share recovery, passwords/expiry and revoked sessions.
+The initial automated verification did not exercise a live Proton account.
+The local folder-name follow-up below records later authenticated setup evidence.
+Upload/share acceptance must use the isolated destination and synthetic files,
+verify downloaded bytes and recipient access, and exercise upload/share recovery,
+passwords/expiry and revoked sessions.
 Do not copy host authentication into VM images. Authenticated helper/total-process
 memory and Cinnamon functional/memory acceptance remain pending; GNOME/KDE
 follow only after Cinnamon passes. Source/protocol/Xvfb evidence is not release
@@ -91,3 +92,44 @@ fresh identity checks around sharing, without an atomic SDK revision guard.
 The default request timeout is 120 seconds (configurable up to 600); large or
 slow transfers may become uncertain. Abandoned browser login can hold its account
 lock for up to ten minutes; setup cancellation is not yet exposed in the GUI.
+
+## Folder name follow-up
+
+The local user created a folder and saved its ID, but the picker reloaded with
+“Saved Proton folder” instead of the actual name. A read-only SDK account
+inspection confirmed that the saved ID matched the created top-level test folder.
+Authentication and the folder listing worked on the local machine; this does not
+establish upload, recipient access, memory or compositor acceptance.
+
+`createdProtonFolderNameSurvivesSaveRefreshAndReopen` failed before the fix because
+Save replaced the generated name with the generic label. It now passes through
+creation, Save, an explicit Refresh reporting a renamed Unicode folder, another
+Save, a fresh window, retained-window restoration and configuration reload.
+The optional `folderName` display hint is paired with the selected ID and
+classified in retained state. Legacy settings without the hint still validate.
+The helper accepts the bounded hint; folder IDs continue to govern storage.
+
+The updated offline runtime SHA-256 is
+`9b147e7849474fef4fc99a4e38bc4a6758f10187e08ac56e8fe2936a91e86d68`.
+An identical repeated offline build matched that hash. Provisioning passed
+17 helper tests / 88 assertions, seven compiled stdio cases,
+and the complete 1,048,337-byte stdout regression. The full C++ build passed.
+Nine targeted preset tests passed in 79.91 seconds: `gui_application`,
+`ui_native_lifecycle_integration`, `cli_integration`, `config_reload_integration`,
+`settings_contract`, `gui_settings`, `gui_history_view`, `proton_contract` and
+`proton_transport`. Both configuration-schema tests passed using the existing
+locked MCP Python environment. Socket preflights passed (75-byte maximum).
+This follow-up did not repeat the full 59-target suite. Type checking retains
+only the same four upstream Crypto/Bun stream declaration errors.
+
+Three fix-scoped simplification reviews found no changes needed. The independent
+fix review confirmed one P3 schema mismatch: an end anchor allowed a trailing
+newline where the provider and helper rejected it. The schema regression failed
+with that value before the correction. An explicit negative control-character
+constraint now rejects it, and both schema tests pass. Completed fix-only review
+receipt: `20261013-185504-8b690fba` under
+`/tmp/compound-engineering-1000/ce-code-review/20261013-185504-8b690fba`.
+It reviewed the earlier fix snapshot; the confirmed schema finding was then
+applied and reverified. No finding remains unapplied. Native restart/name-backfill
+results are retained privately under the local test run rather than committing
+account folder names or IDs.

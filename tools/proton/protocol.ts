@@ -42,10 +42,14 @@ export function parseRequest(bytes: Uint8Array): JsonObject {
     text(destination.profileId); text(destination.profileRevision);
     const settings = object(destination.settings);
     if (Object.keys(settings).some(key => !['accountRootUid', 'folderUid', 'shareByDefault', 'linkExpirationDays',
-        'sharePasswordReference', 'requestTimeoutMs'].includes(key))) throw new ProtocolError('invalid_destination');
+        'sharePasswordReference', 'requestTimeoutMs', 'folderName'].includes(key))) throw new ProtocolError('invalid_destination');
     for (const field of ['accountRootUid', 'folderUid'])
         if (settings[field] !== undefined && (typeof settings[field] !== 'string' || settings[field].length > 512 ||
             /[\x00-\x1f\x7f]/.test(settings[field]))) throw new ProtocolError('invalid_destination');
+    if (settings.folderName !== undefined) {
+        text(settings.folderName, 255);
+        if (Buffer.byteLength(settings.folderName) > 255 || !settings.folderUid) throw new ProtocolError('invalid_destination');
+    }
     if (settings.shareByDefault !== undefined && typeof settings.shareByDefault !== 'boolean') throw new ProtocolError('invalid_destination');
     if (settings.linkExpirationDays !== undefined) days(settings.linkExpirationDays);
     if (settings.sharePasswordReference !== undefined && settings.sharePasswordReference !== null) text(settings.sharePasswordReference, 256);

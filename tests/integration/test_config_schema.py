@@ -14,6 +14,19 @@ from jsonschema import Draft202012Validator
 
 
 class ConfigurationSchema(unittest.TestCase):
+    def test_optional_proton_folder_name_keeps_legacy_settings_valid(self):
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['$defs']['protonSettings'])
+        settings = {'accountRootUid': 'a' * 22 + '~' + 'b' * 22,
+            'folderUid': 'a' * 22 + '~' + 'c' * 22, 'shareByDefault': True,
+            'linkExpirationDays': 0, 'sharePasswordReference': None, 'requestTimeoutMs': 120000}
+        self.assertTrue(validator.is_valid(settings))
+        settings['folderName'] = 'Synthetic folder – 📁'
+        self.assertTrue(validator.is_valid(settings))
+        for name in (None, 42, '', 'x' * 256, '\x00', 'Synthetic folder\n', 'Synthetic\nfolder'):
+            with self.subTest(name=name):
+                self.assertFalse(validator.is_valid(settings | {'folderName': name}))
+
     def test_production_defaults_templates_and_legacy_fields(self):
         app = os.environ.get('PUTGD_APP')
         cli = os.environ.get('PUTGD_CLI')
