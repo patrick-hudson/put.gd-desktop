@@ -387,3 +387,31 @@ makes other requests report busy while a long request holds its lock.
 Current compositor/total-process memory, recipient access, session recovery and
 redistribution/service readiness acceptance remain pending. No offscreen, SDK
 stub or controlled-clock result establishes those release gates.
+
+
+### User-requested large-file recovery on the local machine
+
+The running native candidate is code commit `c758b4d`, version
+`0.1.1-dev.152+gc758b4d84a59`, dirty false. All five post-commit identity/runtime/
+tray checks passed in 22.55 seconds, socket maximum 67 bytes. Restart reused the
+saved configuration, journal, staged artifacts and local keychain session; the
+new runtime socket was 37 bytes. Only the Proton profile deadline changed from
+600,000 to 3,600,000 ms through the official MCP helper and production CLI;
+every other configuration field and the accepted operation were checked unchanged.
+
+The user requested recovery of the failed 2,851,612,672-byte file. MCP Retry
+accepted a separate one-hour budget while preserving its original 600,000-ms
+destination snapshot and publication ID. The typed unfinished-draft collision
+was observed in the actual operation, followed by successful renamed transfer.
+MCP observed real counters at 4,194,644, 583,055,516, 1,564,602,212 and
+2,349,000,640 bytes, then durable `completed` / `uploaded` / `shared` with a
+confirmed receipt, available link and empty error. The final SDK traffic counter
+was 2,851,843,843 bytes; it includes encryption overhead and has no matching total.
+No file contents, names, IDs, credentials or capability URL were included in
+committed documentation or external review material.
+The older failed operation and unknown drafts were preserved.
+
+This establishes authenticated local production-adapter recovery, large-file
+completion and share creation. It does not establish anonymous recipient download,
+actual host toast rendering, total-process memory or current compositor acceptance.
+Those release gates remain pending; the feature PR remains a draft.
