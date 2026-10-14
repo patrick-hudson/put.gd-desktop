@@ -97,7 +97,7 @@ def check_tooltip(snapshot, records, provider, pid):
     require(snapshot.get('pid') == pid and snapshot.get('hostRegistered') and snapshot.get('registered'),
             'SNI must be registered with the native host and owned by the expected app PID')
     text = snapshot.get('description', '')
-    require(not re.search(r'https?://|file://|synthetic-[12]\.txt|/tmp/|/home/', text),
+    require(not re.search(r'https?://|file://|synthetic-[12]\.txt|/tmp/|/home/', text, re.IGNORECASE),
             'Tray tooltip exposes a source name, path or link')
     idle = snapshot.get('title') == IDLE
     require(idle or snapshot.get('title') == 'put.gd — Working', 'Unexpected tray title')

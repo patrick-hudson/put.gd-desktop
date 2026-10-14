@@ -260,13 +260,16 @@ class TrayProgressContracts(unittest.TestCase):
         replay.pid = 42; replay.history = []; replay.mismatch_since = None
         replay.result = {'coverage': {}}; replay.save = Mock(); replay.witness = Mock()
         replay.cli = Mock(return_value={'operations': []})
-        replay.snapshot = Mock(return_value=observation('Queued https://example.invalid/#sensitive'))
-        with tempfile.TemporaryDirectory() as directory:
-            replay.output = Path(directory)
-            with self.assertRaises(tray.TrayProgressError): replay.observe('privacy')
-            evidence = (replay.output/'observations.jsonl').read_text()
-            self.assertNotIn('sensitive', evidence); self.assertNotIn('example.invalid', evidence)
-            self.assertIn('redacted', evidence)
+        for text in ('Queued https://example.invalid/#sensitive',
+                     'Queued HTTPS://example.invalid/#sensitive', 'Queued hTtPs://example.invalid/#sensitive',
+                     'Queued FILE:///tmp/sensitive'):
+            replay.snapshot = Mock(return_value=observation(text))
+            with self.subTest(text=text), tempfile.TemporaryDirectory() as directory:
+                replay.output = Path(directory)
+                with self.assertRaises(tray.TrayProgressError): replay.observe('privacy')
+                evidence = (replay.output/'observations.jsonl').read_text()
+                self.assertNotIn('sensitive', evidence); self.assertNotIn('example.invalid', evidence)
+                self.assertIn('redacted', evidence)
 
     def test_later_busy_pass_cannot_change_a_receipt_established_in_first_pass(self):
         import copy
