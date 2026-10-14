@@ -200,3 +200,127 @@ Sixteen dev-preset targets passed in 172.32 seconds: `native_tray_integration`,
 with a 75-byte maximum. The full 59-target suite was not repeated for this fix.
 Authenticated helper/total-process memory, recipient downloads, password/expiry
 recovery and current Cinnamon/GNOME/KDE release acceptance remain pending.
+
+## Upload progress and request-deadline follow-up
+
+A local large-file operation reached its accepted 120-second helper deadline;
+inspection found an unknown upload outcome, no result link and no cancellation.
+The old generic interruption text did not distinguish expiry from cancellation.
+An expected-revision MCP configuration patch increased only the current Proton
+profile's `requestTimeoutMs` to 600,000. Verification confirmed all other settings
+and the prior operation's identity/settings were preserved. This applies to new
+operations; the uncertain earlier upload was neither reconciled nor resent.
+
+The production pipeline now exposes preparation, upload, sharing and copy phases
+through Activity and operation inspection. Upload callbacks carry optional typed
+byte counters. Active observations use a bounded overlay and an on-demand timer,
+without per-tick journal writes; callbacks are closed at each attempt's completion.
+Old/late callbacks cannot change a retry or overwrite durable terminal results.
+The final observation is informational, not publication or ownership evidence.
+A saved `resultReady` event drives notifications independently of progress.
+The regression observed 17 duplicate toasts from a 50-event burst before this fix;
+it now checks one final notification and a later explicitly requested copy result.
+
+The Proton Advanced **Request deadline** control exposes the existing 1–600-second
+range and default 120 seconds. Three decimal places preserve previously valid
+millisecond values: tests retain 120,001 ms and 600,000 ms through Save/reopen.
+New expiry errors identify the reason and budget while retaining unknown remote
+outcome semantics. Browser authentication keeps its separate ten-minute deadline.
+
+Offline helper provisioning passed 27 tests / 117 assertions, seven compiled
+stdio cases and the full 1,048,337-byte stdout regression. Runtime SHA-256:
+`0f8ef3ec922f7da98bcaae82d35a8b00e5c90775bab25a0d215ef9a8e65970fa`.
+The reporter bounds retention to one in-flight stdout write and one replaceable
+latest event, preserves retry rollback and drains before final completion.
+Full TypeScript checking retains the same four official Crypto/Bun declaration
+errors and no helper/test diagnostics. No configured lint command was found.
+
+An authenticated production-adapter probe used one unique synthetic 16 MiB file
+in the isolated Proton folder. Upload succeeded in 11.505 seconds and produced
+four byte reports before completion. The final SDK count was 16,778,576 bytes for
+16,777,216 payload bytes: the SDK includes encrypted transfer overhead and has no
+matching total. Activity therefore shows real bytes, with percentage only when
+a provider supplies a matching denominator. The probe successfully created and
+revoked only its own new link; the synthetic file remains private in that folder.
+This verifies the actual SDK callback/stdio boundary, not the complete graphical
+clipboard workflow, recipient download or memory/compositor acceptance.
+
+Focused candidate operation, transport, Settings, Activity and native-tray tests
+passed. An initial CTest invocation combined `--preset dev` with `--test-dir` and
+actually selected the existing preset build; that run was preserved and excluded
+from candidate evidence. Corrected runs used plain `ctest --test-dir` with the
+explicit candidate directory. A widget expectation used KiB while the existing
+byte formatter correctly displayed 0.5 MiB; only the assertion was corrected.
+The separate official-SDK MCP/production-CLI contract suite passed all three tests
+in 1.502 seconds, with a preflighted 57-byte temporary socket path.
+
+The full bundled `cmake --preset dev`, `cmake --build --preset dev`, and
+`ctest --preset dev` run passed all 59 targets in 408.26 seconds, including S3,
+local-only, journal recovery and updated progress/notification regressions.
+Socket preflight covered the resolved harness shapes (82 UTF-8 bytes maximum).
+The local test app was confirmed idle with Activity open and no Settings window,
+then stopped gracefully before the copied runtime changed. Deployment identity
+and the subsequent native restart are recorded separately.
+
+Authenticated total-process memory, independent recipient/download verification,
+password/expiry/revoked-session recovery and current Cinnamon/GNOME/KDE graphical
+release acceptance remain pending. The local SDK progress result and offscreen/
+Xvfb fixtures do not close those gates. Redistribution/service readiness remains
+outside this fix's source verification.
+
+Three fix-scoped simplification reviews completed. Two efficiency findings were
+applied: identical observations no longer schedule UI/history refreshes, and
+artifact matching uses a first-match ID map outside the observation mutex.
+A no-op progress regression passed. A low-value private call-options reshaping
+suggestion was skipped; no safety checks were removed. The eight affected
+operation/storage/CLI/history/Settings/Activity/tray targets then passed in
+109.14 seconds, with a 75-byte maximum preflighted socket shape. The helper was
+unchanged, so its verified source fingerprint remains valid.
+
+Completed current review receipt: `status: complete`, run
+`20261013-204613-b88d0d60`, artifact
+`/tmp/compound-engineering-1000/ce-code-review/20261013-204613-b88d0d60`.
+Nine local lenses and an independent Anthropic Opus 5.5 pass completed; the
+peer model/independence was receipt-verified, while serving effort was unverified.
+All three validated findings were applied, without rerunning completed review:
+
+| Finding | Applied behavior and regression evidence |
+| --- | --- |
+| #1 (P2) | An admitted retry is checkpointed as stored/queued before enqueue and acknowledgement. The occupied-worker GUI regression failed with the old partial state; it checks durable/inspection/Activity queued state and preserved publication/destination identity. |
+| #2 (P2) | Controlled-clock tests prove numeric delivery while the reporter remains open and rescheduling after a blocked write, before finish. Disabling scheduling in an isolated source copy leaves the original three tests passing and makes both new cases fail; disabling rescheduling makes the new slow-write case fail. Restored helper tests pass 29 cases / 130 assertions. Production helper source/hash is unchanged. |
+| #3 (P3) | Recovery and inactive cancellation normalize stopped operation/item phases while preserving unknown upload outcomes, counters and saved identity. The new recovery/cancellation assertions failed with uploading phases before the fix. |
+
+Review's fractional-value test gap is closed by explicitly saving/reopening the
+unchanged 120,001 ms value before testing 600,000 ms. A separate genuine-resident
+reply-delay fixture established Activity starvation during sustained progress:
+the 600 ms delayed response test failed while 50 ms provider reports continued.
+Activity now renders completed snapshots before scheduling a pending newer read;
+one-in-flight/one-pending bounds, lifetime guards and selection/expansion remain.
+The isolated new case plus three related GUI cases passed in 2.472 seconds.
+Fixture latency defaults to zero. An initial retry-fix build omitted an outer
+lambda's journal-path capture; its failed diagnostics were retained, the capture
+was corrected, and the build passed before verification continued.
+
+Remaining focused coverage: direct no-account helper-timer tests for pre/post-
+dispatch deadline branches and one final drained frame. C++ watchdog regressions
+cover reason/budget/uncertainty, but do not prove those helper branches. This is
+an unexecuted test path, not a source-established remaining defect. Downstream
+History SQL/IPC work during progress has not been measured; notifications are
+coalesced and unchanged observations are suppressed. Measure before choosing
+separate invalidation channels or incremental tree updates. These limitations
+were raised by the current testing/performance/reliability review. No validated
+code finding remains deferred. Current memory/compositor/release gates above
+remain open.
+
+Post-review bundled build passed. The 14-target preset run passed 13 targets in
+180.35 seconds; the new unchanged-timeout Settings assertion inspected retained
+state before Save acknowledgement. That failed run was preserved. Its wait was
+corrected without changing production code, then the full `gui_settings` target
+passed in 12.07 seconds. The other 13 unchanged targets remain valid: native tray,
+GUI application/lifecycle, S3 module, history, operations, storage, CLI, config
+reload, Activity, history UI, Proton contract and Proton transport. The occupied-
+worker queued retry and stopped-phase cases now pass. Socket preflight passed at
+75 bytes for the broad run and 68 bytes for the Settings follow-up. Combined
+with the earlier full 59-target run and unchanged authenticated SDK transport
+proof, this closes the source/contract scope of the progress/deadline fix; it does
+not close the pending native memory/compositor and provider recovery gates.

@@ -16,7 +16,7 @@ if(PUTGD_BUNDLE_PROTON)
   endif()
   # A valid old executable is still stale after changing the helper or lock.
   # Verify known source members only; manifest paths cannot escape the source tree.
-  set(proton_sources account.ts crypto-cache.ts protocol.ts provision_runtime.py runtime.ts stdout.ts)
+  set(proton_sources account.ts crypto-cache.ts protocol.ts provision_runtime.py runtime.ts stdout.ts progress.ts)
   string(JSON proton_source_count LENGTH "${proton_manifest}" helperSourceSha256)
   list(LENGTH proton_sources proton_expected_count)
   if(NOT proton_source_count EQUAL proton_expected_count)

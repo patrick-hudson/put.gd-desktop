@@ -19,6 +19,7 @@
 #include <QKeyEvent>
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
+#include <QDoubleSpinBox>
 #include <QCheckBox>
 using namespace putgd;using namespace putgd::test;
 class SettingsPaintObserver final:public QObject {
@@ -54,6 +55,12 @@ private slots:
   QTemporaryDir directory;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
   SettingsService service(directory.filePath("config.json"),[&](auto id,auto settings){return registry.validate(id,settings);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});
   auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto profile=profiles.first().toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;document["profiles"]=profiles;QVERIFY(service.save(document,{}));
+ }
+ void protonDeadlineIsAdvancedAndPreservesMillisecondsOnSaveReopen(){
+  QTemporaryDir d;CredentialStore secrets;ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto,auto values){return proton.validateSettings(values);});
+  auto doc=configuration(d.path());auto profile=doc["profiles"].toArray().first().toObject();profile["provider"]="proton-drive";auto values=ProtonProvider::defaults();values["requestTimeoutMs"]=120001;profile["settings"]=values;profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/synthetic-timeout"}};doc["profiles"]=QJsonArray{profile};QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);QJsonObject retained;
+  {SettingsWindow window(fixture.session);window.show();auto* timeout=window.findChild<QDoubleSpinBox*>("protonRequestTimeout");QVERIFY(timeout);QCOMPARE(timeout->value(),120.001);QVERIFY(!timeout->isVisible());window.findChild<QToolButton*>("advancedSettings")->setChecked(true);QVERIFY(timeout->isVisible());QCOMPARE(timeout->minimum(),1.0);QCOMPARE(timeout->maximum(),600.0);QVERIFY(timeout->toolTip().contains("deadline"));window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(!window.saveViewState().contains("stateError")&&!window.saveViewState()["dirty"].toBool());QCOMPARE(service.document()["profiles"].toArray().first().toObject()["settings"].toObject()["requestTimeoutMs"].toInt(),120001);{SettingsWindow fractional(fixture.session);QCOMPARE(fractional.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),120.001);}timeout->setValue(600);retained=window.saveViewState();QVERIFY(!retained.contains("stateError"));window.findChild<QPushButton*>("saveSettings")->click();QTRY_COMPARE(service.document()["profiles"].toArray().first().toObject()["settings"].toObject()["requestTimeoutMs"].toInt(),600000);}
+  SettingsWindow reopened(fixture.session);QCOMPARE(reopened.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),600.0);QVERIFY(reopened.restoreViewState(retained));QCOMPARE(reopened.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),600.0);
  }
  void protonDraftKeepsDefaultsAndNeverExportsPassword() {
   QTemporaryDir d;CredentialStore secrets;ProtonProvider proton;S3Provider s3(secrets);

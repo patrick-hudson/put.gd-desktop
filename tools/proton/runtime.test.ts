@@ -1,6 +1,10 @@
 import { expect, test } from 'bun:test';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { MemberRole, NodeType, type NodeEntity } from '@protontech/drive-sdk';
-import { checkName, createFolder, destinationFolder, inspectAccount, stat } from './runtime';
+import { checkName, createFolder, destinationFolder, inspectAccount, stat, upload } from './runtime';
 import { makeReceipt, type JsonObject } from './protocol';
 
 type Context = Parameters<typeof inspectAccount>[0];
@@ -106,4 +110,27 @@ test('failed name availability is inconclusive rather than permission-as-absence
     (stub.ctx.sdk as any).getAvailableName = async () => { throw new Error('Synthetic denied name lookup'); };
     const request = { ...setup, destination: { ...destination, settings: { accountRootUid: 'root', folderUid: 'folder' } }, candidate: 'photo.png' };
     expect((await checkName(stub.ctx, request)).status).toBe('inconclusive');
+});
+
+test('production upload wires the SDK progress callback and confirms publication only through completion', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-progress-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(65536, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    let progressType: string | undefined;
+    try {
+        const stub = context();
+        (stub.ctx.sdk as any).getFileUploader = async () => ({
+            uploadFromStream: async (stream: ReadableStream, thumbnails: unknown[], onProgress?: (bytes: number) => void) => {
+                progressType = typeof onProgress;
+                const reader = stream.getReader();
+                while (!(await reader.read()).done) {}
+                onProgress?.(100000); onProgress?.(65536); // Retry rollback; overhead can exceed artifact size.
+                return { completion: async () => ({ nodeUid: 'file-node', nodeRevisionUid: 'file-revision' }) };
+            },
+        });
+        const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+        expect(progressType).toBe('function'); expect(result.status).toBe('uploaded');
+        expect(result.receipt.objectReference.revisionUid).toBe('file-revision');
+    } finally { await rm(directory, { recursive: true, force: true }); }
 });

@@ -95,9 +95,14 @@ public:
 signals:
  void initialized();
  void changed(const QString& id);
+ // A terminal/copy result is durably observable; progress never emits this.
+ void resultReady(const QString& id);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);
 private:
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
+ void observe(const QJsonObject&);
+ QJsonObject currentObservation(QJsonObject) const;
+ void clearObservation(const QString&);
  void enqueue(Job);
  void pump();
  bool heapReclamationIdle() const;
@@ -118,7 +123,8 @@ private:
  QHash<QString,std::shared_ptr<std::atomic_bool>> active_;
  QHash<QString,std::weak_ptr<std::mutex>> locks_;
  std::mutex locksMutex_;
- QTimer heapReclamationTimer_;
+ QTimer heapReclamationTimer_,observationTimer_;
+ mutable std::mutex observationsMutex_;QHash<QString,QJsonObject> observations_;QSet<QString> observationsDirty_;bool observationScheduled_=false;
  bool heapReclamationPending_=false;
  quint64 heapReclamationCount_=0;
  qint64 lastHeapReclamationUsec_=0;

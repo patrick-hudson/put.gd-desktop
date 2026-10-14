@@ -18,15 +18,15 @@ class ProtonTransportTest:public QObject {
   auto settings=ProtonProvider::defaults();settings["fixture"]=fixture;settings["requestTimeoutMs"]=1000;
   return {"proton-drive","synthetic","revision",settings,{{"mode","keychain"},{"reference","putgd/proton/transport-"+QUuid::createUuid().toString(QUuid::WithoutBraces)}}};
  }
- static UploadResult upload(ProtonProvider& provider,const Destination& d) {
+ static UploadResult upload(ProtonProvider& provider,const Destination& d,std::function<void(const UploadProgress&)> progress={}) {
   UploadRequest req;req.destination=d;req.condition="absent";req.candidate="synthetic.txt";req.publicationId="synthetic";
-  UploadResult result;provider.upload(req,[&](UploadResult r){result=r;});return result;
+  req.progress=std::move(progress);UploadResult result;provider.upload(req,[&](UploadResult r){result=r;});return result;
  }
 private slots:
  void transportFailureDisposition_data(){
   QTest::addColumn<QString>("fixture");QTest::addColumn<QString>("status");QTest::addColumn<QString>("error");
   QTest::newRow("confirmed-auth-failure")<<QString("auth")<<QString("failed")<<QString("authentication_required");
-  QTest::newRow("interrupted-request")<<QString("timeout")<<QString("unknown")<<QString("proton_result_unknown");
+  QTest::newRow("interrupted-request")<<QString("timeout")<<QString("unknown")<<QString("proton_request_timeout");
   QTest::newRow("malformed-response")<<QString("malformed")<<QString("unknown")<<QString("proton_protocol");
   QTest::newRow("unconfirmed-exit")<<QString("crash")<<QString("unknown")<<QString("proton_result_unknown");
  }
@@ -35,6 +35,27 @@ private slots:
   const auto r=upload(provider,d);QCOMPARE(r.status,status);QCOMPARE(r.error.code,error);
   ShareRequest req;req.id="synthetic-share";req.action="create";req.receipt.destination=d;ShareResult sharing;
   provider.share(req,[](const QJsonObject&,auto ack){ack({});},[&](ShareResult r){sharing=r;});QCOMPARE(sharing.status,status);QCOMPARE(sharing.error.code,error);QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+ }
+ void progressFramesPrecedeCompletion(){
+  ProtonProvider provider;QList<UploadProgress> reports;const auto r=upload(provider,destination("progress"),[&](const UploadProgress& value){reports.append(value);});
+  QCOMPARE(r.status,QString("failed"));QCOMPARE(r.error.code,QString("authentication_required"));QCOMPARE(reports.size(),4);QCOMPARE(reports[0].phase,QString("preparing"));QVERIFY(!reports[0].bytesTransferred);QCOMPARE(reports[1].bytesTransferred.value(),1048576);QCOMPARE(reports[2].bytesTransferred.value(),524288);QVERIFY(!reports[2].bytesTotal);QCOMPARE(reports[3].phase,QString("finalizing"));
+ }
+ void invalidOrUnboundedProgressIsUnknown_data(){
+  QTest::addColumn<QString>("fixture");for(const auto& name:QStringList{"bad-progress-negative","bad-progress-fraction","bad-progress-too-large","bad-progress-extra","bad-progress-total","bad-progress-phase","flood","after-result"})QTest::newRow(qPrintable(name))<<name;
+ }
+ void invalidOrUnboundedProgressIsUnknown(){
+  QFETCH(QString,fixture);ProtonProvider provider;const auto r=upload(provider,destination(fixture));QCOMPARE(r.status,QString("unknown"));QCOMPARE(r.error.code,QString("proton_protocol"));
+ }
+ void cancellationAfterProgressIsDistinctFromDeadline(){
+  ProtonProvider provider;UploadRequest request;request.destination=destination("cancel-progress");request.condition="absent";request.cancellation=std::make_shared<std::atomic_bool>(false);request.progress=[flag=request.cancellation](const UploadProgress&){flag->store(true);};UploadResult result;
+  provider.upload(request,[&](UploadResult value){result=value;});QCOMPARE(result.status,QString("unknown"));QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));
+  request.cancellation->store(true);provider.upload(request,[&](UploadResult value){result=value;});QCOMPARE(result.status,QString("failed"));QCOMPARE(result.error.code,QString("operation_cancelled"));
+ }
+ void deadlineReportsConfiguredBudget(){
+  ProtonProvider provider;const auto r=upload(provider,destination("timeout"));
+  QCOMPARE(r.status,QString("unknown"));QCOMPARE(r.error.code,QString("proton_request_timeout"));
+  QCOMPARE(r.error.details["reason"].toString(),QString("deadline"));QCOMPARE(r.error.details["timeoutMs"].toInt(),1000);
+  QVERIFY(r.error.message.contains("deadline"));
  }
  void accountBusyNeverDispatches(){
   ProtonProvider provider;auto d=destination();const auto root=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());QVERIFY(::mkdir(QFile::encodeName(root).constData(),0700)==0||errno==EEXIST);const QFileInfo info(root);QVERIFY(info.isDir()&&!info.isSymLink());QCOMPARE(info.ownerId(),uint(getuid()));QVERIFY(!(info.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)));

@@ -22,7 +22,7 @@
 
 namespace putgd {
 namespace {
-Error parseError(const QJsonObject& value) {return {value["code"].toString(),value["message"].toString(),value["details"].toObject()};}
+Error parseError(const QJsonObject& value) {auto code=value["code"].toString();if(code=="request_timeout")code="proton_request_timeout";return {code,value["message"].toString(),value["details"].toObject()};}
 bool nodeUid(const QString& value) {
  static const QRegularExpression pattern("^([A-Za-z0-9=_-]{88,108}|[A-Za-z0-9_-]{22})~([A-Za-z0-9=_-]{88,108}|[A-Za-z0-9_-]{22})$");
  return pattern.match(value).hasMatch();
@@ -72,7 +72,7 @@ Error ProtonProvider::validateCredentials(const QJsonObject& reference) const {
  return {};
 }
 QJsonObject ProtonProvider::diagnostics() const {return {{"activeHelpers",active_.load()},{"protocolVersion",1}};}
-QJsonObject ProtonProvider::call(const QString& method,const Destination& destination,QJsonObject params,Error& error,std::shared_ptr<std::atomic_bool> cancelled,SetupEvent event,bool* outcomeUncertain) {
+QJsonObject ProtonProvider::call(const QString& method,const Destination& destination,QJsonObject params,Error& error,std::shared_ptr<std::atomic_bool> cancelled,SetupEvent event,bool* outcomeUncertain,std::function<void(const UploadProgress&)> progress) {
  if(outcomeUncertain)*outcomeUncertain=false;
  if(stopping_.load()){error={"operation_cancelled","The application is stopping",{}};return {};}
  if(!runtimeVerified()){error={"proton_runtime_unavailable","Install a matching put.gd package with the bundled Proton runtime",{}};return {};}
@@ -129,13 +129,18 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
    if(value["event"]=="auth"){
     if(method!="connect"||!event||gotAuth||gotResult||value.size()!=2||!value["url"].isString()){error={"proton_protocol","Unexpected authentication event",{}};return;}
     gotAuth=true;event(value);
+   }else if(value["event"]=="progress"){
+    auto fields=value;fields.remove("event");const auto report=UploadProgress::fromJson(fields);
+    if(method!="upload"||gotResult||!report){error={"proton_protocol","Unexpected or invalid upload progress",{}};return;}
+    if(progress)progress(*report);
    }else if(gotResult||!value["ok"].isBool()||value.size()!=2||(value["ok"].toBool()?!value["result"].isObject():!value["error"].isObject())){error={"proton_protocol","Invalid helper completion",{}};return;}
    else{final=value;gotResult=true;}
   }
  };
  while(process.state()!=QProcess::NotRunning){
   process.waitForReadyRead(100);consume();if(error){process.kill();break;}
-  if(stopping_.load()||(cancelled&&cancelled->load())||elapsed.elapsed()>timeout){error={"proton_result_unknown","The request was interrupted; reconcile its saved identity before retrying",{}};process.kill();break;}
+  if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown","The request was cancelled after dispatch; reconcile its saved identity before retrying",{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
+  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",QString("Proton exceeded the configured %1-second request deadline; the outcome is unknown. Reconcile its saved identity before retrying.").arg(timeout/1000.0),{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
  }
  process.waitForFinished(5000);consume();
  if(!pending.trimmed().isEmpty()&&!error)error={"proton_protocol","Incomplete helper response",{}};
@@ -153,7 +158,7 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
 void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply){Error e;auto r=call("checkName",d,{{"candidate",name}},e);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadResult)> reply){
  if(req.condition!="absent"){reply({"failed",{}, {"unsupported_capability","Proton cannot safely replace a recorded file revision",{}}});return;}
- Error e;bool uncertain=false;auto r=call("upload",req.destination,{{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}},e,req.cancellation,{},&uncertain);
+ Error e;bool uncertain=false;auto r=call("upload",req.destination,{{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}},e,req.cancellation,{},&uncertain,req.progress);
  reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});
 }
 void ProtonProvider::stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply){Error e;auto r=call("stat",receipt.destination,{{"receipt",receipt.toJson()}},e);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}

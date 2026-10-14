@@ -13,6 +13,7 @@ struct OperationItem {
  QString shareIntent; // pending explicit create; inspection must not erase it
  QJsonObject shareIntentOptions; // non-secret options of that original intent
  Error error;
+ QString phase;std::optional<UploadProgress> uploadProgress;
  QJsonObject toJson() const;
  static OperationItem fromJson(const QJsonObject&);
  UploadRequest uploadRequest(const Destination&) const;
@@ -25,6 +26,7 @@ struct Operation {
  quint64 invocation=0,clipboardRevision=0;
  QString copyStatus="pending";
  bool cancelled=false;
+ QString phase="accepted";
  Error error;
  QJsonObject toJson() const;
  QJsonObject publicJson() const;

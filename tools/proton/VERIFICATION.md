@@ -130,3 +130,31 @@ seconds. This later live evidence supplements the initial helper-only unit above
 it does not prove recipient download bytes, password/expiry recovery, total-process
 memory or supported compositor acceptance. See the integration verification for
 the per-stage timings, review and remaining gates.
+
+
+## Upload progress and deadline follow-up
+
+The new helper SHA-256 is
+`0f8ef3ec922f7da98bcaae82d35a8b00e5c90775bab25a0d215ef9a8e65970fa`.
+Its manifest now fingerprints `progress.ts` alongside the other helper sources.
+Offline provisioning passed 27 tests / 117 assertions, seven compiled stdio
+cases and the complete 1,048,337-byte stdout regression. Full TypeScript checking
+retains the same four official Crypto/Bun stream declaration errors; no helper
+or test source diagnostics appeared. No helper lint command is configured.
+
+The regression tests observed missing SDK callback wiring in the old upload
+body before the change. They now verify callback forwarding while waiting for
+SDK completion to establish the receipt, total-free transfer counters, retry
+rollback, 100,000 synchronous reports, slow stdout and final drain. The reporter
+retains at most one in-flight write and one latest report; late/invalid counters
+are ignored and write errors are surfaced. Deadline errors identify expiry and
+its budget without exposing provider exception text or changing uncertainty.
+These SDK-shaped tests are offline; authenticated progress evidence is recorded
+separately in the integration verification document.
+
+Review finding #2 added two controlled-clock tests for delivery before completion
+and open slow-write rescheduling. Isolated disabled-scheduling and disabled-
+rescheduling mutations failed the new assertions; restored source passed all
+29 helper tests / 130 assertions. TypeScript still reports only the same four
+upstream declaration errors. Only the test file changed; the verified production
+helper SHA-256 and compiled stdio/full-stdout evidence above remain applicable.

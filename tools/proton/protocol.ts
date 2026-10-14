@@ -135,7 +135,7 @@ export function failure(code: string): JsonObject {
         keychain_unavailable: 'The private keychain is unavailable.', artifact_changed: 'The staged artifact has changed.',
         account_reference_in_use: 'Use a new account reference to connect a replacement account.',
         operation_failed: 'The Proton operation could not be completed.', operation_unknown: 'The Proton operation outcome is unknown.',
-        folder_creation_unknown: 'The folder creation outcome is unknown.', request_timeout: 'The Proton request timed out.',
+        folder_creation_unknown: 'The folder creation outcome is unknown.', request_timeout: 'Proton exceeded the configured request deadline; reconcile its saved identity before retrying.',
     };
-    return { code: code in messages ? code : 'operation_failed', message: messages[code] ?? messages.operation_failed, details: {} };
+    return { code: code in messages ? code : 'operation_failed', message: messages[code] ?? messages.operation_failed, details: code === 'request_timeout' ? { reason: 'deadline' } : {} };
 }

@@ -7,14 +7,17 @@ import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, privateDataDirect
 import { MAX_REQUEST_BYTES, ProtocolError, classifyNode, configured, days, failure, hash, makeReceipt,
     name, object, parseRequest, receipt, reference, shareOutcome, connectAction, text, type JsonObject } from './protocol';
 import { writeJson } from './stdout';
+import { createProgressReporter } from './progress';
 
 type Context = { sdk: ProtonDriveClient; auth: Awaited<ReturnType<typeof initialize>>['auth'] };
 const controller = new AbortController();
 let mutationStarted = false;
 let finalWrite: Promise<void> | undefined;
 let activeRequest: JsonObject | undefined;
+let deadlineExpired = false;
+let uploadProgress: ReturnType<typeof createProgressReporter> | undefined;
 function writeFinal(value: JsonObject): Promise<void> {
-    return finalWrite ??= writeJson(value);
+    return finalWrite ??= (async () => { await uploadProgress?.finish(); await writeJson(value); })();
 }
 const success = (result: JsonObject) => ({ ok: true, result });
 const status = (value: string, fields: JsonObject = {}) => ({ status: value, ...fields, error: {} });
@@ -103,13 +106,15 @@ async function reconcile(ctx: Context, request: JsonObject) {
         return status('own', { receipt: makeReceipt(request, node.uid, node.activeRevision.uid) });
     } catch { return status('unknown'); }
 }
-async function upload(ctx: Context, request: JsonObject) {
+export async function upload(ctx: Context, request: JsonObject): Promise<JsonObject> {
     if (request.condition !== 'absent') throw new ProtocolError('unsupported_condition');
     const artifact = object(request.artifact);
     name(request.candidate); hash(artifact.sha256); text(request.publicationId);
     text(artifact.path, 8192); text(artifact.mime, 255);
     if (!artifact.path.startsWith('/') || !Number.isSafeInteger(artifact.bytes) || artifact.bytes < 0)
         throw new ProtocolError('invalid_request');
+    uploadProgress = createProgressReporter();
+    await uploadProgress.phase('preparing');
     const folder = await destinationFolder(ctx, request);
     const file = await open(artifact.path, constants.O_RDONLY | constants.O_NOFOLLOW);
     try {
@@ -128,14 +133,18 @@ async function upload(ctx: Context, request: JsonObject) {
             }, controller.signal);
             // Node and Bun declare slightly different web-stream extensions; SDK needs standard ReadableStream only.
             const stream = Readable.toWeb(file.createReadStream({ autoClose: false, start: 0 })) as unknown as ReadableStream;
-            const pending = await uploader.uploadFromStream(stream, []);
+            await uploadProgress.phase('uploading');
+            // The pinned SDK counts encrypted block/thumbnail traffic, may
+            // roll back retries, and has no matching total. Do not divide by
+            // plaintext artifact bytes or infer publication from its counter.
+            const pending = await uploader.uploadFromStream(stream, [], bytes => uploadProgress?.report(bytes));
             const completed = await pending.completion();
             return status('uploaded', { receipt: makeReceipt(request, completed.nodeUid, completed.nodeRevisionUid) });
         } catch (error) {
             if (error instanceof NodeWithSameNameExistsValidationError) return status('collision');
-            return status('unknown', { error: failure('operation_unknown') });
+            return status('unknown', { error: deadlineExpired ? deadlineError() : failure('operation_unknown') });
         }
-    } finally { await file.close(); }
+    } finally { try { await uploadProgress.finish(); } finally { await file.close(); } }
 }
 async function share(ctx: Context, request: JsonObject) {
     const proof = receipt(request), options = object(request.options);
@@ -173,7 +182,9 @@ async function share(ctx: Context, request: JsonObject) {
         const after = await stat(ctx, request);
         return shareOutcome(proof, options.action, directUrl, after.status, info?.urlAccess?.expirationTime);
     } catch {
-        return shareOutcome(proof, options.action, '', 'unknown');
+        const result = shareOutcome(proof, options.action, '', 'unknown');
+        if (deadlineExpired) result.error = deadlineError();
+        return result;
     } finally { customPassword = undefined; }
 }
 export async function createFolder(ctx: Context, request: JsonObject): Promise<JsonObject> {
@@ -222,13 +233,21 @@ async function run(request: JsonObject): Promise<JsonObject> {
     if (request.method === 'share') return share(ctx, request);
     throw new ProtocolError('unsupported_request');
 }
+function deadlineError(): JsonObject {
+    const error = failure('request_timeout');
+    error.details = { reason: 'deadline', timeoutMs: activeRequest?.method === 'connect' ? 600000 : activeRequest?.destination.settings.requestTimeoutMs ?? 120000,
+        method: activeRequest?.method ?? 'request' };
+    return error;
+}
 async function timeout() {
+    deadlineExpired = true;
     controller.abort();
     const method = activeRequest?.method;
-    if (mutationStarted && (method === 'upload' || method === 'share'))
-        await writeFinal(success(method === 'share' ? shareOutcome(receipt(activeRequest!), activeRequest!.options.action, '', 'unknown') :
-            status('unknown', { error: failure('operation_unknown') })));
-    else await writeFinal({ ok: false, error: failure('request_timeout') });
+    if (mutationStarted && (method === 'upload' || method === 'share')) {
+        const result = method === 'share' ? shareOutcome(receipt(activeRequest!), activeRequest!.options.action, '', 'unknown') : status('unknown');
+        result.error = deadlineError();
+        await writeFinal(success(result));
+    } else await writeFinal({ ok: false, error: deadlineError() });
     process.exit(0);
 }
 if (import.meta.main) {
@@ -248,7 +267,7 @@ if (process.argv.length === 3 && process.argv[2] === '--version') {
         await writeFinal(success(result));
     } catch (error) {
         clearTimeout(timer);
-        await writeFinal({ ok: false, error: failure(error instanceof ProtocolError ? error.code : mutationStarted ? 'operation_unknown' : 'operation_failed') });
+        await writeFinal({ ok: false, error: deadlineExpired ? deadlineError() : failure(error instanceof ProtocolError ? error.code : mutationStarted ? 'operation_unknown' : 'operation_failed') });
     } finally { clearTimeout(timer); controller.abort(); }
     process.exit(0);
 } else {

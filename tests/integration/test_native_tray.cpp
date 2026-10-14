@@ -297,6 +297,13 @@ private slots:
   }
   QCOMPARE(cancelled.size(), 4); QCOMPARE(source.copies, 0); QVERIFY(views.isEmpty());
  }
+ void progressChangesDoNotRepeatTerminalToastAndExplicitCopyStillNotifies(){
+  QTemporaryDir directory;ProviderRegistry providers;SettingsService settings(directory.filePath("config.json"));QVERIFY(settings.save(configuration(directory.path(),true),{}));Source source;source.payload=textPayload();
+  OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());QStringList views;TrayController controller(operations,[&](const QString& value){views.append(value);},[]{});QTRY_VERIFY(controller.available());QString id;
+  operations.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);id=result["operationId"].toString();});QTRY_COMPARE(source.copies,1);QTRY_VERIFY(!notifications.values.isEmpty());
+  for(int i=0;i<50;++i)emit operations.changed(id);
+  QTest::qWait(400);QCOMPARE(notifications.values.size(),1);QVERIFY(views.isEmpty());bool copied=false;operations.copyResult(id,[&](Error e,QJsonObject){QVERIFY(!e);copied=true;});QTRY_VERIFY(copied);QTRY_COMPARE(notifications.values.size(),2);QCOMPARE(source.copies,2);
+ }
  void coreControllerDelegatesViewsAndPreservesCopyPendingAndNotificationSetting() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;
   SettingsService settings(directory.filePath("config.json")); auto config = configuration(directory.path(), true);

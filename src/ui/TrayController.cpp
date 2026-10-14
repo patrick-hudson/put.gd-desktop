@@ -62,7 +62,7 @@ TrayController::TrayController(OperationService& operations,
  // Qt registers a visible icon when a desktop tray becomes available later.
  tray_->show();
  }
- connect(&operations_, &OperationService::changed, this, [this](const QString& id) {
+ connect(&operations_, &OperationService::resultReady, this, [this](const QString& id) {
   if (!available() || !operations_.settingsSnapshot().notifications) return;
   operations_.inspect(id, [guard = QPointer<TrayController>(this)](Error error, QJsonObject operation) {
    if (!guard || error) return;

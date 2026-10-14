@@ -33,6 +33,23 @@ clears that reference for future links. Password entry is excluded from retained
 UI state and CLI arguments. Old receipts keep their original account, folder,
 credential and sharing settings when destinations are edited.
 
+The Proton destination's Advanced settings include **Request deadline** in
+seconds (default 120; range 1–600). It is saved as `requestTimeoutMs` in that
+profile's settings. This bounds each helper request, including verification,
+encryption and transfer; browser sign-in has a separate ten-minute deadline.
+Changes apply to new operations. Existing operations retain their accepted
+settings, including the original deadline, when retried. A deadline interruption
+reports its reason and budget and preserves an unknown remote outcome.
+
+Activity refreshes through acquisition, preparation, upload, sharing and
+clipboard results. Proton reports real SDK transferred bytes as encrypted
+blocks finish, with no matching total; Activity therefore shows bytes rather
+than an estimated percentage. Counters can include overhead and decrease during
+SDK retries. Other providers may report a matching total for percentage display.
+A full byte count does not establish a completed file or a usable link: those
+still require the confirmed receipt and sharing result. Notifications follow
+the saved final result, independently of progress updates.
+
 Shared results are Proton share-page URLs, including their complete access
 fragment. They are not direct file/embedding URLs. URLs are sensitive: history
 and explicitly requested clipboard/API results retain them; diagnostics and

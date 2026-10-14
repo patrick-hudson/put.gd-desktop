@@ -23,6 +23,10 @@ Requests are one newline-terminated JSON object, at most 1 MiB, with exactly
 `error` (`code`, `message`, `details`). Normal command stdout is one JSON response;
 logs belong to stderr. Exit 0 means accepted/successful transport result, not necessarily
 completed upload. Inspect the returned operation ID for eventual outcomes.
+Active `operation.inspect` and `operation.recent` results also expose an operation
+`phase` and per-item `phase`/optional `uploadProgress` with `bytesTransferred` and
+optional `bytesTotal`. A missing total means percentage is unknown. These are
+transient observations, not confirmed publication or final result evidence.
 
 Examples:
 

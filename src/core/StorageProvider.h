@@ -5,6 +5,7 @@
 #include <memory>
 #include <atomic>
 #include <QHash>
+#include <optional>
 namespace putgd {
 struct ProviderCapabilities {
  bool conditionalCreate=false,conditionalReplace=false,conditionalDelete=false,versionAddressing=false,stat=false,remove=false;
@@ -20,12 +21,23 @@ struct NameCheck {
  QString concurrencyToken;
  Error error;
 };
+// Informational provider byte counters, never publication/ownership evidence.
+// Total must use the same accounting as transferred bytes; unknown totals stay
+// absent. Retries may reduce the current counter. Reports stop before completion.
+struct UploadProgress {
+ QString phase="uploading"; // preparing, uploading, finalizing
+ std::optional<qint64> bytesTransferred,bytesTotal;
+ bool valid() const;
+ QJsonObject toJson() const;
+ static std::optional<UploadProgress> fromJson(const QJsonObject&);
+};
 struct UploadRequest {
  Destination destination; Artifact artifact;
  QString candidate,publicationId,condition; // absent or match
  QJsonObject objectReference;
  QString concurrencyToken;
  std::shared_ptr<std::atomic_bool> cancellation;
+ std::function<void(const UploadProgress&)> progress={};
 };
 struct UploadResult { QString status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { QString status; StorageReceipt receipt; Error error; }; // own, foreign, missing, unknown

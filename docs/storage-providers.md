@@ -13,6 +13,15 @@ profile edits and object versions, so upload/deletion mutations cannot bypass or
 by changing a profile revision. It must map a proposed name and its returned opaque
 object reference to the same identity.
 
+`UploadRequest.progress` is optional informational telemetry. Providers may report
+`phase` (`preparing`, `uploading`, `finalizing`) and nonnegative exact-integer
+`bytesTransferred`, with `bytesTotal` only when it uses the same accounting.
+Retries may reduce the counter. Stop reporting before the one completion callback;
+progress cannot establish publication, identity, ownership or success. Shared
+services coalesce active observations without per-tick durable journal writes,
+and ignore late reports after the upload attempt closes. The final observation
+may be retained with the final result. Providers without progress remain valid.
+
 Capabilities explicitly describe conditional create/replace/delete, version addressing,
 stat, removal, URL availability, naming byte limits and deletion effects. Unsupported
 required safeguards fail explicitly. `checkName` returns absent, present or inconclusive,

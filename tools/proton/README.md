@@ -19,12 +19,16 @@ runtime versions, and dependency notices. Both files ship next to the runtime. S
 
 `--stdio` consumes exactly one UTF-8 JSON request (maximum 128 KiB) until EOF;
 the caller closes stdin. It emits at most one `{"event":"auth","url":...}`
-line during `connect`, then one `{"ok":true,"result":...}` or
+line during `connect`, or bounded/coalesced
+`{"event":"progress","phase":"preparing"|"uploading"|"finalizing","bytesTransferred"?:integer,"bytesTotal"?:integer}`
+lines during `upload`, then one `{"ok":true,"result":...}` or
 `{"ok":false,"error":{"code":...,"message":...,"details":{}}}` line.
 Auth URLs are transient UI events. Errors are generic, never provider exception
 text. Secrets and account names never appear on the command line. The required
 `PUTGD_PROTON_DATA_DIR` is an owned, private, real directory. Timeout defaults
 to 120 seconds and is bounded to 1–600 seconds; login can use 600 seconds.
+Deadline errors carry a generic reason and the request budget. A deadline after
+mutation dispatch preserves `unknown`; cancellation is distinguished from expiry.
 
 Every request carries `schemaVersion:1`, `method`, and `destination` containing
 `providerId:"proton-drive"`, `profileId`, `profileRevision`, `settings` and
@@ -49,6 +53,13 @@ SDK. Encrypted additional metadata stores publication ID and SHA-256. Receipts
 contain exact SDK completion node/revision IDs, the revision concurrency token,
 and SHA-256 inside `objectReference`. Upload never overwrites an existing file
 or uploads a revision. Uncertain mutations return `unknown` for reconciliation.
+Upload progress uses the SDK's callback and a bounded reporter with one pending
+stdout write and one replaceable latest event. It drains before final completion.
+The pinned SDK reports encrypted transfer traffic, can roll back during retries,
+and supplies no matching total. The helper leaves `bytesTotal` absent rather
+than dividing by plaintext artifact size. It exposes preparing/uploading phases;
+there is no public SDK commit-start callback from which to infer finalizing.
+Progress never supplies receipt identities or establishes publication.
 
 Stat takes the receipt; reconciliation takes the original candidate,
 publication ID and artifact checksum. Both return `own`, `foreign`, `missing`
@@ -92,17 +103,20 @@ live account or graphical desktop acceptance.
 ## Opt-in latency probe
 
 `cmake --build --preset dev --target proton_latency_probe` builds a non-installed
-probe using the production C++ adapter and bundled helper. Its two arguments are
-the configuration file and a new, owned private output directory. The config must
+probe using the production C++ adapter and bundled helper. Its required arguments are
+the configuration file and a new, owned private output directory. An optional
+third argument selects synthetic payload bytes (1–67,108,864; default 65,536). The config must
 contain exactly one Proton profile with an isolated `put.gd-` test folder. Resolve
 and preflight the actual keychain D-Bus Unix socket with
 `tools/diagnostics/check_socket_paths.py --socket` before running; set `TMPDIR` to
 the new short output directory. No put.gd session socket is created by this probe.
 
-It creates one unique synthetic 64 KiB file, times collision preflight, upload,
+It creates one unique synthetic file, times collision preflight, upload,
 sharing and revocation, and revokes only its own new test link. It leaves the
 private file in the isolated folder. Stdout contains stage timings and generic
-status/error codes only. Private journals retain exact object identities and
+status/error codes only. `upload-progress.jsonl` and `progress-summary.json`
+retain numeric SDK progress and whether counters arrived before completion.
+Private journals retain exact object identities and
 credential references for recovery; exclude those journals and the source config
 from diagnostics or review packets. Capability URLs are omitted from the probe's
 retained receipts. On failure inspect the retained intent before another mutation.

@@ -23,7 +23,8 @@ public:
  QJsonObject setup(const QString&,const Destination&,const QJsonObject&,Error&,SetupEvent={});
 private:
  QJsonObject call(const QString&,const Destination&,QJsonObject,Error&,
-                 std::shared_ptr<std::atomic_bool> = {},SetupEvent={},bool* outcomeUncertain=nullptr);
+                 std::shared_ptr<std::atomic_bool> = {},SetupEvent={},bool* outcomeUncertain=nullptr,
+                 std::function<void(const UploadProgress&)> progress={});
  std::atomic_int active_{0};std::atomic_bool stopping_{false};
 };
 }

@@ -9,6 +9,41 @@ using namespace putgd;using namespace putgd::test;
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void midflightPhaseReachesInspectionAndChangeSignal(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());int changes=0;connect(&operations,&OperationService::changed,this,[&]{++changes;});
+  auto drain=qScopeGuard([&]{for(auto complete:provider->completions)complete();provider->completions.clear();});QString id;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);
+  QJsonObject inspected;bool replied=false;operations.inspect(id,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;replied=true;});QTRY_VERIFY(replied);
+  QCOMPARE(inspected["phase"].toString(),QString("uploading"));QCOMPARE(inspected["items"].toArray()[0].toObject()["phase"].toString(),QString("uploading"));QTRY_VERIFY(changes>1);
+  const auto request=provider->requests.first();QVERIFY(bool(request.progress));request.progress({"uploading",1024,2048});
+  replied=false;operations.inspect(id,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;replied=true;});QTRY_VERIFY(replied);
+  QCOMPARE(inspected["items"].toArray()[0].toObject()["uploadProgress"].toObject()["bytesTransferred"].toInteger(),1024);
+  request.progress({"uploading",512,{}});replied=false;operations.recent([&](Error e,QJsonObject r){QVERIFY(!e);inspected=r["operations"].toArray()[0].toObject();replied=true;});QTRY_VERIFY(replied);
+  const auto rollback=inspected["items"].toArray()[0].toObject()["uploadProgress"].toObject();QCOMPARE(rollback["bytesTransferred"].toInteger(),512);QVERIFY(!rollback.contains("bytesTotal"));
+  HistoryStore journal(operations.databasePath());QVERIFY(!journal.operation(id).items.first().uploadProgress); // No per-byte durable checkpoints.
+  QTest::qWait(300);const auto before=changes;for(int i=0;i<10000;++i)request.progress({"uploading",i,{}});QTest::qWait(300);QVERIFY(changes-before<=2);
+  const auto afterBurst=changes;for(int i=0;i<100;++i)request.progress({"uploading",9999,{}});QTest::qWait(300);QCOMPARE(changes,afterBurst);
+  provider->failUpload=true;provider->completions.takeFirst()();QTRY_COMPARE(journal.operation(id).state,QString("partial"));QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  request.progress({"uploading",999999,{}});replied=false;operations.inspect(id,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;replied=true;});QTRY_VERIFY(replied);
+  QCOMPARE(inspected["state"].toString(),QString("partial"));QCOMPARE(inspected["items"].toArray()[0].toObject()["uploadProgress"].toObject()["bytesTransferred"].toInteger(),9999);QCOMPARE(inspected["items"].toArray()[0].toObject()["error"].toObject()["code"].toString(),QString("fixture_failed"));
+  provider->failUpload=false;bool retried=false;operations.retry(id,[&](Error e,QJsonObject){QVERIFY(!e);retried=true;});QTRY_VERIFY(retried);QTRY_COMPARE(provider->completions.size(),1);
+  request.progress({"uploading",999999,{}});provider->requests.last().progress({"uploading",7,{}});replied=false;operations.inspect(id,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;replied=true;});QTRY_VERIFY(replied);
+  QCOMPARE(inspected["items"].toArray()[0].toObject()["uploadProgress"].toObject()["bytesTransferred"].toInteger(),7);
+ }
+ void inactiveCancellationNormalizesPhaseWithoutChangingItemOutcome(){
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  Operation prior;prior.id="synthetic-inactive";prior.state="partial";prior.phase="uploading";prior.settings=settings.snapshot();OperationItem item;item.artifact.id="synthetic-inactive-item";item.uploadStatus="unknown";item.phase="uploading";prior.items.append(item);QVERIFY(!journal.saveOperation(prior));
+  bool replied=false;operations.cancel(prior.id,[&](Error e,QJsonObject value){QVERIFY(!e);QCOMPARE(value["phase"].toString(),QString("cancelled"));replied=true;});QTRY_VERIFY(replied);const auto saved=journal.operation(prior.id);QCOMPARE(saved.phase,QString("cancelled"));QCOMPARE(saved.items.first().phase,QString("unknown"));QCOMPARE(saved.items.first().uploadStatus,QString("unknown"));QCOMPARE(source.reads,0);
+ }
+
+ void optionalProgressRoundTripsAndLegacyOperationsRemainReadable(){
+  OperationItem item;item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress=UploadProgress{"uploading",10,20};auto value=item.toJson();auto restored=OperationItem::fromJson(value);QVERIFY(restored.uploadProgress);QCOMPARE(restored.uploadProgress->bytesTransferred.value(),10);QCOMPARE(restored.uploadProgress->bytesTotal.value(),20);
+  value.remove("phase");value.remove("uploadProgress");auto legacy=OperationItem::fromJson(value);QCOMPARE(legacy.phase,QString("uploading"));QVERIFY(!legacy.uploadProgress);
+  for(const auto& invalid:QList<QJsonObject>{{{"phase","uploading"},{"bytesTransferred",-1}},{{"phase","uploading"},{"bytesTransferred",1.5}},{{"phase","uploading"},{"bytesTransferred",21},{"bytesTotal",20}},{{"phase","uploading"},{"bytesTotal",20}},{{"phase","uploading"},{"bytesTransferred",9007199254740992.0}},{{"phase","uploading"},{"bytesTransferred",1},{"url","https://example.invalid"}}})QVERIFY(!UploadProgress::fromJson(invalid));
+ }
+
  void cleanupBlocksRetriesUntilItsSnapshotFinishes() {
   QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
   bool cleaned=false;operations.cleanup([&](Error e,QJsonObject){QVERIFY(!e);cleaned=true;});
