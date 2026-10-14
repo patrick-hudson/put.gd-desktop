@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.24)
+project(putgd_lab_secret_bridge LANGUAGES CXX)
+find_package(Qt6 6.4.2 REQUIRED COMPONENTS Core)
+find_package(Qt6Keychain 0.14.2 CONFIG REQUIRED)
+add_executable(putgd-lab-secret-bridge main.cpp)
+target_compile_features(putgd-lab-secret-bridge PRIVATE cxx_std_20)
+target_link_libraries(putgd-lab-secret-bridge PRIVATE Qt6::Core qt6keychain)
