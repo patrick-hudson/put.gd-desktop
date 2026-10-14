@@ -4,6 +4,7 @@
 namespace putgd {
 class ProtonProvider final : public StorageProvider {
 public:
+ bool reportsUploadProgress() const override {return true;}
  using SetupEvent=std::function<void(const QJsonObject&)>;
  static constexpr int MaximumRequestTimeoutMs=86400000;
  static QJsonObject defaults();

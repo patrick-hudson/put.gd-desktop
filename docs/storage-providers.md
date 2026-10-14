@@ -21,6 +21,10 @@ progress cannot establish publication, identity, ownership or success. Shared
 services coalesce active observations without per-tick durable journal writes,
 and ignore late reports after the upload attempt closes. The final observation
 may be retained with the final result. Providers without progress remain valid.
+Providers with reliable upload-phase reporting override `reportsUploadProgress()`
+to return true. The tray then waits for `uploading` or `finalizing` before turning
+green, remaining blue through provider setup and `preparing`. Other providers keep
+request-boundary activity tracking. S3 and Proton declare phase reporting.
 
 Capabilities explicitly describe conditional create/replace/delete, version addressing,
 stat, removal, URL availability, naming byte limits and deletion effects. Unsupported

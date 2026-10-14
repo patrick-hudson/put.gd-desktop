@@ -77,6 +77,7 @@ public:
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
+ bool storageActive() const {return storageRequests_>0;}
  Settings settingsSnapshot() const {return settings_.snapshot();}
  void cancel(const QString& id,JsonReply);
  void retry(const QString& id,JsonReply);
@@ -99,10 +100,24 @@ signals:
  void changed(const QString& id);
  // One notification for a live observation batch, independent of durable results.
  void observationsChanged();
+ void storageActivityChanged();
+ // An attempt failed outside normal terminal-result delivery (e.g. local retry).
+ void operationError();
  // A terminal/copy result is durably observable; progress never emits this.
  void resultReady(const QString& id);
  void sharingStopped(const QJsonObject& document,const putgd::Error& error);
 private:
+ // Scoped provider calls count requests, independently of queue/encoding/journal work.
+ class StorageActivity {
+ public:
+  explicit StorageActivity(OperationService& owner,bool active=true):owner_(owner) {set(active);}
+  ~StorageActivity() {set(false);}
+  void set(bool active) {if(active!=active_){active_=active;owner_.storageActivityDelta(active?1:-1);}}
+ private:
+  OperationService& owner_;bool active_=false;
+ };
+ void storageActivityDelta(int);
+ template<class T,class Start> T storageRequest(Start);
  struct Job {Operation op;ClipboardPayload payload;bool acquire=false;std::shared_ptr<std::atomic_bool> cancelled;std::shared_ptr<qint64> payloadLease;};
  void observe(const QJsonObject&);
  QJsonObject currentObservation(QJsonObject) const;
@@ -132,7 +147,7 @@ private:
  bool heapReclamationPending_=false;
  quint64 heapReclamationCount_=0;
  qint64 lastHeapReclamationUsec_=0;
- int running_=0;
+ int running_=0,storageRequests_=0;
  quint64 invocation_=0;
  QString selectingId_;
  QSet<QString> preparedOwners_,finishedPrepared_;
@@ -146,4 +161,9 @@ template<class T,class Start> T awaitProvider(Start start) {
  auto promise=std::make_shared<std::promise<T>>();auto future=promise->get_future();
  start([promise](T value) {promise->set_value(std::move(value));});return future.get();
 }
+template<class T,class Start> T OperationService::storageRequest(Start start) {
+ StorageActivity activity(*this);
+ return awaitProvider<T>(std::move(start));
+}
+
 }

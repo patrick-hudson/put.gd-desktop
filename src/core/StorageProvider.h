@@ -62,6 +62,9 @@ bool shareResultMatchesReceipt(const ShareResult&,const StorageReceipt&);
 class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
+ // True when uploads reliably report preparing/uploading/finalizing phases.
+ // Such uploads become active only upon uploading/finalizing; telemetry remains optional.
+ virtual bool reportsUploadProgress() const { return false; }
  virtual bool reconcilesDeleteProgress() const { return false; }
  // Providers may adopt longer execution budgets on explicit retry, without changing destination identity.
  virtual std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const { return {}; }

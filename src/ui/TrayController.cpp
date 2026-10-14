@@ -15,6 +15,9 @@
 
 namespace putgd {
 namespace {
+bool meaningfulError(const QJsonObject& error) {
+ const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
+}
 const QString idleTooltip = "put.gd — Share and local capture";
 QString phaseLabel(const QString& phase) {
  if(phase=="preflight")return "Checking destination";
@@ -114,13 +117,33 @@ TrayController::TrayController(OperationService& operations,
  // Qt registers a visible icon when a desktop tray becomes available later.
  tray_->show();
  }
+ errorFlashTimer_.setInterval(300);
+ errorFlashTimer_.setTimerType(Qt::PreciseTimer);
+ errorRecoveryTimer_.setSingleShot(true);
+ errorRecoveryTimer_.setInterval(3000);
+ errorRecoveryTimer_.setTimerType(Qt::PreciseTimer);
+ connect(&errorFlashTimer_,&QTimer::timeout,this,[this] {
+  errorRed_=!errorRed_;
+  refreshActivity();
+ });
+ connect(&errorRecoveryTimer_,&QTimer::timeout,this,[this] {
+  errorFlashTimer_.stop();errorRed_=false;refreshActivity();
+ });
+ connect(&operations_,&OperationService::operationError,this,&TrayController::flashError);
+ connect(&operations_,&OperationService::storageActivityChanged,this,&TrayController::refreshActivity);
  connect(&operations_, &OperationService::observationsChanged, this, &TrayController::refreshActivity);
  refreshActivity();
  connect(&operations_, &OperationService::resultReady, this, [this](const QString& id) {
-  if (!available() || !operations_.settingsSnapshot().notifications) return;
   operations_.inspect(id, [guard = QPointer<TrayController>(this)](Error error, QJsonObject operation) {
    if (!guard || error) return;
    const auto state = operation["state"].toString();
+   bool failed=meaningfulError(operation["error"].toObject())||state=="failed"||state=="partial"||state=="interrupted";
+   for(const auto& value:operation["items"].toArray()) {
+    const auto item=value.toObject();
+    failed=failed||meaningfulError(item["error"].toObject())||meaningfulError(item["local"].toObject()["error"].toObject());
+   }
+   if(failed&&state!="cancelled")guard->flashError();
+   if(!guard->available()||!guard->operations_.settingsSnapshot().notifications)return;
    if ((state == "completed" || state == "partial") && operation["copyStatus"] == "pending")
     return;
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
@@ -146,17 +169,24 @@ bool TrayController::available() const { return QSystemTrayIcon::isSystemTrayAva
 bool TrayController::availabilityKnown() const { return true; }
 #endif
 void TrayController::refreshActivity() {
- const auto observations=operations_.activeObservations();const bool working=!observations.isEmpty();
- const auto text=activityText(observations);if(working==working_&&text==activityText_)return;
+ const auto observations=operations_.activeObservations();
+ const auto text=activityText(observations);
+ // Error pulses have priority; the off phase is blue even during other requests.
+ const auto color=errorFlashTimer_.isActive()?QColor(errorRed_?"#ffb4ab":"#9bbcff"):
+                  QColor(operations_.storageActive()?"#62d69b":"#9bbcff");
+ if(color==iconColor_&&text==activityText_)return;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(working,text);
+ if(native_)native_->setActivity(color,text);
  else
 #endif
  if(tray_) {
-  if(working!=working_)tray_->setIcon(VisualStyle::icon("brand",QColor(working?"#62d69b":"#9bbcff")));
-  tray_->setToolTip(working?QString("put.gd — Working\n")+text:idleTooltip);
+  if(color!=iconColor_)tray_->setIcon(VisualStyle::icon("brand",color));
+  if(text!=activityText_)tray_->setToolTip(text.isEmpty()?idleTooltip:QString("put.gd — Working\n")+text);
  }
- working_=working;activityText_=text;
+ iconColor_=color;activityText_=text;
+}
+void TrayController::flashError() {
+ errorRed_=true;errorFlashTimer_.start();errorRecoveryTimer_.start();refreshActivity();
 }
 void TrayController::activate() { showSettings(); }
 void TrayController::showSettings() { showView("settings"); }
@@ -193,6 +223,7 @@ void TrayController::notifyMessage(const QString& title, const QString& message,
  if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);
 }
 void TrayController::notifyFailure(const Error& error) {
+ if(error)flashError();
  if (error && available()) notifyMessage("put.gd", error.message, true);
 }
 }
