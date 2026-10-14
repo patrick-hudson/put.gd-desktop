@@ -62,6 +62,45 @@ class HistoryGui:public QObject {
  }
 
 private slots:
+ void columnBoundariesFollowPointer_data(){
+  QTest::addColumn<bool>("activity");QTest::addColumn<int>("column");QTest::addColumn<int>("delta");
+  for(bool activity:{false,true})for(int column:activity?QList<int>{0,1,2,3,4}:QList<int>{0,1,4,5,6})for(int delta:{40,-40})
+   QTest::newRow(qPrintable(QString("%1-column-%2-%3").arg(activity?"activity":"history").arg(column).arg(delta)))<<activity<<column<<delta;
+ }
+ void columnBoundariesFollowPointer(){
+  QFETCH(bool,activity);QFETCH(int,column);QFETCH(int,delta);
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
+  std::unique_ptr<QWidget> window;QHeaderView* header=nullptr;
+  if(activity){auto* view=new RecentOperations(fixture.session);window.reset(view);auto* tree=view->findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(tree->topLevelItemCount(),1);header=tree->header();}
+  else{auto* view=new HistoryWindow(fixture.session);window.reset(view);auto* table=view->findChild<QTableView*>("historyTable");QTRY_COMPARE(table->model()->rowCount(),1);header=table->horizontalHeader();}
+  if(activity){QTreeWidget defaults;QCOMPARE(header->sectionsMovable(),defaults.header()->sectionsMovable());QCOMPARE(header->sectionsClickable(),defaults.header()->sectionsClickable());}
+  window->resize(1800,700);window->show();QTRY_VERIFY(header->isVisible());QTest::qWait(20);
+  const auto left=header->sectionViewportPosition(column);const auto width=header->sectionSize(column);
+  QVERIFY(width-40>=header->minimumSectionSize());
+  const QPoint start(left+width-1,header->height()/2);
+  auto drag=[&](QPoint from,int distance){
+   QTest::mousePress(header->viewport(),Qt::LeftButton,Qt::NoModifier,from);
+   QTest::mouseMove(header->viewport(),from+QPoint(distance,0));QTest::qWait(20);
+   QTest::mouseRelease(header->viewport(),Qt::LeftButton,Qt::NoModifier,from+QPoint(distance,0));
+  };
+  QTest::mousePress(header->viewport(),Qt::LeftButton,Qt::NoModifier,start);
+  for(int distance:{delta/2,delta}){
+   QTest::mouseMove(header->viewport(),start+QPoint(distance,0));QTest::qWait(20);
+   QCOMPARE(header->sectionViewportPosition(column),left);
+   QCOMPARE(header->sectionSize(column),width+distance);
+  }
+  QTest::mouseRelease(header->viewport(),Qt::LeftButton,Qt::NoModifier,start+QPoint(delta,0));
+  QCOMPARE(header->sectionViewportPosition(column),left);
+  QCOMPARE(header->sectionSize(column),width+delta);
+  QCOMPARE(header->sectionViewportPosition(column)+header->sectionSize(column),start.x()+1+delta);
+  // Dragging farther left stops at the native minimum instead of moving neighbors.
+  const auto minimum=header->minimumSectionSize();
+  drag(QPoint(left+header->sectionSize(column)-1,start.y()),minimum-header->sectionSize(column)-20);
+  QCOMPARE(header->sectionSize(column),minimum);QCOMPARE(header->sectionViewportPosition(column),left);
+ }
  void externalDeletionAndClearRefreshOpenViews() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
