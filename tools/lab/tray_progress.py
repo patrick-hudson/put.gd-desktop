@@ -266,6 +266,22 @@ class Replay:
         require(after['metadata']['validation']['ok'], 'Settings patch not accepted')
         self.result['acceptedSettingsRevision'] = after['metadata']['acceptedRevision']
 
+    def activate_credentials(self):
+        if self.args.provider != 's3':
+            return
+        metadata = self.cli('settings.get')['metadata']
+        accepted = self.cli('setup.unlockCredentials', {'profileId': self.args.profile_id,
+                             'expectedRevision': metadata['observedRevision']})
+        setup_id = accepted['setupId']
+        self.result['credentialSetupId'] = setup_id
+        self.save('results.json', self.result)
+        def finished():
+            job = self.cli('setup.inspect', {'id': setup_id})
+            return job if job['state'] != 'running' else None
+        job = self.wait(finished, 'Explicit S3 credential unlock did not settle')
+        require(job['state'] == 'completed', 'Explicit S3 credential unlock failed: ' +
+                job.get('error', {}).get('code', 'unknown'))
+
     def get_json(self, remote):
         return json.loads(lab.ssh(self.run, 'cat -- ' + shlex.quote(remote) + '\n'))
 
@@ -436,6 +452,7 @@ PY
                                 'folders': {'images': None, 'videos': None, 'text': None, 'other': None}},
                     'naming': {'mode': 'generated', 'collisionPolicy': 'rename'},
                     'limits': {'concurrentUploads': 1}, 'preferences': {'notifications': False, 'launchAtLogin': False}})
+        self.activate_credentials()
         identity = lab.verify_running_app(self.run)
         self.pid = identity['pid']
         self.result['runningApp'] = identity

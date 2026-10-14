@@ -135,7 +135,9 @@ have the requested provider and a unique isolated test destination:
 The runner requests shared clipboard results, generated names and rename
 collisions; it does not overwrite existing objects. It does not modify bucket
 policy, versioning, retention or existing user objects. It verifies the accepted
-settings revision before invoking work. Provider capability and diagnostics
+settings revision and explicitly invokes/polls production `setup.unlockCredentials`
+for the selected S3 keychain entry before invoking work. Proton reads its own
+session through the bundled helper. Provider capability and diagnostics
 inspection are saved before the first action.
 
 ## Run and inspect

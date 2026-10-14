@@ -132,5 +132,25 @@ class TrayProgressContracts(unittest.TestCase):
                     tray.private_settings(path, 'test', 's3', 'tray-unique')
 
 
+    def test_s3_explicitly_unlocks_preprovisioned_credentials_before_live_work(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        replay = object.__new__(tray.Replay)
+        replay.args = SimpleNamespace(provider='s3', profile_id='test')
+        replay.result = {}
+        replay.save = Mock()
+        replay.wait = lambda predicate, message: predicate()
+        replay.cli = Mock(side_effect=[{'metadata': {'observedRevision': 'revision'}},
+                                      {'setupId': 'setup'}, {'state': 'completed', 'error': {}}])
+        replay.activate_credentials()
+        self.assertEqual(replay.cli.call_args_list[1].args,
+                         ('setup.unlockCredentials', {'profileId': 'test', 'expectedRevision': 'revision'}))
+        self.assertEqual(replay.cli.call_args_list[2].args, ('setup.inspect', {'id': 'setup'}))
+        replay.args.provider = 'proton-drive'
+        replay.cli.reset_mock()
+        replay.activate_credentials()
+        replay.cli.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()
