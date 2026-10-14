@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "candidate": {
+    "commit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+    "tree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+    "count": 176,
+    "archiveSha256": "6c1eb378b3d42774f15e19875f9642a5cb0d96416e73d59cbff26336447ca36e",
+    "cinnamonBuildHost": "Linux Mint 22.3, dynamically linked Qt 6.4.2, GCC13.3, AWS SDK1.11.907",
+    "sourceWorkingDiff": ""
+  },
+  "scope": "single-head KVM native capture/clipboard/cancellation, six view opens and rendered storage/error tray; offline signed S3 wire oracle, no cloud acceptance; post-use guest memory, no physical budget certification",
+  "profiles": {
+    "cinnamon": {
+      "primaryRun": "i33c1",
+      "memoryRun": "i33c1",
+      "nativeCases": [
+        {
+          "case": "region",
+          "client": "qt",
+          "testId": "cb6b84d2e5c44bbf9cd834d133998135",
+          "operationId": "5bc7835d-b18d-4a14-be59-de0f6c295868",
+          "file": "cinnamon/cases/region-qt.json"
+        },
+        {
+          "case": "window",
+          "client": "qt",
+          "testId": "4eae6cafe69240f1a7935a5075053725",
+          "operationId": "9c01e960-628f-40c7-b2d5-e752c0325f03",
+          "file": "cinnamon/cases/window-qt.json"
+        },
+        {
+          "case": "desktop",
+          "client": "qt",
+          "testId": "b094cd53403844a38295bf34d95c6976",
+          "operationId": "3123f3c7-dd5a-459a-8433-2f46fa1cb930",
+          "file": "cinnamon/cases/desktop-qt.json"
+        },
+        {
+          "case": "clipboard-text",
+          "client": "qt",
+          "testId": "529865b4bd0a4c068ac27b8593e7ff5b",
+          "operationId": "63d078e5-456c-4426-ac93-79cab32a4a97",
+          "file": "cinnamon/cases/clipboard-text-qt.json"
+        },
+        {
+          "case": "clipboard-image",
+          "client": "qt",
+          "testId": "b8bff3cc1f57441f86430c275426d391",
+          "operationId": "cc662f68-97d5-4c78-8e8c-bc560dc251a7",
+          "file": "cinnamon/cases/clipboard-image-qt.json"
+        },
+        {
+          "case": "clipboard-files",
+          "client": "qt",
+          "testId": "859d87f1741c4a698aa0de65c04faaa9",
+          "operationId": "6069bf13-50a1-4bb4-86b1-8f96b555f556",
+          "file": "cinnamon/cases/clipboard-files-qt.json"
+        },
+        {
+          "case": "region-cancel-escape",
+          "client": "qt",
+          "testId": "568a7eccf8554c1990b710497b7c9768",
+          "operationId": "d1309b99-a001-4efa-ad67-73a8d1e6df76",
+          "file": "cinnamon/cases/region-cancel-escape-qt.json"
+        },
+        {
+          "case": "region-cancel-right-click",
+          "client": "qt",
+          "testId": "0477393d227246a5bdd82d2c3184bb41",
+          "operationId": "552420bc-408e-4cd5-a9a3-66451ec07c78",
+          "file": "cinnamon/cases/region-cancel-right-click-qt.json"
+        },
+        {
+          "case": "region-cancel-zero-area",
+          "client": "qt",
+          "testId": "d76abf91bc5a4100a63cee6c877629f2",
+          "operationId": "18a23095-84b6-479b-85c9-6e90cba2c5da",
+          "file": "cinnamon/cases/region-cancel-zero-area-qt.json"
+        },
+        {
+          "case": "clipboard-text",
+          "client": "gtk",
+          "testId": "f3b38e7518c7430c83f246ee68ae226d",
+          "operationId": "81a5a51c-60c2-4f39-9076-d54d3dee6ecc",
+          "file": "cinnamon/cases/clipboard-text-gtk.json"
+        },
+        {
+          "case": "clipboard-image",
+          "client": "gtk",
+          "testId": "5cd1e0fcabcc43388f4af21c7e10729d",
+          "operationId": "d352599d-3cf0-46cc-b8a6-5e70ade6e894",
+          "file": "cinnamon/cases/clipboard-image-gtk.json"
+        },
+        {
+          "case": "clipboard-files",
+          "client": "gtk",
+          "testId": "12396655784e459bbbc48ef1733a9263",
+          "operationId": "e1508ef5-a3cc-404e-895e-0d14d65355b7",
+          "file": "cinnamon/cases/clipboard-files-gtk.json"
+        }
+      ],
+      "views": 6,
+      "visualChecks": 5,
+      "memory": [
+        {
+          "passed": true,
+          "peakMiB": 29.95703125,
+          "peakPssMiB": 19.86328125,
+          "durationSeconds": 300.000214217,
+          "samples": 61,
+          "zeroSwap": true,
+          "noHelpers": true,
+          "cpuPercentOneCore": 0.006666661906292288
+        },
+        {
+          "passed": true,
+          "peakMiB": 29.9375,
+          "peakPssMiB": 19.8486328125,
+          "durationSeconds": 300.00022641099986,
+          "samples": 61,
+          "zeroSwap": true,
+          "noHelpers": true,
+          "cpuPercentOneCore": 0.006666661635314912
+        }
+      ]
+    },
+    "gnome": {
+      "primaryRun": "i33g1",
+      "memoryRun": "i33g1",
+      "nativeCases": [
+        {
+          "case": "region",
+          "client": "qt",
+          "testId": "e42fd33d8c8142f5a47526ed0f8b6048",
+          "operationId": "791f1211-7ce4-4822-b851-1330de459624",
+          "file": "gnome/cases/region-qt.json"
+        },
+        {
+          "case": "window",
+          "client": "qt",
+          "testId": "ed0e7a06d53d470abe56ee881b9bfadf",
+          "operationId": "55b735b9-5822-4ca2-847e-0b6985fccc93",
+          "file": "gnome/cases/window-qt.json"
+        },
+        {
+          "case": "desktop",
+          "client": "qt",
+          "testId": "b45448043b6344c0adf7dcbeb6663a90",
+          "operationId": "f62a348a-bb83-4092-b883-2111087cf8de",
+          "file": "gnome/cases/desktop-qt.json"
+        },
+        {
+          "case": "clipboard-text",
+          "client": "qt",
+          "testId": "c6d76215bb6b4c9caa98be232e13d536",
+          "operationId": "68ac95ea-2252-42cf-a665-3fc41441b81f",
+          "file": "gnome/cases/clipboard-text-qt.json"
+        },
+        {
+          "case": "clipboard-image",
+          "client": "qt",
+          "testId": "cfe38e78b9574a3ab0f098dbc7cdb5d4",
+          "operationId": "4ae1a77c-8a72-4feb-8d38-dff846b7402d",
+          "file": "gnome/cases/clipboard-image-qt.json"
+        },
+        {
+          "case": "clipboard-files",
+          "client": "qt",
+          "testId": "53a03b86caee47718857db24315367fb",
+          "operationId": "b5adeec7-a136-4c8f-939b-f7dd81a55c09",
+          "file": "gnome/cases/clipboard-files-qt.json"
+        },
+        {
+          "case": "region-cancel-escape",
+          "client": "qt",
+          "testId": "12f0644e91dd4850a4e8f14de1d8e73d",
+          "operationId": "edc2cf12-406d-444d-9cdb-a702db491738",
+          "file": "gnome/cases/region-cancel-escape-qt.json"
+        },
+        {
+          "case": "region-cancel-right-click",
+          "client": "qt",
+          "testId": "a08fff73a24b440e8ad5c7c3ecccc87a",
+          "operationId": "6746c332-2157-4848-bef4-5f69a19c978e",
+          "file": "gnome/cases/region-cancel-right-click-qt.json"
+        },
+        {
+          "case": "region-cancel-zero-area",
+          "client": "qt",
+          "testId": "eafa8c54b96a485481cc47febf5ef399",
+          "operationId": "d26609b0-a047-4fd1-a014-9ca524e5aa2a",
+          "file": "gnome/cases/region-cancel-zero-area-qt.json"
+        },
+        {
+          "case": "clipboard-text",
+          "client": "gtk",
+          "testId": "c340342dd79741b2a287c1b3bde14b51",
+          "operationId": "cc611de8-e0fd-4935-9cfd-76b06f420a67",
+          "file": "gnome/cases/clipboard-text-gtk.json"
+        },
+        {
+          "case": "clipboard-image",
+          "client": "gtk",
+          "testId": "a528dfd7f3314cc9a97dc5579b2ab424",
+          "operationId": "57aa8148-0370-424a-93a4-f4bea7d3753e",
+          "file": "gnome/cases/clipboard-image-gtk.json"
+        },
+        {
+          "case": "clipboard-files",
+          "client": "gtk",
+          "testId": "8b89cefb9b4f4ca88dd2df901b5fa175",
+          "operationId": "21cb4744-a4b1-4690-9f90-e9291ef2eb5a",
+          "file": "gnome/cases/clipboard-files-gtk.json"
+        }
+      ],
+      "views": 6,
+      "visualChecks": 5,
+      "memory": [
+        {
+          "passed": true,
+          "peakMiB": 33.9765625,
+          "peakPssMiB": 17.3125,
+          "durationSeconds": 300.00010127500013,
+          "samples": 61,
+          "zeroSwap": true,
+          "noHelpers": true,
+          "cpuPercentOneCore": 0.009999996624167801
+        },
+        {
+          "passed": true,
+          "peakMiB": 33.9765625,
+          "peakPssMiB": 17.314453125,
+          "durationSeconds": 300.00036297999986,
+          "samples": 61,
+          "zeroSwap": true,
+          "noHelpers": true,
+          "cpuPercentOneCore": 0.0033333293002271035
+        }
+      ]
+    },
+    "kde": {
+      "primaryRun": "i33k1",
+      "memoryRun": "i33k2",
+      "nativeCases": [
+        {
+          "case": "region",
+          "client": "qt",
+          "testId": "79cc0c2c26e9457db2833c68c7ccb576",
+          "operationId": "ce2e277c-d95d-4827-9a69-2b57900f4649",
+          "file": "kde/cases/region-qt.json"
+        },
+        {
+          "case": "window",
+          "client": "qt",
+          "testId": "4fd03f8e82ca40f49ac5c94bb1bce262",
+          "operationId": "f8572fa0-89c9-40cd-b5b2-32b0079eca4a",
+          "file": "kde/cases/window-qt.json"
+        },
+        {
+          "case": "desktop",
+          "client": "qt",
+          "testId": "5f2777d3a28f441fac1ad3ac91db0ef3",
+          "operationId": "280b8066-5e8e-46bd-a752-3aa803a441c9",
+          "file": "kde/cases/desktop-qt.json"
+        },
+        {
+          "case": "clipboard-text",
+          "client": "qt",
+          "testId": "00f5bc0a68c248c9ad6c992e6158fdae",
+          "operationId": "3839ecf9-3058-4dbc-8785-62854291ffa1",
+          "file": "kde/cases/clipboard-text-qt.json"
+        },
+        {
+          "case": "clipboard-image",
+          "client": "qt",
+          "testId": "af6150ff9978458e9dae4e5d6d3fc7d9",
+          "operationId": "7142f210-0076-4d40-849c-ce1b9baf476d",
+          "file": "kde/cases/clipboard-image-qt.json"
+        },
+        {
+          "case": "clipboard-files",
+          "client": "qt",
+          "testId": "b59b51b85c354a8a93287e1680b4d731",
+          "operationId": "8a98c882-aaa4-4ff5-92e7-3eb0d4ae8d10",
+          "file": "kde/cases/clipboard-files-qt.json"
+        },
+        {
+          "case": "region-cancel-escape",
+          "client": "qt",
+          "testId": "e0ab6723bc734a159736ee6715b9a484",
+          "operationId": "47535670-f3d3-4ee7-be4f-9dfb72d5817f",
+          "file": "kde/cases/region-cancel-escape-qt.json"
+        },
+        {
+          "case": "region-cancel-right-click",
+          "client": "qt",
+          "testId": "cfb6e81ec57240759e610c4056a9fbcf",
+          "operationId": "ad317898-7d33-484d-9d0b-c7af6672a54a",
+          "file": "kde/cases/region-cancel-right-click-qt.json"
+        },
+        {
+          "case": "region-cancel-zero-area",
+          "client": "qt",
+          "testId": "22453de59f2745e49d6d90ecd2216ff2",
+          "operationId": "9450ea73-8e55-48c0-adfc-fceab5be75b8",
+          "file": "kde/cases/region-cancel-zero-area-qt.json"
+        },
+        {
+          "case": "clipboard-text",
+          "client": "gtk",
+          "testId": "370e19b7f4e04221960e981ae40bd18f",
+          "operationId": "d7174bcc-b6a2-4bb9-8b2c-ef29aecdcb60",
+          "file": "kde/cases/clipboard-text-gtk.json"
+        },
+        {
+          "case": "clipboard-image",
+          "client": "gtk",
+          "testId": "526425f220bc451b9cccb4d5890d31e6",
+          "operationId": "0ef6a0d4-c5bc-40fe-aadc-4683dcfcabd6",
+          "file": "kde/cases/clipboard-image-gtk.json"
+        },
+        {
+          "case": "clipboard-files",
+          "client": "gtk",
+          "testId": "703c8604bea749f487c01cb83fc43d8c",
+          "operationId": "38cd4266-3dba-4ce7-bfe7-c67fe619a1dc",
+          "file": "kde/cases/clipboard-files-gtk.json"
+        }
+      ],
+      "views": 6,
+      "visualChecks": 5,
+      "memory": [
+        {
+          "passed": true,
+          "peakMiB": 31.0546875,
+          "peakPssMiB": 8.111328125,
+          "durationSeconds": 300.00012967600003,
+          "samples": 61,
+          "zeroSwap": true,
+          "noHelpers": true,
+          "cpuPercentOneCore": 0.013333327569958045
+        },
+        {
+          "passed": true,
+          "peakMiB": 31.0546875,
+          "peakPssMiB": 8.20703125,
+          "durationSeconds": 300.000153129,
+          "samples": 61,
+          "zeroSwap": true,
+          "noHelpers": true,
+          "cpuPercentOneCore": 0.013333326527603474
+        }
+      ]
+    }
+  },
+  "failuresAndCorrections": [
+    "Cinnamon GTK4 runtime missing in fresh guest; retained failure, installed standard guest packages, serial GTK repeat passed.",
+    "Overlapping Cinnamon graphical drivers invalidated focus evidence; discarded and repeated serially.",
+    "Initial frame recorder monopolized QMP; repeated with a connection per frame. A transient missing classifier during that edit was also retained.",
+    "A sample-count assertion was incompatible with observed frame cadence; accepted oracle requires multiple visible red/blue periods and recovery, not each 300 ms repaint.",
+    "Wayland panels resample/blend 16-pixel icons; inspected RGB backgrounds, used bounded alpha blend with residual <=3 and alpha >=0.35 within the visibly identified icon rectangle.",
+    "View closure must focus the actual view; retained failed Alt-F4 focus assumptions and repeated six opens/closes with visible title-bar focus.",
+    "First KDE region test had SSH exit255 and an outstanding selection later recorded capture_timeout. Same-timing repeat passed; a second fresh overlay independently passed its first region gesture, six views and five color checks. The original failure is retained; no causal fix or zero-race claim.",
+    "Identity collector originally assumed the development fixture was at build root; corrected to packaging/linux, with build/tests unchanged."
+  ],
+  "rawPrivateEvidenceRoot": "/home/patrick/work/put.gd/work/issue33",
+  "memoryComplete": true
+}

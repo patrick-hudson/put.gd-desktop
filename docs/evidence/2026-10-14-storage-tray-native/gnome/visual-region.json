@@ -1,0 +1,47 @@
+{
+  "box": [
+    1148,
+    6,
+    1168,
+    26
+  ],
+  "resident": {
+    "pid": 2881,
+    "startTicks": 4098,
+    "sha256": "e8031bcddc82fed49f7eead83cf352afee68e7e4573198798643568938e6c004"
+  },
+  "build": {
+    "baseVersion": "0.1.1",
+    "commitCount": 176,
+    "dirty": null,
+    "gitCommit": "061c2d9c569dc10b5c8681a7ad7beb3093e61b80",
+    "gitTree": "445dc0cbdc844833f534d589bbeaa78e1b03b454",
+    "packageVersion": "0.1.1~dev.176+g061c2d9c569d",
+    "schemaVersion": 1,
+    "sourceProvenance": "supplied",
+    "version": "0.1.1-dev.176+g061c2d9c569d"
+  },
+  "colors": {
+    "blue": [
+      155,
+      188,
+      255
+    ],
+    "green": [
+      98,
+      214,
+      155
+    ],
+    "red": [
+      255,
+      180,
+      171
+    ]
+  },
+  "background": [
+    19,
+    19,
+    19
+  ],
+  "pixelOracle": "Exact RGB except GNOME: documented ARGB blend, alpha >= 0.35, max channel residual <= 3"
+}

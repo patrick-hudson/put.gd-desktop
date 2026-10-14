@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "testId": "22453de59f2745e49d6d90ecd2216ff2",
+  "profile": "kde-wayland",
+  "scenario": "region-cancel-zero-area-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 15415,
+    "startTicks": 199232,
+    "sha256": "df5669c7ead18e883bab4435ab1229c01a25493ad98e4b223f8846cee4967b94"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": [
+        "Ctrl+Shift+F12"
+      ],
+      "bound": true,
+      "effective": "Ctrl+Shift+F12",
+      "layout": 0,
+      "requested": "Ctrl+Shift+F12",
+      "state": "bound"
+    },
+    "desktop": {
+      "actual": [
+        "Ctrl+Shift+F11"
+      ],
+      "bound": true,
+      "effective": "Ctrl+Shift+F11",
+      "layout": 0,
+      "requested": "Ctrl+Shift+F11",
+      "state": "bound"
+    },
+    "region": {
+      "actual": [
+        "Ctrl+Shift+F9"
+      ],
+      "bound": true,
+      "effective": "Ctrl+Shift+F9",
+      "layout": 0,
+      "requested": "Ctrl+Shift+F9",
+      "state": "bound"
+    },
+    "window": {
+      "actual": [
+        "Ctrl+Shift+F10"
+      ],
+      "bound": true,
+      "effective": "Ctrl+Shift+F10",
+      "layout": 0,
+      "requested": "Ctrl+Shift+F10",
+      "state": "bound"
+    }
+  },
+  "independentPaintGeometry": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 320
+  },
+  "independentWindowFrame": {
+    "x": 320,
+    "y": 177,
+    "width": 640,
+    "height": 420
+  },
+  "parameters": "parameters.json",
+  "operationId": "9450ea73-8e55-48c0-adfc-fceab5be75b8",
+  "operationState": "cancelled",
+  "copyStatus": "no_result",
+  "itemOutcomes": [],
+  "paste": {
+    "ok": true,
+    "expected": {
+      "text": "putgd synthetic clipboard text"
+    },
+    "actual": {
+      "formats": [
+        "text/plain",
+        "text/plain;charset=utf-8"
+      ],
+      "schemaVersion": 1,
+      "text": "putgd synthetic clipboard text"
+    }
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/i33k1/final-head0.ppm",
+    "sha256": "227081982b35a124ea4d4284956d20fca767a9ce3d80fb580f30b9b1335d3406"
+  },
+  "elapsedSeconds": 7.852011568000307,
+  "evidenceDirectory": "tests/22453de59f2745e49d6d90ecd2216ff2"
+}

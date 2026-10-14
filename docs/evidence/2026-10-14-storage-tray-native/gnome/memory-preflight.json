@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/tmp/i33m1/runtime/putgd/session.sock", "utf8Bytes": 37, "passed": true}, {"path": "/tmp/i33m2/runtime/putgd/session.sock", "utf8Bytes": 37, "passed": true}]}

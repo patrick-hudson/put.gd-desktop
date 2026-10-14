@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "testId": "859d87f1741c4a698aa0de65c04faaa9",
+  "profile": "cinnamon-x11",
+  "scenario": "clipboard-files-independent-paste",
+  "ok": true,
+  "acceptanceScope": "single-head named action; no full profile certification",
+  "runningApp": {
+    "pid": 2535,
+    "startTicks": 40847,
+    "sha256": "e88412a24b9d7408cf6452b926fae3222437dd2bbacc73b574ec5a9baa3d98d7"
+  },
+  "evidence_class": "graphical-kvm",
+  "performance_eligible": false,
+  "clipboardClient": "qt",
+  "shortcutBindings": {
+    "clipboard": {
+      "actual": "Ctrl+Shift+4",
+      "bound": true,
+      "requested": "Ctrl+Shift+4"
+    },
+    "desktop": {
+      "actual": "Ctrl+Shift+3",
+      "bound": true,
+      "requested": "Ctrl+Shift+3"
+    },
+    "region": {
+      "actual": "Ctrl+Shift+1",
+      "bound": true,
+      "requested": "Ctrl+Shift+1"
+    },
+    "window": {
+      "actual": "Ctrl+Shift+2",
+      "bound": true,
+      "requested": "Ctrl+Shift+2"
+    }
+  },
+  "parameters": "parameters.json",
+  "operationId": "6069bf13-50a1-4bb4-86b1-8f96b555f556",
+  "operationState": "completed",
+  "copyStatus": "copied",
+  "itemOutcomes": [
+    {
+      "uploadStatus": "local_only",
+      "localStatus": "saved",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      }
+    },
+    {
+      "uploadStatus": "local_only",
+      "localStatus": "saved",
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      }
+    }
+  ],
+  "artifact": {
+    "ok": true
+  },
+  "pasteMetadata": {
+    "formats": [
+      "TARGETS",
+      "TIMESTAMP",
+      "text/uri-list",
+      "text/plain",
+      "text/plain;charset=utf-8"
+    ],
+    "schemaVersion": 1,
+    "text": "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt\r\nfile:///home/lab/putgd-lab/archive/text/synthetic-2.txt\r\n",
+    "urls": [
+      "file:///home/lab/putgd-lab/archive/text/synthetic-1.txt",
+      "file:///home/lab/putgd-lab/archive/text/synthetic-2.txt"
+    ]
+  },
+  "paste": {
+    "ok": true
+  },
+  "witness": {
+    "path": "/home/patrick/work/put.gd/work/lab-runs/i33c1/final-head0.ppm",
+    "sha256": "9e80cdf79f570c58747201f06a916e5de200203d05342e7c7452a2b5b73b8d1d"
+  },
+  "elapsedSeconds": 6.902079878000222,
+  "evidenceDirectory": "tests/859d87f1741c4a698aa0de65c04faaa9"
+}

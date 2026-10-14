@@ -1,0 +1,599 @@
+{
+  "operations": [
+    {
+      "action": "region",
+      "cancelled": true,
+      "clipboardRevision": "3",
+      "copyStatus": "no_result",
+      "created": "2026-10-14T19:43:27.039Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "cancelled",
+        "details": {},
+        "message": "The region helper could not complete selection"
+      },
+      "id": "5d49514f-3ea2-4c66-b10c-3a2cd9dffa9a",
+      "invocation": "2",
+      "items": [],
+      "phase": "cancelled",
+      "requestTimeoutMs": null,
+      "settingsRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+      "state": "cancelled"
+    },
+    {
+      "action": "clipboard",
+      "cancelled": false,
+      "clipboardRevision": "3",
+      "copyStatus": "copied",
+      "created": "2026-10-14T19:43:30.549Z",
+      "destination": {
+        "credentials": {
+          "mode": "session",
+          "reference": null
+        },
+        "profileId": "issue33-offline",
+        "profileRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+        "providerId": "s3",
+        "settings": {
+          "aclMode": "omit",
+          "addressing": "path",
+          "bucket": "isolated-fixture",
+          "connectTimeoutMs": 500,
+          "endpoint": "http://127.0.0.1:46335",
+          "lowSpeedBytesPerSecond": 1,
+          "lowSpeedTimeSeconds": 10,
+          "objectPrefix": "",
+          "publicUrlBase": null,
+          "region": "eu-west-3",
+          "requestTimeoutMs": 9000,
+          "storageClass": "STANDARD"
+        }
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "c0a44633-769f-4ad7-aed2-87b36aeaef89",
+      "invocation": "3",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 30,
+            "category": "text",
+            "id": "87bdb5fd-68fb-4b97-a7a7-07ff7e5cc3d9",
+            "mime": "text/plain",
+            "name": "i33-87bdb5fd-68fb-4b97-a7a7-07ff7e5cc3d9.txt",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "",
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185"
+          },
+          "candidate": "i33-87bdb5fd-68fb-4b97-a7a7-07ff7e5cc3d9.txt",
+          "concurrencyToken": "",
+          "condition": "absent",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/home/lab/putgd-lab/archive/text/i33-87bdb5fd-68fb-4b97-a7a7-07ff7e5cc3d9.txt",
+            "status": "saved"
+          },
+          "objectReference": {
+            "key": "i33-87bdb5fd-68fb-4b97-a7a7-07ff7e5cc3d9.txt",
+            "schemaVersion": 1
+          },
+          "phase": "uploaded",
+          "publicationId": "24b5b403-d2a2-4975-a8d8-1aa569761d08",
+          "receipt": {
+            "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+            "destination": {
+              "credentials": {
+                "mode": "session",
+                "reference": null
+              },
+              "profileId": "issue33-offline",
+              "profileRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+              "providerId": "s3",
+              "settings": {
+                "aclMode": "omit",
+                "addressing": "path",
+                "bucket": "isolated-fixture",
+                "connectTimeoutMs": 500,
+                "endpoint": "http://127.0.0.1:46335",
+                "lowSpeedBytesPerSecond": 1,
+                "lowSpeedTimeSeconds": 10,
+                "objectPrefix": "",
+                "publicUrlBase": null,
+                "region": "eu-west-3",
+                "requestTimeoutMs": 9000,
+                "storageClass": "STANDARD"
+              }
+            },
+            "directUrl": "http://127.0.0.1:46335/isolated-fixture/i33-87bdb5fd-68fb-4b97-a7a7-07ff7e5cc3d9.txt",
+            "objectReference": {
+              "bytes": 30,
+              "key": "i33-87bdb5fd-68fb-4b97-a7a7-07ff7e5cc3d9.txt",
+              "schemaVersion": 1,
+              "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+              "versionId": ""
+            },
+            "publicationId": "24b5b403-d2a2-4975-a8d8-1aa569761d08",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": {
+            "bytesTotal": 30,
+            "bytesTransferred": 30,
+            "phase": "finalizing"
+          },
+          "uploadStatus": "uploaded"
+        }
+      ],
+      "phase": "completed",
+      "requestTimeoutMs": null,
+      "settingsRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+      "state": "completed"
+    },
+    {
+      "action": "clipboard",
+      "cancelled": false,
+      "clipboardRevision": "4",
+      "copyStatus": "no_result",
+      "created": "2026-10-14T19:43:35.148Z",
+      "destination": {
+        "credentials": {
+          "mode": "session",
+          "reference": null
+        },
+        "profileId": "issue33-offline",
+        "profileRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+        "providerId": "s3",
+        "settings": {
+          "aclMode": "omit",
+          "addressing": "path",
+          "bucket": "isolated-fixture",
+          "connectTimeoutMs": 500,
+          "endpoint": "http://127.0.0.1:46335",
+          "lowSpeedBytesPerSecond": 1,
+          "lowSpeedTimeSeconds": 10,
+          "objectPrefix": "",
+          "publicUrlBase": null,
+          "region": "eu-west-3",
+          "requestTimeoutMs": 9000,
+          "storageClass": "STANDARD"
+        }
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "ba8fedc3-7bbb-4ecf-b240-948cd6ddfc9e",
+      "invocation": "4",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 84,
+            "category": "text",
+            "id": "5557cba0-eaac-4da2-acb1-85fb9df55c61",
+            "mime": "text/plain",
+            "name": "i33-5557cba0-eaac-4da2-acb1-85fb9df55c61.txt",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "",
+            "sha256": "3f7264fc9b23b1269b04af31552edc96018c5e67368bf5aa959372c932dcdf2a"
+          },
+          "candidate": "i33-5557cba0-eaac-4da2-acb1-85fb9df55c61.txt",
+          "concurrencyToken": "",
+          "condition": "absent",
+          "error": {
+            "code": "s3_permission_denied",
+            "details": {
+              "curlCode": -1,
+              "elapsedMs": 44,
+              "httpStatus": 403,
+              "requestStage": "upload_put",
+              "sdkErrorType": 15,
+              "sdkRetryable": false,
+              "serviceCode": "AccessDenied"
+            },
+            "message": "S3 request failed; check destination access, ACL and retention settings"
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/home/lab/putgd-lab/archive/text/i33-5557cba0-eaac-4da2-acb1-85fb9df55c61.txt",
+            "status": "saved"
+          },
+          "objectReference": {
+            "key": "i33-5557cba0-eaac-4da2-acb1-85fb9df55c61.txt",
+            "schemaVersion": 1
+          },
+          "phase": "failed",
+          "publicationId": "2ba691f2-1c09-455a-991d-f366a7c75659",
+          "receipt": {
+            "concurrencyToken": "",
+            "destination": {
+              "credentials": {},
+              "profileId": "",
+              "profileRevision": "",
+              "providerId": "",
+              "settings": {}
+            },
+            "directUrl": "",
+            "objectReference": {},
+            "publicationId": "",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": {
+            "bytesTotal": 84,
+            "bytesTransferred": 84,
+            "phase": "finalizing"
+          },
+          "uploadStatus": "failed"
+        }
+      ],
+      "phase": "partial",
+      "requestTimeoutMs": null,
+      "settingsRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+      "state": "partial"
+    },
+    {
+      "action": "clipboard",
+      "cancelled": false,
+      "clipboardRevision": "5",
+      "copyStatus": "suppressed",
+      "created": "2026-10-14T19:43:42.139Z",
+      "destination": {
+        "credentials": {
+          "mode": "session",
+          "reference": null
+        },
+        "profileId": "issue33-offline",
+        "profileRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+        "providerId": "s3",
+        "settings": {
+          "aclMode": "omit",
+          "addressing": "path",
+          "bucket": "isolated-fixture",
+          "connectTimeoutMs": 500,
+          "endpoint": "http://127.0.0.1:46335",
+          "lowSpeedBytesPerSecond": 1,
+          "lowSpeedTimeSeconds": 10,
+          "objectPrefix": "",
+          "publicUrlBase": null,
+          "region": "eu-west-3",
+          "requestTimeoutMs": 9000,
+          "storageClass": "STANDARD"
+        }
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "75770cc5-957a-4996-b72f-f434c302f290",
+      "invocation": "5",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 30,
+            "category": "text",
+            "id": "fbfde9c6-047f-48d0-8595-d81e9c4b5fc0",
+            "mime": "text/plain",
+            "name": "i33-fbfde9c6-047f-48d0-8595-d81e9c4b5fc0.txt",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "",
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185"
+          },
+          "candidate": "i33-fbfde9c6-047f-48d0-8595-d81e9c4b5fc0.txt",
+          "concurrencyToken": "",
+          "condition": "absent",
+          "error": {
+            "code": "s3_permission_denied",
+            "details": {
+              "curlCode": -1,
+              "elapsedMs": 942,
+              "httpStatus": 403,
+              "requestStage": "upload_put",
+              "sdkErrorType": 15,
+              "sdkRetryable": false,
+              "serviceCode": "AccessDenied"
+            },
+            "message": "S3 request failed; check destination access, ACL and retention settings"
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/home/lab/putgd-lab/archive/text/i33-fbfde9c6-047f-48d0-8595-d81e9c4b5fc0.txt",
+            "status": "saved"
+          },
+          "objectReference": {
+            "key": "i33-fbfde9c6-047f-48d0-8595-d81e9c4b5fc0.txt",
+            "schemaVersion": 1
+          },
+          "phase": "failed",
+          "publicationId": "ae32975e-a3e2-4231-8b76-6bd0210a4448",
+          "receipt": {
+            "concurrencyToken": "",
+            "destination": {
+              "credentials": {},
+              "profileId": "",
+              "profileRevision": "",
+              "providerId": "",
+              "settings": {}
+            },
+            "directUrl": "",
+            "objectReference": {},
+            "publicationId": "",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": {
+            "bytesTotal": 30,
+            "bytesTransferred": 30,
+            "phase": "finalizing"
+          },
+          "uploadStatus": "failed"
+        }
+      ],
+      "phase": "partial",
+      "requestTimeoutMs": null,
+      "settingsRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+      "state": "partial"
+    },
+    {
+      "action": "clipboard",
+      "cancelled": false,
+      "clipboardRevision": "5",
+      "copyStatus": "copied",
+      "created": "2026-10-14T19:43:42.467Z",
+      "destination": {
+        "credentials": {
+          "mode": "session",
+          "reference": null
+        },
+        "profileId": "issue33-offline",
+        "profileRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+        "providerId": "s3",
+        "settings": {
+          "aclMode": "omit",
+          "addressing": "path",
+          "bucket": "isolated-fixture",
+          "connectTimeoutMs": 500,
+          "endpoint": "http://127.0.0.1:46335",
+          "lowSpeedBytesPerSecond": 1,
+          "lowSpeedTimeSeconds": 10,
+          "objectPrefix": "",
+          "publicUrlBase": null,
+          "region": "eu-west-3",
+          "requestTimeoutMs": 9000,
+          "storageClass": "STANDARD"
+        }
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "3f425461-054a-4acb-8e33-6440256875f1",
+      "invocation": "6",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 30,
+            "category": "text",
+            "id": "29d34a12-aefb-48a3-87bb-849843489178",
+            "mime": "text/plain",
+            "name": "i33-29d34a12-aefb-48a3-87bb-849843489178.txt",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "",
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185"
+          },
+          "candidate": "i33-29d34a12-aefb-48a3-87bb-849843489178.txt",
+          "concurrencyToken": "",
+          "condition": "absent",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "local": {
+            "error": {
+              "code": "",
+              "details": {},
+              "message": ""
+            },
+            "path": "/home/lab/putgd-lab/archive/text/i33-29d34a12-aefb-48a3-87bb-849843489178.txt",
+            "status": "saved"
+          },
+          "objectReference": {
+            "key": "i33-29d34a12-aefb-48a3-87bb-849843489178.txt",
+            "schemaVersion": 1
+          },
+          "phase": "uploaded",
+          "publicationId": "3d97da1a-52ed-46dc-bd76-9a0de56dd5ea",
+          "receipt": {
+            "concurrencyToken": "\"8fa028c17061870c1cefad39de4f50a4\"",
+            "destination": {
+              "credentials": {
+                "mode": "session",
+                "reference": null
+              },
+              "profileId": "issue33-offline",
+              "profileRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+              "providerId": "s3",
+              "settings": {
+                "aclMode": "omit",
+                "addressing": "path",
+                "bucket": "isolated-fixture",
+                "connectTimeoutMs": 500,
+                "endpoint": "http://127.0.0.1:46335",
+                "lowSpeedBytesPerSecond": 1,
+                "lowSpeedTimeSeconds": 10,
+                "objectPrefix": "",
+                "publicUrlBase": null,
+                "region": "eu-west-3",
+                "requestTimeoutMs": 9000,
+                "storageClass": "STANDARD"
+              }
+            },
+            "directUrl": "http://127.0.0.1:46335/isolated-fixture/i33-29d34a12-aefb-48a3-87bb-849843489178.txt",
+            "objectReference": {
+              "bytes": 30,
+              "key": "i33-29d34a12-aefb-48a3-87bb-849843489178.txt",
+              "schemaVersion": 1,
+              "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185",
+              "versionId": ""
+            },
+            "publicationId": "3d97da1a-52ed-46dc-bd76-9a0de56dd5ea",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": {
+            "bytesTotal": 30,
+            "bytesTransferred": 30,
+            "phase": "finalizing"
+          },
+          "uploadStatus": "uploaded"
+        }
+      ],
+      "phase": "completed",
+      "requestTimeoutMs": null,
+      "settingsRevision": "0f2f65558c9c7cb9e5b9bd722bb6395a99c536d09204a633c7244a51b478c26d",
+      "state": "completed"
+    },
+    {
+      "action": "clipboard",
+      "cancelled": false,
+      "clipboardRevision": "7",
+      "copyStatus": "no_result",
+      "created": "2026-10-14T19:43:52.945Z",
+      "destination": {
+        "credentials": {},
+        "profileId": "",
+        "profileRevision": "",
+        "providerId": "",
+        "settings": {}
+      },
+      "error": {
+        "code": "",
+        "details": {},
+        "message": ""
+      },
+      "id": "c3da9c13-554b-4acc-926a-5a0168d78361",
+      "invocation": "7",
+      "items": [
+        {
+          "artifact": {
+            "bytes": 30,
+            "category": "text",
+            "id": "33ed1e71-fe82-4107-be72-f20dca55fc90",
+            "mime": "text/plain",
+            "name": "i33-33ed1e71-fe82-4107-be72-f20dca55fc90.txt",
+            "namingPrepared": true,
+            "originalFile": false,
+            "previewPath": "",
+            "sha256": "c7a4c2eea1d901cbc049d84dbba77e472576aafc27b49e4a1e188bb7dd176185"
+          },
+          "candidate": "",
+          "concurrencyToken": "",
+          "condition": "",
+          "error": {
+            "code": "",
+            "details": {},
+            "message": ""
+          },
+          "local": {
+            "error": {
+              "code": "archive_failed",
+              "details": {},
+              "message": "Cannot create local copy; retry the retained artifact"
+            },
+            "path": "",
+            "status": "failed"
+          },
+          "objectReference": {},
+          "phase": "stored",
+          "publicationId": "77ecad85-3712-4c28-a1d8-4e4c7fc92982",
+          "receipt": {
+            "concurrencyToken": "",
+            "destination": {
+              "credentials": {},
+              "profileId": "",
+              "profileRevision": "",
+              "providerId": "",
+              "settings": {}
+            },
+            "directUrl": "",
+            "objectReference": {},
+            "publicationId": "",
+            "schemaVersion": 1
+          },
+          "remoteStatus": "not_requested",
+          "shareIntent": "",
+          "shareIntentOptions": {},
+          "shareStatus": "not_requested",
+          "uploadProgress": null,
+          "uploadStatus": "local_only"
+        }
+      ],
+      "phase": "failed",
+      "requestTimeoutMs": null,
+      "settingsRevision": "2d39244094e7e5597144b88e007ea0dddbce6016900331e976906686507bd0a2",
+      "state": "failed"
+    }
+  ],
+  "checks": {
+    "selectionCancellationBlue": true,
+    "preflightUploadGreenThenBlue": true,
+    "temporaryRedBluePulse": true,
+    "overlapRecoversGreen": true,
+    "localFailurePulse": true
+  },
+  "scope": "rendered single-head native tray, production app and official SDK; offline S3 wire oracle is not cloud acceptance",
+  "passed": true,
+  "observerErrors": [],
+  "samples": 248,
+  "box": [
+    961,
+    761,
+    985,
+    785
+  ]
+}

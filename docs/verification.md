@@ -879,7 +879,22 @@ local adversarial reviewer completed the lens; all three code findings were appl
 The completed review and follow-up receipt are under
 `/tmp/compound-engineering-1000/ce-code-review/20261014-172954-89b34b02/`.
 
-**Acceptance pending:** current-candidate Cinnamon native graphical/functional and
-memory gates first, then GNOME/KDE regressions on that candidate before acceptance.
-No VM base was booted or changed for this slice. No native-rendering or memory
-acceptance is claimed; the candidate remains draft pending these gates.
+The [native VM follow-up](evidence/2026-10-14-storage-tray-native.md) tested frozen
+commit `061c2d9c569d` on Cinnamon 6.6.4/X11/Qt 6.4.2, GNOME 50.1/Wayland/Qt 6.10.2
+and Plasma 6.6.6/Wayland/Qt 6.10.2. Each desktop passed twelve native
+capture/clipboard/cancellation cases, six view opens/closes with normal helper
+exit, and five rendered storage/error color checks. Cinnamon passed its required
+functional and memory gates before the Wayland builds began. GNOME and KDE's
+native development suites passed 60/60 and 59/59; their post-build tracked source
+hashes matched all 5,998 files in the frozen archive.
+
+Two serial five-minute post-use guest observations per desktop passed the 40 MiB
+RSS/no-helper/no-swap/CPU gates. Peak RSS was 29.96 MiB on Cinnamon, 33.98 MiB on
+GNOME and 31.05 MiB on KDE. The report retains exact identities, raw samples,
+synthetic console frames and failed diagnostic attempts. The first KDE region
+attempt had an SSH interruption and later helper timeout; its repeat and an
+independent fresh-overlay first gesture passed, without a candidate code change.
+These are bounded single-head compositor and post-use VM results. The offline S3
+wire oracle does not establish cloud/Proton acceptance, sampled frames do not
+certify each 300 ms repaint, and physical performance/full release gates remain
+separate. All golden/backing disks were preserved; only fresh overlays were booted.
