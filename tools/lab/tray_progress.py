@@ -33,6 +33,15 @@ class TrayProgressError(RuntimeError):
     pass
 
 
+class ObservationMismatch(TrayProgressError):
+    """Only asynchronous production/SNI correlation may receive batching grace."""
+
+
+def observed(condition, message):
+    if not condition:
+        raise ObservationMismatch(message)
+
+
 def require(condition, message):
     if not condition:
         raise TrayProgressError(message)
@@ -97,49 +106,54 @@ def check_tooltip(snapshot, records, provider, pid):
     require(icons and all(icon.get('opaqueColors', {}).get(color, 0) > 0 for icon in icons),
             'SNI icon does not have the required idle/active brand color')
     if idle:
-        require(not text, 'Idle tooltip retains stale work')
+        observed(not text, 'Idle tooltip retains stale work')
+        observed(not records, 'Idle tray while production work remains active')
         return {'idle': True, 'counter': False, 'phases': []}
-    require(text, 'Working tray has no activity text')
+    observed(text, 'Working tray has no activity text')
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
     result = {'idle': False, 'counter': False, 'phases': []}
     for row_index, line in enumerate(text.splitlines()):
         overflow = re.fullmatch(r'([0-9]+) more active operations', line)
         if overflow:
-            require(any(record.get('activeCount') == int(overflow[1]) + 3 for record in records),
+            observed(any(record.get('activeCount') == int(overflow[1]) + 3 for record in records),
                     'Tray overflow count differs from observed active operations')
             continue
         match = COUNTER.fullmatch(line)
         prefix = match[1] if match else line.split(' · Source size: ', 1)[0]
         label = re.sub(r' file [0-9]+/[0-9]+$', '', prefix)
-        require(label in labels, 'Tray phase has no matching production observation')
+        observed(label in labels, 'Tray phase has no matching production observation')
         phase = labels[label]
         result['phases'].append(phase)
         applicable = [record for record in records if record['phase'] == phase and record.get('rowIndex', 0) == row_index]
-        require(applicable, 'Tray row has no matching ordered production observation')
+        ordinal = re.search(r' file ([0-9]+)/([0-9]+)$', prefix)
+        if ordinal:
+            applicable = [record for record in applicable if record.get('fileIndex') == int(ordinal[1])
+                          and record.get('fileCount') == int(ordinal[2])]
+        observed(applicable, 'Tray row has no matching ordered production observation')
         if not match:
             source = line.split(' · Source size: ', 1)
-            require(len(source) == 1 or any(source[1] == byte_summary(record['sourceBytes']) for record in applicable),
+            observed(len(source) == 1 or any(source[1] == byte_summary(record['sourceBytes']) for record in applicable),
                     'Tray source size differs from acquired artifact bytes')
             require(':' not in prefix and '%' not in line, 'Unrecognized tray counter')
             continue
         lower, upper = displayed_interval(match[2])
         numeric = [record for record in applicable if isinstance(record.get('bytesTransferred'), int)]
-        require(numeric, 'Tray reports transferred bytes without a production counter')
+        observed(numeric, 'Tray reports transferred bytes without a production counter')
         low = max(lower, min(record['bytesTransferred'] for record in numeric))
         high = min(upper, max(record['bytesTransferred'] for record in numeric))
-        require(low <= high, 'Tray transferred bytes lie outside production observations')
+        observed(low <= high, 'Tray transferred bytes lie outside production observations')
         if provider == 'proton-drive':
             require(match[5] and not match[3] and not match[4], 'Proton must show encrypted bytes separately, without percentage')
-            require(any(match[5] == byte_summary(record['sourceBytes']) for record in numeric),
+            observed(any(match[5] == byte_summary(record['sourceBytes']) for record in numeric),
                     'Proton source size differs from acquired artifact bytes')
             require(all('bytesTotal' not in record for record in numeric), 'Unexpected Proton transfer-total accounting')
         else:
             totals = {record['bytesTotal'] for record in numeric if record.get('bytesTotal', 0) > 0
                       and byte_summary(record['bytesTotal']) == match[3]}
-            require(totals and match[4] is not None, 'S3 needs a real matching transfer total and percentage')
+            observed(totals and match[4] is not None, 'S3 needs a real matching transfer total and percentage')
             percent = int(match[4])
-            require(any(low <= total and low * 100 // total <= percent <= min(high, total) * 100 // total
+            observed(any(low <= total and low * 100 // total <= percent <= min(high, total) * 100 // total
                         for total in totals), 'Tray percentage contradicts its displayed transfer bytes')
         result['counter'] = True
     return result
@@ -151,15 +165,37 @@ def records_from(operations):
     records = []
     for row_index, op in enumerate(active):
         phase = op.get('phase', op['state'])
-        uploading = [item for item in op.get('items', []) if item.get('uploadStatus') == 'uploading']
-        item = uploading[0] if uploading else next(iter(op.get('items', [])), {})
+        items = op.get('items', [])
+        index = next((i for i, item in enumerate(items) if item.get('uploadStatus') == 'uploading'),
+                     next((i for i, item in enumerate(items) if item.get('phase') == phase), 0))
+        item = items[index] if items else {}
         progress = item.get('uploadProgress') or {}
-        records.append({'operationId': op['id'], 'phase': phase,
+        records.append({'operationId': op['id'], 'artifactId': item.get('artifact', {}).get('id'),
+                        'state': op['state'], 'phase': phase, 'fileIndex': index + 1, 'fileCount': len(items),
                         'sourceBytes': item.get('artifact', {}).get('bytes', 0),
                         'activeCount': len(active), 'rowIndex': row_index, **{key: progress[key] for key in
                          ('bytesTransferred', 'bytesTotal') if key in progress}})
     return records
 
+
+
+def correlated_records(history, current):
+    """Only the current operation/artifact may supply a row's batched counter.
+
+    An operation moving up a row retains its history. A completed predecessor
+    or previous file never supplies bounds for the new owner of that row.
+    """
+    result = []
+    for owner in current:
+        for row in history:
+            if (row['operationId'], row.get('artifactId')) == (owner['operationId'], owner.get('artifactId')):
+                result.append({**row, 'rowIndex': owner['rowIndex'], 'activeCount': owner['activeCount']})
+    return result
+
+
+def concurrent_admission(checked, records):
+    running = [row for row in records if row.get('state') == 'running' and row['phase'] != 'queued']
+    return len(running) >= 2 and len([phase for phase in checked['phases'] if phase != 'queued']) >= 2
 
 def check_build_manifests(manifests, expected_commit):
     require(manifests and all(manifest.get('gitCommit') == expected_commit for manifest in manifests),
@@ -232,6 +268,7 @@ class Replay:
         self.ids = []
         self.pid = None
         self.history = []
+        self.mismatch_since = None
         self.witness_number = 0
         self.result = {'schemaVersion': 1, 'protocolPassed': False,
                        'graphicalAcceptance': 'pending-human-inspection',
@@ -331,21 +368,41 @@ class Replay:
         snapshot = self.snapshot()
         after = self.cli('operation.recent')['operations']
         now = time.monotonic()
-        records = records_from(before) + records_from(after)
-        self.history.append((now, records))
+        before_rows, after_rows = records_from(before), records_from(after)
+        self.history.append((now, before_rows + after_rows))
         self.history = [(stamp, rows) for stamp, rows in self.history if now - stamp <= 2]
-        recent = [row for _, rows in self.history for row in rows]
-        checked = check_tooltip(snapshot, recent, self.args.provider, self.pid)
+        recent = correlated_records([row for _, rows in self.history for row in rows], after_rows)
+        try:
+            checked = {**check_tooltip(snapshot, recent, self.args.provider, self.pid), 'matched': True}
+            self.mismatch_since = None
+        except ObservationMismatch as error:
+            # Separate DBus/CLI reads may straddle a queued-row, file or phase
+            # transition. Preserve the sample, grant no coverage, and bound the
+            # entire consecutive mismatch period; persistent stale/idle fails.
+            checked = {'idle': False, 'counter': False, 'phases': [], 'matched': False, 'error': str(error)}
+            if self.mismatch_since is None:
+                self.mismatch_since = now
+        except TrayProgressError as error:
+            # A privacy/identity/protocol violation is fatal, never a batching
+            # race. Retain only bounded redacted evidence, not rejected text.
+            with (self.output / 'observations.jsonl').open('a') as stream:
+                stream.write(json.dumps({'monotonicSeconds': now, 'scenario': label,
+                    'sni': {'redacted': True}, 'cliBefore': before_rows, 'cliAfter': after_rows,
+                    'assertions': {'matched': False, 'fatal': True, 'error': str(error)}}) + '\n')
+            raise
         entry = {'monotonicSeconds': now, 'scenario': label, 'sni': snapshot,
-                 'cliBefore': records_from(before), 'cliAfter': records_from(after), 'assertions': checked}
+                 'cliBefore': before_rows, 'cliAfter': after_rows, 'assertions': checked}
         with (self.output / 'observations.jsonl').open('a') as stream:
             stream.write(json.dumps(entry) + '\n')
+        if not checked['matched']:
+            require(now - self.mismatch_since <= 2, 'Tray mismatch persisted beyond batching grace: ' + checked['error'])
+            return after, snapshot, checked
         flags = self.result['coverage'].setdefault(label, {'active': False, 'counter': False,
                   'queued': False, 'concurrentAdmission': False, 'finalizing': False, 'sharing': False})
         new = []
         for key, value in [('active', not checked['idle']), ('counter', checked['counter']),
                            ('queued', 'queued' in checked['phases']),
-                           ('concurrentAdmission', len(records_from(after)) >= 2 and len(checked['phases']) >= 2),
+                           ('concurrentAdmission', concurrent_admission(checked, after_rows)),
                            ('finalizing', 'finalizing' in checked['phases']), ('sharing', 'sharing' in checked['phases'])]:
             if value and not flags[key]:
                 flags[key] = True
@@ -358,6 +415,9 @@ class Replay:
     def operations(self, ids, label):
         current, _, _ = self.observe(label)
         found = {op['id']: op for op in current if op['id'] in ids}
+        for operation_id in ids:
+            if operation_id not in found:
+                found[operation_id] = self.cli('operation.inspect', {'id': operation_id})
         return found
 
     def settled(self, ids, label):
@@ -376,7 +436,7 @@ class Replay:
                 for item in op['items']]} for key, op in found.items()})
         def idle():
             _, snapshot, checked = self.observe(label)
-            return snapshot if checked['idle'] else None
+            return snapshot if checked['matched'] and checked['idle'] else None
         snapshot = self.wait(idle, 'Tray did not return to idle: ' + label)
         require([icon['sha256'] for icon in snapshot['icons']] == self.idle_hashes,
                 'Settled tray did not restore the exact original idle icon')
@@ -464,7 +524,7 @@ PY
                     'naming': patch['naming'] if self.args.provider == 's3' and
                               patch['profiles'][0]['settings'].get('objectPrefix') == '' else
                               {'mode': 'generated', 'collisionPolicy': 'rename'},
-                    'limits': {'concurrentUploads': 1}, 'preferences': {'notifications': False, 'launchAtLogin': False}})
+                    'limits': {'concurrentUploads': 1}, 'retention': {'recentActivityLimit': 100}, 'preferences': {'notifications': False, 'launchAtLogin': False}})
         self.activate_credentials()
         identity = lab.verify_running_app(self.run)
         self.pid = identity['pid']
@@ -560,6 +620,52 @@ print(json.dumps(results))
 """.replace('OPERATION', repr(operation['id']))
         self.save('s3-public-byte-verification.json', json.loads(self.session("python3 - <<'PY'\n" + script + 'PY\n')))
 
+    def recover_proton_busy(self, initial):
+        if self.args.provider != 'proton-drive':
+            return initial
+        # Same-account SDK calls are serialized by the production account lock.
+        # Keep concurrent outcomes, then recover only explicit busy failures on
+        # the original IDs with a single worker and the same credential reference.
+        self.save('concurrent-original-outcomes-private.json', initial)
+        def complete(op):
+            return op['state'] == 'completed' and all(item['uploadStatus'] == 'uploaded'
+                and item.get('shareStatus') == 'shared' for item in op['items'])
+        def allowed(op):
+            require(op['items'], 'Concurrent Proton operation has no retained artifacts')
+            for item in op['items']:
+                if item['uploadStatus'] == 'uploaded' and item.get('shareStatus') == 'shared':
+                    continue
+                require(item['uploadStatus'] != 'unknown' and item.get('shareStatus') != 'unknown'
+                        and item.get('error', {}).get('code') == 'proton_account_busy',
+                        'Concurrent Proton outcome requires separate recovery')
+        pending = [operation_id for operation_id, op in initial.items() if not complete(op)]
+        for operation_id in pending:
+            allowed(initial[operation_id])
+        if not pending:
+            return initial
+        self.patch({'limits': {'concurrentUploads': 1}})
+        recovered = dict(initial)
+        for attempt in range(1, 4):
+            for operation_id in pending:
+                accepted = self.cli('operation.retry', {'id': operation_id})
+                require(accepted.get('operationId') == operation_id and accepted.get('retryAccepted'),
+                        'Busy recovery did not retain original operation ID')
+                op = self.settled([operation_id], 'concurrent-recovery-' + str(attempt))[operation_id]
+                old_items, items = initial[operation_id]['items'], op['items']
+                require([item['artifact']['id'] for item in items] == [item['artifact']['id'] for item in old_items]
+                        and [item.get('publicationId') for item in items] == [item.get('publicationId') for item in old_items],
+                        'Busy recovery changed retained artifact/publication identity')
+                require(all(old.get('receipt') == item.get('receipt') for old, item in zip(recovered[operation_id]['items'], items)
+                            if old['uploadStatus'] == 'uploaded' and old.get('shareStatus') == 'shared'),
+                        'Busy recovery changed an already shared publication receipt')
+                recovered[operation_id] = op
+                if not complete(op):
+                    allowed(op)
+            pending = [operation_id for operation_id, op in recovered.items() if not complete(op)]
+            if not pending:
+                return recovered
+        raise TrayProgressError('Bounded original-ID Proton busy recovery did not complete')
+
     def execute(self):
         self.setup()
         self.clipboard()
@@ -575,6 +681,7 @@ print(json.dumps(results))
         self.clipboard()
         concurrent_ids = [self.invoke(), self.invoke()]
         concurrent = self.settled(concurrent_ids, 'concurrent')
+        concurrent = self.recover_proton_busy(concurrent)
         self.successful_uploads(concurrent)
         require(self.result['coverage']['concurrent']['concurrentAdmission'], 'Two active admitted operations were not observed')
         self.patch({'limits': {'concurrentUploads': 1}})
@@ -621,8 +728,9 @@ print(json.dumps(results))
             require(target.stat().st_size == self.sources[index]['bytes'] and lab.hash_file(target) == self.sources[index]['sha256'],
                     'Actual saved local bytes differ from independent synthetic source')
         upload_ids = queue_ids + concurrent_ids + [cancelled_id]
-        history_ids = [item['artifact']['id'] for op in self.cli('operation.recent')['operations']
-                       if op['id'] in upload_ids for item in op['items'] if item['uploadStatus'] == 'uploaded']
+        retained = [self.cli('operation.inspect', {'id': operation_id}) for operation_id in upload_ids]
+        history_ids = [item['artifact']['id'] for op in retained for item in op['items']
+                       if item['uploadStatus'] == 'uploaded']
         self.result['historyIds'] = history_ids
         before_restart = {history_id: self.cli('history.detail', {'id': history_id}) for history_id in history_ids}
         require(self.cli('ui.quit').get('quitting'), 'Resident quit not acknowledged')
@@ -640,6 +748,7 @@ print(json.dumps(results))
         self.pid = identity['pid']
         self.result['runningAppAfterRestart'] = identity
         self.history = []
+        self.mismatch_since = None
         require(all(self.cli('history.detail', {'id': history_id})['receipt'] == old['receipt']
                     for history_id, old in before_restart.items()), 'Restart changed original publication receipts')
         snapshot = self.snapshot()

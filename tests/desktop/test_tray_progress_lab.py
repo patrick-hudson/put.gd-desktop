@@ -174,5 +174,118 @@ class TrayProgressContracts(unittest.TestCase):
                     tray.private_settings(path, 'test', 's3', 'tray-unique')
 
 
+    def test_current_row_cannot_borrow_prior_operation_or_file_bytes(self):
+        old = {'operationId': 'old', 'artifactId': 'a', 'phase': 'uploading',
+               'sourceBytes': 4*1024**2, 'bytesTransferred': 3*1024**2,
+               'bytesTotal': 4*1024**2, 'rowIndex': 0, 'activeCount': 1, 'fileIndex': 1, 'fileCount': 2}
+        current = {**old, 'operationId': 'new', 'artifactId': 'b', 'bytesTransferred': 1024**2}
+        text = observation('Uploading file 1/2: 3 MiB of 4 MiB (75%)')
+        for stale in (old, {**old, 'operationId': 'new'}):
+            with self.subTest(stale=stale), self.assertRaises(tray.TrayProgressError):
+                tray.check_tooltip(text, tray.correlated_records([stale, current], [current]), 's3', 42)
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(observation('Uploading file 2/2: 1 MiB of 4 MiB (25%)'), [current], 's3', 42)
+
+    def test_same_operation_row_shift_keeps_its_own_batched_counter(self):
+        row = {'operationId': 'remaining', 'artifactId': 'a', 'phase': 'uploading',
+               'sourceBytes': 4*1024**2, 'bytesTransferred': 1024**2,
+               'bytesTotal': 4*1024**2, 'rowIndex': 1, 'activeCount': 1}
+        current = {**row, 'rowIndex': 0, 'bytesTransferred': 2*1024**2}
+        rows = tray.correlated_records([row, current], [current])
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 1 MiB of 4 MiB (25%)'), rows, 's3', 42)['counter'])
+
+    def test_idle_during_active_work_is_a_mismatch(self):
+        idle = observation('', color='#9bbcff', title=tray.IDLE)
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(idle, [{'phase': 'uploading'}], 's3', 42)
+
+    def test_persistent_idle_fails_after_bounded_batching_grace_and_is_preserved(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        import json
+        replay = object.__new__(tray.Replay)
+        replay.args = SimpleNamespace(provider='s3')
+        replay.pid = 42; replay.history = []; replay.mismatch_since = None
+        replay.result = {'coverage': {}}; replay.save = Mock(); replay.witness = Mock()
+        op = {'id': 'active', 'state': 'running', 'phase': 'uploading', 'items': []}
+        replay.cli = Mock(return_value={'operations': [op]})
+        replay.snapshot = Mock(return_value=observation('', color='#9bbcff', title=tray.IDLE))
+        with tempfile.TemporaryDirectory() as directory:
+            replay.output = Path(directory)
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 11, 12.01]):
+                self.assertFalse(replay.observe('test')[2]['matched'])
+                self.assertFalse(replay.observe('test')[2]['matched'])
+                with self.assertRaises(tray.TrayProgressError): replay.observe('test')
+            records = [json.loads(line) for line in (replay.output/'observations.jsonl').read_text().splitlines()]
+            self.assertEqual(len(records), 3)
+            self.assertTrue(all(not row['assertions']['matched'] for row in records))
+            self.assertFalse(replay.result['coverage'].get('test', {}).get('active', False))
+
+    def test_concurrency_requires_two_running_nonqueued_rows(self):
+        checked = {'idle': False, 'phases': ['uploading', 'queued']}
+        rows = [{'state': 'running', 'phase': 'uploading'}, {'state': 'stored', 'phase': 'queued'}]
+        self.assertFalse(tray.concurrent_admission(checked, rows))
+        checked['phases'][1] = 'preflight'; rows[1] = {'state': 'running', 'phase': 'preflight'}
+        self.assertTrue(tray.concurrent_admission(checked, rows))
+
+    def test_proton_busy_recovery_retries_original_ids_sequentially(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        import copy
+        item = {'artifact': {'id': 'artifact'}, 'publicationId': 'publication',
+                'uploadStatus': 'failed', 'shareStatus': 'not_requested', 'error': {'code': 'proton_account_busy'}}
+        initial = {'original': {'id': 'original', 'state': 'partial', 'items': [item]}}
+        final = copy.deepcopy(initial); final['original']['state'] = 'completed'
+        final['original']['items'][0].update(uploadStatus='uploaded', shareStatus='shared', error={})
+        replay = object.__new__(tray.Replay); replay.args = SimpleNamespace(provider='proton-drive')
+        replay.save = Mock(); replay.patch = Mock(); replay.successful_uploads = Mock()
+        replay.cli = Mock(return_value={'operationId': 'original', 'retryAccepted': True})
+        replay.settled = Mock(return_value=final)
+        self.assertEqual(replay.recover_proton_busy(initial), final)
+        replay.cli.assert_called_once_with('operation.retry', {'id': 'original'})
+        replay.settled.assert_called_once_with(['original'], 'concurrent-recovery-1')
+        for defect in ({'error': {'code': 'proton_permission_denied'}}, {'uploadStatus': 'unknown'}):
+            bad = copy.deepcopy(initial); bad['original']['items'][0].update(defect)
+            replay.cli.reset_mock()
+            with self.subTest(defect=defect), self.assertRaises(tray.TrayProgressError): replay.recover_proton_busy(bad)
+            replay.cli.assert_not_called()
+        final['original']['items'][0]['publicationId'] = 'changed'
+        with self.assertRaises(tray.TrayProgressError): replay.recover_proton_busy(initial)
+
+
+    def test_privacy_failure_is_fatal_and_evidence_is_redacted(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        replay = object.__new__(tray.Replay); replay.args = SimpleNamespace(provider='s3')
+        replay.pid = 42; replay.history = []; replay.mismatch_since = None
+        replay.result = {'coverage': {}}; replay.save = Mock(); replay.witness = Mock()
+        replay.cli = Mock(return_value={'operations': []})
+        replay.snapshot = Mock(return_value=observation('Queued https://example.invalid/#sensitive'))
+        with tempfile.TemporaryDirectory() as directory:
+            replay.output = Path(directory)
+            with self.assertRaises(tray.TrayProgressError): replay.observe('privacy')
+            evidence = (replay.output/'observations.jsonl').read_text()
+            self.assertNotIn('sensitive', evidence); self.assertNotIn('example.invalid', evidence)
+            self.assertIn('redacted', evidence)
+
+    def test_later_busy_pass_cannot_change_a_receipt_established_in_first_pass(self):
+        import copy
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        items = [{'artifact': {'id': key}, 'publicationId': 'pub-'+key, 'uploadStatus': 'failed',
+                  'shareStatus': 'not_requested', 'error': {'code': 'proton_account_busy'}} for key in ('a', 'b')]
+        initial = {'original': {'id': 'original', 'state': 'partial', 'items': items}}
+        first = copy.deepcopy(initial)
+        first['original']['items'][0].update(uploadStatus='uploaded', shareStatus='shared', receipt={'identity': 'first'}, error={})
+        second = copy.deepcopy(first); second['original']['state'] = 'completed'
+        second['original']['items'][0]['receipt'] = {'identity': 'changed'}
+        second['original']['items'][1].update(uploadStatus='uploaded', shareStatus='shared', error={})
+        replay = object.__new__(tray.Replay); replay.args = SimpleNamespace(provider='proton-drive')
+        replay.save = Mock(); replay.patch = Mock()
+        replay.cli = Mock(return_value={'operationId': 'original', 'retryAccepted': True})
+        replay.settled = Mock(side_effect=[first, second])
+        with self.assertRaisesRegex(tray.TrayProgressError, 'receipt'): replay.recover_proton_busy(initial)
+
+
 if __name__ == '__main__':
     unittest.main()

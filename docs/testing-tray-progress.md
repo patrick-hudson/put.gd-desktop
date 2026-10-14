@@ -196,7 +196,14 @@ The scenario uses two deterministic synthetic files per operation and drives:
 3. Two concurrently admitted operations after configuring two workers.
    Core activity rows must show both active operations. Proton serializes helper
    requests for the same keychain reference, so this proves concurrent app
-   admission/activity, not parallel SDK transfers for one account.
+   admission/activity, not parallel SDK transfers for one account. A queued row
+   does not count as admission: both operations must be running with two
+   non-queued tooltip rows. The original concurrent outcomes are retained.
+   For Proton, only explicit `proton_account_busy` unfinished-item failures
+   permit up to three sequential recovery passes using `operation.retry` on
+   the original IDs and the same credential reference. Artifact/publication
+   IDs and already shared receipts must remain unchanged. Every other failure
+   stops the scenario.
 4. Cancellation after a real transfer counter is observed, terminal cancelled
    state and idle, then explicit production `operation.retry` with the original
    operation, retained artifact and publication IDs. Unknown publication is
@@ -210,7 +217,14 @@ The scenario uses two deterministic synthetic files per operation and drives:
 
 CLI and SNI reads are separate, and the product batches observations. Counter
 assertions use before/after CLI reads plus a two-second recent observation
-window. Rounded tooltip bytes must fit real observed byte bounds and their own
+window, restricted to the current row’s operation and artifact identity.
+An operation moving up a row keeps its own observations; a previous operation
+or file cannot supply its byte bounds. Transition mismatches are preserved
+without coverage credit and retried for at most two consecutive seconds. A
+persistently idle tray while CLI work remains active fails this same bound.
+Privacy, identity, icon color and malformed accounting failures stop immediately;
+the rejected SNI text is redacted from failure evidence.
+Rounded tooltip bytes must fit real observed byte bounds and their own
 integer percentage. No estimate from elapsed time or source size is accepted.
 The SNI phase must have a matching production observation. Source filenames,
 paths and links are prohibited in tray text.
@@ -239,6 +253,11 @@ the newly registered host displays the current activity and eventual idle,
 without reopening a view. If a desktop cannot provide this workflow safely,
 record that gate as blocked. Do not stand up a fake watcher or restart a
 Wayland compositor blindly to claim host-recovery evidence.
+
+The isolated replay pins the recent-activity limit to 100 so all active
+rows can be independently observed. Cleanup and restart enumerate each retained operation ID through
+`operation.inspect`, so a short recent-activity limit cannot drop old uploads
+from the cleanup handoff.
 
 Each run preserves parameters, socket preflight, source identities, package and
 running-process identity, native readiness, capabilities/diagnostics, redacted
