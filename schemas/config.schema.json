@@ -749,7 +749,7 @@
         "requestTimeoutMs": {
           "type": "integer",
           "minimum": 1000,
-          "maximum": 600000,
+          "maximum": 86400000,
           "default": 120000
         }
       }

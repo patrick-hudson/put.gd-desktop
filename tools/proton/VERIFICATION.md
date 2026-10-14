@@ -158,3 +158,20 @@ rescheduling mutations failed the new assertions; restored source passed all
 29 helper tests / 130 assertions. TypeScript still reports only the same four
 upstream declaration errors. Only the test file changed; the verified production
 helper SHA-256 and compiled stdio/full-stdout evidence above remain applicable.
+
+
+## Extended deadline and retry errors
+
+The maximum request budget is now 86,400,000 ms (default remains 120,000;
+connect stays 600,000). An attempt override lives outside destination/receipt
+identity. Publication-specific client IDs survive upload/reconciliation attempts
+without storing authentication. Explicit unfinished-upload collision evidence
+and deadline errors survive the status factory.
+
+Pinned helper build SHA-256:
+`68228b887f68b06d4aca742b36ba127863b30bd87bd6e9761bcb841df637f4b3`.
+All 32 tests / 149 assertions passed; eleven compiled stdio cases exercise long
+budget acceptance and out-of-range rejection without an account; complete
+1,048,337-byte stdout drain passed. Four upstream Crypto/Bun type errors remain;
+no helper/test type diagnostics remain. Live large-file recovery and release
+acceptance are recorded separately in `docs/proton-drive-verification.md`.

@@ -21,6 +21,10 @@ def main():
                    'settings': {}, 'credentials': {'mode': 'keychain', 'reference': 'smoke'}}
     request = {'schemaVersion': 1, 'method': 'remove', 'destination': destination}
     cases = [(json.dumps(request).encode(), 'unsupported_safe_removal'),
+             (json.dumps({**request, 'requestTimeoutMs': 3600000}).encode(), 'unsupported_safe_removal'),
+             (json.dumps({**request, 'requestTimeoutMs': 86400000}).encode(), 'unsupported_safe_removal'),
+             (json.dumps({**request, 'requestTimeoutMs': 86400001}).encode(), 'invalid_request'),
+             (json.dumps({**request, 'requestTimeoutMs': 999}).encode(), 'invalid_request'),
              (b'{}{}', 'invalid_request'), (b'\xff', 'invalid_request'),
              (b'x' * (128 * 1024 + 1), 'invalid_request'),
              (json.dumps({**request, 'destination': {**destination, 'credentials': {'mode': 'unsafe_file', 'reference': 'smoke'}}}).encode(), 'keychain_required'),
@@ -40,7 +44,7 @@ def main():
                                    capture_output=True, check=True, timeout=10)
         assert not completed.stderr and json.loads(completed.stdout)['error']['code'] == 'reference_in_use'
         assert b'synthetic-secret' not in completed.stdout
-    print('Compiled helper version and 7 no-account stdio cases passed.')
+    print(f'Compiled helper version and {len(cases)+1} no-account stdio cases passed.')
 
 if __name__ == '__main__':
     main()

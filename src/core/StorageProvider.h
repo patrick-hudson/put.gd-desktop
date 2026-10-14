@@ -38,6 +38,7 @@ struct UploadRequest {
  QString concurrencyToken;
  std::shared_ptr<std::atomic_bool> cancellation;
  std::function<void(const UploadProgress&)> progress={};
+ std::optional<int> requestTimeoutMs={}; // Attempt budget; accepted destination identity stays unchanged.
 };
 struct UploadResult { QString status; StorageReceipt receipt; Error error; }; // uploaded, collision, failed, unknown
 struct StatResult { QString status; StorageReceipt receipt; Error error; }; // own, foreign, missing, unknown
@@ -62,6 +63,8 @@ class StorageProvider {
 public:
  virtual ~StorageProvider()=default;
  virtual bool reconcilesDeleteProgress() const { return false; }
+ // Providers may adopt longer execution budgets on explicit retry, without changing destination identity.
+ virtual std::optional<int> retryRequestTimeout(const Destination&,const QJsonObject&) const { return {}; }
  virtual QString defaultPublicationMode(const Destination&) const { return "share"; }
  virtual void share(const ShareRequest& request,DurableCheckpoint,std::function<void(ShareResult)> reply) {
   reply({"unsupported",request.receipt,{}, {"sharing_unsupported","This provider cannot create or revoke share links",{}}});

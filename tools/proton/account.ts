@@ -16,7 +16,7 @@ import { HTTPClient } from './upstream/cli/src/api/httpClient';
 import { DriveAccountAdapter } from './upstream/cli/src/api/driveAccountAdapter';
 import { getOrGenerateClientUid } from './upstream/cli/src/clientUid';
 import { processDriveRequirementHeaders, SUPPORTED_REQUIREMENT_MASK_BY_SCOPE } from './upstream/cli/src/api/apiRequirements';
-import { ProtocolError, type JsonObject } from './protocol';
+import { ProtocolError, publicationClientUid, type JsonObject } from './protocol';
 import { RequestCryptoCache } from './crypto-cache';
 export const APP_VERSION = 'external-drive-put_gd@0.1.1-alpha';
 export const SDK_VERSION = 'js@0.22.2';
@@ -62,7 +62,7 @@ export async function initialize(request: JsonObject) {
             srpApi: { computeKeyPassword, generateKeySalt, getRandomSrpVerifier, getSrp }, logger,
             accountUrl: 'account.proton.me' });
     } catch { throw new ProtocolError('keychain_unavailable'); }
-    const clientUid = await getOrGenerateClientUid({ appDir: dataDir, clientUidPrefix: 'putgd' } as any, logger);
+    const clientUid = publicationClientUid(request) ?? await getOrGenerateClientUid({ appDir: dataDir, clientUidPrefix: 'putgd' } as any, logger);
     const sdk = new ProtonDriveClient({ config: { baseUrl: 'drive-api.proton.me', clientUid },
         httpClient: new HTTPClient(apiClient), telemetry, account: new DriveAccountAdapter(account.addresses),
         srpModule: account.srp, openPGPCryptoModule: new OpenPGPCryptoWithCryptoProxy(CryptoProxy),

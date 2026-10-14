@@ -109,3 +109,9 @@ read `share.inspect` with that ID until its durable outcome is known. Revoke
 removes URL access only. See [Proton Drive](proton-drive.md). Account setup and
 password entry belong in Settings; the CLI rejects `setup.storeSharePassword`
 so passwords are never passed as process arguments.
+
+For Proton, explicit `operation.retry` can adopt a longer current request
+deadline when the account and folder still match. Inspection exposes that
+separate attempt budget as `requestTimeoutMs`; the original destination
+snapshot remains unchanged. Retry retains the original publication ID and
+reconciles before another upload.

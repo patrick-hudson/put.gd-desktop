@@ -1,3 +1,4 @@
+#include "OutputBudget.h"
 #include "ProtonProvider.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -42,6 +43,12 @@ QJsonObject ProtonProvider::defaults() {
  return {{"accountRootUid",""},{"folderUid",""},{"shareByDefault",true},{"linkExpirationDays",0},
   {"sharePasswordReference",QJsonValue::Null},{"requestTimeoutMs",120000}};
 }
+std::optional<int> ProtonProvider::retryRequestTimeout(const Destination& accepted,const QJsonObject& profile) const {
+ if(profile["id"]!=accepted.profileId||profile["provider"]!=accepted.providerId||profile["credentials"].toObject()!=accepted.credentialReference)return {};
+ const auto current=profile["settings"].toObject();if(validateSettings(current))return {};
+ for(const auto& field:QStringList{"accountRootUid","folderUid"})if(current[field]!=accepted.settings[field])return {};
+ return std::max(accepted.settings["requestTimeoutMs"].toInt(120000),current["requestTimeoutMs"].toInt(120000));
+}
 ProviderCapabilities ProtonProvider::capabilities(const Destination&) const {
  ProviderCapabilities caps;caps.conditionalCreate=true;caps.stat=true;caps.urls=true;caps.maximumNameBytes=255;caps.sharing=true;caps.privateUploads=true;
  caps.deletionEffect="Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.";return caps;
@@ -61,7 +68,7 @@ Error ProtonProvider::validateSettings(const QJsonObject& s) const {
  const auto name=s["folderName"];
  if(!name.isUndefined()&&(!name.isString()||name.toString().isEmpty()||name.toString().toUtf8().size()>255||name.toString().contains(QRegularExpression("[\\x00-\\x1f\\x7f]"))||folder.isEmpty()))return {"config_invalid","Proton folder display name is invalid",{}};
  const auto days=s["linkExpirationDays"].toDouble(-1),timeout=s["requestTimeoutMs"].toDouble(-1);
- if(!s["shareByDefault"].isBool()||days<0||days>365||days!=int(days)||timeout<1000||timeout>600000||timeout!=int(timeout))return {"config_invalid","Proton sharing or timeout settings are invalid",{}};
+ if(!s["shareByDefault"].isBool()||days<0||days>365||days!=int(days)||timeout<1000||timeout>MaximumRequestTimeoutMs||timeout!=int(timeout))return {"config_invalid","Proton sharing or timeout settings are invalid",{}};
  const auto password=s["sharePasswordReference"];
  if(!password.isNull()&&(!password.isString()||password.toString().isEmpty()||password.toString().size()>256))return {"config_invalid","Use a secret-store reference for the share password",{}};
  return {};
@@ -117,11 +124,11 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
  const auto delivered=process.write(bytes);if(outcomeUncertain)*outcomeUncertain=delivered>0;
  if(delivered!=bytes.size()){process.kill();process.waitForFinished(5000);error={"proton_result_unknown","Helper request could not be delivered",{}};return {};}
  process.closeWriteChannel();bytes.fill('\0');bytes.clear();
- QElapsedTimer elapsed;elapsed.start();QByteArray pending;QJsonObject final;bool gotResult=false,gotAuth=false;qsizetype outputBytes=0;
- const int timeout=method=="connect"?600000:destination.settings["requestTimeoutMs"].toInt(120000);
+ QElapsedTimer elapsed;elapsed.start();QByteArray pending;QJsonObject final;bool gotResult=false,gotAuth=false;ProtonOutputBudget outputBudget;
+ const int timeout=method=="connect"?600000:params["requestTimeoutMs"].toInt(destination.settings["requestTimeoutMs"].toInt(120000));
  const auto consume=[&]{
-  process.readAllStandardError();auto chunk=process.readAllStandardOutput();outputBytes+=chunk.size();pending+=chunk;
-  if(outputBytes>2*1024*1024){error={"proton_protocol","Helper response exceeded its bound",{}};return;}
+  process.readAllStandardError();process.setReadChannel(QProcess::StandardOutput);auto chunk=process.read(ProtonOutputBudget::MaximumBurstBytes+1);pending+=chunk;
+  if(pending.size()>ProtonOutputBudget::MaximumBurstBytes||!outputBudget.consume(chunk.size(),elapsed.elapsed())){error={"proton_protocol","Helper response exceeded its bound",{}};return;}
   while(pending.contains('\n')){
    const auto line=pending.left(pending.indexOf('\n'));pending.remove(0,line.size()+1);QJsonParseError parse;const auto doc=QJsonDocument::fromJson(line,&parse);
    if(parse.error!=QJsonParseError::NoError||!doc.isObject()){error={"proton_protocol","Malformed helper response",{}};return;}
@@ -158,11 +165,11 @@ QJsonObject ProtonProvider::call(const QString& method,const Destination& destin
 void ProtonProvider::checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply){Error e;auto r=call("checkName",d,{{"candidate",name}},e);reply({e?"inconclusive":r["status"].toString("inconclusive"),r["objectReference"].toObject(),r["concurrencyToken"].toString(),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::upload(const UploadRequest& req,std::function<void(UploadResult)> reply){
  if(req.condition!="absent"){reply({"failed",{}, {"unsupported_capability","Proton cannot safely replace a recorded file revision",{}}});return;}
- Error e;bool uncertain=false;auto r=call("upload",req.destination,{{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}},e,req.cancellation,{},&uncertain,req.progress);
+ Error e;bool uncertain=false;auto r=call("upload",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"condition",req.condition},{"objectReference",req.objectReference},{"concurrencyToken",req.concurrencyToken}},e,req.cancellation,{},&uncertain,req.progress);
  reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});
 }
 void ProtonProvider::stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply){Error e;auto r=call("stat",receipt.destination,{{"receipt",receipt.toJson()}},e);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
-void ProtonProvider::reconcile(const UploadRequest& req,std::function<void(StatResult)> reply){Error e;auto r=call("reconcile",req.destination,{{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"objectReference",req.objectReference}},e,req.cancellation);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
+void ProtonProvider::reconcile(const UploadRequest& req,std::function<void(StatResult)> reply){Error e;auto r=call("reconcile",req.destination,{{"requestTimeoutMs",req.requestTimeoutMs?QJsonValue(*req.requestTimeoutMs):QJsonValue(req.destination.settings["requestTimeoutMs"])},{"artifact",req.artifact.toJson()},{"candidate",req.candidate},{"publicationId",req.publicationId},{"objectReference",req.objectReference}},e,req.cancellation);reply({e?"unknown":r["status"].toString("unknown"),StorageReceipt::fromJson(r["receipt"].toObject()),e?e:parseError(r["error"].toObject())});}
 void ProtonProvider::remove(const DeleteRequest&,DurableCheckpoint,std::function<void(DeleteResult)> reply){reply({"unsupported_safe_removal",{}, {"unsupported_capability","Proton does not expose atomic revision-guarded file deletion; revoke the share link instead",{}}});}
 void ProtonProvider::share(const ShareRequest& req,DurableCheckpoint checkpoint,std::function<void(ShareResult)> reply){
  const QJsonObject progress{{"schemaVersion",1},{"phase",req.action=="inspect"?"inspect":"intent"},{"operationId",req.id},{"action",req.action}};

@@ -1,5 +1,16 @@
 // put.gd's one-request protocol. No provider exception text crosses this boundary.
+import { createHash } from 'node:crypto';
 export const MAX_REQUEST_BYTES = 128 * 1024;
+export const MAX_REQUEST_TIMEOUT_MS = 86400000;
+export function requestTimeout(request: JsonObject): number {
+    const timeout = request.method === 'connect' ? 600000 : request.requestTimeoutMs ?? request.destination.settings.requestTimeoutMs ?? 120000;
+    if (!Number.isInteger(timeout) || timeout < 1000 || timeout > MAX_REQUEST_TIMEOUT_MS) throw new ProtocolError('invalid_request');
+    return timeout;
+}
+export function publicationClientUid(request: JsonObject): string | undefined {
+    if (request.method !== 'upload' && request.method !== 'reconcile') return undefined;
+    return 'putgd-' + createHash('sha256').update(JSON.stringify([text(request.destination.credentials.reference), text(request.publicationId)])).digest('hex');
+}
 export const METHODS = new Set(['connect', 'inspectAccount', 'createFolder', 'storeSharePassword',
     'checkName', 'upload', 'stat', 'reconcile', 'share', 'remove']);
 export type JsonObject = Record<string, any>;
@@ -134,6 +145,7 @@ export function failure(code: string): JsonObject {
         unsafe_data_directory: 'The Proton runtime requires a private data directory.', reference_in_use: 'The keychain reference is already in use.',
         keychain_unavailable: 'The private keychain is unavailable.', artifact_changed: 'The staged artifact has changed.',
         account_reference_in_use: 'Use a new account reference to connect a replacement account.',
+        upload_draft_conflict: 'An unfinished upload reserves this name. Retry can use another name under the configured rename policy.',
         operation_failed: 'The Proton operation could not be completed.', operation_unknown: 'The Proton operation outcome is unknown.',
         folder_creation_unknown: 'The folder creation outcome is unknown.', request_timeout: 'Proton exceeded the configured request deadline; reconcile its saved identity before retrying.',
     };

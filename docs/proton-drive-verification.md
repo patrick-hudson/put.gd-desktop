@@ -89,7 +89,8 @@ readiness also remain release gates.
 Supported limits are documented in [Proton Drive](proton-drive.md): create-only
 uploads; no revision-guarded remote deletion; normal Proton share-page URLs;
 fresh identity checks around sharing, without an atomic SDK revision guard.
-The default request timeout is 120 seconds (configurable up to 600); large or
+At the initial feature checkpoint, the default request timeout was 120 seconds
+(configurable up to 600); large or
 slow transfers may become uncertain. Abandoned browser login can hold its account
 lock for up to ten minutes; setup cancellation is not yet exposed in the GUI.
 
@@ -324,3 +325,65 @@ worker queued retry and stopped-phase cases now pass. Socket preflight passed at
 with the earlier full 59-target run and unchanged authenticated SDK transport
 proof, this closes the source/contract scope of the progress/deadline fix; it does
 not close the pending native memory/compositor and provider recovery gates.
+
+
+## Large-file deadline and retry recovery follow-up
+
+The request deadline now accepts 1–86,400 seconds (24 hours), with the original
+120-second default. Browser sign-in remains capped at ten minutes. Explicit
+Retry may adopt a longer current matching-provider/profile/account/root/folder
+budget for upload and reconciliation, saved as `operation.requestTimeoutMs`.
+The accepted destination/settings/receipt remain unchanged. Lowering the profile
+or reloading configuration does not shorten that persisted retry budget.
+Name checks and sharing retain their accepted destination budgets.
+
+A read-only check of the user-reported large-file candidate found no completed
+matching file but an unavailable name. The pinned SDK hides unfinished drafts
+from completed-file lists and recognizes its own drafts by client UID. The old
+helper generated a different UID for each temporary request directory. Upload
+and reconciliation now use an account-reference/publication-specific UID. An
+explicit SDK unfinished-upload collision is preserved as `upload_draft_conflict`;
+only completed-list `missing` proof permits the configured rename/skip handling.
+Generic collisions, failed reads and unproven ownership remain unknown. Older
+unknown drafts are not removed. Retry uses the retained staged artifact.
+
+The helper's `status()` factory also overwrote supplied error details with an
+empty object. It now preserves deadline/draft failure codes. Collision
+reconciliation preserves its underlying error and reports terminal `unknown`
+phase rather than leaving `reconciling` after work has stopped.
+
+Validation:
+
+- Full dev configure/build passed. All 59 CTest targets passed in 438.02 seconds,
+  with private socket preflight maximum 82 bytes. After terminal phase/error
+  fixes, nine related targets passed in 106.38 seconds.
+- Review `20261013-220545-6abdd42d` completed with seven local lenses and an
+  independent Anthropic `claude-opus-5-5` pass (actual model/independence verified;
+  requested high effort, actual effort unverified). All three retained findings
+  were applied: cancellation forwarding for both reconciliation paths, sustained
+  output accounting, and actual service-level retry-budget assertions.
+- Red regressions observed missing cancellation flags in both service paths and
+  rejection of valid progress after the old cumulative quota. The final nine
+  related targets passed in 108.16 seconds, socket maximum 75 bytes. They capture
+  both upload/reconcile budgets at one hour, lower the profile and reload, then
+  prove the dispatched and durable budget remains one hour. A real synthetic
+  helper reconciliation with a 30-second override stops promptly on cancellation.
+- Stdout uses a two-MiB burst token bucket with one-KiB/second refill and bounded
+  frame/pending reads. A controlled 32,768-frame, 500-ms-cadence check exceeds two
+  MiB lifetime output and succeeds; oversized frames and existing flood cases
+  still fail. This is controlled clock evidence, not a multi-hour live upload.
+- All 32 helper tests / 149 assertions passed. Eleven compiled no-account stdio
+  cases accept one-hour/24-hour overrides and reject out-of-range values. The
+  full 1,048,337-byte compiled stdout check passed. Helper SHA-256:
+  `68228b887f68b06d4aca742b36ba127863b30bd87bd6e9761bcb841df637f4b3`.
+- Three separate official-MCP/production-CLI integration tests passed. Full
+  TypeScript checking still has four upstream Crypto/Bun declaration errors,
+  with no helper/test diagnostics. No helper lint is configured.
+
+The follow-up local review found no concrete issue in the applied fixes.
+Remaining focused gaps are an explicit draft/skip fixture and a composed helper
+plus watchdog reconciliation deadline check. Same-account serialization still
+makes other requests report busy while a long request holds its lock.
+Current compositor/total-process memory, recipient access, session recovery and
+redistribution/service readiness acceptance remain pending. No offscreen, SDK
+stub or controlled-clock result establishes those release gates.

@@ -53,3 +53,12 @@ Native source callbacks may arrive on any thread or after cancellation. The sour
 adapter outlives the services; cancellation need not drain callbacks synchronously.
 Services lifetime-guard and marshal acquisition/copy completions to their owner thread.
 Clipboard-revision inspection must not read payloads.
+
+Explicit retry can carry an optional execution `requestTimeoutMs` separately
+from the accepted destination. Providers opt in through `retryRequestTimeout`;
+the default preserves existing behavior. Proton selects the longer budget only
+for a matching provider/profile/account reference/root/folder. This budget never
+changes saved receipt identity or accepted sharing/collision settings. A
+`collision` with `upload_draft_conflict` is evidence of an unfinished reservation,
+not publication or ownership; rename/skip can proceed only after reconciliation
+proves `missing`. A generic collision with missing/unknown proof remains unknown.

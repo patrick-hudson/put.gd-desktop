@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, type NodeEntity, type ProtonDriveClient } from '@protontech/drive-sdk';
 import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, privateDataDirectory } from './account';
 import { MAX_REQUEST_BYTES, ProtocolError, classifyNode, configured, days, failure, hash, makeReceipt,
-    name, object, parseRequest, receipt, reference, shareOutcome, connectAction, text, type JsonObject } from './protocol';
+    name, object, parseRequest, receipt, reference, shareOutcome, connectAction, text, requestTimeout, type JsonObject } from './protocol';
 import { writeJson } from './stdout';
 import { createProgressReporter } from './progress';
 
@@ -20,7 +20,7 @@ function writeFinal(value: JsonObject): Promise<void> {
     return finalWrite ??= (async () => { await uploadProgress?.finish(); await writeJson(value); })();
 }
 const success = (result: JsonObject) => ({ ok: true, result });
-const status = (value: string, fields: JsonObject = {}) => ({ status: value, ...fields, error: {} });
+const status = (value: string, fields: JsonObject = {}) => ({ status: value, error: {}, ...fields });
 async function readRequest(): Promise<JsonObject> {
     const chunks: Buffer[] = [];
     let count = 0;
@@ -141,7 +141,7 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
             const completed = await pending.completion();
             return status('uploaded', { receipt: makeReceipt(request, completed.nodeUid, completed.nodeRevisionUid) });
         } catch (error) {
-            if (error instanceof NodeWithSameNameExistsValidationError) return status('collision');
+            if (error instanceof NodeWithSameNameExistsValidationError) return status('collision', { error: error.isUnfinishedUpload ? failure('upload_draft_conflict') : {} });
             return status('unknown', { error: deadlineExpired ? deadlineError() : failure('operation_unknown') });
         }
     } finally { try { await uploadProgress.finish(); } finally { await file.close(); } }
@@ -235,7 +235,7 @@ async function run(request: JsonObject): Promise<JsonObject> {
 }
 function deadlineError(): JsonObject {
     const error = failure('request_timeout');
-    error.details = { reason: 'deadline', timeoutMs: activeRequest?.method === 'connect' ? 600000 : activeRequest?.destination.settings.requestTimeoutMs ?? 120000,
+    error.details = { reason: 'deadline', timeoutMs: activeRequest ? requestTimeout(activeRequest) : 120000,
         method: activeRequest?.method ?? 'request' };
     return error;
 }
@@ -259,8 +259,7 @@ if (process.argv.length === 3 && process.argv[2] === '--version') {
     try {
         activeRequest = await readRequest();
         clearTimeout(timer);
-        const timeoutMs = activeRequest.method === 'connect' ? 600000 : activeRequest.destination.settings.requestTimeoutMs ?? 120000;
-        if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > 600000) throw new ProtocolError('invalid_request');
+        const timeoutMs = requestTimeout(activeRequest);
         timer = setTimeout(timeout, timeoutMs);
         const result = await run(activeRequest);
         clearTimeout(timer);

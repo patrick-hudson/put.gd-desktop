@@ -243,9 +243,9 @@ Operation OperationService::run(Job job) {
   auto lock=objectLock(op.destination,item.objectReference,item.candidate);std::unique_lock guard(*lock);
   if(item.uploadStatus=="unknown") {
    op.phase="reconciling";item.phase="reconciling";observe(op.publicJson());
-   auto stat=awaitProvider<StatResult>([&](auto cb) {provider->reconcile(item.uploadRequest(op.destination),cb);});
+   auto stat=awaitProvider<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;provider->reconcile(request,cb);});
    if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};if(!saveItem(item))return op;continue;}
-   if(stat.status!="missing") {item.error=stat.error?stat.error:Error{"publication_unknown","Resolve ambiguous publication before uploading again",{}};if(!saveItem(item))return op;continue;}
+   if(stat.status!="missing") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Resolve ambiguous publication before uploading again",{}};if(!saveItem(item))return op;continue;}
    item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;if(!saveItem(item))return op;continue;}if(!saveItem(item))return op;
   }
   for(int attempts=0;attempts<32;++attempts) {
@@ -253,7 +253,7 @@ Operation OperationService::run(Job job) {
    struct ProgressState{std::mutex mutex;bool closed=false;std::optional<UploadProgress> latest;QJsonObject document;};
    auto progress=std::make_shared<ProgressState>();progress->document=op.publicJson();const auto artifactId=item.artifact.id;QPointer<OperationService> owner(this);
    auto uploaded=awaitProvider<UploadResult>([&](auto cb) {
-    auto request=item.uploadRequest(op.destination);request.cancellation=job.cancelled;
+    auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;
     request.progress=[owner,progress,artifactId](const UploadProgress& value){
      if(!value.valid())return;
      std::lock_guard lock(progress->mutex);if(progress->closed||!owner)return;progress->latest=value;
@@ -272,9 +272,10 @@ Operation OperationService::run(Job job) {
    if(uploaded.status!="collision") {item.uploadStatus="failed";if(!saveItem(item))return op;break;}
    // Reconcile our publication before changing any proposed target after a race.
    op.phase="reconciling";item.phase="reconciling";observe(op.publicJson());
-   auto stat=awaitProvider<StatResult>([&](auto cb) {provider->reconcile(item.uploadRequest(op.destination),cb);});
+   auto stat=awaitProvider<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=job.cancelled;provider->reconcile(request,cb);});
    if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};if(!saveItem(item))return op;break;}
-   if(stat.status!="foreign") {item.uploadStatus="unknown";item.error={"publication_unknown","Collision publication could not be reconciled",{}};if(!saveItem(item))return op;break;}
+   const bool unpublishedDraft=stat.status=="missing"&&uploaded.error.code=="upload_draft_conflict";
+   if(stat.status!="foreign"&&!unpublishedDraft) {item.uploadStatus="unknown";item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Collision publication could not be reconciled",{}};if(!saveItem(item))return op;break;}
    if(op.settings.collisionPolicy=="skip") {item.uploadStatus="skipped";if(!saveItem(item))return op;break;}
    if(op.settings.collisionPolicy!="rename") {item.uploadStatus="failed";item.error={"precondition_changed","Original replacement precondition changed",{}};if(!saveItem(item))return op;break;}
    item.candidate=UploadNaming::renamedCandidate(item.candidate,capabilities.maximumNameBytes);item.objectReference={};item.concurrencyToken={};item.condition="absent";item.uploadStatus="stored";item.phase="preflight";op.phase="preflight";if(!saveItem(item))return op;
@@ -359,6 +360,7 @@ void OperationService::retry(const QString& id,JsonReply reply) {
   auto provider=providers_.find(op.destination.providerId);const bool sharing=provider&&provider->capabilities(op.destination).sharing;auto mode=op.settings.actions.value(op.action).publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
   bool pending=false;for(const auto& i:op.items)if(!terminalUpload(i.uploadStatus)||(sharing&&i.uploadStatus=="uploaded"&&(i.shareStatus=="unknown"||(i.shareStatus=="private"&&i.shareIntent=="create")||(mode=="share"&&(i.shareStatus=="not_requested"||(i.shareStatus=="failed"&&i.shareIntent=="create"))))))pending=true;
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
+  if(provider)if(auto timeout=provider->retryRequestTimeout(op.destination,settings_.snapshot().profiles.value(op.destination.profileId)))op.requestTimeoutMs=std::max(op.requestTimeoutMs.value_or(0),*timeout);
   op.cancelled=reserved->load();op.error={};op.state="stored";op.phase="queued";
   background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return QJsonObject{};},[this,reply,op,reserved](Error error,QJsonObject)mutable{
    if(error){releaseActive(op.id);reply(error,{});return;}

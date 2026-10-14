@@ -3,7 +3,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { MemberRole, NodeType, type NodeEntity } from '@protontech/drive-sdk';
+import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, type NodeEntity } from '@protontech/drive-sdk';
 import { checkName, createFolder, destinationFolder, inspectAccount, stat, upload } from './runtime';
 import { makeReceipt, type JsonObject } from './protocol';
 
@@ -132,5 +132,22 @@ test('production upload wires the SDK progress callback and confirms publication
             artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
         expect(progressType).toBe('function'); expect(result.status).toBe('uploaded');
         expect(result.receipt.objectReference.revisionUid).toBe('file-revision');
+    } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('unfinished upload collision remains distinguishable without overriding another client draft', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'putgd-draft-'));
+    const path = join(directory, 'synthetic.bin'), data = Buffer.alloc(32, 112);
+    await writeFile(path, data, { mode: 0o600 });
+    try {
+        const stub = context(); let override;
+        (stub.ctx.sdk as any).getFileUploader = async (_folder: string, _name: string, metadata: { overrideExistingDraftByOtherClient?: boolean }) => {
+            override = metadata.overrideExistingDraftByOtherClient;
+            return { uploadFromStream: async () => { throw new NodeWithSameNameExistsValidationError('Synthetic draft', 2500, 'draft-node', true); } };
+        };
+        const result = await upload(stub.ctx, { ...statRequest(), method: 'upload', condition: 'absent',
+            artifact: { path, bytes: data.length, mime: 'application/octet-stream', sha256: createHash('sha256').update(data).digest('hex') } });
+        expect(result.status).toBe('collision'); expect(result.error.code).toBe('upload_draft_conflict');
+        expect(override).not.toBe(true);
     } finally { await rm(directory, { recursive: true, force: true }); }
 });

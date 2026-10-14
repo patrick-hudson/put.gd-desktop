@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { MAX_REQUEST_BYTES, ProtocolError, classifyNode, connectAction, failure, makeReceipt, parseRequest, receipt, shareOutcome } from './protocol';
+import { requestTimeout, publicationClientUid, MAX_REQUEST_BYTES, ProtocolError, classifyNode, connectAction, failure, makeReceipt, parseRequest, receipt, shareOutcome } from './protocol';
 import { MemberRole, NodeType, RevisionState, type NodeEntity } from '@protontech/drive-sdk';
 const destination = { providerId: 'proton-drive', profileId: 'profile', profileRevision: 'revision',
     settings: { accountRootUid: 'root', folderUid: 'folder' }, credentials: { mode: 'keychain', reference: 'private-ref' } };
@@ -109,4 +109,24 @@ test('only active unexpired SDK URL access is usable', () => {
 test('sanitized errors never copy provider exception text', () => {
     const result = failure('https://secret.invalid/private-name?token=secret');
     expect(result).toEqual({ code: 'operation_failed', message: 'The Proton operation could not be completed.', details: {} });
+});
+
+test('extended request budgets are bounded independently from accepted receipt identity', () => {
+    expect(requestTimeout(request)).toBe(120000);
+    expect(requestTimeout({ ...request, requestTimeoutMs: 3600000 })).toBe(3600000);
+    expect(requestTimeout({ ...request, requestTimeoutMs: 86400000 })).toBe(86400000);
+    expect(requestTimeout({ ...request, method: 'connect', requestTimeoutMs: 3600000 })).toBe(600000);
+    for (const timeout of [999, 86400001, 120000.5, NaN, '3600000'])
+        expect(() => requestTimeout({ ...request, requestTimeoutMs: timeout })).toThrow(ProtocolError);
+    const proof = makeReceipt(request, 'file-node', 'file-revision');
+    expect(receipt({ ...request, requestTimeoutMs: 3600000, receipt: proof })).toEqual(proof);
+});
+test('upload retries keep a publication-specific client identity without persisting authentication', () => {
+    const first = publicationClientUid(request);
+    expect(first).toMatch(/^putgd-[a-f0-9]{64}$/);
+    expect(publicationClientUid({ ...request, method: 'reconcile' })).toBe(first);
+    expect(publicationClientUid({ ...request, requestTimeoutMs: 3600000 })).toBe(first);
+    expect(publicationClientUid({ ...request, publicationId: 'other-publication' })).not.toBe(first);
+    expect(publicationClientUid({ ...request, destination: { ...destination, credentials: { mode: 'keychain', reference: 'other-account' } } })).not.toBe(first);
+    expect(publicationClientUid({ ...request, method: 'connect' })).toBeUndefined();
 });

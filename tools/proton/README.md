@@ -26,7 +26,7 @@ lines during `upload`, then one `{"ok":true,"result":...}` or
 Auth URLs are transient UI events. Errors are generic, never provider exception
 text. Secrets and account names never appear on the command line. The required
 `PUTGD_PROTON_DATA_DIR` is an owned, private, real directory. Timeout defaults
-to 120 seconds and is bounded to 1–600 seconds; login can use 600 seconds.
+to 120 seconds and is bounded to 1–86,400 seconds (24 hours); login can use 600 seconds.
 Deadline errors carry a generic reason and the request budget. A deadline after
 mutation dispatch preserves `unknown`; cancellation is distinguished from expiry.
 

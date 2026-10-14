@@ -16,7 +16,7 @@ struct OperationItem {
  QString phase;std::optional<UploadProgress> uploadProgress;
  QJsonObject toJson() const;
  static OperationItem fromJson(const QJsonObject&);
- UploadRequest uploadRequest(const Destination&) const;
+ UploadRequest uploadRequest(const Destination&,std::optional<int> requestTimeoutMs={}) const;
  bool linkAvailable() const;
 };
 struct Operation {
@@ -27,6 +27,7 @@ struct Operation {
  QString copyStatus="pending";
  bool cancelled=false;
  QString phase="accepted";
+ std::optional<int> requestTimeoutMs; // Explicit retry budget, separate from immutable settings.
  Error error;
  QJsonObject toJson() const;
  QJsonObject publicJson() const;

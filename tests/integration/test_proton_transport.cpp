@@ -1,3 +1,8 @@
+#include <QElapsedTimer>
+#include <thread>
+#include <chrono>
+#include <QJsonDocument>
+#include "storage/proton/OutputBudget.h"
 #include "storage/proton/ProtonProvider.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -56,6 +61,16 @@ private slots:
   QCOMPARE(r.status,QString("unknown"));QCOMPARE(r.error.code,QString("proton_request_timeout"));
   QCOMPARE(r.error.details["reason"].toString(),QString("deadline"));QCOMPARE(r.error.details["timeoutMs"].toInt(),1000);
   QVERIFY(r.error.message.contains("deadline"));
+ }
+ void retryBudgetExtendsWatchdogWithoutChangingAcceptedDestination(){
+  ProtonProvider provider;UploadRequest request;request.destination=destination("budget-delay");const auto accepted=request.destination.toJson();request.condition="absent";request.requestTimeoutMs=2000;UploadResult result;provider.upload(request,[&](UploadResult value){result=value;});QCOMPARE(result.status,QString("failed"));QCOMPARE(result.error.code,QString("authentication_required"));QCOMPARE(result.error.details["attemptTimeoutMs"].toInt(),2000);QCOMPARE(request.destination.toJson(),accepted);
+ }
+ void sustainedProgressAcrossHoursRemainsBoundedWithoutExhaustingLifetimeQuota(){
+  ProtonOutputBudget budget;qint64 bytes=0;for(int i=0;i<32768;++i){const auto line=QJsonDocument(QJsonObject{{"event","progress"},{"phase","uploading"},{"bytesTransferred",qint64(i+1)*4194304}}).toJson(QJsonDocument::Compact)+"\n";bytes+=line.size();QVERIFY(budget.consume(line.size(),qint64(i)*500));}QVERIFY(bytes>ProtonOutputBudget::MaximumBurstBytes);QVERIFY(budget.consume(1024*1024,24LL*60*60*1000));
+  ProtonOutputBudget flood;QVERIFY(flood.consume(ProtonOutputBudget::MaximumBurstBytes,0));QVERIFY(!flood.consume(1,0));ProtonOutputBudget frame;QVERIFY(!frame.consume(ProtonOutputBudget::MaximumBurstBytes+1,24LL*60*60*1000));
+ }
+ void reconciliationCancellationStopsExtendedRequest(){
+  ProtonProvider provider;UploadRequest request;request.destination=destination("timeout");request.requestTimeoutMs=30000;request.cancellation=std::make_shared<std::atomic_bool>(false);std::jthread cancel([flag=request.cancellation]{std::this_thread::sleep_for(std::chrono::milliseconds(200));flag->store(true);});StatResult result;QElapsedTimer elapsed;elapsed.start();provider.reconcile(request,[&](StatResult value){result=value;});QVERIFY(elapsed.elapsed()<2000);QCOMPARE(result.status,QString("unknown"));QCOMPARE(result.error.code,QString("proton_result_unknown"));QCOMPARE(result.error.details["reason"].toString(),QString("cancelled"));QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
  }
  void accountBusyNeverDispatches(){
   ProtonProvider provider;auto d=destination();const auto root=QString("/tmp/putgd-proton-accounts-%1").arg(getuid());QVERIFY(::mkdir(QFile::encodeName(root).constData(),0700)==0||errno==EEXIST);const QFileInfo info(root);QVERIFY(info.isDir()&&!info.isSymLink());QCOMPARE(info.ownerId(),uint(getuid()));QVERIFY(!(info.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther)));

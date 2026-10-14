@@ -34,12 +34,25 @@ UI state and CLI arguments. Old receipts keep their original account, folder,
 credential and sharing settings when destinations are edited.
 
 The Proton destination's Advanced settings include **Request deadline** in
-seconds (default 120; range 1–600). It is saved as `requestTimeoutMs` in that
+seconds (default 120; range 1–86,400, or 24 hours). It is saved as `requestTimeoutMs` in that
 profile's settings. This bounds each helper request, including verification,
 encryption and transfer; browser sign-in has a separate ten-minute deadline.
-Changes apply to new operations. Existing operations retain their accepted
-settings, including the original deadline, when retried. A deadline interruption
+Changes apply to new operations. Explicit Retry may adopt a longer upload/reconciliation deadline
+from the current profile only when the provider, account reference, account root
+and folder still match. Its attempt budget is saved separately as
+`operation.requestTimeoutMs`; the accepted destination, settings and receipt
+identity remain unchanged. Lowering a profile deadline does not shorten an
+already accepted retry budget. A deadline interruption
 reports its reason and budget and preserves an unknown remote outcome.
+
+Retries inspect the original publication before uploading again. Proton hides
+unfinished drafts from completed-file listings. If the SDK explicitly reports
+an unfinished upload collision and a complete listing proves no completed file
+for that candidate, the configured rename policy can choose a new name without
+removing the old draft. Unknown or incomplete listings remain unknown. Upload
+and reconciliation requests use a stable client UID derived from the account
+reference and publication ID, so subsequent attempts can recognize their own
+new drafts. Drafts left by older builds are preserved.
 
 Activity refreshes through acquisition, preparation, upload, sharing and
 clipboard results. Proton reports real SDK transferred bytes as encrypted
