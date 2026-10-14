@@ -182,7 +182,9 @@ Retain curated logs/parameters without credentials or private login/payload data
 Flatpak is deferred to issue #14.
 
 `main` is stable source and `nightly` the development integration branch. Read the
-release runbook before branch/tag operations. Inspect existing runs and immutable
+release runbook before branch/tag operations. Main pushes automatically fast-forward
+nightly; schedule/manual coordination also catches it up. Never force divergent
+history into alignment: reconcile it through a reviewed merge. Inspect existing runs and immutable
 source identities before dispatching; a scheduled controller can have a main head
 different from its pinned nightly source. Build and package producer evidence must
 match the actual source. Preserve the first preparation and original package

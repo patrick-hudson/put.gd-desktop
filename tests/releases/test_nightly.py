@@ -8,7 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/releases'))
@@ -228,6 +228,80 @@ class BuildEvidence(unittest.TestCase):
         self.assertEqual(len(api.dispatched), 1)
 
 
+class MainSynchronization(unittest.TestCase):
+    def api(self, status='ahead'):
+        api = Mock(repository=REPO)
+        api.json.side_effect = [
+            {'object': {'type': 'commit', 'sha': SHA}},
+            {'object': {'type': 'commit', 'sha': 'b' * 40}},
+            {'status': status},
+            {'object': {'type': 'commit', 'sha': SHA}},
+        ]
+        return api
+
+    def test_first_run_advances_nightly_without_force_and_pins_updated_source(self):
+        api = self.api()
+        receipt = nightly.pin(api, 71, 1, Path('/unused'))
+        self.assertEqual(receipt['sourceSha'], SHA)
+        self.assertEqual(api.json.call_args_list[-1].args, ('git/refs/heads/nightly',))
+        self.assertEqual(api.json.call_args_list[-1].kwargs,
+                         {'method': 'PATCH', 'data': {'sha': SHA, 'force': False}})
+        self.assertEqual(api.json.call_args_list[2].args, ('compare/' + 'b' * 40 + '...' + SHA + '?per_page=1',))
+
+    def test_all_first_run_triggers_synchronize_before_pinning(self):
+        # A surviving nightly push must catch up main even if Actions replaced
+        # the pending main-push run. Manual nightly dispatch has no push `after`.
+        for trigger in ('push', 'schedule', 'workflow_dispatch'):
+            with self.subTest(trigger=trigger):
+                api = self.api()
+                with tempfile.TemporaryDirectory(prefix='pgpin-') as temporary:
+                    receipt = Path(temporary) / 'receipt.json'
+                    with patch.dict(os.environ, {'GITHUB_REPOSITORY': REPO,
+                            'GITHUB_EVENT_NAME': trigger, 'GITHUB_REF': 'refs/heads/nightly',
+                            'GITHUB_RUN_ID': '71', 'GITHUB_RUN_ATTEMPT': '1',
+                            'GITHUB_OUTPUT': '', 'GITHUB_EVENT_PATH': '/unused'}), \
+                         patch.object(sys, 'argv', ['nightly.py', 'pin', '--receipt', str(receipt)]), \
+                         patch.object(nightly, 'GitHub', return_value=api), patch('builtins.print'):
+                        nightly.main()
+                    self.assertEqual(json.loads(receipt.read_text())['sourceSha'], SHA)
+                    self.assertEqual(api.json.call_count, 4)
+
+    def test_already_ahead_nightly_is_never_rewound(self):
+        api = self.api('behind')
+        self.assertEqual(nightly.pin(api, 71, 1, Path('/unused'))['sourceSha'], 'b' * 40)
+        self.assertEqual(api.json.call_count, 3)
+
+    def test_identical_branches_need_no_mutation(self):
+        api = self.api()
+        api.json.side_effect = [{'object': {'type': 'commit', 'sha': SHA}}] * 2
+        self.assertEqual(nightly.pin(api, 71, 1, Path('/unused'))['sourceSha'], SHA)
+        self.assertEqual(api.json.call_count, 2)
+
+    def test_divergent_or_unknown_comparison_fails_without_mutation(self):
+        for status in ('diverged', 'unknown'):
+            api = self.api(status)
+            with self.assertRaisesRegex(ValueError, 'fast-forward'):
+                nightly.pin(api, 71, 1, Path('/unused'))
+            self.assertEqual(api.json.call_count, 3)
+
+    def test_concurrent_update_rejection_is_not_hidden_or_forced(self):
+        api = self.api()
+        replies = list(api.json.side_effect)
+        replies[-1] = subprocess.CalledProcessError(1, ['gh', 'api'])
+        api.json.side_effect = replies
+        with self.assertRaises(subprocess.CalledProcessError):
+            nightly.pin(api, 71, 1, Path('/unused'))
+        self.assertEqual(api.json.call_count, 4)
+
+    def test_unexpected_update_response_blocks_publication(self):
+        api = self.api()
+        replies = list(api.json.side_effect)
+        replies[-1] = {'object': {'type': 'commit', 'sha': 'c' * 40}}
+        api.json.side_effect = replies
+        with self.assertRaisesRegex(ValueError, 'updated nightly'):
+            nightly.pin(api, 71, 1, Path('/unused'))
+
+
 class PinnedSource(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='pgnightly-')
@@ -246,34 +320,33 @@ class PinnedSource(unittest.TestCase):
         self.path = Path(self.temporary.name) / 'nightly-preparation.json'
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.root), *args], text=True).strip()
-    def test_push_and_schedule_pin_nightly_not_default_source(self):
+    def test_preparation_pins_current_synchronized_source(self):
         api = API()
         api.commit = self.sha
-        push = nightly.pin(api, 71, 1, {'ref': 'refs/heads/nightly', 'after': self.sha}, self.path)
-        scheduled = nightly.pin(api, 72, 1, {}, self.path)
-        self.assertEqual(push['sourceSha'], self.sha)
-        self.assertEqual(scheduled['sourceSha'], self.sha)
-        receipt = nightly.prepare(self.root, scheduled)
+        pinned = nightly.pin(api, 71, 1, self.path)
+        self.assertEqual(pinned['sourceSha'], self.sha)
+        receipt = nightly.prepare(self.root, pinned)
         self.assertEqual(receipt['tag'], 'v0.1.1-dev.1.20261012030405+g' + self.sha[:12])
         self.assertEqual(receipt['sourceSha'], self.sha)
     def test_retry_preserves_original_after_branch_advance(self):
         api = API()
         api.commit = self.sha
-        receipt = nightly.prepare(self.root, nightly.pin(api, 71, 1, {}, self.path))
+        receipt = nightly.prepare(self.root, nightly.pin(api, 71, 1, self.path))
         self.path.write_text(json.dumps(receipt))
         api.commit = 'b' * 40
-        retry = nightly.pin(api, 71, 2, {}, self.path)
+        with patch.object(api, 'json', side_effect=AssertionError('Retry must not synchronize branches')):
+            retry = nightly.pin(api, 71, 2, self.path)
         self.assertEqual(nightly.prepare(self.root, retry), receipt)
     def test_missing_or_contradictory_retry_fails(self):
         with self.assertRaises(ValueError):
-            nightly.pin(API(), 71, 2, {}, self.path)
+            nightly.pin(API(), 71, 2, self.path)
         receipt = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
                                             'runId': 71, 'sourceSha': self.sha})
         for key, value in [('runId', 99), ('sourceSha', 'b' * 40), ('tag', 'v0.1.1')]:
             modified = dict(receipt, **{key: value})
             self.path.write_text(json.dumps(modified))
             with self.assertRaises(ValueError):
-                retry = nightly.pin(API(), 71, 2, {}, self.path)
+                retry = nightly.pin(API(), 71, 2, self.path)
                 nightly.prepare(self.root, retry)
     def test_tag_conflict_never_mutates(self):
         api = API()

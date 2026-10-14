@@ -21,7 +21,33 @@ def git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 
-def pin(api, run_id, attempt, event, receipt_path):
+def branch_commit(api, branch):
+    value = api.json('git/ref/heads/' + branch)['object']
+    if value.get('type') != 'commit':
+        raise ValueError('Branch must resolve to a source commit: ' + branch)
+    return full_sha(value['sha'])
+
+
+def sync_main(api):
+    # Resolve current main so delayed push events cannot rewind nightly.
+    main = branch_commit(api, 'main')
+    current = branch_commit(api, 'nightly')
+    if current == main:
+        return current
+    status = api.json('compare/' + current + '...' + main + '?per_page=1')['status']
+    if status == 'behind':
+        return current  # Nightly already contains main and has additional work.
+    if status != 'ahead':
+        raise ValueError('Cannot fast-forward nightly to main; reconcile divergent history through review')
+    # GitHub rechecks ancestry at mutation time, including concurrent pushes.
+    updated = api.json('git/refs/heads/nightly', method='PATCH', data={'sha': main, 'force': False})
+    value = updated['object']
+    if value.get('type') != 'commit' or full_sha(value['sha']) != main:
+        raise ValueError('Cannot verify updated nightly source')
+    return main
+
+
+def pin(api, run_id, attempt, receipt_path):
     if type(run_id) is not int or run_id <= 0 or type(attempt) is not int or attempt <= 0:
         raise ValueError('Valid orchestration run ID and attempt required')
     if attempt > 1:
@@ -35,13 +61,9 @@ def pin(api, run_id, attempt, event, receipt_path):
         if parse_tag(receipt['tag']).channel != 'nightly':
             raise ValueError('Original nightly preparation receipt has wrong channel')
         return receipt
-    if event.get('ref') == 'refs/heads/nightly':
-        source = full_sha(event.get('after'))
-    else:
-        value = api.json('git/ref/heads/nightly')['object']
-        if value.get('type') != 'commit':
-            raise ValueError('Nightly branch must resolve to a source commit')
-        source = full_sha(value['sha'])
+    # Actions may replace a pending main run with another trigger. Every new
+    # run catches up main, then pins once; retries above never retarget.
+    source = sync_main(api)
     return {'schemaVersion': 1, 'repository': api.repository, 'runId': run_id, 'sourceSha': source}
 
 
@@ -219,8 +241,7 @@ def main():
                 subprocess.run(['gh', 'run', 'download', os.environ['GITHUB_RUN_ID'],
                     '--repo', api.repository, '--name', 'nightly-preparation-' + os.environ['GITHUB_RUN_ID'],
                     '--dir', str(args.receipt.parent)], check=True, timeout=60)
-            event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
-            result = pin(api, int(os.environ['GITHUB_RUN_ID']), attempt, event, args.receipt)
+            result = pin(api, int(os.environ['GITHUB_RUN_ID']), attempt, args.receipt)
             if attempt == 1:
                 write(args.receipt, result)
         elif args.command == 'prepare':

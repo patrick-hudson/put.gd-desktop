@@ -39,7 +39,7 @@ class ReleaseChannels(unittest.TestCase):
 
     def test_dispatcher_retains_preparation_before_exact_tag_fanout(self):
         nightly = (ROOT / '.github/workflows/nightly.yml').read_text()
-        self.assertIn('branches: [nightly]', nightly)
+        self.assertIn('branches: [main, nightly]', nightly)
         self.assertIn('schedule:', nightly)
         self.assertIn('cancel-in-progress: false', nightly)
         self.assertIn('nightly-preparation-${{ github.run_id }}', nightly)
