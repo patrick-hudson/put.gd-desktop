@@ -7,6 +7,7 @@ separately; exit zero is never a human graphical-acceptance receipt.
 """
 import argparse
 from decimal import Decimal
+from urllib.parse import urlsplit
 import importlib.util
 import json
 import os
@@ -182,12 +183,22 @@ def private_settings(path, profile_id, provider, marker):
             'The scenario requires a pre-provisioned keychain reference')
     # Only provider-neutral settings and the selected profile are used. Reject
     # credential values before serializing a patch into any guest command.
-    forbidden = {'password', 'accesskeyid', 'secretaccesskey', 'sessiontoken', 'token', 'authorization', 'session'}
+    forbidden = {'password', 'accesskey', 'accesskeyid', 'secretkey', 'secretaccesskey',
+                 'sessiontoken', 'accesstoken', 'refreshtoken', 'userkeypassword',
+                 'cachepassword', 'snapshot', 'token', 'authorization', 'session'}
     def contains_secret(value):
         if isinstance(value, dict):
             names = {re.sub('[^a-z]', '', str(key).lower()) for key in value}
             return bool(names & forbidden) or any(contains_secret(child) for child in value.values())
-        return isinstance(value, list) and any(contains_secret(child) for child in value)
+        if isinstance(value, list):
+            return any(contains_secret(child) for child in value)
+        if isinstance(value, str) and value.startswith(('http://', 'https://')):
+            try:
+                url = urlsplit(value)
+                return bool(url.username is not None or url.password is not None or url.query or url.fragment)
+            except ValueError:
+                return True
+        return False
     require(not contains_secret(patch), 'Settings contain a credential value field')
     settings = profile.get('settings', {})
     scope = settings.get('objectPrefix' if provider == 's3' else 'folderName', '')

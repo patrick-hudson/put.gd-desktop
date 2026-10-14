@@ -56,11 +56,12 @@ int main(int argc, char** argv) {
   return QDBusReply<QVariantMap>(bus.call(request, QDBus::Block, 2000));
  };
  const QString watcher = "org.kde.StatusNotifierWatcher";
- const auto host = properties(watcher, "/StatusNotifierWatcher", watcher);
- if (!host.isValid() || !host.value().value("IsStatusNotifierHostRegistered").toBool())
-  return fail("native_tray_host_unavailable");
  const auto owner = bus.interface()->serviceOwner(watcher);
  if (!owner.isValid()) return fail("native_tray_owner_unavailable");
+ // Anchor GetAll to this unique owner; a replacement cannot mix host evidence.
+ const auto host = properties(owner.value(), "/StatusNotifierWatcher", watcher);
+ if (!host.isValid() || !host.value().value("IsStatusNotifierHostRegistered").toBool())
+  return fail("native_tray_host_unavailable");
  const auto entries = qdbus_cast<QStringList>(host.value().value("RegisteredStatusNotifierItems"));
  QString service, path;
  QVariantMap item;

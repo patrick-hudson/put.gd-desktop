@@ -112,5 +112,24 @@ class TrayProgressContracts(unittest.TestCase):
                     tray.private_settings(path, 'test', 's3', 'tray-unique')
 
 
+    def test_private_settings_reject_actual_secret_fields_and_credential_urls_before_argv(self):
+        import json
+        profile = {'id': 'test', 'provider': 's3',
+                   'settings': {'objectPrefix': 'tray-unique/'},
+                   'credentials': {'mode': 'keychain', 'reference': 'putgd/synthetic'}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'settings.json'
+            cases = [{key: 'synthetic'} for key in
+                     ('accessKey', 'secretKey', 'accessToken', 'refreshToken', 'userKeyPassword', 'snapshot')]
+            cases += [{'endpoint': 'https://synthetic:synthetic@example.invalid/'},
+                      {'publicUrlBase': 'https://example.invalid/?token=synthetic'},
+                      {'publicUrlBase': 'https://example.invalid/#synthetic'}]
+            for extra in cases:
+                changed = {**profile, 'settings': {**profile['settings'], **extra}}
+                path.write_text(json.dumps({'profiles': [changed]}))
+                with self.subTest(extra=extra), self.assertRaises(tray.TrayProgressError):
+                    tray.private_settings(path, 'test', 's3', 'tray-unique')
+
+
 if __name__ == '__main__':
     unittest.main()
