@@ -125,7 +125,11 @@ have the requested provider and a unique isolated test destination:
 
 - S3: a new `objectPrefix` containing `--isolation-marker`, in the authorized
   synthetic bucket destination. Supply ordinary valid S3 settings, a working
-  public URL base and the pre-provisioned keychain reference.
+  public URL base and the pre-provisioned keychain reference. For root-only test
+  credentials, use an empty `objectPrefix` with `naming.mode: template`,
+  `collisionPolicy: rename`, and all four filename templates set exactly to
+  `<isolation-marker>-{uuid}.{ext}`. This isolates new conditional root keys; it
+  never broadens IAM permissions or replaces existing objects.
 - Proton: a newly provisioned synthetic test folder whose `folderName` contains
   the marker, with its real `accountRootUid`/`folderUid` and put.gd keychain
   reference. `folderName` is a display hint; the operator must establish that

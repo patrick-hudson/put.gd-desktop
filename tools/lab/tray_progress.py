@@ -174,6 +174,8 @@ def private_settings(path, profile_id, provider, marker):
     patch = lab.read_json(path)
     require(isinstance(patch, dict), '--settings must be a nonsecret settings patch')
     profiles = patch.get('profiles', [])
+    require(isinstance(profiles, list) and len(profiles) == 1,
+            'Replay settings must contain exactly one isolated profile')
     selected = [p for p in profiles if p.get('id') == profile_id and p.get('provider') == provider]
     require(len(selected) == 1, 'Selected provider/profile absent or not unique in settings patch')
     profile = selected[0]
@@ -202,7 +204,16 @@ def private_settings(path, profile_id, provider, marker):
     require(not contains_secret(patch), 'Settings contain a credential value field')
     settings = profile.get('settings', {})
     scope = settings.get('objectPrefix' if provider == 's3' else 'folderName', '')
-    require(marker and marker in scope, 'Selected destination lacks the operator-provisioned unique isolation marker')
+    root_only = provider == 's3' and scope == ''
+    if root_only:
+        naming = patch.get('naming', {})
+        template = marker + '-{uuid}.{ext}'
+        require(marker and naming.get('mode') == 'template' and naming.get('collisionPolicy') == 'rename'
+                and all(naming.get(key) == template for key in
+                        ('fileTemplate', 'captureTemplate', 'imageTemplate', 'textTemplate')),
+                'Root-only S3 needs exact isolated UUID templates for every source kind')
+    else:
+        require(marker and marker in scope, 'Selected destination lacks the operator-provisioned unique isolation marker')
     require(provider != 'proton-drive' or settings.get('folderUid'), 'Proton isolated folder UID missing')
     return patch
 
@@ -450,7 +461,9 @@ PY
                     for name in ('region', 'window', 'desktop', 'clipboard')},
                     'archive': {'root': self.guest + '/archive', 'keepUploads': False,
                                 'folders': {'images': None, 'videos': None, 'text': None, 'other': None}},
-                    'naming': {'mode': 'generated', 'collisionPolicy': 'rename'},
+                    'naming': patch['naming'] if self.args.provider == 's3' and
+                              patch['profiles'][0]['settings'].get('objectPrefix') == '' else
+                              {'mode': 'generated', 'collisionPolicy': 'rename'},
                     'limits': {'concurrentUploads': 1}, 'preferences': {'notifications': False, 'launchAtLogin': False}})
         self.activate_credentials()
         identity = lab.verify_running_app(self.run)

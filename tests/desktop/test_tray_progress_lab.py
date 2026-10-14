@@ -152,5 +152,27 @@ class TrayProgressContracts(unittest.TestCase):
         replay.cli.assert_not_called()
 
 
+    def test_root_only_s3_scope_requires_unique_templates_for_every_source_kind(self):
+        import json
+        template = 'tray-unique-{uuid}.{ext}'
+        naming = {'mode': 'template', 'collisionPolicy': 'rename', **{key: template for key in
+                  ('fileTemplate', 'captureTemplate', 'imageTemplate', 'textTemplate')}}
+        profile = {'id': 'test', 'provider': 's3', 'settings': {'objectPrefix': ''},
+                   'credentials': {'mode': 'keychain', 'reference': 'putgd/synthetic'}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'settings.json'
+            patch = {'profiles': [profile], 'naming': naming}
+            path.write_text(json.dumps(patch))
+            self.assertEqual(tray.private_settings(path, 'test', 's3', 'tray-unique'), patch)
+            path.write_text(json.dumps({**patch, 'profiles': [profile, {**profile, 'id': 'other'}]}))
+            with self.assertRaises(tray.TrayProgressError):
+                tray.private_settings(path, 'test', 's3', 'tray-unique')
+            for defect in ({'mode': 'original'}, {'collisionPolicy': 'overwrite'},
+                           {'fileTemplate': 'tray-unique.{ext}'}, {'imageTemplate': '{uuid}.{ext}'}):
+                path.write_text(json.dumps({**patch, 'naming': {**naming, **defect}}))
+                with self.subTest(defect=defect), self.assertRaises(tray.TrayProgressError):
+                    tray.private_settings(path, 'test', 's3', 'tray-unique')
+
+
 if __name__ == '__main__':
     unittest.main()
