@@ -56,7 +56,7 @@ public:
    while(process_->bytesAvailable()>0&&process_->readChannel()==QProcess::StandardError)process_->read(16384);
    auto discarded=process_->readAllStandardError();stderrBytes_+=discarded.size();if(stderrBytes_>1024*1024)failed_=true;
   });
-  QObject::connect(control_.get(),&UiControl::frame,process_.get(),[this](const QString& type,const QString&,const QJsonObject& value){receive(type,value);});
+  QObject::connect(control_.get(),&UiControl::frame,process_.get(),[this](const QString& type,const QString& sequence,const QJsonObject& value){receive(type,sequence,value);});
   process_->start(helperPath(),{});
   if(!process_->waitForStarted(10000)){failed_=true;resetProcess();return false;}
   auto boot=envelope();boot["build"]=build();boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=path_;
@@ -71,7 +71,7 @@ public:
   NameCheck value;if(error||!s3wire::decode(result,value))value={"inconclusive",{}, {},error?error:uncertain()};callback(std::move(value));
  }
  void upload(const UploadRequest& request,std::function<void(UploadResult)> callback)override{
-  QJsonObject result;auto error=run("upload",s3wire::encode(request),request.destination,request.cancellation,{},result);
+  QJsonObject result;auto error=run("upload",s3wire::encode(request),request.destination,request.cancellation,{},result,request.progress);
   UploadResult value;if(error||!s3wire::decode(result,value))value={noEffects(error)?"failed":"unknown",{},error?error:uncertain()};callback(std::move(value));
  }
  void stat(const StorageReceipt& receipt,std::function<void(StatResult)> callback)override{
@@ -97,12 +97,19 @@ private:
  QJsonObject envelope()const{return {{"role","s3-worker"},{"nonce",nonce_},{"generation",QString::number(generation_)}};}
  bool validEnvelope(const QJsonObject& object)const{return object["role"]=="s3-worker"&&object["nonce"]==nonce_&&object["generation"]==QString::number(generation_);}
  void answer(const QString& kind,const QString& rpc,const QJsonObject& data){auto value=envelope();value["kind"]=kind;value["replyTo"]=rpc;value["data"]=data;if(control_->send("checkpointAccepted",value).isEmpty())failed_=true;}
- void receive(const QString& type,const QJsonObject& object){
+ void receive(const QString& type,const QString& sequence,const QJsonObject& object){
   if(failed_||!validEnvelope(object)){failed_=true;return;}
   if(type=="ready"&&!ready_&&!activated_&&object.size()==6&&object["build"].toObject()==build()&&object["contract"]==QString::fromUtf8(PUTGD_S3_BUILD_ID)&&object["safeDelete"]==bool(PUTGD_SDK_CURL_TRANSPORT)){ready_=true;return;}
   if(type=="observed"&&activated_&&!terminal_&&object.size()==5&&object["data"].isObject()){
    if(object["kind"]=="activated"&&!activationAcknowledged_&&object["data"].toObject()==QJsonObject{{"method",activeMethod_}}){activationAcknowledged_=true;activity_.restart();return;}
    if(object["kind"]=="alive"&&activationAcknowledged_&&object["data"].toObject().isEmpty()){activity_.restart();return;}
+   if(object["kind"]=="uploadProgress"&&activationAcknowledged_&&activeMethod_=="upload"){
+    const auto progress=UploadProgress::fromJson(object["data"].toObject());
+    if(!progress||!progress->bytesTransferred||progress->bytesTotal!=uploadBytes_){failed_=true;return;}
+    activity_.restart();
+    if(progress_)try{progress_(*progress);}catch(...){}
+    answer("uploadProgress",sequence,{});activity_.restart();return;
+   }
    failed_=true;return;
   }
   if(type=="checkpoint"&&activated_&&activationAcknowledged_&&!terminal_&&object.size()==5&&object["kind"]=="result"&&object["data"].isObject()&&!pending_){terminal_=true;reply_=object["data"].toObject();exitDeadline_.start();answer("result","terminal",{});return;}
@@ -140,10 +147,11 @@ private:
   {std::lock_guard lock(pending_->mutex);if(!pending_->complete)return;error=pending_->error;pending_->closed=true;}
   answer("checkpoint",pendingRpc_,{{"error",s3wire::encode(error)}});pending_.reset();pendingRpc_.clear();activity_.restart();
  }
- Error run(const QString& method,const QJsonObject& request,const Destination& destination,const std::shared_ptr<std::atomic_bool>& cancellation,DurableCheckpoint checkpoint,QJsonObject& result){
+ Error run(const QString& method,const QJsonObject& request,const Destination& destination,const std::shared_ptr<std::atomic_bool>& cancellation,DurableCheckpoint checkpoint,QJsonObject& result,std::function<void(const UploadProgress&)> progress={}){
   if(!s3wire::validateRequest(method,request))return invalidRequest(method,request);
   destination_=destination;checkpoint_=std::move(checkpoint);rpc_=0;activeMethod_=method;
-  if(!prepare())return unavailable();
+  progress_=std::move(progress);uploadBytes_=method=="upload"?request["artifact"].toObject()["bytes"].toInteger():0;
+  if(!prepare()){progress_={};return unavailable();}
   auto activate=envelope();activate["method"]=method;activate["request"]=request;
   // SDK CURL bounds each HTTP exchange; allow the complete driver's bounded
   // call chain, slow local artifact hashing and durable persistence separately.
@@ -173,7 +181,7 @@ private:
   if(!failed_&&process_->bytesAvailable())process_->waitForReadyRead(1);
   const bool success=!failed_&&!checkpointException_&&terminal_&&process_->state()==QProcess::NotRunning&&process_->exitStatus()==QProcess::NormalExit&&process_->exitCode()==0;
   if(success)result=reply_;
-  resetProcess();checkpoint_={};destination_={};return success?Error{}:uncertain();
+  resetProcess();checkpoint_={};progress_={};destination_={};return success?Error{}:uncertain();
  }
  void closePrepared(){
   if(process_&&ready_&&!activated_&&!failed_){auto value=envelope();value["cancel"]=true;control_->send("shutdown",value);process_->waitForFinished(10000);}
@@ -188,6 +196,7 @@ private:
  QString path_,nonce_,pendingRpc_,activeMethod_;QElapsedTimer activity_,checkpointDeadline_,exitDeadline_;quint64 generation_=0,rpc_=0;CredentialLookup credentials_;ReadinessCheck readiness_;
  std::unique_ptr<QProcess> process_;std::unique_ptr<UiControl> control_;std::shared_ptr<Ack> pending_;
  S3ProcessLimits limits_;Destination destination_;DurableCheckpoint checkpoint_;QJsonObject reply_;
+ std::function<void(const UploadProgress&)> progress_;qint64 uploadBytes_=0;
  bool ready_=false,activated_=false,activationAcknowledged_=false,terminal_=false,failed_=false,cancelSent_=false,checkpointException_=false;qint64 stderrBytes_=0;
 };
 }

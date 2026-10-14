@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
     };
     if (!saveState()) return 2;
     QJsonObject identity;
+    QString progressSequence;
     auto envelope = [&] {
         return QJsonObject{{"role", identity["role"]}, {"nonce", identity["nonce"]}, {"generation", identity["generation"]}};
     };
@@ -107,15 +108,39 @@ int main(int argc, char** argv) {
             }
             if (type == "activate" && !state["activated"].toBool()) {
                 const auto method = object["method"].toString();
-                if ((method != "checkName" && !(mode == "cancel_ignores_alive" && method == "upload")) || !object["request"].isObject() ||
+                if ((method != "checkName" && !((mode == "cancel_ignores_alive" || mode.startsWith("progress_")) && method == "upload")) || !object["request"].isObject() ||
                     !s3wire::validateRequest(method, object["request"].toObject())) { app.exit(3); return; }
                 state["activated"] = true;
                 if (!saveState()) { app.exit(3); return; }
                 if (mode == "ready_ignores_activate") return;
+                auto sendProgress = [&](QJsonObject value) {
+                    auto observed = envelope(); observed["kind"] = "uploadProgress"; observed["data"] = value;
+                    if (mode == "progress_bad_sequence") { raw = frame("observed", "03", observed); flushRaw(); }
+                    else progressSequence = control.send("observed", observed);
+                };
+                if (mode == "progress_before_activation") sendProgress({{"phase", "uploading"}, {"bytesTransferred", 1}, {"bytesTotal", 17}});
                 auto activated = envelope();
                 activated["kind"] = "activated";
                 activated["data"] = QJsonObject{{"method", object["method"].toString()}};
                 control.send("observed", activated);
+                if (mode.startsWith("progress_")) {
+                    QJsonObject value{{"phase", "uploading"}, {"bytesTransferred", 8}, {"bytesTotal", 17}};
+                    if (mode == "progress_wrong_phase") value["phase"] = "unknown";
+                    if (mode == "progress_negative") value["bytesTransferred"] = -1;
+                    if (mode == "progress_fractional") value["bytesTransferred"] = 8.5;
+                    if (mode == "progress_missing_total") value.remove("bytesTotal");
+                    if (mode == "progress_missing_counter") value.remove("bytesTransferred");
+                    if (mode == "progress_over_total") value["bytesTransferred"] = 18;
+                    if (mode == "progress_wrong_total") value["bytesTotal"] = 18;
+                    if (mode == "progress_unknown_field") value["private"] = "unexpected";
+                    if (mode != "progress_after_terminal") sendProgress(value);
+                    auto terminal = envelope(); terminal["kind"] = "result";
+                    if (method == "upload") terminal["data"] = s3wire::encode(UploadResult{"failed", {}, {"s3_request_failed", "Synthetic upload failed", {}}});
+                    else terminal["data"] = s3wire::encode(NameCheck{"inconclusive", {}, {}, {"s3_request_failed", "Synthetic name check failed", {}}});
+                    control.send("checkpoint", terminal);
+                    if (mode == "progress_after_terminal") sendProgress(value);
+                    return;
+                }
                 if (mode == "cancel_ignores_alive") { heartbeat.start(); return; }
                 if (mode == "activated_silent") return;
                 if (mode == "ready_then_crash") { app.exit(77); return; }
@@ -144,6 +169,7 @@ int main(int argc, char** argv) {
                 control.send("checkpoint", terminal);
                 return;
             }
+            if (type == "checkpointAccepted" && state["activated"].toBool() && object["kind"] == "uploadProgress" && object["replyTo"] == progressSequence && object["data"].isObject() && object["data"].toObject().isEmpty()) return;
             if (type == "checkpointAccepted" && state["activated"].toBool() && object["kind"] == "result" &&
                 object["replyTo"] == "terminal" && object["data"].isObject() && object["data"].toObject().isEmpty()) {
                 state["resultAck"] = true;

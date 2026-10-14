@@ -118,9 +118,16 @@ Local contract tests use synthetic fixtures and prove shared pipeline/journal
 behavior, not Proton service or desktop acceptance. The bundled helper's own
 verification is in [VERIFICATION.md](../tools/proton/VERIFICATION.md). Live testing
 requires an explicitly connected account and a new isolated synthetic test
-folder. Never move a user's session or credentials into VM images or evidence.
-Local authentication testing is the agreed first step; release acceptance still
-requires Cinnamon functional/memory evidence before expanding to GNOME/KDE.
+folder. Never put a user's session or credentials into golden images, source
+exports or evidence. For the tray-progress campaign, the user explicitly
+authorized copying only put.gd's Proton session into disposable VM keychains.
+Use the [private credential bridge](../tools/lab/secret_bridge/README.md), keep
+rotating snapshots in host memory, serialize use of the copied session, and
+carry refreshed state back under the production account lock. Remove only the
+local lab keychain entry; signing out would invalidate the shared remote session.
+See the [tray-progress replay](testing-tray-progress.md) for the isolated live
+test path. Release acceptance requires Cinnamon functional/memory evidence
+before expanding to GNOME/KDE.
 Complete redistribution notices and service readiness remain release gates.
 See [integration verification](proton-drive-verification.md) for the actual
 build, test, review and remaining acceptance record.

@@ -445,7 +445,9 @@ private slots:
   QTRY_VERIFY(!id.isEmpty());QTRY_VERIFY(([&]{HistoryStore store(operations.databasePath());return store.operation(id).state=="cancelled";})());
   QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),1);QCOMPARE(source.acquisitions,0);
   QString busy;operations.invoke("region",[&](Error e,QJsonObject){busy=e.code;});QCOMPARE(busy,QString("busy_selecting"));
-  source.released();QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  // The journal commit can precede its queued completion callback. Both the
+  // durable result and source drain must release the reservation.
+  source.released();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   QString next;operations.invoke("region",[&](Error e,QJsonObject r){QVERIFY(!e);next=r["operationId"].toString();});
   QTRY_VERIFY(!next.isEmpty());QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(source.acquisitions,1);operations.shutdown();
  }

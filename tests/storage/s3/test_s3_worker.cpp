@@ -1,4 +1,8 @@
 #include "storage/s3/S3Module.h"
+#include "storage/s3/S3WorkerProtocol.h"
+#include "app/UiControl.h"
+#include "core/BuildInfo.h"
+#include <QUuid>
 #include "fixtures/S3Fixture.h"
 #include "storage/s3/S3ProcessDriver.h"
 #include <QCryptographicHash>
@@ -16,6 +20,7 @@
 #include <chrono>
 #include <future>
 #include <thread>
+#include <stdexcept>
 #include <vector>
 #ifdef Q_OS_UNIX
 #include <cerrno>
@@ -55,10 +60,71 @@ Destination destination() {
 class S3WorkerTest final : public QObject {
     Q_OBJECT
 private slots:
+    void realWorkerCoalescesProgressUntilAcknowledged() {
+        test::S3Fixture fixture;
+        auto request = fixture.request("backpressure.txt", QByteArray(1024 * 1024, 'p'));
+        request.destination.settings["requestTimeoutMs"] = 10000;
+        request.destination.settings["lowSpeedTimeSeconds"] = 10;
+        fixture.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"barrier", "progress"}}}}});
+        QProcess child;child.setProcessChannelMode(QProcess::SeparateChannels);
+        UiControl control(child);
+        const auto nonce = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        auto envelope = [&] {return QJsonObject{{"role", "s3-worker"}, {"nonce", nonce}, {"generation", "1"}};};
+        auto acknowledge = [&](const QString& kind,const QString& sequence,const QJsonObject& data) {
+            auto value=envelope();value["kind"]=kind;value["replyTo"]=sequence;value["data"]=data;
+            return !control.send("checkpointAccepted",value).isEmpty();
+        };
+        bool ready=false,wireFailed=false,terminal=false;QString readinessRpc;QJsonObject result;
+        QList<UploadProgress> progress;QStringList sequences;
+        connect(&control,&UiControl::failed,this,[&](Error){wireFailed=true;});
+        connect(&control,&UiControl::frame,this,[&](const QString& type,const QString& sequence,const QJsonObject& value) {
+            if(type=="ready"){ready=true;return;}
+            const auto kind=value["kind"].toString();
+            if(type=="observed"&&kind=="uploadProgress") {
+                const auto observed=UploadProgress::fromJson(value["data"].toObject());
+                if(!observed){wireFailed=true;return;}
+                progress.append(*observed);sequences.append(sequence);return;
+            }
+            if(type=="observed"&&kind=="credentials") {
+                acknowledge(kind,value["rpc"].toString(),{{"credentials",s3wire::encode(Credentials{"PUTGD_SYNTHETIC_ACCESS","putgd-synthetic-secret-not-a-real-key",{},1})}});
+            } else if(type=="observed"&&kind=="readiness") {
+                // Hold the real SDK before body transfer, while its preparing
+                // observation is forwarded by the production worker timer.
+                readinessRpc=value["rpc"].toString();
+            } else if(type=="checkpoint"&&kind=="result") {
+                result=value["data"].toObject();terminal=true;
+                for(qsizetype index=1;index<sequences.size();++index)acknowledge("uploadProgress",sequences[index],{});
+                acknowledge("result","terminal",{});
+            }
+        });
+        child.start(QString::fromUtf8(S3_REAL_WORKER_PATH),{});QVERIFY(child.waitForStarted(5000));
+        auto boot=envelope();boot["build"]=QJsonDocument::fromJson(buildManifestJson()).object();
+        boot["contract"]=QString::fromUtf8(PUTGD_S3_BUILD_ID);boot["safeDelete"]=bool(PUTGD_SDK_CURL_TRANSPORT);boot["modulePath"]=S3Module::defaultPath();
+        QVERIFY(!control.send("bootstrap",boot).isEmpty());QTRY_VERIFY_WITH_TIMEOUT(ready&&!wireFailed,5000);
+        auto active=envelope();active["method"]="upload";active["request"]=s3wire::encode(request);
+        QVERIFY(!control.send("activate",active).isEmpty());
+        QTRY_VERIFY_WITH_TIMEOUT(!readinessRpc.isEmpty()&&progress.size()==1,5000);
+        QCOMPARE(progress.first().phase,QString("preparing"));
+        QVERIFY(acknowledge("readiness",readinessRpc,{{"error",s3wire::encode(Error{})}}));
+        QTRY_COMPARE_WITH_TIMEOUT(fixture.events("PUT").size(),1,5000);
+        QTest::qWait(650);QCOMPARE(progress.size(),1);QVERIFY(!terminal);QVERIFY(!wireFailed);
+        QVERIFY(acknowledge("uploadProgress",sequences.first(),{}));
+        QTRY_COMPARE_WITH_TIMEOUT(progress.size(),2,5000);
+        QCOMPARE(progress.last().phase,QString("uploading"));
+        QCOMPARE(progress.last().bytesTransferred,std::optional<qint64>(request.artifact.bytes));
+        QCOMPARE(progress.last().bytesTotal,std::optional<qint64>(request.artifact.bytes));
+        // Keep that observation outstanding. The terminal flush can add exactly
+        // one final value, then deliver the durable result without an ACK wait.
+        fixture.control("/__release",{{"barrier","progress"}},true);
+        QTRY_VERIFY_WITH_TIMEOUT(terminal,5000);QCOMPARE(progress.size(),3);
+        QCOMPARE(progress.last().phase,QString("finalizing"));QCOMPARE(result["status"].toString(),QString("uploaded"));
+        QTRY_COMPARE_WITH_TIMEOUT(child.state(),QProcess::NotRunning,5000);
+        QCOMPARE(child.exitStatus(),QProcess::NormalExit);QCOMPARE(child.exitCode(),0);QVERIFY(!wireFailed);
+    }
     void faultyChildren_data() {
         QTest::addColumn<QString>("mode");
         for (const auto* mode : {"normal", "wrong_build", "duplicate_ready", "wrong_nonce", "normal_missing_terminal",
-                                 "terminal_then_crash", "oversized", "truncated", "ready_then_crash", "activated_wrong_nonce", "ready_ignores_activate", "activated_silent", "cancel_ignores_alive", "invalid_upload", "invalid_remove", "prepared_cleanup"})
+                                 "terminal_then_crash", "oversized", "truncated", "ready_then_crash", "activated_wrong_nonce", "ready_ignores_activate", "activated_silent", "cancel_ignores_alive", "invalid_upload", "invalid_remove", "prepared_cleanup", "progress_valid", "progress_negative", "progress_over_total", "progress_wrong_total", "progress_unknown_field", "progress_before_activation", "progress_after_terminal", "progress_wrong_method", "progress_wrong_phase", "progress_bad_sequence", "progress_callback_throw", "progress_fractional", "progress_missing_total", "progress_missing_counter"})
             QTest::newRow(mode) << QString::fromLatin1(mode);
     }
     void faultyChildren() {
@@ -89,7 +155,12 @@ private slots:
         environment.insert("PUTGD_S3_FAULT_STATE", root.filePath("worker-state.json"));
         child.setProcessEnvironment(environment);
         child.setProcessChannelMode(QProcess::SeparateChannels);
-        child.start(executable, {mode == "prepared_cleanup" ? "isolatedPreparedCleanup" : mode == "cancel_ignores_alive" ? "isolatedCancelledWorker" : mode.startsWith("invalid_") ? "isolatedInvalidRequest" : "isolatedFaultCase"});
+        QString testCase = "isolatedFaultCase";
+        if (mode == "prepared_cleanup") testCase = "isolatedPreparedCleanup";
+        else if (mode == "cancel_ignores_alive") testCase = "isolatedCancelledWorker";
+        else if (mode.startsWith("invalid_")) testCase = "isolatedInvalidRequest";
+        else if (mode.startsWith("progress_")) testCase = "isolatedProgressCase";
+        child.start(executable, {testCase});
         QVERIFY(child.waitForStarted(5000));
         if (!child.waitForFinished(25000)) {
             child.kill();
@@ -145,6 +216,35 @@ private slots:
         const auto snapshot = state();
         QVERIFY(!processExists(snapshot["pid"].toString().toLongLong()));
         QCOMPARE(callbacks.load(), 1);
+    }
+    void isolatedProgressCase() {
+        if (qEnvironmentVariable("PUTGD_S3_FAULT_CHILD") != "1") QSKIP("Runs only in the relocated isolated child");
+        const auto mode = qEnvironmentVariable("PUTGD_S3_FAULT");
+        const auto target = destination();
+        CredentialStore credentials;
+        credentials.setSession(target.profileId, {"PUTGD_SYNTHETIC_ACCESS", "synthetic-only-not-a-real-key", {}});
+        S3Provider provider(credentials);
+        std::atomic_int progressCount{0};
+        auto delivered = std::make_shared<std::promise<Error>>();
+        auto result = delivered->get_future();
+        if (mode == "progress_wrong_method") {
+            provider.checkName(target, "synthetic.txt", [delivered](NameCheck reply) { delivered->set_value(reply.error); });
+        } else {
+            Artifact artifact{"synthetic-item", "/tmp/synthetic-progress", "synthetic.txt", "text/plain", "", QString(64, 'a'), 17, false, {}, false};
+            UploadRequest request{target, artifact, "synthetic.txt", "synthetic-operation/item", "absent",
+                                  {{"schemaVersion", 1}, {"key", "synthetic.txt"}}, {}, {}};
+            request.progress = [&](const UploadProgress& value) {
+                if (value.phase == "uploading" && value.bytesTransferred == 8 && value.bytesTotal == 17) ++progressCount;
+                if (mode == "progress_callback_throw") throw std::runtime_error("Synthetic callback exception");
+            };
+            provider.upload(request, [delivered](UploadResult reply) { delivered->set_value(reply.error); });
+        }
+        QTRY_VERIFY_WITH_TIMEOUT(result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 20000);
+        const auto error = result.get();
+        QCOMPARE(error.code, (mode == "progress_valid" || mode == "progress_callback_throw") ? QString("s3_request_failed") : QString("s3_transport_unknown"));
+        QCOMPARE(progressCount.load(), (mode == "progress_valid" || mode == "progress_callback_throw") ? 1 : 0);
+        QTest::qWait(350);
+        QCOMPARE(progressCount.load(), (mode == "progress_valid" || mode == "progress_callback_throw") ? 1 : 0);
     }
     void slowInlineCheckpointDoesNotLookLikeChildSilence() {
         test::S3Fixture fixture;

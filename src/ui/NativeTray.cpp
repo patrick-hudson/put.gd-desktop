@@ -107,14 +107,14 @@ NativeLayout menuLayout(int id, int depth, const QStringList& names) {
   result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(i, 0, names))));
  return result;
 }
-NativeImages brandIcon() {
+NativeImages brandIcon(bool working=false) {
  NativeImages result;
  for (int scale : {1, 2, 3}) {
   QImage image(24 * scale, 24 * scale, QImage::Format_ARGB32);
   image.setDevicePixelRatio(scale); image.fill(Qt::transparent);
   QPainter painter(&image);
   painter.setRenderHint(QPainter::Antialiasing);
-  painter.setPen(QPen(QColor("#9bbcff"), 1.7, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+  painter.setPen(QPen(QColor(working?"#62d69b":"#9bbcff"), 1.7, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
   painter.setBrush(Qt::NoBrush);
   painter.drawRoundedRect(QRectF(3, 3, 18, 18), 5, 5);
   painter.drawLine(12, 17, 12, 7); painter.drawLine(12, 7, 8, 11); painter.drawLine(12, 7, 16, 11);
@@ -148,6 +148,7 @@ public:
  bool availabilityKnown() const { return availabilityKnown_; }
  QVariantMap properties(bool menu) const;
  void dispatch(const QString& action);
+ void setActivity(bool working,const QString& description);
  void notify(const QString& title, const QString& message, bool warning);
 private slots:
  void hostChanged();
@@ -162,6 +163,8 @@ private:
  QDBusServiceWatcher watcher_;
  std::unique_ptr<TrayExport> item_, menu_;
  NativeImages icons_;
+ bool working_ = false;
+ QString activityText_;
  QTimer retry_;
  quint64 generation_ = 0, hostQuery_ = 0;
  int attempts_ = 0, notificationsInFlight_ = 0;
@@ -296,6 +299,18 @@ void NativeTrayPrivate::notify(const QString& title, const QString& message, boo
   --notificationsInFlight_; p->deleteLater();
  });
 }
+void NativeTrayPrivate::setActivity(bool working,const QString& description) {
+ const bool iconChanged=working!=working_;
+ if(!iconChanged&&description==activityText_)return;
+ working_=working;activityText_=description;
+ if(iconChanged)icons_=brandIcon(working);
+ const auto props=properties(false);QVariantMap changed{{"ToolTip",props["ToolTip"]}};
+ if(iconChanged)changed.insert("IconPixmap",props["IconPixmap"]);
+ auto signal=QDBusMessage::createSignal("/StatusNotifierItem","org.freedesktop.DBus.Properties","PropertiesChanged");
+ signal.setArguments({QString::fromLatin1(itemInterface),changed,QStringList{}});bus_.send(signal);
+ bus_.send(QDBusMessage::createSignal("/StatusNotifierItem",itemInterface,"NewToolTip"));
+ if(iconChanged)bus_.send(QDBusMessage::createSignal("/StatusNotifierItem",itemInterface,"NewIcon"));
+}
 QVariantMap NativeTrayPrivate::properties(bool menu) const {
  if (menu) return {{"Version", uint(3)}, {"TextDirection", "ltr"}, {"Status", "normal"}, {"IconThemePath", QStringList{}}};
  return {{"Category", "ApplicationStatus"}, {"Id", "putgd"}, {"Title", "put.gd"}, {"Status", "Active"}, {"WindowId", 0},
@@ -303,7 +318,7 @@ QVariantMap NativeTrayPrivate::properties(bool menu) const {
   {"IconName", ""}, {"IconPixmap", QVariant::fromValue(icons_)},
   {"OverlayIconName", ""}, {"OverlayIconPixmap", QVariant::fromValue(NativeImages{})},
   {"AttentionIconName", ""}, {"AttentionIconPixmap", QVariant::fromValue(NativeImages{})}, {"AttentionMovieName", ""},
-  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, "put.gd — Share and local capture", ""})}};
+  {"ToolTip", QVariant::fromValue(NativeTooltip{"", {}, working_?QString("put.gd — Working"):QString("put.gd — Share and local capture"), activityText_})}};
 }
 QString TrayExport::introspect(const QString&) const {
  QString xml = "<interface name=\"org.freedesktop.DBus.Properties\">"
@@ -438,6 +453,7 @@ NativeTray::NativeTray(const QDBusConnection& bus, QObject* parent): QObject(par
 NativeTray::~NativeTray() = default;
 bool NativeTray::available() const { return d_->available(); }
 bool NativeTray::availabilityKnown() const { return d_->availabilityKnown(); }
+void NativeTray::setActivity(bool working,const QString& description) {d_->setActivity(working,description);}
 void NativeTray::notify(const QString& title, const QString& message, bool warning) { d_->notify(title, message, warning); }
 }
 #include "NativeTray.moc"

@@ -2,6 +2,10 @@
 
 Open put.gd to reach Settings and setup. The tray menu also opens settings, recent activity, and persistent upload history. If the desktop has no tray, use the launcher to reopen settings. Capture actions remain available through the CLI. Desktop support is shown separately for capture targets, shortcuts, clipboard import, and clipboard results; inspect actual bindings and conflicts in Shortcuts and support. A configured shortcut is not proof of a successful binding. Unsupported targets require the documented desktop helper or permission repair.
 
+Hover over the tray icon to see current work without opening Activity. The icon turns green while an operation is queued, acquiring, preparing, uploading, finalizing or sharing, and returns to blue when the work ends. The tooltip shows up to three active operations plus a count of any others. Completed and interrupted history does not keep the icon active.
+
+S3 displays transferred body bytes against the file's total, with a percentage. Proton displays encrypted bytes transferred and the source file size separately because encryption adds overhead. A full transfer counter can still be finalizing; the saved upload result establishes completion. Counters can move backward when an attempt restarts. These rules apply through the shared operation service for every destination, including future providers without byte counters.
+
 ## First setup
 
 Fresh installations require an explicit destination choice. To save locally, choose **Save locally** and save settings. To change the folder, expand **Advanced settings → Capture → Local files**. Each action can independently use upload or local saving. Local image results copy image MIME, text results copy text, and file copies return local file URIs. Disabling **Keep local copies of uploads** leaves local-only saving active and removes no existing files.

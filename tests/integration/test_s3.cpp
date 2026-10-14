@@ -1,6 +1,7 @@
 #include "fixtures/S3Fixture.h"
 #include <thread>
 #include <QBuffer>
+#include <mutex>
 using namespace putgd::test;
 class S3Test : public QObject {
     Q_OBJECT
@@ -71,6 +72,89 @@ private slots:
         QCOMPARE(QByteArray::fromBase64(event["body"].toString().toUtf8()), png);
         QCOMPARE(result.receipt.directUrl, QString("https://put.gd/base%2Fencoded/synthetic.png"));
         QVERIFY(headers["host"].toString().startsWith("127.0.0.1"));
+    }
+    void uploadProgressUsesBodyBytesAndFinishesBeforeReply() {
+        S3Fixture f;
+        auto request = f.request("progress.txt", QByteArray(1024 * 1024, 'p'));
+        // Keep the real SDK call active after it sends the body, allowing the
+        // production child timer to forward byte counters before completion.
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.7}}}}});
+        std::mutex mutex;
+        QList<UploadProgress> progress;
+        request.progress = [&](const UploadProgress& value) {
+            std::lock_guard lock(mutex);
+            progress.append(value);
+        };
+        const auto result = f.upload(request);
+        QCOMPARE(result.status, QString("uploaded"));
+        qsizetype count;
+        {
+            std::lock_guard lock(mutex);
+            QVERIFY(!progress.isEmpty());
+            bool sentBody = false;
+            for (const auto& value : progress) {
+                QVERIFY(value.valid());
+                QCOMPARE(value.bytesTotal, std::optional<qint64>(request.artifact.bytes));
+                QVERIFY(value.bytesTransferred.has_value());
+                if (value.phase == "uploading" && value.bytesTransferred == request.artifact.bytes) sentBody = true;
+            }
+            QVERIFY(sentBody);
+            QCOMPARE(progress.last().phase, QString("finalizing"));
+            QCOMPARE(progress.last().bytesTransferred, std::optional<qint64>(request.artifact.bytes));
+            count = progress.size();
+        }
+        QTest::qWait(350);
+        std::lock_guard lock(mutex);
+        QCOMPARE(progress.size(), count);
+    }
+    void transientRetryRestartsProgressAtSameBodyTotal() {
+        S3Fixture f;
+        auto request = f.request("retry-progress.txt", QByteArray(128 * 1024, 'p'));
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.7}, {"status", 500},
+                                                {"code", "InternalError"}, {"remaining", 3}}}}});
+        std::mutex mutex;
+        QList<UploadProgress> progress;
+        request.progress = [&](const UploadProgress& value) {
+            std::lock_guard lock(mutex);
+            progress.append(value);
+        };
+        QCOMPARE(f.upload(request).status, QString("unknown"));
+        QCOMPARE(f.events("PUT").size(), 3);
+        std::lock_guard lock(mutex);
+        QVERIFY(!progress.isEmpty());
+        int completeBodies = 0;
+        for (const auto& value : progress) {
+            QVERIFY(value.valid());
+            QCOMPARE(value.bytesTotal, std::optional<qint64>(request.artifact.bytes));
+            QVERIFY(*value.bytesTransferred <= request.artifact.bytes);
+            if (value.phase == "uploading" && value.bytesTransferred == request.artifact.bytes) ++completeBodies;
+        }
+        QVERIFY(completeBodies >= 3);
+    }
+    void redirectedBodyKeepsTheCurrentArtifactTotal() {
+        S3Fixture f;
+        auto request = f.request("redirect-progress.txt", QByteArray(128 * 1024 + 7, 'p'));
+        f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"delay", 0.7}, {"redirect", true}}}}});
+        std::mutex mutex;
+        QList<UploadProgress> progress;
+        request.progress = [&](const UploadProgress& value) {
+            std::lock_guard lock(mutex);
+            progress.append(value);
+        };
+        QCOMPARE(f.upload(request).status, QString("uploaded"));
+        const auto events = f.events("PUT");
+        QCOMPARE(events.size(), 2);
+        for (const auto& event : events)
+            QCOMPARE(QByteArray::fromBase64(event.toObject()["body"].toString().toUtf8()).size(), request.artifact.bytes);
+        std::lock_guard lock(mutex);
+        QVERIFY(!progress.isEmpty());
+        for (const auto& value : progress) {
+            QVERIFY(value.valid());
+            QCOMPARE(value.bytesTotal, std::optional<qint64>(request.artifact.bytes));
+            QVERIFY(*value.bytesTransferred <= request.artifact.bytes);
+        }
+        QCOMPARE(progress.last().phase, QString("finalizing"));
+        QCOMPARE(progress.last().bytesTransferred, std::optional<qint64>(request.artifact.bytes));
     }
     void terminalErrors_data() {
         QTest::addColumn<int>("http");

@@ -27,6 +27,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  connect(&observationTimer_,&QTimer::timeout,this,[this]{
   QSet<QString> ids;{std::lock_guard lock(observationsMutex_);ids=std::exchange(observationsDirty_,{});observationScheduled_=false;}
   for(const auto& id:ids)emit changed(id);
+  if(!ids.isEmpty())emit observationsChanged();
  });
  heapReclamationTimer_.setSingleShot(true);
  connect(&heapReclamationTimer_,&QTimer::timeout,this,[this] {
@@ -94,6 +95,11 @@ void OperationService::observe(const QJsonObject& document){
  {std::lock_guard lock(observationsMutex_);const auto existing=observations_.constFind(id);if(existing!=observations_.cend()&&*existing==document)return;observations_[id]=document;observationsDirty_.insert(id);if(!observationScheduled_){observationScheduled_=true;schedule=true;}}
  if(schedule){QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner]{if(owner&&!owner->stopping_)owner->observationTimer_.start();},Qt::QueuedConnection);}
 }
+QJsonArray OperationService::activeObservations() const {
+ QJsonArray result;std::lock_guard lock(observationsMutex_);
+ for(const auto& document:observations_)if(Operation::activeState(document["state"].toString()))result.append(document);
+ return result;
+}
 void OperationService::clearObservation(const QString& id){std::lock_guard lock(observationsMutex_);observations_.remove(id);observationsDirty_.remove(id);}
 QJsonObject OperationService::currentObservation(QJsonObject document)const{
  if(QStringList{"completed","partial","failed","cancelled","interrupted"}.contains(document["state"].toString()))return document;
@@ -143,7 +149,7 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  auto acquisition=source_.prepareAcquisition(action,snapshot.limits,std::move(earlyTerminal),std::move(released));
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
   if(e) {releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();reply(e,{});return;}
-  observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);
+  observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
   // Acceptance stays durable and observable before acquiring pixels. Region
   // preview may already be visible; a terminal event skips the remaining work.
   QTimer::singleShot(0,this,[this,op,flag,acquisition,earlyError]() mutable {
@@ -334,7 +340,7 @@ void OperationService::finish(Operation op,JsonReply reply) {
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
  if((op.cancelled||op.state=="failed"||op.state=="interrupted")&&op.copyStatus=="pending")op.copyStatus="no_result";
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
-  clearObservation(id);emit changed(id);
+  clearObservation(id);emit changed(id);emit observationsChanged();
   if(e) {releaseActive(id);if(reply)reply(e,{});return;}
   const auto op=Operation::fromJson(document);
   if(op.cancelled||op.state=="failed"||op.state=="interrupted") {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
@@ -368,7 +374,29 @@ void OperationService::retry(const QString& id,JsonReply reply) {
   });
  });
 }
-void OperationService::retryLocalSave(const QString& id,JsonReply reply) {if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}const auto limits=settings_.snapshot().limits;if(active_.size()>=limits.pendingOperations+limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}if(active_.contains(id)) {reply({"operation_busy","Operation is active",{}},{});return;}active_.insert(id,std::make_shared<std::atomic_bool>(false));const auto path=databasePath();background([this,path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};ArtifactStore artifacts(root_+"/artifacts");for(auto& item:op.items)if(item.local.status!="saved") {if(auto error=artifacts.verify(item.artifact)) {item.local.status="failed";item.local.error=error;}else item.local=LocalArchive::save(item.artifact,op.settings.archive);}e=store.saveOperation(op);return op.publicJson();},[this,id,reply](Error e,QJsonObject r) {active_.remove(id);reply(e,r);});}
+void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
+ if(cleanupInProgress_){reply({"cleanup_busy","Wait for artifact cleanup to finish",{}},{});return;}
+ if(!ready_){reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ const auto limits=settings_.snapshot().limits;
+ if(active_.size()>=limits.pendingOperations+limits.concurrentUploads){reply({"queue_full","Pending operation limit reached",{}},{});return;}
+ if(active_.contains(id)){reply({"operation_busy","Operation is active",{}},{});return;}
+ active_.insert(id,std::make_shared<std::atomic_bool>(false));
+ // A local retry keeps its durable result; only its live observation is active.
+ observe({{"id",id},{"state","running"},{"phase","saving_local"},{"created",QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}});
+ emit observationsChanged();
+ const auto path=databasePath();
+ background([this,path,id](Error& e) {
+  HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};
+  ArtifactStore artifacts(root_+"/artifacts");
+  for(auto& item:op.items)if(item.local.status!="saved") {
+   if(auto error=artifacts.verify(item.artifact)){item.local.status="failed";item.local.error=error;}
+   else item.local=LocalArchive::save(item.artifact,op.settings.archive);
+  }
+  e=store.saveOperation(op);return op.publicJson();
+ },[this,id,reply](Error e,QJsonObject r) {
+  clearObservation(id);emit changed(id);emit observationsChanged();releaseActive(id);reply(e,r);
+ });
+}
 void OperationService::copyResult(const QString& id,JsonReply reply) {if(active_.contains(id)) {reply({"operation_busy","Wait for the operation to finish before copying its result",{}},{});return;}const auto ticket=invalidateCopyEligibility();const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,ticket](Error e,QJsonObject doc) {if(e)reply(e,{});else performCopy(Operation::fromJson(doc),true,reply,ticket);});}
 void OperationService::deliverCopy(const CopyPayload& payload,std::function<void(Error)> callback) {
  QPointer<OperationService> guarded(this);
