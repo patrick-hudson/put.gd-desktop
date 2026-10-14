@@ -15,6 +15,10 @@ Gio._promisify(Shell.Screenshot, 'composite_to_stream');
 const PATH = '/org/gnome/Shell/Extensions/Putgd';
 const IFACE = 'org.putgd.Gnome50';
 const CLIENT = 'org.putgd.App.Gnome50';
+const SNI_ITEM = 'org.kde.StatusNotifierItem';
+const SNI_WATCHER = 'org.kde.StatusNotifierWatcher';
+const SNI_ITEM_PATH = '/StatusNotifierItem';
+const SNI_WATCHER_PATH = '/StatusNotifierWatcher';
 const CHUNK = 65536;
 const ACTIONS = ['region', 'window', 'desktop', 'clipboard'];
 const XML = `<node><interface name="${IFACE}">
@@ -186,7 +190,7 @@ class TrayTooltipCompanion {
                 if (this[field] !== owner) {this[field] = owner; this._reset();}
             }, () => {this[field] = null; this._reset();});
         this._clientWatch = watch(CLIENT, '_client');
-        this._watcherWatch = watch('org.kde.StatusNotifierWatcher', '_watcher');
+        this._watcherWatch = watch(SNI_WATCHER, '_watcher');
     }
     disable() {
         this._enabled = false; this._reset();
@@ -236,7 +240,7 @@ class TrayTooltipCompanion {
         return value;
     }
     async _findItem(pid, cancellable) {
-        const watcher = 'org.kde.StatusNotifierWatcher', path = '/StatusNotifierWatcher';
+        const watcher = SNI_WATCHER, path = SNI_WATCHER_PATH;
         if (await this._property(this._watcher, path, watcher, 'IsStatusNotifierHostRegistered', cancellable) !== true)
             throw new Error('Native tray host unavailable');
         const entries = await this._property(this._watcher, path, watcher, 'RegisteredStatusNotifierItems', cancellable);
@@ -244,14 +248,14 @@ class TrayTooltipCompanion {
         const matches = (await Promise.all(entries.map(async entry => {
             if (typeof entry !== 'string' || entry.length > 512) return null;
             const slash = entry.indexOf('/'), service = slash < 0 ? entry : entry.slice(0, slash);
-            const itemPath = slash < 0 ? '/StatusNotifierItem' : entry.slice(slash);
-            if (!/^(?::[0-9]+\.[0-9]+|[A-Za-z_][A-Za-z0-9_.-]+)$/.test(service) || itemPath !== '/StatusNotifierItem') return null;
+            const itemPath = slash < 0 ? SNI_ITEM_PATH : entry.slice(slash);
+            if (!/^(?::[0-9]+\.[0-9]+|[A-Za-z_][A-Za-z0-9_.-]+)$/.test(service) || itemPath !== SNI_ITEM_PATH) return null;
             try {
                 const owner = await this._owner(service, cancellable);
                 // A foreign application never supplies even item metadata.
                 const itemPid = await this._pid(owner, cancellable);
                 if (itemPid !== pid) return null;
-                if (await this._property(owner, itemPath, 'org.kde.StatusNotifierItem', 'Id', cancellable) !== 'putgd') return null;
+                if (await this._property(owner, itemPath, SNI_ITEM, 'Id', cancellable) !== 'putgd') return null;
                 return {service, owner, path: itemPath, pid: itemPid};
             } catch {return null;}
         }))).filter(Boolean);
@@ -260,20 +264,20 @@ class TrayTooltipCompanion {
     }
     _subscribe(item) {
         const bus = Gio.DBus.session;
-        this._signals.push(bus.signal_subscribe(item.owner, 'org.kde.StatusNotifierItem', 'NewToolTip',
+        this._signals.push(bus.signal_subscribe(item.owner, SNI_ITEM, 'NewToolTip',
             item.path, null, Gio.DBusSignalFlags.NONE, (_bus, sender) => {
                 if (sender === item.owner) this._refresh();
             }));
         this._signals.push(bus.signal_subscribe(item.owner, 'org.freedesktop.DBus.Properties', 'PropertiesChanged',
-            item.path, 'org.kde.StatusNotifierItem', Gio.DBusSignalFlags.NONE, (_bus, _sender, _path, _iface, _name, parameters) => {
+            item.path, SNI_ITEM, Gio.DBusSignalFlags.NONE, (_bus, _sender, _path, _iface, _name, parameters) => {
                 const [, changed, invalidated] = parameters.deep_unpack();
                 if (Object.hasOwn(changed, 'Title') || invalidated.includes('Title')) this._refresh();
             }));
         this._signals.push(bus.signal_subscribe('org.freedesktop.DBus', 'org.freedesktop.DBus', 'NameOwnerChanged',
             '/org/freedesktop/DBus', item.service, Gio.DBusSignalFlags.NONE, () => this._reset()));
         for (const name of ['StatusNotifierItemRegistered', 'StatusNotifierItemUnregistered'])
-            this._signals.push(bus.signal_subscribe(this._watcher, 'org.kde.StatusNotifierWatcher', name,
-                '/StatusNotifierWatcher', null, Gio.DBusSignalFlags.NONE, () => this._reset()));
+            this._signals.push(bus.signal_subscribe(this._watcher, SNI_WATCHER, name,
+                SNI_WATCHER_PATH, null, Gio.DBusSignalFlags.NONE, () => this._reset()));
     }
     _findActor(title) {
         const pending = [Main.panel], matches = [];
@@ -309,12 +313,19 @@ class TrayTooltipCompanion {
             const pid = await this._pid(client, cancellable);
             const item = this._item ?? await this._findItem(pid, cancellable);
             if (await this._pid(item.owner, cancellable) !== pid) throw new Error('Tray process changed');
-            const title = await this._property(item.owner, item.path, 'org.kde.StatusNotifierItem', 'Title', cancellable);
-            const tooltip = this._tooltip(await this._property(item.owner, item.path, 'org.kde.StatusNotifierItem', 'ToolTip', cancellable));
-            if (typeof title !== 'string' || !title || title.length > 160 || /[\x00-\x1f\x7f]/.test(title) ||
-                await this._owner(item.service, cancellable) !== item.owner ||
-                await this._owner(CLIENT, cancellable) !== client ||
-                await this._owner('org.kde.StatusNotifierWatcher', cancellable) !== this._watcher)
+            const [title, nativeTooltip] = await Promise.all([
+                this._property(item.owner, item.path, SNI_ITEM, 'Title', cancellable),
+                this._property(item.owner, item.path, SNI_ITEM, 'ToolTip', cancellable),
+            ]);
+            const tooltip = this._tooltip(nativeTooltip);
+            if (typeof title !== 'string' || !title || title.length > 160 || /[\x00-\x1f\x7f]/.test(title))
+                throw new Error('Invalid tray title');
+            const [itemOwner, clientOwner, watcherOwner] = await Promise.all([
+                this._owner(item.service, cancellable),
+                this._owner(CLIENT, cancellable),
+                this._owner(SNI_WATCHER, cancellable),
+            ]);
+            if (itemOwner !== item.owner || clientOwner !== client || watcherOwner !== this._watcher)
                 throw new Error('Tray identity changed during read');
             if (generation !== this._generation || !this._enabled || Main.sessionMode.isLocked) return;
             if (!this._item) {this._item = item; this._subscribe(item);}
