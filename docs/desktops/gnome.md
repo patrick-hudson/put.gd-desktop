@@ -39,6 +39,27 @@ installation. Disable removes all helper bindings, signals, pending selectors, t
 
 ## Acceptance boundary
 
+On GNOME 50, Ubuntu AppIndicators renders the native icon/menu but omits SNI
+hover text. The put.gd extension supplies a plain-text companion on the existing
+public St panel actor. It accepts one registered `Id=putgd` item with the D-Bus
+Unix PID of the current `org.putgd.App.Gnome50` owner, rechecks unique owners
+after asynchronous reads, and matches only one actor whose `accessible_name`
+equals that authenticated item's `Title`. It reads genuine `ToolTip` text,
+bounded to 2048 UTF-8 bytes and four description rows. It creates no second icon,
+uses no AppIndicators private fields, and does not change its menu or hover
+handlers. Button presses propagate to the native host and hide the companion
+until the pointer leaves and returns. Once bound, updates use native signals rather than idle bus polling;
+actor-missing setup retries are bounded. Lock, owner changes and disable cancel
+reads and remove only the companion's own label/signals/timers.
+
+The existing `gjs -m tests/desktop/test_gnome_ownership.mjs
+integrations/gnome/extension.js` suite adds synthetic tooltip ownership,
+updates, ambiguity, bounds and lifecycle contracts. They prove no graphical
+hover behavior. Current-package visible hover, active/idle text and icon/menu
+preservation, lock/unlock, disable/re-enable, actor replacement and memory still
+require native GNOME acceptance. An ambiguous or unavailable public actor leaves
+the companion hidden; no private-field or replacement-icon fallback is used.
+
 `tests/integration/test_gnome_bridge.cpp` proves bounded transfer decoding and
 request metadata validation. It does not run GNOME, prove global shortcuts,
 capture real Wayland pixels, or paste into another application. Real GNOME 50

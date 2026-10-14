@@ -174,6 +174,213 @@ const RegionSelector = GObject.registerClass(class RegionSelector extends St.Wid
     }
 });
 
+// AppIndicators exposes the existing panel button through St accessible_name,
+// but GNOME 50's host does not render SNI ToolTip. Own only a companion label.
+class TrayTooltipCompanion {
+    enable() {
+        this._enabled = true; this._generation = 0; this._signals = [];
+        this._client = this._watcher = null; this._actorSignals = [];
+        this._sessionSignal = Main.sessionMode.connect('updated', () => this._reset());
+        const watch = (name, field) => Gio.bus_watch_name(Gio.BusType.SESSION, name,
+            Gio.BusNameWatcherFlags.NONE, (_bus, _name, owner) => {
+                if (this[field] !== owner) {this[field] = owner; this._reset();}
+            }, () => {this[field] = null; this._reset();});
+        this._clientWatch = watch(CLIENT, '_client');
+        this._watcherWatch = watch('org.kde.StatusNotifierWatcher', '_watcher');
+    }
+    disable() {
+        this._enabled = false; this._reset();
+        Main.sessionMode.disconnect(this._sessionSignal);
+        Gio.bus_unwatch_name(this._clientWatch); Gio.bus_unwatch_name(this._watcherWatch);
+    }
+    _reset() {
+        this._generation++; this._pending?.cancellable.cancel();
+        if (this._pending?.deadline) {GLib.source_remove(this._pending.deadline); this._pending.deadline = 0;}
+        this._pending = null; this._again = false;
+        if (this._timer) GLib.source_remove(this._timer);
+        this._timer = 0; this._releaseActor(); this._item = null; this._text = '';
+        for (const id of this._signals) Gio.DBus.session.signal_unsubscribe(id);
+        this._signals = [];
+        if (!this._enabled || Main.sessionMode.isLocked || !this._client || !this._watcher) return;
+        this._retryAttempts = 0; this._retryActor();
+        this._refresh();
+    }
+    _retryActor() {
+        if (this._timer || !this._enabled || Main.sessionMode.isLocked || !this._client || !this._watcher) return;
+        this._timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            if (++this._retryAttempts > 15) {this._timer = 0; return GLib.SOURCE_REMOVE;}
+            this._refresh(); return GLib.SOURCE_CONTINUE;
+        });
+    }
+    _call(service, path, iface, method, parameters, cancellable) {
+        return new Promise((resolve, reject) => {
+            Gio.DBus.session.call(service, path, iface, method, parameters, null,
+                Gio.DBusCallFlags.NONE, 1000, cancellable, (bus, result) => {
+                    try {resolve(bus.call_finish(result).deep_unpack()[0]);} catch (error) {reject(error);}
+                });
+        });
+    }
+    _owner(name, cancellable) {
+        return this._call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+            'GetNameOwner', new GLib.Variant('(s)', [name]), cancellable);
+    }
+    _pid(owner, cancellable) {
+        return this._call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
+            'GetConnectionUnixProcessID', new GLib.Variant('(s)', [owner]), cancellable);
+    }
+    async _property(owner, path, iface, name, cancellable) {
+        let value = await this._call(owner, path, 'org.freedesktop.DBus.Properties', 'Get',
+            new GLib.Variant('(ss)', [iface, name]), cancellable);
+        // Properties.Get wraps its value in a variant; never request pixmaps.
+        if (value?.deep_unpack) value = value.deep_unpack();
+        return value;
+    }
+    async _findItem(pid, cancellable) {
+        const watcher = 'org.kde.StatusNotifierWatcher', path = '/StatusNotifierWatcher';
+        if (await this._property(this._watcher, path, watcher, 'IsStatusNotifierHostRegistered', cancellable) !== true)
+            throw new Error('Native tray host unavailable');
+        const entries = await this._property(this._watcher, path, watcher, 'RegisteredStatusNotifierItems', cancellable);
+        if (!Array.isArray(entries) || entries.length > 64) throw new Error('Tray registration exceeds bound');
+        const matches = (await Promise.all(entries.map(async entry => {
+            if (typeof entry !== 'string' || entry.length > 512) return null;
+            const slash = entry.indexOf('/'), service = slash < 0 ? entry : entry.slice(0, slash);
+            const itemPath = slash < 0 ? '/StatusNotifierItem' : entry.slice(slash);
+            if (!/^(?::[0-9]+\.[0-9]+|[A-Za-z_][A-Za-z0-9_.-]+)$/.test(service) || itemPath !== '/StatusNotifierItem') return null;
+            try {
+                const owner = await this._owner(service, cancellable);
+                // A foreign application never supplies even item metadata.
+                const itemPid = await this._pid(owner, cancellable);
+                if (itemPid !== pid) return null;
+                if (await this._property(owner, itemPath, 'org.kde.StatusNotifierItem', 'Id', cancellable) !== 'putgd') return null;
+                return {service, owner, path: itemPath, pid: itemPid};
+            } catch {return null;}
+        }))).filter(Boolean);
+        if (matches.length !== 1 || matches[0].pid !== pid) throw new Error('Resident tray item is not unique');
+        return matches[0];
+    }
+    _subscribe(item) {
+        const bus = Gio.DBus.session;
+        this._signals.push(bus.signal_subscribe(item.owner, 'org.kde.StatusNotifierItem', 'NewToolTip',
+            item.path, null, Gio.DBusSignalFlags.NONE, (_bus, sender) => {
+                if (sender === item.owner) this._refresh();
+            }));
+        this._signals.push(bus.signal_subscribe(item.owner, 'org.freedesktop.DBus.Properties', 'PropertiesChanged',
+            item.path, 'org.kde.StatusNotifierItem', Gio.DBusSignalFlags.NONE, (_bus, _sender, _path, _iface, _name, parameters) => {
+                const [, changed, invalidated] = parameters.deep_unpack();
+                if (Object.hasOwn(changed, 'Title') || invalidated.includes('Title')) this._refresh();
+            }));
+        this._signals.push(bus.signal_subscribe('org.freedesktop.DBus', 'org.freedesktop.DBus', 'NameOwnerChanged',
+            '/org/freedesktop/DBus', item.service, Gio.DBusSignalFlags.NONE, () => this._reset()));
+        for (const name of ['StatusNotifierItemRegistered', 'StatusNotifierItemUnregistered'])
+            this._signals.push(bus.signal_subscribe(this._watcher, 'org.kde.StatusNotifierWatcher', name,
+                '/StatusNotifierWatcher', null, Gio.DBusSignalFlags.NONE, () => this._reset()));
+    }
+    _findActor(title) {
+        const pending = [Main.panel], matches = [];
+        let count = 0;
+        while (pending.length && ++count <= 512) {
+            const actor = pending.pop();
+            if (actor instanceof St.Widget && actor.accessible_name === title && actor.reactive && actor.visible && actor.mapped)
+                matches.push(actor);
+            pending.push(...actor.get_children());
+        }
+        return pending.length === 0 && matches.length === 1 ? matches[0] : null;
+    }
+    _tooltip(value) {
+        if (!Array.isArray(value) || value.length !== 4 || typeof value[2] !== 'string' || typeof value[3] !== 'string')
+            throw new Error('Invalid native tooltip');
+        const text = value[2] + (value[3] ? '\n' + value[3] : '');
+        if (!value[2] || value[2].length > 160 || value[3].split('\n').length > 4 ||
+            text.length > 2048 || new TextEncoder().encode(text).length > 2048 || /[\x00-\x09\x0b-\x1f\x7f]/.test(text))
+            throw new Error('Native tooltip exceeds text bounds');
+        return text;
+    }
+    async _refresh() {
+        if (!this._enabled || Main.sessionMode.isLocked || !this._client || !this._watcher) return;
+        if (this._pending) {this._again = true; return;}
+        const generation = this._generation, cancellable = new Gio.Cancellable();
+        const pending = {cancellable, deadline: 0}; this._pending = pending;
+        pending.deadline = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 4000, () => {
+            pending.deadline = 0; cancellable.cancel(); return GLib.SOURCE_REMOVE;
+        });
+        try {
+            const client = await this._owner(CLIENT, cancellable);
+            if (client !== this._client) throw new Error('Resident owner changed');
+            const pid = await this._pid(client, cancellable);
+            const item = this._item ?? await this._findItem(pid, cancellable);
+            if (await this._pid(item.owner, cancellable) !== pid) throw new Error('Tray process changed');
+            const title = await this._property(item.owner, item.path, 'org.kde.StatusNotifierItem', 'Title', cancellable);
+            const tooltip = this._tooltip(await this._property(item.owner, item.path, 'org.kde.StatusNotifierItem', 'ToolTip', cancellable));
+            if (typeof title !== 'string' || !title || title.length > 160 || /[\x00-\x1f\x7f]/.test(title) ||
+                await this._owner(item.service, cancellable) !== item.owner ||
+                await this._owner(CLIENT, cancellable) !== client ||
+                await this._owner('org.kde.StatusNotifierWatcher', cancellable) !== this._watcher)
+                throw new Error('Tray identity changed during read');
+            if (generation !== this._generation || !this._enabled || Main.sessionMode.isLocked) return;
+            if (!this._item) {this._item = item; this._subscribe(item);}
+            const actor = this._findActor(title);
+            if (!actor) {this._releaseActor(); this._text = ''; this._retryActor(); return;}
+            this._attach(actor); this._title = title; this._text = tooltip;
+            if (this._timer) GLib.source_remove(this._timer);
+            this._timer = 0; this._show();
+        } catch {
+            if (generation === this._generation) {this._releaseActor(); this._text = ''; this._retryActor();}
+        } finally {
+            if (pending.deadline) GLib.source_remove(pending.deadline);
+            if (generation === this._generation) {
+                this._pending = null;
+                if (this._again) {this._again = false; this._refresh();}
+            }
+        }
+    }
+    _attach(actor) {
+        if (this._actor === actor) return;
+        this._releaseActor(); this._actor = actor;
+        this._label = new St.Label({style_class: 'dash-label', reactive: false, can_focus: false, visible: false});
+        this._label.clutter_text.set_line_wrap(true); Main.uiGroup.add_child(this._label);
+        this._actorSignals = [actor.connect('notify::hover', () => {
+            if (this._hoverTimer) GLib.source_remove(this._hoverTimer);
+            this._hoverTimer = 0; this._label?.hide();
+            if (!actor.hover) this._suppressed = false;
+            if (actor.hover && !this._suppressed) this._hoverTimer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+                this._hoverTimer = 0; this._refresh(); return GLib.SOURCE_REMOVE;
+            });
+        }), actor.connect('captured-event', (_actor, event) => {
+            if (event.type() === Clutter.EventType.BUTTON_PRESS) {
+                this._suppressed = true; this._label?.hide();
+                if (this._hoverTimer) GLib.source_remove(this._hoverTimer);
+                this._hoverTimer = 0;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        }), actor.connect('notify::accessible-name', () => this._refresh()),
+        actor.connect('destroy', () => {this._releaseActor(); this._retryAttempts = 0; this._retryActor();})];
+    }
+    _show() {
+        if (!this._label || !this._actor?.hover || this._hoverTimer || this._suppressed || !this._text || Main.sessionMode.isLocked) return;
+        if (this._findActor(this._title) !== this._actor) {this._label.hide(); return;}
+        const [x, y] = this._actor.get_transformed_position(), [width, height] = this._actor.get_transformed_size();
+        const monitor = Main.layoutManager.monitors.find(m => x + width / 2 >= m.x && x + width / 2 < m.x + m.width &&
+            y + height / 2 >= m.y && y + height / 2 < m.y + m.height);
+        if (!monitor || monitor.width <= 16 || monitor.height <= 16) {this._label.hide(); return;}
+        this._label.set_text(this._text);
+        const naturalWidth = Math.min(this._label.get_preferred_width(-1)[1], monitor.width - 16);
+        const naturalHeight = this._label.get_preferred_height(naturalWidth)[1];
+        if (naturalHeight > monitor.height - 16) {this._label.hide(); return;}
+        this._label.set_size(naturalWidth, naturalHeight);
+        this._label.set_position(Math.max(monitor.x + 8, Math.min(x + width / 2 - naturalWidth / 2, monitor.x + monitor.width - naturalWidth - 8)),
+            Math.max(monitor.y + 8, Math.min(y + height + 8, monitor.y + monitor.height - naturalHeight - 8)));
+        this._label.show();
+    }
+    _releaseActor() {
+        if (this._hoverTimer) GLib.source_remove(this._hoverTimer);
+        this._hoverTimer = 0; this._suppressed = false;
+        const actor = this._actor; this._actor = null;
+        for (const id of this._actorSignals) actor?.disconnect(id);
+        this._actorSignals = [];
+        this._label?.destroy(); this._label = null;
+    }
+}
+
 export default class PutgdExtension extends Extension {
     enable() {
         this._enabled = true;
@@ -219,12 +426,16 @@ export default class PutgdExtension extends Extension {
         this._dbus = Gio.DBusExportedObject.wrapJSObject(XML, this);
         this._dbus.export(Gio.DBus.session, PATH);
         this._dbus.emit_signal('CapabilitiesChanged', null);
+        this._trayTooltip = new TrayTooltipCompanion();
+        this._trayTooltip.enable();
     }
 
     disable() {
         if (!this._enabled)
             return;
         this._enabled = false;
+        this._trayTooltip?.disable();
+        this._trayTooltip = null;
         for (const id of this._requests.keys())
             this._drop(id, 'helper_unavailable', 'GNOME extension disabled');
         this._unbind();
