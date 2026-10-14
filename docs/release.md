@@ -9,7 +9,11 @@ host capture companion must preserve the current hotkey workflow.
 
 `main` is the stable source branch. `nightly` is the development integration
 branch; ordinary feature PRs can target it, followed by an explicit promotion PR
-into `main`. Promotion is never automatic. Keep both histories append-only and
+into `main`. Promotion into `main` is never automatic. Every push to `main`
+(including a merged PR) automatically fast-forwards `nightly` to current `main`
+and starts nightly coordination. If `nightly` already contains `main`, its newer
+work is retained. Divergent branches fail visibly and require a reviewed merge;
+automation never force-pushes either branch. Keep both histories append-only and
 fast-forward normal branch updates; do not force-push or move published tags.
 
 | Channel | Tag | Publication |
@@ -25,16 +29,23 @@ Nightlies never replace GitHub's Latest stable release. They retain all nine
 individual downloads listed below, including both raw DEBs, RPM and the exact
 compiled curated source archive.
 
-`.github/workflows/nightly.yml` checks pushes to `nightly` and has a daily
+`.github/workflows/nightly.yml` checks pushes to `main` and `nightly` and has a daily
 05:23 UTC catch-up schedule on default `main`. GitHub can delay scheduled work;
-this is not a delivery-time guarantee. The schedule skips an unchanged source
+this is not a delivery-time guarantee. Every new run synchronizes from current
+`main` before pinning `nightly`, including direct nightly pushes and manual runs
+selected on either branch. This catches up main even when Actions coalesces
+pending pushes. Intermediate push commits need not each produce a release.
+The schedule skips an unchanged source
 only after verifying its existing public nightly, source identity, complete
 asset inventory and checksums. A tag, draft or failed run alone is not success.
 
 The coordinator saves a preparation receipt before fan-out and pins its source
 on retries. It dispatches `release.yml` on that immutable tag so the packaging
 workflow definition comes from the same source as its code. Token-created tag
-pushes do not start another workflow. CI and package builders run concurrently;
+pushes and token-created branch updates do not start another push workflow.
+The same coordinator run explicitly dispatches packaging after synchronization;
+it does not wait for the branch update to trigger a second coordinator.
+CI and package builders run concurrently;
 publication waits for the verified exact-source producers and all package audits.
 Existing successful CI is reused. Coordinated builds omit only the two generic
 Linux production compiles already covered by native package builds. These rules
