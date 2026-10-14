@@ -4,7 +4,7 @@
 #include "RetainedWindow.h"
 #include <QHash>
 #include <QJsonArray>
-class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
+class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
 namespace putgd {
 class ShortcutEditor;
 class SettingsWindow final:public RetainedWindow {
@@ -32,6 +32,12 @@ private:
  QJsonObject draft_;QString observed_;bool loading_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
  QLabel *status_,*metadata_,*capabilities_;QPushButton *save_,*quit_;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> destinations_,actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
+ QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
+ QCheckBox* protonShare_=nullptr;QLineEdit* protonPassword_=nullptr;
+ QWidget* protonPanel_=nullptr;QLabel* protonAccount_=nullptr;
+ QHash<QString,QComboBox*> publicationModes_;
+ QString protonAccountUid_;bool protonBrowserOpened_=false;
+ std::function<void()> updateProviderVisibility_;
  QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_;
 };
 }

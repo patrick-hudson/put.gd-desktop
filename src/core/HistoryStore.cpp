@@ -19,26 +19,33 @@ QString publicationIdentity(const StorageReceipt& receipt,const ProviderRegistry
  return QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(QJsonArray{receipt.destination.providerId,key}).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
 }
 QJsonObject publicRecord(QJsonObject data) {
+ if(data.contains("shareReceipt"))data["receipt"]=data.take("shareReceipt");
  data["linkAvailable"]=OperationItem::fromJson(data).linkAvailable();
  return data;
 }
 QJsonObject remoteFields(const QJsonObject& data) {
  QJsonObject remote;
- for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy"})
+ for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy","shareStatus","shareIntent","shareIntentOptions","shareReceipt","shareOperationId","shareProgress"})
   if(data.contains(key))remote[key]=data[key];
  return remote;
 }
-void hydrateRemote(Operation& op,const QHash<QString,QString>& statuses) {
- for(auto& item:op.items)if(statuses.contains(item.artifact.id))item.remoteStatus=statuses.value(item.artifact.id);
+void hydrateRemote(Operation& op,const QHash<QString,QJsonObject>& statuses) {
+ for(auto& item:op.items)if(statuses.contains(item.artifact.id)){
+  const auto state=statuses.value(item.artifact.id);item.remoteStatus=state["remoteStatus"].toString();
+  if(state.contains("shareReceipt"))item.receipt=StorageReceipt::fromJson(state["shareReceipt"].toObject());
+  if(state.contains("shareStatus"))item.shareStatus=state["shareStatus"].toString();
+  if(state.contains("shareIntent"))item.shareIntent=state["shareIntent"].toString();
+  if(state.contains("shareIntentOptions"))item.shareIntentOptions=state["shareIntentOptions"].toObject();
+ }
 }
-Error readRemoteStates(QSqlDatabase db,const QStringList& ids,QHash<QString,QString>& statuses) {
+Error readRemoteStates(QSqlDatabase db,const QStringList& ids,QHash<QString,QJsonObject>& statuses) {
  // Bound SQL parameters to the exact selected operations; concurrent new
  // operations cannot shift the hydration set between the two reads.
  for(qsizetype offset=0;offset<ids.size();offset+=200) {
   const auto batch=ids.mid(offset,200);QStringList marks;for(qsizetype i=0;i<batch.size();++i)marks.append("?");
-  QSqlQuery q(db);q.prepare("SELECT id,remote_status FROM item_state WHERE operation_id IN ("+marks.join(',')+")");for(const auto& id:batch)q.addBindValue(id);
+  QSqlQuery q(db);q.prepare("SELECT id,remote_status,json_extract(data,'$.shareStatus'),json_extract(data,'$.shareReceipt'),json_extract(data,'$.shareIntent'),json_extract(data,'$.shareIntentOptions') FROM item_state WHERE operation_id IN ("+marks.join(',')+")");for(const auto& id:batch)q.addBindValue(id);
   if(!q.exec())return sqlError();
-  while(q.next())statuses.insert(q.value(0).toString(),q.value(1).toString());
+  while(q.next()){QJsonObject state{{"remoteStatus",q.value(1).toString()}};if(!q.value(2).isNull())state["shareStatus"]=q.value(2).toString();if(!q.value(3).isNull())state["shareReceipt"]=decode(q.value(3));if(!q.value(4).isNull())state["shareIntent"]=q.value(4).toString();if(!q.value(5).isNull())state["shareIntentOptions"]=decode(q.value(5));statuses.insert(q.value(0).toString(),state);}
  }
  return {};
 }
@@ -46,7 +53,12 @@ Error readRemoteStates(QSqlDatabase db,const QStringList& ids,QHash<QString,QStr
 // clearable history projection, including deletion and replacement outcomes.
 bool persistRemote(QSqlDatabase db,const QString& id,const QJsonObject& remote) {
  QSqlQuery q(db);q.prepare("UPDATE item_state SET remote_status=?,data=? WHERE id=?");q.addBindValue(remote["remoteStatus"].toString());q.addBindValue(encode(remote));q.addBindValue(id);if(!q.exec())return false;
- q.prepare("UPDATE history SET remote_status=?,data=json_patch(json_remove(data,'$.remoteStatus','$.remoteError','$.deleteOperationId','$.deleteProgress','$.supersededBy'),?) WHERE id=?");q.addBindValue(remote["remoteStatus"].toString());q.addBindValue(encode(remote));q.addBindValue(id);return q.exec();
+ // Merge only top-level ledger fields. JSON merge-patch would remove nested
+ // null settings, changing an immutable destination or credential reference.
+ q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(id);if(!q.exec())return false;if(!q.next())return true;
+ auto data=decode(q.value(0));for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy","shareStatus","shareIntent","shareIntentOptions","shareReceipt","shareOperationId","shareProgress"})data.remove(key);
+ for(auto it=remote.begin();it!=remote.end();++it)data[it.key()]=it.value();
+ q.prepare("UPDATE history SET remote_status=?,data=? WHERE id=?");q.addBindValue(remote["remoteStatus"].toString());q.addBindValue(encode(data));q.addBindValue(id);return q.exec();
 }
 QString createHistory(const QString& table) {return "CREATE TABLE "+table+"(id TEXT PRIMARY KEY, operation_id TEXT NOT NULL,item_id TEXT NOT NULL,created TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,category TEXT NOT NULL,profile_id TEXT NOT NULL,upload_status TEXT NOT NULL,local_status TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,UNIQUE(operation_id,item_id))";}
 }
@@ -59,8 +71,8 @@ HistoryStore::HistoryStore(QString path) {
 HistoryStore::~HistoryStore() {db_.close();db_=QSqlDatabase{};QSqlDatabase::removeDatabase(connection_);}
 Error HistoryStore::initialize() {
  QSqlQuery q(db_);if(!q.exec("PRAGMA foreign_keys=ON")||!q.exec("PRAGMA user_version")||!q.next()) return sqlError(); const int version=q.value(0).toInt();
- if(version>5) return {"history_version","Unsupported history schema version",{}};
- if(version==5) return {};
+ if(version>7) return {"history_version","Unsupported history schema version",{}};
+ if(version==7) return {};
  if(!db_.transaction()) return sqlError();
  auto exec=[&](const QString& s) {return q.exec(s);}; bool ok=true;
  if(version<4) {
@@ -75,7 +87,7 @@ Error HistoryStore::initialize() {
  if(ok) ok=exec("CREATE TABLE IF NOT EXISTS operations(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletions(id TEXT PRIMARY KEY,data BLOB NOT NULL)")&&exec("CREATE TABLE IF NOT EXISTS deletion_targets(deletion_id TEXT NOT NULL,history_id TEXT NOT NULL,active INTEGER NOT NULL,PRIMARY KEY(deletion_id,history_id))")&&exec("CREATE INDEX IF NOT EXISTS operations_created ON operations(json_extract(data,'$.created') DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_category ON history(category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_upload ON history(upload_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_local ON history(local_status,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_created ON history(created DESC,id)")&&exec("CREATE INDEX IF NOT EXISTS history_filters ON history(profile_id,upload_status,category,created DESC)")&&exec("CREATE INDEX IF NOT EXISTS history_name ON history(name)")&&exec("CREATE INDEX IF NOT EXISTS history_mime ON history(mime,created)")&&exec("CREATE INDEX IF NOT EXISTS history_remote ON history(remote_status,local_status)")&&exec("CREATE TABLE IF NOT EXISTS cleared_history(id TEXT PRIMARY KEY)");
  if(ok)ok=exec("ALTER TABLE history ADD COLUMN publication_identity TEXT NOT NULL DEFAULT ''")&&exec("CREATE INDEX history_publication ON history(publication_identity,upload_status)")&&exec("PRAGMA user_version=4");
  }
- if(ok)ok=exec("CREATE TABLE item_state(id TEXT PRIMARY KEY,operation_id TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,publication_identity TEXT NOT NULL DEFAULT '',upload_status TEXT NOT NULL)")
+ if(version<5 && ok)ok=exec("CREATE TABLE item_state(id TEXT PRIMARY KEY,operation_id TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,publication_identity TEXT NOT NULL DEFAULT '',upload_status TEXT NOT NULL)")
   &&exec("CREATE INDEX item_state_operation ON item_state(operation_id)")
   &&exec("CREATE INDEX item_state_publication ON item_state(publication_identity,upload_status)")
   &&exec("INSERT INTO item_state SELECT id,operation_id,remote_status,json_object('remoteStatus',remote_status,'remoteError',json_extract(data,'$.remoteError'),'deleteOperationId',json_extract(data,'$.deleteOperationId'),'deleteProgress',json_extract(data,'$.deleteProgress'),'supersededBy',json_extract(data,'$.supersededBy')),publication_identity,upload_status FROM history")
@@ -88,6 +100,8 @@ Error HistoryStore::initialize() {
   &&exec("INSERT INTO item_state SELECT id,operation_id,status,json_object('remoteStatus',status),'',upload_status FROM (SELECT json_extract(item.value,'$.artifact.id') AS id,operations.id AS operation_id,json_extract(item.value,'$.uploadStatus') AS upload_status,COALESCE((SELECT status FROM legacy_remote_outcome WHERE id=json_extract(item.value,'$.artifact.id') ORDER BY seq DESC LIMIT 1),json_extract(item.value,'$.remoteStatus'),'not_requested') AS status FROM operations,json_each(operations.data,'$.items') AS item JOIN cleared_history ON cleared_history.id=json_extract(item.value,'$.artifact.id') WHERE NOT EXISTS(SELECT 1 FROM item_state WHERE item_state.id=cleared_history.id))")
   &&exec("DROP TABLE legacy_remote_outcome")
   &&exec("PRAGMA user_version=5");
+ if(ok)ok=exec("CREATE TABLE IF NOT EXISTS sharing_operations(id TEXT PRIMARY KEY,history_id TEXT NOT NULL,data BLOB NOT NULL)")
+  &&exec("CREATE INDEX IF NOT EXISTS sharing_history ON sharing_operations(history_id)")&&exec("CREATE INDEX IF NOT EXISTS sharing_state ON sharing_operations(json_extract(data,'$.state'))")&&exec("PRAGMA user_version=7");
  if(!ok||!db_.commit()) {db_.rollback();return {"history_migration","History migration failed; original records preserved",{}};}
  return {};
 }
@@ -115,7 +129,9 @@ Error HistoryStore::persistOperation(const Operation& op,const ProviderRegistry*
   if(!q.exec()){ok=false;break;}
   q.prepare("SELECT 1 FROM cleared_history WHERE id=?");q.addBindValue(item.artifact.id);if(!q.exec()){ok=false;break;}const bool cleared=q.next();
   if(!cleared) {
-  auto data=item.toJson();for(auto it=remote.begin();it!=remote.end();++it)data[it.key()]=it.value();auto artifact=data.take("artifact").toObject();artifact.remove("path");
+  auto data=item.toJson();for(auto it=remote.begin();it!=remote.end();++it)data[it.key()]=it.value();
+  if(remote.contains("shareReceipt"))data["receipt"]=remote["shareReceipt"];
+  auto artifact=data.take("artifact").toObject();artifact.remove("path");
   for(auto it=artifact.begin();it!=artifact.end();++it) data[it.key()]=it.value();
   data["operationId"]=op.id;data["itemId"]=item.artifact.id;data["id"]=item.artifact.id;data["created"]=op.created;data["profileId"]=op.destination.profileId;
   q.prepare("INSERT INTO history(id,operation_id,item_id,created,name,mime,category,profile_id,upload_status,local_status,remote_status,data,publication_identity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET upload_status=excluded.upload_status,local_status=excluded.local_status,remote_status=excluded.remote_status,data=excluded.data,publication_identity=excluded.publication_identity");
@@ -153,8 +169,9 @@ Operation HistoryStore::operation(const QString& id,Error* error) const {
  QSqlQuery q(db_);q.prepare("SELECT data FROM operations WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}
  if(!q.next()) {if(error)*error={"operation_not_found","Operation not found",{}};return {};}
  auto op=Operation::fromJson(decode(q.value(0)));
- QHash<QString,QString> statuses;if(auto e=readRemoteStates(db_,{id},statuses)){if(error)*error=e;return {};}
+ QHash<QString,QJsonObject> statuses;if(auto e=readRemoteStates(db_,{id},statuses)){if(error)*error=e;return {};}
  hydrateRemote(op,statuses);
+
  return op;
 }
 QList<Operation> HistoryStore::recover(Error* error) {
@@ -164,9 +181,15 @@ QList<Operation> HistoryStore::recover(Error* error) {
   if(op.state=="accepted"||op.state=="acquiring") {op.state="interrupted";op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};changed=true;}
   else if(op.state=="running"||op.state=="stored"||op.state=="queued") {op.state="interrupted";changed=true;}
   for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
+  if(changed){op.phase=op.state;for(auto& item:op.items)item.phase=item.uploadStatus;}
   if(changed||(op.state=="interrupted"&&op.items.isEmpty())) result.append(op);
  }
  q.finish();for(const auto& op:result) if(auto e=saveOperation(op)) {if(error)*error=e;return {};}
+ // Sharing intent survives a crash; revoke/create are never automatically replayed.
+ QSqlQuery shares(db_);if(!shares.exec("SELECT data FROM sharing_operations WHERE json_extract(data,'$.state') IN ('accepted','running')")){if(error)*error=sqlError();return result;}
+ QList<QJsonObject> interruptedShares;
+ while(shares.next()){auto doc=decode(shares.value(0));if(doc["state"]=="accepted"||doc["state"]=="running"){doc["state"]="interrupted";doc["status"]="unknown";auto receipt=doc["receipt"].toObject();receipt["directUrl"]="";doc["receipt"]=receipt;interruptedShares.append(doc);}}
+ shares.finish();for(const auto& doc:interruptedShares)if(auto e=saveSharing(doc)){if(error)*error=e;return {};}
  // A driver may have sent a DELETE before the session died. Keep its exact progress.
  QSqlQuery d(db_);if(!d.exec("SELECT data FROM deletions")) {if(error)*error=sqlError();return result;}
  QList<QJsonObject> pending;while(d.next()) {auto doc=decode(d.value(0));if(doc["state"]=="accepted"||doc["state"]=="running") {doc["state"]="interrupted";auto items=doc["items"].toArray();for(int i=0;i<items.size();++i) {auto item=items[i].toObject();if(item["status"]=="deleting") item["status"]="unknown";items[i]=item;}doc["items"]=items;pending.append(doc);}}
@@ -193,14 +216,14 @@ QJsonArray HistoryStore::recent(int limit,Error* error) const {
  if(limit<1||limit>10000) {if(error)*error={"invalid_query","Invalid recent activity limit",{}};return result;}
  QSqlQuery q(db_);q.prepare("SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?");q.addBindValue(limit);if(!q.exec()){if(error)*error=sqlError();return result;}
  QList<Operation> operations;QStringList ids;while(q.next()){auto op=Operation::fromJson(decode(q.value(0)));ids.append(op.id);operations.append(std::move(op));}q.finish();
- QHash<QString,QString> statuses;if(auto e=readRemoteStates(db_,ids,statuses)){if(error)*error=e;return {};}
+ QHash<QString,QJsonObject> statuses;if(auto e=readRemoteStates(db_,ids,statuses)){if(error)*error=e;return {};}
  for(auto& op:operations){hydrateRemote(op,statuses);result.append(op.publicJson());}return result;
 }
 Error HistoryStore::expireBefore(const QString& timestamp) {
  if(error_)return error_;
  if(!db_.transaction())return sqlError();
  QSqlQuery q(db_);
- const auto where=QStringLiteral(" WHERE upload_status='uploaded' AND created<? AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1)");
+ const auto where=QStringLiteral(" WHERE upload_status='uploaded' AND created<? AND id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  q.prepare("INSERT OR IGNORE INTO cleared_history SELECT id FROM history"+where);q.addBindValue(timestamp);bool ok=q.exec();if(ok) {q.prepare("DELETE FROM history"+where);q.addBindValue(timestamp);ok=q.exec();}
  if(!ok||!db_.commit()) {db_.rollback();return sqlError();}return {};
 }
@@ -209,7 +232,7 @@ Error HistoryStore::clear() {
  if(error_)return error_;
  if(!db_.transaction())return sqlError();
  QSqlQuery q(db_);
- const auto retained=QStringLiteral(" WHERE id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1)");
+ const auto retained=QStringLiteral(" WHERE id NOT IN (SELECT history_id FROM deletion_targets WHERE active=1) AND id NOT IN (SELECT id FROM item_state WHERE json_extract(data,'$.shareStatus') IN ('pending','unknown'))");
  if(!q.exec("INSERT OR IGNORE INTO cleared_history SELECT id FROM history"+retained)||!q.exec("DELETE FROM history"+retained)||!db_.commit()) {db_.rollback();return sqlError();}return {};
 }
 QJsonObject HistoryStore::deletion(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
@@ -223,6 +246,32 @@ Error HistoryStore::saveDeletion(const QJsonObject& doc) {
   if(ok) {q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(item["historyId"].toString());ok=q.exec();if(ok&&q.next()){auto data=decode(q.value(0));data["remoteStatus"]=status;data["remoteError"]=item["error"];data["deleteOperationId"]=doc["id"];data["deleteProgress"]=item["progress"];ok=persistRemote(db_,item["historyId"].toString(),data);}}
  }
  if(!ok||!db_.commit()) {db_.rollback();return sqlError();}return {};
+}
+QJsonObject HistoryStore::sharing(const QString& id,Error* error) const {
+ if(error_){if(error)*error=error_;return {};}
+ QSqlQuery q(db_);q.prepare("SELECT data FROM sharing_operations WHERE id=?");q.addBindValue(id);
+ if(!q.exec()){if(error)*error=sqlError();return {};}
+ if(!q.next()){if(error)*error={"share_not_found","Sharing operation not found",{}};return {};}
+ return decode(q.value(0));
+}
+Error HistoryStore::saveSharing(const QJsonObject& doc) {
+ if(error_)return error_;
+ const auto id=doc["id"].toString(),historyId=doc["historyId"].toString();
+ const auto receipt=StorageReceipt::fromJson(doc["receipt"].toObject());
+ if(id.isEmpty()||historyId.isEmpty()||receipt.validate())return {"share_journal_invalid","Incomplete sharing intent",{}};
+ if(!db_.transaction())return sqlError();
+ QSqlQuery q(db_);q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);
+ if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","Uploaded item ledger not found",{}};}
+ auto remote=decode(q.value(0));
+ // Remember a create until it is confirmed shared or explicitly abandoned.
+ // A read-only inspection that proves private resolves uncertainty, not intent.
+ auto intent=remote["shareIntent"].toString();
+ if(doc["action"]=="create"){intent="create";remote["shareIntentOptions"]=doc["options"].toObject();}
+ if(doc["action"]=="revoke"||doc["status"]=="shared"||doc["status"]=="revoked"||doc["status"]=="changed")intent.clear();
+ if(intent.isEmpty())remote["shareIntentOptions"]=QJsonObject{};
+ remote["shareIntent"]=intent;remote["shareStatus"]=doc["status"];remote["shareReceipt"]=doc["receipt"];remote["shareOperationId"]=id;remote["shareProgress"]=doc["progress"];
+ q.prepare("INSERT INTO sharing_operations VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(id);q.addBindValue(historyId);q.addBindValue(encode(doc));
+ if(!q.exec()||!persistRemote(db_,historyId,remote)||!db_.commit()){db_.rollback();return sqlError();}return {};
 }
 Error HistoryStore::updateRemote(const QString& id,const QString& status,const Error& e) {
  Error error;auto data=detail(id,&error);if(error)return error;

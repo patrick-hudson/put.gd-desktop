@@ -20,13 +20,46 @@
 #include <QPlainTextEdit>
 #include <QPaintEvent>
 #include <QSignalBlocker>
+#include <QSqlDatabase>
+#include <QSqlQuery>
+#include <QUuid>
 using namespace putgd;using namespace putgd::test;
 class HistoryPaintObserver final:public QObject {
 public:int paints=0;QRegion region;
  bool eventFilter(QObject*,QEvent* event) override {if(event->type()==QEvent::Paint){++paints;region|=static_cast<QPaintEvent*>(event)->region();}return false;}
 };
+// A real resident sharing job stays pending while this synthetic provider is
+// paused. Reopening its view may inspect the job, but must never call share again.
+class PendingSharingProvider final:public StorageProvider {
+public:
+ OpaqueProvider storage;std::atomic_int mutations{0},inspections{0};std::atomic_bool entered{false},released{false};QString outcome="shared";
+ ProviderCapabilities capabilities(const Destination& d)const override{auto c=storage.capabilities(d);c.sharing=true;c.privateUploads=true;return c;}
+ QString defaultPublicationMode(const Destination&)const override{return "private";}
+ QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name)const override{return storage.serializationKey(d,ref,name);}
+ Error validateSettings(const QJsonObject& s)const override{return storage.validateSettings(s);}
+ void checkName(const Destination& d,const QString& name,std::function<void(NameCheck)> reply)override{storage.checkName(d,name,std::move(reply));}
+ void upload(const UploadRequest& request,std::function<void(UploadResult)> reply)override{storage.upload(request,[reply](UploadResult result){result.receipt.directUrl.clear();reply(result);});}
+ void stat(const StorageReceipt& receipt,std::function<void(StatResult)> reply)override{storage.stat(receipt,std::move(reply));}
+ void reconcile(const UploadRequest& request,std::function<void(StatResult)> reply)override{storage.reconcile(request,std::move(reply));}
+ void remove(const DeleteRequest& request,DurableCheckpoint checkpoint,std::function<void(DeleteResult)> reply)override{storage.remove(request,std::move(checkpoint),std::move(reply));}
+ void share(const ShareRequest& request,DurableCheckpoint checkpoint,std::function<void(ShareResult)> reply)override{
+  if(request.action=="inspect"){++inspections;auto receipt=request.receipt;receipt.directUrl=outcome=="shared"?"https://example.invalid/shared#synthetic-key":QString{};reply({outcome,receipt,{}, {}});return;}
+  const QJsonObject progress{{"schemaVersion",1},{"phase","recorded-intent"}};
+  checkpoint(progress,[this,request,progress,reply](Error error){
+   if(error){reply({"failed",request.receipt,progress,error});return;}++mutations;entered.store(true);
+   while(!released.load()&&!request.cancellation->load())std::this_thread::sleep_for(std::chrono::milliseconds(1));
+   auto receipt=request.receipt;receipt.directUrl=outcome=="shared"?"https://example.invalid/shared#synthetic-key":QString{};
+   reply({outcome,receipt,progress,outcome=="shared"?Error{}:Error{"synthetic_share_failed","Synthetic sharing failure",{}}});
+  });
+ }
+};
 class HistoryGui:public QObject {
  Q_OBJECT
+ static bool sql(const QString& path,const QString& statement){
+  const auto connection=QUuid::createUuid().toString();bool ok=false;
+  {auto db=QSqlDatabase::addDatabase("QSQLITE",connection);db.setDatabaseName(path);if(db.open()){QSqlQuery query(db);ok=query.exec(statement);}db.close();}
+  QSqlDatabase::removeDatabase(connection);return ok;
+ }
 
 private slots:
  void externalDeletionAndClearRefreshOpenViews() {
@@ -74,6 +107,38 @@ private slots:
   const auto saved=window.saveViewState();QVERIFY(!saved["deletionId"].toString().isEmpty());original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));reopened.show();QTRY_VERIFY(!reopened.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QPushButton* cancel=nullptr;for(auto* button:reopened.findChildren<QPushButton*>())if(button->text()=="Cancel deletion")cancel=button;QVERIFY(cancel);
   cancel->click();QLabel* status=nullptr;for(auto* label:reopened.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);QTRY_VERIFY(status->text().contains("Cancellation requested"));
   released.store(true);operations.shutdown(); // Drain the delayed worker while its service/fixture still exist.
+ }
+ void recreatedHistoryResumesSharingInspectionWithoutReplay_data(){
+  QTest::addColumn<QString>("outcome");QTest::newRow("shared")<<QString("shared");QTest::newRow("failed")<<QString("failed");
+ }
+ void recreatedHistoryResumesSharingInspectionWithoutReplay(){
+  QFETCH(QString,outcome);QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<PendingSharingProvider>();provider->outcome=outcome;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->storage.uploads.load(),1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
+  auto drain=qScopeGuard([&]{provider->released.store(true);operations.shutdown();});
+  auto original=std::make_unique<HistoryWindow>(fixture.session);original->show();auto* table=original->findChild<QTableView*>("historyTable");QTRY_COMPARE(table->model()->rowCount(),1);table->selectRow(0);auto* create=original->findChild<QPushButton*>("shareHistoryLink");QTRY_VERIFY(create->isVisible()&&create->isEnabled());
+  QJsonObject acceptedState;connect(original.get(),&HistoryWindow::viewStateChanged,this,[&]{const auto state=original->saveViewState();if(!state["sharingId"].toString().isEmpty())acceptedState=state;});
+  create->click();QTRY_VERIFY(provider->entered.load());QTRY_VERIFY(!acceptedState["sharingId"].toString().isEmpty());QVERIFY(!validateUiState({{"schemaVersion",1},{"history",acceptedState}}));
+  auto legacyState=acceptedState;legacyState.remove("sharingId");QVERIFY(!validateUiState({{"schemaVersion",1},{"history",legacyState}}));auto invalidState=acceptedState;invalidState["sharingId"]=QJsonObject{{"unsupported","value"}};QCOMPARE(validateUiState({{"schemaVersion",1},{"history",invalidState}}).code,QString("ui_state_invalid"));
+  original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(acceptedState));reopened.show();QCOMPARE(reopened.saveViewState()["sharingId"].toString(),acceptedState["sharingId"].toString());QTRY_COMPARE(reopened.findChild<QTableView*>("historyTable")->selectionModel()->selectedRows().size(),1);QVERIFY(!reopened.findChild<QPushButton*>("shareHistoryLink")->isEnabled());
+  provider->released.store(true);QLabel* status=nullptr;for(auto* label:reopened.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);
+  QTRY_VERIFY(status->text().contains("Link: "+outcome));if(outcome=="failed")QVERIFY(status->text().contains("Synthetic sharing failure"));
+  QTRY_VERIFY(reopened.findChild<QPlainTextEdit*>("historySummary")->toPlainText().contains("Sharing: "+outcome));QVERIFY(status->text().contains("Link: "+outcome));
+  QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->storage.uploads.load(),1);QCOMPARE(source.reads,1);QCOMPARE(source.copies,0);
+ }
+ void stoppedSharingJournalCanBeInspectedAfterStorageRecovers(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<PendingSharingProvider>();registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->storage.uploads.load(),1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);auto drain=qScopeGuard([&]{provider->released.store(true);operations.shutdown();});HistoryWindow window(fixture.session);window.show();
+  auto* table=window.findChild<QTableView*>("historyTable");QTRY_COMPARE(table->model()->rowCount(),1);table->selectRow(0);auto* create=window.findChild<QPushButton*>("shareHistoryLink");auto* inspect=window.findChild<QPushButton*>("inspectHistoryLink");QTRY_VERIFY(create->isVisible()&&create->isEnabled());
+  create->click();QTRY_VERIFY(provider->entered.load());QTRY_VERIFY(!window.saveViewState()["sharingId"].toString().isEmpty());const auto stoppedId=window.saveViewState()["sharingId"].toString();
+  QVERIFY(sql(operations.databasePath(),"CREATE TRIGGER fail_share BEFORE UPDATE ON sharing_operations BEGIN SELECT RAISE(FAIL,'synthetic journal failure'); END"));provider->released.store(true);
+  QLabel* status=nullptr;for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);QTRY_VERIFY(status->text().contains("Link: unknown"));QVERIFY(status->text().contains("Persistent journal"));
+  HistoryStore store(operations.databasePath());QCOMPARE(store.sharing(stoppedId)["state"].toString(),QString("running"));QTRY_VERIFY(inspect->isVisible()&&inspect->isEnabled());QVERIFY(!create->isEnabled());QVERIFY(!window.findChild<QPushButton*>("copyHistoryLink")->isEnabled());QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->inspections.load(),0);
+  QVERIFY(sql(operations.databasePath(),"DROP TRIGGER fail_share"));inspect->click();QTRY_VERIFY(window.saveViewState()["sharingId"].toString()!=stoppedId);QTRY_COMPARE(provider->inspections.load(),1);QTRY_VERIFY(status->text().contains("Link: shared"));QTRY_VERIFY(window.findChild<QPlainTextEdit*>("historySummary")->toPlainText().contains("Sharing: shared"));
+  QCOMPARE(store.sharing(stoppedId)["state"].toString(),QString("interrupted"));QCOMPARE(provider->mutations.load(),1);QCOMPARE(provider->storage.uploads.load(),1);QCOMPARE(source.reads,1);QCOMPARE(source.copies,0);
  }
  void imageInspectorAndExpandedControlsFitCompactWindow() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());

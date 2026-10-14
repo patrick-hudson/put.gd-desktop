@@ -10,7 +10,7 @@ namespace putgd {
 class SettingsService final : public QObject {
     Q_OBJECT
 public:
-    explicit SettingsService(QString path, ProfileValidator validator = {}, QObject* parent = nullptr);
+    explicit SettingsService(QString path, ProfileValidator validator = {}, QObject* parent = nullptr, CredentialValidator credentialValidator = {});
     ~SettingsService() override;
     void reloadAsync(std::function<void(Result)> callback = {});
     void saveAsync(const QJsonObject&, const QString& expectedRevision, std::function<void(Result)>);
@@ -34,6 +34,7 @@ private:
     void scheduleReload();
     QString path_;
     ProfileValidator validator_;
+    CredentialValidator credentialValidator_;
     Settings settings_;
     QString acceptedRevision_;
     QString observedRevision_;

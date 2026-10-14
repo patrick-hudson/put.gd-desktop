@@ -13,6 +13,15 @@ profile edits and object versions, so upload/deletion mutations cannot bypass or
 by changing a profile revision. It must map a proposed name and its returned opaque
 object reference to the same identity.
 
+`UploadRequest.progress` is optional informational telemetry. Providers may report
+`phase` (`preparing`, `uploading`, `finalizing`) and nonnegative exact-integer
+`bytesTransferred`, with `bytesTotal` only when it uses the same accounting.
+Retries may reduce the counter. Stop reporting before the one completion callback;
+progress cannot establish publication, identity, ownership or success. Shared
+services coalesce active observations without per-tick durable journal writes,
+and ignore late reports after the upload attempt closes. The final observation
+may be retained with the final result. Providers without progress remain valid.
+
 Capabilities explicitly describe conditional create/replace/delete, version addressing,
 stat, removal, URL availability, naming byte limits and deletion effects. Unsupported
 required safeguards fail explicitly. `checkName` returns absent, present or inconclusive,
@@ -44,3 +53,12 @@ Native source callbacks may arrive on any thread or after cancellation. The sour
 adapter outlives the services; cancellation need not drain callbacks synchronously.
 Services lifetime-guard and marshal acquisition/copy completions to their owner thread.
 Clipboard-revision inspection must not read payloads.
+
+Explicit retry can carry an optional execution `requestTimeoutMs` separately
+from the accepted destination. Providers opt in through `retryRequestTimeout`;
+the default preserves existing behavior. Proton selects the longer budget only
+for a matching provider/profile/account reference/root/folder. This budget never
+changes saved receipt identity or accepted sharing/collision settings. A
+`collision` with `upload_draft_conflict` is evidence of an unfinished reservation,
+not publication or ownership; rename/skip can proceed only after reconciliation
+proves `missing`. A generic collision with missing/unknown proof remains unknown.

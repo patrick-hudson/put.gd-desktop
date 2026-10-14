@@ -6,6 +6,7 @@
 namespace putgd {
 namespace {
 const QStringList s3Keys{"bucket","region","endpoint","objectPrefix","storageClass","aclMode","publicUrlBase","addressing","connectTimeoutMs","requestTimeoutMs","lowSpeedBytesPerSecond","lowSpeedTimeSeconds"};
+const QStringList protonKeys{"accountRootUid","folderUid","folderName","shareByDefault","linkExpirationDays","sharePasswordReference","requestTimeoutMs"};
 const QStringList limitKeys{"maxFiles","pendingOperations","concurrentUploads","maxFileBytes","maxBatchBytes","pendingArtifactBytes","pendingImageBytes","clipboardTextBytes","imagePixels","imageBytes"};
 const QStringList retentionKeys{"failedArtifactDays","recentActivityLimit","previewCacheBytes","historyRetentionDays"};
 const QStringList filterKeys{"search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};
@@ -30,9 +31,9 @@ bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences"}))return false;
  const auto d=value.toObject();
  if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard"}))return false;
- for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut"}))return false;
+ for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut","publicationMode"}))return false;
  if(!d["profiles"].isArray()||d["profiles"].toArray().size()>32)return false;
- for(auto v:d["profiles"].toArray()){if(!fields(v,{"id","label","provider","settings","credentials"}))return false;auto profile=v.toObject();if(!profile["id"].isString()||!profile["label"].isString()||profile["provider"]!="s3"||!scalars(profile["settings"],s3Keys)||!scalars(profile["credentials"],{"mode","reference"}))return false;}
+ for(auto v:d["profiles"].toArray()){if(!fields(v,{"id","label","provider","settings","credentials"}))return false;auto profile=v.toObject();if(!profile["id"].isString()||!profile["label"].isString()||!QStringList{"s3","proton-drive"}.contains(profile["provider"].toString())||!scalars(profile["settings"],profile["provider"]=="s3"?s3Keys:protonKeys)||!scalars(profile["credentials"],{"mode","reference"}))return false;}
  if(!fields(d["archive"],{"root","keepUploads","folders"}))return false;
  const auto archive=d["archive"].toObject();if(!archive["root"].isString()||!archive["keepUploads"].isBool()||!scalars(archive["folders"],{"images","videos","text","other"}))return false;
  return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&scalars(d["preferences"],{"notifications","launchAtLogin"});
@@ -46,10 +47,10 @@ bool settingsState(const QJsonObject& s){
  if(!s["profileIndex"].isDouble()||!s["section"].isDouble()||!s["profileEditors"].isArray()||s["profileEditors"].toArray().size()>32)return false;
  for(auto v:s["profileEditors"].toArray())if(!profileEditor(v))return false;
  if(!s["setupJobs"].isArray())return false;
- for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination"}.contains(job["kind"].toString()))return false;}
+ for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
  return true;
 }
-bool historyState(const QJsonObject& s){if(!fields(s,{"query","filters","selectedIds","deletionId","filtersExpanded","managementExpanded","receiptExpanded","geometry"})||!fields(s["query"],filterKeys+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys,true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;return true;}
+bool historyState(const QJsonObject& s){if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry"})||!fields(s["query"],filterKeys+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys,true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;return true;}
 }
 Error validateUiState(const QJsonObject& state){
  if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","The draft exceeds the 8 MiB UI state limit. Keep this window open and reduce the draft before closing.",{}};

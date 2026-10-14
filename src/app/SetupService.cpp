@@ -6,6 +6,8 @@ namespace putgd {
 namespace {
 Error invalid() {return {"invalid_request","Invalid setup fields or parameter types",{}};}
 bool validInput(const QString& kind,const QJsonObject& input) {
+ if(kind=="createFolder")return input.size()==1&&input["name"].isString()&&!input["name"].toString().isEmpty()&&input["name"].toString().size()<=255;
+ if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;
  if(kind!="storeCredentials")return input.isEmpty();
  if(input.size()<2||input.size()>3)return false;
  for(auto it=input.begin();it!=input.end();++it)
@@ -24,7 +26,7 @@ SetupService::~SetupService() {
  std::lock_guard lock(completion_->mutex);completion_->owner=nullptr;
 }
 void SetupService::start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply reply) {
- if(!QStringList{"storeCredentials","unlockCredentials","testDestination"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
+ if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
  const auto metadata=settings_.metadata();
  if(expectedRevision!=settings_.revision()||expectedRevision!=metadata["observedRevision"].toString()) {
   reply({"config_conflict","Configuration changed; save or reload before setup",{}},{});return;
@@ -52,7 +54,17 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  if(!guarded)return;
  emit changed(id);
  if(!guarded)return;
- if(kind=="storeCredentials") {
+ if(QStringList{"connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(kind)) {
+  if(!providerSetup_){complete({"setup_unsupported","Account setup is unavailable",{}});return;}
+  const Destination destination{profile["provider"].toString(),profileId,expectedRevision,profile["settings"].toObject(),reference};
+  auto finish=[context=completion_,id](Error error,QJsonObject result){
+   std::lock_guard lock(context->mutex);if(auto* owner=context->owner)QMetaObject::invokeMethod(owner,[owner,id,error,result]{owner->finish(id,error,result);},Qt::QueuedConnection);
+  };
+  auto event=[context=completion_,id](QJsonObject value){
+   std::lock_guard lock(context->mutex);if(auto* owner=context->owner)QMetaObject::invokeMethod(owner,[owner,id,value]{if(owner->jobs_.contains(id)&&owner->jobs_[id]["state"]=="running"){auto job=owner->jobs_[id];job["event"]=value;owner->jobs_[id]=job;emit owner->changed(id);}},Qt::QueuedConnection);
+  };
+  providerSetup_(kind,destination,input,std::move(finish),std::move(event));
+ }else if(kind=="storeCredentials") {
   Credentials value{input["accessKey"].toString(),input["secretKey"].toString(),input["sessionToken"].toString()};
   credentials_.save(profileId,reference,std::move(value),complete);
  }else if(kind=="unlockCredentials")credentials_.unlock(profileId,reference,complete);
@@ -64,9 +76,9 @@ void SetupService::inspect(const QString& id,JsonReply reply) {
  if(found==jobs_.cend()) {reply({"setup_not_found","Setup job is no longer available in this resident",{}},{});return;}
  reply({},*found);
 }
-void SetupService::finish(const QString& id,Error error) {
+void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  const auto found=jobs_.find(id);if(found==jobs_.end()||(*found)["state"]!="running")return;
- auto& record=*found;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
+ auto& record=*found;record.remove("event");record["result"]=result;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));
  completed_.enqueue(id);while(completed_.size()>64)jobs_.remove(completed_.dequeue());
  emit changed(id);

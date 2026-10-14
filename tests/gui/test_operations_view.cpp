@@ -1,6 +1,7 @@
 #include "ui/RecentOperations.h"
 #include "fixtures/UiSessionFixture.h"
 #include <QTreeWidget>
+#include <QScopeGuard>
 #include <QHeaderView>
 #include <QLabel>
 #include <QPushButton>
@@ -23,6 +24,45 @@ class OperationsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void acquisitionAndUploadRefreshBeforeCompletion(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();source.defer=true;
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);RecentOperations view(fixture.session);
+  auto drain=qScopeGuard([&]{for(auto complete:provider->completions)complete();provider->completions.clear();});operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.acquisitions.size(),1);
+  auto* rows=view.findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(rows->topLevelItemCount(),1);QTRY_COMPARE(rows->topLevelItem(0)->text(2),QString("Acquiring"));
+  source.acquisitions.takeFirst()({source.payload,{}});QTRY_COMPARE(provider->completions.size(),1);QTRY_COMPARE(rows->topLevelItem(0)->text(2),QString("Uploading"));
+  auto report=provider->requests.first().progress;QVERIFY(bool(report));report({"uploading",1048576,2097152});QTRY_VERIFY(rows->topLevelItem(0)->child(0)->text(2).contains("50%"));QVERIFY(rows->topLevelItem(0)->child(0)->text(4).contains("1 MiB transferred"));
+  report({"uploading",2097152,2097152});QTRY_VERIFY(rows->topLevelItem(0)->child(0)->text(2).contains("100%"));QCOMPARE(source.copies,0);QVERIFY(rows->topLevelItem(0)->text(2)=="Uploading");
+  report({"uploading",524288,{}});QTRY_VERIFY(rows->topLevelItem(0)->child(0)->text(2).contains("0.5 MiB"));QVERIFY(!rows->topLevelItem(0)->child(0)->text(2).contains('%'));
+  provider->failUpload=true;provider->completions.takeFirst()();QTRY_COMPARE(rows->topLevelItem(0)->text(2),QString("partial"));QVERIFY(rows->topLevelItem(0)->child(0)->text(4).contains("Synthetic failure"));QCOMPARE(rows->topLevelItem(0)->child(0)->text(2),QString("failed"));
+ }
+
+ void sustainedProgressRendersWhileRecentRepliesAreDelayed(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);RecentOperations view(fixture.session);
+  auto drain=qScopeGuard([&]{for(auto complete:provider->completions)complete();provider->completions.clear();});QString id;operations.invoke("clipboard",[&](Error e,QJsonObject value){QVERIFY(!e);id=value["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);
+  auto* rows=view.findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(rows->topLevelItemCount(),1);QTRY_COMPARE(rows->topLevelItem(0)->childCount(),1);QTRY_COMPARE(rows->topLevelItem(0)->text(2),QString("Uploading"));
+  rows->setCurrentItem(rows->topLevelItem(0)->child(0));const auto selected=rows->currentItem()->data(0,Qt::UserRole).toString();rows->topLevelItem(0)->setExpanded(false);
+  fixture.client.replyDelayMs["operation.recent"]=600;auto report=provider->requests.first().progress;QVERIFY(bool(report));int reports=0;QTimer progress;progress.setInterval(50);connect(&progress,&QTimer::timeout,this,[&]{report({"uploading",1048576+ ++reports,{}});});progress.start();
+  auto rendered=[&]{return rows->topLevelItemCount()==1&&rows->topLevelItem(0)->childCount()==1&&rows->topLevelItem(0)->child(0)->text(2).contains("1 MiB");};
+  QTRY_VERIFY_WITH_TIMEOUT(rendered(),2500);QVERIFY(progress.isActive());QVERIFY(reports>10);QCOMPARE(provider->completions.size(),1);QCOMPARE(source.copies,0);QCOMPARE(rows->topLevelItem(0)->data(0,Qt::UserRole).toString(),id);QVERIFY(rows->currentItem());QCOMPARE(rows->currentItem()->data(0,Qt::UserRole).toString(),selected);QVERIFY(!rows->topLevelItem(0)->isExpanded());
+ }
+
+ void queuedRetryIsDurableAndVisibleBeforeAWorkerBecomesAvailable(){
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;provider->failUpload=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);RecentOperations view(fixture.session);HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{for(auto complete:provider->completions)complete();provider->completions.clear();});QString retryId;
+  operations.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);retryId=result["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(journal.operation(retryId).state,QString("partial"));const auto original=journal.operation(retryId);
+  provider->failUpload=false;operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->completions.size(),1);
+  bool accepted=false;operations.retry(retryId,[&](Error e,QJsonObject){QVERIFY(!e);accepted=true;});QTRY_VERIFY(accepted);
+  QCOMPARE(journal.operation(retryId).state,QString("stored"));QCOMPARE(journal.operation(retryId).phase,QString("queued"));QCOMPARE(journal.operation(retryId).destination.toJson(),original.destination.toJson());QCOMPARE(journal.operation(retryId).items.first().publicationId,original.items.first().publicationId);QCOMPARE(provider->completions.size(),1);
+  QJsonObject inspected;bool replied=false;operations.inspect(retryId,[&](Error e,QJsonObject value){QVERIFY(!e);inspected=value;replied=true;});QTRY_VERIFY(replied);QCOMPARE(inspected["phase"].toString(),QString("queued"));
+  auto* rows=view.findChild<QTreeWidget*>("recentOperations");auto phase=[&]{for(int i=0;i<rows->topLevelItemCount();++i)if(rows->topLevelItem(i)->data(0,Qt::UserRole).toString()==retryId)return rows->topLevelItem(i)->text(2);return QString{};};QTRY_COMPARE(phase(),QString("Queued"));
+  bool cancelled=false;operations.cancel(retryId,[&](Error e,QJsonObject){QVERIFY(!e);cancelled=true;});QTRY_VERIFY(cancelled);QTRY_COMPARE(journal.operation(retryId).state,QString("cancelled"));QCOMPARE(journal.operation(retryId).phase,QString("cancelled"));QCOMPARE(provider->completions.size(),1);
+ }
+
  void recreatedActivityPreservesSelectionAndExpansionById(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.copies,1);QJsonObject state;
   {RecentOperations view(fixture.session);auto* rows=view.findChild<QTreeWidget*>("recentOperations");QTRY_COMPARE(rows->topLevelItemCount(),1);rows->setCurrentItem(rows->topLevelItem(0));rows->topLevelItem(0)->setExpanded(false);state=view.saveViewState();}

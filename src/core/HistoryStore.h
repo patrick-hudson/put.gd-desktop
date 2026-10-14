@@ -28,6 +28,8 @@ public:
  Error clear(); // preserves any identities retained by in-progress deletion
  Error saveDeletion(const QJsonObject&);
  QJsonObject deletion(const QString&,Error* = nullptr) const;
+ Error saveSharing(const QJsonObject&); // journal and effective receipt in one transaction
+ QJsonObject sharing(const QString&,Error* = nullptr) const;
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
 private:
  Error initialize();

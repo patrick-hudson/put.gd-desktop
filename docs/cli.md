@@ -23,6 +23,10 @@ Requests are one newline-terminated JSON object, at most 1 MiB, with exactly
 `error` (`code`, `message`, `details`). Normal command stdout is one JSON response;
 logs belong to stderr. Exit 0 means accepted/successful transport result, not necessarily
 completed upload. Inspect the returned operation ID for eventual outcomes.
+Active `operation.inspect` and `operation.recent` results also expose an operation
+`phase` and per-item `phase`/optional `uploadProgress` with `bytesTransferred` and
+optional `bytesTotal`. A missing total means percentage is unknown. These are
+transient observations, not confirmed publication or final result evidence.
 
 Examples:
 
@@ -98,3 +102,16 @@ no payloads or addresses; measure RSS separately using [testing-memory.md](testi
 Other allocators report unsupported and keep the existing cleanup behavior.
 
 `setup.storeCredentials` is rejected by the CLI before connecting to the resident (`credentials_require_settings`). Enter access keys in Settings; use credential references in agent configuration. The authenticated local Settings transport retains its credential-entry endpoint.
+
+Proton link management uses `history.share`, `history.revokeLink` and
+`history.inspectLink` with an exact history `id`. They return `shareOperationId`;
+read `share.inspect` with that ID until its durable outcome is known. Revoke
+removes URL access only. See [Proton Drive](proton-drive.md). Account setup and
+password entry belong in Settings; the CLI rejects `setup.storeSharePassword`
+so passwords are never passed as process arguments.
+
+For Proton, explicit `operation.retry` can adopt a longer current request
+deadline when the account and folder still match. Inspection exposes that
+separate attempt budget as `requestTimeoutMs`; the original destination
+snapshot remains unchanged. Retry retains the original publication ID and
+reconciles before another upload.

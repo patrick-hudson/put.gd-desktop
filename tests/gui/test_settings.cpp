@@ -18,6 +18,9 @@
 #include <QPaintEvent>
 #include <QKeyEvent>
 #include "storage/s3/S3Provider.h"
+#include "storage/proton/ProtonProvider.h"
+#include <QDoubleSpinBox>
+#include <QCheckBox>
 using namespace putgd;using namespace putgd::test;
 class SettingsPaintObserver final:public QObject {
 public:int paints=0;QRegion region;
@@ -27,6 +30,49 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void createdProtonFolderNameSurvivesSaveRefreshAndReopen() {
+  QTemporaryDir directory;CredentialStore secrets;ProtonProvider provider;
+  SettingsService service(directory.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);},nullptr,[&](auto,auto reference){return provider.validateCredentials(reference);});
+  const QString root=QString(22,'a')+"~"+QString(22,'b'),created=QString(22,'a')+"~"+QString(22,'c');
+  auto document=configuration(directory.path());auto profile=document["profiles"].toArray().first().toObject();profile["provider"]="proton-drive";profile["settings"]=ProtonProvider::defaults();profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/synthetic-folder-test"}};document["profiles"]=QJsonArray{profile};QVERIFY(service.save(document,{}));
+  UiSessionFixture fixture(service,secrets);int creates=0,inspections=0;QString createdName;const QString refreshedName=QString::fromUtf8("Synthetic folder – 📁");
+  fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject& input,JsonReply reply,auto){
+   if(kind=="createFolder"){++creates;createdName=input["name"].toString();reply({},{{"accountRootUid",root},{"uid",created},{"name",input["name"]}});}
+   else if(kind=="inspectAccount"){++inspections;reply({},{{"accountRootUid",root},{"folders",QJsonArray{QJsonObject{{"uid",created},{"name",refreshedName}}}}});}
+   else reply({"unexpected_setup","Unexpected synthetic action",{}},{});
+  });
+  QJsonObject retained;
+  {SettingsWindow window(fixture.session);auto* folders=window.findChild<QComboBox*>("protonFolder");auto* save=window.findChild<QPushButton*>("saveSettings");
+   window.findChild<QPushButton*>("createProtonFolder")->click();QTRY_COMPARE(folders->currentData().toString(),created);QTRY_VERIFY(window.saveViewState()["setupJobs"].toArray().isEmpty());QCOMPARE(creates,1);QCOMPARE(folders->currentText(),createdName);
+   save->click();QTRY_COMPARE(service.document()["profiles"].toArray().first().toObject()["settings"].toObject()["folderUid"].toString(),created);QTRY_VERIFY(!window.saveViewState().contains("stateError"));QCOMPARE(folders->currentData().toString(),created);QCOMPARE(folders->currentText(),createdName);
+   window.findChild<QPushButton*>("inspectProtonAccount")->click();QTRY_COMPARE(inspections,1);QTRY_VERIFY(window.saveViewState()["setupJobs"].toArray().isEmpty());QCOMPARE(folders->currentData().toString(),created);QCOMPARE(folders->currentText(),refreshedName);
+   save->click();QTRY_VERIFY(!window.saveViewState().contains("stateError"));QVERIFY(!window.saveViewState()["dirty"].toBool());QCOMPARE(folders->currentText(),refreshedName);retained=window.saveViewState();
+  }
+  SettingsWindow reopened(fixture.session);QCOMPARE(reopened.findChild<QComboBox*>("protonFolder")->currentText(),refreshedName);QVERIFY(reopened.restoreViewState(retained));QCOMPARE(reopened.findChild<QComboBox*>("protonFolder")->currentText(),refreshedName);QCOMPARE(reopened.findChild<QComboBox*>("protonFolder")->currentData().toString(),created);QCOMPARE(creates,1);
+  SettingsService reloaded(service.path(),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(reloaded.metadata()["validation"].toObject()["ok"].toBool());QCOMPARE(reloaded.document()["profiles"].toArray().first().toObject()["settings"].toObject()["folderUid"].toString(),created);QCOMPARE(reloaded.document()["profiles"].toArray().first().toObject()["settings"].toObject()["folderName"].toString(),refreshedName);
+ }
+ void s3SessionCredentialsRemainSupported() {
+  QTemporaryDir directory;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));
+  SettingsService service(directory.filePath("config.json"),[&](auto id,auto settings){return registry.validate(id,settings);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});
+  auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto profile=profiles.first().toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;document["profiles"]=profiles;QVERIFY(service.save(document,{}));
+ }
+ void protonDeadlineIsAdvancedAndPreservesMillisecondsOnSaveReopen(){
+  QTemporaryDir d;CredentialStore secrets;ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto,auto values){return proton.validateSettings(values);});
+  auto doc=configuration(d.path());auto profile=doc["profiles"].toArray().first().toObject();profile["provider"]="proton-drive";auto values=ProtonProvider::defaults();values["requestTimeoutMs"]=120001;profile["settings"]=values;profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/synthetic-timeout"}};doc["profiles"]=QJsonArray{profile};QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);QJsonObject retained;
+  {SettingsWindow window(fixture.session);window.show();auto* timeout=window.findChild<QDoubleSpinBox*>("protonRequestTimeout");QVERIFY(timeout);QCOMPARE(timeout->value(),120.001);QVERIFY(!timeout->isVisible());window.findChild<QToolButton*>("advancedSettings")->setChecked(true);QVERIFY(timeout->isVisible());QCOMPARE(timeout->minimum(),1.0);QCOMPARE(timeout->maximum(),86400.0);QVERIFY(timeout->toolTip().contains("deadline"));window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(!window.saveViewState().contains("stateError")&&!window.saveViewState()["dirty"].toBool());QCOMPARE(service.document()["profiles"].toArray().first().toObject()["settings"].toObject()["requestTimeoutMs"].toInt(),120001);{SettingsWindow fractional(fixture.session);QCOMPARE(fractional.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),120.001);}timeout->setValue(3600);retained=window.saveViewState();QVERIFY(!retained.contains("stateError"));window.findChild<QPushButton*>("saveSettings")->click();QTRY_COMPARE(service.document()["profiles"].toArray().first().toObject()["settings"].toObject()["requestTimeoutMs"].toInt(),3600000);}
+  SettingsWindow reopened(fixture.session);QCOMPARE(reopened.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),3600.0);QVERIFY(reopened.restoreViewState(retained));QCOMPARE(reopened.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),3600.0);
+ }
+ void protonDraftKeepsDefaultsAndNeverExportsPassword() {
+  QTemporaryDir d;CredentialStore secrets;ProtonProvider proton;S3Provider s3(secrets);
+  SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="proton-drive"?proton.validateSettings(values):s3.validateSettings(values);});
+  UiSessionFixture fixture(service,secrets);QTRY_VERIFY(fixture.session.ready());SettingsWindow window(fixture.session);window.show();
+  auto* provider=window.findChild<QComboBox*>("storageProvider");QVERIFY(provider);provider->setCurrentIndex(provider->findData("proton-drive"));
+  QVERIFY(window.findChild<QCheckBox*>("protonShareDefault")->isChecked());QVERIFY(window.findChild<QWidget*>("protonDestinationEditor")->isVisible());QVERIFY(!window.findChild<QWidget*>("credentialsEditor")->isVisible());QVERIFY(!window.findChild<QComboBox*>("s3RegionChoices")->isVisible());
+  auto state=window.saveViewState();QVERIFY(!state.contains("stateError"));const auto profile=state["draft"].toObject()["profiles"].toArray().first().toObject();QCOMPARE(profile["provider"].toString(),QString("proton-drive"));QCOMPARE(profile["settings"].toObject(),ProtonProvider::defaults());
+  window.findChild<QToolButton*>("advancedSettings")->setChecked(true);auto* password=window.findChild<QLineEdit*>("protonSharePassword");password->setText("synthetic-secret-not-exported");auto snapshot=window.saveViewState();QVERIFY(!QJsonDocument(snapshot).toJson().contains("synthetic-secret-not-exported"));
+  SettingsWindow restored(fixture.session);QVERIFY(restored.restoreViewState(snapshot));QVERIFY(restored.findChild<QLineEdit*>("protonSharePassword")->text().isEmpty());
+  window.findChild<QPushButton*>("saveSettings")->click();QTRY_COMPARE(service.document()["profiles"].toArray().first().toObject()["provider"].toString(),QString("proton-drive"));
+ }
  void savingOnlyAShortcutPreservesEveryUploadDestination() {
   QTemporaryDir directory;CredentialStore secrets;S3Provider provider(secrets);
   SettingsService settings(directory.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});

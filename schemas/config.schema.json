@@ -54,6 +54,15 @@
             "shortcut": {
               "type": "string",
               "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
             }
           }
         },
@@ -86,6 +95,15 @@
             "shortcut": {
               "type": "string",
               "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
             }
           }
         },
@@ -118,6 +136,15 @@
             "shortcut": {
               "type": "string",
               "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
             }
           }
         },
@@ -150,6 +177,15 @@
             "shortcut": {
               "type": "string",
               "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
             }
           }
         }
@@ -249,6 +285,29 @@
               "properties": {
                 "settings": {
                   "$ref": "#/$defs/s3Settings"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "provider": {
+                  "const": "proton-drive"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "settings": {
+                  "$ref": "#/$defs/protonSettings"
+                },
+                "credentials": {
+                  "properties": {
+                    "mode": {
+                      "const": "keychain"
+                    }
+                  }
                 }
               }
             }
@@ -637,6 +696,61 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 2147483647
+        }
+      }
+    },
+    "protonSettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountRootUid",
+        "folderUid",
+        "shareByDefault",
+        "linkExpirationDays",
+        "sharePasswordReference",
+        "requestTimeoutMs"
+      ],
+      "properties": {
+        "accountRootUid": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "folderUid": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "folderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "not": {
+            "pattern": "[\\u0000-\\u001F\\u007F]"
+          },
+          "description": "Optional display hint for folderUid, limited to 255 UTF-8 bytes by the provider validator. Uploads use folderUid."
+        },
+        "shareByDefault": {
+          "type": "boolean",
+          "default": true
+        },
+        "linkExpirationDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 365,
+          "default": 0
+        },
+        "sharePasswordReference": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 86400000,
+          "default": 120000
         }
       }
     }

@@ -13,10 +13,11 @@ namespace putgd::test {
 class DispatchSessionClient final:public SessionClient {
 public:
  QHash<QString,Error> failOnce;
+ QHash<QString,int> replyDelayMs;
  explicit DispatchSessionClient(LocalServer& server):SessionClient(server.socketPath()),server_(server){}
  RequestId request(const QString& method,const QJsonObject& params,QObject* receiver,Reply reply)override{
   const auto id=++next_;QPointer<QObject> guard(receiver);
-  QTimer::singleShot(0,this,[this,id,method,params,guard,reply]{if(!guard||abandoned_.remove(id))return;if(auto error=failOnce.take(method)){reply(error,{});return;}server_.dispatch({{"schemaVersion",1},{"requestId",QString::number(id)},{"session",server_.socketPath()},{"method",method},{"params",params}},[this,id,guard,reply](Error e,QJsonObject data){if(guard&&!abandoned_.remove(id))reply(e,data);});});return id;
+  QTimer::singleShot(0,this,[this,id,method,params,guard,reply]{if(!guard||abandoned_.remove(id))return;if(auto error=failOnce.take(method)){reply(error,{});return;}server_.dispatch({{"schemaVersion",1},{"requestId",QString::number(id)},{"session",server_.socketPath()},{"method",method},{"params",params}},[this,id,method,guard,reply](Error e,QJsonObject data){auto deliver=[this,id,guard,reply,e,data]{if(guard&&!abandoned_.remove(id))reply(e,data);};const auto delay=replyDelayMs.value(method);if(delay>0)QTimer::singleShot(delay,this,deliver);else deliver();});});return id;
  }
  void abandon(RequestId id)override{abandoned_.insert(id);}
 private:LocalServer& server_;RequestId next_=0;QSet<RequestId> abandoned_;
