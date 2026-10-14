@@ -600,6 +600,14 @@
         },
         "launchAtLogin": {
           "type": "boolean"
+        },
+        "uploadClipboardBehavior": {
+          "enum": [
+            "each_link",
+            "list"
+          ],
+          "default": "each_link",
+          "description": "Copy every successful upload link individually as it becomes available, or one ordered list after overlapping uploads settle. Omitted legacy settings use each_link."
         }
       }
     }

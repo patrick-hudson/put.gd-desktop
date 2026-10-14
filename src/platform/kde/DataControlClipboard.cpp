@@ -49,6 +49,7 @@ struct DataControlClipboard::Impl:QObject {
  uint32_t managerName=0,seatName=0;QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect,copyTimer;bool closing=false,dispatching=false,lossPending=false,selectionReady=false;quint64 revision=0,generation=0;
  QString error="Native Wayland data control has not connected";QHash<ext_data_control_offer_v1*,QStringList> offers;ext_data_control_offer_v1* selection=nullptr;
  struct Source {Impl* owner;ext_data_control_source_v1* native;QHash<QString,QByteArray> data;QString token;};QHash<ext_data_control_source_v1*,Source*> sources;
+ std::optional<quint64> lastCopyRevision;
  std::function<void(Error)> copyReply;QString copyToken;wl_callback* copyFence=nullptr;QHash<QString,QByteArray> pendingCopyData;bool copyCommitted=false;quint64 copyEpoch=0,copyRevision=0,pendingCopyEpoch=0;
  struct Import {ResourceLimits limits;std::function<void(PayloadResult)> reply;quint64 revision;QStringList formats;QString mime;ImageJob::Cancel cancelled=std::make_shared<std::atomic_bool>(false);};QQueue<std::shared_ptr<Import>> pending;std::shared_ptr<Import> active;QPointer<AsyncFdReader> reader;QList<QThread*> workers;
  explicit Impl(DataControlClipboard& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});copyTimer.setSingleShot(true);connect(&copyTimer,&QTimer::timeout,this,[this]{finishCopy({"clipboard_copy_failed","Data-control ownership acknowledgement timed out",{}});});const bool graphical=qobject_cast<QGuiApplication*>(QCoreApplication::instance())!=nullptr;const bool allowed=graphical?QGuiApplication::platformName().startsWith("wayland"):kdeCoreSessionEnvironment();if(allowed){open();reconnect.start();}else error="A native KDE Wayland Core session or Qt Wayland platform is required";}
@@ -177,7 +178,7 @@ struct DataControlClipboard::Impl:QObject {
  }
  void complete(PayloadResult result){++generation;auto request=std::move(active);active.reset();if(request)request->cancelled->store(true);if(reader){auto* transfer=reader.data();reader=nullptr;transfer->cancel();transfer->deleteLater();}QPointer<Impl> self(this);if(request&&request->reply){auto cb=std::move(request->reply);cb(std::move(result));}if(self)QTimer::singleShot(0,this,[this]{pump();});}
  void cancel(){++generation;auto queued=std::move(pending);pending.clear();if(active)complete(failure("cancelled","Clipboard acquisition cancelled"));for(auto& request:queued)request->reply(failure("cancelled","Clipboard acquisition cancelled"));}
- void finishCopy(Error e){copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb)cb(std::move(e));}
+ void finishCopy(Error e){if(!e)lastCopyRevision=revision;copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb)cb(std::move(e));}
  void invalidateCopy(){++copyEpoch;if(copyReply&&!copyCommitted)finishCopy({"copy_suppressed","A newer sharing invocation superseded this unsent native result copy",{}});}
  void commitCopy(){
   if(!copyReply)return;
@@ -207,6 +208,7 @@ DataControlClipboard::~DataControlClipboard()=default;
 xkb_keymap* DataControlClipboard::keyboardMap()const{return d_->keyboardMap;}
 bool DataControlClipboard::available()const{return d_->available();}
 quint64 DataControlClipboard::revision()const{d_->events();return d_->revision;}
+std::optional<quint64> DataControlClipboard::lastCopyRevision()const{return d_->lastCopyRevision;}
 QJsonObject DataControlClipboard::status()const{return {{"available",available()},{"types",QJsonArray{"files","image","text"}},{"import","ext-data-control-v1"},{"result","ext-data-control-v1-clipboard-only"},{"protocol_version",d_->manager?1:0},{"error",d_->error}};}
 void DataControlClipboard::acquire(const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 expected){d_->acquire(limits,std::move(cb),expected);}
 void DataControlClipboard::copy(const CopyPayload& payload,std::function<void(Error)> cb){d_->copy(payload,std::move(cb));}

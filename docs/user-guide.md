@@ -33,6 +33,10 @@ Settings shows the exact canonical configuration path and accepted revision. All
 
 Preferences controls notifications, launch at login, resource limits, recent activity size, failed artifact retention, preview cache size, and optional history expiry. Blank history retention keeps history indefinitely. Notification/tray/launch-at-login behavior needs real-session acceptance on the declared desktop.
 
+Settings → Capture → Upload clipboard behavior controls upload links. **Copy each link as it finishes** is the default: separate queued uploads and each file in a batch copy their successful links individually, so a clipboard manager can retain them. **Copy a list when uploads finish** copies one newline-separated list in submission and file order after the overlapping upload group settles. Failed, cancelled, private, removed and revoked results contribute no new links. Accepted uploads keep their saved mode when you change settings.
+
+Starting another upload no longer discards an earlier link. A manual clipboard change or an explicit History/Activity copy supersedes pending automatic writes; links remain available for deliberate copying. Activity's clipboard status is **partial** if some links copied before a later copy failed or was suppressed. Local-only image, text and file copying keeps its existing behavior.
+
 Recent activity shows each operation, its items, upload states, local-copy states, URLs, clipboard outcome, and errors. **Copy result only** does not upload again. **Retry local save only** preserves publication independently. Retained failed/interrupted artifacts can retry through the shared operation service. If another app changes the clipboard while publication is running, its contents stay intact and copying the completed result is a deliberate action.
 
 ## Persistent history and deletion

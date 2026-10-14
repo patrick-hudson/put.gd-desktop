@@ -17,6 +17,7 @@ public:
  ~X11Clipboard() override;
  bool available() const;
  quint64 revision() const;
+ std::optional<quint64> lastCopyRevision() const {return lastCopyRevision_;}
  void acquire(const ResourceLimits&,std::function<void(PayloadResult)>,quint64 expectedRevision=0);
  void cancel();
  void copy(const CopyPayload&,std::function<void(Error)>);
@@ -65,6 +66,7 @@ private:
  QSocketNotifier* notifier_=nullptr;
  QTimer timeout_;
  mutable quint64 revision_=1;
+ std::optional<quint64> lastCopyRevision_;
  mutable xcb_window_t owner_=XCB_WINDOW_NONE;
  quint64 acquiredRevision_=0;
  ResourceLimits limits_;

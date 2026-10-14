@@ -6,9 +6,216 @@
 #include <QSqlQuery>
 #include <QUuid>
 using namespace putgd;using namespace putgd::test;
+class DeferredClipboardSource final:public SourceAdapter {
+public:
+ quint64 revision=0;std::optional<quint64> copiedRevision;int reads=0,copies=0;
+ QString current="synthetic initial clipboard";CopyPayload proposed;ClipboardPayload payload=textPayload();
+ bool workerReply=false,holdImports=false;QList<std::function<void(PayloadResult)>> imports;
+ std::function<void(Error)> pending;
+ quint64 clipboardRevision()const override{return revision;}
+ std::optional<quint64> lastCopyRevision()const override{return copiedRevision;}
+ QJsonObject capabilities()const override{return {};}
+ void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)> reply)override {
+  ++reads;if(holdImports)imports.append(std::move(reply));else reply({payload,{}});
+ }
+ void cancelAcquisition()override{}
+ void copy(const CopyPayload& payload,std::function<void(Error)> reply)override {
+  QVERIFY2(!pending,"Two native clipboard commits overlapped");++copies;proposed=payload;pending=std::move(reply);
+ }
+ void acknowledge(Error error={}) {
+  QVERIFY(pending);if(!error){current=proposed.text;copiedRevision=++revision;}
+  auto reply=std::exchange(pending,{});
+  if(workerReply){auto thread=QThread::create([reply,error]{reply(error);});thread->start();thread->wait();delete thread;}else reply(error);
+ }
+ void invalidateCopyEligibility()override {
+  if(pending)std::exchange(pending,{})({"copy_suppressed","Synthetic unsent native commit cancelled",{}});
+ }
+};
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void pendingUploadsRetainTheirConfiguredClipboardMode_data() {QTest::addColumn<QString>("firstMode");QTest::newRow("each-then-list")<<QString("each_link");QTest::newRow("list-then-each")<<QString("list");}
+ void pendingUploadsRetainTheirConfiguredClipboardMode() {
+  QFETCH(QString,firstMode);const QString secondMode=firstMode=="list"?"each_link":"list";QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]=firstMode;doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));Source source;source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("mode-%1.txt").arg(i),"synthetic batch"));
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QString first,second;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);
+  prefs["uploadClipboardBehavior"]=secondMode;doc["preferences"]=prefs;QVERIFY(settings.save(doc,settings.revision()));operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});QTRY_COMPARE(source.reads,2);
+  provider->completions.takeFirst()();QTRY_COMPARE(provider->completions.size(),1);if(firstMode=="each_link")QTRY_COMPARE(source.copies,1);else QCOMPARE(source.copies,0);
+  provider->completions.takeFirst()();const int firstCopies=firstMode=="each_link"?2:1;QTRY_COMPARE(journal.operation(first).copyStatus,QString("copied"));QCOMPARE(source.copies,firstCopies);
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(provider->completions.size(),1);if(secondMode=="each_link")QTRY_COMPARE(source.copies,firstCopies+1);else QCOMPARE(source.copies,firstCopies);
+  provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(source.copies,3);QCOMPARE(provider->uploads.load(),4);QCOMPARE(journal.operation(first).settings.uploadClipboardBehavior,firstMode);QCOMPARE(journal.operation(second).settings.uploadClipboardBehavior,secondMode);
+ }
+ void cancellingBeforeNativeCommitDoesNotWriteTheLink() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;
+  source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("cancel-%1.txt").arg(i),"synthetic batch"));
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});QString id;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(source.copies,1);QVERIFY(source.pending);QTRY_COMPARE(provider->completions.size(),1);
+  operations.cancel(id,[](Error e,QJsonObject){QVERIFY(!e);});if(source.pending)source.acknowledge();provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.current,QString("synthetic initial clipboard"));QCOMPARE(source.revision,quint64(0));QCOMPARE(journal.operation(id).state,QString("cancelled"));QCOMPARE(journal.operation(id).copyStatus,QString("no_result"));QVERIFY(journal.operation(id).items.first().linkAvailable());
+ }
+ void cancelledListMemberIsRemovedFromAnUnsentNativeCommit() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]="list";doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));DeferredClipboardSource source;
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});QStringList ids;
+  for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
+  for(int i=0;i<2;++i){QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();}QTRY_COMPARE(source.copies,1);QVERIFY(source.pending);
+  operations.cancel(ids.first(),[](Error e,QJsonObject){QVERIFY(!e);});if(source.pending)source.acknowledge();
+  QTRY_VERIFY(source.copies==2||operations.diagnostics()["activeOperations"].toInt()==0);if(source.pending)source.acknowledge();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.current,journal.operation(ids[1]).items.first().receipt.directUrl);QCOMPARE(journal.operation(ids[0]).copyStatus,QString("no_result"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString("copied"));QCOMPARE(source.revision,quint64(1));
+ }
+ void resumedCopiesRecheckDurableRemoval_data() {QTest::addColumn<QString>("mode");QTest::newRow("each-link")<<QString("each_link");QTest::newRow("list")<<QString("list");}
+ void resumedCopiesRecheckDurableRemoval() {
+  QFETCH(QString,mode);QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]=mode;doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));DeferredClipboardSource source;
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();for(auto imported:source.imports)imported({textPayload(),{}});source.imports.clear();if(source.pending)source.acknowledge();});QStringList ids;
+  for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
+  for(int i=0;i<2;++i){QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();}QTRY_COMPARE(source.copies,1);QVERIFY(source.pending);QTRY_COMPARE(journal.operation(ids[1]).state,QString("completed"));
+  source.holdImports=true;QString third;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);third=r["operationId"].toString();});QTRY_COMPARE(source.imports.size(),1);QVERIFY(!source.pending);
+  const QStringList removed{journal.operation(ids[0]).items.first().artifact.id};QJsonObject preview;history.prepareDelete(removed,[&](Error e,QJsonObject r){QVERIFY(!e);preview=r;});QTRY_VERIFY(!preview.isEmpty());QVERIFY(!preview["acknowledgement"].toString().isEmpty());history.deleteConfirmed(removed,preview["acknowledgement"].toString(),[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(journal.detail(removed.first())["remoteStatus"].toString(),QString("removed"));
+  source.imports.takeFirst()({textPayload(),{}});QTRY_COMPARE(source.copies,2);QVERIFY(source.pending);QCOMPARE(source.proposed.text,journal.operation(ids[1]).items.first().receipt.directUrl);source.acknowledge();
+  QTRY_COMPARE(journal.operation(ids[0]).copyStatus,QString("no_result"));QTRY_COMPARE(journal.operation(ids[1]).copyStatus,QString("copied"));QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(source.copies,3);source.acknowledge();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(source.current,journal.operation(third).items.first().receipt.directUrl);QCOMPARE(source.revision,quint64(2));QCOMPARE(provider->deletes.load(),1);
+ }
+ void laterCopyFailureRetainsPublishedLinksAndRecordsPartialStatus() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;
+  source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("copy-error-%1.txt").arg(i),"synthetic batch"));OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());auto drain=qScopeGuard([&]{if(source.pending)source.acknowledge();});QString id;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_COMPARE(source.copies,1);source.acknowledge();QTRY_COMPARE(source.copies,2);source.acknowledge({"clipboard_write_failed","Synthetic native copy failure",{}});QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  const auto op=journal.operation(id);QCOMPARE(op.copyStatus,QString("partial"));QCOMPARE(op.error.code,QString("clipboard_write_failed"));QCOMPARE(op.state,QString("completed"));QCOMPARE(op.items.size(),2);for(const auto& item:op.items)QVERIFY(item.linkAvailable());QCOMPARE(provider->uploads.load(),2);QCOMPARE(source.current,op.items.first().receipt.directUrl);
+ }
+ void deferredCopiesSerializeAndKeepPostCommitUserEdits_data() {
+  QTest::addColumn<bool>("userChanged");QTest::addColumn<bool>("offThread");QTest::newRow("own-copies")<<false<<false;QTest::newRow("user-edit-before-callback-dispatch")<<true<<false;QTest::newRow("worker-reply")<<false<<true;QTest::newRow("worker-reply-with-user-edit")<<true<<true;
+ }
+ void deferredCopiesSerializeAndKeepPostCommitUserEdits() {
+  QFETCH(bool,userChanged);QFETCH(bool,offThread);QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;source.workerReply=offThread;
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});QStringList ids;
+  for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(source.copies,1);QVERIFY(source.pending);
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(journal.operation(ids[1]).state,QString("completed"));QCOMPARE(source.copies,1);
+  source.acknowledge();
+  if(userChanged){++source.revision;source.current="synthetic user edit";}
+  else {QTRY_COMPARE(source.copies,2);source.acknowledge();}
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(journal.operation(ids[0]).copyStatus,QString("copied"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString(userChanged?"suppressed":"copied"));
+  QCOMPARE(source.copies,userChanged?1:2);QCOMPARE(source.current,userChanged?QString("synthetic user edit"):journal.operation(ids[1]).items.first().receipt.directUrl);
+ }
+ void newImportPausesAndResumesAnUnsentLinkCopy() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));DeferredClipboardSource source;
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});QString first,second;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);first=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(source.copies,1);QVERIFY(source.pending);
+  source.holdImports=true;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);second=r["operationId"].toString();});QTRY_COMPARE(source.imports.size(),1);
+  QCOMPARE(source.current,QString("synthetic initial clipboard"));QVERIFY(!source.pending);QCOMPARE(source.copies,1);
+  source.imports.takeFirst()({textPayload(),{}});QTRY_COMPARE(source.copies,2);source.acknowledge();QTRY_COMPARE(journal.operation(first).copyStatus,QString("copied"));
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(source.copies,3);source.acknowledge();
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);QCOMPARE(journal.operation(second).copyStatus,QString("copied"));QCOMPARE(provider->uploads.load(),2);
+ }
+ void explicitHistoryCopySupersedesPendingUploadList() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]="list";doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QStringList ids;
+  for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(journal.operation(ids[0]).state,QString("completed"));QCOMPARE(source.copies,0);
+  bool replied=false;operations.copyHistoryUrl("https://example.invalid/explicit-history",[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});QTRY_VERIFY(replied);
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,QString("https://example.invalid/explicit-history"));for(const auto& id:ids){QCOMPARE(journal.operation(id).copyStatus,QString("suppressed"));QVERIFY(journal.operation(id).items.first().linkAvailable());}
+ }
+ void explicitActivityCopyCanOverrideACompletedListMember() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]="list";doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QStringList ids;bool firstSettled=false;
+  connect(&operations,&OperationService::changed,this,[&](const QString& id){if(!ids.isEmpty()&&id==ids.first()&&journal.operation(id).state=="completed")firstSettled=true;});
+  for(int i=0;i<2;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_VERIFY(firstSettled);QCOMPARE(source.copies,0);
+  bool replied=false;Error copyError;operations.copyResult(ids[0],[&](Error e,QJsonObject){copyError=e;replied=true;});QTRY_VERIFY(replied);QVERIFY2(!copyError,qPrintable(copyError.code));
+  const auto firstUrl=journal.operation(ids[0]).items.first().receipt.directUrl;QCOMPARE(source.copied.text,firstUrl);
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,firstUrl);QCOMPARE(journal.operation(ids[0]).copyStatus,QString("copied"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString("suppressed"));QCOMPARE(provider->uploads.load(),2);
+ }
+ void mixedResultsAndCancellationKeepUnrelatedLinks_data() {
+  QTest::addColumn<QString>("mode");QTest::newRow("each-link")<<QString("each_link");QTest::newRow("list")<<QString("list");
+ }
+ void mixedResultsAndCancellationKeepUnrelatedLinks() {
+  QFETCH(QString,mode);QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]=mode;doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QStringList ids;
+  for(int i=0;i<3;++i){QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);}
+  operations.cancel(ids[2],[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(journal.operation(ids[2]).state,QString("cancelled"));
+  QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();QTRY_COMPARE(journal.operation(ids[0]).state,QString("completed"));
+  QTRY_COMPARE(provider->completions.size(),1);provider->failUpload=true;provider->completions.takeFirst()();QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,journal.operation(ids[0]).items.first().receipt.directUrl);QCOMPARE(journal.operation(ids[0]).copyStatus,QString("copied"));
+  QCOMPARE(journal.operation(ids[1]).state,QString("partial"));QCOMPARE(journal.operation(ids[1]).copyStatus,QString("no_result"));QCOMPARE(journal.operation(ids[2]).copyStatus,QString("no_result"));QCOMPARE(provider->uploads.load(),2);
+ }
+ void queuedUploadsCopyEveryLink_data() {
+  QTest::addColumn<int>("count");QTest::addColumn<bool>("userChanged");QTest::addColumn<QString>("mode");
+  for(const auto& mode:QStringList{"each_link","list"}) {
+   for(int count:{1,2,3})QTest::newRow(qPrintable(mode+QString::number(count)))<<count<<false<<mode;
+   QTest::newRow(qPrintable(mode+"-user-change"))<<3<<true<<mode;
+  }
+ }
+ void queuedUploadsCopyEveryLink() {
+  QFETCH(int,count);QFETCH(bool,userChanged);QFETCH(QString,mode);
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();
+  provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});
+  auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]=mode;doc["preferences"]=prefs;
+  QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();source.copied.kind="text";source.copied.text="synthetic initial clipboard";
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});
+  QStringList ids,urls;
+  for(int i=0;i<count;++i) {
+   QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+   QTRY_VERIFY(!id.isEmpty());QTRY_COMPARE(source.reads,i+1);ids.append(id);
+  }
+  QTRY_COMPARE(provider->completions.size(),1);QCOMPARE(source.revision,quint64(0));QCOMPARE(source.copies,0);
+  if(userChanged){++source.revision;source.copied.text="synthetic user edit";}
+  for(int i=0;i<count;++i) {
+   QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();
+   QTRY_COMPARE(journal.operation(ids[i]).state,QString("completed"));
+   if(mode=="each_link"&&!userChanged)QTRY_COMPARE(source.copies,i+1);
+   else if(i<count-1)QCOMPARE(source.copies,0);
+   const auto op=journal.operation(ids[i]);QCOMPARE(op.items.size(),1);QCOMPARE(op.items[0].uploadStatus,QString("uploaded"));QVERIFY(op.items[0].linkAvailable());
+   urls.append(op.items[0].receipt.directUrl);
+   if(mode=="each_link"&&!userChanged)QCOMPARE(source.copied.text,urls.last());
+  }
+  QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.copies,userChanged?0:(mode=="list"?1:count));QCOMPARE(provider->uploads.load(),count);
+  QCOMPARE(source.copied.text,userChanged?QString("synthetic user edit"):(mode=="list"?urls.join('\n'):urls.last()));
+  for(const auto& id:ids)QCOMPARE(journal.operation(id).copyStatus,QString(userChanged?"suppressed":"copied"));
+  bool replied=false;operations.copyResult(ids.first(),[&](Error e,QJsonObject){QVERIFY(!e);replied=true;});QTRY_VERIFY(replied);
+  QCOMPARE(journal.operation(ids.first()).copyStatus,QString("copied"));QCOMPARE(source.copied.text,urls.first());QCOMPARE(provider->uploads.load(),count);
+ }
+ void multiFileUploadsHonorClipboardMode_data() {
+  QTest::addColumn<int>("count");QTest::addColumn<QString>("mode");
+  for(const auto& mode:QStringList{"each_link","list"})for(int count:{2,3})QTest::newRow(qPrintable(mode+QString::number(count)))<<count<<mode;
+ }
+ void multiFileUploadsHonorClipboardMode() {
+  QFETCH(int,count);QFETCH(QString,mode);QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();
+  provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});auto doc=configuration(d.path());auto prefs=doc["preferences"].toObject();prefs["uploadClipboardBehavior"]=mode;doc["preferences"]=prefs;QVERIFY(settings.save(doc,{}));
+  Source source;source.payload.kind="files";for(int i=0;i<count;++i)source.payload.files.append(fixture(d.path(),QString("synthetic-%1.txt").arg(i),QByteArray("synthetic batch ")+QByteArray::number(i)));
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();});QString id;
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});QTRY_VERIFY(!id.isEmpty());
+  QStringList urls;
+  for(int i=0;i<count;++i) {
+   QTRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();
+   QTRY_COMPARE(journal.operation(id).items[i].uploadStatus,QString("uploaded"));urls.append(journal.operation(id).items[i].receipt.directUrl);
+   if(mode=="each_link"){QTRY_COMPARE(source.copies,i+1);QCOMPARE(source.copied.text,urls.last());}
+   else if(i<count-1)QCOMPARE(source.copies,0);
+  }
+  QTRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.copies,mode=="list"?1:count);QCOMPARE(source.copied.text,mode=="list"?urls.join('\n'):urls.last());QCOMPARE(provider->uploads.load(),count);
+ }
  void midflightPhaseReachesInspectionAndChangeSignal(){
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
   SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
@@ -668,9 +875,9 @@ private slots:
   auto doc=configuration(d.path());QVERIFY(settings.save(doc,settings.revision()));source.payload.kind="files";source.payload.files={fixture(d.path(),"ok.txt","synthetic"),d.filePath("missing")};QString batch;ops.invoke("clipboard",[&](Error e,QJsonObject result){QVERIFY(!e);batch=result["operationId"].toString();});QTRY_VERIFY(!batch.isEmpty());QJsonObject inspected;ops.inspect(batch,[&](Error e,QJsonObject r){QVERIFY(!e);inspected=r;});QTRY_VERIFY(!inspected.isEmpty());
   QTRY_VERIFY_WITH_TIMEOUT(([&]{HistoryStore store(ops.databasePath());return store.operation(batch).state=="failed";})(),5000);HistoryStore store(ops.databasePath());QCOMPARE(store.operation(batch).error.code,QString("source_unavailable"));QCOMPARE(provider->uploads.load(),0);QCOMPARE(source.copies,1);
  }
- void reverseCompletionAndOwnershipSuppressOldCopy() {
-  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;auto naming=doc["naming"].toObject();naming["mode"]="generated";doc["naming"]=naming;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());QString older,newer;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);older=r["operationId"].toString();});ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);newer=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),2);HistoryStore journal(ops.databasePath());const auto marker=journal.operation(newer).items[0].publicationId;int newerIndex=provider->requests[0].publicationId==marker?0:1;auto complete=provider->completions.takeAt(newerIndex);provider->requests.removeAt(newerIndex);complete();QTRY_COMPARE(source.copies,1);complete=provider->completions.takeFirst();complete();QTRY_VERIFY_WITH_TIMEOUT(([&]{HistoryStore store(ops.databasePath());return store.operation(older).copyStatus=="suppressed";})(),5000);QCOMPARE(source.copies,1);HistoryStore store(ops.databasePath());QCOMPARE(store.operation(older).items[0].uploadStatus,QString("uploaded"));QCOMPARE(store.operation(newer).items[0].uploadStatus,QString("uploaded"));
-  QString third;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);third=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);++source.revision;provider->completions.takeFirst()();QTRY_VERIFY(([&]{HistoryStore s(ops.databasePath());return s.operation(third).copyStatus=="suppressed";})());QCOMPARE(source.copies,1);
+ void reverseCompletionCopiesBothLinksAndUserChangesRemainProtected() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});auto doc=configuration(d.path());auto limits=doc["limits"].toObject();limits["concurrentUploads"]=2;doc["limits"]=limits;auto naming=doc["naming"].toObject();naming["mode"]="generated";doc["naming"]=naming;QVERIFY(settings.save(doc,{}));Source source;source.payload=textPayload();OperationService ops(d.filePath("data"),settings,registry,source);QTRY_VERIFY(ops.ready());QString older,newer;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);older=r["operationId"].toString();});ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);newer=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),2);HistoryStore journal(ops.databasePath());const auto marker=journal.operation(newer).items[0].publicationId;int newerIndex=provider->requests[0].publicationId==marker?0:1;auto complete=provider->completions.takeAt(newerIndex);provider->requests.removeAt(newerIndex);complete();QTRY_COMPARE(source.copies,1);complete=provider->completions.takeFirst();complete();QTRY_VERIFY_WITH_TIMEOUT(([&]{HistoryStore store(ops.databasePath());return store.operation(older).copyStatus=="copied";})(),5000);QCOMPARE(source.copies,2);HistoryStore store(ops.databasePath());QCOMPARE(store.operation(older).items[0].uploadStatus,QString("uploaded"));QCOMPARE(store.operation(newer).items[0].uploadStatus,QString("uploaded"));
+  QString third;ops.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);third=r["operationId"].toString();});QTRY_COMPARE(provider->completions.size(),1);++source.revision;provider->completions.takeFirst()();QTRY_VERIFY(([&]{HistoryStore s(ops.databasePath());return s.operation(third).copyStatus=="suppressed";})());QCOMPARE(source.copies,2);
  }
  void unknownRestartReconcilesWithoutNewUploadAndSnapshotsSettings() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->loseReply=true;registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();QString id,candidate;

@@ -11,6 +11,7 @@ public:
  explicit GnomeAdapter(QObject* parent=nullptr);
  ~GnomeAdapter() override;
  quint64 clipboardRevision()const override;
+ std::optional<quint64> lastCopyRevision()const override{return lastCopyRevision_;}
  QJsonObject capabilities()const override;
  PreparedAcquisition prepareAcquisition(const QString&) override;
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override;
@@ -53,6 +54,7 @@ private:
  QHash<QString,std::shared_ptr<Transfer>> transfers_;
  QStringList prepared_;
  QList<QThread*> workers_;
+ std::optional<quint64> lastCopyRevision_;
  quint64 revision_=0,generation_=0,helperRevision_=0,copyGeneration_=0;
  QHash<quint64,Reply> pending_;quint64 callSerial_=0;
  bool recording_=false;quint64 bindingGeneration_=0;

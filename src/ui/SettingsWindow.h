@@ -38,6 +38,6 @@ private:
  QHash<QString,QComboBox*> publicationModes_;
  QString protonAccountUid_;bool protonBrowserOpened_=false;
  std::function<void()> updateProviderVisibility_;
- QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_;
+ QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*uploadClipboard_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_;
 };
 }

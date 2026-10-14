@@ -186,7 +186,9 @@ void X11Clipboard::copy(const CopyPayload& payload,std::function<void(Error)> ca
  xcb_set_selection_owner(connection_,window_,clipboard_,timestamp);
  auto actual=reply(xcb_get_selection_owner_reply(connection_,xcb_get_selection_owner(connection_,clipboard_),nullptr));
  if(!actual||actual->owner!=window_){callback({"clipboard_copy_failed","Unable to own the X11 clipboard",{}});return;}
- owned_=std::move(content);revision();callback({});
+ owned_=std::move(content);revision();
+ if(owner_!=window_){owned_.reset();callback({"copy_suppressed","Clipboard ownership changed before the result was acknowledged",{}});return;}
+ lastCopyRevision_=revision_;callback({});
 }
 void X11Clipboard::selectionRequest(const xcb_selection_request_event_t& request){
  const auto property=request.property==XCB_ATOM_NONE?request.target:request.property;

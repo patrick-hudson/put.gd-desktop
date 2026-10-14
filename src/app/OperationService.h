@@ -10,6 +10,7 @@
 #include <atomic>
 #include <mutex>
 #include <future>
+#include <optional>
 namespace putgd {
 using JsonReply=std::function<void(Error,QJsonObject)>;
 struct CopyPayload { QString kind,text;QStringList files;QByteArray encodedImage; };
@@ -55,7 +56,11 @@ public:
  }
  virtual void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>)=0;
  virtual void cancelAcquisition()=0;
- // Invalidates in-flight asynchronous clipboard commits when a newer action is accepted.
+ // Revision acknowledged by the last successful app copy, not a later owner query.
+ // Adapters without an acknowledgement cannot advance automatic-copy eligibility.
+ virtual std::optional<quint64> lastCopyRevision() const {return {};}
+ // Cancel unsent asynchronous commits when superseded, paused for an import,
+ // cancelled, or shut down. Report copy_suppressed only when no write committed.
  virtual void invalidateCopyEligibility() {}
  virtual void copy(const CopyPayload&,std::function<void(Error)>)=0;
 };
@@ -84,7 +89,7 @@ public:
  void retryLocalSave(const QString& id,JsonReply);
  void copyResult(const QString& id,JsonReply);
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
- quint64 invalidateCopyEligibility() {source_.invalidateCopyEligibility();return ++invocation_;}
+ quint64 invalidateCopyEligibility();
  void cleanup(JsonReply);
  void shutdown();
  QJsonObject capabilities() const;
@@ -130,7 +135,27 @@ private:
  void finish(Operation,JsonReply={});
  void releaseActive(const QString&);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
- void deliverCopy(const CopyPayload&,std::function<void(Error)>);
+ void deliverCopy(const CopyPayload&,std::function<void(Error)>,std::function<bool()> eligible={},bool upload=false);
+ using CopyPreparation=std::function<void(std::function<void(Error)>)>;
+ void queueCopy(std::function<CopyPayload()>,std::function<void(Error)>,std::function<bool()>,bool,CopyPreparation={},QStringList={});
+ void interruptUploadCopy(const QString& id={});
+ void pumpCopies();
+ struct PendingCopy;struct UploadCopy;struct UploadCopyGroup;
+ void beginUploadCopies(const Operation&,bool acquiring=false);
+ void abandonUploadCopies(const QString&);
+ bool detachCompletedUploadCopies(const QString&,JsonReply&);
+ void uploadLinkReady(const QString&,const QString&,int,const QString&);
+ void finishUploadCopies(Operation,JsonReply);
+ void settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&);
+ void recordUploadCopy(const std::shared_ptr<UploadCopy>&);
+ static void refreshUploadLinks(UploadCopy&,const Operation&);
+ void acknowledgeCopyRevision(quint64,quint64);
+ QHash<QString,std::shared_ptr<UploadCopy>> uploadCopies_;
+ std::shared_ptr<UploadCopyGroup> collectingUploadGroup_;
+ QQueue<std::shared_ptr<PendingCopy>> copies_;
+ std::shared_ptr<PendingCopy> currentCopy_;
+ QSet<QString> clipboardImports_;
+ quint64 uploadCopyEpoch_=0;
  QString root_;
  std::unique_ptr<QLockFile> journalOwner_;
  SettingsService& settings_;

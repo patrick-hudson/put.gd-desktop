@@ -59,9 +59,9 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);source_.invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
- return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&selectingId_.isEmpty()&&payloadBytes_->load()==0;
+ return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0;
 }
 void OperationService::scheduleHeapReclamation() {
  if(heapReclamationPending_&&heapReclamationIdle())heapReclamationTimer_.start(2000);
@@ -123,9 +123,9 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
  if(action!="clipboard"&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
  const auto route=snapshot.actions.value(action);if(route.destination=="upload"&&route.profileId.isEmpty()) {reply({"destination_required","Configure a destination before sharing",{}},{});return;}
- Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
+ Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=route.destination=="upload"?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(route.destination=="upload") {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(action!="clipboard")selectingId_=op.id;
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(route.destination=="upload")beginUploadCopies(op,true);if(action!="clipboard")selectingId_=op.id;
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
@@ -156,7 +156,7 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  };
  auto acquisition=source_.prepareAcquisition(action,snapshot.limits,std::move(earlyTerminal),std::move(released));
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
-  if(e) {releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();reply(e,{});return;}
+  if(e) {abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();reply(e,{});return;}
   observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
   // Acceptance stays durable and observable before acquiring pixels. Region
   // preview may already be visible; a terminal event skips the remaining work.
@@ -175,7 +175,7 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
       if(!guarded||guarded->stopping_)return;
       if(guarded->selectingId_==op.id&&!guarded->preparedOwners_.contains(op.id))guarded->selectingId_.clear();
       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code=="cancelled"||r.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";guarded->finish(op);return;}
-      guarded->enqueue({op,std::move(r.payload),true,flag,{}});
+      guarded->clipboardImports_.remove(op.id);guarded->enqueue({op,std::move(r.payload),true,flag,{}});guarded->pumpCopies();
      },Qt::QueuedConnection);
     });
    });
@@ -204,7 +204,17 @@ void OperationService::pump() {
 Operation OperationService::run(Job job) {
  auto op=job.op;HistoryStore store(databasePath());ArtifactStore artifacts(root_+"/artifacts");
  auto save=[&]() {auto e=store.saveOperation(op,&providers_);if(e) {op.error=e;op.state="failed";}else observe(op.publicJson());return !e;};
- auto saveItem=[&](const OperationItem& item) {auto e=store.checkpointOperation(op,{item.artifact.id},&providers_);if(e){op.error=e;op.state="failed";}else observe(op.publicJson());return !e;};
+ auto saveItem=[&](const OperationItem& item) {
+  auto e=store.checkpointOperation(op,{item.artifact.id},&providers_);
+  if(e){op.error=e;op.state="failed";return false;}
+  observe(op.publicJson());
+  if(item.linkAvailable()) {
+   int index=0;while(index<op.items.size()&&op.items[index].artifact.id!=item.artifact.id)++index;
+   QPointer<OperationService> owner(this);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.receipt.directUrl]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+  }
+  return true;
+ };
  if(job.cancelled->load()){job.payload={};job.payloadLease.reset();op.cancelled=true;op.state="cancelled";save();return op;}
  if(job.acquire) {op.phase="preparing";if(!save())return op;std::lock_guard acquisitionGuard(acquisitionMutex_);auto acquired=artifacts.acquire(op.id,job.payload,op.settings.limits,op.action,op.settings,QDateTime::fromString(op.created,Qt::ISODateWithMs));
   job.payload={};job.payloadLease.reset(); // Retry/upload ownership now belongs to the immutable disk artifact.
@@ -345,13 +355,15 @@ void OperationService::releaseActive(const QString& id) {
  else active_.remove(id);
 }
 void OperationService::finish(Operation op,JsonReply reply) {
+ clipboardImports_.remove(op.id);pumpCopies();
  op.phase=op.state;
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
  if((op.cancelled||op.state=="failed"||op.state=="interrupted")&&op.copyStatus=="pending")op.copyStatus="no_result";
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return e?QJsonObject{}:store.operation(op.id,&e).toJson();},[this,id=op.id,reply](Error e,QJsonObject document) {
   clearObservation(id);emit changed(id);emit observationsChanged();
-  if(e) {releaseActive(id);if(reply)reply(e,{});return;}
+  if(e) {abandonUploadCopies(id);releaseActive(id);if(reply)reply(e,{});return;}
   const auto op=Operation::fromJson(document);
+  if(uploadCopies_.contains(id)){finishUploadCopies(op,reply);return;}
   if(op.cancelled||op.state=="failed"||op.state=="interrupted") {emit resultReady(op.id);releaseActive(op.id);if(reply)reply({},op.publicJson());return;}
   performCopy(op,false,[this,id=op.id,reply](Error error,QJsonObject result) {releaseActive(id);if(reply)reply(error,result);});
  });
@@ -360,7 +372,7 @@ void OperationService::finish(Operation op,JsonReply reply) {
 void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=currentObservation(values[i].toObject());data["operations"]=values;reply(e,data);});}
 void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,currentObservation(data));});}
 void OperationService::cancel(const QString& id,JsonReply reply) {
- if(active_.contains(id)) {active_[id]->store(true);if(selectingId_==id)source_.cancelAcquisition();
+ if(active_.contains(id)) {active_[id]->store(true);interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.state="cancelled";finish(job.op);break;}
   reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Already sent network requests cannot be rolled back"}});return;}
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};op.cancelled=true;op.state="cancelled";op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
@@ -376,9 +388,9 @@ void OperationService::retry(const QString& id,JsonReply reply) {
   bool pending=false;for(const auto& i:op.items)if(!terminalUpload(i.uploadStatus)||(sharing&&i.uploadStatus=="uploaded"&&(i.shareStatus=="unknown"||(i.shareStatus=="private"&&i.shareIntent=="create")||(mode=="share"&&(i.shareStatus=="not_requested"||(i.shareStatus=="failed"&&i.shareIntent=="create"))))))pending=true;
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
   if(provider)if(auto timeout=provider->retryRequestTimeout(op.destination,settings_.snapshot().profiles.value(op.destination.profileId)))op.requestTimeoutMs=std::max(op.requestTimeoutMs.value_or(0),*timeout);
-  op.cancelled=reserved->load();op.error={};op.state="stored";op.phase="queued";
+  op.cancelled=reserved->load();op.error={};op.state="stored";op.phase="queued";op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.copyStatus="pending";beginUploadCopies(op);
   background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return QJsonObject{};},[this,reply,op,reserved](Error error,QJsonObject)mutable{
-   if(error){releaseActive(op.id);reply(error,{});return;}
+   if(error){abandonUploadCopies(op.id);releaseActive(op.id);reply(error,{});return;}
    op.cancelled=reserved->load();enqueue({op,{},false,reserved,{}});reply({},{{"operationId",op.id},{"retryAccepted",true}});
   });
  });
@@ -409,13 +421,12 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
   reply(e,r);
  });
 }
-void OperationService::copyResult(const QString& id,JsonReply reply) {if(active_.contains(id)) {reply({"operation_busy","Wait for the operation to finish before copying its result",{}},{});return;}const auto ticket=invalidateCopyEligibility();const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,reply,ticket](Error e,QJsonObject doc) {if(e)reply(e,{});else performCopy(Operation::fromJson(doc),true,reply,ticket);});}
-void OperationService::deliverCopy(const CopyPayload& payload,std::function<void(Error)> callback) {
- QPointer<OperationService> guarded(this);
- source_.copy(payload,[guarded,callback](Error error) {
-  if(!guarded)return;
-  QMetaObject::invokeMethod(guarded,[guarded,callback,error] {if(guarded&&!guarded->stopping_)callback(error);},Qt::QueuedConnection);
- });
+void OperationService::copyResult(const QString& id,JsonReply reply) {
+ JsonReply pendingReply;
+ if(active_.contains(id)&&!detachCompletedUploadCopies(id,pendingReply)) {reply({"operation_busy","Wait for the operation to finish before copying its result",{}},{});return;}
+ auto completed=[reply,pendingReply](Error error,QJsonObject result){if(pendingReply)pendingReply(error,result);reply(error,result);};
+ const auto ticket=invalidateCopyEligibility();const auto path=databasePath();
+ background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).toJson();},[this,completed,ticket](Error e,QJsonObject doc) {if(e)completed(e,{});else performCopy(Operation::fromJson(doc),true,completed,ticket);});
 }
 void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply reply,quint64 ticket) {
  if(explicitCopy&&ticket==0)ticket=invalidateCopyEligibility();
@@ -458,12 +469,12 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
   },[this,op,ticket,revision,record,prepared,completeCopy](Error e,QJsonObject) mutable {
    if(e) {op.copyStatus="failed";op.error=e;record(op);return;}
    if(ticket!=invocation_||revision!=source_.clipboardRevision()) {op.copyStatus="suppressed";record(op);return;}
-   deliverCopy(*prepared,completeCopy);
+   deliverCopy(*prepared,completeCopy,[this,ticket,revision]{return ticket==invocation_&&revision==source_.clipboardRevision();});
   });return;
  }
- deliverCopy(payload,completeCopy);
+ deliverCopy(payload,completeCopy,[this,op,explicitCopy,ticket]{return explicitCopy?ticket==invocation_:(op.invocation==invocation_&&op.clipboardRevision==source_.clipboardRevision());});
 }
-void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","A newer sharing invocation superseded this copy request",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This record has no confirmed direct URL",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});});}
+void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","A newer sharing invocation superseded this copy request",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This record has no confirmed direct URL",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});}
 QJsonObject OperationService::capabilities() const {return {{"source",source_.capabilities()},{"providers",providers_.capabilities()}};}
 QJsonObject OperationService::diagnostics() const {
 #ifdef __GLIBC__

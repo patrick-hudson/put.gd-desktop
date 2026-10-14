@@ -85,6 +85,7 @@
   },
   "preferences": {
     "notifications": true,
-    "launchAtLogin": false
+    "launchAtLogin": false,
+    "uploadClipboardBehavior": "each_link"
   }
 }

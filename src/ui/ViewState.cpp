@@ -36,7 +36,7 @@ bool safeDocument(const QJsonValue& value){
  for(auto v:d["profiles"].toArray()){if(!fields(v,{"id","label","provider","settings","credentials"}))return false;auto profile=v.toObject();if(!profile["id"].isString()||!profile["label"].isString()||!QStringList{"s3","proton-drive"}.contains(profile["provider"].toString())||!scalars(profile["settings"],profile["provider"]=="s3"?s3Keys:protonKeys)||!scalars(profile["credentials"],{"mode","reference"}))return false;}
  if(!fields(d["archive"],{"root","keepUploads","folders"}))return false;
  const auto archive=d["archive"].toObject();if(!archive["root"].isString()||!archive["keepUploads"].isBool()||!scalars(archive["folders"],{"images","videos","text","other"}))return false;
- return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&scalars(d["preferences"],{"notifications","launchAtLogin"});
+ return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&scalars(d["preferences"],{"notifications","launchAtLogin","uploadClipboardBehavior"});
 }
 bool profileEditor(const QJsonValue& value){if(value.isNull())return true;if(!fields(value,{"id","label","credentialMode","reference","acl","addressing","s3","providerJson"}))return false;const auto o=value.toObject();for(const auto& k:QStringList{"id","label","credentialMode","reference","acl","addressing","providerJson"})if(!o[k].isString())return false;return scalars(o["s3"],s3Keys,true)&&rawS3(o["providerJson"].toString());}
 bool settingsState(const QJsonObject& s){

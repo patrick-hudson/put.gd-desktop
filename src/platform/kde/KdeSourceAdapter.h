@@ -15,6 +15,7 @@ public:
  explicit KdeSourceAdapter(QObject* parent=nullptr);
  ~KdeSourceAdapter() override;
  quint64 clipboardRevision()const override;
+ std::optional<quint64> lastCopyRevision()const override{return clipboard_.lastCopyRevision();}
  QJsonObject capabilities()const override;
  PreparedAcquisition prepareAcquisition(const QString&) override;
  void acquire(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>) override;

@@ -67,7 +67,7 @@ QJsonObject Settings::defaults() {
             {"clipboardTextBytes", 16777216.0}, {"imagePixels", 100000000.0}, {"imageBytes", 536870912.0}}},
         {"retention", QJsonObject{{"failedArtifactDays", 7}, {"recentActivityLimit", 100},
             {"previewCacheBytes", 268435456.0}, {"historyRetentionDays", QJsonValue::Null}}},
-        {"preferences", QJsonObject{{"notifications", true}, {"launchAtLogin", false}}}};
+        {"preferences", QJsonObject{{"notifications", true}, {"launchAtLogin", false}, {"uploadClipboardBehavior", "each_link"}}}};
 }
 
 QJsonObject Settings::developmentTemplate() {
@@ -168,9 +168,11 @@ Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validat
         !(retention["historyRetentionDays"].isNull() || integer(retention["historyRetentionDays"], 1, 36500)))
         return invalid("/retention", "Retention limits are invalid; null history retention means no automatic expiry.");
     const auto preferences = doc["preferences"].toObject();
-    if (!doc["preferences"].isObject() || !keys(preferences, {"notifications", "launchAtLogin"}) ||
+    if (!doc["preferences"].isObject() || !keys(preferences, preferences.contains("uploadClipboardBehavior")?QStringList{"notifications", "launchAtLogin", "uploadClipboardBehavior"}:QStringList{"notifications", "launchAtLogin"}) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
-        return invalid("/preferences", "Preferences must be booleans.");
+        return invalid("/preferences", "Notifications and launch at login must be booleans.");
+    if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
+        return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
     return {};
 }
 
@@ -211,6 +213,7 @@ Settings Settings::fromValidated(const QJsonObject& doc) {
     settings.recentActivityLimit = retention["recentActivityLimit"].toInt();
     settings.previewCacheBytes = retention["previewCacheBytes"].toInteger();
     settings.historyRetentionDays = retention["historyRetentionDays"].toInt();
+    settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();
     return settings;

@@ -602,7 +602,10 @@ export default class PutgdExtension extends Extension {
     }
 
     async _prepare(id, action, sender) {
-        this._copyEpoch++;
+        // Clipboard imports protect their source from an unsent result. Capture
+        // uploads preserve earlier links; explicit/local copies use InvalidateCopy.
+        if (action === 'clipboard')
+            this._copyEpoch++;
         check(ACTIONS.includes(action), 'source_unsupported', 'Unknown GNOME source action');
         const request = this._new(id, sender);
         request.action = action;

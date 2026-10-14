@@ -46,6 +46,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `retention.recentActivityLimit` | 100 visible recent entries; does not prune history |
 | `retention.previewCacheBytes` | 256 MiB; zero disables retained previews |
 | `retention.historyRetentionDays` | `null` means no automatic record expiry |
+| `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
 
 The first three shortcuts default to `Ctrl+Shift+1`, `Ctrl+Shift+2`, and `Ctrl+Shift+3`.

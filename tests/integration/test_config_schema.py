@@ -14,6 +14,16 @@ from jsonschema import Draft202012Validator
 
 
 class ConfigurationSchema(unittest.TestCase):
+    def test_upload_clipboard_modes_and_legacy_preferences(self):
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema['properties']['preferences'])
+        legacy = {'notifications': True, 'launchAtLogin': False}
+        self.assertTrue(validator.is_valid(legacy))
+        for mode in ('each_link', 'list'):
+            self.assertTrue(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
+        for mode in ('latest', True, None, 42):
+            self.assertFalse(validator.is_valid(legacy | {'uploadClipboardBehavior': mode}))
+
     def test_optional_proton_folder_name_keeps_legacy_settings_valid(self):
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
         validator = Draft202012Validator(schema['$defs']['protonSettings'])
