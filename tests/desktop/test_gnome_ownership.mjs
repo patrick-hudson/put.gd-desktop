@@ -134,8 +134,8 @@ class Widget {
     remove_child(child) {this.children = this.children.filter(value => value !== child); child.parent = null;}
     get_transformed_position() {return [1100, 0];}
     get_transformed_size() {return [24, 30];}
-    get_preferred_width() {return [40, 320];}
-    get_preferred_height() {return [24, 80];}
+    get_preferred_width() {return [40, this.width >= 0 ? this.width : Math.max(40, ...this.text.split('\n').map(line => line.length * 7))];}
+    get_preferred_height() {return [24, this.height >= 0 ? this.height : this.text.split('\n').length * 24];}
     set_text(text) {this.text = text;}
     set_size(width, height) {this.width = width; this.height = height;}
     set_position(x, y) {this.x = x; this.y = y;}
@@ -158,25 +158,28 @@ context.Gio.bus_watch_name = (_type, name, _flags, appeared, vanished) => {
 };
 context.Gio.bus_unwatch_name = id => watches.delete(id);
 Object.assign(context.GLib, {SOURCE_REMOVE: false, SOURCE_CONTINUE: true,
-    timeout_add: (_priority, _delay, callback) => {const id = ++signalId; timers.set(id, callback); return id;},
+    timeout_add: (_priority, delay, callback) => {const id = ++signalId; timers.set(id, {delay, callback}); return id;},
     source_remove: id => timers.delete(id)});
 let itemPid = residentPid, tooltip = ['', [], 'put.gd — Working', 'Uploading: 1 MiB of 4 MiB (25%)'];
 let holdTooltip = false;
-const held = [];
+const held = [], tooltipCancellables = [];
 const service = 'org.kde.StatusNotifierItem.putgd_contract';
+const clientName = 'org.putgd.App.Gnome50', watcherName = 'org.kde.StatusNotifierWatcher';
+const owners = new Map([[clientName, resident], [service, ':1.60'], [watcherName, ':1.70']]);
 const bus = context.Gio.DBus.session;
 bus.call = (destination, _path, _iface, method, args, _type, _flags, timeout, _cancel, callback) => {
     assert.equal(timeout > 0 && timeout <= 1000, true);
     const input = args?.value ?? [];
     let value;
-    if (method === 'GetNameOwner') value = input[0] === 'org.putgd.App.Gnome50' ? resident : input[0] === service ? ':1.60' : ':1.70';
+    if (method === 'GetNameOwner') value = owners.get(input[0]);
     else if (method === 'GetConnectionUnixProcessID') value = input[0] === ':1.60' ? itemPid : residentPid;
     else if (method === 'Get') {
         const property = input[1];
         value = {IsStatusNotifierHostRegistered: true, RegisteredStatusNotifierItems: [service + '/StatusNotifierItem'],
             Id: 'putgd', Title: 'put.gd', ToolTip: tooltip}[property];
     } else throw new Error('Unexpected async method: ' + method);
-    const result = {deep_unpack: () => [value]};
+    if (input[1] === 'ToolTip') tooltipCancellables.push(_cancel);
+    const result = {deep_unpack: () => {if (_cancel?.cancelled) throw new Error('Synthetic cancelled read'); return [value];}};
     if (holdTooltip && input[1] === 'ToolTip') held.push(() => callback(bus, result));
     else Promise.resolve().then(() => callback(bus, result));
 };
@@ -186,7 +189,7 @@ bus.signal_subscribe = (sender, iface, signal, path, _arg, _flags, callback) => 
 };
 bus.signal_unsubscribe = id => subscriptions.delete(id);
 async function flush() {for (let i = 0; i < 80; i++) await Promise.resolve();}
-function tick() {for (const [id, callback] of [...timers]) if (!callback()) timers.delete(id);}
+function tick(delay = null) {for (const [id, entry] of [...timers]) if ((delay === null || entry.delay === delay) && !entry.callback()) timers.delete(id);}
 function appear(name, owner) {for (const watch of watches.values()) if (watch.name === name) watch.appeared(bus, name, owner);}
 function emitTooltip(sender) {
     for (const subscription of subscriptions.values())
@@ -221,6 +224,16 @@ live.actor.hover = true; live.actor.emit('notify::hover'); tick(); await flush()
 assert.equal(context.Main.uiGroup.get_children()[0].visible, true);
 print('PASS native button input propagates and suppresses the label until hover leaves and returns');
 
+live.actor.emit('captured-event', {type: () => Clutter.EventType.BUTTON_PRESS});
+tooltip = ['', [], 'put.gd — Working', 'x'.repeat(2049)]; emitTooltip(':1.60'); await flush();
+tooltip = ['', [], 'put.gd — Working', 'Recovered transfer']; emitTooltip(':1.60'); await flush();
+assert.equal(context.Main.uiGroup.get_children().filter(actor => actor.visible).length, 0);
+live.actor.hover = false; live.actor.emit('notify::hover');
+live.actor.hover = true; live.actor.emit('notify::hover'); tick(); await flush();
+assert.equal(context.Main.uiGroup.get_children()[0].visible, true);
+print('PASS transient tooltip failures preserve native menu click suppression');
+
+
 const duplicate = new Widget({accessible_name: 'put.gd'}); context.Main.panel.add_child(duplicate);
 emitTooltip(':1.60'); await flush();
 assert.equal(context.Main.uiGroup.get_children().filter(actor => actor.visible).length, 0);
@@ -231,13 +244,19 @@ print('PASS duplicate accessible actors and excessive tooltip text fail closed')
 
 tooltip = ['', [], 'put.gd — Working', 'Uploading']; emitTooltip(':1.60'); await flush();
 live.actor.hover = true; live.actor.emit('notify::hover'); tick(); await flush();
+holdTooltip = true; emitTooltip(':1.60'); await flush();
+const lockedRead = tooltipCancellables.at(-1);
 context.Main.sessionMode.isLocked = true; context.Main.sessionMode.emit('updated'); await flush();
+assert.equal(lockedRead.cancelled, true);
+holdTooltip = false; for (const callback of held.splice(0)) callback(); await flush();
 assert.equal(context.Main.uiGroup.get_children().length, 0);
 assert.equal(live.actor.signals.size, 0);
 context.Main.sessionMode.isLocked = false; context.Main.sessionMode.emit('updated'); await flush();
 holdTooltip = true; emitTooltip(':1.60'); await flush();
 assert.equal(held.length > 0, true);
-live.companion.disable(); for (const callback of held.splice(0)) callback(); await flush();
+const disabledRead = tooltipCancellables.at(-1);
+live.companion.disable(); assert.equal(disabledRead.cancelled, true);
+for (const callback of held.splice(0)) callback(); await flush();
 assert.equal(context.Main.uiGroup.get_children().length, 0);
 assert.equal(live.actor.signals.size, 0); assert.equal(watches.size, 0);
 assert.equal(timers.size, 0); assert.equal(subscriptions.size, 0);
@@ -250,3 +269,85 @@ assert.equal(context.Main.uiGroup.get_children().length, 0);
 assert.equal(foreign.actor.signals.size, 0);
 foreign.companion.disable(); foreign.actor.destroy();
 print('PASS same-name SNI from another Unix PID cannot supply the tooltip');
+
+
+itemPid = residentPid; tooltip = ['', [], 'put.gd — Share and local capture', ''];
+const sizing = companionFixture(); await flush();
+sizing.actor.hover = true; sizing.actor.emit('notify::hover'); tick(); await flush();
+const idleSize = [context.Main.uiGroup.get_children()[0].width, context.Main.uiGroup.get_children()[0].height];
+tooltip = ['', [], 'put.gd — Working', 'Uploading file 1/2: 8 MiB of 64 MiB (13%)\nPreparing file 2/2\nQueued'];
+emitTooltip(':1.60'); await flush();
+let label = context.Main.uiGroup.get_children()[0];
+assert.equal(label.width > idleSize[0], true); assert.equal(label.height > idleSize[1], true);
+tooltip = ['', [], 'put.gd — Share and local capture', '']; emitTooltip(':1.60'); await flush();
+label = context.Main.uiGroup.get_children()[0];
+assert.equal(label.width, idleSize[0]); assert.equal(label.height, idleSize[1]);
+sizing.companion.disable(); sizing.actor.destroy();
+print('PASS label dimensions grow for multiple rows and shrink back to idle');
+
+
+for (const [name, replacement] of [[clientName, ':1.41'], [service, ':1.61'], [watcherName, ':1.71']]) {
+    const original = owners.get(name);
+    tooltip = ['', [], 'put.gd — Working', 'Current generation'];
+    const changed = companionFixture(); await flush();
+    changed.actor.hover = true; changed.actor.emit('notify::hover'); tick(); await flush();
+    holdTooltip = true; emitTooltip(':1.60'); await flush();
+    assert.equal(held.length > 0, true);
+    owners.set(name, replacement);
+    holdTooltip = false; for (const callback of held.splice(0)) callback(); await flush();
+    assert.equal(context.Main.uiGroup.get_children().filter(actor => actor.visible).length, 0);
+    changed.companion.disable(); changed.actor.destroy(); owners.set(name, original);
+}
+print('PASS item, resident and watcher owner changes reject delayed authenticated text');
+
+for (const [name, replacement] of [[clientName, ':1.41'], [service, ':1.61'], [watcherName, ':1.71']]) {
+    const original = owners.get(name);
+    tooltip = ['', [], 'put.gd — Working', 'Old generation'];
+    const replaced = companionFixture(); await flush();
+    replaced.actor.hover = true; replaced.actor.emit('notify::hover'); tick(); await flush();
+    holdTooltip = true; emitTooltip(':1.60'); await flush();
+    const delayed = held.splice(0), oldSubscriptions = new Set(subscriptions.keys());
+    assert.equal(delayed.length > 0, true);
+    owners.set(name, replacement); holdTooltip = false;
+    tooltip = ['', [], 'put.gd — Working', 'New generation'];
+    if (name === service) {
+        for (const subscription of [...subscriptions.values()])
+            if (subscription.signal === 'NameOwnerChanged') subscription.callback();
+    } else appear(name, replacement);
+    await flush();
+    for (const callback of delayed) callback(); await flush();
+    assert.equal(context.Main.uiGroup.get_children().filter(actor => actor.visible).length, 1);
+    assert.equal(context.Main.uiGroup.get_children()[0].text, 'put.gd — Working\nNew generation');
+    assert.equal([...oldSubscriptions].some(id => subscriptions.has(id)), false);
+    replaced.companion.disable(); replaced.actor.destroy(); owners.set(name, original);
+}
+print('PASS replacement generations survive old reads with only current subscriptions');
+
+
+tooltip = ['', [], 'put.gd — Working', 'Before deadline'];
+const deadline = companionFixture(); await flush();
+deadline.actor.hover = true; deadline.actor.emit('notify::hover'); tick(300); await flush();
+holdTooltip = true; emitTooltip(':1.60'); await flush();
+const deadlineRead = tooltipCancellables.at(-1); assert.equal(deadlineRead.cancelled, undefined);
+tick(4000); assert.equal(deadlineRead.cancelled, true);
+holdTooltip = false; for (const callback of held.splice(0)) callback(); await flush();
+assert.equal(context.Main.uiGroup.get_children().filter(actor => actor.visible).length, 0);
+tooltip = ['', [], 'put.gd — Working', 'After deadline']; emitTooltip(':1.60'); await flush();
+assert.equal(context.Main.uiGroup.get_children()[0].text, 'put.gd — Working\nAfter deadline');
+deadline.companion.disable(); deadline.actor.destroy();
+print('PASS read cancellation reaches lock, disable and the four-second deadline with later recovery');
+
+tooltip = ['', [], 'put.gd — Working', 'Retry baseline'];
+const retry = companionFixture(); await flush();
+retry.actor.hover = true; retry.actor.emit('notify::hover'); tick(300); await flush();
+tooltip = ['', [], 'put.gd — Working', 'x'.repeat(2049)]; emitTooltip(':1.60'); await flush();
+for (let i = 0; i < 15; i++) {tick(1000); await flush();}
+tooltip = ['', [], 'put.gd — Working', 'First recovered episode']; emitTooltip(':1.60'); await flush();
+assert.equal(context.Main.uiGroup.get_children()[0].visible, true);
+tooltip = ['', [], 'put.gd — Working', 'x'.repeat(2049)]; emitTooltip(':1.60'); await flush();
+tooltip = ['', [], 'put.gd — Working', 'Second recovered episode']; tick(1000); await flush();
+assert.equal(context.Main.uiGroup.get_children()[0].visible, true);
+assert.equal(context.Main.uiGroup.get_children()[0].text, 'put.gd — Working\nSecond recovered episode');
+retry.companion.disable(); retry.actor.destroy();
+assert.equal(timers.size, 0); assert.equal(subscriptions.size, 0); assert.equal(watches.size, 0);
+print('PASS each recoverable failure episode receives a fresh bounded retry budget');

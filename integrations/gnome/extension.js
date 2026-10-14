@@ -309,10 +309,10 @@ class TrayTooltipCompanion {
         });
         try {
             const client = await this._owner(CLIENT, cancellable);
-            if (client !== this._client) throw new Error('Resident owner changed');
+            if (client !== this._client) throw failure('tray_identity_changed', 'Resident owner changed');
             const pid = await this._pid(client, cancellable);
             const item = this._item ?? await this._findItem(pid, cancellable);
-            if (await this._pid(item.owner, cancellable) !== pid) throw new Error('Tray process changed');
+            if (await this._pid(item.owner, cancellable) !== pid) throw failure('tray_identity_changed', 'Tray process changed');
             const [title, nativeTooltip] = await Promise.all([
                 this._property(item.owner, item.path, SNI_ITEM, 'Title', cancellable),
                 this._property(item.owner, item.path, SNI_ITEM, 'ToolTip', cancellable),
@@ -326,16 +326,20 @@ class TrayTooltipCompanion {
                 this._owner(SNI_WATCHER, cancellable),
             ]);
             if (itemOwner !== item.owner || clientOwner !== client || watcherOwner !== this._watcher)
-                throw new Error('Tray identity changed during read');
+                throw failure('tray_identity_changed', 'Tray identity changed during read');
             if (generation !== this._generation || !this._enabled || Main.sessionMode.isLocked) return;
             if (!this._item) {this._item = item; this._subscribe(item);}
             const actor = this._findActor(title);
             if (!actor) {this._releaseActor(); this._text = ''; this._retryActor(); return;}
             this._attach(actor); this._title = title; this._text = tooltip;
             if (this._timer) GLib.source_remove(this._timer);
-            this._timer = 0; this._show();
-        } catch {
-            if (generation === this._generation) {this._releaseActor(); this._text = ''; this._retryActor();}
+            this._timer = 0; this._retryAttempts = 0; this._show();
+        } catch (error) {
+            if (generation === this._generation) {
+                this._label?.hide(); this._text = '';
+                if (error.bridgeCode === 'tray_identity_changed') this._releaseActor();
+                this._retryActor();
+            }
         } finally {
             if (pending.deadline) GLib.source_remove(pending.deadline);
             if (generation === this._generation) {
@@ -374,6 +378,7 @@ class TrayTooltipCompanion {
             y + height / 2 >= m.y && y + height / 2 < m.y + m.height);
         if (!monitor || monitor.width <= 16 || monitor.height <= 16) {this._label.hide(); return;}
         this._label.set_text(this._text);
+        this._label.set_size(-1, -1);
         const naturalWidth = Math.min(this._label.get_preferred_width(-1)[1], monitor.width - 16);
         const naturalHeight = this._label.get_preferred_height(naturalWidth)[1];
         if (naturalHeight > monitor.height - 16) {this._label.hide(); return;}
