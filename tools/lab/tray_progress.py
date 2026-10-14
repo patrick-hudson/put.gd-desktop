@@ -447,7 +447,12 @@ class Replay:
         image = self.witness('source-fixture', hover=False)
         paint = lab.locate_fixture_paint(image)
         require(paint, 'Independent native synthetic clipboard fixture is not visibly unobscured')
+        # Let the visible guest process the move before pressing; a combined
+        # tablet move/button packet can click the previous tray position.
+        lab.pointer(self.run, paint['x'] + 100, paint['y'] + 100, self.width, self.height)
+        time.sleep(.15)
         lab.pointer(self.run, paint['x'] + 100, paint['y'] + 100, self.width, self.height, True)
+        time.sleep(.05)
         lab.pointer(self.run, paint['x'] + 100, paint['y'] + 100, self.width, self.height, False)
         lab.ssh(self.run, 'rm -f -- ' + shlex.quote(self.guest + '/f/source.json') + '\n')
         lab.key(self.run, ['ctrl', 'alt', 'shift', 'f'])
@@ -582,7 +587,12 @@ print(json.dumps(results))
         picture = self.witness(label + '-paste-target', hover=False)
         paint = lab.locate_fixture_paint(picture)
         require(paint, 'Independent native paste fixture is not visibly unobscured')
+        # Let the visible guest process the move before pressing; a combined
+        # tablet move/button packet can click the previous tray position.
+        lab.pointer(self.run, paint['x'] + 100, paint['y'] + 100, self.width, self.height)
+        time.sleep(.15)
         lab.pointer(self.run, paint['x'] + 100, paint['y'] + 100, self.width, self.height, True)
+        time.sleep(.05)
         lab.pointer(self.run, paint['x'] + 100, paint['y'] + 100, self.width, self.height, False)
         lab.ssh(self.run, 'rm -f -- ' + shlex.quote(self.guest + '/f/paste.json') + '\n')
         lab.key(self.run, ['ctrl', 'v'])
