@@ -58,7 +58,7 @@ measurements; distribution and final-candidate gates remain open.
 ## Release gates
 
 P1 is complete for its recorded owned-folder and bounded-response scope.
-P2 is complete for its recorded Cinnamon resource workload. P3–P6 remain open.
+P2 is complete for its recorded Cinnamon resource workload. P3 notice/source/rebuild work is complete; P4–P6 remain open.
 Owners are project roles: the integration maintainer owns P1, P2 and P5; the release maintainer owns
 P3, P4 and P6. The same person may perform both roles. Before the first production
 shipment advertising Proton, retain a dated pass/failure/blocker and exact source,
@@ -147,44 +147,49 @@ explicitly excluded by the user; only local-only behavior and inspected
 Proton-only deployment/source boundaries earn the negative-control credit.
 Current packaged cross-desktop evidence remains P6.
 
-### P3 — Redistribution and rebuild materials
+### P3 — Redistribution and rebuild materials (complete)
 
-The [initial audit](evidence/2026-10-15-proton-p3-redistribution.md) is retained
-as history. The [source/notice follow-up](evidence/2026-10-15-proton-p3-materials.md)
-implements the user-approved explicit GPL crypto source selection and completes
-the prepared notice/source materials. **P3 remains open for native compiler and
-relink proof.** Public delivery and actual package inclusion remain P4/P6.
+The [initial audit](evidence/2026-10-15-proton-p3-redistribution.md) and
+[materials receipt](evidence/2026-10-15-proton-p3-materials.md) remain historical
+records. The [rebuild follow-up](evidence/2026-10-15-proton-p3-rebuild.md) completes
+the remaining native compiler/relink proof using the user-approved disposable
+toolchain exception. P3 is complete for notices, source materials and executable
+rebuild proof. Public delivery and actual package inclusion remain P4/P6.
 
 Historical npm crypto 2.0.0 ISC notice provenance could not be established. The
-user approved official WebPackages commit `956a713c0823b365cc512018974eb4fcba47c9dd`,
-version 2.0.1, with its explicit GPL grant and original predecessor MIT notices.
-Provisioning replaces the source and metadata over a locked 2.0.0 dependency
-bootstrap. This does not apply a later grant retroactively. The new helper SHA256
-is `eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539`;
-SDK 0.22.2 and Bun 1.4.2 are unchanged. P1/P2 history remains credited to the
-prior fingerprint; the changed helper requires final current-candidate evidence.
+approved alternative remains official WebPackages commit
+`956a713c0823b365cc512018974eb4fcba47c9dd`, version 2.0.1, with its explicit GPL
+grant and original predecessor MIT notices. No later grant is applied retroactively.
+The production helper remains
+`eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539`;
+SDK 0.22.2 and official Bun 1.4.2 are unchanged. Historical P1/P2 passes remain
+credited to their original helper; fresh final-candidate evidence is required.
 
-Compiler-retained JS locations now have supplied notice texts. Bun attribution
-is preserved as a labelled source superset with source-path/hash provenance and
-all eleven previously missing crate contexts recovered. Five source/build-input
-assets, exact hashes and rebuild instructions are catalogued in
+All compiler-retained JS locations have supplied notice texts. Bun attribution
+preserves the conservative source superset, now supplemented with 77 original
+legal files from pinned Rust standard-library preferred source and its vendor
+inputs. This is not an exact linked ELF notice inventory. Six source/build-input
+assets are catalogued with exact hashes in
 [tools/proton/notices/SOURCES.json](../tools/proton/notices/SOURCES.json).
-Exact helper reconstruction, offline Bun source/native identity checks, and
-OpenPGP preferred-source reconstruction/modified compiled roundtrip pass.
-Actual Proton install rules deliver and hash-check all twelve redistribution
-files with the helper; that fixture is not final package acceptance.
+The new supplement corrects the original native preflight and Argon replay route;
+the original sealed source packets and receipts remain unchanged.
 
-Remaining P3 proof is a modified native Bun/JSC/TinyCC compile/relink using LLVM
-21.1.x and the pinned Rust nightly 2026-07-20, plus an Argon2 WASM source rebuild
-with a recorded Emscripten compiler version. The host's distro Rust 1.91 cannot
-satisfy the required nightly; no substitute toolchain was installed. Full source,
-patches and fail-closed build/preflight scripts are supplied. Preserve this
-blocker instead of calling source reconstruction a native compile pass.
+Modified Bun Rust, JavaScriptCore C++ and TinyCC C compile and link under LLVM
+21.1.8 and Rust nightly 2026-07-20, using local JSC/system ICU in release-local.
+The rebuilt helper passes 41 tests, eleven no-account stdio checks and the complete
+stdout regression. It calls all three native source markers and compiles/executes
+TinyCC code from its embedded runtime. Argon2 scalar/SIMD C builds pass the vector
+checks in pinned Emscripten 3.1.45. Preferred OpenPGP source rebuilt with the
+modified WASM passes real Argon2 crypto and bidirectional interoperability in a
+fixture compiled with the rebuilt native runtime. No native/WASM byte identity is
+claimed. These marked proof executables are not production replacements.
 
-The catalogued assets must accompany final binary releases. Local preservation
-or an installed catalog does not establish public source delivery. Complete P4's
-full application source handoff and inspect the reviewed materials in each actual
-shipping package at P6. The follow-up receipt records all limits and review results.
+The official helper was reprovisioned offline and retains its exact fingerprint.
+Actual Proton install-rule fixtures verify delivery and tamper checks for all
+twelve redistribution files; they do not establish final package acceptance.
+Publish all six assets beside final binaries, finish P4's full application source
+handoff and inspect each shipping package at P6. Current-helper live, resource
+and graphical acceptance remains required. No S3 operation was used in this work.
 
 ### P4 — Shipping pipeline and supported assets
 
@@ -262,16 +267,15 @@ remaining general release requirements in [release.md](release.md) and
 
 ## Issue closure and next work
 
-Issue #10 remains open for the concrete distribution/maintenance gates P3–P6. P1 is complete within the documented normal-use and controlled-response
+Issue #10 remains open for the concrete distribution/maintenance gates P4–P6. P1 is complete within the documented normal-use and controlled-response
 scope. Its body was reconciled on 2026-10-15 with the accepted product decision,
 these gate IDs and the source-specific evidence limits. It remains open. The
 existing recipient checkbox stays checked; its historical provenance remains issue-reported and the fresh P1 repeat is linked above; the
 stale “four groups” instruction was replaced. The historical requirements below
 the issue’s disclosure section were preserved verbatim.
 
-Next work is the remaining P3 native compiler/relink proof and P4 shipping/source
-integration, followed by the P5 update rehearsal and P6 acceptance on the resulting
-candidate. P1/P2 are complete only within their recorded workloads and fingerprints;
+Next work is P4 shipping/source integration, followed by the P5 update rehearsal
+and P6 acceptance on the resulting candidate. P1/P2 are complete only within their recorded workloads and fingerprints;
 the changed GPL-source helper still needs final functional/resource evidence.
-P3–P6 are not passed. The linked receipts preserve actual checks, failures,
+P3 notice/source/rebuild work is complete. P4–P6 are not passed. The linked receipts preserve actual checks, failures,
 controlled-only cases and limitations.

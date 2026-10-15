@@ -24,10 +24,15 @@ The manifest hashes all twelve delivery files. CMake rejects changed source,
 locks, notices or runtime copies and installs them together. This verifies
 install rules; actual shipping packages and source publication remain P4/P6.
 
-The [follow-up receipt](../../../docs/evidence/2026-10-15-proton-p3-materials.md)
-records exact helper reconstruction, offline source replay and modified OpenPGP
-proof. P3 still requires native Bun/JSC/TinyCC and Argon2 WASM compiler/relink
-proof. Material availability is distinct from a completed native rebuild.
+The [materials receipt](../../../docs/evidence/2026-10-15-proton-p3-materials.md)
+records the approved source choice and original prepared assets. The later
+[rebuild receipt](../../../docs/evidence/2026-10-15-proton-p3-rebuild.md) completes
+native Bun/JavaScriptCore/TinyCC modification/relink and Argon2 WASM compiler
+proof using disposable pinned toolchains. P3's notice/source/rebuild work is
+complete. The marked native proof binaries are not production replacements.
+The current catalog adds the corrected rebuild supplement and refreshed build
+controls; the original source packets stay unchanged. P4 source publication and
+P6 final-helper functional/resource/package acceptance remain required.
 
 Collect a fresh compiler-backed bundle into a new output directory:
 

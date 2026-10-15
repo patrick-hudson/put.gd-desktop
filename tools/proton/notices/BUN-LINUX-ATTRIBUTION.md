@@ -36,6 +36,20 @@ This is redistribution engineering evidence for the Proton helper's Bun runtime,
 
 The graph result is source-based and intentionally conservative. It establishes why seven of the eleven are outside the Linux production graph without claiming all remaining normal/build packages are linked. All eleven have usable upstream legal context in the preserved superset.
 
+## Pinned Rust standard-library source supplement
+
+The native rebuild additionally requires Rust nightly 2026-07-20's rust-src
+component. Its archive SHA256 is
+`d4ffe57cc99d8846761bdbefc631bfd8f06fc001d7208576887e381c5709341a`.
+The Bun notice aggregate appends 77 original legal files from that preferred
+source and its 30 vendored-package directories. These are source-file counts,
+not additional unique-text counts or an exact linked ELF inventory. The original
+23,143 mappings and 6,105 unique-text corpus remain preserved. The provenance
+JSON's `nativeRustSourceSupplement` records each additional path/hash, and the
+source/rebuild supplement supplies the entire pinned rust-src archive. The
+collection includes build/test/other-platform material; no holder or grant was
+invented.
+
 ## Reproduce and verify
 
 `replay_additional.py --output NEW_DIR` fetches only successful exact URLs recorded in the additional manifests and rejects changed content. It does not execute package code.
@@ -50,4 +64,4 @@ Run `collect_webkit_headers.py --git-dir WEBKIT_GIT` against the exact source bu
 
 The notice text collection gap is closed by a documented conservative source superset. The absent Bun-wide copyright-bearing form is a documented upstream packaging fact, not an independently inferred prohibition on redistribution: preserve upstream's MIT declaration and a standard MIT reference without manufacturing attribution.
 
-The exact linked ELF closure has not been reproduced, and no native Bun/WebKit relink build has passed here. Package assembly must include this notice text, corresponding-source/rebuild materials, and their integrity manifests under the selected distribution arrangement. The source-bundle preflight documents any compiler/toolchain blockers. Do not equate this corpus with a built-and-tested release package or a legal certification.
+The exact linked ELF notice closure has not been derived. A modified native Bun/JavaScriptCore/TinyCC source build and relink passes in the disposable route documented in `REBUILD.md` and the accompanying rebuild supplement. The rebuilt helper exercises the embedded modified runtime and actual TinyCC compilation. This source/relink proof does not claim byte identity with the official Bun executable, and the marked binaries are not the production candidate. Package assembly must include this notice text, corresponding-source/rebuild materials and integrity manifests. Public source delivery and actual shipping-package acceptance remain separate gates. This corpus is not a legal certification.

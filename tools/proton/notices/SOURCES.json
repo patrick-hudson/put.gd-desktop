@@ -19,21 +19,21 @@
     "bunOfflineSourceReplayVerified": true,
     "openpgpPreferredJsExactRebuildVerified": true,
     "openpgpModifiedCompiledRoundtripVerified": true,
-    "nativeBunRelinkVerified": false,
-    "argon2WasmRebuildVerified": false,
-    "finalPackageAcceptanceVerified": false
+    "nativeBunRelinkVerified": true,
+    "argon2WasmRebuildVerified": true,
+    "finalPackageAcceptanceVerified": false,
+    "nativeCompiledHelperSourceSelectionVerified": true,
+    "argon2ModifiedCompiledCryptoVerified": true
   },
   "openGates": [
-    "Native Bun/JSC/TinyCC modification and relink proof with the required compiler toolchain",
-    "Argon2 WASM preferred-source compiler proof with a pinned Emscripten version",
     "Corresponding-source publication beside final binaries (P4)",
     "Fresh final-helper functional, resource and actual package acceptance (P6)"
   ],
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
-      "bytes": 3200271,
-      "sha256": "f5888717ebeecec985005eb83333c60e0bcdf3a6344235819a8b285c66484162",
+      "bytes": 3223548,
+      "sha256": "0dd9bb6985606925b4cd71d85d23079c14b480f4f6c7d5df0d32fa8e89197fd6",
       "purpose": "Proton component sources, locks, provisioner, audit/tests, notices and CMake integration; SOURCES.json accompanies separately to avoid a hash cycle"
     },
     {
@@ -52,13 +52,28 @@
       "filename": "putgd-proton-openpgp-preferred-source.tar.gz",
       "bytes": 86740453,
       "sha256": "b980431b29868350e6b09cee3782db60cfaffe9ffba4b74d722e0b97984a621c",
-      "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source, prebundled preferred source/notices; WASM compiler proof pending"
+      "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source and prebundled preferred source/notices; use accompanying supplement for clean pinned compiler replay"
     },
     {
       "filename": "putgd-proton-bun-sources-1.4.2.tar",
       "bytes": 2352957440,
       "sha256": "754765f1f38e6e57e369806ac8e19b190a6eea812696848003bd40df9f06df27",
       "purpose": "Full pinned Bun/WebKit/native/Cargo/npm source/build inputs, patches and offline reconstruction; includes optional build-tool binaries, not a pure text-only source archive"
+    },
+    {
+      "filename": "putgd-proton-native-rebuild-supplement.tar.gz",
+      "bytes": 47345002,
+      "sha256": "a8ca1e3a313a40d55542470a01770cfd7037e221e3761156c18ee7723f7034fc",
+      "purpose": "Corrected native/Argon rebuild recipes, pinned disposable toolchains, Rust standard-library preferred source/notices, proof fixtures and optional published bootstrap Bun; supersedes original preflight and Argon replay commands"
     }
-  ]
+  ],
+  "rebuildToolchains": {
+    "nativeCpp": "LLVM 21.1.8",
+    "rustNightly": "2026-07-20",
+    "rustSource": "9f36de775bc636c8e88c31a173c2bcb6995956a0",
+    "cargoSource": "3efb1f477e99b42974b982d939fd100303cdf7db",
+    "profile": "release-local with local JSC and system ICU 74.2",
+    "emscriptenImage": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
+    "nativeOrWasmByteIdentityClaimed": false
+  }
 }

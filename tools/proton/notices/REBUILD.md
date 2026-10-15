@@ -36,19 +36,45 @@ into build-source/node_modules/openpgp/dist/node before rebuilding the helper.
 The date-banner patch does not change algorithms.
 
 The full Bun source packet contains Bun, complete pinned WebKit Git objects,
-TinyCC/native/Cargo/npm inputs, exact ICU source, patches, offline reconstruction
-and a native compiler preflight. Its REBUILD.md gives the modified-JSC release-local
-build route. Offline source reconstruction and native identity checks passed.
-Actual Bun/JSC/TinyCC compile/relink remains unverified: this host lacks LLVM 21.1
-and pinned Rust nightly 2026-07-20, and project instructions prohibit assembling a
-substitute toolchain. The wrapper never installs one. Source delivery and a helper
-rebuild do not prove native Bun relinking.
+TinyCC/native/Cargo/npm inputs, exact ICU source, patches and offline reconstruction.
+Use the accompanying putgd-proton-native-rebuild-supplement.tar.gz for the corrected
+native recipe. It supersedes the original packet's preflight and toolchain route;
+the original sealed sources remain unchanged. Its README.md gives the disposable
+image build, numeric-UID staging, once-only source modifications, offline native
+build and executable proof commands. No host compiler installation is needed.
 
-The OpenPGP packet also supplies complete Argon2 C/WASM preferred source,
-upstream build script, exact prebundled npm inputs and preferred source/notices
-for packages whose npm archives omit it. Argon2 WASM recompilation is unverified;
-the preserved upstream script uses an unpinned Emscripten container by default.
-Do not treat the successful JavaScript rebuild as a WASM compiler proof.
+The tested native route uses LLVM 21.1.8, Rust nightly 2026-07-20 including rust-src,
+local JavaScriptCore and system ICU 74.2 under upstream's release-local profile.
+Rustc and Cargo have separate exact source commits; the supplement pins both,
+the compiler component archives and the standard-library source lock. It supplies
+Rust's preferred standard-library source and its 30 offline vendored packages.
+The installed Bun notice aggregate includes their original legal texts as a
+labelled build/platform source superset.
+
+Modified Bun Rust, JavaScriptCore C++ and TinyCC C are compiled and linked. The
+resulting runtime calls all three source markers; it compiles and executes a
+synthetic C function with TinyCC. A helper rebuilt using the explicit native
+compile-executable-path passes the existing helper/stdio/stdout checks. The same
+compiled helper exposes the three markers and executes the TinyCC fixture in
+BUN_BE_BUN mode, establishing which runtime was embedded. Marked executables are
+proof artifacts only. The production helper still uses the official Bun binary.
+This verifies source modification/relinking, not native byte identity or package
+acceptance. Supporting distro package versions and actual toolchain identities
+are retained with the proof; the image recipe is not a hermetic distro snapshot.
+
+The OpenPGP packet supplies full Argon2 C/WASM preferred source and prebundled
+inputs/notices. The supplement's argon-replay-correction/ builds scalar and SIMD
+variants in digest-pinned Emscripten 3.1.45, clears dist/ first, invokes the
+upstream script with bash -e and requires both outputs. Use this corrected route:
+the old upstream shell command can retain stale scalar bytes after a failure.
+Both original and marker-modified C builds pass the existing vectors. Preferred
+OpenPGP source rebuilt with the modified WASM passes an actual Argon2 S2K crypto
+roundtrip and bidirectional interoperability, including a fixture compiled with
+the rebuilt native Bun. The instantiated WASM must expose the C source marker.
+The original published WASM compiler is unknown and the bytes differ; no original
+WASM byte-identity claim is made. The supplement includes the full source/replay
+instructions and portable fixtures; generated fixture libraries do not replace
+preferred source in the original packet.
 
 The build-controls packet contains put.gd's Proton helper sources, locks,
 provisioner, audit/tests, original MIT license and CMake integration. SOURCES.json
