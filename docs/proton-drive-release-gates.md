@@ -64,6 +64,11 @@ P3, P4 and P6. The same person may perform both roles. Before the first producti
 shipment advertising Proton, retain a dated pass/failure/blocker and exact source,
 runtime and package identity for each gate. No future upstream approval is needed.
 
+The user selected the official JavaScript helper for the production path on
+2026-10-15. The separate native trial remains unadopted; its committed branch and
+all three indexed evidence archives were verified and retained in the P3 record.
+No native trial code is part of this release candidate.
+
 ### P1 — Recovery and recipient evidence (complete within recorded scope)
 
 Exercise real expiry/refresh/revocation using an independently authenticated
@@ -143,6 +148,16 @@ Proton-only deployment/source boundaries earn the negative-control credit.
 Current packaged cross-desktop evidence remains P6.
 
 ### P3 — Redistribution and rebuild materials
+
+The [2026-10-15 P3 audit](evidence/2026-10-15-proton-p3-redistribution.md)
+reproduced the official JS helper exactly, classified compiler-retained packages,
+and preserved public source/notices/rebuild evidence. **P3 remains open**:
+crypto 2.0.0 declares ISC without a supplied notice in npm or its exact source tag,
+while a later upstream correction declares GPL; earlier-release terms remain
+unresolved. Bun native attribution/source/relink materials and full preferred-source
+rebuild proof also remain incomplete. Collected supersets and a working helper
+rebuild are not final redistribution approval. Final package inclusion is still
+required alongside P4/P6. No runtime, lock or shipping notice fingerprint changed.
 
 Finish the exact embedded dependency inventory, distinguishing bundled code from
 build-only/optional installed packages. Resolve the missing supplied license
