@@ -27,25 +27,64 @@ bool rawS3(const QString& text){
   space();if(i==text.size())return true;if(text[i]=='}'){++i;space();return i==text.size();}if(text[i++]!=',')return false;
  }
 }
+bool safeProfile(const QJsonValue& value){
+ if(!fields(value,{"id","label","provider","settings","credentials"}))return false;
+ const auto profile=value.toObject();const auto provider=profile["provider"].toString();
+ return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive"}.contains(provider)
+  &&scalars(profile["settings"],provider=="s3"?s3Keys:protonKeys)&&scalars(profile["credentials"],{"mode","reference"});
+}
 bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences"}))return false;
  const auto d=value.toObject();
  if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard"}))return false;
  for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut","publicationMode"}))return false;
  if(!d["profiles"].isArray()||d["profiles"].toArray().size()>32)return false;
- for(auto v:d["profiles"].toArray()){if(!fields(v,{"id","label","provider","settings","credentials"}))return false;auto profile=v.toObject();if(!profile["id"].isString()||!profile["label"].isString()||!QStringList{"s3","proton-drive"}.contains(profile["provider"].toString())||!scalars(profile["settings"],profile["provider"]=="s3"?s3Keys:protonKeys)||!scalars(profile["credentials"],{"mode","reference"}))return false;}
+ for(auto v:d["profiles"].toArray())if(!safeProfile(v))return false;
  if(!fields(d["archive"],{"root","keepUploads","folders"}))return false;
  const auto archive=d["archive"].toObject();if(!archive["root"].isString()||!archive["keepUploads"].isBool()||!scalars(archive["folders"],{"images","videos","text","other"}))return false;
  return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&scalars(d["preferences"],{"notifications","launchAtLogin","uploadClipboardBehavior"});
 }
-bool profileEditor(const QJsonValue& value){if(value.isNull())return true;if(!fields(value,{"id","label","credentialMode","reference","acl","addressing","s3","providerJson"}))return false;const auto o=value.toObject();for(const auto& k:QStringList{"id","label","credentialMode","reference","acl","addressing","providerJson"})if(!o[k].isString())return false;return scalars(o["s3"],s3Keys,true)&&rawS3(o["providerJson"].toString());}
+bool protonEditor(const QJsonValue& value){
+ if(!fields(value,{"accountRootUid","folders","folderIndex","share","expiration","timeout"}))return false;
+ const auto editor=value.toObject();const auto folders=editor["folders"];
+ if(!editor["accountRootUid"].isString()||!editor["share"].isBool()||!editor["expiration"].isString()||!editor["timeout"].isString()||!folders.isArray()||folders.toArray().size()>10000)return false;
+ const auto index=editor["folderIndex"].toDouble(-2);
+ if(index!=std::floor(index)||index<-1||index>=folders.toArray().size())return false;
+ for(const auto& folder:folders.toArray())if(!scalars(folder,{"uid","name","label"},true))return false;
+ return true;
+}
+bool profileEditor(const QJsonValue& value,bool includeProviders=true){
+ if(value.isNull())return true;
+ auto allowed=QStringList{"id","label","credentialMode","reference","acl","addressing","s3","providerJson","proton"};if(includeProviders)allowed.append("providers");
+ if(!fields(value,allowed))return false;
+ const auto editor=value.toObject();
+ for(const auto& key:QStringList{"id","label","credentialMode","reference","acl","addressing","providerJson"})if(!editor[key].isString())return false;
+ if(!scalars(editor["s3"],s3Keys,true)||!rawS3(editor["providerJson"].toString()))return false;
+ if(editor.contains("proton")&&!protonEditor(editor["proton"]))return false;
+ if(!editor.contains("providers"))return true;
+ if(!fields(editor["providers"],{"s3","proton-drive"}))return false;
+ const auto providers=editor["providers"].toObject();
+ for(auto it=providers.begin();it!=providers.end();++it){
+  if(!fields(it.value(),{"settings","credentials","editor"}))return false;
+  const auto retained=it.value().toObject();
+  if(!scalars(retained["settings"],it.key()=="s3"?s3Keys:protonKeys)||!scalars(retained["credentials"],{"mode","reference"})
+     ||!retained["editor"].isObject()||!profileEditor(retained["editor"],false))return false;
+ }
+ return true;
+}
+
 bool settingsState(const QJsonObject& s){
- if(!fields(s,{"draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","geometry","setupJobs"}))return false;
+ if(!fields(s,{"draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","geometry","setupJobs","provisionalProfile"}))return false;
  if(!safeDocument(s["draft"])||!scalars(s["numbers"],limitKeys+retentionKeys,true)||!geometry(s["geometry"]))return false;
  for(const auto& key:QStringList{"dirty","conflict","initialProfile","advanced"})if(!s[key].isBool())return false;
  for(const auto& key:QStringList{"baseRevision","observedRevision"})if(!s[key].isString())return false;
  if(!s["profileIndex"].isDouble()||!s["section"].isDouble()||!s["profileEditors"].isArray()||s["profileEditors"].toArray().size()>32)return false;
  for(auto v:s["profileEditors"].toArray())if(!profileEditor(v))return false;
+ if(s.contains("provisionalProfile")){
+  const auto provisional=s["provisionalProfile"];
+  if(!fields(provisional,{"profile","editor"}))return false;
+  if(!provisional.toObject().isEmpty()&&(!safeProfile(provisional.toObject()["profile"])||!profileEditor(provisional.toObject()["editor"])))return false;
+ }
  if(!s["setupJobs"].isArray())return false;
  for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
  return true;

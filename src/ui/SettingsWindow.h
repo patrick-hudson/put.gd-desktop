@@ -4,6 +4,7 @@
 #include "RetainedWindow.h"
 #include <QHash>
 #include <QJsonArray>
+#include <QVector>
 class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
 namespace putgd {
 class ShortcutEditor;
@@ -24,7 +25,14 @@ protected:
 private:
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
- void refresh();void refreshMetadata();void dirty();void save();void addS3Profile();void cancel();void resetDraft(bool reloadFile);QJsonObject candidate() const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile();void cancel();void resetDraft(bool reloadFile);QJsonObject candidate() const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void switchProvider();void importDevelopmentProfile();void parkInitialProfile();
+ QJsonObject retainedProfileEditor()const;bool hasRetainedDrafts()const;
+ void rememberCredentialInputs();void restoreCredentialInputs();void clearCurrentCredentialInputs();
+ struct CredentialInputs {QString access,secret,token,password;};
+ QVector<QHash<QString,CredentialInputs>> credentialDrafts_;
+ QHash<QString,CredentialInputs> provisionalCredentials_;
+ QJsonObject provisionalProfile_;
  UiSession& settings_;
  QJsonArray setupJobs_;QTimer* setupTimer_=nullptr;bool setupPollActive_=false,testAccepting_=false,saving_=false,resetting_=false;
  QJsonArray profileEditors_;int setupAccepting_=0;

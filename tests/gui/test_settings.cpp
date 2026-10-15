@@ -35,6 +35,240 @@ class SettingsGui:public QObject {
  Q_OBJECT
 
 private slots:
+ void externalAcceptancePreservesInactiveProviderDraftAfterSave() {
+  QTemporaryDir directory;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;
+  SettingsService service(directory.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));window.findChild<QDoubleSpinBox*>("protonRequestTimeout")->setValue(432.123);
+  provider->setCurrentIndex(provider->findData("s3"));window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("Settings saved"));
+  auto external=service.document();auto preferences=external["preferences"].toObject();preferences["notifications"]=!preferences["notifications"].toBool();external["preferences"]=preferences;QVERIFY(service.save(external,service.revision()));
+  QTRY_VERIFY(window.saveViewState()["conflict"].toBool());QVERIFY(!window.findChild<QPushButton*>("saveSettings")->isEnabled());provider->setCurrentIndex(provider->findData("proton-drive"));QCOMPARE(window.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),432.123);
+  window.findChild<QPushButton*>("reloadSettings")->click();QTRY_VERIFY(window.isEnabled());provider->setCurrentIndex(provider->findData("proton-drive"));QCOMPARE(window.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),120.0);
+ }
+ void visibleProviderSwitchingRetainsTypedValuesAndSaves() {
+  QTemporaryDir directory;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;
+  SettingsService service(directory.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});
+  auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto profile=profiles[0].toObject();auto values=profile["settings"].toObject();values["bucket"]="synthetic-saved";profile["settings"]=values;profiles[0]=profile;document["profiles"]=profiles;
+  QVERIFY(service.save(document,{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);window.show();window.findChild<QToolButton*>("advancedSettings")->setChecked(true);window.findChild<QListWidget*>("settingsNavigation")->setCurrentRow(1);
+  const auto witnessRoot=qEnvironmentVariable("PUTGD_SETTINGS_WITNESS");
+  auto witness=[&](const QString& step){
+   if(witnessRoot.isEmpty())return true;
+   QFile ready(witnessRoot+"/"+step+".ready");if(!ready.open(QIODevice::WriteOnly))return false;ready.write(step.toUtf8());ready.close();
+   QElapsedTimer timer;timer.start();while(!QFileInfo::exists(witnessRoot+"/"+step+".seen")&&timer.elapsed()<10000)QTest::qWait(25);
+   return QFileInfo::exists(witnessRoot+"/"+step+".seen");
+  };
+  auto* provider=window.findChild<QComboBox*>("storageProvider");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");QTRY_VERIFY(bucket->isVisible());QVERIFY(witness("01-saved-s3"));
+  bucket->setFocus();bucket->selectAll();QTest::keyClicks(bucket,"synthetic-edited-s3");
+  provider->setFocus();QTest::keyClick(provider,Qt::Key_Down);QCOMPARE(provider->currentData().toString(),QString("proton-drive"));QVERIFY(witness("02-proton"));
+  auto* timeout=window.findChild<QDoubleSpinBox*>("protonRequestTimeout");timeout->setValue(321.123);
+  provider->setFocus();QTest::keyClick(provider,Qt::Key_Up);QCOMPARE(bucket->text(),QString("synthetic-edited-s3"));QVERIFY(witness("03-restored-s3"));
+  provider->setFocus();QTest::keyClick(provider,Qt::Key_Down);QCOMPARE(timeout->value(),321.123);
+  provider->setFocus();QTest::keyClick(provider,Qt::Key_Up);bucket->setFocus();bucket->selectAll();QTest::keyClicks(bucket,"synthetic-last-visible");
+  auto* save=window.findChild<QPushButton*>("saveSettings");QTest::mouseClick(save,Qt::LeftButton);QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("Settings saved"));QVERIFY(witness("04-saved-visible"));
+  SettingsWindow reopened(fixture.session);window.hide();reopened.show();QCOMPARE(reopened.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-last-visible"));QVERIFY(witness("05-reopened-saved"));
+ }
+ void providerDraftsSurviveCheckpointAndSaveDisplayedEdits() {
+  QTemporaryDir directory;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;
+  SettingsService service(directory.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);
+  SettingsWindow window(fixture.session);const auto savedDocument=service.document();const auto revision=service.revision();
+  auto* provider=window.findChild<QComboBox*>("storageProvider");
+  window.findChild<QLineEdit*>("destinationLabel")->setText("Synthetic named destination");
+  window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-s3-draft");
+  window.findChild<QLineEdit*>("s3ConnectTimeoutMs")->setText("000bad");
+  window.findChild<QLineEdit*>("credentialReference")->setText("synthetic-s3-reference");
+  provider->setCurrentIndex(provider->findData("proton-drive"));
+  window.findChild<QDoubleSpinBox*>("protonRequestTimeout")->setValue(321.123);
+  auto* folders=window.findChild<QComboBox*>("protonFolder");
+  folders->addItem("Synthetic folder A","AAAAAAAAAAAAAAAAAAAAAA~BBBBBBBBBBBBBBBBBBBBBB");
+  folders->addItem("Synthetic folder B","AAAAAAAAAAAAAAAAAAAAAA~CCCCCCCCCCCCCCCCCCCCCC");
+  folders->setCurrentIndex(1);
+  window.findChild<QCheckBox*>("protonShareDefault")->setChecked(false);
+  const auto checkpoint=window.saveViewState();QVERIFY(!checkpoint.contains("stateError"));
+  QCOMPARE(service.document(),savedDocument);QCOMPARE(service.revision(),revision);
+  SettingsWindow restored(fixture.session);QVERIFY(restored.restoreViewState(checkpoint));
+  auto* restoredProvider=restored.findChild<QComboBox*>("storageProvider");
+  QCOMPARE(restored.findChild<QComboBox*>("protonFolder")->count(),3);
+  QCOMPARE(restored.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),321.123);
+  restoredProvider->setCurrentIndex(restoredProvider->findData("s3"));
+  QCOMPARE(restored.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-s3-draft"));
+  QCOMPARE(restored.findChild<QLineEdit*>("s3ConnectTimeoutMs")->text(),QString("000bad"));
+  QCOMPARE(restored.findChild<QLineEdit*>("credentialReference")->text(),QString("synthetic-s3-reference"));
+  QCOMPARE(restored.findChild<QLineEdit*>("destinationLabel")->text(),QString("Synthetic named destination"));
+  restored.findChild<QToolButton*>("advancedSettings")->setChecked(true);restored.show();
+  auto* bucket=restored.findChild<QLineEdit*>("s3Bucket");bucket->setFocus();bucket->selectAll();QTest::keyClicks(bucket,"synthetic-last-visible");
+  restored.findChild<QLineEdit*>("s3ConnectTimeoutMs")->setText("5001");
+  restored.findChild<QLineEdit*>("s3PublicUrlBase")->clear();
+  QTest::mouseClick(restored.findChild<QPushButton*>("saveSettings"),Qt::LeftButton);
+  QTRY_VERIFY(restored.findChild<QLabel*>("settingsStatus")->text().contains("Settings saved"));
+  const auto profile=service.document()["profiles"].toArray().first().toObject();
+  QCOMPARE(profile["provider"].toString(),QString("s3"));
+  QCOMPARE(profile["settings"].toObject()["bucket"].toString(),QString("synthetic-last-visible"));
+  QVERIFY(profile["settings"].toObject()["publicUrlBase"].isNull());
+  QVERIFY(!profile["settings"].toObject().contains("folderUid"));
+  restoredProvider->setCurrentIndex(restoredProvider->findData("proton-drive"));
+  QCOMPARE(restored.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),321.123);
+  QVERIFY(!restored.findChild<QCheckBox*>("protonShareDefault")->isChecked());
+  QCOMPARE(restored.findChild<QComboBox*>("protonFolder")->count(),3);
+  restoredProvider->setCurrentIndex(restoredProvider->findData("s3"));
+  SettingsWindow reopened(fixture.session);
+  QCOMPARE(reopened.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-last-visible"));
+ }
+ void credentialEntryStaysWithItsDestinationAndServiceUntilClose() {
+  QTemporaryDir directory;SettingsService service(directory.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  SettingsWindow window(fixture.session);auto* key=window.findChild<QLineEdit*>("credentialSecretKey");auto* password=window.findChild<QLineEdit*>("protonSharePassword");
+  key->setText("synthetic-entry-first");window.findChild<QPushButton*>("addS3Destination")->click();QVERIFY(key->text().isEmpty());
+  key->setText("synthetic-entry-second");auto* profiles=window.findChild<QComboBox*>("destinationProfile");profiles->setCurrentIndex(0);
+  QVERIFY(key->text()=="synthetic-entry-first");
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));
+  QVERIFY(key->text().isEmpty());password->setText("synthetic-entry-proton");
+  provider->setCurrentIndex(provider->findData("s3"));QVERIFY(key->text()=="synthetic-entry-first");QVERIFY(password->text().isEmpty());
+  provider->setCurrentIndex(provider->findData("proton-drive"));QVERIFY(password->text()=="synthetic-entry-proton");
+  const auto checkpoint=window.saveViewState();QVERIFY(!checkpoint.contains("stateError"));QVERIFY(!QJsonDocument(checkpoint).toJson().contains("synthetic-entry-"));
+  SettingsWindow recreated(fixture.session);QVERIFY(recreated.restoreViewState(checkpoint));QVERIFY(recreated.findChild<QLineEdit*>("protonSharePassword")->text().isEmpty());
+  window.close();profiles->setCurrentIndex(1);QVERIFY(key->text().isEmpty());profiles->setCurrentIndex(0);QVERIFY(password->text().isEmpty());
+  provider->setCurrentIndex(provider->findData("s3"));QVERIFY(key->text().isEmpty());
+ }
+ void provisionalDestinationSurvivesLocalSaveAndCheckpointUntilDiscard() {
+  QTemporaryDir directory;SettingsService service(directory.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  SettingsWindow window(fixture.session);window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-provisional");
+  window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-entry-provisional");
+  window.findChild<QPushButton*>("setupLocalSimple")->click();
+  QVERIFY(window.findChild<QLineEdit*>("credentialSecretKey")->text().isEmpty());
+  window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(!service.revision().isEmpty());
+  QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("Settings saved"));QVERIFY(service.document()["profiles"].toArray().isEmpty());
+  auto checkpoint=window.saveViewState();QVERIFY(!checkpoint.contains("stateError"));QVERIFY(!QJsonDocument(checkpoint).toJson().contains("synthetic-entry-"));
+  SettingsWindow recreated(fixture.session);QVERIFY(recreated.restoreViewState(checkpoint));recreated.findChild<QPushButton*>("addS3Destination")->click();
+  QCOMPARE(recreated.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-provisional"));QVERIFY(recreated.findChild<QLineEdit*>("credentialSecretKey")->text().isEmpty());
+  window.findChild<QPushButton*>("addS3Destination")->click();QVERIFY(window.findChild<QLineEdit*>("credentialSecretKey")->text()=="synthetic-entry-provisional");
+  recreated.findChild<QPushButton*>("reloadSettings")->click();QTRY_VERIFY(recreated.isEnabled());recreated.findChild<QPushButton*>("addS3Destination")->click();
+  QVERIFY(recreated.findChild<QLineEdit*>("s3Bucket")->text().isEmpty());
+ }
+ void draftIdentitySurvivesInvalidRenamesAndRemoval() {
+  QTemporaryDir directory;SettingsService service(directory.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  SettingsWindow window(fixture.session);auto* id=window.findChild<QLineEdit*>("destinationId");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");
+  id->clear();bucket->setText("synthetic-first");window.findChild<QPushButton*>("addS3Destination")->click();bucket->setText("synthetic-second");
+  auto* profiles=window.findChild<QComboBox*>("destinationProfile");const auto secondId=id->text();profiles->setCurrentIndex(0);QVERIFY(id->text().isEmpty());QCOMPARE(bucket->text(),QString("synthetic-first"));
+  id->setText(secondId);profiles->setCurrentIndex(1);QCOMPARE(bucket->text(),QString("synthetic-second"));
+  profiles->setCurrentIndex(0);auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));provider->setCurrentIndex(provider->findData("s3"));QCOMPARE(bucket->text(),QString("synthetic-first"));
+  profiles->setCurrentIndex(1);window.findChild<QPushButton*>("removeDestination")->click();QCOMPARE(bucket->text(),QString("synthetic-first"));
+  const auto checkpoint=window.saveViewState();SettingsWindow recreated(fixture.session);QVERIFY(recreated.restoreViewState(checkpoint));QCOMPARE(recreated.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-first"));
+ }
+ void checkpointRejectsSecretsInsideInactiveProviderAndProvisionalDrafts() {
+  QTemporaryDir directory;SettingsService service(directory.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  SettingsWindow window(fixture.session);auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));
+  const auto original=window.saveViewState();QVERIFY(!original.contains("stateError"));
+  auto state=original;auto editors=state["profileEditors"].toArray();auto editor=editors[0].toObject();auto providers=editor["providers"].toObject();auto s3=providers["s3"].toObject();auto values=s3["settings"].toObject();values["secretKey"]="synthetic-entry-injected";s3["settings"]=values;providers["s3"]=s3;editor["providers"]=providers;editors[0]=editor;state["profileEditors"]=editors;
+  const auto error=validateUiState({{"schemaVersion",1},{"settings",state}});QVERIFY(error);QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-entry-"));SettingsWindow recreated(fixture.session);QVERIFY(!recreated.restoreViewState(state));
+  window.findChild<QPushButton*>("setupLocalSimple")->click();state=window.saveViewState();QVERIFY(!state.contains("stateError"));auto provisional=state["provisionalProfile"].toObject();auto profile=provisional["profile"].toObject();auto credentials=profile["credentials"].toObject();credentials["secretKey"]="synthetic-entry-injected";profile["credentials"]=credentials;provisional["profile"]=profile;state["provisionalProfile"]=provisional;QVERIFY(validateUiState({{"schemaVersion",1},{"settings",state}}));
+ }
+ void selectingSavedDestinationIsNavigation() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);SettingsService service(d.filePath("config.json"),[&](auto,auto values){return s3.validateSettings(values);});auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto second=profiles[0].toObject();second["id"]="synthetic-second";profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  QVERIFY(!window.saveViewState()["dirty"].toBool());window.findChild<QComboBox*>("destinationProfile")->setCurrentIndex(1);QVERIFY2(!window.saveViewState()["dirty"].toBool(),"Selecting a saved destination should not make unchanged configuration dirty");
+ }
+ void importReplacesTargetWithoutStaleEditor() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);SettingsService service(d.filePath("config.json"),[&](auto,auto values){return s3.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  const auto importedBucket=service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["bucket"].toString();window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-old-draft");window.findChild<QPushButton*>("addS3Destination")->click();window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-unrelated");window.findChild<QPushButton*>("importDevelopmentS3")->click();QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),importedBucket);
+  window.findChild<QComboBox*>("destinationProfile")->setCurrentIndex(1);QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-unrelated"));
+ }
+ void serviceRoundTripRetainsCredentialReference() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* reference=window.findChild<QLineEdit*>("credentialReference");reference->setText("synthetic-edited-reference");auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));provider->setCurrentIndex(provider->findData("s3"));QVERIFY2(reference->text()=="synthetic-edited-reference","Provider switching must retain each provider's credential reference");
+  window.findChild<QPushButton*>("saveSettings")->click();QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("Settings saved"));
+  QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["credentials"].toObject()["reference"].toString(),QString("synthetic-edited-reference"));
+  SettingsWindow reopened(fixture.session);QCOMPARE(reopened.findChild<QLineEdit*>("credentialReference")->text(),QString("synthetic-edited-reference"));
+ }
+ void storingCredentialsClearsOnlyCurrentDestinationInputs() {
+  QTemporaryDir directory;CredentialStore secrets;S3Provider s3(secrets);SettingsService service(directory.filePath("config.json"),[&](auto,auto values){return s3.validateSettings(values);});
+  auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto first=profiles[0].toObject();first["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=first;auto second=first;second["id"]="synthetic-second";second["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles.append(second);document["profiles"]=profiles;QVERIFY(service.save(document,{}));
+  UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);auto* destinations=window.findChild<QComboBox*>("destinationProfile");auto* access=window.findChild<QLineEdit*>("credentialAccessKey");auto* secret=window.findChild<QLineEdit*>("credentialSecretKey");
+  access->setText("synthetic-first-access");secret->setText("synthetic-first-secret");destinations->setCurrentIndex(1);secret->setText("synthetic-second-secret");destinations->setCurrentIndex(0);
+  window.findChild<QPushButton*>("storeCredentials")->click();QTRY_VERIFY(secrets.cached(first["id"].toString(),first["credentials"].toObject()));QVERIFY(access->text().isEmpty());QVERIFY(secret->text().isEmpty());
+  destinations->setCurrentIndex(1);QVERIFY(secret->text()=="synthetic-second-secret");destinations->setCurrentIndex(0);QVERIFY(secret->text().isEmpty());
+ }
+ void protonDestinationDrafts() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));auto* timeout=window.findChild<QDoubleSpinBox*>("protonRequestTimeout");timeout->setValue(321.123);auto* share=window.findChild<QCheckBox*>("protonShareDefault");share->setChecked(false);auto* folders=window.findChild<QComboBox*>("protonFolder");folders->addItem("Synthetic folder","AAAAAAAAAAAAAAAAAAAAAA~CCCCCCCCCCCCCCCCCCCCCC");folders->setCurrentIndex(folders->count()-1);
+  window.findChild<QPushButton*>("addS3Destination")->click();provider->setCurrentIndex(provider->findData("proton-drive"));timeout->setValue(654.321);window.findChild<QComboBox*>("destinationProfile")->setCurrentIndex(0);
+  QCOMPARE(timeout->value(),321.123);QVERIFY(!share->isChecked());QCOMPARE(folders->currentData().toString(),QString("AAAAAAAAAAAAAAAAAAAAAA~CCCCCCCCCCCCCCCCCCCCCC"));
+  window.findChild<QComboBox*>("destinationProfile")->setCurrentIndex(1);QCOMPARE(timeout->value(),654.321);
+ }
+ void otherSelectorsPreserveRawFields() {
+  QTemporaryDir d;CredentialStore secrets;SettingsService service(d.filePath("config.json"));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  window.findChild<QLineEdit*>("s3Endpoint")->setText("https://synthetic.example.invalid");window.findChild<QLineEdit*>("s3ConnectTimeoutMs")->setText("000bad");window.findChild<QLineEdit*>("fileTemplate")->setText("Synthetic-{uuid}.{ext}");
+  QHash<QLineEdit*,QString> before;for(auto* field:window.findChildren<QLineEdit*>())if(!field->objectName().isEmpty())before[field]=field->text();
+  for(const auto& name:QStringList{"uploadClipboardBehavior","namingMode","collisionPolicy","s3RegionChoices","s3AclMode","s3Addressing","credentialMode","publicationRegion","publicationWindow","publicationDesktop","publicationClipboard"}){
+   auto* combo=window.findChild<QComboBox*>(name);QVERIFY(combo);const auto index=combo->currentIndex();const auto original=combo->currentText();combo->setCurrentIndex((index+1)%combo->count());combo->setCurrentIndex(index);if(combo->isEditable())combo->setEditText(original);
+  }
+  for(auto* field:window.findChildren<QLineEdit*>())if(before.contains(field))QCOMPARE(field->text(),before[field]);
+ }
+ void reloadRestoresSavedProviderValues() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  const auto savedBucket=window.findChild<QLineEdit*>("s3Bucket")->text();window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-unsaved");auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));provider->setCurrentIndex(provider->findData("s3"));window.findChild<QPushButton*>("reloadSettings")->click();
+  QTRY_VERIFY(window.isEnabled());QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),savedBucket);QVERIFY(!window.saveViewState()["dirty"].toBool());
+ }
+ void serviceSavedValues() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});auto doc=Settings::developmentTemplate();
+  auto profiles=doc["profiles"].toArray();auto p=profiles[0].toObject();p["label"]="Synthetic saved S3";auto values=p["settings"].toObject();values["bucket"]="synthetic-saved-bucket";values["objectPrefix"]="synthetic-prefix/";p["settings"]=values;profiles[0]=p;doc["profiles"]=profiles;
+  QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);const auto revision=service.revision();
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("proton-drive"));provider->setCurrentIndex(provider->findData("s3"));
+  QCOMPARE(service.document(),doc);QCOMPARE(service.revision(),revision);
+  QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-saved-bucket"));
+  QCOMPARE(window.findChild<QLineEdit*>("s3ObjectPrefix")->text(),QString("synthetic-prefix/"));
+  QCOMPARE(window.findChild<QLineEdit*>("destinationLabel")->text(),QString("Synthetic saved S3"));
+ }
+ void serviceEditedValues() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("synthetic-edited-bucket");auto* provider=window.findChild<QComboBox*>("storageProvider");
+  provider->setCurrentIndex(provider->findData("proton-drive"));window.findChild<QDoubleSpinBox*>("protonRequestTimeout")->setValue(321.123);provider->setCurrentIndex(provider->findData("s3"));
+  QCOMPARE(bucket->text(),QString("synthetic-edited-bucket"));provider->setCurrentIndex(provider->findData("proton-drive"));QCOMPARE(window.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),321.123);
+ }
+ void protonServiceRoundTrip() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});auto doc=Settings::developmentTemplate();auto p=doc["profiles"].toArray()[0].toObject();p["provider"]="proton-drive";auto values=ProtonProvider::defaults();values["accountRootUid"]="AAAAAAAAAAAAAAAAAAAAAA~BBBBBBBBBBBBBBBBBBBBBB";values["folderUid"]="AAAAAAAAAAAAAAAAAAAAAA~CCCCCCCCCCCCCCCCCCCCCC";values["folderName"]="Synthetic folder";values["requestTimeoutMs"]=321123;p["settings"]=values;doc["profiles"]=QJsonArray{p};const auto setup=service.save(doc,{});QVERIFY2(setup,qPrintable(setup.error.code+": "+setup.error.message));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("s3"));provider->setCurrentIndex(provider->findData("proton-drive"));
+  QCOMPARE(window.findChild<QComboBox*>("protonFolder")->currentData().toString(),QString("AAAAAAAAAAAAAAAAAAAAAA~CCCCCCCCCCCCCCCCCCCCCC"));QCOMPARE(window.findChild<QDoubleSpinBox*>("protonRequestTimeout")->value(),321.123);
+ }
+ void independentDestinationDrafts() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("synthetic-first");window.findChild<QLineEdit*>("s3ConnectTimeoutMs")->setText("000bad");window.findChild<QPushButton*>("addS3Destination")->click();bucket->setText("synthetic-second");auto* profiles=window.findChild<QComboBox*>("destinationProfile");
+  for(int i=0;i<3;++i){profiles->setCurrentIndex(0);QCOMPARE(bucket->text(),QString("synthetic-first"));QCOMPARE(window.findChild<QLineEdit*>("s3ConnectTimeoutMs")->text(),QString("000bad"));profiles->setCurrentIndex(1);QCOMPARE(bucket->text(),QString("synthetic-second"));}
+  window.findChild<QPushButton*>("removeDestination")->click();QCOMPARE(bucket->text(),QString("synthetic-first"));QCOMPARE(service.document()["profiles"].toArray().size(),1);
+ }
+ void credentialModeAcrossDestination() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* reference=window.findChild<QLineEdit*>("credentialReference");auto* mode=window.findChild<QComboBox*>("credentialMode");reference->setText("synthetic-edited-reference");mode->setCurrentText("session");mode->setCurrentText("keychain");QCOMPARE(reference->text(),QString("synthetic-edited-reference"));
+  mode->setCurrentText("session");window.findChild<QPushButton*>("addS3Destination")->click();reference->setText("synthetic-second-reference");window.findChild<QComboBox*>("destinationProfile")->setCurrentIndex(0);QCOMPARE(mode->currentText(),QString("session"));mode->setCurrentText("keychain");QCOMPARE(reference->text(),QString("synthetic-edited-reference"));
+ }
+ void navigationAndConditionalControls() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  window.findChild<QToolButton*>("advancedSettings")->setChecked(true);window.findChild<QLineEdit*>("fileTemplate")->setText("Synthetic-{uuid}.{ext}");window.findChild<QLineEdit*>("folderImages")->setText(d.filePath("edited"));window.findChild<QLineEdit*>("shortcutRegion")->setText("Ctrl+1");
+  for(const auto& name:Settings::actionNames()){auto title=name.left(1).toUpper()+name.mid(1);auto* destination=window.findChild<QComboBox*>("destination"+title);const auto id=window.findChild<QComboBox*>("profile"+title)->currentData();destination->setCurrentText("local");destination->setCurrentText("upload");QCOMPARE(window.findChild<QComboBox*>("profile"+title)->currentData(),id);}
+  auto* naming=window.findChild<QComboBox*>("namingMode");for(const auto& mode:QStringList{"template","generated","original","template"})naming->setCurrentIndex(naming->findData(mode));
+  for(int i=0;i<4;++i)window.findChild<QListWidget*>("settingsNavigation")->setCurrentRow(i);
+  window.findChild<QToolButton*>("advancedSettings")->setChecked(false);window.findChild<QToolButton*>("advancedSettings")->setChecked(true);
+  QCOMPARE(window.findChild<QLineEdit*>("fileTemplate")->text(),QString("Synthetic-{uuid}.{ext}"));QCOMPARE(window.findChild<QLineEdit*>("folderImages")->text(),d.filePath("edited"));QCOMPARE(window.findChild<QLineEdit*>("shortcutRegion")->text(),QString("Ctrl+1"));
+ }
+ void saveLatestDisplayedValues() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("synthetic-first");window.findChild<QPushButton*>("addS3Destination")->click();bucket->setText("synthetic-second");window.findChild<QComboBox*>("destinationProfile")->setCurrentIndex(0);bucket->setText("synthetic-last-visible");window.findChild<QPushButton*>("saveSettings")->click();
+  QTRY_VERIFY(window.findChild<QPushButton*>("saveSettings")->isEnabled());QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["bucket"].toString(),QString("synthetic-last-visible"));QCOMPARE(service.document()["profiles"].toArray()[1].toObject()["settings"].toObject()["bucket"].toString(),QString("synthetic-second"));
+  SettingsWindow reopened(fixture.session);QCOMPARE(reopened.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-last-visible"));
+ }
+ void saveIntentionalClearing() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  window.findChild<QLineEdit*>("s3PublicUrlBase")->setText("https://synthetic.example.invalid");window.findChild<QPushButton*>("addS3Destination")->click();window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-second");window.findChild<QComboBox*>("destinationProfile")->setCurrentIndex(0);window.findChild<QLineEdit*>("s3PublicUrlBase")->clear();window.findChild<QPushButton*>("saveSettings")->click();
+  QTRY_VERIFY(window.findChild<QPushButton*>("saveSettings")->isEnabled());QVERIFY(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["publicUrlBase"].isNull());SettingsWindow reopened(fixture.session);QVERIFY(reopened.findChild<QLineEdit*>("s3PublicUrlBase")->text().isEmpty());
+ }
+ void credentialInputsStayWithDestination() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});QVERIFY(service.save(Settings::developmentTemplate(),{}));UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-input-only");window.findChild<QPushButton*>("addS3Destination")->click();
+  QVERIFY2(window.findChild<QLineEdit*>("credentialSecretKey")->text().isEmpty(),"Credential input from destination A must not appear as input for destination B");
+ }
+ void firstLaunchLocalPreservesDestination() {
+  QTemporaryDir d;CredentialStore secrets;S3Provider s3(secrets);ProtonProvider proton;SettingsService service(d.filePath("config.json"),[&](auto id,auto values){return id=="s3"?s3.validateSettings(values):proton.validateSettings(values);});UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
+  window.findChild<QLineEdit*>("s3Bucket")->setText("synthetic-first-launch");window.findChild<QPushButton*>("setupLocalSimple")->click();window.findChild<QPushButton*>("addS3Destination")->click();
+  QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),QString("synthetic-first-launch"));
+ }
  void uploadClipboardChoiceSavesAndSurvivesViewState() {
   QTemporaryDir d;SettingsService service(d.filePath("config.json"));QVERIFY(service.save(configuration(d.path(),true),{}));CredentialStore secrets;
   UiSessionFixture fixture(service,secrets);SettingsWindow window(fixture.session);
