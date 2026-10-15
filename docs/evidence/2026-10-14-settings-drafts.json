@@ -1,0 +1,275 @@
+{
+  "source": {
+    "commit": "337773f4d5cef719b3f54d59bdb336ba3121f453",
+    "tree": "c77953d1ba0639b7e7c32ea75fd9dbd323ca2339",
+    "count": 183,
+    "archiveSha256": "7f2c99f27570e658c8cce12d67f6a60044b1ca3e7e6559b5522c9c1edc99ab8c",
+    "trackedFiles": 6119
+  },
+  "cinnamonFunctional": {
+    "passed": true,
+    "source": "337773f4d5cef719b3f54d59bdb336ba3121f453",
+    "nativeCases": [
+      {
+        "testId": "14abde041a22432480ea734349b60fe4",
+        "scenario": "clipboard-files-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "e06520b84f6c4d459f85c8d6ca36fdff",
+        "scenario": "clipboard-image-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "72d3c25e956a4f18b155f23631f3c399",
+        "scenario": "clipboard-text-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "d5f391c9a5e84f2c8ad0a81127d33ee2",
+        "scenario": "desktop-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "f885c9b2dc524974bb03568af975d53d",
+        "scenario": "region-cancel-escape-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "d69e0829acbd48ed84faa5752df30bf9",
+        "scenario": "region-cancel-right-click-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "d9d6d9f38d934421a471dd2712d3cf73",
+        "scenario": "region-cancel-zero-area-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "7c08e9d8a8424b27a682e3cfd150f357",
+        "scenario": "region-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "efd35860055d4d3b9d917196af520a47",
+        "scenario": "window-independent-paste",
+        "client": "qt",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "3becf1f100d447908b459dd49063a3ea",
+        "scenario": "clipboard-files-independent-paste",
+        "client": "gtk",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "8b014e30f7e74656a0872dff00e97316",
+        "scenario": "clipboard-image-independent-paste",
+        "client": "gtk",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      },
+      {
+        "testId": "ed4fad973f6c4911816011a8d7b3e43c",
+        "scenario": "clipboard-text-independent-paste",
+        "client": "gtk",
+        "ok": true,
+        "resident": {
+          "pid": 2522,
+          "startTicks": 17839,
+          "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+        }
+      }
+    ],
+    "views": 6,
+    "issueRegressions": 24,
+    "witnessSteps": 5,
+    "resident": {
+      "pid": 2522,
+      "startTicks": 17839,
+      "sha256": "459168ec24452cd473435abe79a9c216e60258ccf93f9c10293e409491aa59ab"
+    }
+  },
+  "cinnamonMemory": {
+    "passed": true,
+    "scope": "two serial 300-second post-use guest resident observations; not physical acceptance or empty-view workload",
+    "windows": [
+      {
+        "passed": true,
+        "peakMiB": 29.421875,
+        "peakPssMiB": 19.3447265625,
+        "durationSeconds": 300.000282167,
+        "samples": 61,
+        "zeroSwap": true,
+        "noHelpers": true,
+        "cpuPercentOneCore": 0.0033333301981473933
+      },
+      {
+        "passed": true,
+        "peakMiB": 29.421875,
+        "peakPssMiB": 19.3447265625,
+        "durationSeconds": 300.00012777200004,
+        "samples": 61,
+        "zeroSwap": true,
+        "noHelpers": true,
+        "cpuPercentOneCore": 0.006666663827290098
+      }
+    ]
+  },
+  "kdeBuild": {
+    "source": {
+      "commit": "337773f4d5cef719b3f54d59bdb336ba3121f453",
+      "tree": "c77953d1ba0639b7e7c32ea75fd9dbd323ca2339",
+      "count": 183,
+      "archiveSha256": "7f2c99f27570e658c8cce12d67f6a60044b1ca3e7e6559b5522c9c1edc99ab8c",
+      "trackedFiles": 6119
+    },
+    "build": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.183+g337773f4d5ce",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.183+g337773f4d5ce",
+      "gitCommit": "337773f4d5cef719b3f54d59bdb336ba3121f453",
+      "gitTree": "c77953d1ba0639b7e7c32ea75fd9dbd323ca2339",
+      "commitCount": 183,
+      "dirty": null,
+      "sourceProvenance": "supplied"
+    },
+    "devTests": {
+      "name": "(empty)",
+      "tests": "59",
+      "failures": "0",
+      "disabled": "0",
+      "skipped": "0",
+      "hostname": "",
+      "time": "243",
+      "timestamp": "2026-10-14T20:57:38"
+    },
+    "binaries": {
+      "putgd": "70b0e5a23920a2e493c6b3d2ec3152e79752ae5a961e61fd699efb8b224db623",
+      "putgd-ui": "f0f909fc2686e94cff0b286604cba75d6bc7a82b1f997d7da8476b341a4bc3e4",
+      "putgd-cli": "31e0d6c7f8859ea82239b44bb05ae0dc306a3d85081673c171c3d71539492336",
+      "libputgd-s3.so": "67dbe768dd237920110f438c1ec73e86c5df9b546ba2c1c9cb251b3d15af0571",
+      "putgd-capture": "40c3ee7b9183ca24e1751f316d1dd15de5c608b211d03e045688f4bece47e904",
+      "putgd-s3-worker": "821dde235b1535663d147523b2ce29904a113a032ae07d9df0ac92ce4a1c2e01",
+      "putgd-kde-region": "2350f5976b3c930be0f06483bec163ec6c0e02d0fcf0bd2c1002f98efb8bc2bf"
+    },
+    "package": "putgd_0.1.1~dev.183+g337773f4d5ce_amd64.deb",
+    "packageSha256": "8525f4a3ddf36896f07a7af6fde298cb623c59768e1e695a7eba424b183ac01b",
+    "sourceFilesVerified": 6119,
+    "Qt": "6.10.2"
+  },
+  "gnomeBuild": {
+    "source": {
+      "commit": "337773f4d5cef719b3f54d59bdb336ba3121f453",
+      "tree": "c77953d1ba0639b7e7c32ea75fd9dbd323ca2339",
+      "count": 183,
+      "archiveSha256": "7f2c99f27570e658c8cce12d67f6a60044b1ca3e7e6559b5522c9c1edc99ab8c",
+      "trackedFiles": 6119
+    },
+    "build": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.183+g337773f4d5ce",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.183+g337773f4d5ce",
+      "gitCommit": "337773f4d5cef719b3f54d59bdb336ba3121f453",
+      "gitTree": "c77953d1ba0639b7e7c32ea75fd9dbd323ca2339",
+      "commitCount": 183,
+      "dirty": null,
+      "sourceProvenance": "supplied"
+    },
+    "devTests": {
+      "name": "(empty)",
+      "tests": "60",
+      "failures": "0",
+      "disabled": "0",
+      "skipped": "0",
+      "hostname": "",
+      "time": "237",
+      "timestamp": "2026-10-14T21:01:06"
+    },
+    "binaries": {
+      "putgd": "6148fcc122bc78028d1d446dfd6f50c0f12e852e294f4a2839090d1efaf7ba1d",
+      "putgd-ui": "f0f909fc2686e94cff0b286604cba75d6bc7a82b1f997d7da8476b341a4bc3e4",
+      "putgd-cli": "31e0d6c7f8859ea82239b44bb05ae0dc306a3d85081673c171c3d71539492336",
+      "libputgd-s3.so": "67dbe768dd237920110f438c1ec73e86c5df9b546ba2c1c9cb251b3d15af0571",
+      "putgd-capture": "40c3ee7b9183ca24e1751f316d1dd15de5c608b211d03e045688f4bece47e904",
+      "putgd-s3-worker": "821dde235b1535663d147523b2ce29904a113a032ae07d9df0ac92ce4a1c2e01",
+      "putgd-kde-region": "0dba05834fff4948380d974d5fb4eb41bff0c35f69e1515fdba3d27eacb39271"
+    },
+    "package": "putgd_0.1.1~dev.183+g337773f4d5ce_amd64.deb",
+    "packageSha256": "ff28af79794c545265937eb6ca23840fe42bddb539e58ced61c0a00b38a5ca66",
+    "sourceFilesVerified": 6119,
+    "Qt": "6.10.2"
+  },
+  "hostOperationsTmpfs": {
+    "exit": 0,
+    "filesystem": "tmpfs",
+    "tempRoot": "/dev/shm/i37o",
+    "timeoutSeconds": 60,
+    "assertionsUnchanged": true,
+    "purpose": "Discriminate host disk I/O stalls from a functional regression; native installed-app tests retain real VM disk storage."
+  }
+}

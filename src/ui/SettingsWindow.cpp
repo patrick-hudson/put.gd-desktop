@@ -165,7 +165,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* clearPassword=new QPushButton("Use no link password",this);clearPassword->setObjectName("clearProtonPassword");protonForm->addRow(clearPassword);
  connect(clearPassword,&QPushButton::clicked,this,[this]{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;auto p=profiles[profileIndex_].toObject();auto s=p["settings"].toObject();s["sharePasswordReference"]=QJsonValue::Null;p["settings"]=s;profiles[profileIndex_]=p;draft_["profiles"]=profiles;protonPassword_->clear();dirty();});
  connect(protonFolder_,&QComboBox::currentIndexChanged,this,&SettingsWindow::dirty);connect(protonShare_,&QCheckBox::toggled,this,&SettingsWindow::dirty);connect(protonExpiration_,&QSpinBox::valueChanged,this,&SettingsWindow::dirty);connect(protonTimeout_,&QDoubleSpinBox::valueChanged,this,&SettingsWindow::dirty);
- connect(providerType_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;auto p=profiles[profileIndex_].toObject();p["provider"]=providerType_->currentData().toString();p["settings"]=p["provider"]=="proton-drive"?ProtonProvider::defaults():s3Profile(p["id"].toString())["settings"].toObject();p["label"]=p["provider"]=="proton-drive"?"Proton Drive":"S3 destination";if(p["provider"]=="proton-drive")p["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/"+QUuid::createUuid().toString(QUuid::Id128)}};profiles[profileIndex_]=p;draft_["profiles"]=profiles;if(profileIndex_<profileEditors_.size())profileEditors_[profileIndex_]=QJsonValue::Null;loadProfile();dirty();});
+ connect(providerType_,&QComboBox::currentIndexChanged,this,&SettingsWindow::switchProvider);
  page("Shortcuts","shortcuts");
  auto* shortcutPage=section("Global shortcuts","");shortcuts_=new ShortcutEditor(this);shortcutPage->addRow(shortcuts_);
  shortcuts_->setRecordingControl([session=&settings_,editor=shortcuts_](bool active,std::function<void(Error)> reply){session->setShortcutRecording(active,editor,std::move(reply));});
@@ -227,19 +227,19 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(cancelButton,&QPushButton::clicked,this,&SettingsWindow::cancel);connect(save_,&QPushButton::clicked,this,&SettingsWindow::save);connect(reload,&QPushButton::clicked,this,[this]{resetDraft(true);});
  connect(&settings_,&UiSession::accepted,this,[this]{configurationChanged();});connect(&settings_,&UiSession::statusChanged,this,[this]{configurationChanged();refreshDiagnostics();});
  connect(simpleLocal,&QPushButton::clicked,local,&QPushButton::click);
- connect(local,&QPushButton::clicked,this,[this]{for(auto* c:destinations_)c->setCurrentText("local");if(initialProfile_){draft_["profiles"]=QJsonArray{};profileEditors_={};initialProfile_=false;rebuildProfiles(-1);access_->clear();secret_->clear();token_->clear();}dirty();VisualStyle::feedback(status_,"Local output selected. Save settings to apply.");});
- connect(dev,&QPushButton::clicked,this,[this]{if(initialProfile_&&s3_["bucket"]->text().isEmpty()){draft_["profiles"]=QJsonArray{};profileEditors_={};profileIndex_=-1;for(auto* combo:actionProfiles_)combo->setCurrentIndex(0);}else storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();auto development=Settings::developmentTemplate()["profiles"].toArray().first();int index=-1;for(int i=0;i<profiles.size();++i)if(profiles[i].toObject()["id"]=="development-s3")index=i;if(index<0){index=profiles.size();profiles.append(development);}draft_["profiles"]=profiles;initialProfile_=false;rebuildProfiles(index,"development-s3");dirty();});
+ connect(local,&QPushButton::clicked,this,[this]{for(auto* c:destinations_)c->setCurrentText("local");if(initialProfile_)parkInitialProfile();dirty();VisualStyle::feedback(status_,"Local output selected. Save settings to apply.");});
+ connect(dev,&QPushButton::clicked,this,&SettingsWindow::importDevelopmentProfile);
  connect(add,&QPushButton::clicked,this,&SettingsWindow::addS3Profile);
- connect(remove,&QPushButton::clicked,this,[this]{storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;profiles.removeAt(index);if(index<profileEditors_.size())profileEditors_.removeAt(index);draft_["profiles"]=profiles;rebuildProfiles(qMin(index,int(profiles.size())-1));dirty();VisualStyle::feedback(status_,"Destination removed from draft. Reassign affected actions before saving. History and remote objects remain.");});
+ connect(remove,&QPushButton::clicked,this,[this]{storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();const int index=profile_->currentIndex();if(index<0||index>=profiles.size())return;profiles.removeAt(index);if(index<profileEditors_.size())profileEditors_.removeAt(index);if(index<credentialDrafts_.size())credentialDrafts_.removeAt(index);draft_["profiles"]=profiles;rebuildProfiles(qMin(index,int(profiles.size())-1));dirty();VisualStyle::feedback(status_,"Destination removed from draft. Reassign affected actions before saving. History and remote objects remain.");});
  connect(s3_["region"],&QLineEdit::textChanged,this,[this](const QString& region){if(loading_)return;auto* endpoint=s3_["endpoint"];const auto previous=s3_["region"]->property("previousRegion").toString();if(endpoint->text()=="https://s3."+previous+".amazonaws.com")endpoint->setText("https://s3."+region+".amazonaws.com");s3_["region"]->setProperty("previousRegion",region);});
- connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(!loading_)storeProfile();loadProfile();});
+ connect(profile_,&QComboBox::currentIndexChanged,this,[this]{if(loading_)return;storeProfile();loadProfile();emit viewStateChanged();});
  for(auto* e:findChildren<QLineEdit*>()) {
   if(e!=access_&&e!=secret_&&e!=token_&&e!=protonPassword_)connect(e,&QLineEdit::textChanged,this,[this]{dirty();});
  }
- for(auto* c:findChildren<QComboBox*>())connect(c,&QComboBox::currentIndexChanged,this,[this]{dirty();});
+ for(auto* c:findChildren<QComboBox*>())if(c!=profile_)connect(c,&QComboBox::currentIndexChanged,this,[this]{dirty();});
  for(auto* c:findChildren<QCheckBox*>())connect(c,&QCheckBox::toggled,this,[this]{dirty();});
  connect(providerJson_,&QPlainTextEdit::textChanged,this,[this]{dirty();});
- connect(credentials,&QPushButton::clicked,this,[this]{QJsonObject input{{"accessKey",access_->text()},{"secretKey",secret_->text()},{"sessionToken",token_->text()}};clearCredentialInputs();beginSetup("storeCredentials",input);});
+ connect(credentials,&QPushButton::clicked,this,[this]{QJsonObject input{{"accessKey",access_->text()},{"secretKey",secret_->text()},{"sessionToken",token_->text()}};clearCurrentCredentialInputs();beginSetup("storeCredentials",input);});
  connect(unlock,&QPushButton::clicked,this,[this]{beginSetup("unlockCredentials");});
  connect(test,&QPushButton::clicked,this,[this]{beginSetup("testDestination");});
  setupTimer_=new QTimer(this);setupTimer_->setInterval(500);connect(setupTimer_,&QTimer::timeout,this,&SettingsWindow::pollSetup);
@@ -253,8 +253,9 @@ void SettingsWindow::status(const Error& e){
  VisualStyle::feedback(status_,e?e.code+": "+e.message+" "+e.details["path"].toString():"Done.",bool(e));
 }
 void SettingsWindow::refreshDiagnostics(){auto data=settings_.diagnostics();quit_->setVisible(data["trayAvailable"].isBool()&&!data["trayAvailable"].toBool());capabilities_->setText(QString::fromUtf8(QJsonDocument(data).toJson(QJsonDocument::Indented)));shortcuts_->setStatus(data["shortcuts"].toObject());}
-void SettingsWindow::refresh(){
- loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();profileEditors_={};baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;save_->setEnabled(true);refreshMetadata();
+void SettingsWindow::refresh(bool preserveDrafts){
+ if(preserveDrafts)rememberCredentialInputs();else{clearCredentialInputs();profileEditors_={};provisionalProfile_={};}
+ loading_=true;draft_=settings_.document().isEmpty()?Settings::defaults():settings_.document();baseRevision_=settings_.revision();observed_=settings_.metadata()["observedRevision"].toString();dirty_=conflict_=false;save_->setEnabled(true);refreshMetadata();
  VisualStyle::feedback(status_,settings_.revision().isEmpty()?"Changes apply after saving.":"Saved settings are active.");
  auto actions=draft_["actions"].toObject();auto profiles=draft_["profiles"].toArray();initialProfile_=settings_.revision().isEmpty()&&profiles.isEmpty();
  if(initialProfile_){
@@ -277,8 +278,17 @@ void SettingsWindow::populate(){
 }
 void SettingsWindow::addS3Profile(){
  storeProfile();draft_=candidate();auto profiles=draft_["profiles"].toArray();if(profiles.size()>=32){status({"profile_limit","At most 32 destinations are supported",{}});return;}
- QString id;int number=1;do{id="s3-"+QString::number(number++);}while(std::any_of(profiles.begin(),profiles.end(),[&](const QJsonValue& p){return p.toObject()["id"].toString()==id;}));
- profiles.append(s3Profile(id));draft_["profiles"]=profiles;initialProfile_=false;rebuildProfiles(profiles.size()-1);
+ QJsonObject restored=provisionalProfile_.value("profile").toObject();
+ QString id=restored.value("id").toString();int number=1;
+ if(id.isEmpty()||std::any_of(profiles.begin(),profiles.end(),[&](const QJsonValue& p){return p.toObject()["id"].toString()==id;}))do{id="s3-"+QString::number(number++);}while(std::any_of(profiles.begin(),profiles.end(),[&](const QJsonValue& p){return p.toObject()["id"].toString()==id;}));
+ while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
+ credentialDrafts_.resize(profiles.size()+1);
+ if(restored.isEmpty()){profiles.append(s3Profile(id));profileEditors_.append(QJsonValue::Null);}
+ else{
+  restored["id"]=id;profiles.append(restored);auto editor=provisionalProfile_["editor"].toObject();editor["id"]=id;profileEditors_.append(editor);
+  credentialDrafts_.last()=std::move(provisionalCredentials_);provisionalProfile_={};provisionalCredentials_.clear();
+ }
+ draft_["profiles"]=profiles;initialProfile_=false;rebuildProfiles(profiles.size()-1);
  for(const auto& name:Settings::actionNames())if(destinations_[name]->currentText()=="upload"&&actionProfiles_[name]->currentData().toString().isEmpty())actionProfiles_[name]->setCurrentIndex(actionProfiles_[name]->findData(id));
  dirty();
 }
@@ -300,30 +310,39 @@ void SettingsWindow::resetDraft(bool reloadFile){
 void SettingsWindow::rebuildProfiles(int selected,const QString& defaultProfile){const bool previous=loading_;loading_=true;const auto profiles=draft_["profiles"].toArray();profileIndex_=-1;profile_->clear();for(auto p:profiles)profile_->addItem(p.toObject()["id"].toString());profile_->setCurrentIndex(selected);loadProfile();for(auto* combo:actionProfiles_){auto id=combo->currentData().toString();combo->clear();combo->addItem("No destination",QString{});for(auto p:profiles)combo->addItem(p.toObject()["label"].toString(),p.toObject()["id"].toString());int index=combo->findData(id.isEmpty()?defaultProfile:id);combo->setCurrentIndex(index<0?0:index);}loading_=previous;}
 void SettingsWindow::loadProfile(){bool previous=loading_;loading_=true;profileIndex_=profile_->currentIndex();auto profiles=draft_["profiles"].toArray();auto p=profileIndex_>=0&&profileIndex_<profiles.size()?profiles[profileIndex_].toObject():QJsonObject{};profileId_->setText(p["id"].toString());profileLabel_->setText(p["label"].toString());const auto s=p["settings"].toObject();bool s3=p["provider"]=="s3";
  providerType_->setCurrentIndex(providerType_->findData(p["provider"].toString()));const bool proton=p["provider"]=="proton-drive";protonPanel_->setVisible(proton);protonAccountUid_=s["accountRootUid"].toString();protonAccount_->setText(protonAccountUid_.isEmpty()?"Not connected":"Connected account; refresh folders to select a destination.");protonShare_->setChecked(s["shareByDefault"].toBool(true));protonExpiration_->setValue(s["linkExpirationDays"].toInt());protonTimeout_->setValue(s["requestTimeoutMs"].toInt(120000)/1000.0);protonFolder_->clear();addProtonFolder(protonFolder_,s["folderUid"].toString(),s["folderName"].toString());
- findChild<QPushButton*>("storeCredentials")->setVisible(s3);findChild<QPushButton*>("testDestination")->setVisible(s3);access_->setVisible(s3);secret_->setVisible(s3);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];it.value()->setText(v.isDouble()?QString::number(v.toInteger()):v.toString());it.value()->setEnabled(s3);}s3_["region"]->setProperty("previousRegion",s["region"].toString());regionChoices_->setEnabled(s3);acl_->setEnabled(s3);addressing_->setEnabled(s3);acl_->setCurrentText(s["aclMode"].toString());addressing_->setCurrentText(s["addressing"].toString());providerJson_->setEnabled(!s3);providerJson_->setPlainText(proton?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentText(ref["mode"].toString());reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].isObject())applyProfileEditor(profileEditors_[profileIndex_].toObject());if(updateProviderVisibility_)updateProviderVisibility_();loading_=previous;}
-QJsonObject SettingsWindow::editedProfile()const{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return {};auto p=profiles[profileIndex_].toObject();p["id"]=profileId_->text();p["label"]=profileLabel_->text();auto s=p["settings"].toObject();if(p["provider"]=="s3"){for(auto it=s3_.begin();it!=s3_.end();++it){if(it.key().endsWith("Ms")||it.key().startsWith("lowSpeed")){bool ok=false;auto value=it.value()->text().toLongLong(&ok);s[it.key()]=ok?QJsonValue(value):QJsonValue(it.value()->text());}else if(it.key()=="publicUrlBase"&&it.value()->text().isEmpty())s[it.key()]=QJsonValue::Null;else s[it.key()]=it.value()->text();}s["aclMode"]=acl_->currentText();s["addressing"]=addressing_->currentText();}else if(p["provider"]=="proton-drive"){s["accountRootUid"]=protonAccountUid_;s["folderUid"]=protonFolder_->currentData().toString();const auto folderName=protonFolder_->currentData(protonFolderNameRole).toString();if(folderName.isEmpty())s.remove("folderName");else s["folderName"]=folderName;s["shareByDefault"]=protonShare_->isChecked();s["linkExpirationDays"]=protonExpiration_->value();s["requestTimeoutMs"]=qRound64(protonTimeout_->value()*1000);}else {auto parsed=QJsonDocument::fromJson(providerJson_->toPlainText().toUtf8());if(parsed.isObject())s=parsed.object();else s={{"invalidJson",true}};}p["settings"]=s;p["credentials"]=QJsonObject{{"mode",credentialMode_->currentText()},{"reference",credentialMode_->currentText()=="session"?QJsonValue(QJsonValue::Null):QJsonValue(reference_->text())}};return p;}
+ findChild<QPushButton*>("storeCredentials")->setVisible(s3);findChild<QPushButton*>("testDestination")->setVisible(s3);access_->setVisible(s3);secret_->setVisible(s3);token_->setVisible(s3);for(auto it=s3_.begin();it!=s3_.end();++it){auto v=s[it.key()];it.value()->setText(v.isDouble()?QString::number(v.toInteger()):v.toString());it.value()->setEnabled(s3);}s3_["region"]->setProperty("previousRegion",s["region"].toString());regionChoices_->setEnabled(s3);acl_->setEnabled(s3);addressing_->setEnabled(s3);acl_->setCurrentText(s["aclMode"].toString());addressing_->setCurrentText(s["addressing"].toString());providerJson_->setEnabled(!s3);providerJson_->setPlainText(proton?QString{}:QString::fromUtf8(QJsonDocument(s).toJson(QJsonDocument::Indented)));auto ref=p["credentials"].toObject();credentialMode_->setCurrentText(ref["mode"].toString());reference_->setText(ref["reference"].toString());if(profileIndex_>=0&&profileIndex_<profileEditors_.size()&&profileEditors_[profileIndex_].toObject().contains("id"))applyProfileEditor(profileEditors_[profileIndex_].toObject());restoreCredentialInputs();if(updateProviderVisibility_)updateProviderVisibility_();loading_=previous;}
+QJsonObject SettingsWindow::editedProfile()const{auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return {};auto p=profiles[profileIndex_].toObject();p["id"]=profileId_->text();p["label"]=profileLabel_->text();auto s=p["settings"].toObject();if(p["provider"]=="s3"){for(auto it=s3_.begin();it!=s3_.end();++it){if(it.key().endsWith("Ms")||it.key().startsWith("lowSpeed")){bool ok=false;auto value=it.value()->text().toLongLong(&ok);s[it.key()]=ok?QJsonValue(value):QJsonValue(it.value()->text());}else if(it.key()=="publicUrlBase"&&it.value()->text().isEmpty())s[it.key()]=QJsonValue::Null;else s[it.key()]=it.value()->text();}s["aclMode"]=acl_->currentText();s["addressing"]=addressing_->currentText();}else if(p["provider"]=="proton-drive"){s["accountRootUid"]=protonAccountUid_;s["folderUid"]=protonFolder_->currentData().toString();const auto folderName=protonFolder_->currentData(protonFolderNameRole).toString();if(folderName.isEmpty())s.remove("folderName");else s["folderName"]=folderName;s["shareByDefault"]=protonShare_->isChecked();s["linkExpirationDays"]=protonExpiration_->hasAcceptableInput()?QJsonValue(protonExpiration_->value()):QJsonValue(protonExpiration_->text());s["requestTimeoutMs"]=protonTimeout_->hasAcceptableInput()?QJsonValue(qRound64(protonTimeout_->value()*1000)):QJsonValue(protonTimeout_->text());}else {auto parsed=QJsonDocument::fromJson(providerJson_->toPlainText().toUtf8());if(parsed.isObject())s=parsed.object();else s={{"invalidJson",true}};}p["settings"]=s;p["credentials"]=QJsonObject{{"mode",credentialMode_->currentText()},{"reference",credentialMode_->currentText()=="session"?QJsonValue(QJsonValue::Null):QJsonValue(reference_->text())}};return p;}
 void SettingsWindow::storeProfile(){
  auto profiles=draft_["profiles"].toArray();if(profileIndex_<0||profileIndex_>=profiles.size())return;
  while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
- profileEditors_[profileIndex_]=profileEditorState();
- const auto oldId=profiles[profileIndex_].toObject()["id"].toString();const auto p=editedProfile();
- if(oldId!=p["id"].toString()){for(auto* combo:actionProfiles_){int index=combo->findData(oldId);if(index>=0){combo->setItemData(index,p["id"].toString());combo->setItemText(index,p["label"].toString());}}profile_->setItemText(profileIndex_,p["id"].toString());}
+ rememberCredentialInputs();profileEditors_[profileIndex_]=retainedProfileEditor();
+ const auto p=editedProfile();
+ for(auto* combo:actionProfiles_){const int index=profileIndex_+1;if(index<combo->count()){combo->setItemData(index,p["id"].toString());combo->setItemText(index,p["label"].toString());}}
+ profile_->setItemText(profileIndex_,p["id"].toString());
  profiles[profileIndex_]=p;draft_["profiles"]=profiles;
 }
 QJsonObject SettingsWindow::candidate() const {auto doc=draft_;auto profiles=doc["profiles"].toArray();if(profileIndex_>=0&&profileIndex_<profiles.size())profiles[profileIndex_]=editedProfile();doc["profiles"]=profiles;auto actions=shortcuts_->actions(doc["actions"].toObject());for(const auto& name:Settings::actionNames()){auto a=actions[name].toObject();a["destination"]=destinations_[name]->currentText();if(publicationModes_[name]->currentData()!="default"||a.contains("publicationMode"))a["publicationMode"]=publicationModes_[name]->currentData().toString();auto id=actionProfiles_[name]->currentData().toString();if(profileIndex_>=0&&profileIndex_<draft_["profiles"].toArray().size()&&id==draft_["profiles"].toArray()[profileIndex_].toObject()["id"].toString())id=profileId_->text();a["profileId"]=id.isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(id);actions[name]=a;}doc["actions"]=actions;auto archive=doc["archive"].toObject();archive["root"]=root_->text();archive["keepUploads"]=keep_->isChecked();QJsonObject folders;for(auto it=folders_.begin();it!=folders_.end();++it)folders[it.key()]=it.value()->text().isEmpty()?QJsonValue(QJsonValue::Null):QJsonValue(it.value()->text());archive["folders"]=folders;doc["archive"]=archive;auto naming=doc["naming"].toObject();naming["mode"]=naming_->currentData().toString();naming["collisionPolicy"]=collision_->currentText();for(auto it=templates_.begin();it!=templates_.end();++it)naming[it.key()]=it.value()->text();doc["naming"]=naming;doc["preferences"]=QJsonObject{{"notifications",notifications_->isChecked()},{"launchAtLogin",login_->isChecked()},{"uploadClipboardBehavior",uploadClipboard_->currentData().toString()}};auto limits=doc["limits"].toObject(),retention=doc["retention"].toObject();for(auto it=numbers_.begin();it!=numbers_.end();++it){bool ok=false;auto n=it.value()->text().toLongLong(&ok);QJsonValue value=it.key().endsWith("Bytes")?ByteSize::fromMiB(it.value()->text()):(ok?QJsonValue(n):QJsonValue(it.value()->text()));if(it.key()=="historyRetentionDays"&&it.value()->text().isEmpty())value=QJsonValue::Null;if(limits.contains(it.key())||it.key()=="pendingImageBytes")limits[it.key()]=value;else retention[it.key()]=value;}doc["limits"]=limits;doc["retention"]=retention;return doc;}
-void SettingsWindow::save(){if(conflict_||saving_||resetting_)return;saving_=true;storeProfile();auto doc=candidate();const auto edits=editGeneration_;save_->setEnabled(false);settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),edits](Result result){if(!g)return;g->saving_=false;if(result){if(g->editGeneration_==edits){g->refresh();VisualStyle::success(g->status_,"✓  Settings saved. Changes apply to new operations.");}else{g->baseRevision_=g->settings_.revision();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->save_->setEnabled(true);g->refreshMetadata();VisualStyle::success(g->status_,"✓  Settings saved. Your newer edits remain unsaved.");}}else {g->save_->setEnabled(true);g->status(result.error);if(result.error.code=="config_conflict"){g->conflict_=true;g->save_->setEnabled(false);}}emit g->viewStateChanged();});}
+void SettingsWindow::save(){if(conflict_||saving_||resetting_)return;saving_=true;storeProfile();auto doc=candidate();const auto edits=editGeneration_;save_->setEnabled(false);settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),edits](Result result){if(!g)return;g->saving_=false;if(result){if(g->editGeneration_==edits){g->refresh(true);VisualStyle::success(g->status_,"✓  Settings saved. Changes apply to new operations.");}else{g->baseRevision_=g->settings_.revision();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->save_->setEnabled(true);g->refreshMetadata();VisualStyle::success(g->status_,"✓  Settings saved. Your newer edits remain unsaved.");}}else {g->save_->setEnabled(true);g->status(result.error);if(result.error.code=="config_conflict"){g->conflict_=true;g->save_->setEnabled(false);}}emit g->viewStateChanged();});}
 QJsonObject SettingsWindow::profileEditorState()const{
  QJsonObject s3;for(auto it=s3_.begin();it!=s3_.end();++it)s3[it.key()]=it.value()->text();
- return {{"id",profileId_->text()},{"label",profileLabel_->text()},{"credentialMode",credentialMode_->currentText()},{"reference",reference_->text()},{"acl",acl_->currentText()},{"addressing",addressing_->currentText()},{"s3",s3},{"providerJson",providerJson_->toPlainText()}};
+ QJsonArray folders;for(int i=0;i<protonFolder_->count();++i)folders.append(QJsonObject{{"uid",protonFolder_->itemData(i).toString()},{"name",protonFolder_->itemData(i,protonFolderNameRole).toString()},{"label",protonFolder_->itemText(i)}});
+ const QJsonObject proton{{"accountRootUid",protonAccountUid_},{"folders",folders},{"folderIndex",protonFolder_->currentIndex()},{"share",protonShare_->isChecked()},{"expiration",protonExpiration_->findChild<QLineEdit*>()->text()},{"timeout",protonTimeout_->findChild<QLineEdit*>()->text()}};
+ return {{"proton",proton},{"id",profileId_->text()},{"label",profileLabel_->text()},{"credentialMode",credentialMode_->currentText()},{"reference",reference_->text()},{"acl",acl_->currentText()},{"addressing",addressing_->currentText()},{"s3",s3},{"providerJson",providerJson_->toPlainText()}};
 }
 void SettingsWindow::applyProfileEditor(const QJsonObject& state){
  profileId_->setText(state["id"].toString());profileLabel_->setText(state["label"].toString());credentialMode_->setCurrentText(state["credentialMode"].toString());reference_->setText(state["reference"].toString());acl_->setCurrentText(state["acl"].toString());addressing_->setCurrentText(state["addressing"].toString());const auto s3=state["s3"].toObject();for(auto it=s3_.begin();it!=s3_.end();++it)it.value()->setText(s3[it.key()].toString());s3_["region"]->setProperty("previousRegion",s3_["region"]->text());providerJson_->setPlainText(state["providerJson"].toString());
+ if(state.contains("proton")){
+  const auto proton=state["proton"].toObject();protonAccountUid_=proton["accountRootUid"].toString();protonFolder_->clear();
+  for(const auto& value:proton["folders"].toArray()){const auto folder=value.toObject();protonFolder_->addItem(folder["label"].toString(),folder["uid"].toString());protonFolder_->setItemData(protonFolder_->count()-1,folder["name"].toString(),protonFolderNameRole);}
+  protonFolder_->setCurrentIndex(proton["folderIndex"].toInt(-1));protonShare_->setChecked(proton["share"].toBool());
+  protonExpiration_->findChild<QLineEdit*>()->setText(proton["expiration"].toString());protonTimeout_->findChild<QLineEdit*>()->setText(proton["timeout"].toString());
+ }
 }
 QJsonObject SettingsWindow::saveViewState()const{
  if(saving_||setupAccepting_||resetting_)return {{"stateError","request_awaiting_acceptance"}};
  QJsonObject numbers;for(auto it=numbers_.begin();it!=numbers_.end();++it)numbers[it.key()]=it.value()->text();
- auto editors=profileEditors_;const auto count=draft_["profiles"].toArray().size();while(editors.size()<count)editors.append(QJsonValue::Null);if(profileIndex_>=0&&profileIndex_<count)editors[profileIndex_]=profileEditorState();
- QJsonObject state{{"draft",candidate()},{"numbers",numbers},{"profileEditors",editors},{"baseRevision",baseRevision_},{"observedRevision",observed_},{"dirty",dirty_},{"conflict",conflict_},{"initialProfile",initialProfile_},{"profileIndex",profile_->currentIndex()},{"section",findChild<QListWidget*>("settingsNavigation")->currentRow()},{"advanced",findChild<QToolButton*>("advancedSettings")->isChecked()},{"geometry",QJsonArray{x(),y(),width(),height()}},{"setupJobs",setupJobs_}};
+ auto editors=profileEditors_;const auto count=draft_["profiles"].toArray().size();while(editors.size()<count)editors.append(QJsonValue::Null);if(profileIndex_>=0&&profileIndex_<count)editors[profileIndex_]=retainedProfileEditor();
+ QJsonObject state{{"draft",candidate()},{"numbers",numbers},{"profileEditors",editors},{"baseRevision",baseRevision_},{"observedRevision",observed_},{"dirty",dirty_},{"conflict",conflict_},{"initialProfile",initialProfile_},{"profileIndex",profile_->currentIndex()},{"section",findChild<QListWidget*>("settingsNavigation")->currentRow()},{"advanced",findChild<QToolButton*>("advancedSettings")->isChecked()},{"geometry",QJsonArray{x(),y(),width(),height()}},{"setupJobs",setupJobs_},{"provisionalProfile",provisionalProfile_}};
  // Do not even export unclassified provider text to the resident. A content-free
  // rejection keeps the actual draft in this window until the user corrects it.
  if(auto error=validateUiState({{"schemaVersion",1},{"settings",state}}))return {{"stateError",error.code}};
@@ -331,17 +350,99 @@ QJsonObject SettingsWindow::saveViewState()const{
 }
 bool SettingsWindow::restoreViewState(const QJsonObject& state){
  if(validateUiState({{"schemaVersion",1},{"settings",state}}))return false;
- QSignalBlocker stateSignals(this);clearCredentialInputs();loading_=true;draft_=state["draft"].toObject();profileEditors_=state["profileEditors"].toArray();baseRevision_=state["baseRevision"].toString();observed_=state["observedRevision"].toString();initialProfile_=state["initialProfile"].toBool();
+ QSignalBlocker stateSignals(this);clearCredentialInputs();loading_=true;draft_=state["draft"].toObject();profileEditors_=state["profileEditors"].toArray();provisionalProfile_=state["provisionalProfile"].toObject();baseRevision_=state["baseRevision"].toString();observed_=state["observedRevision"].toString();initialProfile_=state["initialProfile"].toBool();
  populate();loading_=true;profile_->setCurrentIndex(state["profileIndex"].toInt(-1));loadProfile();const auto numbers=state["numbers"].toObject();for(auto it=numbers_.begin();it!=numbers_.end();++it)it.value()->setText(numbers[it.key()].toString());
  findChild<QToolButton*>("advancedSettings")->setChecked(state["advanced"].toBool());findChild<QListWidget*>("settingsNavigation")->setCurrentRow(state["section"].toInt());const auto box=state["geometry"].toArray();setGeometry(box[0].toInt(),box[1].toInt(),box[2].toInt(),box[3].toInt());
  dirty_=state["dirty"].toBool();conflict_=state["conflict"].toBool();loading_=false;save_->setEnabled(!conflict_);setupJobs_=state["setupJobs"].toArray();updateSetupButton();if(!setupJobs_.isEmpty()){setupTimer_->start();pollSetup();}
  configurationChanged();stateSignals.unblock();emit viewStateChanged();return true;
 }
-void SettingsWindow::clearCredentialInputs(){if(protonPassword_)protonPassword_->clear();access_->clear();secret_->clear();token_->clear();}
+
+void SettingsWindow::switchProvider(){
+ if(loading_)return;
+ const auto selected=providerType_->currentData().toString();
+ storeProfile();
+ auto profiles=draft_["profiles"].toArray();
+ if(profileIndex_<0||profileIndex_>=profiles.size())return;
+ auto profile=profiles[profileIndex_].toObject();
+ const auto providers=profileEditors_[profileIndex_].toObject()["providers"].toObject();
+ const auto retained=providers[selected].toObject();
+ profile["provider"]=selected;
+ if(retained.isEmpty()){
+  if(selected=="proton-drive"){
+   profile["settings"]=ProtonProvider::defaults();
+   profile["credentials"]=QJsonObject{{"mode","keychain"},{"reference","putgd/proton/"+QUuid::createUuid().toString(QUuid::Id128)}};
+  }else{
+   const auto defaults=s3Profile(profile["id"].toString());profile["settings"]=defaults["settings"];profile["credentials"]=defaults["credentials"];
+  }
+ }else{
+  profile["settings"]=retained["settings"];profile["credentials"]=retained["credentials"];
+ }
+ // ID and name belong to the destination; raw provider fields belong to its service.
+ auto editor=retained["editor"].toObject();
+ if(!editor.isEmpty()){editor["id"]=profile["id"];editor["label"]=profile["label"];}
+ editor["providers"]=providers;profileEditors_[profileIndex_]=editor;
+ profiles[profileIndex_]=profile;draft_["profiles"]=profiles;loadProfile();dirty();
+}
+QJsonObject SettingsWindow::retainedProfileEditor()const{
+ auto editor=profileEditorState();
+ auto providers=profileIndex_>=0&&profileIndex_<profileEditors_.size()?profileEditors_[profileIndex_].toObject()["providers"].toObject():QJsonObject{};
+ const auto profile=editedProfile();
+ providers[profile["provider"].toString()]=QJsonObject{{"settings",profile["settings"]},{"credentials",profile["credentials"]},{"editor",editor}};
+ editor["providers"]=providers;return editor;
+}
+void SettingsWindow::rememberCredentialInputs(){
+ const auto profiles=draft_["profiles"].toArray();
+ if(profileIndex_<0||profileIndex_>=profiles.size())return;
+ credentialDrafts_.resize(profiles.size());
+ credentialDrafts_[profileIndex_][profiles[profileIndex_].toObject()["provider"].toString()]={access_->text(),secret_->text(),token_->text(),protonPassword_->text()};
+}
+void SettingsWindow::restoreCredentialInputs(){
+ const auto profiles=draft_["profiles"].toArray();
+ CredentialInputs inputs;
+ if(profileIndex_>=0&&profileIndex_<profiles.size()&&profileIndex_<credentialDrafts_.size())
+  inputs=credentialDrafts_[profileIndex_].value(profiles[profileIndex_].toObject()["provider"].toString());
+ access_->setText(inputs.access);secret_->setText(inputs.secret);token_->setText(inputs.token);protonPassword_->setText(inputs.password);
+}
+void SettingsWindow::clearCurrentCredentialInputs(){
+ const auto profiles=draft_["profiles"].toArray();
+ if(profileIndex_>=0&&profileIndex_<profiles.size()&&profileIndex_<credentialDrafts_.size())
+  credentialDrafts_[profileIndex_].remove(profiles[profileIndex_].toObject()["provider"].toString());
+ access_->clear();secret_->clear();token_->clear();protonPassword_->clear();
+}
+void SettingsWindow::parkInitialProfile(){
+ storeProfile();draft_=candidate();
+ provisionalProfile_={{"profile",draft_["profiles"].toArray().first()},{"editor",profileEditors_.first()}};
+ provisionalCredentials_=credentialDrafts_.value(0);
+ draft_["profiles"]=QJsonArray{};profileEditors_={};credentialDrafts_.clear();initialProfile_=false;rebuildProfiles(-1);
+}
+void SettingsWindow::importDevelopmentProfile(){
+ if(initialProfile_&&s3_["bucket"]->text().isEmpty()){
+  draft_["profiles"]=QJsonArray{};profileEditors_={};credentialDrafts_.clear();profileIndex_=-1;for(auto* combo:actionProfiles_)combo->setCurrentIndex(0);
+ }else storeProfile();
+ draft_=candidate();auto profiles=draft_["profiles"].toArray();const auto development=Settings::developmentTemplate()["profiles"].toArray().first();
+ int index=-1;for(int i=0;i<profiles.size();++i)if(profiles[i].toObject()["id"]=="development-s3")index=i;
+ if(index<0){index=profiles.size();profiles.append(development);}else profiles[index]=development;
+ while(profileEditors_.size()<profiles.size())profileEditors_.append(QJsonValue::Null);
+ profileEditors_[index]=QJsonValue::Null;credentialDrafts_.resize(profiles.size());credentialDrafts_[index].clear();
+ draft_["profiles"]=profiles;initialProfile_=false;rebuildProfiles(index,"development-s3");dirty();
+}
+
+void SettingsWindow::clearCredentialInputs(){
+ credentialDrafts_.clear();provisionalCredentials_.clear();
+ if(protonPassword_)protonPassword_->clear();
+ access_->clear();secret_->clear();token_->clear();
+}
 void SettingsWindow::closeEvent(QCloseEvent* event){clearCredentialInputs();RetainedWindow::closeEvent(event);}
+bool SettingsWindow::hasRetainedDrafts()const{
+ if(!provisionalProfile_.isEmpty()||!access_->text().isEmpty()||!secret_->text().isEmpty()||!token_->text().isEmpty()||!protonPassword_->text().isEmpty())return true;
+ for(const auto& editor:profileEditors_)if(editor.toObject()["providers"].toObject().size()>1)return true;
+ for(const auto& destination:credentialDrafts_)for(const auto& inputs:destination)
+  if(!inputs.access.isEmpty()||!inputs.secret.isEmpty()||!inputs.token.isEmpty()||!inputs.password.isEmpty())return true;
+ return false;
+}
 void SettingsWindow::configurationChanged(){
  refreshMetadata();if(saving_||resetting_)return;
- if(conflict_||(dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){conflict_=true;save_->setEnabled(false);VisualStyle::feedback(status_,"config_conflict: The configuration changed elsewhere. Your draft is preserved. Reload from file before saving.",true);emit viewStateChanged();return;}
+ if(conflict_||((dirty_||hasRetainedDrafts())&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))){conflict_=true;save_->setEnabled(false);VisualStyle::feedback(status_,"config_conflict: The configuration changed elsewhere. Your draft is preserved. Reload from file before saving.",true);emit viewStateChanged();return;}
  if(!dirty_&&(baseRevision_!=settings_.revision()||observed_!=settings_.metadata()["observedRevision"].toString()))refresh();
  auto error=settings_.metadata()["validation"].toObject()["error"].toObject();if(!error["code"].toString().isEmpty())status({error["code"].toString(),error["message"].toString(),error["details"].toObject()});
 }
