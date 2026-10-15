@@ -1,6 +1,9 @@
 # Proton P1 recovery and recipient checks — 2026-10-15
 
-P1 is **partially verified and remains open**. The earlier recipient checkbox
+At this service-only checkpoint P1 was **partially verified and remained open**.
+The later [normal-use application follow-up](2026-10-15-proton-p1-app-recovery.md)
+completes P1 within its recorded scope; the historical service limits below remain
+unchanged. The earlier recipient checkbox
 could not be backed by a recoverable receipt: the original integration chat's
 last acceptance report explicitly left recipient download/password/expiry
 pending, and its temporary artifacts were unavailable. This run supplies a

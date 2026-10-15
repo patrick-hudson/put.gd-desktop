@@ -147,4 +147,6 @@ review packets. Password values must remain in parent-process memory and the
 keychain. Keep failed intents before retrying, reconcile uncertain uploads first,
 and never rebind old receipts to another session/destination. No remote deletion
 is provided. The [P1 receipt](../../docs/evidence/2026-10-15-proton-p1-recovery.md)
-records the service checks and remaining live/application gates separately.
+records the service checks and their original limits. The
+[application follow-up](../../docs/evidence/2026-10-15-proton-p1-app-recovery.md)
+completes the bounded P1 normal-use recovery campaign; P2–P6 stay open.

@@ -30,7 +30,9 @@ create-only writes, fresh ownership checks and explicit recovery contracts.
 These rows credit only their recorded source and workload. The initial audit read
 sources and existing records only. The subsequent [P1 campaign](evidence/2026-10-15-proton-p1-recovery.md)
 built and tested its fingerprinted candidate and exercised an isolated account
-folder. Neither campaign measures authenticated memory or certifies final main.
+folder. The [normal-use application follow-up](evidence/2026-10-15-proton-p1-app-recovery.md)
+adds Cinnamon recovery and post-use idle evidence. None establishes an
+authenticated active-transfer budget or certifies final main.
 
 | Scope | Evidence credited | Remaining limit |
 | --- | --- | --- |
@@ -47,18 +49,20 @@ folder. Neither campaign measures authenticated memory or certifies final main.
 
 The historical pending statements in the integration/helper records retain their
 original meaning. PR #30 supersedes their initial pending tray/compositor/setup
-claims for its tested scope only. It does not close today's recovery, helper
-memory, distribution or final-candidate gates.
+claims for its tested scope only. The P1 follow-up above addresses current
+recovery; authenticated active-helper memory, distribution and final-candidate
+gates remain open.
 
-## Open release gates
+## Release gates
 
-All gates below remain open after this documentation audit. Owners are project
+P1 is complete for its recorded owned-folder and bounded-response scope.
+P2–P6 remain open after the application follow-up. Owners are project
 roles: the integration maintainer owns P1, P2 and P5; the release maintainer owns
 P3, P4 and P6. The same person may perform both roles. Before the first production
 shipment advertising Proton, retain a dated pass/failure/blocker and exact source,
 runtime and package identity for each gate. No future upstream approval is needed.
 
-### P1 — Recovery and recipient evidence
+### P1 — Recovery and recipient evidence (complete within recorded scope)
 
 Exercise real expiry/refresh/revocation using an independently authenticated
 session, folder permissions/quota failures, and changed-revision handling at
@@ -84,13 +88,23 @@ now covers recipient hashes/protection/expiry/revocation, access refresh, isolat
 session revocation, cancellation/reconciliation/retry, changed revisions, a real
 quota rejection and an anonymous viewer write denial. Actual SDK Retry-After
 timing/cancellation is tested; ten bounded wrong-password attempts produced no 429.
-Fixed swallowed service guidance and revoked-refresh reconnect guidance. P1 remains
-open for authenticated application folder-access loss and final application
-recovery/clipboard/restart acceptance; controlled cases are
-credited separately. Actual SDK Retry-After and cancellation tests cover the rate-limit
-case; a live 429 was not observed and manufacturing one through wrong-password
-traffic is not a release requirement. Extended cooldown timing remains a stated
-coverage limit. This is not native or resource acceptance.
+Fixed swallowed service guidance, revoked-refresh reconnect guidance and an
+interrupted-journal copy status that stayed pending. The
+[application follow-up](evidence/2026-10-15-proton-p1-app-recovery.md) completes
+normal-use folder-unavailable, crash/restart, real deadline/partial-result and
+missing-account-access recovery with native clipboard checks. Retries preserved
+identities and confirmed receipts; a scoped SDK listing found ten confirmed nodes
+for ten receipts with no duplicate confirmed uploads. Cinnamon post-use memory
+passed separately from P2's active-workload requirement.
+
+P1 is complete with the recorded limits. Second-account ACL downgrade was not
+performed: supported setup targets owned My files/direct-child folders, whose
+unavailability was exercised live. The actual anonymous Viewer denial is service
+evidence, not authenticated second-account acceptance. Controlled typed responses
+cover permission/429 handling; actual SDK Retry-After and cancellation tests cover
+rate-limit backoff. No live 429 was observed and manufacturing one through
+wrong-password traffic is not a release requirement. Extended cooldown timing
+remains unmeasured. Final packaged multi-desktop evidence stays in P6.
 
 ### P2 — Authenticated process-family resources
 
@@ -197,16 +211,16 @@ remaining general release requirements in [release.md](release.md) and
 
 ## Issue closure and next work
 
-Issue #10 remains open for P1/P2 and the concrete distribution/maintenance gates
-P3–P6. Its body was reconciled on 2026-10-15 with the accepted product decision,
+Issue #10 remains open for P2 and the concrete distribution/maintenance gates
+P3–P6. P1 is complete within the documented normal-use and controlled-response
+scope. Its body was reconciled on 2026-10-15 with the accepted product decision,
 these gate IDs and the source-specific evidence limits. It remains open. The
 existing recipient checkbox stays checked; its historical provenance remains issue-reported and the fresh P1 repeat is linked above; the
 stale “four groups” instruction was replaced. The historical requirements below
 the issue’s disclosure section were preserved verbatim.
 
-Next work is the remaining P1 acceptance and P2 resource characterization, followed
-by P3/P4 distribution work and the P5 update rehearsal, then P6 acceptance on the
-resulting candidate. This completes the evidence reconciliation and release-scope
-record for wrap-up steps 1–2 and the subsequent bounded P1 campaign. It does not
-mark P1–P6 passed. Local documentation links and cited Git objects/ancestry were
-checked; P1 build/test scopes and outstanding gates are recorded in its receipt.
+Next work is P2 resource characterization, followed by P3/P4 distribution work
+and the P5 update rehearsal, then P6 acceptance on the resulting candidate. The
+step 1–2 reconciliation and bounded P1 campaigns are recorded above. P2–P6 are
+not passed. Current P1 source/runtime identities, native results, actual failures,
+controlled-only cases and limitations are in the linked receipts.

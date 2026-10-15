@@ -6,11 +6,15 @@ Proton is a retained experimental integration intended for production shipment
 and ongoing support. Upstream endorsement/general availability is not a release
 gate under the user-approved decision. The [evidence and release-gate register](proton-drive-release-gates.md)
 is the current reconciliation: it credits the merged local and native campaigns,
-links the fresh P1 recipient/recovery receipt, and lists the concrete recovery,
-authenticated-memory, notices, shipping-pipeline and compatibility work still open.
-The [P1 campaign](evidence/2026-10-15-proton-p1-recovery.md) records new service
-checks and recovery fixes on a fingerprinted candidate. P1 remains partially open;
-no final-main, package, native-desktop or authenticated-memory acceptance is claimed.
+links the P1 recipient/service and native recovery receipts, and lists the concrete
+authenticated active-memory, notices, shipping-pipeline and compatibility work
+still open. The [service campaign](evidence/2026-10-15-proton-p1-recovery.md) and
+[normal-use application follow-up](evidence/2026-10-15-proton-p1-app-recovery.md)
+complete P1 within their recorded scope. The latter fixes interrupted copy status
+and verifies Cinnamon crash, destination/account loss, timeout/partial-result,
+explicit retry and native paste behavior. Its post-use memory does not establish
+P2's active-helper budget. Final-main packaged multi-desktop acceptance and P2–P6
+remain open.
 
 The checkpoints below are historical. PR #30 supersedes their initial pending
 native tray/setup statements for its tested source and scope; newer changes still
