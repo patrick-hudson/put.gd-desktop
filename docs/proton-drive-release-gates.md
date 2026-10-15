@@ -27,16 +27,17 @@ create-only writes, fresh ownership checks and explicit recovery contracts.
 
 ## Evidence reconciliation
 
-These rows credit only their recorded source and workload. This audit read
-sources and existing records; it did not build, run tests, access an account or
-measure memory. A prior passing binary does not certify the inspected main.
+These rows credit only their recorded source and workload. The initial audit read
+sources and existing records only. The subsequent [P1 campaign](evidence/2026-10-15-proton-p1-recovery.md)
+built and tested its fingerprinted candidate and exercised an isolated account
+folder. Neither campaign measures authenticated memory or certifies final main.
 
 | Scope | Evidence credited | Remaining limit |
 | --- | --- | --- |
 | Provider integration and shared pipeline | Merged [PR #25](https://github.com/patrick-hudson/put.gd-desktop/pull/25), head `39d8d3ec1a303123e8384f1ec1181518b83d2037`; [integration checkpoints](proton-drive-verification.md) record S3/local regressions, configuration, receipts, history and sharing recovery | PR description's draft/pending language describes an earlier checkpoint; merge is confirmed. It is not blanket service acceptance. |
 | Automated checks | Integration checkpoints record full 59/59 dev-preset runs; final large-file helper follow-up records 32 tests / 149 assertions and compiled stdio checks | Full TypeScript checking still reports four upstream Crypto/Bun declaration errors. No claim of a clean type-check or a new test run on main. |
 | Authenticated local uploads | Integration checkpoints record private/share probes, real SDK progress and own-link creation/revocation. Large-file recovery at `c758b4d` completed 2,851,612,672 source bytes through explicit same-operation retry | This proves the recorded local recovery, not anonymous download or all service failures. Older unknown drafts were preserved. |
-| Recipient download, password and expiration | Issue #10's current checklist marks the combined recipient check complete | No supporting recipient-browser/hash/password/expiry receipt was located in the tracked records inspected. Preserve the issue's accepted status, label its provenance as issue-reported, and attach a redacted receipt before presenting it as independently verified evidence. The tray campaign does not supply that proof. |
+| Recipient download, password and expiration | Fresh [P1 recipient receipt](evidence/2026-10-15-proton-p1-recovery.md): unsigned-in public/protected downloads matched source hashes, password cases passed; shortened live expiry and revocation blocked access | The historical receipt was not recoverable. This is new service evidence, not final packaged/native acceptance. |
 | Live native S3 and Proton tray/clipboard workflows | Merged [PR #30](https://github.com/patrick-hudson/put.gd-desktop/pull/30) records source `9f186e9dff667a9f550b3db4c89e8a042dfbc9a3`, tree `5dad7cfb2b59bb22bf22e7a97a166be60c9f62aa`, count 169: Cinnamon first, then GNOME/KDE; queue/concurrent admission, cancellation/retry, exact link paste, local recovery, restart and tray-host recovery | Credited from the PR acceptance record, not a new raw-artifact replay. Proton recipient decrypted download and active-helper memory were outside that campaign. Same-account helpers serialize. |
 | Cold/resident memory | PR #30 records two five-minute physical whole-family cold peaks of 25.09/25.18 MiB and VM resident observations of 25.53 MiB Cinnamon, 27.46 MiB GNOME and 29.06 MiB KDE | VM samples exclude the compositor and do not measure authenticated active-helper memory. The cold target is not an active-upload budget. |
 | Later shared tray changes | [Issue #33 native receipt](evidence/2026-10-14-storage-tray-native.md), source `061c2d9c569dc10b5c8681a7ad7beb3093e61b80`: three-desktop rendered states and two post-use memory windows passed | Uses a synthetic offline S3 wire oracle, not a live Proton account. Do not substitute it for the earlier live Proton campaign. |
@@ -76,7 +77,20 @@ clean unsigned-in browser context, source/download byte counts and hashes,
 correct/wrong/missing-password results and actual expiration result. Exclude
 capability URLs, passwords, tokens and account identities. If it cannot be
 recovered, perform a bounded synthetic repeat during final acceptance rather
-than inventing a receipt. The current issue checkbox remains issue-reported.
+than inventing a receipt. The historical issue checkbox remains issue-reported; the new repeat is independently documented below.
+
+P1 progress on 2026-10-15: [fresh service and recipient evidence](evidence/2026-10-15-proton-p1-recovery.md)
+now covers recipient hashes/protection/expiry/revocation, access refresh, isolated
+session revocation, cancellation/reconciliation/retry, changed revisions, a real
+quota rejection and an anonymous viewer write denial. Actual SDK Retry-After
+timing/cancellation is tested; ten bounded wrong-password attempts produced no 429.
+Fixed swallowed service guidance and revoked-refresh reconnect guidance. P1 remains
+open for authenticated application folder-access loss and final application
+recovery/clipboard/restart acceptance; controlled cases are
+credited separately. Actual SDK Retry-After and cancellation tests cover the rate-limit
+case; a live 429 was not observed and manufacturing one through wrong-password
+traffic is not a release requirement. Extended cooldown timing remains a stated
+coverage limit. This is not native or resource acceptance.
 
 ### P2 — Authenticated process-family resources
 
@@ -186,13 +200,13 @@ remaining general release requirements in [release.md](release.md) and
 Issue #10 remains open for P1/P2 and the concrete distribution/maintenance gates
 P3–P6. Its body was reconciled on 2026-10-15 with the accepted product decision,
 these gate IDs and the source-specific evidence limits. It remains open. The
-existing recipient checkbox stays checked with issue-reported provenance; the
+existing recipient checkbox stays checked; its historical provenance remains issue-reported and the fresh P1 repeat is linked above; the
 stale “four groups” instruction was replaced. The historical requirements below
 the issue’s disclosure section were preserved verbatim.
 
-Immediate work is P1 recovery/evidence and P2 resource characterization, followed
+Next work is the remaining P1 acceptance and P2 resource characterization, followed
 by P3/P4 distribution work and the P5 update rehearsal, then P6 acceptance on the
 resulting candidate. This completes the evidence reconciliation and release-scope
-record for wrap-up steps 1–2. It does not execute P1–P6 or mark a gate passed
-merely because its completion procedure is now documented. Local documentation
-links and cited Git objects/ancestry were checked; no application tests were run.
+record for wrap-up steps 1–2 and the subsequent bounded P1 campaign. It does not
+mark P1–P6 passed. Local documentation links and cited Git objects/ancestry were
+checked; P1 build/test scopes and outstanding gates are recorded in its receipt.

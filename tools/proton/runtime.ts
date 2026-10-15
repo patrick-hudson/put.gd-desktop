@@ -2,10 +2,11 @@ import { constants } from 'node:fs';
 import { open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, type NodeEntity, type ProtonDriveClient } from '@protontech/drive-sdk';
+import { MemberRole, NodeType, NodeWithSameNameExistsValidationError, RateLimitedError, ServerError, ValidationError, type NodeEntity, type ProtonDriveClient } from '@protontech/drive-sdk';
 import { APP_VERSION, SDK_VERSION, SECRET_SERVICE, initialize, privateDataDirectory } from './account';
 import { MAX_REQUEST_BYTES, ProtocolError, classifyNode, configured, days, failure, hash, makeReceipt,
     name, object, parseRequest, receipt, reference, shareOutcome, connectAction, text, requestTimeout, type JsonObject } from './protocol';
+import { AccountApiError } from 'proton-drive-sdk-account';
 import { writeJson } from './stdout';
 import { createProgressReporter } from './progress';
 
@@ -21,6 +22,22 @@ function writeFinal(value: JsonObject): Promise<void> {
 }
 const success = (result: JsonObject) => ({ ok: true, result });
 const status = (value: string, fields: JsonObject = {}) => ({ status: value, error: {}, ...fields });
+export function serviceFailure(error: unknown, fallback = 'operation_failed', authenticated?: boolean): JsonObject {
+    if (error instanceof ProtocolError) return failure(error.code);
+    if (authenticated === false) return failure('authentication_required');
+    const http = error instanceof AccountApiError ? error.httpCode : error instanceof ServerError ? error.statusCode : undefined;
+    if (http === 401) return failure('authentication_required');
+    if (http === 403) return failure('permission_denied');
+    if (http === 429 || error instanceof RateLimitedError) return failure('rate_limited');
+    // Public ValidationError codes from the pinned SDK's API error factory.
+    if (error instanceof ValidationError) {
+        if ([2011, 2026].includes(error.code ?? 0)) return failure('permission_denied');
+        if ([200001, 200002, 200003, 200004, 200100, 200101, 200600, 200601, 200602, 200800].includes(error.code ?? 0))
+            return failure('quota_exceeded');
+    }
+    return failure(fallback);
+}
+
 async function readRequest(): Promise<JsonObject> {
     const chunks: Buffer[] = [];
     let count = 0;
@@ -33,7 +50,12 @@ async function readRequest(): Promise<JsonObject> {
 }
 export async function accountRoot(ctx: Context, request: JsonObject, configuredRequired = true) {
     if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
-    const root = await ctx.sdk.getMyFilesRootFolder();
+    let root: NodeEntity;
+    try { root = await ctx.sdk.getMyFilesRootFolder(); }
+    catch (error) {
+        if (!ctx.auth.isLoggedIn()) throw new ProtocolError('authentication_required');
+        throw error;
+    }
     if (configuredRequired && root.uid !== text(request.destination.settings.accountRootUid)) throw new ProtocolError('account_changed');
     return root;
 }
@@ -78,7 +100,7 @@ export async function checkName(ctx: Context, request: JsonObject) {
         if (typeof available !== 'string' || !available) return status('inconclusive');
         return status(available === candidate ? 'absent' : 'present', {
             objectReference: reference(request), concurrencyToken: '' });
-    } catch { return status('inconclusive'); }
+    } catch (error) { return status('inconclusive', { error: serviceFailure(error, 'operation_failed', ctx.auth.isLoggedIn()) }); }
 }
 export async function stat(ctx: Context, request: JsonObject) {
     const proof = receipt(request), ref = proof.objectReference;
@@ -93,7 +115,7 @@ export async function stat(ctx: Context, request: JsonObject) {
             return status('missing');
         }
         return status(classifyNode(node, ref, proof.publicationId), { ...(classifyNode(node, ref, proof.publicationId) === 'own' ? { receipt: proof } : {}) });
-    } catch { return status('unknown'); }
+    } catch (error) { return status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }); }
 }
 async function reconcile(ctx: Context, request: JsonObject) {
     hash(request.artifact?.sha256); text(request.publicationId);
@@ -104,7 +126,7 @@ async function reconcile(ctx: Context, request: JsonObject) {
         const ownership = classifyNode(node, ref, request.publicationId);
         if (ownership !== 'own' || !node.activeRevision) return status(ownership);
         return status('own', { receipt: makeReceipt(request, node.uid, node.activeRevision.uid) });
-    } catch { return status('unknown'); }
+    } catch (error) { return status('unknown', { error: serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) }); }
 }
 export async function upload(ctx: Context, request: JsonObject): Promise<JsonObject> {
     if (request.condition !== 'absent') throw new ProtocolError('unsupported_condition');
@@ -142,11 +164,11 @@ export async function upload(ctx: Context, request: JsonObject): Promise<JsonObj
             return status('uploaded', { receipt: makeReceipt(request, completed.nodeUid, completed.nodeRevisionUid) });
         } catch (error) {
             if (error instanceof NodeWithSameNameExistsValidationError) return status('collision', { error: error.isUnfinishedUpload ? failure('upload_draft_conflict') : {} });
-            return status('unknown', { error: deadlineExpired ? deadlineError() : failure('operation_unknown') });
+            return status('unknown', { error: deadlineExpired ? deadlineError() : serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn()) });
         }
     } finally { try { await uploadProgress.finish(); } finally { await file.close(); } }
 }
-async function share(ctx: Context, request: JsonObject) {
+export async function share(ctx: Context, request: JsonObject) {
     const proof = receipt(request), options = object(request.options);
     if (!['create', 'revoke', 'inspect'].includes(options.action)) throw new ProtocolError('invalid_request');
     const settings = proof.destination.settings;
@@ -154,7 +176,7 @@ async function share(ctx: Context, request: JsonObject) {
     const passwordReference = options.passwordReference === undefined ? settings.sharePasswordReference : options.passwordReference;
     if (passwordReference !== null && passwordReference !== undefined) text(passwordReference);
     const checked = await stat(ctx, request);
-    if (checked.status !== 'own') return shareOutcome(proof, options.action, '', checked.status);
+    if (checked.status !== 'own') return { ...shareOutcome(proof, options.action, '', checked.status), error: checked.error };
     let customPassword: string | undefined;
     if (options.action === 'create' && passwordReference) {
         try {
@@ -180,10 +202,10 @@ async function share(ctx: Context, request: JsonObject) {
         // URL is returned intact by the SDK, including its capability fragment. Never reconstruct it.
         const directUrl = info?.urlAccess?.url ?? '';
         const after = await stat(ctx, request);
-        return shareOutcome(proof, options.action, directUrl, after.status, info?.urlAccess?.expirationTime);
-    } catch {
+        return { ...shareOutcome(proof, options.action, directUrl, after.status, info?.urlAccess?.expirationTime), error: after.error };
+    } catch (error) {
         const result = shareOutcome(proof, options.action, '', 'unknown');
-        if (deadlineExpired) result.error = deadlineError();
+        result.error = deadlineExpired ? deadlineError() : serviceFailure(error, 'operation_unknown', ctx.auth.isLoggedIn());
         return result;
     } finally { customPassword = undefined; }
 }
@@ -266,7 +288,7 @@ if (process.argv.length === 3 && process.argv[2] === '--version') {
         await writeFinal(success(result));
     } catch (error) {
         clearTimeout(timer);
-        await writeFinal({ ok: false, error: deadlineExpired ? deadlineError() : failure(error instanceof ProtocolError ? error.code : mutationStarted ? 'operation_unknown' : 'operation_failed') });
+        await writeFinal({ ok: false, error: deadlineExpired ? deadlineError() : serviceFailure(error, mutationStarted ? 'operation_unknown' : 'operation_failed') });
     } finally { clearTimeout(timer); controller.abort(); }
     process.exit(0);
 } else {

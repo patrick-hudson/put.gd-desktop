@@ -120,3 +120,31 @@ Private journals retain exact object identities and
 credential references for recovery; exclude those journals and the source config
 from diagnostics or review packets. Capability URLs are omitted from the probe's
 retained receipts. On failure inspect the retained intent before another mutation.
+
+## Opt-in recovery probe
+
+Build `proton_recovery_probe` explicitly with
+`cmake --build --preset dev --target proton_recovery_probe`. This non-installed
+service test tool calls the production adapter. Send one JSON request through
+stdin and capture stdout in a private parent-process pipe (never a terminal or
+redirected file). Requests supply `method`, `id`, an immutable `destination`, and
+a new owned 0700 canonical `output` directory. Preflight the actual keychain
+D-Bus Unix socket before launching. The probe creates no put.gd session socket.
+
+Setup methods are `connect`, `inspectAccount`, `createFolder`, and
+`storeSharePassword`; their `options` use the production setup protocol. File
+methods are `checkName`, `upload`, `reconcile`, `stat`, and `share`. Upload and
+reconciliation take `artifact`, `publicationId`, and `candidate`; stat/share use
+an original `receipt`. Share `options` carry `action` (create/inspect/revoke),
+`expirationDays`, and `passwordReference`. `cancelOnProgress` is an upload-only
+fixture control that cancels after the first nonzero SDK byte frame.
+
+Use only fresh `put.gd-p1-` folders and `putgd-p1-` candidate names. Private
+intent/checkpoint/completion files retain exact references and receipt identities
+but omit receipt capability URLs. Authentication events and successful URLs can
+appear on the private output pipe: the parent must keep them out of logs and
+review packets. Password values must remain in parent-process memory and the
+keychain. Keep failed intents before retrying, reconcile uncertain uploads first,
+and never rebind old receipts to another session/destination. No remote deletion
+is provided. The [P1 receipt](../../docs/evidence/2026-10-15-proton-p1-recovery.md)
+records the service checks and remaining live/application gates separately.
