@@ -18,15 +18,18 @@ inside the ignored build directory. Users do not install Bun or Node. Linux
 requires its normal unlocked Secret Service/keychain and a browser for login.
 
 No console, file or network logging/telemetry handlers are initialized. The
-SDK uses no persistent entity or crypto cache. Each request starts a fresh SDK
-session. Account credentials and share passwords remain in the keychain.
+SDK uses no persistent entity or crypto cache. It retains at most 64 crypto-key
+entries within a request; entity metadata remains uncached. Each request starts
+a fresh SDK session. Account credentials and share passwords remain in the keychain.
 
 Provisioning exports supplied dependency license texts and exact declared
 licenses/integrities to `THIRD-PARTY-NOTICES.txt`, which is hashed in the manifest.
-Original files remain in the generated build tree. A complete
-redistribution license inventory, Proton third-party/service readiness, live
-account acceptance and desktop acceptance remain release gates. Building or
-protocol testing alone does not establish those gates.
+Original files remain in the generated build tree. The user-approved 2026-10-15
+decision is to ship and maintain this experimental integration; upstream
+endorsement is not a release gate. Complete redistribution review, authenticated
+recovery/resources, shipping-pipeline integration and final-package acceptance
+remain open in [the release-gate register](../../docs/proton-drive-release-gates.md).
+Building or protocol testing alone does not establish those gates.
 
 Sources:
 - <https://github.com/ProtonDriveApps/sdk/tree/8ffae007b0fbb8bcef53514719d6f093bb32dcf9>

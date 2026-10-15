@@ -94,6 +94,30 @@ Record the first observed manual publication and unchanged-source skip separatel
 from the first real scheduled event. A manual run does not prove the scheduler
 has fired. [CI coverage](ci.md) describes retained checks and evidence.
 
+## Proton experimental production integration
+
+The user approved shipping and maintaining Proton on 2026-10-15. Its
+experimental designation records compatibility maturity. Upstream endorsement
+or SDK general availability is not a publication prerequisite; the concrete
+[evidence and release gates](proton-drive-release-gates.md) remain applicable.
+
+The current standard Build and release workflows do not provision or enable the
+optional Proton runtime (`PUTGD_BUNDLE_PROTON` defaults to OFF). Their ordinary
+successful assets must not be described as Proton-enabled. Before advertising
+Proton in production downloads, complete the runtime/test integration, per-asset
+package/notices audits and extracted-source rebuild described in P3/P4, plus
+recovery, authenticated-memory, update-path and final-package acceptance.
+The current curated source allowlist excludes `tools/proton/`; that handoff also
+needs completion. This record changes no workflow and publishes no package.
+
+For each subsequent release carrying Proton, the release maintainer retains the
+integration maintainer's dated compatibility/migration check, pinned SDK/Crypto/
+Bun versions, runtime/manifest/notices hashes, supported asset list and current
+acceptance evidence. Follow the [maintenance procedure](proton-drive-release-gates.md#maintenance-procedure).
+An upstream required update or observed service incompatibility requires a
+compatible put.gd release and preserved recovery state. Existing stable/candidate
+and nightly coverage classes continue to apply.
+
 ## Formats and build environments
 
 | Asset | Builder | Qt distribution |

@@ -1,9 +1,14 @@
 # Proton Drive storage
 
 Proton Drive is a provider in the shared upload, retry and history pipeline. The
-Qt app uses a privately packaged executable built from the official Drive SDK
-and the pinned official account/CLI sources. Users do not install a CLI, Bun or
-Node.js. This is a third-party integration, not officially supported by Proton.
+Qt app in a Proton-enabled build uses a privately packaged executable built
+from the official Drive SDK and pinned official account/CLI sources. Users of
+that build do not install a CLI, Bun or Node.js. This is a third-party integration, not officially supported by Proton.
+put.gd intends to ship and maintain it as an experimental production integration.
+The 2026-10-15 product decision accepts upstream's readiness position; ongoing
+compatibility, packaging and user recovery are put.gd responsibilities. See
+[the evidence and release gates](proton-drive-release-gates.md) for current status
+and the SDK update/migration procedure.
 
 The unmodified official CLI cannot supply the upload receipt this application
 needs: its pinned upload command discards completion node/revision IDs and
@@ -128,6 +133,9 @@ local lab keychain entry; signing out would invalidate the shared remote session
 See the [tray-progress replay](testing-tray-progress.md) for the isolated live
 test path. Release acceptance requires Cinnamon functional/memory evidence
 before expanding to GNOME/KDE.
-Complete redistribution notices and service readiness remain release gates.
-See [integration verification](proton-drive-verification.md) for the actual
-build, test, review and remaining acceptance record.
+Recovery, authenticated helper memory, redistribution notices, Proton-enabled
+shipping assets and final-candidate acceptance remain open in
+[the release-gate register](proton-drive-release-gates.md#open-release-gates).
+Upstream approval is not required for the intended production shipment.
+See [integration verification](proton-drive-verification.md) for the historical
+build, test and review checkpoints.

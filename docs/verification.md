@@ -18,6 +18,18 @@ Full release readiness has not been established. The requirements remain in the
 [issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1) is closed.
 [Lab storage safeguards](lab-storage.md) gate capacity and verified retention.
 
+## Proton evidence reconciliation — 2026-10-15
+
+The [Proton register](proton-drive-release-gates.md) is the current feature-specific
+acceptance index for issue #10. It credits the merged authenticated local and
+PR #30 native campaigns at their exact sources, separates later offline S3 tray
+and incomplete settings desktop evidence, and retains recipient verification as
+issue-reported pending its supporting receipt. Recovery, authenticated helper
+memory, notices, Proton-enabled release/source assets, update-path verification
+and final-candidate acceptance remain open. The user approved production shipment
+and ongoing support as an experimental integration; upstream endorsement is not
+a gate. This documentation audit ran no build, tests or live acceptance campaign.
+
 ## Historical implementation checkpoints
 
 The entries below describe what was known at each implementation checkpoint.

@@ -1,4 +1,20 @@
-# Proton Drive integration verification — 2026-10-13
+# Proton Drive integration verification
+
+## Current disposition — 2026-10-15
+
+Proton is a retained experimental integration intended for production shipment
+and ongoing support. Upstream endorsement/general availability is not a release
+gate under the user-approved decision. The [evidence and release-gate register](proton-drive-release-gates.md)
+is the current reconciliation: it credits the merged local and native campaigns,
+identifies issue-reported recipient evidence, and lists the concrete recovery,
+authenticated-memory, notices, shipping-pipeline and compatibility work still open.
+No new execution or current-main acceptance is claimed by this documentation update.
+
+The checkpoints below are historical. PR #30 supersedes their initial pending
+native tray/setup statements for its tested source and scope; newer changes still
+need final-candidate evidence. Preserve the original failures and limitations.
+
+## Initial integration checkpoint — 2026-10-13
 
 This is the production storage integration from issue #10, built on
 `origin/main` at `cdb4e2f0a4f38d78e3780be59242115bb87b1f15`.
