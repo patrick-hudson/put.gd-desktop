@@ -1,7 +1,8 @@
 # Proton Drive: evidence and release gates
 
-Reconciled: 2026-10-15. Source inspected: main
-`50fd37cafafcc4611925642b93dccb9d9f0949ab`.
+Reconciled: 2026-10-15. Initial audit source: main
+`50fd37cafafcc4611925642b93dccb9d9f0949ab`. Subsequent tested candidates
+are identified with their individual receipts below.
 Issue of record: [#10](https://github.com/patrick-hudson/put.gd-desktop/issues/10).
 
 ## Product decision
@@ -31,8 +32,9 @@ These rows credit only their recorded source and workload. The initial audit rea
 sources and existing records only. The subsequent [P1 campaign](evidence/2026-10-15-proton-p1-recovery.md)
 built and tested its fingerprinted candidate and exercised an isolated account
 folder. The [normal-use application follow-up](evidence/2026-10-15-proton-p1-app-recovery.md)
-adds Cinnamon recovery and post-use idle evidence. None establishes an
-authenticated active-transfer budget or certifies final main.
+adds Cinnamon recovery and post-use idle evidence. The later
+[P2 resource campaign](evidence/2026-10-15-proton-p2-resources.md) measures active
+SDK process families and rejects a memory experiment. None certifies final main.
 
 | Scope | Evidence credited | Remaining limit |
 | --- | --- | --- |
@@ -50,14 +52,14 @@ authenticated active-transfer budget or certifies final main.
 The historical pending statements in the integration/helper records retain their
 original meaning. PR #30 supersedes their initial pending tray/compositor/setup
 claims for its tested scope only. The P1 follow-up above addresses current
-recovery; authenticated active-helper memory, distribution and final-candidate
-gates remain open.
+recovery. The P2 campaign below adds bounded authenticated process-family
+measurements; distribution and final-candidate gates remain open.
 
 ## Release gates
 
 P1 is complete for its recorded owned-folder and bounded-response scope.
-P2–P6 remain open after the application follow-up. Owners are project
-roles: the integration maintainer owns P1, P2 and P5; the release maintainer owns
+P2 is complete for its recorded Cinnamon resource workload. P3–P6 remain open.
+Owners are project roles: the integration maintainer owns P1, P2 and P5; the release maintainer owns
 P3, P4 and P6. The same person may perform both roles. Before the first production
 shipment advertising Proton, retain a dated pass/failure/blocker and exact source,
 runtime and package identity for each gate. No future upstream approval is needed.
@@ -106,7 +108,7 @@ rate-limit backoff. No live 429 was observed and manufacturing one through
 wrong-password traffic is not a release requirement. Extended cooldown timing
 remains unmeasured. Final packaged multi-desktop evidence stays in P6.
 
-### P2 — Authenticated process-family resources
+### P2 — Authenticated process-family resources (complete within recorded scope)
 
 Measure production Release first account use, small and large upload/share,
 cancellation/retry, repeated use and post-upload idle across resident, UI and all
@@ -116,10 +118,29 @@ resident. Establish that helpers exit and retained memory does not grow without
 bound. Confirm S3/local-only usage does not start the Proton runtime.
 
 Keep the frozen cold/post-use idle protocols and existing idle limits intact.
-Define the authenticated workload and its active-transfer budget before running
-acceptance; no separate authenticated active budget was found in the inspected
-records. Report it separately from the approximately 40 MiB idle target. Start
-with Cinnamon functional and memory checks before sibling expansion.
+The user decided on 2026-10-15 to optimize measurable avoidable costs without a
+hard total active-memory ceiling, given the SDK/runtime behavior. The pre-run
+512 MiB provisional envelope is a diagnostic reference, not an approved release
+gate. Freeze the authenticated workload, record its cost and preserve the
+separate 40 MiB post-use idle, CPU, swap and helper-lifetime gates.
+
+The [P2 receipt](evidence/2026-10-15-proton-p2-resources.md) records clean Release
+baseline `e558436e30c96d0e68fea14d9429e5ed2b811eaf` in visible Cinnamon/X11:
+account inspection, small/large upload/share, cancellation after actual bytes,
+original-operation retry and three repeated cycles passed with native paste.
+Peak whole-family RSS was 487.25 MiB; two five-minute post-use windows peaked at
+31.305 MiB, with no helpers/swap and negligible CPU. All 39 SDK children and one
+UI child were observed and reaped; local-only use started zero SDK helpers.
+A supported Bun smaller-heap experiment raised peak RSS to 539.96 MiB and sampled
+large-stage CPU, so it was reverted; no optimization was retained. Restored
+provisioning reproduced the baseline helper hash.
+
+This closes the measured P2 workload under that resource policy, with finite-run
+and instrumentation limits retained. It is not an upper bound for every file,
+account or desktop, nor physical cold-memory acceptance. Live S3 testing was
+explicitly excluded by the user; only local-only behavior and inspected
+Proton-only deployment/source boundaries earn the negative-control credit.
+Current packaged cross-desktop evidence remains P6.
 
 ### P3 — Redistribution and rebuild materials
 

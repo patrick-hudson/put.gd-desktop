@@ -1,0 +1,2622 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-15",
+  "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/10",
+  "disposition": "P2 complete for the recorded Cinnamon workload; no optimization retained; final packaged multi-desktop acceptance remains P6",
+  "activePolicy": {
+    "hardWholeFamilyRssCeilingApproved": false,
+    "referenceMiB": 512,
+    "referenceIsReleaseGate": false,
+    "userDecision": "Optimize measurable avoidable costs; no good total SDK budget. Preserve frozen idle limits."
+  },
+  "environment": {
+    "desktop": "Cinnamon 6.6.4+zena / Muffin 6.6.1 / X11",
+    "qt": "distro dynamic Qt 6.4.2",
+    "kernel": "6.14.0-37-generic",
+    "vm": "KVM, 2 vCPU, 6 GiB, visible VNC, 1280x800 scale 1",
+    "scope": "One independently authenticated Proton account; one admitted upload; no S3 service/configuration/object access or S3 tests. Common preset builds compiled existing targets.",
+    "deployment": "Private Release executables; not a shipping package, physical cold-memory result, or final three-desktop acceptance."
+  },
+  "workload": [
+    {
+      "stage": "local-only-control",
+      "effect": "local clipboard action; no Proton helper expected"
+    },
+    {
+      "stage": "first-account-use",
+      "effect": "production setup.inspectAccount; credentials bridged from fresh browser login"
+    },
+    {
+      "stage": "small-first",
+      "files": 2,
+      "bytesPerFile": 1048576
+    },
+    {
+      "stage": "large",
+      "files": 2,
+      "bytesPerFile": 134217728
+    },
+    {
+      "stage": "cancel-retry",
+      "files": 2,
+      "bytesPerFile": 67108864,
+      "cancelAfterRealSdkBytes": true,
+      "retryOriginalOperation": true
+    },
+    {
+      "stage": "small-repeat",
+      "cycles": 3,
+      "files": 2,
+      "bytesPerFile": 1048576
+    },
+    {
+      "stage": "post-use",
+      "windows": 2,
+      "secondsEach": 300,
+      "frozenObserverIntervalSeconds": 5
+    }
+  ],
+  "requestDeadlinesMs": {
+    "small": 120000,
+    "largeAndCancelRetry": 600000
+  },
+  "baseline": {
+    "build": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.188+ge558436e30c9",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.188+ge558436e30c9",
+      "gitCommit": "e558436e30c96d0e68fea14d9429e5ed2b811eaf",
+      "gitTree": "3ea6cff261485806ac0d47b681fb4198a4c71a1f",
+      "commitCount": 188,
+      "dirty": false,
+      "sourceProvenance": "git"
+    },
+    "deployment": {
+      "kind": "private Release executable deployment; not a shipping package",
+      "sourceCommit": "e558436e30c96d0e68fea14d9429e5ed2b811eaf",
+      "binarySha256": {
+        "/home/lab/p1/bin/putgd": "5f315b177d5e96573bf016b17c7fc9df0813dcc7adec353038d090446fcd7fe2",
+        "/home/lab/p1/bin/putgd-cli": "6fb718e29cdf6df742b566da06915100f93eecf47b68ce55a23d9baec391db40",
+        "/home/lab/p1/bin/putgd-ui": "85287e2adae7cadaff2df83ef452bdc1e72cb66027fdbbe54461ea44bc036288",
+        "/home/lab/p1/bin/putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc",
+        "/home/lab/p1/libexec/putgd/proton/putgd-proton-runtime": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99",
+        "/home/lab/p1/bin/putgd-tray-probe": "54f4bdd2e084ebd1f131483bc8afe971f918a68160326064e22b5774b5d78975",
+        "/home/lab/p1/bin/p1-bun": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c"
+      }
+    },
+    "active": {
+      "schemaVersion": 1,
+      "gates": {
+        "noSwap": true,
+        "allTracedChildrenObservedAndReaped": true,
+        "runtimeAndUiEachHavePostExecMemorySamples": true,
+        "localOnlyStartsNoProtonHelper": true,
+        "helperDrainWithin15Seconds": true,
+        "repeatedSettledRssAtMost40MiB": true,
+        "repeatedSettledGrowthAtMost4MiB": true
+      },
+      "activePeakRssMiB": 487.25390625,
+      "observedRuntimeGenerations": 39,
+      "observedUiGenerations": 1,
+      "tracedReapedChildren": 40,
+      "collectorMaximumDiscoveryGapSeconds": 0.3799839929997688,
+      "observerCpuSeconds": 164.834815,
+      "observerCpuPercentOneCore": 22.315012282748135,
+      "repeatedSettledRssMiB": [
+        28.21484375,
+        29.1640625,
+        29.8359375,
+        30.8828125
+      ],
+      "repeatedFinalMinusFirstBytes": 2797568,
+      "stages": {
+        "initial-idle": {
+          "samples": 29,
+          "startSeconds": 0.015657141000701813,
+          "endSeconds": 6.20796684600009,
+          "peakBytes": {
+            "rssBytes": 27131904,
+            "pssBytes": 17030144,
+            "privateBytes": 16093184,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.04,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 6.1923097049993885,
+          "sampledCpuPercentOneCore": 0.6459625229614375,
+          "peakMiB": {
+            "rssBytes": 25.875,
+            "pssBytes": 16.241,
+            "privateBytes": 15.348,
+            "swapBytes": 0.0
+          }
+        },
+        "local-only-control": {
+          "samples": 6,
+          "startSeconds": 6.432244962000368,
+          "endSeconds": 7.547507362000033,
+          "peakBytes": {
+            "rssBytes": 29495296,
+            "pssBytes": 13766656,
+            "privateBytes": 7733248,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.06,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 1.115262399999665,
+          "sampledCpuPercentOneCore": 5.379899833439918,
+          "peakMiB": {
+            "rssBytes": 28.129,
+            "pssBytes": 13.129,
+            "privateBytes": 7.375,
+            "swapBytes": 0.0
+          }
+        },
+        "local-control-settled": {
+          "samples": 141,
+          "startSeconds": 7.7775095510005485,
+          "endSeconds": 38.57323607500075,
+          "peakBytes": {
+            "rssBytes": 29495296,
+            "pssBytes": 13767680,
+            "privateBytes": 7733248,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 30.7957265240002,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 28.129,
+            "pssBytes": 13.13,
+            "privateBytes": 7.375,
+            "swapBytes": 0.0
+          }
+        },
+        "first-account-use": {
+          "samples": 17,
+          "startSeconds": 38.79883350199998,
+          "endSeconds": 42.45202597400021,
+          "peakBytes": {
+            "rssBytes": 106176512,
+            "pssBytes": 83533824,
+            "privateBytes": 77217792,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.8000000000000003,
+          "maxProcesses": 2,
+          "helperGenerations": 1,
+          "durationBetweenFirstLastSamplesSeconds": 3.653192472000228,
+          "sampledCpuPercentOneCore": 21.898654563962168,
+          "peakMiB": {
+            "rssBytes": 101.258,
+            "pssBytes": 79.664,
+            "privateBytes": 73.641,
+            "swapBytes": 0.0
+          }
+        },
+        "first-account-use-settled": {
+          "samples": 138,
+          "startSeconds": 42.6718749340007,
+          "endSeconds": 72.71655552399989,
+          "peakBytes": {
+            "rssBytes": 29405184,
+            "pssBytes": 13677568,
+            "privateBytes": 7643136,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 30.04468058999919,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 28.043,
+            "pssBytes": 13.044,
+            "privateBytes": 7.289,
+            "swapBytes": 0.0
+          }
+        },
+        "small-first-preparation": {
+          "samples": 10,
+          "startSeconds": 72.94004200600011,
+          "endSeconds": 74.94803227800003,
+          "peakBytes": {
+            "rssBytes": 29413376,
+            "pssBytes": 13685760,
+            "privateBytes": 7651328,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 2.0079902719999154,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 28.051,
+            "pssBytes": 13.052,
+            "privateBytes": 7.297,
+            "swapBytes": 0.0
+          }
+        },
+        "small-first": {
+          "samples": 207,
+          "startSeconds": 75.17023743400023,
+          "endSeconds": 120.47130872600064,
+          "peakBytes": {
+            "rssBytes": 181678080,
+            "pssBytes": 158910464,
+            "privateBytes": 152596480,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 6.979999999999986,
+          "maxProcesses": 2,
+          "helperGenerations": 6,
+          "durationBetweenFirstLastSamplesSeconds": 45.301071292000415,
+          "sampledCpuPercentOneCore": 15.408024139227287,
+          "peakMiB": {
+            "rssBytes": 173.262,
+            "pssBytes": 151.549,
+            "privateBytes": 145.527,
+            "swapBytes": 0.0
+          }
+        },
+        "small-first-settled": {
+          "samples": 137,
+          "startSeconds": 120.69484745099999,
+          "endSeconds": 150.64360711100016,
+          "peakBytes": {
+            "rssBytes": 31166464,
+            "pssBytes": 15295488,
+            "privateBytes": 9117696,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.01,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 29.948759660000178,
+          "sampledCpuPercentOneCore": 0.03339036445424512,
+          "peakMiB": {
+            "rssBytes": 29.723,
+            "pssBytes": 14.587,
+            "privateBytes": 8.695,
+            "swapBytes": 0.0
+          },
+          "settledFinalRssBytes": 29585408
+        },
+        "large-preparation": {
+          "samples": 15,
+          "startSeconds": 150.86488654300047,
+          "endSeconds": 153.9913646900004,
+          "peakBytes": {
+            "rssBytes": 29630464,
+            "pssBytes": 13759488,
+            "privateBytes": 7581696,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 3.1264781469999434,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 28.258,
+            "pssBytes": 13.122,
+            "privateBytes": 7.23,
+            "swapBytes": 0.0
+          }
+        },
+        "large": {
+          "samples": 535,
+          "startSeconds": 154.2130572820006,
+          "endSeconds": 272.5890305420007,
+          "peakBytes": {
+            "rssBytes": 510922752,
+            "pssBytes": 488139776,
+            "privateBytes": 481681408,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 20.690000000000072,
+          "maxProcesses": 3,
+          "helperGenerations": 6,
+          "durationBetweenFirstLastSamplesSeconds": 118.37597326000014,
+          "sampledCpuPercentOneCore": 17.478208989721846,
+          "peakMiB": {
+            "rssBytes": 487.254,
+            "pssBytes": 465.526,
+            "privateBytes": 459.367,
+            "swapBytes": 0.0
+          }
+        },
+        "large-settled": {
+          "samples": 137,
+          "startSeconds": 272.8098430990003,
+          "endSeconds": 302.8416739869999,
+          "peakBytes": {
+            "rssBytes": 30855168,
+            "pssBytes": 14984192,
+            "privateBytes": 8806400,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 30.031830887999604,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 29.426,
+            "pssBytes": 14.29,
+            "privateBytes": 8.398,
+            "swapBytes": 0.0
+          },
+          "settledFinalRssBytes": 29966336
+        },
+        "cancel-preparation": {
+          "samples": 12,
+          "startSeconds": 303.06416585400075,
+          "endSeconds": 305.5011949790005,
+          "peakBytes": {
+            "rssBytes": 29995008,
+            "pssBytes": 14124032,
+            "privateBytes": 7946240,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.02,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 2.4370291249997535,
+          "sampledCpuPercentOneCore": 0.8206713573848661,
+          "peakMiB": {
+            "rssBytes": 28.605,
+            "pssBytes": 13.47,
+            "privateBytes": 7.578,
+            "swapBytes": 0.0
+          }
+        },
+        "cancel": {
+          "samples": 83,
+          "startSeconds": 305.7221341080003,
+          "endSeconds": 323.83643300600033,
+          "peakBytes": {
+            "rssBytes": 351756288,
+            "pssBytes": 328775680,
+            "privateBytes": 322318336,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 7.1199999999999966,
+          "maxProcesses": 2,
+          "helperGenerations": 3,
+          "durationBetweenFirstLastSamplesSeconds": 18.114298898000015,
+          "sampledCpuPercentOneCore": 39.30596508367271,
+          "peakMiB": {
+            "rssBytes": 335.461,
+            "pssBytes": 313.545,
+            "privateBytes": 307.387,
+            "swapBytes": 0.0
+          }
+        },
+        "cancel-settled": {
+          "samples": 136,
+          "startSeconds": 324.0574335179999,
+          "endSeconds": 354.1905964430007,
+          "peakBytes": {
+            "rssBytes": 31690752,
+            "pssBytes": 15819776,
+            "privateBytes": 9641984,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.01,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 30.13316292500076,
+          "sampledCpuPercentOneCore": 0.03318602837972658,
+          "peakMiB": {
+            "rssBytes": 30.223,
+            "pssBytes": 15.087,
+            "privateBytes": 9.195,
+            "swapBytes": 0.0
+          },
+          "settledFinalRssBytes": 29970432
+        },
+        "retry": {
+          "samples": 322,
+          "startSeconds": 354.4131776840004,
+          "endSeconds": 425.84639175600023,
+          "peakBytes": {
+            "rssBytes": 346411008,
+            "pssBytes": 323036160,
+            "privateBytes": 316895232,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 12.79999999999997,
+          "maxProcesses": 2,
+          "helperGenerations": 5,
+          "durationBetweenFirstLastSamplesSeconds": 71.43321407199983,
+          "sampledCpuPercentOneCore": 17.91883532931675,
+          "peakMiB": {
+            "rssBytes": 330.363,
+            "pssBytes": 308.071,
+            "privateBytes": 302.215,
+            "swapBytes": 0.0
+          }
+        },
+        "retry-settled": {
+          "samples": 138,
+          "startSeconds": 426.0680100039999,
+          "endSeconds": 456.2884615140001,
+          "peakBytes": {
+            "rssBytes": 30781440,
+            "pssBytes": 14910464,
+            "privateBytes": 8732672,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.02,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 30.220451510000203,
+          "sampledCpuPercentOneCore": 0.06618034807779702,
+          "peakMiB": {
+            "rssBytes": 29.355,
+            "pssBytes": 14.22,
+            "privateBytes": 8.328,
+            "swapBytes": 0.0
+          },
+          "settledFinalRssBytes": 30781440
+        },
+        "repeat-1-preparation": {
+          "samples": 11,
+          "startSeconds": 456.5131727120006,
+          "endSeconds": 458.7473499020007,
+          "peakBytes": {
+            "rssBytes": 30801920,
+            "pssBytes": 14930944,
+            "privateBytes": 8753152,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 2.234177190000082,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 29.375,
+            "pssBytes": 14.239,
+            "privateBytes": 8.348,
+            "swapBytes": 0.0
+          }
+        },
+        "repeat-1": {
+          "samples": 207,
+          "startSeconds": 458.9722738350001,
+          "endSeconds": 504.397156045,
+          "peakBytes": {
+            "rssBytes": 185749504,
+            "pssBytes": 162756608,
+            "privateBytes": 156299264,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 8.679999999999986,
+          "maxProcesses": 2,
+          "helperGenerations": 6,
+          "durationBetweenFirstLastSamplesSeconds": 45.42488220999985,
+          "sampledCpuPercentOneCore": 19.108470022821912,
+          "peakMiB": {
+            "rssBytes": 177.145,
+            "pssBytes": 155.217,
+            "privateBytes": 149.059,
+            "swapBytes": 0.0
+          }
+        },
+        "repeat-1-settled": {
+          "samples": 135,
+          "startSeconds": 504.6175564240002,
+          "endSeconds": 534.4691198220007,
+          "peakBytes": {
+            "rssBytes": 32423936,
+            "pssBytes": 16552960,
+            "privateBytes": 10375168,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 29.851563398000508,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 30.922,
+            "pssBytes": 15.786,
+            "privateBytes": 9.895,
+            "swapBytes": 0.0
+          },
+          "settledFinalRssBytes": 30580736
+        },
+        "repeat-2-preparation": {
+          "samples": 11,
+          "startSeconds": 534.6912120750003,
+          "endSeconds": 536.9025077060005,
+          "peakBytes": {
+            "rssBytes": 30613504,
+            "pssBytes": 14742528,
+            "privateBytes": 8564736,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 2.211295631000212,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 29.195,
+            "pssBytes": 14.06,
+            "privateBytes": 8.168,
+            "swapBytes": 0.0
+          }
+        },
+        "repeat-2": {
+          "samples": 209,
+          "startSeconds": 537.126363673,
+          "endSeconds": 582.6612074580007,
+          "peakBytes": {
+            "rssBytes": 187932672,
+            "pssBytes": 165040128,
+            "privateBytes": 158584832,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 7.559999999999989,
+          "maxProcesses": 2,
+          "helperGenerations": 6,
+          "durationBetweenFirstLastSamplesSeconds": 45.5348437850007,
+          "sampledCpuPercentOneCore": 16.60267033240657,
+          "peakMiB": {
+            "rssBytes": 179.227,
+            "pssBytes": 157.395,
+            "privateBytes": 151.238,
+            "swapBytes": 0.0
+          }
+        },
+        "repeat-2-settled": {
+          "samples": 138,
+          "startSeconds": 582.8968846820007,
+          "endSeconds": 613.08031338,
+          "peakBytes": {
+            "rssBytes": 31899648,
+            "pssBytes": 16028672,
+            "privateBytes": 9850880,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 30.18342869799926,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 30.422,
+            "pssBytes": 15.286,
+            "privateBytes": 9.395,
+            "swapBytes": 0.0
+          },
+          "settledFinalRssBytes": 31285248
+        },
+        "repeat-3-preparation": {
+          "samples": 12,
+          "startSeconds": 613.3051303060001,
+          "endSeconds": 615.7698095149999,
+          "peakBytes": {
+            "rssBytes": 31326208,
+            "pssBytes": 15455232,
+            "privateBytes": 9277440,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 2.464679208999769,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 29.875,
+            "pssBytes": 14.739,
+            "privateBytes": 8.848,
+            "swapBytes": 0.0
+          }
+        },
+        "repeat-3": {
+          "samples": 417,
+          "startSeconds": 615.9951819050002,
+          "endSeconds": 707.501573558,
+          "peakBytes": {
+            "rssBytes": 186978304,
+            "pssBytes": 164141056,
+            "privateBytes": 157675520,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 8.209999999999994,
+          "maxProcesses": 2,
+          "helperGenerations": 6,
+          "durationBetweenFirstLastSamplesSeconds": 91.50639165299981,
+          "sampledCpuPercentOneCore": 8.972050860810933,
+          "peakMiB": {
+            "rssBytes": 178.316,
+            "pssBytes": 156.537,
+            "privateBytes": 150.371,
+            "swapBytes": 0.0
+          }
+        },
+        "repeat-3-settled": {
+          "samples": 137,
+          "startSeconds": 707.7252897950002,
+          "endSeconds": 737.7528674180003,
+          "peakBytes": {
+            "rssBytes": 32382976,
+            "pssBytes": 16512000,
+            "privateBytes": 10334208,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 30.02757762300007,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 30.883,
+            "pssBytes": 15.747,
+            "privateBytes": 9.855,
+            "swapBytes": 0.0
+          },
+          "settledFinalRssBytes": 32382976
+        },
+        "workload-finished": {
+          "samples": 2,
+          "startSeconds": 737.9986809460006,
+          "endSeconds": 738.2234573149999,
+          "peakBytes": {
+            "rssBytes": 32382976,
+            "pssBytes": 16512000,
+            "privateBytes": 10334208,
+            "swapBytes": 0
+          },
+          "sampledCpuSeconds": 0.0,
+          "maxProcesses": 1,
+          "helperGenerations": 0,
+          "durationBetweenFirstLastSamplesSeconds": 0.22477636899930076,
+          "sampledCpuPercentOneCore": 0.0,
+          "peakMiB": {
+            "rssBytes": 30.883,
+            "pssBytes": 15.747,
+            "privateBytes": 9.855,
+            "swapBytes": 0.0
+          }
+        }
+      },
+      "runtimeLifetimes": [
+        {
+          "pid": 84326,
+          "startTicks": 459928,
+          "observedSeconds": 1.8360132050001994,
+          "traceLaunchToReapSeconds": 2.0929300785064697,
+          "lastSampledCpuSeconds": 0.36,
+          "maxObservedVmHwmBytes": 94076928,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 84965,
+          "startTicks": 463566,
+          "observedSeconds": 2.0691936279999936,
+          "traceLaunchToReapSeconds": 2.0894739627838135,
+          "lastSampledCpuSeconds": 0.35,
+          "maxObservedVmHwmBytes": 95752192,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 85225,
+          "startTicks": 463842,
+          "observedSeconds": 3.4648235129998284,
+          "traceLaunchToReapSeconds": 3.483982801437378,
+          "lastSampledCpuSeconds": 0.39,
+          "maxObservedVmHwmBytes": 92602368,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 85623,
+          "startTicks": 464260,
+          "observedSeconds": 8.464085016999888,
+          "traceLaunchToReapSeconds": 8.486398935317993,
+          "lastSampledCpuSeconds": 0.58,
+          "maxObservedVmHwmBytes": 99946496,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 86525,
+          "startTicks": 465174,
+          "observedSeconds": 12.215326898000058,
+          "traceLaunchToReapSeconds": 12.258365869522095,
+          "lastSampledCpuSeconds": 0.57,
+          "maxObservedVmHwmBytes": 100671488,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 87799,
+          "startTicks": 466543,
+          "observedSeconds": 6.902963960999841,
+          "traceLaunchToReapSeconds": 6.932276964187622,
+          "lastSampledCpuSeconds": 0.99,
+          "maxObservedVmHwmBytes": 150417408,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 88581,
+          "startTicks": 467309,
+          "observedSeconds": 4.773051508000208,
+          "traceLaunchToReapSeconds": 4.801670074462891,
+          "lastSampledCpuSeconds": 1.03,
+          "maxObservedVmHwmBytes": 150495232,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 90079,
+          "startTicks": 471989,
+          "observedSeconds": 1.8084106090000205,
+          "traceLaunchToReapSeconds": 1.826200008392334,
+          "lastSampledCpuSeconds": 0.44,
+          "maxObservedVmHwmBytes": 93212672,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 90442,
+          "startTicks": 472341,
+          "observedSeconds": 2.5606144379999023,
+          "traceLaunchToReapSeconds": 2.6000540256500244,
+          "lastSampledCpuSeconds": 0.37,
+          "maxObservedVmHwmBytes": 93786112,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 90771,
+          "startTicks": 472670,
+          "observedSeconds": 43.42195598099988,
+          "traceLaunchToReapSeconds": 43.45211887359619,
+          "lastSampledCpuSeconds": 5.5,
+          "maxObservedVmHwmBytes": 439308288,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 94417,
+          "startTicks": 477089,
+          "observedSeconds": 42.70750690499972,
+          "traceLaunchToReapSeconds": 42.753994941711426,
+          "lastSampledCpuSeconds": 5.0,
+          "maxObservedVmHwmBytes": 488169472,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 98673,
+          "startTicks": 481431,
+          "observedSeconds": 4.72868628499964,
+          "traceLaunchToReapSeconds": 4.75802206993103,
+          "lastSampledCpuSeconds": 0.96,
+          "maxObservedVmHwmBytes": 153591808,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 99214,
+          "startTicks": 481981,
+          "observedSeconds": 10.253157489999467,
+          "traceLaunchToReapSeconds": 10.267222166061401,
+          "lastSampledCpuSeconds": 1.03,
+          "maxObservedVmHwmBytes": 154075136,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 100979,
+          "startTicks": 486849,
+          "observedSeconds": 2.779961173000629,
+          "traceLaunchToReapSeconds": 2.815636157989502,
+          "lastSampledCpuSeconds": 0.38,
+          "maxObservedVmHwmBytes": 94248960,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 101398,
+          "startTicks": 487252,
+          "observedSeconds": 1.7452344479997919,
+          "traceLaunchToReapSeconds": 1.7745280265808105,
+          "lastSampledCpuSeconds": 0.32,
+          "maxObservedVmHwmBytes": 94978048,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 101623,
+          "startTicks": 487499,
+          "observedSeconds": 7.491874079999434,
+          "traceLaunchToReapSeconds": 7.521782159805298,
+          "lastSampledCpuSeconds": 3.07,
+          "maxObservedVmHwmBytes": 348155904,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 102637,
+          "startTicks": 491536,
+          "observedSeconds": 2.4109610389996305,
+          "traceLaunchToReapSeconds": 2.451502799987793,
+          "lastSampledCpuSeconds": 0.41,
+          "maxObservedVmHwmBytes": 95363072,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 103027,
+          "startTicks": 491959,
+          "observedSeconds": 21.976782253999772,
+          "traceLaunchToReapSeconds": 22.019004106521606,
+          "lastSampledCpuSeconds": 3.42,
+          "maxObservedVmHwmBytes": 336769024,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 105049,
+          "startTicks": 494248,
+          "observedSeconds": 25.39918130099977,
+          "traceLaunchToReapSeconds": 25.429765939712524,
+          "lastSampledCpuSeconds": 2.89,
+          "maxObservedVmHwmBytes": 325939200,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 107550,
+          "startTicks": 496856,
+          "observedSeconds": 4.740087480000511,
+          "traceLaunchToReapSeconds": 4.774492025375366,
+          "lastSampledCpuSeconds": 1.04,
+          "maxObservedVmHwmBytes": 150556672,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 108056,
+          "startTicks": 497399,
+          "observedSeconds": 9.310751723999601,
+          "traceLaunchToReapSeconds": 9.34389591217041,
+          "lastSampledCpuSeconds": 1.12,
+          "maxObservedVmHwmBytes": 149389312,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 109530,
+          "startTicks": 501939,
+          "observedSeconds": 1.8926707690006879,
+          "traceLaunchToReapSeconds": 1.9166290760040283,
+          "lastSampledCpuSeconds": 0.49,
+          "maxObservedVmHwmBytes": 93433856,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 109755,
+          "startTicks": 502205,
+          "observedSeconds": 3.590304100999674,
+          "traceLaunchToReapSeconds": 3.619436025619507,
+          "lastSampledCpuSeconds": 0.42,
+          "maxObservedVmHwmBytes": 93442048,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 110187,
+          "startTicks": 502640,
+          "observedSeconds": 6.895661188000304,
+          "traceLaunchToReapSeconds": 6.909754037857056,
+          "lastSampledCpuSeconds": 0.86,
+          "maxObservedVmHwmBytes": 101613568,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 110867,
+          "startTicks": 503398,
+          "observedSeconds": 5.506671826999991,
+          "traceLaunchToReapSeconds": 5.547459125518799,
+          "lastSampledCpuSeconds": 0.72,
+          "maxObservedVmHwmBytes": 104062976,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 111413,
+          "startTicks": 504037,
+          "observedSeconds": 9.824824092999734,
+          "traceLaunchToReapSeconds": 9.881330013275146,
+          "lastSampledCpuSeconds": 1.39,
+          "maxObservedVmHwmBytes": 153640960,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 112367,
+          "startTicks": 505160,
+          "observedSeconds": 10.012083245999747,
+          "traceLaunchToReapSeconds": 10.036738872528076,
+          "lastSampledCpuSeconds": 1.32,
+          "maxObservedVmHwmBytes": 151474176,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 113824,
+          "startTicks": 509752,
+          "observedSeconds": 1.8242121870007395,
+          "traceLaunchToReapSeconds": 1.8635189533233643,
+          "lastSampledCpuSeconds": 0.43,
+          "maxObservedVmHwmBytes": 93810688,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 114067,
+          "startTicks": 510000,
+          "observedSeconds": 3.398694028999671,
+          "traceLaunchToReapSeconds": 3.4274260997772217,
+          "lastSampledCpuSeconds": 0.42,
+          "maxObservedVmHwmBytes": 93945856,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 114495,
+          "startTicks": 510423,
+          "observedSeconds": 8.518012829999861,
+          "traceLaunchToReapSeconds": 8.548426866531372,
+          "lastSampledCpuSeconds": 0.63,
+          "maxObservedVmHwmBytes": 100016128,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 115385,
+          "startTicks": 511348,
+          "observedSeconds": 4.973124776000077,
+          "traceLaunchToReapSeconds": 4.998503923416138,
+          "lastSampledCpuSeconds": 0.62,
+          "maxObservedVmHwmBytes": 100745216,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 115959,
+          "startTicks": 511923,
+          "observedSeconds": 9.758644620999803,
+          "traceLaunchToReapSeconds": 9.765742063522339,
+          "lastSampledCpuSeconds": 1.1,
+          "maxObservedVmHwmBytes": 156008448,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 116953,
+          "startTicks": 513030,
+          "observedSeconds": 9.854026072000124,
+          "traceLaunchToReapSeconds": 9.876312971115112,
+          "lastSampledCpuSeconds": 1.18,
+          "maxObservedVmHwmBytes": 150044672,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 118412,
+          "startTicks": 517643,
+          "observedSeconds": 1.8309732750003604,
+          "traceLaunchToReapSeconds": 1.8575899600982666,
+          "lastSampledCpuSeconds": 0.49,
+          "maxObservedVmHwmBytes": 94359552,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 118532,
+          "startTicks": 517908,
+          "observedSeconds": 3.2984854270007418,
+          "traceLaunchToReapSeconds": 3.3292970657348633,
+          "lastSampledCpuSeconds": 0.56,
+          "maxObservedVmHwmBytes": 93974528,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 118545,
+          "startTicks": 518316,
+          "observedSeconds": 8.149489248999998,
+          "traceLaunchToReapSeconds": 8.179263830184937,
+          "lastSampledCpuSeconds": 0.73,
+          "maxObservedVmHwmBytes": 100143104,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 118560,
+          "startTicks": 519201,
+          "observedSeconds": 5.25875214000007,
+          "traceLaunchToReapSeconds": 5.270040035247803,
+          "lastSampledCpuSeconds": 0.82,
+          "maxObservedVmHwmBytes": 101769216,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 118573,
+          "startTicks": 519801,
+          "observedSeconds": 7.155247970000346,
+          "traceLaunchToReapSeconds": 7.181586980819702,
+          "lastSampledCpuSeconds": 1.23,
+          "maxObservedVmHwmBytes": 153694208,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        },
+        {
+          "pid": 118588,
+          "startTicks": 520645,
+          "observedSeconds": 7.281638565999856,
+          "traceLaunchToReapSeconds": 7.304363012313843,
+          "lastSampledCpuSeconds": 1.2,
+          "maxObservedVmHwmBytes": 154333184,
+          "sha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99"
+        }
+      ],
+      "sourceSha256": "88766b77b9cb2e2201fc5554a05da1bccddc94d71442beaf5e5610d465f2c0f4",
+      "rawHashes": {
+        "active-results.json": "fbeb0bbbba061514741394d5da31a9fbb46a946cb4e598781151e07cf6f6beb3",
+        "active-samples.jsonl": "fd0801531037c0de6665581d115ffc90a4522c5e8dc59887c1f0b16738631469",
+        "process.trace": "b710a059754f940d467e9b6804292f41be47fa8f3dd48d115fa7fa52ad11339a",
+        "protocol.json": "0a1949abaa4d27da76c9e7d95e77e29b3e484fc4cfc5ed21c7b71b19b1a4dffa"
+      },
+      "limits": [
+        "CPU is sampled /proc accounting; final CPU between last observation and process exit is not included.",
+        "Stage CPU assignment has sampling-boundary uncertainty.",
+        "RSS sums shared pages across processes; PSS/private are reported separately.",
+        "strace records no exec argv, environment, request or payload data.",
+        "Observer startedUtc field in this collector is completion-time-labelled; elapsed time and trace epochs provide chronology.",
+        "No live S3 negative control was performed."
+      ]
+    },
+    "attribution": {
+      "peakStage": "large",
+      "peakMiB": 487.25390625,
+      "rolesAtPeak": [
+        {
+          "executable": "putgd",
+          "rssMiB": 29.4375
+        },
+        {
+          "executable": "putgd-proton-runtime",
+          "rssMiB": 457.81640625
+        }
+      ],
+      "runtimeMaxSampledRssMiB": 457.81640625,
+      "runtimeMaxObservedVmHwmMiB": 465.5546875,
+      "shortestRuntimeObservedSeconds": 1.7452344479997919,
+      "maximumMemorySampleGapSeconds": 0.481023252000341,
+      "p99MemorySampleGapSeconds": 0.24036427999999432,
+      "memoryTargetIntervalSeconds": 0.2,
+      "collectorCpuPercentOneCore": 22.315012282748135
+    },
+    "idle": {
+      "observerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+      "scope": "two serial Cinnamon VM post-use idle windows; no active-transfer or cold physical acceptance",
+      "windows": [
+        {
+          "window": 1,
+          "requestedSeconds": 300,
+          "sampleIntervalSeconds": 5,
+          "samples": 61,
+          "observedSeconds": 300.0002835180003,
+          "peakBytes": {
+            "rssBytes": 32825344,
+            "pssBytes": 16953344,
+            "privateBytes": 10776576
+          },
+          "peakMiB": {
+            "rssBytes": 31.305,
+            "pssBytes": 16.168,
+            "privateBytes": 10.277
+          },
+          "maximumSwapBytes": 0,
+          "cpuPercentOneCore": 0.009999990549408921,
+          "maxProcesses": 1,
+          "maxUiProcesses": 0,
+          "maxEscapedProcesses": 0,
+          "exitedDescendants": 0,
+          "residentIdentity": {
+            "pid": 83158,
+            "startTicks": 455716,
+            "uid": 1000,
+            "executable": "/home/lab/p1/bin/putgd",
+            "device": 64771,
+            "inode": 393744
+          },
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "resultsSha256": "639c39c7f2a4ecc38e1fb77123b55c8f18df989c85386354f97f967e94ce6f42",
+          "samplesSha256": "ed96dfb21dbce98c83a8d9b5a47a07d45b1322e57a17e0f60687bfd3395b999d"
+        },
+        {
+          "window": 2,
+          "requestedSeconds": 300,
+          "sampleIntervalSeconds": 5,
+          "samples": 61,
+          "observedSeconds": 300.0002291769997,
+          "peakBytes": {
+            "rssBytes": 32825344,
+            "pssBytes": 16952320,
+            "privateBytes": 10776576
+          },
+          "peakMiB": {
+            "rssBytes": 31.305,
+            "pssBytes": 16.167,
+            "privateBytes": 10.277
+          },
+          "maximumSwapBytes": 0,
+          "cpuPercentOneCore": 0.0033333307869241706,
+          "maxProcesses": 1,
+          "maxUiProcesses": 0,
+          "maxEscapedProcesses": 0,
+          "exitedDescendants": 0,
+          "residentIdentity": {
+            "pid": 83158,
+            "startTicks": 455716,
+            "uid": 1000,
+            "executable": "/home/lab/p1/bin/putgd",
+            "device": 64771,
+            "inode": 393744
+          },
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "resultsSha256": "75bd89888b8187ad991ec8d4b48ff3679b6536762dc6edad19a505b15a676c3c",
+          "samplesSha256": "eebb2c5cb5ecc144f565af6485b5e4f08e67600cdb7b7ecd948f5a19c8ecfda7"
+        }
+      ]
+    },
+    "functionalChecks": {
+      "local-only-control": {
+        "completed": true,
+        "noUpload": true
+      },
+      "first-account-use": {
+        "passed": true
+      },
+      "small-first": {
+        "passed": true,
+        "files": [
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          },
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          }
+        ],
+        "nativePasteMatchedReceipts": true
+      },
+      "large": {
+        "passed": true,
+        "files": [
+          {
+            "bytes": 134217728,
+            "sha256": "a626d17da2e502f5b4b8e3ebd23f0bf9daef6255688d8e0bb482b3ae3794a682"
+          },
+          {
+            "bytes": 134217728,
+            "sha256": "a626d17da2e502f5b4b8e3ebd23f0bf9daef6255688d8e0bb482b3ae3794a682"
+          }
+        ],
+        "nativePasteMatchedReceipts": true
+      },
+      "cancel": {
+        "passed": true,
+        "afterRealSdkProgress": true,
+        "noUnconfirmedLink": true
+      },
+      "retry": {
+        "passed": true,
+        "sameOperationAndPublication": true,
+        "nativePasteMatchedReceipts": true
+      },
+      "repeat-1": {
+        "passed": true,
+        "files": [
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          },
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          }
+        ],
+        "nativePasteMatchedReceipts": true
+      },
+      "repeat-2": {
+        "passed": true,
+        "files": [
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          },
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          }
+        ],
+        "nativePasteMatchedReceipts": true
+      },
+      "repeat-3": {
+        "passed": true,
+        "files": [
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          },
+          {
+            "bytes": 1048576,
+            "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+          }
+        ],
+        "nativePasteMatchedReceipts": true,
+        "continuedOriginalOperationAfterHostControllerExit143": true
+      }
+    },
+    "operationCount": 7,
+    "active512MiBDiagnostic": {
+      "belowReference": true,
+      "releaseGate": false
+    },
+    "inventory": {
+      "ok": true,
+      "confirmedNodes": 12,
+      "uniqueConfirmedNodes": 12,
+      "expectedReceipts": 12,
+      "noDuplicateConfirmedUpload": true,
+      "visibleUnfinishedDrafts": 0,
+      "earlierAttemptNodes": 3,
+      "scope": "current workload publication identities; earlier failed attempt retained",
+      "folderRestored": true
+    },
+    "testLinkCleanup": {
+      "revokedOwnedTestLinks": 12,
+      "remoteObjectDeletion": false,
+      "priorAttemptLinksAlreadyRevoked": 2,
+      "unknownPrivateUploadsPreserved": true
+    },
+    "sessionCleanup": {
+      "ok": true,
+      "ownTestSessionRevocationHttpStatus": 200
+    },
+    "localKeychainCleanup": {
+      "hostDisposableRefAbsent": true,
+      "guestDisposableRefAbsent": true,
+      "sessionAlreadyRemotelyRevoked": true
+    }
+  },
+  "rejectedExperiment": {
+    "name": "Bun --smol embedded with --compile-exec-argv",
+    "runtimeSha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd",
+    "candidate": {
+      "build": {
+        "schemaVersion": 1,
+        "version": "0.1.1-dev.190+g7f42761d249c",
+        "baseVersion": "0.1.1",
+        "packageVersion": "0.1.1~dev.190+g7f42761d249c",
+        "gitCommit": "7f42761d249c281ca708c2e614cfb44809584344",
+        "gitTree": "c9310ac2ebc490f0072e2a3772481c9c81aeefba",
+        "commitCount": 190,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "deployment": {
+        "kind": "private Release executable deployment; no shipping package or S3 module",
+        "sourceCommit": "7f42761d249c281ca708c2e614cfb44809584344",
+        "binarySha256": {
+          "/home/lab/p2o/bin/putgd": "987cdbf829e24070ee75070991dd6dd3f7dec00c806a78a27a29d23eee5e3b9e",
+          "/home/lab/p2o/bin/putgd-cli": "71ad8c215e783daa2bef7d21dd9d364963d8d5047def275e9cd7f5ca5225e6d6",
+          "/home/lab/p2o/bin/putgd-ui": "c8ebf6dcbedb1acbb97c53dec90c300390c421abd739d5cba88eb1e94a72e563",
+          "/home/lab/p2o/libexec/putgd/proton/putgd-proton-runtime": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+        }
+      },
+      "active": {
+        "schemaVersion": 1,
+        "gates": {
+          "noSwap": true,
+          "allTracedChildrenObservedAndReaped": true,
+          "runtimeAndUiEachHavePostExecMemorySamples": true,
+          "localOnlyStartsNoProtonHelper": true,
+          "helperDrainWithin15Seconds": true,
+          "repeatedSettledRssAtMost40MiB": true,
+          "repeatedSettledGrowthAtMost4MiB": true
+        },
+        "activePeakRssMiB": 539.95703125,
+        "observedRuntimeGenerations": 39,
+        "observedUiGenerations": 1,
+        "tracedReapedChildren": 40,
+        "collectorMaximumDiscoveryGapSeconds": 0.2806885489999331,
+        "observerCpuSeconds": 206.80053400000003,
+        "observerCpuPercentOneCore": 25.396480729538208,
+        "repeatedSettledRssMiB": [
+          28.609375,
+          30.62890625,
+          30.68359375,
+          30.703125
+        ],
+        "repeatedFinalMinusFirstBytes": 2195456,
+        "stages": {
+          "initial-idle": {
+            "samples": 290,
+            "startSeconds": 0.02035342499948456,
+            "endSeconds": 63.98848346700015,
+            "peakBytes": {
+              "rssBytes": 27082752,
+              "pssBytes": 17027072,
+              "privateBytes": 16113664,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.05,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 63.968130042000666,
+            "sampledCpuPercentOneCore": 0.07816392313980514,
+            "peakMiB": {
+              "rssBytes": 25.828,
+              "pssBytes": 16.238,
+              "privateBytes": 15.367,
+              "swapBytes": 0.0
+            }
+          },
+          "local-only-control": {
+            "samples": 7,
+            "startSeconds": 64.21291596399988,
+            "endSeconds": 65.50192786800017,
+            "peakBytes": {
+              "rssBytes": 29958144,
+              "pssBytes": 14282752,
+              "privateBytes": 8265728,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.060000000000000005,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 1.28901190400029,
+            "sampledCpuPercentOneCore": 4.654728153696438,
+            "peakMiB": {
+              "rssBytes": 28.57,
+              "pssBytes": 13.621,
+              "privateBytes": 7.883,
+              "swapBytes": 0.0
+            }
+          },
+          "local-control-settled": {
+            "samples": 141,
+            "startSeconds": 65.73277471500023,
+            "endSeconds": 96.57039880899993,
+            "peakBytes": {
+              "rssBytes": 29958144,
+              "pssBytes": 14282752,
+              "privateBytes": 8265728,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.01,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 30.837624093999693,
+            "sampledCpuPercentOneCore": 0.032427919769427944,
+            "peakMiB": {
+              "rssBytes": 28.57,
+              "pssBytes": 13.621,
+              "privateBytes": 7.883,
+              "swapBytes": 0.0
+            }
+          },
+          "first-account-use": {
+            "samples": 29,
+            "startSeconds": 96.792395511,
+            "endSeconds": 103.13345972499974,
+            "peakBytes": {
+              "rssBytes": 119312384,
+              "pssBytes": 97000448,
+              "privateBytes": 90722304,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 1.0300000000000002,
+            "maxProcesses": 2,
+            "helperGenerations": 1,
+            "durationBetweenFirstLastSamplesSeconds": 6.3410642139997435,
+            "sampledCpuPercentOneCore": 16.24333022406516,
+            "peakMiB": {
+              "rssBytes": 113.785,
+              "pssBytes": 92.507,
+              "privateBytes": 86.52,
+              "swapBytes": 0.0
+            }
+          },
+          "first-account-use-settled": {
+            "samples": 140,
+            "startSeconds": 103.3566451050001,
+            "endSeconds": 133.9812715449998,
+            "peakBytes": {
+              "rssBytes": 29814784,
+              "pssBytes": 14139392,
+              "privateBytes": 8122368,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 30.6246264399997,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 28.434,
+              "pssBytes": 13.484,
+              "privateBytes": 7.746,
+              "swapBytes": 0.0
+            }
+          },
+          "small-first-preparation": {
+            "samples": 15,
+            "startSeconds": 134.23802728600003,
+            "endSeconds": 137.29380904000027,
+            "peakBytes": {
+              "rssBytes": 29818880,
+              "pssBytes": 14143488,
+              "privateBytes": 8126464,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.01,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 3.055781754000236,
+            "sampledCpuPercentOneCore": 0.32724850153023155,
+            "peakMiB": {
+              "rssBytes": 28.438,
+              "pssBytes": 13.488,
+              "privateBytes": 7.75,
+              "swapBytes": 0.0
+            }
+          },
+          "small-first": {
+            "samples": 213,
+            "startSeconds": 137.51396293200014,
+            "endSeconds": 186.34460374599985,
+            "peakBytes": {
+              "rssBytes": 183463936,
+              "pssBytes": 160823296,
+              "privateBytes": 154517504,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 13.659999999999982,
+            "maxProcesses": 2,
+            "helperGenerations": 6,
+            "durationBetweenFirstLastSamplesSeconds": 48.83064081399971,
+            "sampledCpuPercentOneCore": 27.974238658943978,
+            "peakMiB": {
+              "rssBytes": 174.965,
+              "pssBytes": 153.373,
+              "privateBytes": 147.359,
+              "swapBytes": 0.0
+            }
+          },
+          "small-first-settled": {
+            "samples": 137,
+            "startSeconds": 186.56778549299997,
+            "endSeconds": 216.69820864400026,
+            "peakBytes": {
+              "rssBytes": 30478336,
+              "pssBytes": 14659584,
+              "privateBytes": 8499200,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 30.130423151000286,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 29.066,
+              "pssBytes": 13.98,
+              "privateBytes": 8.105,
+              "swapBytes": 0.0
+            },
+            "settledFinalRssBytes": 29999104
+          },
+          "large-preparation": {
+            "samples": 16,
+            "startSeconds": 216.92446467799982,
+            "endSeconds": 220.26595075899968,
+            "peakBytes": {
+              "rssBytes": 30023680,
+              "pssBytes": 14204928,
+              "privateBytes": 8044544,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 3.3414860809998572,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 28.633,
+              "pssBytes": 13.547,
+              "privateBytes": 7.672,
+              "swapBytes": 0.0
+            }
+          },
+          "large": {
+            "samples": 504,
+            "startSeconds": 220.4897603669997,
+            "endSeconds": 333.44462033499985,
+            "peakBytes": {
+              "rssBytes": 566185984,
+              "pssBytes": 532933632,
+              "privateBytes": 526495744,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 26.47000000000008,
+            "maxProcesses": 3,
+            "helperGenerations": 6,
+            "durationBetweenFirstLastSamplesSeconds": 112.95485996800016,
+            "sampledCpuPercentOneCore": 23.43413998078433,
+            "peakMiB": {
+              "rssBytes": 539.957,
+              "pssBytes": 508.245,
+              "privateBytes": 502.105,
+              "swapBytes": 0.0
+            }
+          },
+          "large-settled": {
+            "samples": 252,
+            "startSeconds": 333.66938256199956,
+            "endSeconds": 389.09480771699964,
+            "peakBytes": {
+              "rssBytes": 31911936,
+              "pssBytes": 16093184,
+              "privateBytes": 9932800,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.01,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 55.425425155000084,
+            "sampledCpuPercentOneCore": 0.018042261240278232,
+            "peakMiB": {
+              "rssBytes": 30.434,
+              "pssBytes": 15.348,
+              "privateBytes": 9.473,
+              "swapBytes": 0.0
+            },
+            "settledFinalRssBytes": 30982144
+          },
+          "cancel-preparation": {
+            "samples": 15,
+            "startSeconds": 389.3197700230003,
+            "endSeconds": 392.45043871100006,
+            "peakBytes": {
+              "rssBytes": 31010816,
+              "pssBytes": 15192064,
+              "privateBytes": 9031680,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 3.130668687999787,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 29.574,
+              "pssBytes": 14.488,
+              "privateBytes": 8.613,
+              "swapBytes": 0.0
+            }
+          },
+          "cancel": {
+            "samples": 95,
+            "startSeconds": 392.6730905659997,
+            "endSeconds": 413.3796924729995,
+            "peakBytes": {
+              "rssBytes": 328704000,
+              "pssBytes": 305937408,
+              "privateBytes": 299495424,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 7.849999999999997,
+            "maxProcesses": 2,
+            "helperGenerations": 3,
+            "durationBetweenFirstLastSamplesSeconds": 20.706601906999822,
+            "sampledCpuPercentOneCore": 37.910614379205896,
+            "peakMiB": {
+              "rssBytes": 313.477,
+              "pssBytes": 291.765,
+              "privateBytes": 285.621,
+              "swapBytes": 0.0
+            }
+          },
+          "cancel-settled": {
+            "samples": 137,
+            "startSeconds": 413.59995237099974,
+            "endSeconds": 443.6961783890001,
+            "peakBytes": {
+              "rssBytes": 32587776,
+              "pssBytes": 16769024,
+              "privateBytes": 10608640,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 30.09622601800038,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 31.078,
+              "pssBytes": 15.992,
+              "privateBytes": 10.117,
+              "swapBytes": 0.0
+            },
+            "settledFinalRssBytes": 31961088
+          },
+          "retry": {
+            "samples": 346,
+            "startSeconds": 443.95036401699963,
+            "endSeconds": 521.3951474619998,
+            "peakBytes": {
+              "rssBytes": 362995712,
+              "pssBytes": 340116480,
+              "privateBytes": 333676544,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 16.369999999999976,
+            "maxProcesses": 2,
+            "helperGenerations": 5,
+            "durationBetweenFirstLastSamplesSeconds": 77.44478344500021,
+            "sampledCpuPercentOneCore": 21.137640615427163,
+            "peakMiB": {
+              "rssBytes": 346.18,
+              "pssBytes": 324.36,
+              "privateBytes": 318.219,
+              "swapBytes": 0.0
+            }
+          },
+          "retry-settled": {
+            "samples": 190,
+            "startSeconds": 521.6188529559995,
+            "endSeconds": 563.4424224550003,
+            "peakBytes": {
+              "rssBytes": 32702464,
+              "pssBytes": 16883712,
+              "privateBytes": 10723328,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 41.82356949900077,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 31.188,
+              "pssBytes": 16.102,
+              "privateBytes": 10.227,
+              "swapBytes": 0.0
+            },
+            "settledFinalRssBytes": 32702464
+          },
+          "repeat-1-preparation": {
+            "samples": 11,
+            "startSeconds": 563.6632683279995,
+            "endSeconds": 565.9016421799997,
+            "peakBytes": {
+              "rssBytes": 32727040,
+              "pssBytes": 16908288,
+              "privateBytes": 10747904,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 2.2383738520002225,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 31.211,
+              "pssBytes": 16.125,
+              "privateBytes": 10.25,
+              "swapBytes": 0.0
+            }
+          },
+          "repeat-1": {
+            "samples": 174,
+            "startSeconds": 566.1314461789998,
+            "endSeconds": 604.2737475960002,
+            "peakBytes": {
+              "rssBytes": 187277312,
+              "pssBytes": 164508672,
+              "privateBytes": 158068736,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 7.969999999999986,
+            "maxProcesses": 2,
+            "helperGenerations": 6,
+            "durationBetweenFirstLastSamplesSeconds": 38.14230141700045,
+            "sampledCpuPercentOneCore": 20.895435524107278,
+            "peakMiB": {
+              "rssBytes": 178.602,
+              "pssBytes": 156.888,
+              "privateBytes": 150.746,
+              "swapBytes": 0.0
+            }
+          },
+          "repeat-1-settled": {
+            "samples": 137,
+            "startSeconds": 604.4779659400001,
+            "endSeconds": 634.5285218409999,
+            "peakBytes": {
+              "rssBytes": 33337344,
+              "pssBytes": 17518592,
+              "privateBytes": 11358208,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 30.050555900999825,
+            "sampledCpuPercentOneCore": 0.0,
+            "peakMiB": {
+              "rssBytes": 31.793,
+              "pssBytes": 16.707,
+              "privateBytes": 10.832,
+              "swapBytes": 0.0
+            },
+            "settledFinalRssBytes": 32116736
+          },
+          "repeat-2-preparation": {
+            "samples": 12,
+            "startSeconds": 634.7532939269995,
+            "endSeconds": 637.1720971659997,
+            "peakBytes": {
+              "rssBytes": 32157696,
+              "pssBytes": 16338944,
+              "privateBytes": 10178560,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.01,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 2.4188032390002263,
+            "sampledCpuPercentOneCore": 0.41342759256984213,
+            "peakMiB": {
+              "rssBytes": 30.668,
+              "pssBytes": 15.582,
+              "privateBytes": 9.707,
+              "swapBytes": 0.0
+            }
+          },
+          "repeat-2": {
+            "samples": 250,
+            "startSeconds": 637.3980786100001,
+            "endSeconds": 692.2232895779998,
+            "peakBytes": {
+              "rssBytes": 183308288,
+              "pssBytes": 160463872,
+              "privateBytes": 154021888,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 9.169999999999979,
+            "maxProcesses": 2,
+            "helperGenerations": 6,
+            "durationBetweenFirstLastSamplesSeconds": 54.82521096799974,
+            "sampledCpuPercentOneCore": 16.725881830810106,
+            "peakMiB": {
+              "rssBytes": 174.816,
+              "pssBytes": 153.03,
+              "privateBytes": 146.887,
+              "swapBytes": 0.0
+            }
+          },
+          "repeat-2-settled": {
+            "samples": 137,
+            "startSeconds": 692.4479748799995,
+            "endSeconds": 722.5316533280002,
+            "peakBytes": {
+              "rssBytes": 32931840,
+              "pssBytes": 17113088,
+              "privateBytes": 10952704,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.01,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 30.083678448000683,
+            "sampledCpuPercentOneCore": 0.03324061589504386,
+            "peakMiB": {
+              "rssBytes": 31.406,
+              "pssBytes": 16.32,
+              "privateBytes": 10.445,
+              "swapBytes": 0.0
+            },
+            "settledFinalRssBytes": 32174080
+          },
+          "repeat-3-preparation": {
+            "samples": 12,
+            "startSeconds": 722.7403065480003,
+            "endSeconds": 725.1607590630001,
+            "peakBytes": {
+              "rssBytes": 32219136,
+              "pssBytes": 16397312,
+              "privateBytes": 10240000,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.01,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 2.4204525149998517,
+            "sampledCpuPercentOneCore": 0.41314588648315675,
+            "peakMiB": {
+              "rssBytes": 30.727,
+              "pssBytes": 15.638,
+              "privateBytes": 9.766,
+              "swapBytes": 0.0
+            }
+          },
+          "repeat-3": {
+            "samples": 262,
+            "startSeconds": 725.372317712,
+            "endSeconds": 783.3470082690001,
+            "peakBytes": {
+              "rssBytes": 186056704,
+              "pssBytes": 163275776,
+              "privateBytes": 156864512,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 9.58999999999998,
+            "maxProcesses": 2,
+            "helperGenerations": 6,
+            "durationBetweenFirstLastSamplesSeconds": 57.97469055700003,
+            "sampledCpuPercentOneCore": 16.541701055861964,
+            "peakMiB": {
+              "rssBytes": 177.438,
+              "pssBytes": 155.712,
+              "privateBytes": 149.598,
+              "swapBytes": 0.0
+            }
+          },
+          "repeat-3-settled": {
+            "samples": 135,
+            "startSeconds": 783.5653646170003,
+            "endSeconds": 813.474596174,
+            "peakBytes": {
+              "rssBytes": 32731136,
+              "pssBytes": 16912384,
+              "privateBytes": 10752000,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.01,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 29.909231556999657,
+            "sampledCpuPercentOneCore": 0.033434493229765716,
+            "peakMiB": {
+              "rssBytes": 31.215,
+              "pssBytes": 16.129,
+              "privateBytes": 10.254,
+              "swapBytes": 0.0
+            },
+            "settledFinalRssBytes": 32194560
+          },
+          "workload-finished": {
+            "samples": 1,
+            "startSeconds": 813.6998145340003,
+            "endSeconds": 813.6998145340003,
+            "peakBytes": {
+              "rssBytes": 32194560,
+              "pssBytes": 16375808,
+              "privateBytes": 10215424,
+              "swapBytes": 0
+            },
+            "sampledCpuSeconds": 0.0,
+            "maxProcesses": 1,
+            "helperGenerations": 0,
+            "durationBetweenFirstLastSamplesSeconds": 0.0,
+            "sampledCpuPercentOneCore": null,
+            "peakMiB": {
+              "rssBytes": 30.703,
+              "pssBytes": 15.617,
+              "privateBytes": 9.742,
+              "swapBytes": 0.0
+            }
+          }
+        },
+        "runtimeLifetimes": [
+          {
+            "pid": 131428,
+            "startTicks": 663700,
+            "observedSeconds": 4.123742918999596,
+            "traceLaunchToReapSeconds": 4.408508062362671,
+            "lastSampledCpuSeconds": 0.53,
+            "maxObservedVmHwmBytes": 92405760,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 132287,
+            "startTicks": 667794,
+            "observedSeconds": 2.086008504000347,
+            "traceLaunchToReapSeconds": 2.114232063293457,
+            "lastSampledCpuSeconds": 0.57,
+            "maxObservedVmHwmBytes": 86360064,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 132510,
+            "startTicks": 668078,
+            "observedSeconds": 2.9269861879993186,
+            "traceLaunchToReapSeconds": 2.9619979858398438,
+            "lastSampledCpuSeconds": 0.71,
+            "maxObservedVmHwmBytes": 94277632,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 132801,
+            "startTicks": 668447,
+            "observedSeconds": 5.94319078099943,
+            "traceLaunchToReapSeconds": 5.976862907409668,
+            "lastSampledCpuSeconds": 1.19,
+            "maxObservedVmHwmBytes": 103473152,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 133304,
+            "startTicks": 669219,
+            "observedSeconds": 9.908412934000808,
+            "traceLaunchToReapSeconds": 9.983316898345947,
+            "lastSampledCpuSeconds": 2.9,
+            "maxObservedVmHwmBytes": 102486016,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 133881,
+            "startTicks": 670481,
+            "observedSeconds": 10.286451779000345,
+            "traceLaunchToReapSeconds": 10.313697099685669,
+            "lastSampledCpuSeconds": 1.57,
+            "maxObservedVmHwmBytes": 151015424,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 134734,
+            "startTicks": 671620,
+            "observedSeconds": 7.1575332809998145,
+            "traceLaunchToReapSeconds": 7.174750089645386,
+            "lastSampledCpuSeconds": 1.26,
+            "maxObservedVmHwmBytes": 152961024,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 136312,
+            "startTicks": 676559,
+            "observedSeconds": 1.9932971810003437,
+            "traceLaunchToReapSeconds": 2.0031728744506836,
+            "lastSampledCpuSeconds": 0.33,
+            "maxObservedVmHwmBytes": 71090176,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 136676,
+            "startTicks": 676950,
+            "observedSeconds": 3.4057379309997486,
+            "traceLaunchToReapSeconds": 3.4269559383392334,
+            "lastSampledCpuSeconds": 0.54,
+            "maxObservedVmHwmBytes": 91901952,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 137006,
+            "startTicks": 677356,
+            "observedSeconds": 44.25578454399965,
+            "traceLaunchToReapSeconds": 44.27033996582031,
+            "lastSampledCpuSeconds": 7.49,
+            "maxObservedVmHwmBytes": 479846400,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 140339,
+            "startTicks": 681847,
+            "observedSeconds": 38.39138707799975,
+            "traceLaunchToReapSeconds": 38.44648504257202,
+            "lastSampledCpuSeconds": 7.44,
+            "maxObservedVmHwmBytes": 530849792,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 143697,
+            "startTicks": 685754,
+            "observedSeconds": 5.1185746269993615,
+            "traceLaunchToReapSeconds": 5.127624988555908,
+            "lastSampledCpuSeconds": 1.09,
+            "maxObservedVmHwmBytes": 152657920,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 144269,
+            "startTicks": 686331,
+            "observedSeconds": 7.092320774000655,
+            "traceLaunchToReapSeconds": 7.107003927230835,
+            "lastSampledCpuSeconds": 1.21,
+            "maxObservedVmHwmBytes": 153137152,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 145791,
+            "startTicks": 693537,
+            "observedSeconds": 2.094945304999783,
+            "traceLaunchToReapSeconds": 2.1248819828033447,
+            "lastSampledCpuSeconds": 0.43,
+            "maxObservedVmHwmBytes": 93634560,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 146119,
+            "startTicks": 693889,
+            "observedSeconds": 1.9131896909993884,
+            "traceLaunchToReapSeconds": 1.9357950687408447,
+            "lastSampledCpuSeconds": 0.43,
+            "maxObservedVmHwmBytes": 90267648,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 146377,
+            "startTicks": 694161,
+            "observedSeconds": 9.756378175000464,
+            "traceLaunchToReapSeconds": 9.801021099090576,
+            "lastSampledCpuSeconds": 3.4,
+            "maxObservedVmHwmBytes": 315453440,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 147534,
+            "startTicks": 698451,
+            "observedSeconds": 2.4301878070000384,
+            "traceLaunchToReapSeconds": 2.464694023132324,
+            "lastSampledCpuSeconds": 0.45,
+            "maxObservedVmHwmBytes": 86937600,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 147896,
+            "startTicks": 698914,
+            "observedSeconds": 28.5363245919998,
+            "traceLaunchToReapSeconds": 28.549753189086914,
+            "lastSampledCpuSeconds": 4.39,
+            "maxObservedVmHwmBytes": 343363584,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 150472,
+            "startTicks": 701846,
+            "observedSeconds": 22.893115803,
+            "traceLaunchToReapSeconds": 22.925270080566406,
+            "lastSampledCpuSeconds": 3.45,
+            "maxObservedVmHwmBytes": 330285056,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 152449,
+            "startTicks": 704247,
+            "observedSeconds": 8.117344702999617,
+            "traceLaunchToReapSeconds": 8.139080047607422,
+            "lastSampledCpuSeconds": 2.09,
+            "maxObservedVmHwmBytes": 151785472,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 153056,
+            "startTicks": 705129,
+            "observedSeconds": 7.111284986999635,
+            "traceLaunchToReapSeconds": 7.136486053466797,
+            "lastSampledCpuSeconds": 1.22,
+            "maxObservedVmHwmBytes": 155963392,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 154273,
+            "startTicks": 710630,
+            "observedSeconds": 2.038670484999784,
+            "traceLaunchToReapSeconds": 2.06524395942688,
+            "lastSampledCpuSeconds": 0.49,
+            "maxObservedVmHwmBytes": 92237824,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 154531,
+            "startTicks": 710912,
+            "observedSeconds": 3.541135220000797,
+            "traceLaunchToReapSeconds": 3.5611181259155273,
+            "lastSampledCpuSeconds": 0.43,
+            "maxObservedVmHwmBytes": 91594752,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 154932,
+            "startTicks": 711335,
+            "observedSeconds": 8.492214960000638,
+            "traceLaunchToReapSeconds": 8.518184900283813,
+            "lastSampledCpuSeconds": 0.73,
+            "maxObservedVmHwmBytes": 101208064,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 155819,
+            "startTicks": 712262,
+            "observedSeconds": 5.098594246000175,
+            "traceLaunchToReapSeconds": 5.136965036392212,
+            "lastSampledCpuSeconds": 0.71,
+            "maxObservedVmHwmBytes": 99172352,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 156358,
+            "startTicks": 712851,
+            "observedSeconds": 7.0074230599993825,
+            "traceLaunchToReapSeconds": 7.033823013305664,
+            "lastSampledCpuSeconds": 1.19,
+            "maxObservedVmHwmBytes": 154288128,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 157074,
+            "startTicks": 713619,
+            "observedSeconds": 4.991021185999671,
+            "traceLaunchToReapSeconds": 5.014322996139526,
+            "lastSampledCpuSeconds": 1.18,
+            "maxObservedVmHwmBytes": 153419776,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 158077,
+            "startTicks": 717740,
+            "observedSeconds": 1.9347424449997561,
+            "traceLaunchToReapSeconds": 1.9567170143127441,
+            "lastSampledCpuSeconds": 0.43,
+            "maxObservedVmHwmBytes": 87343104,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 158335,
+            "startTicks": 718008,
+            "observedSeconds": 3.6204377009999007,
+            "traceLaunchToReapSeconds": 3.6437299251556396,
+            "lastSampledCpuSeconds": 0.41,
+            "maxObservedVmHwmBytes": 86716416,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 158768,
+            "startTicks": 718446,
+            "observedSeconds": 11.997615106000012,
+            "traceLaunchToReapSeconds": 12.01866102218628,
+            "lastSampledCpuSeconds": 0.86,
+            "maxObservedVmHwmBytes": 101720064,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 159937,
+            "startTicks": 719737,
+            "observedSeconds": 8.680881362999571,
+            "traceLaunchToReapSeconds": 8.712392807006836,
+            "lastSampledCpuSeconds": 0.76,
+            "maxObservedVmHwmBytes": 101339136,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 160763,
+            "startTicks": 720792,
+            "observedSeconds": 10.21364528399954,
+            "traceLaunchToReapSeconds": 10.257458925247192,
+            "lastSampledCpuSeconds": 1.52,
+            "maxObservedVmHwmBytes": 152199168,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 161615,
+            "startTicks": 721923,
+            "observedSeconds": 9.652642111000205,
+            "traceLaunchToReapSeconds": 9.673497200012207,
+            "lastSampledCpuSeconds": 1.18,
+            "maxObservedVmHwmBytes": 150351872,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 163042,
+            "startTicks": 726535,
+            "observedSeconds": 3.7636972099999184,
+            "traceLaunchToReapSeconds": 3.788822889328003,
+            "lastSampledCpuSeconds": 0.44,
+            "maxObservedVmHwmBytes": 91230208,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 163410,
+            "startTicks": 726983,
+            "observedSeconds": 2.070067955999548,
+            "traceLaunchToReapSeconds": 2.092046022415161,
+            "lastSampledCpuSeconds": 0.44,
+            "maxObservedVmHwmBytes": 86384640,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 163668,
+            "startTicks": 727260,
+            "observedSeconds": 13.468532322000101,
+            "traceLaunchToReapSeconds": 13.488785982131958,
+            "lastSampledCpuSeconds": 0.68,
+            "maxObservedVmHwmBytes": 101945344,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 165011,
+            "startTicks": 728685,
+            "observedSeconds": 13.474249974000486,
+            "traceLaunchToReapSeconds": 13.499908924102783,
+            "lastSampledCpuSeconds": 0.87,
+            "maxObservedVmHwmBytes": 99635200,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 166220,
+            "startTicks": 730220,
+            "observedSeconds": 10.252497274000234,
+            "traceLaunchToReapSeconds": 10.276795148849487,
+            "lastSampledCpuSeconds": 1.81,
+            "maxObservedVmHwmBytes": 151650304,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          },
+          {
+            "pid": 167079,
+            "startTicks": 731326,
+            "observedSeconds": 6.918967450999844,
+            "traceLaunchToReapSeconds": 6.9394848346710205,
+            "lastSampledCpuSeconds": 1.09,
+            "maxObservedVmHwmBytes": 153300992,
+            "sha256": "843833ec8d98fe55340211158380a84975c7f5d4233678e959946930e14d58fd"
+          }
+        ],
+        "sourceSha256": "88766b77b9cb2e2201fc5554a05da1bccddc94d71442beaf5e5610d465f2c0f4",
+        "rawHashes": {
+          "active-results.json": "44ad26fde023bd26b199519bfced177bfd4904f2e7f4ce9f8ac8e1b0eebe5523",
+          "active-samples.jsonl": "1e445df537e8b0be5550e8e9d58a7dc5b6f56472bf62f0a1c97e1b69dbff5b3f",
+          "process.trace": "ccf64ecab830e69fcb659e13e45682c5577e58173dca2873ce54782ac7e9260d",
+          "protocol.json": "5e7312301731a56a4b43384b366a4162c71097b86ccb3066f3083532b8214468"
+        },
+        "limits": [
+          "CPU is sampled /proc accounting; final CPU between last observation and process exit is not included.",
+          "Stage CPU assignment has sampling-boundary uncertainty.",
+          "RSS sums shared pages across processes; PSS/private are reported separately.",
+          "strace records no exec argv, environment, request or payload data.",
+          "Observer startedUtc field in this collector is completion-time-labelled; elapsed time and trace epochs provide chronology.",
+          "No live S3 negative control was performed."
+        ]
+      },
+      "attribution": {
+        "peakStage": "large",
+        "peakMiB": 539.95703125,
+        "rolesAtPeak": [
+          {
+            "executable": "putgd",
+            "rssMiB": 30.19140625
+          },
+          {
+            "executable": "putgd-proton-runtime",
+            "rssMiB": 450.41796875
+          },
+          {
+            "executable": "putgd-ui",
+            "rssMiB": 59.34765625
+          }
+        ],
+        "runtimeMaxSampledRssMiB": 499.62109375,
+        "runtimeMaxObservedVmHwmMiB": 506.2578125,
+        "shortestRuntimeObservedSeconds": 1.9131896909993884,
+        "maximumMemorySampleGapSeconds": 0.4681021469996267,
+        "p99MemorySampleGapSeconds": 0.26115055199989,
+        "memoryTargetIntervalSeconds": 0.2,
+        "collectorCpuPercentOneCore": 25.396480729538208
+      },
+      "idle": {
+        "observerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+        "scope": "two serial Cinnamon VM post-use idle windows; no active-transfer or cold physical acceptance",
+        "windows": [
+          {
+            "window": 1,
+            "requestedSeconds": 300,
+            "sampleIntervalSeconds": 5,
+            "samples": 61,
+            "observedSeconds": 300.00023687799967,
+            "peakBytes": {
+              "rssBytes": 32788480,
+              "pssBytes": 16969728,
+              "privateBytes": 10809344
+            },
+            "peakMiB": {
+              "rssBytes": 31.27,
+              "pssBytes": 16.184,
+              "privateBytes": 10.309
+            },
+            "maximumSwapBytes": 0,
+            "cpuPercentOneCore": 0.01333332280543055,
+            "maxProcesses": 1,
+            "maxUiProcesses": 0,
+            "maxEscapedProcesses": 0,
+            "exitedDescendants": 0,
+            "residentIdentity": {
+              "pid": 128098,
+              "startTicks": 653660,
+              "uid": 1000,
+              "executable": "/home/lab/p2o/bin/putgd",
+              "device": 64771,
+              "inode": 524384
+            },
+            "gates": {
+              "rssAtMost40MiB": true,
+              "noHelpersOrEscapedChildren": true,
+              "noSwap": true,
+              "cpuBelowHalfPercentOfOneCore": true
+            },
+            "resultsSha256": "3fa7fd3df7555ea8ca07da37145a7e7af9363e96887a115f1f1546aeeadfce6c",
+            "samplesSha256": "57ca0d9d7cd5e045a36b4fc300e5ce0f1599e49ecd8e6290cabbd4e16cad5292"
+          },
+          {
+            "window": 2,
+            "requestedSeconds": 300,
+            "sampleIntervalSeconds": 5,
+            "samples": 61,
+            "observedSeconds": 300.0003335780002,
+            "peakBytes": {
+              "rssBytes": 32796672,
+              "pssBytes": 16977920,
+              "privateBytes": 10817536
+            },
+            "peakMiB": {
+              "rssBytes": 31.277,
+              "pssBytes": 16.191,
+              "privateBytes": 10.316
+            },
+            "maximumSwapBytes": 0,
+            "cpuPercentOneCore": 0.006666659253830459,
+            "maxProcesses": 1,
+            "maxUiProcesses": 0,
+            "maxEscapedProcesses": 0,
+            "exitedDescendants": 0,
+            "residentIdentity": {
+              "pid": 128098,
+              "startTicks": 653660,
+              "uid": 1000,
+              "executable": "/home/lab/p2o/bin/putgd",
+              "device": 64771,
+              "inode": 524384
+            },
+            "gates": {
+              "rssAtMost40MiB": true,
+              "noHelpersOrEscapedChildren": true,
+              "noSwap": true,
+              "cpuBelowHalfPercentOfOneCore": true
+            },
+            "resultsSha256": "2027a43df7dc645099e3469135e70834abe3c602e6b00d428ba55478aed40a82",
+            "samplesSha256": "0f3474c2551042767cab35214598311c5b96ed77128532a71fd1f1fcad4d860c"
+          }
+        ]
+      },
+      "functionalChecks": {
+        "local-only-control": {
+          "completed": true,
+          "noUpload": true
+        },
+        "first-account-use": {
+          "passed": true
+        },
+        "small-first": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "large": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 134217728,
+              "sha256": "a626d17da2e502f5b4b8e3ebd23f0bf9daef6255688d8e0bb482b3ae3794a682"
+            },
+            {
+              "bytes": 134217728,
+              "sha256": "a626d17da2e502f5b4b8e3ebd23f0bf9daef6255688d8e0bb482b3ae3794a682"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "cancel": {
+          "passed": true,
+          "afterRealSdkProgress": true,
+          "noUnconfirmedLink": true
+        },
+        "retry": {
+          "passed": true,
+          "sameOperationAndPublication": true,
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-1": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-2": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-3": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        }
+      },
+      "operationCount": 7,
+      "active512MiBDiagnostic": {
+        "belowReference": false,
+        "releaseGate": false
+      },
+      "inventory": {
+        "ok": true,
+        "confirmedNodes": 12,
+        "uniqueConfirmedNodes": 12,
+        "expectedReceipts": 12,
+        "noDuplicateConfirmedUpload": true,
+        "visibleUnfinishedDrafts": 0,
+        "earlierAttemptNodes": 0,
+        "scope": "current workload publication identities; earlier failed attempt retained",
+        "folderRestored": true
+      },
+      "testLinkCleanup": {
+        "revokedOwnedTestLinks": 12,
+        "remoteObjectDeletion": false,
+        "priorAttemptLinksAlreadyRevoked": 2,
+        "unknownPrivateUploadsPreserved": true
+      },
+      "sessionCleanup": {
+        "ok": true,
+        "ownTestSessionRevocationHttpStatus": 200
+      },
+      "localKeychainCleanup": {
+        "hostDisposableRefAbsent": true,
+        "guestDisposableRefAbsent": true,
+        "sessionAlreadyRemotelyRevoked": true
+      }
+    },
+    "wholeFamilyPeakIncreasePercent": 10.816357616424966,
+    "largeSampledCpuIncreasePercent": 27.936201063315558,
+    "outcome": "reverted",
+    "implementationCommit": "7f42761d249c281ca708c2e614cfb44809584344",
+    "revertCommit": "a063f36",
+    "reason": "No memory improvement and higher large-stage sampled CPU; the diagnostic 512 MiB reference is not the rejection reason."
+  },
+  "restoredRuntimeSha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99",
+  "controls": {
+    "readAheadProbe": [
+      {
+        "explicitByteStrategy": false,
+        "producedChunksWithoutConsumer": 2,
+        "logicalBytesReadAhead": 131072
+      },
+      {
+        "explicitByteStrategy": true,
+        "producedChunksWithoutConsumer": 2,
+        "logicalBytesReadAhead": 131072
+      }
+    ],
+    "collectorRegression": {
+      "passed": true,
+      "shortAndReparentedHelpersObserved": 2,
+      "forkToExecTransitionVerified": true,
+      "maximumDiscoveryGapSeconds": 0.022182777999660175
+    },
+    "frozenIdleObserverSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "allTracedChildrenObservedAndReaped": true,
+    "helperCountsEachRun": 39,
+    "uiCountsEachRun": 1,
+    "noNewDependencies": true,
+    "noCloudResourcesPurchased": true
+  },
+  "validation": {
+    "candidateHelperTests": "41 tests / 253 assertions; compiled version + 11 no-account stdio cases; 1,048,337-byte stdout drain",
+    "candidateDevTests": "proton_contract and proton_transport: 2/2 passed",
+    "restoredDevTests": "proton_contract and proton_transport: 2/2 passed",
+    "recipeRebuild": "Offline locked provisioning restored the exact baseline helper hash",
+    "review": "Focused correctness and independent in-process adversarial review of the build-flag change: no findings. Anthropic route did not run: shared pre-egress npm ETARGET. No reviewed content left through that route.",
+    "restoredHostBuild": {
+      "sourceCommit": "a063f361b41886fc3efed5cb94c7264719689bae",
+      "dirty": false,
+      "presets": "dev; Release putgd/putgd-cli/putgd-ui",
+      "nativeAcceptanceClaimed": false
+    }
+  },
+  "retention": {
+    "privateArchive": "/home/patrick/work/put.gd/work/evidence/proton-p2-20261015",
+    "sourceRecipeHashes": {
+      "/tmp/p2a1": {
+        "protocol.json": "0a1949abaa4d27da76c9e7d95e77e29b3e484fc4cfc5ed21c7b71b19b1a4dffa",
+        "active-observer-v2.py": "88766b77b9cb2e2201fc5554a05da1bccddc94d71442beaf5e5610d465f2c0f4",
+        "analyze-active.py": "0d7e9825b70e44681a73f0c789bcc09f236323da029ea2d5766e5fa397432db7",
+        "controller.py": "e395739ef92a0ae46678f3df7e1df63d5669e161d6514d2d838987f3f10168a6",
+        "controller3.py": "003f73189ad87041b4daf1979f2c97e2bf84fd76a24ccad8c413272eaae0d743",
+        "finish-workload.py": "f3fe91240858b29bef9ae5e5309d714e1249331e0c5c269f8e30170652603ac0",
+        "observer-selfcheck-v2.json": "89ab615f3e5526c584bf91a103ed3a270c74925e5e34af34734bdb776e4966dd",
+        "socket-preflight.json": "0c64a62c57b2e700dbdbc51450833191e6cfe8dff103a9e1445ec2d182d25a12",
+        "socket-preflight-replay.json": "d9f59aee7c1b110da1af3e99be29ce0ecdfb05a1b6c6366f5b910443f0ddbb0c",
+        "memory-summary.json": "203ce97e4309f6129b28819eb13d7c501b96b748cb3c5dc803d99348a1fe5f3b"
+      },
+      "/tmp/p2o1": {
+        "protocol.json": "5e7312301731a56a4b43384b366a4162c71097b86ccb3066f3083532b8214468",
+        "definitions.py": "91fa741c3b198ec27c44e28e30ae89a33942ee9f091883ee4fb1d3e97f629b3e",
+        "make-controller.py": "885448c9ea40bb137e05db7ff76c487dde4e1748f21580c132772ed145e132a5",
+        "phase-1.py": "d720028e94a5b0f11b83d7500ee5678c177862dad9a6077d6e89fd7b8927c13f",
+        "phase-2.py": "fc98c8ad56b74341a07decb2653dcbe2d5b4673886f30247d067d3a07308b796",
+        "phase-3.py": "0e87badf0b06341caedc3bd06937432d830e0b1271b172fa855b5510bdda5e92",
+        "analyze-active.py": "ee3b2650cc12245e895d7f0f42b09deaf149716e14dbed3f93d5ff69efd79f72",
+        "socket-preflight.json": "bfb065ccc55ecd830e0f7436c825ebadac2515e2c44731c0cfb5a7ed3bc7f7bf",
+        "memory-summary.json": "a8f80b1364cdeba53b6658e106426a5f5d6953daf60c28180dcdde366c0f17a6"
+      }
+    },
+    "policy": "Preserve raw measurement sources, native receipts, original failures, cleanup and exact identities privately; no credentials or payloads in this public receipt.",
+    "archiveIndexSha256": "e080203a6837856f6580a3761b2562c1852469b46c2371709fc479565711905f"
+  },
+  "limitations": [
+    "One instrumented sequential run per variant; not a statistical latency/throughput benchmark.",
+    "Targets were 20 ms discovery / 200 ms memory; actual gaps and collector CPU overhead are retained. Passive process-only strace adds unquantified overhead.",
+    "CPU comes from sampled /proc ticks and omits work after the final observation; do not use uninitialized waitid siginfo CPU fields.",
+    "RSS sums shared pages; separate PSS/private peaks need not occur at the RSS peak. VmHWM is a sampled per-process high-water mark, not a simultaneous family maximum.",
+    "Collector startedUtc is completion-time-labelled; monotonic elapsed time and process-trace epochs provide chronology.",
+    "Baseline host controller exited 143 during the final repeated operation; continuation verified and pasted that original operation without reupload. Its stage duration includes the gap.",
+    "Initial collector failed on legitimate fork-to-exec identity transition. Corrected version retained generation/ownership and passed a 60 ms exec plus reparented-helper regression before replay. Both attempts preserved.",
+    "Only three repeated small cycles and two idle windows; finite-run bounded growth does not prove absence of every long-duration leak. Larger files, multiple accounts and other compositor/package combinations remain unmeasured.",
+    "Independent SDK session establishment/browser relay was outside the active app observer; first-account-use row is fresh-resident setup.inspectAccount.",
+    "The guest used a memory-only Secret Service collection; persistent keyring boot acceptance remains outside this record.",
+    "No S3 runtime negative control was run. Local-only control started zero SDK helpers; Proton-only profile/deployment and source boundaries were inspected.",
+    "Four known upstream Crypto/Bun TypeScript diagnostics were not declared passing. No GNOME/KDE expansion or final-main certification."
+  ],
+  "remainingReleaseGates": [
+    "P3 redistribution/rebuild materials",
+    "P4 shipping pipeline/assets",
+    "P5 compatibility/maintenance controls",
+    "P6 final packaged current-version desktop acceptance"
+  ],
+  "cleanupEndState": {
+    "ownedTestAppAndFixtureStopped": true,
+    "visibleLabConsoleLocked": true,
+    "everydayProtonBrowserStillSignedIn": true
+  }
+}
