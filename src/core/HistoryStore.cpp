@@ -181,6 +181,7 @@ QList<Operation> HistoryStore::recover(Error* error) {
   if(op.state=="accepted"||op.state=="acquiring") {op.state="interrupted";op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};changed=true;}
   else if(op.state=="running"||op.state=="stored"||op.state=="queued") {op.state="interrupted";changed=true;}
   for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
+  if(op.state=="interrupted"&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}
   if(changed){op.phase=op.state;for(auto& item:op.items)item.phase=item.uploadStatus;}
   if(changed||(op.state=="interrupted"&&op.items.isEmpty())) result.append(op);
  }
