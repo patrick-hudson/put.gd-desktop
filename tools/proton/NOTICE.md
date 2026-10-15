@@ -1,7 +1,13 @@
 # Bundled Proton runtime
 
 `putgd-proton-runtime` embeds official Bun 1.4.2 and calls the official Proton
-Drive JavaScript SDK 0.22.2 with Proton Crypto 2.0.0. Account/authentication
+Drive JavaScript SDK 0.22.2 with Proton Crypto source version 2.0.1.
+Crypto is selected from official WebPackages commit
+`956a713c0823b365cc512018974eb4fcba47c9dd`, which supplies an explicit GPL grant
+and license text. The user approved this source selection on 2026-10-15.
+The npm 2.0.0 archive supplies the locked dependency bootstrap; its crypto source
+and metadata are replaced before compilation. Its unresolved historical ISC
+notice is not treated as a grant for the selected source. Account/authentication
 foundation files are copied from the official SDK repository at
 `8ffae007b0fbb8bcef53514719d6f093bb32dcf9` during explicit provisioning.
 The SDK repository's MIT notice is preserved in `LICENSE.proton`.
@@ -24,7 +30,14 @@ a fresh SDK session. Account credentials and share passwords remain in the keych
 
 Provisioning exports supplied dependency license texts and exact declared
 licenses/integrities to `THIRD-PARTY-NOTICES.txt`, which is hashed in the manifest.
-Original files remain in the generated build tree. The user-approved 2026-10-15
+Original files remain in the generated build tree. The compiled helper is
+distributed under the applicable GPL terms, with original permissive and LGPL
+component notices preserved. This does not relicense put.gd’s MIT source.
+The accompanying `redistribution/` directory contains Bun native attribution,
+OpenPGP prebundled notices, the selected GPL license and predecessor notices,
+and a hashed corresponding-source catalog and rebuild instructions. Deliver
+the catalogued source assets with the binary packages; notices alone are
+insufficient. Native Bun and Argon2 WASM rebuild proof remains pending. The user-approved 2026-10-15
 decision is to ship and maintain this experimental integration; upstream
 endorsement is not a release gate. Complete redistribution review, authenticated
 recovery/resources, shipping-pipeline integration and final-package acceptance
@@ -35,3 +48,5 @@ Sources:
 - <https://github.com/ProtonDriveApps/sdk/tree/8ffae007b0fbb8bcef53514719d6f093bb32dcf9>
 - <https://www.npmjs.com/package/@protontech/drive-sdk/v/0.22.2>
 - <https://www.npmjs.com/package/bun/v/1.4.2>
+
+- <https://github.com/ProtonMail/WebPackages/tree/956a713c0823b365cc512018974eb4fcba47c9dd>

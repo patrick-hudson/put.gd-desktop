@@ -7,14 +7,21 @@ python3 tools/proton/provision_runtime.py
 ```
 
 To reuse a clean official checkout, add `--source /absolute/path/to/sdk`.
-`--offline` requires that checkout and cached locked npm packages. Provisioning
+`--crypto-source /absolute/path/to/WebPackages` selects an existing clean
+checkout of the approved GPL crypto pin. `--offline` requires both checkouts
+and cached locked npm packages. Provisioning
 uses normal Git/npm build tools; CMake never fetches dependencies. The distro
 GCC and Qt toolchain is unchanged.
 
 The executable, manifest and `THIRD-PARTY-NOTICES.txt` are under
 `build/dependencies/proton-runtime/`.
-The manifest binds the artifact, upstream commit, npm lock, helper source and
-runtime versions, and dependency notices. Both files ship next to the runtime. Supported command lines are
+The manifest binds the artifact, complete runtime and npm locks, helper source,
+approved crypto source/version, runtime versions, dependency notices and each
+redistribution file. The manifest, notices and `redistribution/` ship next to
+the runtime. See [the source catalog](notices/SOURCES.json) and
+[rebuild instructions](notices/REBUILD.md) for required accompanying source assets.
+Crypto source 2.0.1 replaces the npm 2.0.0 bootstrap under the user-approved GPL
+selection; [provenance](notices/CRYPTO-PROVENANCE.md) preserves the distinction. Supported command lines are
 `--version` and `--stdio` only.
 
 `--stdio` consumes exactly one UTF-8 JSON request (maximum 128 KiB) until EOF;

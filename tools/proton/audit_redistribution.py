@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent
 HELPER_FILES = ('runtime.ts', 'account.ts', 'crypto-cache.ts', 'protocol.ts',
                 'stdout.ts', 'progress.ts', 'runtime.test.ts', 'protocol.test.ts',
                 'crypto-cache.test.ts', 'progress.test.ts', 'stdout_fixture.ts',
-                'tsconfig.json', 'package.json', 'package-lock.json')
+                'tsconfig.json', 'package.json', 'package-lock.json', 'source-overrides.json')
 BUILD_ONLY = {'node_modules/typescript', 'node_modules/bun', 'node_modules/bun-types',
               'node_modules/@types/bun', 'node_modules/@types/node', 'node_modules/undici-types'}
 
@@ -28,7 +28,8 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def inventory(work, metafile):
+def inventory(work, metafile, source_overrides=None):
+    source_overrides = source_overrides or {}
     locked = json.loads((work / 'package-lock.json').read_text())['packages']
     contributions = Counter()
     for output in metafile['outputs'].values():
@@ -48,7 +49,16 @@ def inventory(work, metafile):
             raise ValueError('package path escapes build source')
         metadata = folder / 'package.json'
         actual = json.loads(metadata.read_text()) if metadata.is_file() else {}
-        if actual and actual['version'] != package['version']:
+        override = source_overrides.get(relative)
+        expected_version = override['version'] if override else package['version']
+        if override:
+            if override['registryVersion'] != package['version']:
+                raise ValueError('source bootstrap version mismatch')
+            for name, expected in override['sha256'].items():
+                path = folder / name
+                if path.is_symlink() or not path.resolve().is_relative_to(folder.resolve()) or digest(path) != expected:
+                    raise ValueError('source hash mismatch: ' + relative + '/' + name)
+        if actual and actual['version'] != expected_version:
             raise ValueError('installed package version mismatch: ' + relative)
         if contributions[relative]:
             classification = 'bundled-js'
@@ -63,7 +73,8 @@ def inventory(work, metafile):
         licenses = [p for p in sorted(folder.glob('*')) if p.is_file() and
                     p.name.lower().startswith(('license', 'copying', 'notice', 'copyright'))]
         result.append({'location': relative, 'name': actual.get('name', relative),
-                       'version': package['version'], 'declaredLicense': actual.get('license', package.get('license')),
+                       'version': actual.get('version', package['version']), 'registryVersion': package['version'],
+                       'sourceOverride': override, 'declaredLicense': actual.get('license', package.get('license')),
                        'integrity': package.get('integrity'), 'classification': classification,
                        'bundledBytes': contributions[relative],
                        'suppliedNotices': [{'path': p.relative_to(work).as_posix(), 'sha256': digest(p)} for p in licenses]})
@@ -122,11 +133,18 @@ def main():
     work = runtime / 'build-source'
     if digest(runtime / manifest['artifact']) != manifest['sha256']:
         parser.error('runtime hash does not match manifest')
+    if digest(ROOT / 'runtime-lock.json') != manifest['runtimeLockSha256']:
+        parser.error('runtime lock does not match runtime manifest')
     if digest(work / 'package-lock.json') != manifest['dependencyLockSha256']:
         parser.error('build lock does not match runtime manifest')
     for name, expected in manifest['helperSourceSha256'].items():
         if digest(ROOT / name) != expected:
             parser.error('helper sources do not match runtime manifest')
+    for name, expected in manifest.get('redistributionFilesSha256', {}).items():
+        if Path(name).name != name:
+            parser.error('invalid redistribution file name')
+        if digest(runtime / 'redistribution' / name) != expected or digest(ROOT / 'notices' / name) != expected:
+            parser.error('redistribution materials do not match runtime manifest')
     output.mkdir(mode=0o700, parents=True)
     bun = work / 'node_modules/@oven/bun-linux-x64/bin/bun'
     with tempfile.TemporaryDirectory(prefix='pg-p3-') as temporary:
@@ -141,35 +159,10 @@ def main():
             raise ValueError('audited compiler output does not reproduce shipping runtime; preserve output')
         metafile = json.loads(meta.read_text())
         (output / 'metafile.json').write_text(json.dumps(metafile, indent=2) + '\n')
-    packages = inventory(work, metafile)
+    packages = inventory(work, metafile, manifest.get('sourceOverrides', {}))
     sources = archive_sources(work, output / 'helper-rebuild.tar.gz')
     (output / 'source-index.json').write_text(json.dumps(sources, indent=2) + '\n')
-    (output / 'REBUILD.md').write_text('''# Exact helper rebuild inputs
-
-This is a review bundle, not a completed redistribution approval. The archive
-contains the generated helper, patched account/crypto inputs, installed npm
-sources/distributions and package lock. It excludes Bun executables, credentials,
-application configuration and account evidence. The exact compiler's output was
-compared with the shipping executable before this archive was generated.
-
-Extract `helper-rebuild.tar.gz` into a new directory and enter `build-source`.
-Set `proton_bun` to the absolute path of Bun 1.4.2, then run:
-
-```sh
-"$proton_bun" build --compile --target=bun-linux-x64 --minify ./runtime.ts --outfile=putgd-proton-runtime.new --compile-executable-path="$proton_bun"
-./putgd-proton-runtime.new --version
-"$proton_bun" test ./protocol.test.ts ./runtime.test.ts ./crypto-cache.test.ts ./progress.test.ts
-```
-
-The existing dependency directories permit an offline helper rebuild. Edit a
-dependency there before rebuilding to replace its bundled code. The archive's
-OpenPGP directory is its published distribution; attach the separately matched
-preferred source, build scripts and upstream lock before distribution. Rebuilding
-Bun/JavaScriptCore/TinyCC requires their separate matching source/build materials;
-this helper archive does not provide those native sources. A rebuilt executable
-also needs an updated put.gd artifact manifest/hash and application package.
-These instructions do not establish that the native runtime can be rebuilt.
-''')
+    (output / 'REBUILD.md').write_text((ROOT / 'notices/REBUILD.md').read_text())
     sections = ['Supplied npm license texts, attributed by exact installed package.\n'
                 'Bun native notices and packages without supplied texts are separate review requirements.\n']
     for package in packages:
@@ -185,10 +178,10 @@ These instructions do not establish that the native runtime can be rebuilt.
               'inventoryScope': 'Compiler-visible JavaScript packages only; OpenPGP prebundled dependencies and Bun native components need separate inventories',
               'bundledMissingSuppliedTexts': [p['location'] for p in packages if p['classification'] == 'bundled-js' and not p['suppliedNotices']],
               'reviewComplete': False,
-              'remainingEvidence': ['Resolve missing supplied texts with exact-release provenance',
-                                    'Complete Bun native-component notices and corresponding source/relink materials',
-                                    'Attach matching OpenPGP preferred source, prebundled dependency notices and rebuild recipe',
-                                    'Verify reviewed materials in final shipping packages'],
+              'sourceOverrides': manifest.get('sourceOverrides', {}),
+              'remainingEvidence': ['Verify native Bun/JSC/TinyCC modification and relink with the required toolchain',
+                                    'Publish corresponding source assets with final binary packages',
+                                    'Complete final current-helper functional/memory/package acceptance'],
               'sourceFiles': len(sources), 'sourceArchiveSha256': digest(output / 'helper-rebuild.tar.gz')}
     (output / 'inventory.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps({key: report[key] for key in ['runtimeSha256', 'exactRebuild', 'classificationCounts', 'sourceFiles', 'reviewComplete']}))

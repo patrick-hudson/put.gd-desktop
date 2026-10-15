@@ -46,6 +46,30 @@ class RedistributionTests(unittest.TestCase):
         self.assertEqual(result['node_modules/shaken']['classification'], 'installed-not-bundled')
         self.assertEqual(result['node_modules/typescript']['classification'], 'build-only')
 
+    def test_approved_source_override_is_distinct_from_registry_bootstrap(self):
+        location = 'node_modules/@protontech/crypto'
+        self.package(location, '@protontech/crypto', 'GPL-3.0')
+        self.lock[location]['version'] = '0.9.0'
+        (self.root / 'package-lock.json').write_text(json.dumps({'packages': self.lock}))
+        override = {location: {'registryVersion': '0.9.0', 'version': '1.0.0',
+                              'sourceReference': 'a' * 40, 'sha256': {}}}
+        result = audit.inventory(self.root, {'outputs': {'runtime': {'inputs': {
+            location + '/index.js': {'bytesInOutput': 3}}}}}, override)
+        selected = result[0]
+        self.assertEqual(selected['version'], '1.0.0')
+        self.assertEqual(selected['registryVersion'], '0.9.0')
+        self.assertEqual(selected['sourceOverride']['sourceReference'], 'a' * 40)
+
+    def test_changed_override_source_is_rejected(self):
+        location = 'node_modules/@protontech/crypto'
+        self.package(location, '@protontech/crypto')
+        self.result({})
+        override = {location: {'registryVersion': '1.0.0', 'version': '1.0.0',
+                              'sourceReference': 'a' * 40,
+                              'sha256': {'package.json': '0' * 64}}}
+        with self.assertRaisesRegex(ValueError, 'source hash'):
+            audit.inventory(self.root, {'outputs': {}}, override)
+
     def test_unaccounted_compiler_input_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'unlocked'):
             self.result({'node_modules/unlocked/index.js': {'bytesInOutput': 1}})

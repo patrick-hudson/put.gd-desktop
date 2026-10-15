@@ -1,36 +1,44 @@
-# Runtime notices
+# Proton runtime redistribution materials
 
-`LICENSE.proton` preserves Proton's SDK/account MIT source notice.
-`THIRD-PARTY-NOTICES.txt` is the historical installed-package inventory, including
-build-only and optional packages. It is bound to the existing runtime manifest;
-it is not a completed redistribution review and has not been replaced by a
-notice superset assembled during research.
+The selected helper uses official SDK 0.22.2, Bun 1.4.2 and the explicit GPL
+WebPackages crypto source 2.0.1 at `956a713c0823b365cc512018974eb4fcba47c9dd`.
+The user approved this source change on 2026-10-15. Historical npm crypto 2.0.0
+ISC notice provenance remains unresolved; it is used only as a dependency
+bootstrap before replacement. No later grant is applied retroactively.
 
-The [P3 audit](../../../docs/evidence/2026-10-15-proton-p3-redistribution.md)
-separates 10 compiler-retained JS package locations from the remaining installed
-and absent packages, and inventories OpenPGP's prebundled dependencies and Bun's
-native components separately. The exact helper rebuild and exported source hash
-index are retained with the public upstream license/source corpus outside the
-release worktree. That corpus is review material, not installed release content.
+`THIRD-PARTY-NOTICES.txt` records actual installed versions, bootstrap integrity,
+source overrides and compiler classifications. The compiler retains ten JS
+package locations. Bun attribution and OpenPGP prebundled code are separate:
 
-P3 remains open for crypto 2.0.0 terms/notice provenance, Bun attribution and
-native source/relink materials, full preferred-source rebuild evidence, and
-reviewed materials in final packages. Crypto's ISC metadata lacks a supplied
-notice; later upstream GPL metadata does not resolve that earlier release.
-OpenPGP's npm distribution and source maps alone omit its complete build recipe.
-Bun's root license inventory is not a complete aggregate notice. Do not invent
-missing copyright notices or substitute a different release's license.
+- `BUN-THIRD-PARTY-NOTICES.txt.gz` preserves upstream texts as a labelled source
+  superset. `BUN-NOTICE-PROVENANCE.json.gz` maps every text to its source.
+  `BUN-LINUX-ATTRIBUTION.md` explains the conservative Linux graph and limits.
+- `OPENPGP-PREBUNDLED-NOTICES.txt` preserves original component notices.
+- `LICENSE.crypto-GPL-3.0`, `LICENSE.pmcrypto-MIT` and `LICENSE.srp-MIT` preserve
+  selected-source and actual predecessor texts. `CRYPTO-PROVENANCE.md` explains
+  their history. `LICENSE.boltffi-MIT` covers installed, unbundled source.
+- `SOURCES.json` identifies the required accompanying source assets by SHA256.
+  `REBUILD.md` and `OPENPGP-REBUILD.patch` give the reconstruction route.
 
-Collect a fresh compiler-backed review bundle, without changing the runtime:
+The manifest hashes all twelve delivery files. CMake rejects changed source,
+locks, notices or runtime copies and installs them together. This verifies
+install rules; actual shipping packages and source publication remain P4/P6.
+
+The [follow-up receipt](../../../docs/evidence/2026-10-15-proton-p3-materials.md)
+records exact helper reconstruction, offline source replay and modified OpenPGP
+proof. P3 still requires native Bun/JSC/TinyCC and Argon2 WASM compiler/relink
+proof. Material availability is distinct from a completed native rebuild.
+
+Collect a fresh compiler-backed bundle into a new output directory:
 
 ```sh
+python3 tools/proton/test_crypto_source.py
 python3 tools/proton/test_redistribution.py
 python3 tools/proton/audit_redistribution.py --runtime build/dependencies/proton-runtime --output work/proton-p3/NEW-OUTPUT
+python3 tools/proton/test_install.py
 ```
 
-The output directory must be new. The collector requires an exact runtime rebuild
-and emits `inventory.json`, supplied npm texts, a source archive/index and helper
-rebuild instructions. It deliberately reports `reviewComplete:false`. It neither
-fetches native source nor approves redistribution. The source archive selects
-public generated inputs; it is not a general secret sanitizer. Keep account/run
-state outside those build-source directories.
+The collector requires an exact runtime rebuild and reports `reviewComplete:false`;
+it is an evidence collector, not a distribution approval. Its source selection
+contains public generated inputs and is not a general secret sanitizer. Keep
+account and run state outside build-source directories.

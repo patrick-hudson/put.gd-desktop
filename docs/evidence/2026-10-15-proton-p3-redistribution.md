@@ -1,5 +1,10 @@
 # Proton P3 redistribution audit — 2026-10-15
 
+A [later same-day materials receipt](2026-10-15-proton-p3-materials.md) records
+the approved GPL source change and completed source/notice collection. This
+audit remains the historical baseline; its unchanged-runtime statements refer
+to the earlier candidate.
+
 P3 remains open. This audit identifies the code in the exact official-JavaScript
 helper, preserves source/rebuild inputs and recovers upstream notice material.
 It does not establish completed redistribution requirements or final-package
