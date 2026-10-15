@@ -106,4 +106,9 @@ set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 # RPM's default stripping also changes bytes after our runtime digest is written.
 set(CPACK_RPM_SPEC_MORE_DEFINE
   "%global __provides_exclude_from ^${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n)[.]so.*$\n%define __spec_install_post /bin/true")
+if(PUTGD_BUNDLE_PROTON)
+  string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
+  string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")
+  string(APPEND CPACK_RPM_PACKAGE_LICENSE " AND GPL-3.0")
+endif()
 include(CPack)

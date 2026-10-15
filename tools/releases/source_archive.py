@@ -14,9 +14,9 @@ from audit_native import sha256
 
 EXACT_PATHS = frozenset({
     'CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md', '.gitignore',
-    'docs/build.md', 'tools/verify_dependencies.py', 'tools/releases/provision-sdk.sh',
+    'docs/build.md', 'docs/proton-drive.md', 'tools/verify_dependencies.py', 'tools/releases/provision-sdk.sh',
 })
-PREFIXES = ('src', 'cmake', 'packaging/linux', 'integrations/gnome')
+PREFIXES = ('src', 'cmake', 'packaging/linux', 'integrations/gnome', 'tools/proton')
 EXCLUDED_COMPONENTS = frozenset({
     '.git', '.github', '.agents', '.codex', '.compound-engineering', '.context', '.claude',
     'work', 'build',
@@ -136,7 +136,8 @@ This curated archive contains committed production build inputs from
 `{identity['gitCommit']}`. `source-info.json` preserves the exact original identity,
 including its original version `{identity['version']}`, and records file hashes.
 Ignored, untracked, dirty working-tree files, agent context, test/lab artifacts,
-and credentials are excluded. Dependencies and binary build outputs are not bundled.
+and credentials are excluded. Proton provisioning checks are retained as rebuild
+inputs. Dependencies and binary build outputs are not bundled.
 
 Install the normal system C++20, CMake 3.24+, Ninja, Qt 6.4.2+, QtKeychain, and
 Linux development packages listed in `docs/build.md`. Keep Qt dynamically linked
@@ -145,6 +146,28 @@ source and submodules with `tools/verify_dependencies.py` before building it.
 The documented default SDK install is `build/sdk`; `tools/releases/provision-sdk.sh`
 contains the official SDK's CMake build commands. No compiler or Qt substitute is
 provided, and application configuration does not download dependencies.
+
+For a Proton-enabled Linux x86-64 build, install the normal Git/npm build tools
+and provision the pinned helper before configuring CMake:
+
+```sh
+python3 tools/proton/provision_runtime.py
+```
+
+This selects the SDK, Bun and approved GPL crypto sources from
+`tools/proton/runtime-lock.json` and `package-lock.json`, and runs the helper's
+provisioning checks. Clean existing SDK and crypto checkouts can be selected with
+`--source` and `--crypto-source`; add `--offline` only when both checkouts and
+locked npm inputs are cached. The helper is rebuilt from this archive's own
+`tools/proton/` inputs. See `tools/proton/README.md`,
+`tools/proton/notices/REBUILD.md` and `tools/proton/notices/SOURCES.json` for the
+corresponding source assets and native-component rebuild instructions.
+
+After provisioning, append `-DPUTGD_BUNDLE_PROTON=ON` to the configure command
+below to include Proton. This runtime targets Linux x86-64 only; other targets
+leave the option off. No separate Bun/Node installation is required by packaged
+users. Proton setup requires a browser and a working desktop keychain; see
+`docs/proton-drive.md`.
 
 After provisioning the SDK, run these commands from the extracted archive root:
 
@@ -162,7 +185,7 @@ cmake --build --preset release
 If using an existing SDK elsewhere, additionally set `CMAKE_PREFIX_PATH`,
 `PUTGD_AWS_RUNTIME_DIR` (its library directory), and `PUTGD_AWS_SOURCE_DIR`
 (its verified source directory including component licenses), as described in
-`docs/build.md`. Test and lab sources are omitted, so leave `BUILD_TESTING=OFF`,
+`docs/build.md`. Application test and lab sources are omitted, so leave `BUILD_TESTING=OFF`,
 `PUTGD_LAB_FIXTURE=OFF`, and `PUTGD_PHYSICAL_BENCHMARKS=OFF`.
 
 This archive has no Git checkout. These flags provide supplied provenance;

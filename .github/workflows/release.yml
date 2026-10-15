@@ -6,6 +6,10 @@ on:
   pull_request:
     paths:
       - '.github/workflows/release.yml'
+      - 'tools/proton/**'
+      - 'cmake/Proton.cmake'
+      - 'tests/unit/test_proton_package_audit.py'
+      - 'tests/ci/test_proton_release.py'
       - 'packaging/**'
       - 'tools/releases/**'
       - 'cmake/BuildVersion.cmake'
@@ -163,6 +167,13 @@ jobs:
             build/sdk
             build/sdk-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
+      - name: Provision and verify pinned Proton helper
+        run: |
+          python3 tools/proton/provision_runtime.py
+          python3 tests/unit/test_proton_package_audit.py
+          python3 tests/releases/test_proton_sources.py
+          python3 tests/releases/test_check_source_build.py
+          python3 tests/ci/test_proton_release.py
       - name: Build production release and audit native package
         env:
           FORMAT: ${{ matrix.format }}
@@ -170,14 +181,14 @@ jobs:
         run: |
           release_tag="$RELEASE_TAG"
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then release_tag=; fi
-          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$release_tag" -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF -DPUTGD_RELEASE_TAG="$release_tag" -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr
           cmake --build --preset release
-          python3 tools/releases/native.py --build build/release --format "$FORMAT" --output "$PWD/build/release-packages" $KDE_REQUIREMENT
+          python3 tools/releases/native.py --build build/release --format "$FORMAT" --output "$PWD/build/release-packages" --proton-manifest build/dependencies/proton-runtime/manifest.json --require-proton $KDE_REQUIREMENT
       - name: Compile the curated source export with standard presets
         if: matrix.name == 'ubuntu24.04'
         run: |
           python3 tools/releases/source_archive.py --root "$PWD" --identity build/release/build-identity/build-info.json --output-dir build/source-export
-          python3 tools/releases/check_source_build.py --receipt build/source-export/source-archive.json --sdk-prefix "$PWD/build/sdk" --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" --output build/source-build
+          python3 tools/releases/check_source_build.py --receipt build/source-export/source-archive.json --sdk-prefix "$PWD/build/sdk" --sdk-source "$PWD/build/dependencies/aws-sdk-cpp" --output build/source-build --bundle-proton --proton-source "$PWD/build/dependencies/proton-runtime/sdk-source" --proton-crypto-source "$PWD/build/dependencies/proton-runtime/crypto-source" --proton-offline
       - name: Stage flat native artifact evidence
         if: always()
         run: python3 tools/releases/stage_artifacts.py --kind native
@@ -261,6 +272,13 @@ jobs:
             build/appimage-deps
             build/appimage-deps-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
+      - name: Provision and verify pinned Proton helper
+        run: |
+          python3 tools/proton/provision_runtime.py
+          python3 tests/unit/test_proton_package_audit.py
+          python3 tests/releases/test_proton_sources.py
+          python3 tests/releases/test_check_source_build.py
+          python3 tests/ci/test_proton_release.py
       - name: Build and audit AppImage
         run: bash tools/releases/build-appimage.sh
       - name: Stage flat AppImage artifact evidence
@@ -289,6 +307,8 @@ jobs:
         with:
           pattern: release-*
           path: build/downloaded
+      - name: Verify Proton corresponding-source delivery
+        run: python3 tools/releases/proton_sources.py --catalog tools/proton/notices/SOURCES.json --output build/downloaded/proton-sources
       - name: Verify and collect exact release assets
         run: python3 tools/releases/collect.py --tag "$RELEASE_TAG" --inputs build/downloaded --output build/publish
       - name: Stage verified GitHub draft

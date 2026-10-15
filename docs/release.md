@@ -25,7 +25,7 @@ fast-forward normal branch updates; do not force-push or move published tags.
 `UTC` is the source commit's 14-digit UTC committer time, not the runner clock.
 `COUNT` is its full-history commit count; `SHORT` is its first 12 lowercase hash
 characters. The tag, base, full commit, tree and count must match the clean source.
-Nightlies never replace GitHub's Latest stable release. They retain all nine
+Nightlies never replace GitHub's Latest stable release. They retain all twelve
 individual downloads listed below, including both raw DEBs, RPM and the exact
 compiled curated source archive.
 
@@ -101,14 +101,24 @@ experimental designation records compatibility maturity. Upstream endorsement
 or SDK general availability is not a publication prerequisite; the concrete
 [evidence and release gates](proton-drive-release-gates.md) remain applicable.
 
-The current standard Build and release workflows do not provision or enable the
-optional Proton runtime (`PUTGD_BUNDLE_PROTON` defaults to OFF). Their ordinary
-successful assets must not be described as Proton-enabled. Before advertising
-Proton in production downloads, complete the runtime/test integration, per-asset
-package/notices audits and extracted-source rebuild described in P3/P4, plus
-recovery, authenticated-memory, update-path and final-package acceptance.
-The current curated source allowlist excludes `tools/proton/`; that handoff also
-needs completion. This record changes no workflow and publishes no package.
+Linux x86-64 Build and release jobs provision and test the pinned official JS
+helper, enable its bundle explicitly, and require matching runtime, notices and
+source catalog in native/AppImage audits. Windows/macOS Proton support remains
+outside this release scope. The curated source archive includes Proton build
+inputs and its production rebuild checks the extracted helper.
+
+Every Proton-enabled release also delivers `proton-source-catalog.json` and both
+`putgd-proton-corresponding-source.tar.gz.part1` / `.part2` files. The collector
+verifies the complete transport and all six original source packets, then binds
+the catalog/helper hashes to every installer. Concatenate the parts in numeric
+order and verify the combined hash before extracting. These large source parts
+are separate downloads; the combined application ZIP includes the catalog and
+instructions. Preserve them while the corresponding binary release is available.
+
+Final packaged functional/resource acceptance remains a separate receipt.
+Previously tested private deployments do not establish package acceptance. P5
+credits the actual Crypto source update and completed rebuild work; ongoing
+compatibility checks remain in the maintenance procedure.
 
 For each subsequent release carrying Proton, the release maintainer retains the
 integration maintainer's dated compatibility/migration check, pinned SDK/Crypto/
@@ -145,9 +155,10 @@ native support claim.
 The GitHub Release page publishes each installer as an individual download:
 Ubuntu 24.04 and 26.04 DEBs, the Fedora 44 RPM, and the x86_64 AppImage. It also
 publishes `putgd-VERSION-source.tar.gz`, the GNOME extension ZIP, full build
-receipts and `SHA256SUMS`. `putgd-VERSION-release.zip` contains these seven
-underlying files and an inner checksum list; the outer checksum list also covers
-the combined ZIP. ZIP timestamps and modes are fixed from the source commit,
+receipts, the Proton source catalog and two source transport parts, and
+`SHA256SUMS`. `putgd-VERSION-release.zip` contains the eight smaller underlying
+files and an inner checksum list. The two large source parts stay separate; the
+outer checksum list covers them and the combined ZIP. ZIP timestamps and modes are fixed from the source commit,
 so repeating collection preserves the bytes needed to resume a draft. Extract the
 combined ZIP into a new directory; its inner checksum list covers the contents,
 while the separately downloaded outer list also covers the ZIP itself. Actions artifact ZIPs are the internal build handoff;
@@ -155,9 +166,10 @@ the final release assets are the raw files.
 
 The curated source tarball exports committed files from a positive allowlist:
 the application's `src/`, CMake files/presets, native packaging, GNOME integration,
-licenses, dependency provisioning/verifier and build instructions. It contains
-no `work/`, builds, credentials, agent context, plans/reviews/evidence, lab images,
-run logs or test artifacts. Its generated `source-info.json` records the original
+licenses, dependency provisioning/verifier, the bounded `tools/proton/` build
+inputs and build instructions. Helper tests required by provisioning are included;
+application test/lab targets and outputs are excluded. It contains no `work/`,
+builds, credentials, agent context, plans/reviews/evidence, lab images or run logs. Its generated `source-info.json` records the original
 commit/tree/count and every included file hash. Archive timestamps, modes and
 ownership are deterministic.
 

@@ -28,7 +28,7 @@ class Bundle(unittest.TestCase):
             'putgd-0.1.1-rc.1-fedora44-x86_64.rpm',
             'putgd-0.1.1-rc.1-x86_64.AppImage',
             'putgd-0.1.1-rc.1-source.tar.gz',
-            'putgd-gnome50-0.1.1-rc.1.zip', 'release-builds.json',
+            'putgd-gnome50-0.1.1-rc.1.zip', 'release-builds.json', 'proton-source-catalog.json',
         ]
         for name in self.names:
             (self.first / name).write_bytes(('synthetic bytes: ' + name).encode())

@@ -10,6 +10,7 @@ import subprocess
 import urllib.request
 
 from audit_native import sha256 as digest
+from audit_proton import audit_proton
 
 ROOT = Path(__file__).resolve().parents[2]
 LOCK = ROOT / "packaging/appimage/tools.lock.json"
@@ -185,11 +186,15 @@ def main() -> int:
     parser.add_argument("--license-source", type=Path, action="append", required=True,
                         help="Pinned Qt/module, QtKeychain, LayerShellQt source; repeat per source")
     parser.add_argument("--version", required=True)
+    parser.add_argument("--require-proton", action="store_true")
+    parser.add_argument("--proton-manifest", type=Path, help="Expected provisioned Proton runtime manifest")
     args = parser.parse_args()
     # Check the native install's identity, modes, runtime receipts and absence of
     # test/private files before deployment changes ELF RPATHs and bundles Qt.
     from audit_native import validate_inventory
-    inventory = validate_inventory(args.stage, require_kde=True)
+    proton_expected = json.loads(args.proton_manifest.read_text()) if args.proton_manifest else None
+    inventory = validate_inventory(args.stage, require_kde=True, require_proton=args.require_proton,
+                                   expected_proton_manifest=proton_expected)
     if inventory["manifest"]["version"] != args.version:
         raise ValueError("Requested AppImage version differs from installed build")
     output = args.output_dir.resolve()
@@ -253,6 +258,10 @@ def main() -> int:
     distro_licenses = system_library_licenses(appdir, qt)
     refresh_runtime_manifest(appdir)
     deployed = audit_deployed(appdir, inventory)
+    proton = audit_proton(appdir, required=args.require_proton,
+                          expected_manifest=inventory.get("proton", {}).get("manifest"))
+    if proton:
+        deployed["proton"] = proton
     target = output / ("putgd-" + args.version + "-x86_64.AppImage")
     subprocess.run([str(executables["appimagetool-x86_64.AppImage"]), "--runtime-file",
                     str(executables["runtime-x86_64"]), "--mksquashfs-opt=-b",

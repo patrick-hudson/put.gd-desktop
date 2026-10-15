@@ -124,3 +124,13 @@ on the local release work run. The no-PUT, exact 32-HEAD, no-copy and final
 `collision_exhausted` assertions remain unchanged; this is a test synchronization
 bound, not a relaxed production timeout or memory benchmark. Numeric terminal
 timings accompany the fixture's normal retained test output.
+
+## Proton Linux runtime
+
+Linux jobs provision the pinned official JS helper before configuring either
+preset with `PUTGD_BUNDLE_PROTON=ON`. Provisioning runs helper tests, compiled
+one-request smoke checks and the large stdout-drain fixture. Native/AppImage
+release audits require the exact provisioned manifest and source/notices files;
+publication also verifies the corresponding-source transport. The Linux x86-64
+lock is not used by portable Windows/macOS compilation. Hosted contracts do not
+replace authenticated packaged desktop and resource acceptance.

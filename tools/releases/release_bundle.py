@@ -20,7 +20,7 @@ def expected_members(version):
         'putgd-' + version + '-fedora44-x86_64.rpm',
         'putgd-' + version + '-x86_64.AppImage',
         'putgd-' + version + '-source.tar.gz',
-        'putgd-gnome50-' + version + '.zip', 'release-builds.json',
+        'putgd-gnome50-' + version + '.zip', 'release-builds.json', 'proton-source-catalog.json',
     ]
 
 
@@ -193,5 +193,5 @@ def create_release_bundle(directory, output_file, version, timestamp, member_nam
         raise ValueError('inner ZIP checksums differ from archived inputs')
     result['version'] = version
     result['channel'] = parse_version(version).channel
-    result['innerChecksumScope'] = 'seven underlying files only; excludes SHA256SUMS and the combined ZIP'
+    result['innerChecksumScope'] = 'eight underlying files only; excludes SHA256SUMS, the combined ZIP and separately delivered source transport parts'
     return result

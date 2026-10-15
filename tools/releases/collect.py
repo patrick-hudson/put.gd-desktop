@@ -8,6 +8,7 @@ import subprocess
 
 from audit_native import PROGRAMS, sha256
 from verify_tag import verify
+import proton_sources
 from release_bundle import create_gnome_zip, create_release_bundle
 
 
@@ -84,6 +85,29 @@ def collect(root, inputs, output, tag):
     selected.append((source, 'putgd-' + release['version'] + '-source.tar.gz'))
     receipts['source'] = source_receipt
     receipts['sourceBuild'] = source_build
+    source_directory = inputs / 'proton-sources'
+    catalog_path = source_directory / proton_sources.CATALOG_NAME
+    current_catalog = root / 'tools/proton/notices/SOURCES.json'
+    if (catalog_path.is_symlink() or not catalog_path.is_file()
+            or catalog_path.read_bytes() != current_catalog.read_bytes()):
+        raise ValueError('Proton source catalog differs from current release source')
+    catalog = proton_sources.catalog_value(catalog_path)
+    proton_sources.verify(source_directory, catalog)
+    catalog_sha = sha256(catalog_path)
+    rebuilt = source_build.get('rebuiltProton', {})
+    if (rebuilt.get('sha256') != catalog['helperSha256']
+            or rebuilt.get('bundledSha256') != catalog['helperSha256']):
+        raise ValueError('Source build has no matching rebuilt Proton helper')
+    for kind in ('ubuntu24.04', 'ubuntu26.04', 'fedora44', 'appimage'):
+        inventory = (receipts[kind].get('postDeploymentAudit', {}).get('proton', {}) if kind == 'appimage'
+                     else receipts[kind].get('proton', {}))
+        if (inventory.get('runtimeSha256') != catalog['helperSha256']
+                or inventory.get('sourceCatalogSha256') != catalog_sha):
+            raise ValueError('Proton package runtime/source catalog differs from delivered source: ' + kind)
+    for name in (*proton_sources.PART_NAMES, proton_sources.CATALOG_NAME):
+        selected.append((source_directory / name, name))
+    receipts['protonSource'] = {'helperSha256': catalog['helperSha256'],
+        'sourceCatalogSha256': catalog_sha, 'delivery': catalog['delivery']}
     output.mkdir(parents=True, exist_ok=False)
     for path, name in selected:
         shutil.copy2(path, output / name)
@@ -91,11 +115,11 @@ def collect(root, inputs, output, tag):
     extension = output / ('putgd-gnome50-' + release['version'] + '.zip')
     create_gnome_zip(root, extension, timestamp)
     (output / 'release-builds.json').write_text(json.dumps({'schemaVersion': 1, 'release': release, 'receipts': receipts}, indent=2) + '\n')
-    member_names = [name for _, name in selected] + [extension.name, 'release-builds.json']
+    member_names = [name for _, name in selected if name not in proton_sources.PART_NAMES] + [extension.name, 'release-builds.json']
     combined = output / ('putgd-' + release['version'] + '-release.zip')
     create_release_bundle(output, combined, release['version'], timestamp, member_names)
     (output / 'SHA256SUMS').write_text(''.join(sha256(output / name) + '  ' + name + '\n'
-        for name in sorted([*member_names, combined.name])), encoding='ascii')
+        for name in sorted([*member_names, *proton_sources.PART_NAMES, combined.name])), encoding='ascii')
     return release
 
 

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "materialsReady": true,
   "distributionReady": false,
-  "published": false,
+  "published": true,
   "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
   "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
   "sourcePins": {
@@ -26,7 +26,6 @@
     "argon2ModifiedCompiledCryptoVerified": true
   },
   "openGates": [
-    "Corresponding-source publication beside final binaries (P4)",
     "Fresh final-helper functional, resource and actual package acceptance (P6)"
   ],
   "artifacts": [
@@ -75,5 +74,30 @@
     "profile": "release-local with local JSC and system ICU 74.2",
     "emscriptenImage": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
     "nativeOrWasmByteIdentityClaimed": false
+  },
+  "delivery": {
+    "file": "putgd-proton-corresponding-source.tar.gz",
+    "bytes": 2484914096,
+    "sha256": "74ccb7b1be2c3fd3db2ed70222e1dd06a1dea0eb901448170a76709bcfe4c8ab",
+    "parts": [
+      {
+        "file": "putgd-proton-corresponding-source.tar.gz.part1",
+        "bytes": 1300000000,
+        "sha256": "ed4ad0f31dc9a8e8e47f2e0ad7ce8b61bd812240640095866ae1ac036abab757",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part1"
+      },
+      {
+        "file": "putgd-proton-corresponding-source.tar.gz.part2",
+        "bytes": 1184914096,
+        "sha256": "9b47aab2e8229fda914fdb142812893c78fb04d51f91850b782f957868b36684",
+        "url": "https://github.com/patrick-hudson/put.gd-desktop/releases/download/proton-sources-0.22.2-crypto2.0.1/putgd-proton-corresponding-source.tar.gz.part2"
+      }
+    ]
+  },
+  "publication": {
+    "releaseUrl": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.22.2-crypto2.0.1",
+    "publishedAt": "2026-10-15T22:52:51Z",
+    "releaseId": 414343618,
+    "scope": "Verified corresponding-source materials only; final binary package acceptance is recorded separately"
   }
 }

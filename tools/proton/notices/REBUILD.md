@@ -5,8 +5,13 @@ The 2.0.0 npm crypto archive is a build bootstrap only. The selected runtime sou
 is WebPackages 956a713c0823b365cc512018974eb4fcba47c9dd, version 2.0.1. Its source,
 GPL grant, predecessor notices and source hashes accompany delivery.
 
-SOURCES.json identifies accompanying source artifacts by exact hash. Ship those
-artifacts beside the binary packages and retain availability. The installed
+SOURCES.json identifies accompanying source artifacts by exact hash. The six
+original packets travel inside `putgd-proton-corresponding-source.tar.gz`, split
+into `.part1` and `.part2` to respect the hosting service's per-file limit. Verify
+the part hashes, concatenate in numeric order, then verify the combined hash before
+extracting and verifying each original packet. The catalog's `delivery` section
+records every size, hash and public source URL. Binary releases deliver both
+parts and the current catalog beside their installers; retain availability. The installed
 notices/catalog alone do not establish that source has been delivered.
 
 The helper source archive contains build-source, patched public SDK/account

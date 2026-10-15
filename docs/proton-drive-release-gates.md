@@ -193,38 +193,59 @@ and graphical acceptance remains required. No S3 operation was used in this work
 
 ### P4 — Shipping pipeline and supported assets
 
-[cmake/Proton.cmake](../cmake/Proton.cmake) defaults `PUTGD_BUNDLE_PROTON` to OFF.
-The inspected [.github/workflows/build.yml](../.github/workflows/build.yml) and
-[release.yml](../.github/workflows/release.yml) neither provision the runtime nor
-enable that option. The native package auditor has no Proton-specific inventory
-gate. Standard build/package success therefore cannot establish Proton delivery.
+Linux x86-64 Build and release jobs now explicitly provision the pinned helper,
+run its helper/compiled-protocol checks and enable `PUTGD_BUNDLE_PROTON`. The
+CMake default remains OFF for unsupported platforms and deliberate builds without
+Proton. Windows/macOS do not provision this Linux-only artifact. Packaged users
+need no separate Bun, Node or Proton CLI.
 
-Add pinned provisioning and helper test/smoke coverage to the intended Linux
-release path, explicitly enable the bundle, and require runtime/manifest/notices
-integrity in the package audits and release receipts. Cover each advertised
-DEB/RPM/AppImage asset with its actual ABI and keychain/browser runtime needs.
-Record unsupported assets explicitly; a Linux x86-64 lock is not Fedora desktop
-or cross-format acceptance. Users must not need a separate Bun, Node or CLI.
+Native and AppImage audits require the exact provisioned runtime manifest,
+helper hash, mirrored notices, all twelve redistribution files and the source
+catalog. AppImage repeats the audit after deployment. Native packages declare
+browser-launcher/Secret Service library dependencies; a default browser and
+unlocked Secret Service-compatible keychain remain desktop prerequisites.
 
-[tools/releases/source_archive.py](../tools/releases/source_archive.py) currently
-excludes `tools/proton/` through its positive allowlist. Include the Proton
-production helper sources, provisioning/locks/notices and setup instructions in
-the curated source/rebuild handoff; verify an extracted Proton-enabled build.
-Keep credentials, build output and lab evidence excluded. Preserve the existing
-stable/candidate exact-package and nightly automated-coverage distinctions.
+The curated application source export includes the complete bounded
+`tools/proton/` build inputs, pins, tests required by provisioning, notices and
+setup instructions. Its production rebuild can provision from those extracted
+inputs, enable Proton and verify that the rebuilt helper is the bundled helper.
+Credentials, build output and lab evidence remain excluded.
+
+Corresponding-source transport preserves the six sealed P3 packets inside a
+hashed gzip tar archive, delivered in two separately hashed parts under GitHub's
+per-file size limit. Release collection verifies both parts, every inner packet,
+the current catalog and each binary package's helper/catalog hashes before
+staging. Both parts and the catalog accompany every installer and outer checksum
+list; the combined application ZIP includes the catalog and reconstruction
+instructions, with the large source parts available separately. Source-only
+publication and final package results are recorded in the final acceptance
+receipt; wiring alone does not establish hosted or desktop acceptance.
 
 ### P5 — Ongoing SDK and service compatibility
 
-Adopt the maintenance procedure below and exercise its upgrade/recovery path
-before first shipment. Required SDK/API/crypto updates must produce a tested
-bundled runtime through put.gd releases. A live compatibility failure remains a
-release blocker even though upstream's readiness label does not.
+The user approved crediting the maintenance already performed rather than
+requiring an artificial additional SDK-version change. P5 is satisfied by the
+maintenance procedure below and the actual P3 transition from the unresolved
+Crypto 2.0.0 bootstrap to the explicit GPL Crypto 2.0.1 source snapshot. That
+transition exercised source/lock selection, guarded source patches, notices,
+corresponding sources, exact helper rebuild, modified-source relinking,
+protocol/smoke tests and install integrity. P1 supplies the normal-use recovery
+contract; P6 checks the resulting packaged helper and preserved operation state.
+No second SDK upgrade or server migration was fabricated as acceptance evidence.
+
+Compatibility remains an ongoing release responsibility: required SDK/API/crypto
+updates must produce a tested bundled runtime through put.gd releases. An observed
+live incompatibility blocks affected publication. Upstream readiness labels do
+not add an endorsement gate, and rollback cannot promise compatibility after an
+upstream crypto migration.
 
 ### P6 — Final candidate and package acceptance
 
 Freeze the final source and runtime after any fixes, notice completion or
 packaging changes. Run the documented dev presets, helper tests and compiled
-protocol checks, plus applicable S3/local regressions. Record the four known
+protocol checks and applicable local regressions. The user restricted this
+campaign to Proton: no S3 tests, credentials, configuration or service operations
+are part of its acceptance evidence. Record the four known
 upstream type-check diagnostics explicitly; new diagnostics require resolution
 or a bounded documented disposition. Do not call the full type-check passing.
 
@@ -274,8 +295,10 @@ existing recipient checkbox stays checked; its historical provenance remains iss
 stale “four groups” instruction was replaced. The historical requirements below
 the issue’s disclosure section were preserved verbatim.
 
-Next work is P4 shipping/source integration, followed by the P5 update rehearsal
-and P6 acceptance on the resulting candidate. P1/P2 are complete only within their recorded workloads and fingerprints;
+P4 shipping/source integration is implemented; actual package and extracted-source
+checks remain to be recorded. P5 credits the completed maintenance transition.
+P6 acceptance must use the resulting candidate. P1/P2 are complete only within their recorded workloads and fingerprints;
 the changed GPL-source helper still needs final functional/resource evidence.
-P3 notice/source/rebuild work is complete. P4–P6 are not passed. The linked receipts preserve actual checks, failures,
+P3 notice/source/rebuild work is complete. P4/P6 execution is still in progress;
+P5 is credited as described above. The linked receipts preserve actual checks, failures,
 controlled-only cases and limitations.

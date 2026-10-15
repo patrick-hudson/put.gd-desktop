@@ -13,6 +13,7 @@ from urllib.parse import quote
 from github_evidence import (GitHub, BUILD_JOBS, BUILD_WORKFLOW,
                              coordinate_build, coordinate_packages, full_sha, remote_tag_commit, verify_ci)
 from release_bundle import expected_members
+from proton_sources import PART_NAMES
 from release_identity import parse_tag
 from verify_tag import verify
 
@@ -106,11 +107,10 @@ def ensure_tag(api, root, tag, source_sha):
 
 def public_inventory(tag):
     identity = parse_tag(tag)
-    return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS'])
+    return set(expected_members(identity.version) + ['putgd-' + identity.version + '-release.zip', 'SHA256SUMS', *PART_NAMES])
 
 
 def published_nightly(api, tag, release):
-    """Verify durable public identity and all nine bytes/digests before a no-op."""
     if parse_tag(tag).channel != 'nightly' or release.get('channel') != 'nightly':
         raise ValueError('Only the nightly publication class can establish a skip')
     pages = api.json('releases?per_page=100', paginate=True)
