@@ -124,8 +124,7 @@ def main():
     (work / 'tsconfig.json').write_text(json.dumps(config, indent=2) + '\n')
     run([str(bun), 'test', './protocol.test.ts', './runtime.test.ts', './crypto-cache.test.ts', './progress.test.ts'], work)
     candidate = output / 'putgd-proton-runtime.new'
-    # Prefer a smaller GC heap for short-lived requests; measure the CPU tradeoff.
-    run([str(bun), 'build', '--compile', '--compile-exec-argv=--smol', '--target=bun-linux-x64', '--minify', './runtime.ts',
+    run([str(bun), 'build', '--compile', '--target=bun-linux-x64', '--minify', './runtime.ts',
          f'--outfile={candidate}'], work)
     version = json.loads(run([str(candidate), '--version'], output, True))
     if version['bunVersion'] != lock['bunVersion'] or version['sdkVersion'] != 'js@' + lock['sdkVersion']:
@@ -152,7 +151,7 @@ def main():
     notices = write_notices(work, source, output)
     manifest = {'schemaVersion': 1, 'artifact': artifact.name, 'sha256': sha256(artifact),
                 'sourceReference': commit, 'appVersion': version['appVersion'], 'sdkVersion': version['sdkVersion'],
-                'bunVersion': version['bunVersion'], 'protocolVersion': 1, 'compileExecArgv': ['--smol'],
+                'bunVersion': version['bunVersion'], 'protocolVersion': 1,
                 'dependencyLockSha256': sha256(ROOT / 'package-lock.json'),
                 'dependencyNotices': notices.name, 'dependencyNoticesSha256': sha256(notices),
                 'helperSourceSha256': {name: sha256(ROOT / name) for name in ['runtime.ts', 'account.ts', 'crypto-cache.ts', 'protocol.ts', 'stdout.ts', 'progress.ts', 'provision_runtime.py']}}
