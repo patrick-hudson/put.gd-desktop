@@ -4,7 +4,7 @@
   "distributionReady": false,
   "published": true,
   "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
-  "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+  "helperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
   "sourcePins": {
     "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
     "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
@@ -39,7 +39,7 @@
       "filename": "putgd-proton-helper-rebuild.tar.gz",
       "bytes": 15261507,
       "sha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
-      "purpose": "Selected patched helper/SDK/account/crypto source graph and dependencies; 6298 public files, exact helper rebuild verified"
+      "purpose": "Original patched helper/SDK/account/crypto source graph and dependencies; 6298 public files. Apply applicationSourceOverlay from the current application source archive for the current helper."
     },
     {
       "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
@@ -99,5 +99,27 @@
     "publishedAt": "2026-10-15T22:52:51Z",
     "releaseId": 414343618,
     "scope": "Verified corresponding-source materials only; final binary package acceptance is recorded separately"
+  },
+  "applicationSourceOverlay": {
+    "required": true,
+    "baseSourceArtifact": "putgd-proton-helper-rebuild.tar.gz",
+    "baseSourceArtifactSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+    "repository": "https://github.com/patrick-hudson/put.gd-desktop",
+    "sourceCommit": "1016b1bb0348cd01b044dae9ae50fc63a3ed27d2",
+    "delivery": "Included in the current put.gd application source archive alongside these six unchanged original packets. Apply the listed files before rebuilding the current helper.",
+    "reason": "Return the connected account email from existing SDK root metadata. No SDK, crypto, Bun or dependency source changes.",
+    "files": [
+      {
+        "source": "tools/proton/runtime.ts",
+        "destination": "build-source/runtime.ts",
+        "sha256": "bfe0bfd84687e30ac7e8c0c8813809b0c73ffa9b11f606869c7b1fc319ab83e9"
+      },
+      {
+        "source": "tools/proton/runtime.test.ts",
+        "destination": "build-source/runtime.test.ts",
+        "sha256": "da1e1e5cbe1e735381c405749fc8af850e84649cdc0c8a10bcc65c1058cef886"
+      }
+    ],
+    "exactHelperRebuildVerified": true
   }
 }

@@ -14,6 +14,17 @@ records every size, hash and public source URL. Binary releases deliver both
 parts and the current catalog beside their installers; retain availability. The installed
 notices/catalog alone do not establish that source has been delivered.
 
+The six sealed packets retain their original bytes. The current application source
+archive supplies the required `applicationSourceOverlay` listed in SOURCES.json.
+For issue #40, copy its `tools/proton/runtime.ts` and `runtime.test.ts` over the
+matching files in the extracted `build-source/` directory. Verify each overlay
+file against the catalog's SHA-256 before compiling. The catalog pins repository
+commit `1016b1bb0348cd01b044dae9ae50fc63a3ed27d2` as another source of those
+same files. This overlay returns the connected account email from existing SDK
+metadata; SDK, crypto, Bun and dependency inputs remain unchanged. The current
+helper reproduced exactly from the original source packet plus these two files.
+The application source archive and original source packets must travel together.
+
 The helper source archive contains build-source, patched public SDK/account
 inputs and the fixed dependency graph. Use an existing compatible Bun executable (set proton_bun to its absolute path):
 
@@ -23,6 +34,9 @@ cd build-source
 ./putgd-proton-runtime.new --version
 "$proton_bun" test protocol.test.ts runtime.test.ts crypto-cache.test.ts progress.test.ts
 ```
+
+Keep the `.new` output basename shown above: Bun embeds that name in the compiled
+executable. Rename it only after comparing its hash to SOURCES.json.
 
 The compile-executable-path argument selects a recipient-modified/relinked Bun;
 no runtime download or vendor signing key is required for source reconstruction.
