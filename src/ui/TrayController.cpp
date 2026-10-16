@@ -19,6 +19,30 @@ bool meaningfulError(const QJsonObject& error) {
  const auto code=error["code"].toString();return !code.isEmpty()&&code!="copy_suppressed";
 }
 const QString idleTooltip = "put.gd — Share and local capture";
+int transferPercent(const QJsonObject& item) {
+ const auto progress=UploadProgress::fromJson(item["uploadProgress"].toObject());
+ const auto sourceBytes=item["artifact"].toObject()["bytes"].toInteger();
+ const bool estimated=!progress||!progress->bytesTotal||*progress->bytesTotal==0;
+ const auto total=estimated?sourceBytes:*progress->bytesTotal;
+ if(total<=0)return -1;
+ if(progress&&progress->phase=="finalizing")return 100;
+ const auto sent=progress?progress->bytesTransferred.value_or(0):0;
+ // Source size is a useful estimate for providers counting encrypted/network
+ // bytes, but overhead must not make that estimate look finished early.
+ return int(qBound(0.0L,100.0L*sent/total,estimated?99.0L:100.0L));
+}
+int uploadPercent(const QJsonArray& observations) {
+ long double weighted=0,total=0;
+ for(const auto& value:observations)for(const auto& v:value.toObject()["items"].toArray()) {
+  const auto item=v.toObject();if(item["uploadStatus"]!="uploading")continue;
+  const auto progress=UploadProgress::fromJson(item["uploadProgress"].toObject());
+  if(progress&&progress->phase=="preparing")continue;
+  const auto percent=transferPercent(item);if(percent<0)continue;
+  const auto weight=qMax(qint64(1),item["artifact"].toObject()["bytes"].toInteger());
+  weighted+=static_cast<long double>(weight)*percent;total+=weight;
+ }
+ return total>0?int(weighted/total):0;
+}
 QString phaseLabel(const QString& phase) {
  if(phase=="preflight")return "Checking destination";
  if(phase=="saving_local")return "Saving local copy";
@@ -41,9 +65,8 @@ QString activityLine(const QJsonObject& operation) {
      text+=" of "+ByteSize::summary(*progress->bytesTotal);
      if(*progress->bytesTotal>0)text+=QString(" (%1%)").arg(int(100.0 * *progress->bytesTransferred / *progress->bytesTotal));
     } else {
-     // Providers may count encrypted/network bytes. Source bytes are a separate
-     // size, never the denominator of a fabricated transfer percentage.
      text+=" transferred · Source size: "+ByteSize::summary(item["artifact"].toObject()["bytes"].toInteger());
+     const auto estimate=transferPercent(item);if(estimate>=0)text+=QString(" · Estimated %1%").arg(estimate);
     }
    } else text+=" · Source size: "+ByteSize::summary(item["artifact"].toObject()["bytes"].toInteger());
    break;
@@ -87,7 +110,7 @@ TrayController::TrayController(OperationService& operations,
  } else
 #endif
  {
- tray_ = new QSystemTrayIcon(VisualStyle::icon("brand"), this);
+ tray_ = new QSystemTrayIcon(VisualStyle::icon("tray"), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  for (const auto& action : Settings::actionNames()) {
@@ -122,6 +145,8 @@ TrayController::TrayController(OperationService& operations,
  errorRecoveryTimer_.setSingleShot(true);
  errorRecoveryTimer_.setInterval(3000);
  errorRecoveryTimer_.setTimerType(Qt::PreciseTimer);
+ uploadCompleteTimer_.setSingleShot(true);uploadCompleteTimer_.setInterval(300);
+ connect(&uploadCompleteTimer_,&QTimer::timeout,this,&TrayController::refreshActivity);
  connect(&errorFlashTimer_,&QTimer::timeout,this,[this] {
   errorRed_=!errorRed_;
   refreshActivity();
@@ -170,22 +195,43 @@ bool TrayController::availabilityKnown() const { return true; }
 #endif
 void TrayController::refreshActivity() {
  const auto observations=operations_.activeObservations();
- const auto text=activityText(observations);
+ if(operations_.storageActive()||!observations.isEmpty())uploadCompleteTimer_.stop();
+ QSet<QString> activeIds;
+ for(const auto& value:observations) {
+  const auto op=value.toObject();
+  activeIds.insert(op["id"].toString());
+  if(!op["destination"].toObject()["providerId"].toString().isEmpty())activeUploads_.insert(op["id"].toString());
+ }
+ auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
+ for(const auto& id:finished)operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
+  if(!guard||error||operation["state"]!="completed"||guard->errorFlashTimer_.isActive()||guard->operations_.storageActive()||!guard->operations_.activeObservations().isEmpty())return;
+  for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploaded") {
+   guard->uploadCompleteTimer_.start();guard->refreshActivity();break;
+  }
+ });
+ const bool completing=uploadCompleteTimer_.isActive();
+ const auto text=completing?QString("Upload complete"):activityText(observations);
  // Error pulses have priority; the off phase is blue even during other requests.
  const auto color=errorFlashTimer_.isActive()?QColor(errorRed_?"#ffb4ab":"#9bbcff"):
-                  QColor(operations_.storageActive()?"#62d69b":"#9bbcff");
- if(color==iconColor_&&text==activityText_)return;
+                  QColor(operations_.storageActive()||completing?"#62d69b":"#9bbcff");
+ int percent=-1;
+ if(!errorFlashTimer_.isActive()) {
+  if(completing)percent=100;
+  else if(operations_.storageActive())percent=uploadPercent(observations);
+ }
+ if(color==iconColor_&&percent==iconPercent_&&text==activityText_)return;
 #ifdef Q_OS_LINUX
- if(native_)native_->setActivity(color,text);
+ if(native_)native_->setActivity(color,text,percent);
  else
 #endif
  if(tray_) {
-  if(color!=iconColor_)tray_->setIcon(VisualStyle::icon("brand",color));
+  if(color!=iconColor_||percent!=iconPercent_)tray_->setIcon(VisualStyle::icon("tray",color,percent));
   if(text!=activityText_)tray_->setToolTip(text.isEmpty()?idleTooltip:QString("put.gd — Working\n")+text);
  }
- iconColor_=color;activityText_=text;
+ iconColor_=color;iconPercent_=percent;activityText_=text;
 }
 void TrayController::flashError() {
+ uploadCompleteTimer_.stop();
  errorRed_=true;errorFlashTimer_.start();errorRecoveryTimer_.start();refreshActivity();
 }
 void TrayController::activate() { showSettings(); }

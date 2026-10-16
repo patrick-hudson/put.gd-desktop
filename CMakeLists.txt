@@ -235,7 +235,7 @@ target_link_libraries(putgd_client PUBLIC Qt6::Core Qt6::Network putgd_build_opt
 add_library(putgd_ui_state STATIC src/ui/ViewState.cpp)
 target_include_directories(putgd_ui_state PUBLIC src)
 target_link_libraries(putgd_ui_state PUBLIC Qt6::Core putgd_build_options)
-add_library(putgd_visual STATIC src/ui/VisualStyle.cpp)
+add_library(putgd_visual STATIC src/ui/VisualStyle.cpp src/ui/IconArt.cpp)
 target_include_directories(putgd_visual PUBLIC src)
 target_link_libraries(putgd_visual PUBLIC Qt6::Widgets putgd_build_options)
 add_library(putgd_tray STATIC src/ui/TrayController.cpp)

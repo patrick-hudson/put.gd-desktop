@@ -17,7 +17,7 @@ public:
  ~NativeTray() override;
  bool available() const;
  bool availabilityKnown() const;
- void setActivity(const QColor& color, const QString& description);
+ void setActivity(const QColor& color, const QString& description, int percent = -1);
  void notify(const QString& title, const QString& message, bool warning = false);
 signals:
  void actionActivated(const QString& action);

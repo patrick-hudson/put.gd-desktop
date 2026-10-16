@@ -83,7 +83,7 @@ def displayed_interval(text):
 
 
 SIZE = r'(?:<0\.01|[0-9]+(?:\.[0-9]{1,2})?) (?:MiB|GiB)'
-COUNTER = re.compile(r'^(.+?): (' + SIZE + r')(?: of (' + SIZE + r')(?: \(([0-9]+)%\))?| transferred · Source size: (' + SIZE + r'))$')
+COUNTER = re.compile(r'^(.+?): (' + SIZE + r')(?: of (' + SIZE + r')(?: \(([0-9]+)%\))?| transferred · Source size: (' + SIZE + r')(?: · Estimated ([0-9]+)%)?)$')
 
 
 def check_tooltip(snapshot, records, provider, pid):
@@ -92,7 +92,8 @@ def check_tooltip(snapshot, records, provider, pid):
     The resident batches observations, and CLI and DBus calls are not atomic.
     Records bracket the SNI read and cover the previous two seconds. Displayed
     counters must fit a real observed range and their own rounded percentage;
-    Proton's SDK counter is allowed to decrease. No time/size percentage estimate.
+    SDK counters may decrease. Source-size estimates must be explicitly labelled
+    and bounded independently against observed bytes and the acquired file size.
     """
     require(snapshot.get('pid') == pid and snapshot.get('hostRegistered') and snapshot.get('registered'),
             'SNI must be registered with the native host and owned by the expected app PID')
@@ -102,15 +103,21 @@ def check_tooltip(snapshot, records, provider, pid):
     idle = snapshot.get('title') == IDLE
     require(idle or snapshot.get('title') == 'put.gd — Working', 'Unexpected tray title')
     icons = snapshot.get('icons', [])
-    colors = ('#9bbcff',) if idle else ('#9bbcff', '#62d69b')
-    present = [color for color in colors if icons and
-               all(icon.get('opaqueColors', {}).get(color, 0) > 0 for icon in icons)]
+    colors = (('#9bbcff',),) if idle else (('#9bbcff',), ('#62d69b', '#2b5d43'))
+    present = [family[0] for family in colors if icons and
+               all(any(icon.get('opaqueColors', {}).get(color, 0) > 0 for color in family) for icon in icons)]
     require(len(present) == 1,
             'SNI icon does not have the required idle/active brand color')
     if idle:
         observed(not text, 'Idle tooltip retains stale work')
         observed(not records, 'Idle tray while production work remains active')
         return {'idle': True, 'storageActive': False, 'counter': False, 'phases': []}
+    if text == 'Upload complete':
+        observed(not records and present == ['#62d69b'], 'Completion fill must be green with no remaining work')
+        require(all(icon.get('opaqueColors', {}).get('#62d69b', 0) > 0 and
+                    not icon.get('opaqueColors', {}).get('#2b5d43', 0) for icon in icons),
+                'Completion frame must be fully bright green')
+        return {'idle': False, 'storageActive': False, 'counter': False, 'phases': []}
     observed(text, 'Working tray has no activity text')
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
@@ -145,12 +152,19 @@ def check_tooltip(snapshot, records, provider, pid):
         low = max(lower, min(record['bytesTransferred'] for record in numeric))
         high = min(upper, max(record['bytesTransferred'] for record in numeric))
         observed(low <= high, 'Tray transferred bytes lie outside production observations')
-        if provider == 'proton-drive':
-            require(match[5] and not match[3] and not match[4], 'Proton must show encrypted bytes separately, without percentage')
+        if match[5]:
+            require(provider == 'proton-drive', 'S3 replay requires its real transfer total')
             observed(any(match[5] == byte_summary(record['sourceBytes']) for record in numeric),
-                    'Proton source size differs from acquired artifact bytes')
-            require(all('bytesTotal' not in record for record in numeric), 'Unexpected Proton transfer-total accounting')
+                    'Source size differs from acquired artifact bytes')
+            require(all(not record.get('bytesTotal') for record in numeric), 'Source fallback hides a known transfer total')
+            if match[6] is not None:
+                estimate = int(match[6])
+                observed(any(record['sourceBytes'] > 0 and
+                             (estimate == 100 if phase == 'finalizing' else
+                              min(99, low * 100 // record['sourceBytes']) <= estimate <= min(99, high * 100 // record['sourceBytes']))
+                             for record in numeric), 'Source-size estimate contradicts observed bytes')
         else:
+            require(provider != 'proton-drive', 'Proton must keep encrypted bytes separate from source size')
             totals = {record['bytesTotal'] for record in numeric if record.get('bytesTotal', 0) > 0
                       and byte_summary(record['bytesTotal']) == match[3]}
             observed(totals and match[4] is not None, 'S3 needs a real matching transfer total and percentage')

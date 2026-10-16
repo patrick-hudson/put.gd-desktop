@@ -8,7 +8,7 @@ namespace putgd::VisualStyle {
 void apply(QApplication&);
 void configureColumns(QHeaderView* header);
 QComboBox* choiceBox(QWidget* parent);
-QIcon icon(const QString& name,const QColor& color=QColor("#9bbcff"));
+QIcon icon(const QString& name,const QColor& color=QColor("#9bbcff"),int percent=-1);
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent);
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent);
 void styleForm(QFormLayout*);

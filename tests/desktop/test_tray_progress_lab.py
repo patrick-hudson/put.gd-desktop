@@ -42,17 +42,41 @@ class TrayProgressContracts(unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(text), records, 's3', 42)
 
-    def test_proton_encrypted_counter_never_uses_source_as_denominator(self):
+    def test_proton_counter_keeps_real_bytes_and_labels_source_estimate(self):
         # The SDK may retry and decrease its encrypted byte counter.
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
                     'bytesTransferred': n*1024**2} for n in (8, 6)]
         result = tray.check_tooltip(observation('Uploading: 7 MiB transferred · Source size: 4 MiB'), records, 'proton-drive', 42)
         self.assertTrue(result['counter'])
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 7 MiB transferred · Source size: 4 MiB · Estimated 99%'), records, 'proton-drive', 42)['counter'])
         for text in ('Uploading: 7 MiB of 4 MiB (175%)',
                      'Uploading: 7 MiB transferred · Source size: 7 MiB',
                      'Uploading: 12 MiB transferred · Source size: 4 MiB'):
             with self.subTest(text=text), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(text), records, 'proton-drive', 42)
+
+    def test_source_estimates_are_bounded_and_must_match_observed_counters(self):
+        records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2, 'bytesTransferred': 2*1024**2}]
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%'), records, 'proton-drive', 42)['counter'])
+        for estimate in (25, 75, 100):
+            with self.subTest(estimate=estimate), self.assertRaises(tray.TrayProgressError):
+                tray.check_tooltip(observation(f'Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated {estimate}%'), records, 'proton-drive', 42)
+        # At zero fill the entire Lift silhouette uses the dim green base.
+        dim = observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%', color='#2b5d43')
+        self.assertTrue(tray.check_tooltip(dim, records, 'proton-drive', 42)['storageActive'])
+
+    def test_s3_replay_still_requires_its_real_transfer_total(self):
+        records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2, 'bytesTransferred': 2*1024**2}]
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%'), records, 's3', 42)
+
+    def test_completion_frame_requires_full_bright_green_not_empty_fill(self):
+        self.assertFalse(tray.check_tooltip(observation('Upload complete'), [], 's3', 42)['idle'])
+        for snapshot in (observation('Upload complete', color='#2b5d43'), observation('Upload complete')):
+            if snapshot['icons'][0]['opaqueColors'].get('#62d69b'):
+                snapshot['icons'][0]['opaqueColors']['#2b5d43'] = 60
+            with self.assertRaises(tray.TrayProgressError):
+                tray.check_tooltip(snapshot, [], 's3', 42)
 
     def test_concurrent_rows_cannot_borrow_another_operation_counter(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,

@@ -5,6 +5,7 @@
 #include "ui/HistoryModel.h"
 #include "ui/SettingsWindow.h"
 #include "ui/RedesignTheme.h"
+#include "ui/VisualStyle.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QCheckBox>
@@ -31,6 +32,23 @@ using namespace putgd;
 using namespace putgd::test;
 namespace {
 bool waitUntil(const std::function<bool()>& condition){QElapsedTimer timer;timer.start();while(!condition()&&timer.elapsed()<8000)QTest::qWait(20);return condition();}
+QImage iconSpecimen(){
+ QImage image(1200,460,QImage::Format_RGB32);image.fill(QColor("#101216"));QPainter p(&image);
+ p.setPen(QColor("#e7e9ef"));p.drawText(24,28,"Lift + Duotone · production renderer · synthetic specimen");
+ VisualStyle::icon("brand").paint(&p,QRect(24,57,72,72));
+ const QStringList names{"region","window","desktop","clipboard","history","destinations","preferences","info","shortcuts","files"};
+ for(int i=0;i<names.size();++i){const int x=135+i*105;VisualStyle::icon(names[i]).paint(&p,QRect(x,60,48,48));p.drawText(QRect(x-15,120,92,24),Qt::AlignCenter,names[i]);}
+ p.drawText(24,185,"Green fill");
+ for(int i=0;i<5;++i){const int x=155+i*125;VisualStyle::icon("tray",QColor("#62d69b"),i*25).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x,250,72,24),Qt::AlignCenter,QString::number(i*25)+"%");}
+ for(int i=0;i<2;++i){const int x=860+i*130;VisualStyle::icon("tray",QColor(i?"#9bbcff":"#ffb4ab")).paint(&p,QRect(x,170,72,72));p.drawText(QRect(x-10,250,92,24),Qt::AlignCenter,i?"Blink off":"Blink on");}
+ p.drawText(24,308,"Actual tray sizes: 16 / 22 / 24 / 32 px");
+ for(int row=0;row<2;++row){const int y=330+row*56;p.fillRect(QRect(24,y,1152,48),QColor(row?"#e4e5e9":"#20242d"));
+  int x=44;for(int size:{16,22,24,32}){VisualStyle::icon("tray").paint(&p,QRect(x,y+(48-size)/2,size,size));x+=60;}
+  for(int i=0;i<5;++i)VisualStyle::icon("tray",QColor("#62d69b"),i*25).paint(&p,QRect(300+i*130,y+12,24,24));
+  for(int i=0;i<2;++i)VisualStyle::icon("tray",QColor(i?"#9bbcff":"#ffb4ab")).paint(&p,QRect(980+i*80,y+12,24,24));
+ }
+ return image;
+}
 QImage syntheticCapture(int index){
  using namespace RedesignTheme;QImage image(960,600,QImage::Format_RGB32);image.fill(bg());QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);p.setPen(Qt::NoPen);p.setBrush(surface());p.drawRoundedRect(QRect(24,20,912,560),16,16);p.setBrush(border());p.drawRoundedRect(QRect(24,20,912,45),16,16);for(int i=0;i<3;++i){p.setBrush(i==0?danger():i==1?warning():success());p.drawEllipse(QPoint(47+20*i,43),5,5);}QFont f(RedesignTheme::uiFontFamily());f.setPixelSize(24);f.setBold(true);p.setFont(f);p.setPen(text());const QStringList titles{"Design review","Build summary","Project notes","Release checklist","Weekly highlights","Product research","Interface library","Upload overview"};p.drawText(QRect(61,91,830,44),titles.value(index%titles.size()));f.setBold(false);f.setPixelSize(14);p.setFont(f);p.setPen(textMuted());p.drawText(QRect(61,140,830,25),"Synthetic sample content for the put.gd redesign experiment");
  for(int col=0;col<3;++col){const QRect card(61+col*276,194,256,130);p.setPen(QPen(borderStrong()));p.setBrush(surfaceRaised());p.drawRoundedRect(card,10,10);p.setPen(textMuted());p.drawText(card.adjusted(18,16,-18,-80),QStringList{"CAPTURES","UPLOADED","SAVED LOCALLY"}.at(col));f.setPixelSize(31);f.setBold(true);p.setFont(f);p.setPen(col==1?success():accent());p.drawText(card.adjusted(18,53,-18,-16),QString::number((index+1)*7+col*3));f.setPixelSize(14);f.setBold(false);p.setFont(f);}
@@ -43,6 +61,7 @@ QJsonObject previewConfig(const QString& root){
 }
 int main(int argc,char** argv){
  QApplication app(argc,argv);app.setApplicationName("putgd-redesign-preview");if(app.arguments().size()!=2){qCritical("Usage: redesign_preview OUTPUT_DIRECTORY");return 2;}const auto output=QFileInfo(app.arguments().at(1)).absoluteFilePath();if(!QDir().mkpath(output)){qCritical("Cannot create preview output directory");return 2;}
+ if(!iconSpecimen().save(QDir(output).filePath("00-icon-specimen.png")))return 2;
  // The fixture calls the resident dispatcher directly and never opens a socket,
  // but enforce the same Linux path precondition before constructing the app.
  const auto socket=QDir(QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation)).filePath("putgd/session.sock");if(socket.toUtf8().size()>107){qCritical("Resolved Unix socket exceeds 107 UTF-8 bytes");return 2;}

@@ -4,6 +4,7 @@
 #include <QElapsedTimer>
 #include <QColor>
 #include <QTimer>
+#include <QSet>
 #include <functional>
 #include <memory>
 
@@ -39,10 +40,12 @@ private:
  void notifyMessage(const QString&, const QString&, bool warning);
  void refreshActivity();
  void flashError();
- QTimer errorFlashTimer_,errorRecoveryTimer_;
+ QTimer errorFlashTimer_,errorRecoveryTimer_,uploadCompleteTimer_;
  bool errorRed_=false;
  QColor iconColor_=QColor("#9bbcff");
+ int iconPercent_=-1;
  QString activityText_;
+ QSet<QString> activeUploads_;
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;

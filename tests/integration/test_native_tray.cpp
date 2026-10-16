@@ -317,12 +317,23 @@ private slots:
   source.acquisitions.takeFirst()({source.payload,{}});
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
   QTRY_COMPARE(provider->requests.size(),1);
+  auto pixels=[&]{return qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;};
+  auto green=[](const QByteArray& bytes){int count=0;for(int i=0;i<bytes.size();i+=4)if(uchar(bytes[i])==255&&uchar(bytes[i+1])==98&&uchar(bytes[i+2])==214&&uchar(bytes[i+3])==155)++count;return count;};
+  provider->requests.first().progress({"uploading",0,4*1024*1024});
+  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(0%)"));
+  const auto emptyIcon=pixels();
   provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
   QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("2 MiB of 4 MiB"));
   const auto activeIcon=qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;QVERIFY(activeIcon!=idleIcon);
+  QVERIFY(green(activeIcon)>green(emptyIcon));
+  provider->requests.first().progress({"uploading",4*1024*1024,4*1024*1024});
+  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("(100%)"));
+  QVERIFY(green(pixels())>green(activeIcon));
+  provider->requests.first().progress({"uploading",2*1024*1024,{}});
+  QTRY_VERIFY(qdbus_cast<WireTooltip>(properties()["ToolTip"]).description.contains("Estimated 50%"));
+  QCOMPARE(pixels(),activeIcon);
   QVERIFY(views.isEmpty());QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
   controller.notifyFailure({"fixture_failed","Synthetic error",{}});
-  auto pixels=[&]{return qdbus_cast<WireImages>(properties()["IconPixmap"]).first().bytes;};
   const auto redIcon=pixels();QVERIFY(redIcon!=idleIcon);QVERIFY(redIcon!=activeIcon);
   int opaqueRed=0;for(int index=0;index<redIcon.size();index+=4)
    if(uchar(redIcon[index])==255&&uchar(redIcon[index+1])==255&&uchar(redIcon[index+2])==180&&uchar(redIcon[index+3])==171)++opaqueRed;
@@ -338,10 +349,10 @@ private slots:
   const auto service=watcher.registrations.last();
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewIcon",&observer,SLOT(iconChanged())));
   QVERIFY(client.connect(service,"/StatusNotifierItem","org.kde.StatusNotifierItem","NewToolTip",&observer,SLOT(tooltipChanged())));
-  tray.setActivity(QColor("#62d69b"),"Uploading: 2 MiB of 4 MiB (50%)");QTRY_COMPARE(observer.icons,1);QTRY_COMPARE(observer.tooltips,1);
-  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)");QTRY_COMPARE(observer.tooltips,2);QCOMPARE(observer.icons,1);
-  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)");QTest::qWait(50);QCOMPARE(observer.tooltips,2);
-  changeHost(false);QTRY_VERIFY(!tray.available());tray.setActivity(QColor("#62d69b"),"Finalizing: 4 MiB of 4 MiB (100%)");
+  tray.setActivity(QColor("#62d69b"),"Uploading: 2 MiB of 4 MiB (50%)",50);QTRY_COMPARE(observer.icons,1);QTRY_COMPARE(observer.tooltips,1);
+  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);QTRY_COMPARE(observer.tooltips,2);QCOMPARE(observer.icons,2);
+  tray.setActivity(QColor("#62d69b"),"Uploading: 3 MiB of 4 MiB (75%)",75);QTest::qWait(50);QCOMPARE(observer.tooltips,2);QCOMPARE(observer.icons,2);
+  changeHost(false);QTRY_VERIFY(!tray.available());tray.setActivity(QColor("#62d69b"),"Finalizing: 4 MiB of 4 MiB (100%)",100);
   changeHost(true);QTRY_VERIFY(tray.available());
   auto result=call("/StatusNotifierItem","org.freedesktop.DBus.Properties","GetAll",{QString("org.kde.StatusNotifierItem")});
   const auto props=qdbus_cast<QVariantMap>(result.arguments().first());
@@ -350,9 +361,9 @@ private slots:
   for(int index=0;index<pixels.size();index+=4)if(uchar(pixels[index])==255&&uchar(pixels[index+1])==98&&uchar(pixels[index+2])==214&&uchar(pixels[index+3])==155)++opaqueGreen;
   QVERIFY(opaqueGreen>10);
   const auto tooltips=observer.tooltips;
-  tray.setActivity(QColor("#ffb4ab"),"Finalizing: 4 MiB of 4 MiB (100%)");QTRY_COMPARE(observer.icons,2);
+  tray.setActivity(QColor("#ffb4ab"),"Finalizing: 4 MiB of 4 MiB (100%)");QTRY_COMPARE(observer.icons,4);
   QCOMPARE(observer.tooltips,tooltips);
-  tray.setActivity(QColor("#9bbcff"),{});QTRY_COMPARE(observer.icons,3);
+  tray.setActivity(QColor("#9bbcff"),{});QTRY_COMPARE(observer.icons,5);
  }
  void coreOnlyBrandPropertiesAndActualLayoutWire() {
   NativeTray tray; QVERIFY(!tray.availabilityKnown()); QTRY_VERIFY(tray.availabilityKnown()); QTRY_VERIFY(tray.available()); QCOMPARE(watcher.registrations.size(), 1);

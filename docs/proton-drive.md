@@ -66,6 +66,10 @@ clipboard results. Proton reports real SDK transferred bytes as encrypted
 blocks finish, with no matching total; the current-operation row therefore shows bytes rather
 than an estimated percentage. Counters can include overhead and decrease during
 SDK retries. Other providers may report a matching total for percentage display.
+The Lift tray uses the same byte observations and acquired source size for an
+explicitly labelled estimate when there is no transfer total. This estimate
+stops at 99% pending finalization/receipt; it does not change the SDK counters,
+the activity row's accounting, or publication evidence.
 A full byte count does not establish a completed file or a usable link: those
 still require the confirmed receipt and sharing result. Notifications follow
 the saved final result, independently of progress updates.

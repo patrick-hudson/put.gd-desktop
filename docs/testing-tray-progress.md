@@ -186,7 +186,8 @@ The scenario uses two deterministic synthetic files per operation and drives:
 1. Two upload operations with one upload worker, requiring active color, a
    queued tooltip row, genuine counters and eventual idle. S3 counters have a
    matching body-byte total/percentage; Proton encrypted SDK bytes have no
-   denominator, remain separate from source size and may decrease on SDK retry.
+   denominator and may decrease on SDK retry. The tray keeps those counters
+   separate and labels its source-file-size fallback as an estimate.
 2. An explicit same-ID result copy pasted into the independent native guest
    fixture. Pasted links must equal original receipts. S3 additionally retrieves
    public bytes and checks exact length/hash; URLs are read in guest memory
@@ -225,7 +226,16 @@ persistently idle tray while CLI work remains active fails this same bound.
 Privacy, identity, icon color and malformed accounting failures stop immediately;
 the rejected SNI text is redacted from failure evidence.
 Rounded tooltip bytes must fit real observed byte bounds and their own
-integer percentage. No estimate from elapsed time or source size is accepted.
+integer percentage. A source-size fallback must be labelled `Estimated`, match
+the actual counters/source bytes, and stop at 99% while awaiting finalization or
+receipt. No elapsed-time percentage is accepted. A confirmed successful upload
+briefly displays a full green Lift glyph before returning to blue idle. Partial
+fills include a dim green base, which is still green storage feedback at 0%.
+Destination checks and storage work without a usable transfer denominator use
+that dim green frame rather than appearing complete before transfer begins.
+Concurrent transfer fills are weighted by their acquired source sizes; local
+preparation and queued transfers do not contribute. Error pulses supersede all
+fills and retain their existing timing.
 The SNI phase must have a matching production observation. Source filenames,
 paths and links are prohibited in tray text.
 

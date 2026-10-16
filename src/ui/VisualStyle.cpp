@@ -1,4 +1,5 @@
 #include "VisualStyle.h"
+#include "IconArt.h"
 #include <QApplication>
 #include <QAbstractItemView>
 #include <QFrame>
@@ -171,21 +172,19 @@ void apply(QApplication& app){
  QSplitter::handle { background: #26344d; }
  )QSS"));
 }
-QIcon icon(const QString& name,const QColor& color){
- static QHash<QString,QIcon> cache;const auto key=name+color.name(QColor::HexArgb);if(cache.contains(key))return cache.value(key);QIcon result;for(int scale:{1,2,3}){QPixmap pixmap(24*scale,24*scale);pixmap.setDevicePixelRatio(scale);pixmap.fill(Qt::transparent);QPainter p(&pixmap);p.setRenderHint(QPainter::Antialiasing);p.setPen(QPen(color,1.7,Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));p.setBrush(Qt::NoBrush);
- if(name=="brand"||name=="upload"){p.drawRoundedRect(QRectF(3,3,18,18),5,5);p.drawLine(12,17,12,7);p.drawLine(12,7,8,11);p.drawLine(12,7,16,11);}
- else if(name=="history"){p.drawEllipse(QRectF(4,4,16,16));p.drawLine(12,7,12,12);p.drawLine(12,12,16,14);}
- else if(name=="shortcuts"){p.drawRoundedRect(QRectF(2,5,20,14),3,3);for(int y:{9,12})for(int x:{6,10,14,18})p.drawPoint(x,y);p.drawLine(7,16,17,16);}
- else if(name=="destinations"){p.drawEllipse(QRectF(4,3,16,6));p.drawArc(QRectF(4,9,16,6),180*16,180*16);p.drawArc(QRectF(4,15,16,6),180*16,180*16);p.drawLine(4,6,4,18);p.drawLine(20,6,20,18);}
- else if(name=="capture"||name=="region"){p.drawRoundedRect(QRectF(5,5,14,14),2,2);p.drawLine(2,8,2,2);p.drawLine(2,2,8,2);p.drawLine(16,22,22,22);p.drawLine(22,22,22,16);}
- else if(name=="window"||name=="desktop"){p.drawRoundedRect(QRectF(3,4,18,14),2,2);if(name=="window")p.drawLine(3,8,21,8);else {p.drawLine(12,18,12,21);p.drawLine(8,21,16,21);}}
- else if(name=="clipboard"){p.drawRoundedRect(QRectF(5,5,14,16),2,2);p.drawRoundedRect(QRectF(8,2,8,5),1,1);p.drawLine(8,11,16,11);p.drawLine(8,15,14,15);}
- else if(name=="images"){p.drawRoundedRect(QRectF(3,3,18,18),3,3);p.drawEllipse(QRectF(7,7,3,3));p.drawLine(4,18,11,12);p.drawLine(11,12,16,16);p.drawLine(16,16,20,12);}
- else if(name=="activity"){QPainterPath path;path.moveTo(2,13);path.lineTo(7,13);path.lineTo(10,5);path.lineTo(14,20);path.lineTo(17,11);path.lineTo(22,11);p.drawPath(path);}
- else if(name=="preferences"){for(int y:{6,12,18})p.drawLine(3,y,21,y);p.setBrush(QColor("#1b1e25"));p.drawEllipse(QPointF(8,6),2.5,2.5);p.drawEllipse(QPointF(16,12),2.5,2.5);p.drawEllipse(QPointF(10,18),2.5,2.5);}
- else if(name=="info"){p.drawEllipse(QRectF(3,3,18,18));p.drawPoint(12,8);p.drawLine(12,11,12,16);}
- else {p.drawRoundedRect(QRectF(5,2,14,20),2,2);p.drawLine(8,8,16,8);p.drawLine(8,12,16,12);p.drawLine(8,16,13,16);}
- p.end();result.addPixmap(pixmap);}cache.insert(key,result);return result;
+QIcon icon(const QString& name,const QColor& color,int percent){
+ static QHash<QString,QIcon> cache;const auto key=name+color.name(QColor::HexArgb);
+ const bool progress=name=="tray"&&percent>=0;
+ if(!progress&&cache.contains(key))return cache.value(key);
+ QIcon result;
+ if(name=="brand") {
+  for(int scale:{1,2,4,8}) {
+   auto image=IconArt::liftApp(color,scale);image.setDevicePixelRatio(1);
+   result.addPixmap(QPixmap::fromImage(image));
+  }
+ } else for(int scale:{1,2,3})result.addPixmap(QPixmap::fromImage(progress?IconArt::liftTray(color,percent,scale):IconArt::symbol(name,color,scale)));
+ if(!progress)cache.insert(key,result);
+ return result;
 }
 QWidget* header(const QString& title,const QString& subtitle,QWidget* parent){auto* widget=new QWidget(parent);auto* layout=new QVBoxLayout(widget);layout->setContentsMargins(0,0,0,4);layout->setSpacing(4);auto* heading=new QLabel(title,widget);role(heading,"title");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,widget);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return widget;}
 QFrame* card(const QString& title,const QString& subtitle,QWidget* parent){auto* frame=new QFrame(parent);role(frame,"card");auto* layout=new QVBoxLayout(frame);layout->setContentsMargins(16,14,16,14);layout->setSpacing(10);auto* heading=new QLabel(title,frame);role(heading,"sectionTitle");layout->addWidget(heading);if(!subtitle.isEmpty()){auto* description=new QLabel(subtitle,frame);description->setWordWrap(true);role(description,"subtitle");layout->addWidget(description);}return frame;}
