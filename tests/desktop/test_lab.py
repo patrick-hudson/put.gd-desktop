@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import hashlib
+import shutil
 from types import SimpleNamespace
 from pathlib import Path
 import socket
@@ -19,6 +20,13 @@ spec.loader.exec_module(lab)
 
 
 class LabContracts(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='lab-lock-')
+        self.addCleanup(temporary.cleanup)
+        lock_root = patch.object(lab.overlay_cleanup, 'ROOT', Path(temporary.name))
+        lock_root.start()
+        self.addCleanup(lock_root.stop)
+
     def test_tablet_ticks_preserve_pixel_targets_for_native_rounding(self):
         # Actual KWin fullscreen probe: old ticks 15372/17421 delivered
         # 600.46875/680.5078125, so Qt selected 81 instead of 80 pixels.
@@ -99,7 +107,9 @@ class LabContracts(unittest.TestCase):
                     path.write_bytes(b'current attempt:' + name.encode())
                     return {'path': str(path), 'sha256': lab.hash_file(path)}
                 args = SimpleNamespace(run=str(run), scenario='region', clipboard_client='qt',
-                    settings=None, history=False, timeout=3, keep=True)
+                    settings=None, history=False, timeout=3, keep=failed_stage != 'press')
+                disk = run / 'disk.qcow2'
+                disk.write_bytes(b'retain failed guest for investigation')
                 with contextlib.ExitStack() as stack:
                     for name, replacement in (
                             ('cli', fake_cli), ('get', lambda _run, _remote, target: lab.write_json(target, ready)),
@@ -109,7 +119,11 @@ class LabContracts(unittest.TestCase):
                             ('key', fake_key), ('collect', lambda *_args: None)):
                         stack.enter_context(patch.object(lab, name, side_effect=replacement))
                     stack.enter_context(patch.object(lab.time, 'sleep'))
+                    stack.enter_context(patch.object(lab, 'reset', side_effect=lab.LabError('busy lifecycle')))
+                    cleanup = stack.enter_context(patch.object(lab, 'cleanup_overlay'))
                     result = lab.fixture_run(args)
+                    cleanup.assert_not_called()
+                self.assertTrue(disk.exists())
                 self.assertFalse(result['ok'])
                 self.assertEqual(result['error'], 'synthetic drag ' + failed_stage + ' failure')
                 self.assertTrue(result['dragAbortRequested'])
@@ -339,11 +353,18 @@ class LabContracts(unittest.TestCase):
         self.assertLess(y, 160)
         self.assertGreater(y + height, 160)
 
+    @unittest.skipUnless(shutil.which('qemu-img') and shutil.which('qemu-io'), 'requires QEMU disk utilities')
     def test_attempt_bundles_retain_all_current_witness_bytes_and_hashes(self):
         with tempfile.TemporaryDirectory() as directory:
-            run = Path(directory)
-            lab.write_json(run / 'state.json', {'profile': 'cinnamon-x11',
-                'acceleration': 'kvm', 'guest_user': 'fixture', 'id': 'synthetic'})
+            root = Path(directory)
+            run = root / 'work/lab-runs/scenario'
+            run.mkdir(parents=True)
+            golden = root / 'work/lab-images/golden.qcow2'
+            golden.parent.mkdir(parents=True)
+            lab.command(['qemu-img', 'create', '-q', '-f', 'qcow2', golden, '1M'])
+            lab.write_json(run / 'state.json', {'schemaVersion': 1, 'profile': 'cinnamon-x11',
+                'acceleration': 'kvm', 'guest_user': 'fixture', 'id': 'synthetic',
+                'overlay': str(run / 'disk.qcow2'), 'golden': str(golden)})
             settings = run / 'synthetic-settings.json'
             lab.write_json(settings, {})
             ready = {'session': 'x11', 'qt_platform': 'xcb', 'desktop': 'X-Cinnamon',
@@ -407,7 +428,20 @@ class LabContracts(unittest.TestCase):
                         return {'ok': visibility_checks > 1}
                     args = SimpleNamespace(run=str(run), scenario=scenario, clipboard_client='qt',
                         settings=None if cancelled else str(settings), history=not cancelled,
-                        timeout=3, keep=True)
+                        timeout=3, keep=not (sequence == 2 and number == 2))
+                    disk = run / 'disk.qcow2'
+                    disk.unlink(missing_ok=True)
+                    lab.command(['qemu-img', 'create', '-q', '-f', 'qcow2', '-F', 'qcow2', '-b', golden, disk])
+                    stopped = []
+                    original_cleanup = lab.cleanup_overlay
+                    def clean_completed_disk(_run, **_kwargs):
+                        self.assertEqual(stopped, [run])
+                        last_event = json.loads((run / 'test-events.jsonl').read_text().splitlines()[-1])
+                        self.assertEqual(last_event['event'], 'finished')
+                        bundle = run / last_event['evidenceDirectory']
+                        for name, digest in lab.read_json(bundle / 'manifest.json')['files'].items():
+                            self.assertEqual(hashlib.sha256((bundle / name).read_bytes()).hexdigest(), digest)
+                        return original_cleanup(_run, **_kwargs)
                     with contextlib.ExitStack() as stack:
                         for name, replacement in (
                                 ('cli', fake_cli), ('get', fake_get), ('screenshot', fake_screenshot),
@@ -416,9 +450,17 @@ class LabContracts(unittest.TestCase):
                                 ('key', lambda *_args: None), ('collect', lambda *_args: None)):
                             stack.enter_context(patch.object(lab, name, side_effect=replacement))
                         stack.enter_context(patch.object(lab.time, 'sleep'))
+                        stack.enter_context(patch.object(lab, 'reset', side_effect=lambda path: stopped.append(path)))
+                        stack.enter_context(patch.object(lab, 'cleanup_overlay', side_effect=clean_completed_disk))
+                        stack.enter_context(patch.object(lab.overlay_cleanup, 'ROOT', root))
+                        stack.enter_context(patch.object(lab.overlay_cleanup, '_check_processes'))
+                        stack.enter_context(patch.object(lab.overlay_cleanup, '_check_chains'))
                         stack.enter_context(patch('urllib.request.urlopen', return_value=io.BytesIO(payload)))
                         result = lab.fixture_run(args)
                     self.assertTrue(result['ok'], result)
+                    self.assertEqual(disk.exists(), args.keep)
+                    if not args.keep:
+                        self.assertEqual(lab.read_json(run / 'overlay-cleanup.json')['status'], 'completed')
                     evidence = run / result['evidenceDirectory']
                     manifest = lab.read_json(evidence / 'manifest.json')['files']
                     with self.subTest(attempt=marker, defect='overwritten focus poll'):
