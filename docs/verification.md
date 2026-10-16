@@ -924,3 +924,29 @@ These are bounded single-head compositor and post-use VM results. The offline S3
 wire oracle does not establish cloud/Proton acceptance, sampled frames do not
 certify each 300 ms repaint, and physical performance/full release gates remain
 separate. All golden/backing disks were preserved; only fresh overlays were booted.
+
+## Cinnamon login startup — issue #24 (2026-10-16)
+
+The [login-fix report](evidence/2026-10-16-issue24-login-fix.md) and its payload-free
+JSON receipt record frozen implementation `09ce25b7851624e602c96dba855b4465e688fec9`.
+Two actual Cinnamon console logout/login cycles started distinct verified
+residents with a registered tray, preserved configuration and no app window or
+UI helper. The new production-process startup regression failed before the fix
+and all nine final scenarios pass. Full Dev passed 59/59; affected ASan/UBSan
+tray/startup checks passed 3/3. These private-bus/Xvfb checks are host contracts;
+the separate native VNC evidence establishes the bounded desktop results.
+
+Cinnamon's twelve native capture/clipboard/cancellation cases, repeated native
+view reopen, restart and both five-minute memory observations passed before the
+GNOME/KDE package build and native campaigns. Both Wayland profiles passed the
+same twelve cases and view/restart checks. Memory sampling followed each
+restart and native History reopen/close: two serial 300-second intervals per
+desktop met the 40 MiB RSS, <0.5% CPU, zero-swap and no-helper gates. They do not
+establish same-resident post-capture retention, physical performance or complete
+U9/U10 acceptance; broader workloads and release gates remain issue #44.
+
+All three overlays were retired through guarded cleanup after evidence export.
+Exact package/binary/run identities, raw samples, failures and cleanup receipts
+remain private under `work/i24-fix/`; public summaries bind them by checksum.
+The historical local-only suppressed-copy observation remains unreproduced and
+is not claimed fixed by the startup change.

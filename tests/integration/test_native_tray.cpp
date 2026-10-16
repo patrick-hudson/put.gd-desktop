@@ -16,6 +16,10 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QFile>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <csignal>
+#include <sys/types.h>
 #include "fixtures/X11DesktopFixture.h"
 #include <X11/keysym.h>
 using namespace putgd;
@@ -130,6 +134,116 @@ private slots:
   peer.unregisterService("org.freedesktop.Notifications");
   QDBusConnection::disconnectFromBus("native-tray-wire-client");
   QDBusConnection::disconnectFromBus("native-tray-wire-peer");
+ }
+ void backgroundStartupWaitsForLateTray_data() {
+  QTest::addColumn<QString>("configuration");
+  QTest::addColumn<QString>("trayState");
+  QTest::addColumn<bool>("background");
+  QTest::newRow("late-watcher") << QString("valid") << QString("late-watcher") << true;
+  QTest::newRow("late-host") << QString("valid") << QString("late-host") << true;
+  QTest::newRow("ready-tray") << QString("valid") << QString("ready") << true;
+  QTest::newRow("absent-tray-recovery") << QString("valid") << QString("absent") << true;
+  QTest::newRow("tray-after-recovery-bound") << QString("valid") << QString("after-bound") << true;
+  QTest::newRow("explicit-activation-cancels-recovery") << QString("valid") << QString("user-activation") << true;
+  QTest::newRow("missing-config-recovery") << QString("missing") << QString("absent") << true;
+  QTest::newRow("invalid-config-recovery") << QString("invalid") << QString("absent") << true;
+  QTest::newRow("explicit-launch") << QString("valid") << QString("absent") << false;
+ }
+ void backgroundStartupWaitsForLateTray() {
+  if (qEnvironmentVariable("PUTGD_ISOLATED_STARTUP_TEST") != "1")
+   QSKIP("Requires its dedicated private-bus/Xvfb invocation");
+  QFETCH(QString, configuration); QFETCH(QString, trayState); QFETCH(bool, background);
+  QTemporaryDir directory;
+  QVERIFY(directory.isValid());
+  const auto runtime = directory.filePath("r"), socket = runtime + "/putgd/session.sock";
+  QVERIFY2(socket.toUtf8().size() <= 107, "Resolved test socket exceeds Linux's limit");
+  auto environment = QProcessEnvironment::systemEnvironment();
+  environment.insert("XDG_CONFIG_HOME", directory.filePath("c"));
+  environment.insert("XDG_DATA_HOME", directory.filePath("d"));
+  environment.insert("XDG_CACHE_HOME", directory.filePath("k"));
+  environment.insert("XDG_RUNTIME_DIR", runtime);
+  environment.insert("XDG_CURRENT_DESKTOP", "X-Cinnamon");
+  environment.insert("XDG_SESSION_TYPE", "x11");
+  environment.insert("WAYLAND_DISPLAY", "");
+  QVERIFY(QDir().mkpath(runtime));
+  QVERIFY(QFile::setPermissions(runtime, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+  const auto configPath = directory.filePath("c/putgd/putgd/config.json");
+  if (configuration != "missing") {
+   SettingsService settings(configPath);
+   QVERIFY(settings.save(Settings::defaults(), {}));
+   if (configuration == "invalid") {
+    QFile file(configPath); QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QCOMPARE(file.write("{invalid"), qint64(8));
+   }
+  }
+  const bool late = trayState.startsWith("late-");
+  struct RestoreWatcher { QDBusConnection& bus; ~RestoreWatcher() { bus.registerService("org.kde.StatusNotifierWatcher"); } } restore{peer};
+  if (trayState != "ready" && trayState != "late-host")
+   QVERIFY(peer.unregisterService("org.kde.StatusNotifierWatcher"));
+  watcher.hostPresent = trayState != "late-host";
+  QTimer appearance;
+  appearance.setSingleShot(true);
+  connect(&appearance, &QTimer::timeout, this, [&] {
+   if (trayState == "late-watcher" || trayState == "after-bound") QVERIFY(peer.registerService("org.kde.StatusNotifierWatcher"));
+   else changeHost(true);
+  });
+  QProcess resident; resident.setProcessEnvironment(environment);
+  struct Stop { QProcess& process; ~Stop() { if(process.state()!=QProcess::NotRunning){process.kill();process.waitForFinished(3000);} } } stop{resident};
+  QElapsedTimer elapsed; elapsed.start();
+  resident.start(PUTGD_PRODUCT_APP_PATH, background ? QStringList{"--background"} : QStringList{});
+  QVERIFY(resident.waitForStarted());
+  auto request = [&](const QString& method) {
+   QProcess cli; cli.start(PUTGD_PRODUCT_CLI_PATH, {"--socket", socket, method});
+   if(!cli.waitForFinished(3000))return QJsonObject{};
+   const auto response = QJsonDocument::fromJson(cli.readAllStandardOutput()).object();
+   return response["ok"].toBool() ? response["result"].toObject() : QJsonObject{};
+  };
+  auto ui = [&] { return request("ui.snapshot")["diagnostics"].toObject()["ui"].toObject(); };
+  QJsonObject snapshot;
+  QTRY_VERIFY_WITH_TIMEOUT((snapshot=request("ui.snapshot"))["operationsReady"].toBool(), 5000);
+  QElapsedTimer readyElapsed; readyElapsed.start();
+  if (late || trayState == "after-bound") appearance.start(trayState == "after-bound" ? 12000 : 1500);
+  const bool windowless = background && configuration == "valid";
+  const bool recovery = trayState == "absent" || trayState == "after-bound";
+  QJsonObject expectedExit;
+  if (trayState == "user-activation") {
+   QProcess activation; activation.setProcessEnvironment(environment);
+   activation.start(PUTGD_PRODUCT_APP_PATH, {"--history"});
+   QVERIFY(activation.waitForFinished(5000)); QCOMPARE(activation.exitCode(), 0);
+   QTRY_COMPARE(ui()["state"].toString(), QString("ready"));
+   const auto helperPid = ui()["pid"].toInteger();
+   QVERIFY(helperPid > 0);
+   QVERIFY(::kill(static_cast<pid_t>(helperPid), SIGTERM) == 0);
+   QTRY_VERIFY(!(expectedExit=ui()["lastExit"].toObject()).isEmpty());
+  }
+  if (windowless) {
+   // Observe the interval, not just the final state: a transient helper is a failure too.
+   const int observeUntil = recovery ? 8000 : 11000;
+   while (readyElapsed.elapsed() < observeUntil) {
+    const auto status = ui();
+    QCOMPARE(status["state"].toString(), QString("stopped"));
+    QCOMPARE(status["pid"].toInteger(), qint64(0));
+    QCOMPARE(status["lastExit"].toObject(), expectedExit);
+    QTest::qWait(100);
+   }
+   if (!recovery && trayState != "user-activation") {
+    QTRY_VERIFY(!watcher.registrations.isEmpty());
+    QTRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
+   }
+  }
+  if (!windowless || recovery) {
+   QTRY_COMPARE_WITH_TIMEOUT(ui()["state"].toString(), QString("ready"), 10000);
+   if (windowless) QVERIFY(elapsed.elapsed() >= 10000);
+   else QVERIFY(elapsed.elapsed() < 10000);
+  }
+  if (trayState == "after-bound") {
+   QTRY_VERIFY_WITH_TIMEOUT(!watcher.registrations.isEmpty(), 5000);
+   QTRY_VERIFY(request("ui.snapshot")["diagnostics"].toObject()["trayAvailable"].toBool());
+   QCOMPARE(ui()["state"].toString(), QString("ready"));
+  }
+  QVERIFY(request("ui.quit")["quitting"].toBool());
+  QTRY_COMPARE_WITH_TIMEOUT(resident.state(), QProcess::NotRunning, 5000);
+  QCOMPARE(resident.exitCode(), 0);
  }
  void rejectedGlobalShortcutReportsMissingDestination() {
   if (qEnvironmentVariable("PUTGD_ISOLATED_SHORTCUT_TEST") != "1")
