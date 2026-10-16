@@ -1,5 +1,13 @@
 # Implementation evidence
 
+## Clipboard tray wording — 2026-10-16
+
+The [issue 36 receipt](evidence/2026-10-16-issue36-tray-label.md) records the exact
+**Upload Clipboard** label, two passing tray suites, and a real Cinnamon menu
+selection with synthetic local-save and independent paste verification. Memory
+testing was waived by explicit user instruction for this string change. This
+focused development check makes no wider desktop or release acceptance claim.
+
 ## Unified UI acceptance — 2026-10-16
 
 The [issue 40 receipt](evidence/2026-10-16-issue40-redesign-acceptance.md) records

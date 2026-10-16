@@ -77,7 +77,7 @@ constexpr int callTimeoutMs = 1500;
 struct Entry { const char* label; const char* action; };
 constexpr Entry entries[] {
  {"Capture region", "region"}, {"Capture window", "window"},
- {"Capture desktop", "desktop"}, {"Capture clipboard", "clipboard"},
+ {"Capture desktop", "desktop"}, {"Upload Clipboard", "clipboard"},
  {"", ""}, {"Settings and setup", "settings"}, {"Upload history", "history"},
  {"Recent activity", "activity"}, {"", ""}, {"About put.gd", "about"}, {"Quit", "quit"}
 };

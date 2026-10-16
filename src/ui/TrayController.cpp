@@ -91,7 +91,7 @@ TrayController::TrayController(OperationService& operations,
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  for (const auto& action : Settings::actionNames()) {
-  auto* item = menu_->addAction(VisualStyle::icon(action), "Capture " + action);
+  auto* item = menu_->addAction(VisualStyle::icon(action), action == "clipboard" ? QString("Upload Clipboard") : "Capture " + action);
   connect(item, &QAction::triggered, this, [this, action] {
    invokeAction(action);
   });
