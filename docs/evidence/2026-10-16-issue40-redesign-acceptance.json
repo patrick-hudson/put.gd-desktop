@@ -1,0 +1,1391 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "source": {
+    "commit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+    "tree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+    "count": 211,
+    "baseCommit": "da8cfc7543e5774e3382d24fdbd1d2b28751e974",
+    "archiveSha256": "520322813d54ab70a1e216151264b80470a2706f9e6b1007a984a41c02cc9dde",
+    "dirty": false,
+    "runtimeManifestSha256": "25c79cbb9c0b57f5e4581ddf8d15dfcce590c9d6cb8d46adbacfe324f97d3e15",
+    "helperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+    "curatedApplicationSourceSha256": "7ee1477e3c35af7e452b37c2d2e111cb613abe9ad9c131acb23779f2b5304b52"
+  },
+  "hostTests": {
+    "passed": true,
+    "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+    "productSourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+    "results": [
+      {
+        "buildManifest": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.211+g1010842c9d25",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+          "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+          "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+          "commitCount": 211,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "preset": "dev",
+        "passed": true,
+        "suites": 58,
+        "exitCode": 0,
+        "seconds": "542",
+        "rawLogSha256": "5c49f28c06e322af1146afc35f5fa2460f0acb3ae8bfb90949d999fbc724147d",
+        "noSanitizerReports": true
+      },
+      {
+        "buildManifest": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.211+g1010842c9d25",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+          "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+          "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+          "commitCount": 211,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "preset": "asan",
+        "passed": true,
+        "suites": 58,
+        "exitCode": 0,
+        "seconds": "712",
+        "rawLogSha256": "ce361fe07fb013c73591ed4efbf3947af90941a9814fc3a91c694ddb2042d2c5",
+        "noSanitizerReports": true
+      }
+    ],
+    "sanitizerScope": "ASan/UBSan application; distro Qt and external AWS libraries uninstrumented; no suppressions",
+    "mcp": {
+      "passed": true,
+      "tests": 3,
+      "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0"
+    },
+    "configurationSchema": {
+      "passed": true,
+      "tests": 4,
+      "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0"
+    },
+    "unchangedPythonContracts": {
+      "passed": true,
+      "scripts": 24,
+      "sourceCommit": "e6f49b3fefc227ba51f92502ae6daeccb5c125aa",
+      "scope": "packaging/release/lab/observer Python unchanged by later Qt-only capture and sidebar fixes",
+      "rawResultSha256": "068df9a2c71951a3baeb3eba53640db0adcf336572c047045159266698df7959"
+    }
+  },
+  "historicalTestReadinessCorrection": {
+    "productSourceCommit": "11c746d4c24fba65f2bdc67b93244fe01bcb9445",
+    "testSourceCommit": "488fe82798cbd38307beb9b931e2f30d8bc756ad",
+    "changedPaths": [
+      "tests/gui/test_history_view.cpp"
+    ],
+    "productSourceUnchanged": true,
+    "testSha256": "efa1b7dc36ad9f8bb01fe9d2a205f7e757d1da7443382d2ace51d9b75527657a",
+    "initialAsan": {
+      "passed": 57,
+      "failed": 1,
+      "failure": "history sharing restoration checked a hidden control before delayed details; collocated test config watcher refreshed repeatedly"
+    },
+    "deterministicRegression": {
+      "red": "history-readiness-red-exit.json",
+      "green": "history-readiness-isolated-green-exit.json",
+      "detailsDelayMs": 350,
+      "noReplayAssertionsRetained": true
+    },
+    "postFixQuality": "bounded test-only correction under10 changed lines; targeted manual diff review; no product edits or new abstractions; separate polish/review skipped"
+  },
+  "desktops": [
+    {
+      "profile": "cinnamon-x11",
+      "passed": true,
+      "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+      "buildManifest": {
+        "schemaVersion": 1,
+        "version": "0.1.1-dev.211+g1010842c9d25",
+        "baseVersion": "0.1.1",
+        "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+        "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+        "commitCount": 211,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "package": {
+        "format": "DEB",
+        "name": "putgd",
+        "version": "0.1.1~dev.211+g1010842c9d25",
+        "architecture": "amd64",
+        "sha256": "69534453dea17790886091ccf17c4707a839efd059c45b11ac4bd9d2f5eb87be",
+        "size": 50847434
+      },
+      "runningResident": {
+        "pid": 13878,
+        "startTicks": 40634,
+        "sha256": "fdd1e01807b48fec71f73e8c8180dcd2494be1f84a159e47b141697b466ab027"
+      },
+      "observedBuild": {
+        "baseVersion": "0.1.1",
+        "commitCount": 211,
+        "dirty": false,
+        "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+        "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "0.1.1-dev.211+g1010842c9d25"
+      },
+      "installedBinaries": {
+        "/usr/bin/putgd": "fdd1e01807b48fec71f73e8c8180dcd2494be1f84a159e47b141697b466ab027",
+        "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+        "/usr/bin/putgd-ui": "19034c52669196e1f951baec04eff71ca230d380bc356bbc99a9cfdab0484422",
+        "/usr/bin/putgd-cli": "39ed9c08d94ccbd96c2ddba6e1f828c108dcbb6470199a29b2f6cf8d259f6350",
+        "/usr/bin/putgd-capture": "307c87881a29f6eb3193b2f3537b003f98a83917599e830f411edeeefecec4a2",
+        "/usr/bin/putgd-s3-worker": "dacd24f53a5ac31768741cae2850244481705add23ce1d85c9e7ed07ce9bd224",
+        "/usr/bin/putgd-kde-region": "1a251d1be6314294aebccdf8037e0d4ae5f0a013a6cd6db5d8bee23190e3a0a9"
+      },
+      "privateS3ModuleSha256": "5506744abcf267f02359799ed0d05b8f19cd75afd2a94a3b1b7e12aa150b369f",
+      "protonHelperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+      "nativeFixtureSession": "x11",
+      "nativeQtPlatform": "xcb",
+      "qtVersion": "6.4.2",
+      "desktopVersions": {
+        "kernel": "6.14.0-37-generic",
+        "packages": [
+          "cinnamon 6.6.4+zena",
+          "gjs ",
+          "gnome-shell ",
+          "libqt6core6 ",
+          "libqt6core6t64 6.4.2+dfsg-21.1build5",
+          "muffin 6.6.1+zena",
+          "putgd 0.1.1~dev.211+g1010842c9d25",
+          "xdg-desktop-portal 1.20.0+ds-2ubuntu1",
+          "xdg-desktop-portal-backend ",
+          "xdg-desktop-portal-gnome ",
+          "xdg-desktop-portal-gtk 1.15.1-1build2",
+          "xdg-desktop-portal-xapp 1.1.3+zena"
+        ]
+      },
+      "displayLayout": [
+        {
+          "height": 800,
+          "name": "Virtual-1",
+          "nativeHeight": 800,
+          "nativeWidth": 1280,
+          "rotation": 2,
+          "scale": 1,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "nativeCases": [
+        {
+          "testId": "c0332d408b3a4b7fafa5d56981122963",
+          "scenario": "region-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "6ce9c4c7-8841-46c7-a63e-0931663023da",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "3f13d45d7932f24d9bec7300bb67c5b987db765cce90f718ed2dcc6bcdb5c1f4",
+          "artifactOracle": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "5409d8c356274130aec2262cc5e2a3a0",
+          "scenario": "window-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "4712d47b-e599-4ccf-8ff1-0c33c0f13575",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "eb9b053e66f1954adfc063d761a0092c6f9058e47e4248245a093e58c34f17e5",
+          "artifactOracle": {
+            "ok": true,
+            "width": 640,
+            "height": 452,
+            "sha256": "2de26162468450c5599401016690db1983a33f8d9becbdfce61c5a1673846e94"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "c7cd1634f2e64b0eb97eff2557c38604",
+          "scenario": "desktop-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "266a5276-a332-47e8-8214-7dffc1adedfa",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "4f0fc491d2c51074912338e9e9414bfab9883207dd4032bb4b2636f4a41e51c5",
+          "artifactOracle": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "af6fb888f73b1d83adfdfee154090646a26a4413eb44d6fe5920d0994f6cce3a"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "2b2bd59f36db44be8a5acb01f95fafb9",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "9623e58c-2335-4afb-a0ae-48479f097fb9",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "5e7f82d417a60931e6ec1078941e176e96e6b465c2e99c5df158df95417f457c",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "f1d6900df0d64d3f88ab66d7ac1513c2",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "b6345092-4876-4709-a0f0-f5b2e6f8cc76",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "8b2cba47fa1b8def46710a27aa7156cb332f0ea24182f58061d419029914e8f4",
+          "artifactOracle": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "a3f452178c14414cb7a3e445d6a88126",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "30c9ee27-7864-49f6-b708-c8139939853d",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "f371c51aa40368c81207b18cb5cdb928b51391ad9470eeb51f5745f7de9abe45",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "3268e3a6b5e049d3849430486ced84fa",
+          "scenario": "region-cancel-escape-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "63ec2a04-5202-4f9f-bdc4-7018cafda0a1",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "7d4a09998c7a38594ffa80dc2f043b0b563f7bd3c1a06e112636c8568db15ef9",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "ca4dec61a2f743ec8a3e2bbcf8a8eb90",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "81654818-42db-4b99-9409-3281b1320803",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "54d84d907a8b0d27fec41fb69e5f35e2ea4738f763ac949bd22d074e41e0a4a4",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "805794e8b61f45b58acb342bd8c0abee",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "4c146088-2bc4-48c5-8c7a-5dcb78c60834",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "9510acc330b40603caff053047b69bc0996bb5a696af3a9175cdbdc7aea0ff46",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "1326625d652640338db438d8ccf6ccc0",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "ff65f3c4-fc13-4ce2-86ae-c2a32385c6a7",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "b9372f5afc827d9279b770d40cb95140e2649a1ca6178c3d41426b708ff5491b",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "ca3e6f5570c4400183bfd6c216743876",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "8d48ac2b-e996-4a64-b0fc-bbf28817477b",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "e65b90b6843e58a90ce45d58a90d4a4d67c676d95c2e1f5d223434fe47e3ba59",
+          "artifactOracle": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "e013778973e24205a7258731574a56dc",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "5577d9a3-f1d6-4a41-81dd-69548678fa27",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "0108ccb4830fc21c95db2b5d87d56d7983633a0551248d2a1cc7b14c8431f7ce",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        }
+      ],
+      "rail": {
+        "beforeAndAfterRestartPassed": true,
+        "originalReceiptSha256": "fe3362783d2e934ccb8d7ef6ca921bca9944bef45cfe15c4983a17387f08d607",
+        "restartReceiptSha256": "fe3362783d2e934ccb8d7ef6ca921bca9944bef45cfe15c4983a17387f08d607"
+      },
+      "restart": {
+        "passed": true,
+        "gracefulQuit": true,
+        "acceptedConfigurationAndRevisionRetained": true,
+        "historyRecordsRetained": 29,
+        "historyTotal": 29,
+        "historyExactEquality": true,
+        "nativeHistoryReopened": true,
+        "helperClosed": true
+      },
+      "nativeSidebar": {
+        "passed": true,
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "evidence": "native screenshot inspected with Settings selected: History, Destinations and Settings are all fully visible",
+        "screenshotSha256": "0ddb4998cc47f6b4809c3e98184a78ec83f40ca9d10e2aad59399cd5f866b451",
+        "regression": "gui_application/allMainPagesRemainVisibleWithNativeStyleRowMetrics; red before fix, green after"
+      },
+      "repeatedNavigation": {
+        "passed": true,
+        "activations": 8,
+        "reopenCycles": 2,
+        "helperExitedAfterEveryFinalClose": true
+      },
+      "memory": {
+        "passed": true,
+        "scope": "two serial 300-second post-use guest resident observations; not physical acceptance or empty-view workload",
+        "windows": [
+          {
+            "passed": true,
+            "peakMiB": 30.42578125,
+            "peakPssMiB": 20.4296875,
+            "durationSeconds": 300.00020501899996,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.003333331055346002
+          },
+          {
+            "passed": true,
+            "peakMiB": 30.42578125,
+            "peakPssMiB": 20.4248046875,
+            "durationSeconds": 300.00009010600013,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.006666664664311709
+          }
+        ],
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+      },
+      "acceptanceReceiptSha256": "726498f6c81680a461d80b106462b0a3e648dd7be1776b720660a3ca603a7dcc",
+      "productionLaunch": {
+        "passed": true,
+        "allocatorEnvironmentOverridesPresent": false,
+        "rawReceiptSha256": "6928e97e503574b04e47f659ac9d7ca8c316e8c7292d46e5ad79ca86b8a76cf7"
+      },
+      "nativeSettings": {
+        "passed": true,
+        "checks": [
+          "native unchanged focus/blur preserves revision inode and mtime",
+          "native edited root autosaves exact leaf only",
+          "opened two-option and three-option lists visible",
+          "wheel on tab bar preserves current page",
+          "default with clipboard exception persists across default destination changes",
+          "Use default then explicit freezes current default",
+          "local-copy toggle independent and neither-output rejected before acquisition",
+          "capture help visible"
+        ],
+        "profile": "cinnamon-x11",
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "driverNote": "checkbox coordinates calibrated from fresh native screenshot after scroll; original wrong-coordinate attempt retained if present"
+      },
+      "nativeHistory": {
+        "passed": true,
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "operationId": "8d48ac2b-e996-4a64-b0fc-bbf28817477b",
+        "originalSha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17",
+        "dimensions": [
+          96,
+          64
+        ],
+        "nativeHistoryListGallerySearch": true,
+        "nativeSaveAsExactBytes": true,
+        "copyImageMatchesOriginalWhileOpen": true,
+        "copyImageMatchesOriginalAfterHelperExit": true,
+        "independentClient": "GTK",
+        "helperClosed": true
+      },
+      "nativeNoopFocus": {
+        "passed": true,
+        "rawReceiptSha256": "5979a9a0d08c0ee20a881f1b3da8c60daf203d8dbe87a5ccbf5957260eb279c8"
+      },
+      "nativeBucketAutosave": {
+        "passed": true,
+        "rawReceiptSha256": "427e47ae084a01bf774c85096fb8166477091a6da92ab70f0ec1e658ed52a65b"
+      }
+    },
+    {
+      "profile": "gnome-wayland",
+      "passed": true,
+      "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+      "buildManifest": {
+        "schemaVersion": 1,
+        "version": "0.1.1-dev.211+g1010842c9d25",
+        "baseVersion": "0.1.1",
+        "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+        "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+        "commitCount": 211,
+        "dirty": null,
+        "sourceProvenance": "supplied"
+      },
+      "package": {
+        "format": "DEB",
+        "name": "putgd",
+        "version": "0.1.1~dev.211+g1010842c9d25",
+        "architecture": "amd64",
+        "sha256": "1ee12ca3eaea03bd1ba309ff6fe88217e69615960e91a7b76b9d55cc0eeed8ab",
+        "size": 51061356
+      },
+      "runningResident": {
+        "pid": 27307,
+        "startTicks": 54528,
+        "sha256": "4284f13a11532d4b41c5b4729e7a5e5d940cb6ab3e7b4ce03010c24074de1070"
+      },
+      "observedBuild": {
+        "baseVersion": "0.1.1",
+        "commitCount": 211,
+        "dirty": null,
+        "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+        "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+        "schemaVersion": 1,
+        "sourceProvenance": "supplied",
+        "version": "0.1.1-dev.211+g1010842c9d25"
+      },
+      "installedBinaries": {
+        "/usr/bin/putgd": "4284f13a11532d4b41c5b4729e7a5e5d940cb6ab3e7b4ce03010c24074de1070",
+        "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+        "/usr/bin/putgd-ui": "8ea51ee99b0cfade1577a8a823d0d388cc5549a21bec1b195ae0a5c7e0d918cc",
+        "/usr/bin/putgd-cli": "ec7d05732f96f9813aca785a2c1a9de60a39ed394bbbdaca7de59b4a51daa3c7",
+        "/usr/bin/putgd-capture": "74c9c0525bb5ff7adf51a55c9f6f976fe96118d6eb00d478fe5145d8ee08d33f",
+        "/usr/bin/putgd-s3-worker": "90e886224d2826ba7f4c1035f817bd46d0ed984141ffcbf28e913e7132650c08",
+        "/usr/bin/putgd-kde-region": "9a6df73c6726d761aba86e6a0f6f7598946f7cd26004091e732a244a4869367f"
+      },
+      "privateS3ModuleSha256": "f59bcbf5bbed665662fe305318bf3a0bf50e56668fb845af41578e66992553cb",
+      "protonHelperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+      "nativeFixtureSession": "wayland",
+      "nativeQtPlatform": "wayland",
+      "qtVersion": "6.10.2",
+      "desktopVersions": {
+        "kernel": "7.0.0-38-generic",
+        "packages": [
+          "cinnamon ",
+          "gjs 1.88.0-1",
+          "gnome-shell 50.1-0ubuntu1.2",
+          "libqt6core6 ",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "mutter ",
+          "mutter-common 50.1-0ubuntu2.2",
+          "mutter-common-bin 50.1-0ubuntu2.2",
+          "putgd 0.1.1~dev.211+g1010842c9d25",
+          "xdg-desktop-portal 1.21.1+ds-1ubuntu3.1",
+          "xdg-desktop-portal-backend ",
+          "xdg-desktop-portal-gnome 50.0-0ubuntu1",
+          "xdg-desktop-portal-gtk 1.15.3-2ubuntu1"
+        ]
+      },
+      "displayLayout": [
+        {
+          "height": 800,
+          "name": "Virtual-1",
+          "nativeHeight": 800,
+          "nativeWidth": 1280,
+          "rotation": 2,
+          "scale": 1,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "nativeCases": [
+        {
+          "testId": "2fad6e15351e45f38db43c3c50f442f2",
+          "scenario": "region-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "d2bfd6ff-f862-46b8-ac47-fd317aaaedd2",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "2b0bede8d6bebe44a0aa692dd65b85544c6def0b02aa2e5870cd489f0328425c",
+          "artifactOracle": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "6289e60632c048bf841b2b1a3428a10b",
+          "scenario": "window-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "a40f0a23-6094-4639-afb8-9a2830d3b24a",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "8b3b1b69b08f5bef9b218fa0042dc5f77062998bcb84a99e04d5d810433a1f54",
+          "artifactOracle": {
+            "ok": true,
+            "width": 662,
+            "height": 480,
+            "sha256": "8e32eb138d2f59bca8c53f275a81f334b3727256f7bf8d334096f521c8d68ddd"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "e44dd6e14d244e479be82d9687f77fcb",
+          "scenario": "desktop-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "fa3909c0-2f0a-47f5-88ad-405edb34932d",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "8e90d8609622690e052eb89b5b5ed6c974ded62d897964ef8e3afa84ed400af0",
+          "artifactOracle": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "0d56133afce65013ab5631ae1fb175554e8409ec0d7b07b13294b6776fdec512"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "6a3b16c732684eadbc277bd40d67dba4",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "600d6c05-bf31-4ebb-83ff-27e7972b868a",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "b9abdabd50ccb4bd7cd59ca6ca3f5715120db867221d64dd3d3dc2173bb92f42",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "2902f3158a954183bae31976b03b8475",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "e1178edb-a281-4807-9caf-f3f5b23daed1",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "3dbd39cd79d95606cd863870312b5b419e318190a52c4a312d782321dcac2c24",
+          "artifactOracle": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "5a73bcc0ce2e4e008e69e475b2ad40c2",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "27c44f1b-4518-4e14-aa68-3c10a4bf3082",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "8976405d4f8e7deaacce572a596f18fa24503af0506bdf300b5678bb96ea7dfc",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "15e9c97292784c9d905b5696b54ed834",
+          "scenario": "region-cancel-escape-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "c375c4df-4bf1-442d-a3f9-ce8ffeb2ebaa",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "67306595981c813f9c7efc8e49815a4c4807cb855a1fdece032e56f6ab27c5a5",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "223572093afe4f1aa529add81d1884c8",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "8f8cb41d-61bb-4aa0-a5be-f5e2366ab93f",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "d1e1ea832c6c9f95449c15ed76db5450a03dcae35947045770204faff9425e33",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "4de6cd51b4fd42cf89fd76ae6d568a4c",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "5aeec25e-26cc-4ce4-b45c-25e07a7a07a3",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "522f05986e885bf5dd7a6932c834fe33d09449504d83931c3490b394063fda8e",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "4e5df98f16344c55847e04bff85593f5",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "2e752d00-ee20-4a23-9a06-1e97e1a2bedb",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "56cc5770f5912eb260ddcb0d7e1ad39b79315a6a235bf215dbdce506e2ad83db",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "e23d297cf2174adea851d8c4661cc7e2",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "1103dc36-5350-44bf-8095-cf8887a536f5",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "65f6357a83a64b5bd6ae4135ebb9c1454d8530034696cd4709f57a2f939e42a8",
+          "artifactOracle": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "f0a66528df8043049702ae3e73f82a37",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "c5bdb7a8-5cad-41c8-a4f9-feac38289726",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "851ede6856d771da68aebab5994ae755d1038d97e1f4a2a5bd5ad2e874723ef4",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        }
+      ],
+      "rail": {
+        "beforeAndAfterRestartPassed": true,
+        "originalReceiptSha256": "fe3362783d2e934ccb8d7ef6ca921bca9944bef45cfe15c4983a17387f08d607",
+        "restartReceiptSha256": "83d4b1b00f90f7909168bcc7f7a778e0c908e847e3c32405e0a8af1b12f5a3c8"
+      },
+      "restart": {
+        "passed": true,
+        "gracefulQuit": true,
+        "acceptedConfigurationAndRevisionRetained": true,
+        "historyRecordsRetained": 28,
+        "historyTotal": 28,
+        "historyExactEquality": true,
+        "nativeHistoryReopened": true,
+        "helperClosed": true
+      },
+      "nativeSidebar": {
+        "passed": true,
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "evidence": "native screenshot inspected with Settings selected: History, Destinations and Settings are all fully visible",
+        "screenshotSha256": "3809855741917bc83333ee1deae846c8d53b8d83c3f8dc83b1cf73f752975519",
+        "regression": "gui_application/allMainPagesRemainVisibleWithNativeStyleRowMetrics; red before fix, green after"
+      },
+      "repeatedNavigation": {
+        "passed": true,
+        "activations": 8,
+        "reopenCycles": 2,
+        "helperExitedAfterEveryFinalClose": true
+      },
+      "memory": {
+        "passed": true,
+        "scope": "two serial 300-second post-use guest resident observations; not physical acceptance or empty-view workload",
+        "windows": [
+          {
+            "passed": true,
+            "peakMiB": 30.890625,
+            "peakPssMiB": 20.3115234375,
+            "durationSeconds": 300.00012794400004,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.0033333319117339394
+          },
+          {
+            "passed": true,
+            "peakMiB": 30.890625,
+            "peakPssMiB": 20.3232421875,
+            "durationSeconds": 300.00014635,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.006666663414446031
+          }
+        ],
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+      },
+      "acceptanceReceiptSha256": "241c58e2b928c6af6a5028f9f6d46d42b25e22fa3d1e85a0c51f7de96667a88e",
+      "productionLaunch": {
+        "passed": true,
+        "allocatorEnvironmentOverridesPresent": false,
+        "rawReceiptSha256": "99cbc852e40015f5320d73eea22bb88e8cfe60d3498bc9671af4902c9c18bc6f"
+      },
+      "nativeSettings": {
+        "passed": true,
+        "checks": [
+          "native unchanged focus/blur preserves revision inode and mtime",
+          "native edited root autosaves exact leaf only",
+          "opened two-option and three-option lists visible",
+          "wheel on tab bar preserves current page",
+          "default with clipboard exception persists across default destination changes",
+          "Use default then explicit freezes current default",
+          "local-copy toggle independent and neither-output rejected before acquisition",
+          "capture help visible"
+        ],
+        "profile": "gnome-wayland",
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "driverNote": "checkbox coordinates calibrated from fresh native screenshot after scroll; original wrong-coordinate attempt retained if present"
+      },
+      "nativeHistory": {
+        "passed": true,
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "operationId": "1103dc36-5350-44bf-8095-cf8887a536f5",
+        "originalSha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17",
+        "dimensions": [
+          96,
+          64
+        ],
+        "nativeHistoryListGallerySearch": true,
+        "nativeSaveAsExactBytes": true,
+        "copyImageMatchesOriginalWhileOpen": true,
+        "copyImageMatchesOriginalAfterHelperExit": true,
+        "independentClient": "GTK",
+        "helperClosed": true
+      },
+      "nativeNoopFocus": {
+        "passed": true,
+        "rawReceiptSha256": "5979a9a0d08c0ee20a881f1b3da8c60daf203d8dbe87a5ccbf5957260eb279c8"
+      },
+      "nativeBucketAutosave": {
+        "passed": true,
+        "rawReceiptSha256": "427e47ae084a01bf774c85096fb8166477091a6da92ab70f0ec1e658ed52a65b"
+      }
+    },
+    {
+      "profile": "kde-wayland",
+      "passed": true,
+      "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+      "buildManifest": {
+        "schemaVersion": 1,
+        "version": "0.1.1-dev.211+g1010842c9d25",
+        "baseVersion": "0.1.1",
+        "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+        "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+        "commitCount": 211,
+        "dirty": null,
+        "sourceProvenance": "supplied"
+      },
+      "package": {
+        "format": "DEB",
+        "name": "putgd",
+        "version": "0.1.1~dev.211+g1010842c9d25",
+        "architecture": "amd64",
+        "sha256": "1ee12ca3eaea03bd1ba309ff6fe88217e69615960e91a7b76b9d55cc0eeed8ab",
+        "size": 51061356
+      },
+      "runningResident": {
+        "pid": 34269,
+        "startTicks": 86081,
+        "sha256": "4284f13a11532d4b41c5b4729e7a5e5d940cb6ab3e7b4ce03010c24074de1070"
+      },
+      "observedBuild": {
+        "baseVersion": "0.1.1",
+        "commitCount": 211,
+        "dirty": null,
+        "gitCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "gitTree": "b5e1bee9cb3a61497d3921370c8917b3fc60e79e",
+        "packageVersion": "0.1.1~dev.211+g1010842c9d25",
+        "schemaVersion": 1,
+        "sourceProvenance": "supplied",
+        "version": "0.1.1-dev.211+g1010842c9d25"
+      },
+      "installedBinaries": {
+        "/usr/bin/putgd": "4284f13a11532d4b41c5b4729e7a5e5d940cb6ab3e7b4ce03010c24074de1070",
+        "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+        "/usr/bin/putgd-ui": "8ea51ee99b0cfade1577a8a823d0d388cc5549a21bec1b195ae0a5c7e0d918cc",
+        "/usr/bin/putgd-cli": "ec7d05732f96f9813aca785a2c1a9de60a39ed394bbbdaca7de59b4a51daa3c7",
+        "/usr/bin/putgd-capture": "74c9c0525bb5ff7adf51a55c9f6f976fe96118d6eb00d478fe5145d8ee08d33f",
+        "/usr/bin/putgd-s3-worker": "90e886224d2826ba7f4c1035f817bd46d0ed984141ffcbf28e913e7132650c08",
+        "/usr/bin/putgd-kde-region": "9a6df73c6726d761aba86e6a0f6f7598946f7cd26004091e732a244a4869367f"
+      },
+      "privateS3ModuleSha256": "f59bcbf5bbed665662fe305318bf3a0bf50e56668fb845af41578e66992553cb",
+      "protonHelperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+      "nativeFixtureSession": "wayland",
+      "nativeQtPlatform": "wayland",
+      "qtVersion": "6.10.2",
+      "desktopVersions": {
+        "kernel": "7.0.0-38-generic",
+        "packages": [
+          "cinnamon ",
+          "gnome-shell ",
+          "kwin-wayland 4:6.6.6-0ubuntu0.1",
+          "libqt6core6 ",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "plasma-workspace 4:6.6.6-0ubuntu0.1",
+          "putgd 0.1.1~dev.211+g1010842c9d25",
+          "xdg-desktop-portal 1.21.1+ds-1ubuntu3.1",
+          "xdg-desktop-portal-backend ",
+          "xdg-desktop-portal-gnome ",
+          "xdg-desktop-portal-gtk 1.15.3-2ubuntu1",
+          "xdg-desktop-portal-kde 6.6.6-0ubuntu0.1"
+        ]
+      },
+      "displayLayout": [
+        {
+          "height": 800,
+          "name": "Virtual-1",
+          "nativeHeight": 800,
+          "nativeWidth": 1280,
+          "rotation": 2,
+          "scale": 1,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "nativeCases": [
+        {
+          "testId": "5295ac456a9d419ea5bc0fe6a71a45bb",
+          "scenario": "region-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "6c5e1734-00f9-4259-8b64-f188c4e56600",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "e3649d1ca21c8a3355ba3360359eb632710cd1f8dadc98f958e1951c990c6238",
+          "artifactOracle": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "8b5e094e3d474776b4b1acdd763b0feb",
+          "scenario": "window-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "3e093816-ff45-4eca-9a53-ca8792b628f8",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "6260d05a7c09c7e70c11f876b7227df26bd35d61d295ff7660d42fb04aa75539",
+          "artifactOracle": {
+            "ok": true,
+            "width": 640,
+            "height": 448,
+            "sha256": "21989991f27f619d0d660b5dd5f79ef9aa789f9eb82da9afa256c30e21cdcde0"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "c994bfc7947d4ac78328d0205ddd781f",
+          "scenario": "desktop-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "4c5a4d64-d814-4286-91f8-e2bef7079b4a",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "cd0bf4a6f8e935e6acf41b58f8b790d77e7a499910764c15347f6af31a7c90f9",
+          "artifactOracle": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "2f93efdf032f00b2c144087779464d2f7a75d3d8ad18c04c2d487e2e3dbe872c"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "b2f06136d0fe41b99c20fc72917973c3",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "cfdd4940-aa16-4941-a4a9-152f9c146b1c",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "5f0b9951f2273f13737645d300b79f230781592692ced8b6154b2c52a70f9713",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "9c6fb5ba547b46da9764c5ee6139959d",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "9004756f-d9af-496b-a086-0027631c8a9b",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "3b8d5c9e32fb406307db4e6201f8a6c2985cf982b6823bf73efedeaf74d81f68",
+          "artifactOracle": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "5205facc5d4c410a9d924dd878f83540",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "a11a08e0-b8bc-464e-8ff9-0b14b06efa5f",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "f6cf48b5f35e672b9f8ba7514a01fd6ad91a04f04e33a6dbc6f57a1562fc9267",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "ece5ea5b9d304d0b8e0d4834620bb89f",
+          "scenario": "region-cancel-escape-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "bfd795fa-bd59-4e45-9c08-277f3350c39d",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "2a3a73243891ac7826a77992e1ba3969ea913df73e201cc50b89a984abd24f31",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "12f0c4ab399c43238add404555369988",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "b651c831-611d-40db-9702-99039efe5dd6",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "1a14821284a19b8b89f362ddf6780c22f688642e04ae72c9543c1428e1167eb0",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "5a8503110c45467cbfbff02ae95eec4b",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "3e75abda-21e6-4826-a26a-705d8315321f",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "4f487b43a5a6f58a1ef74803253f75e0ff570ad866c9ee3d042f40da51c23c31",
+          "artifactOracle": {},
+          "independentPastePassed": true
+        },
+        {
+          "testId": "c8dd6ea5f3614a9d88f7b52a981c437e",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "48e680b0-ff99-4245-b1cc-4fcb2dd2e466",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "e4f9a5398ffe2e15769f21ba10fbd5eacd2b054647758d9ccaeeb3754f2fe52b",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "b0908fff07d7466b9bef239f800ec2eb",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "5fe2016d-d9a0-4fff-9c51-ad5482ac7dff",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "8588f142c98460e8ff4bb2b9f90fadd8b406080e860adc7ac5db275c85e51fdf",
+          "artifactOracle": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "independentPastePassed": true
+        },
+        {
+          "testId": "838bc5d0ae44462c978b28f13392bdb5",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "ccdef7cf-96cf-46ca-b9d2-1ddd755e98c2",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "19dd5d5bcca9a50c5b83383414fb625b84094f7c723a8e94a4c9e73bc606a20c",
+          "artifactOracle": {
+            "ok": true
+          },
+          "independentPastePassed": true
+        }
+      ],
+      "rail": {
+        "beforeAndAfterRestartPassed": true,
+        "originalReceiptSha256": "fe3362783d2e934ccb8d7ef6ca921bca9944bef45cfe15c4983a17387f08d607",
+        "restartReceiptSha256": "fe3362783d2e934ccb8d7ef6ca921bca9944bef45cfe15c4983a17387f08d607"
+      },
+      "restart": {
+        "passed": true,
+        "gracefulQuit": true,
+        "acceptedConfigurationAndRevisionRetained": true,
+        "historyRecordsRetained": 21,
+        "historyTotal": 21,
+        "historyExactEquality": true,
+        "nativeHistoryReopened": true,
+        "helperClosed": true
+      },
+      "nativeSidebar": {
+        "passed": true,
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "evidence": "native screenshot inspected with Settings selected: History, Destinations and Settings are all fully visible",
+        "screenshotSha256": "10fbc929ab624715bc83866cb45cc86c0d7cebbf1c6978064bec1152b9cf3fcb",
+        "regression": "gui_application/allMainPagesRemainVisibleWithNativeStyleRowMetrics; red before fix, green after"
+      },
+      "repeatedNavigation": {
+        "passed": true,
+        "activations": 8,
+        "reopenCycles": 2,
+        "helperExitedAfterEveryFinalClose": true
+      },
+      "memory": {
+        "passed": true,
+        "scope": "two serial 300-second post-use guest resident observations; not physical acceptance or empty-view workload",
+        "windows": [
+          {
+            "passed": true,
+            "peakMiB": 31.11328125,
+            "peakPssMiB": 8.390625,
+            "durationSeconds": 300.000235429,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.013333322869830435
+          },
+          {
+            "passed": true,
+            "peakMiB": 30.98046875,
+            "peakPssMiB": 8.2587890625,
+            "durationSeconds": 300.000284532,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.00666666034373933
+          }
+        ],
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+      },
+      "acceptanceReceiptSha256": "eb24a50b2586448987dc5ab29a7507a634cad1ec4d6ba08b32478d8ad1304917",
+      "productionLaunch": {
+        "passed": true,
+        "allocatorEnvironmentOverridesPresent": false,
+        "rawReceiptSha256": "ebae8bcd4b0eaa69e86a4c77f1e88a4c5f7ef357f0d83c87313e69aaa09bd45f"
+      },
+      "nativeSettings": {
+        "passed": true,
+        "checks": [
+          "native unchanged focus/blur preserves revision inode and mtime",
+          "native edited root autosaves exact leaf only",
+          "opened two-option and three-option lists visible",
+          "wheel on tab bar preserves current page",
+          "default with clipboard exception persists across default destination changes",
+          "Use default then explicit freezes current default",
+          "local-copy toggle independent and neither-output rejected before acquisition",
+          "capture help visible"
+        ],
+        "profile": "kde-wayland",
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "driverNote": "checkbox coordinates calibrated from fresh native screenshot after scroll; original wrong-coordinate attempt retained if present"
+      },
+      "nativeHistory": {
+        "passed": true,
+        "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+        "operationId": "5fe2016d-d9a0-4fff-9c51-ad5482ac7dff",
+        "originalSha256": "6171cd78a25ed61bd98dfa4be87b5339b15e39ae7661b3002486af4fefb3cd17",
+        "dimensions": [
+          96,
+          64
+        ],
+        "nativeHistoryListGallerySearch": true,
+        "nativeSaveAsExactBytes": true,
+        "copyImageMatchesOriginalWhileOpen": true,
+        "copyImageMatchesOriginalAfterHelperExit": true,
+        "independentClient": "GTK",
+        "helperClosed": true
+      },
+      "nativeNoopFocus": {
+        "passed": true,
+        "rawReceiptSha256": "5979a9a0d08c0ee20a881f1b3da8c60daf203d8dbe87a5ccbf5957260eb279c8"
+      },
+      "nativeBucketAutosave": {
+        "passed": true,
+        "rawReceiptSha256": "427e47ae084a01bf774c85096fb8166477091a6da92ab70f0ec1e658ed52a65b"
+      }
+    }
+  ],
+  "liveProton": {
+    "scope": "live production Proton adapter and bundled helper with existing keychain reference; synthetic new isolated folder/file only; no GUI/recipient/desktop proof",
+    "stages": [
+      {
+        "method": "inspectAccount",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 4.675,
+        "emailPresent": true,
+        "folderCount": 10
+      },
+      {
+        "method": "createFolder",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 3.572
+      },
+      {
+        "method": "upload",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 8.533
+      },
+      {
+        "method": "stat",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 4.243,
+        "samePublication": true
+      },
+      {
+        "method": "share",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 9.805,
+        "urlPresent": true
+      },
+      {
+        "method": "share",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 6.241
+      },
+      {
+        "method": "share",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 8.375
+      },
+      {
+        "method": "share",
+        "ok": true,
+        "errorCode": "",
+        "seconds": 4.081
+      }
+    ],
+    "passed": true,
+    "cliSha256": "185b8d1906ea5bc9efa880437c2d408661c61b803097922cb13d22be8470f862",
+    "probeSha256": "6bac153ec64c93422546cde93c64f6545c6c6d95cf24c434c1f4d26227c093e7",
+    "helperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+    "configurationSource": "existing opaque keychain reference; no credentials exported",
+    "payload": {
+      "bytes": 18432,
+      "sha256": "0c752631bc3532d41d6ec4d25e966352ab56976d8091dfef024247b595609a38"
+    },
+    "cleanup": {
+      "testLinkRevoked": true,
+      "remoteDeletionAttempted": false,
+      "privateSyntheticFolderAndFileRetained": true,
+      "existingUserObjectsModified": false,
+      "applicationSettingsModified": false
+    },
+    "sourceCommit": "0735eafec1c0493ac3ebc9a114c6bdaf254e0cc5"
+  },
+  "helperSourceRebuild": {
+    "passed": true,
+    "originalPacketSha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+    "helperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+    "overlaySourceCommit": "1016b1bb0348cd01b044dae9ae50fc63a3ed27d2",
+    "overlayFiles": {
+      "tools/proton/runtime.ts": "bfe0bfd84687e30ac7e8c0c8813809b0c73ffa9b11f606869c7b1fc319ab83e9",
+      "tools/proton/runtime.test.ts": "da1e1e5cbe1e735381c405749fc8af850e84649cdc0c8a10bcc65c1058cef886"
+    },
+    "bunSha256": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+    "failedFirstAttempt": "outfile omitted .new suffix; Bun embeds its output basename, so original bytes did not match. Corrected documented .new basename reproduces exactly.",
+    "scope": "published sealed source graph plus current application source overlay; exact helper identity, helper source tests"
+  },
+  "coverageLimits": [
+    "single-display synthetic VM and host-contract acceptance",
+    "not a tagged release, physical performance or mixed-display certification",
+    "wider U9/U10 release gates remain separate",
+    "live Proton is backend proof, not GUI recipient/browser acceptance",
+    "ASan/UBSan application build; distro Qt/external AWS uninstrumented"
+  ],
+  "preservedAttempts": [
+    "e6f49b3 native rail captured the app; candidate retired before memory/siblings",
+    "initial11c746d full ASan57/58 exposed a test-only config-watcher/readiness race; deterministic delayed-reply reproduction failed before correction, both outcomes pass after config isolation and readiness barrier; full host suites repeated on488fe82 with product source unchanged",
+    "43a87fa KDE native sidebar overflow retired before full Wayland acceptance; corrected11c746d repeats Cinnamon-first gates",
+    "one previous Cinnamon zero-area cancellation lacked a paste witness; cancelled/no artifacts, original text verified after explicit focus, three unchanged repetitions passed",
+    "11c746d KDE History Copy image passed while open but reverted to prior text after UI helper exit; native candidate rejected before memory, resident ownership correction and all required gates repeated",
+    "11c746d KDE zero-area gesture timed out with capture_timeout and no artifacts; three unchanged repetitions passed, cause unconfirmed and original failure retained",
+    "8656491 initial KDE rail-region and GNOME Escape input attempts remained acquiring without artifacts and timed out; original failures retained. A separate KDE diagnostic with intermediate screenshots/delayed gesture passed but is not acceptance. Three unchanged target confirmations and full unchanged native matrices repeated; no input timing/oracle/product change, exact cause unconfirmed",
+    "8656491 initial full Dev run hit a5s synthetic deferred-upload assertion, condition observed5.35s; incomplete fixture then reached suite120s ceiling. Three unchanged isolated confirmations476/943/985ms and completeDev repetition after ASan; no product or timeout change, cause unconfirmed",
+    "35bae70 full host suites and Cinnamon functional checks passed, but a focused RGBA64 regression exposed a decoded-byte budget that rejected supported16-bit images; corrected8656491 repeats current-source acceptance; prior memory stopped without credit",
+    "8656491 GNOME failed two300s RSS gates41.13671875MiB. A/B/A allocator diagnostics were not acceptance. Finalf19353e applies existing nativeKDE glibc allocation policy to nativeGNOME and repeats required desktop gates",
+    "native UI-driver focus/geometry/coordinate, asynchronous file-picker timing and unsupported-view attempts corrected without weakening byte/pixel oracles",
+    "long command supervisors ended143; successful full tests used owned sessions and Docker build was adopted without restart",
+    "one read-only memory-progress approval review timed out; permitted identical retry succeeded"
+  ],
+  "imagePrecisionCorrection": {
+    "sourceCommit": "86564913c6a65d2a5348f53fb44c7371d8297339",
+    "redRegressionSha256": "de065109743a0c19f8ab80fc958a748cfffe9dfb349eef1bae5941539d41940d",
+    "greenRegressionSha256": "ec0bf8edf829d8851c14b37fa3df873c04d81b139a55fa671a7581d64f6dadb4",
+    "contract": "32MiB encoded input,16Mpx,128MiB decoded,129MiB PNG output; exactRGBA64 precision preserved"
+  },
+  "gnomeLatePasteRetry": {
+    "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+    "originalFailedReceiptSha256": "20bc13d16bd0978e7d8f2c96dcf99864e7b80fad43c618564f220c50ab4eae4e",
+    "lateDiagnosticSha256": "99389466e766d2f20429a0abb93e0940e1cef6757aefef39ecf31fcd4fbc0352",
+    "lateDiagnosticNotAcceptance": true,
+    "confirmations": [
+      {
+        "passed": true,
+        "rawReceiptSha256": "76f8b5185da140693cb7a9ff54fce084a5cfcfbcda82ce497249b1997a132651"
+      },
+      {
+        "passed": true,
+        "rawReceiptSha256": "df800c165f274812c238334a5ad856641e41d34661a3022ff467ecc65dd91cb0"
+      },
+      {
+        "passed": true,
+        "rawReceiptSha256": "1c6a062cd33571b63a0217585a7c551854ad12d9fd7c8c07018b665d0819ba19"
+      }
+    ],
+    "acceptedAttempt": "all4 unchanged post-restart rails repeated",
+    "cause": "SCP exit1 collecting paste witness after500ms; late files verified; exact failure cause unconfirmed"
+  },
+  "kdeTransferRetry": {
+    "sourceCommit": "1010842c9d2540bdd587225fd3dfdeefd4183fc0",
+    "originalFailedReceiptSha256": "b074a39e336f64f45adfe58cd99efc4ff72e295b23726114677f9ee6f1810938",
+    "diagnosticReceiptSha256": "c91f692e5eef0ea7318d4525638c58fba61037d0b60663b2549ac7326be30afd",
+    "cause": "SCP exit255 during collection; exact cause unconfirmed",
+    "diagnosticOnly": true,
+    "requiredUnchangedTargetConfirmations": 3,
+    "confirmations": [
+      {
+        "passed": true,
+        "rawReceiptSha256": "caf79b626f94cfd8f95e5d043d84c0911a8058fc47bc7de069fa55d4ac91af87"
+      },
+      {
+        "passed": true,
+        "rawReceiptSha256": "74b8c18d627b0db502d69638aa2ca858792cfb1cd54279071abe58276b8c8f25"
+      },
+      {
+        "passed": true,
+        "rawReceiptSha256": "6b33626cddaaf51020188c05144c9d000c89cb2acaaf748b276a1236bacb2ca4"
+      }
+    ],
+    "acceptedMatrix": "complete unchanged12-case matrix after confirmations"
+  },
+  "checkpointFixtureCorrection": {
+    "priorSourceCommit": "f19353e3f8e01392614d31e1e59f6df99e222f16",
+    "scope": "test-only exact checkpoint and close acknowledgements; isolated watched config parent; no product/timeout/oracle relaxation",
+    "initialFullAsanRawLogSha256": "309064a83d84f11cf035b611779ef2b01c34b7735fe4d0c3258d6da644c15cef",
+    "redLogSha256": "4839c1402bd494f07b3ecda94f99bf4d40888e5cda3a71d5c0df84cb054fc15f",
+    "greenLogSha256": "8213e76879f063bcf67a74f2c3beaa4523723d3c82c30d68edbe4d37e0bf38fb"
+  },
+  "gnomeAllocatorCorrection": {
+    "sourceCommit": "f19353e3f8e01392614d31e1e59f6df99e222f16",
+    "rejectedCandidateCommit": "86564913c6a65d2a5348f53fb44c7371d8297339",
+    "rejectedPeakMiB": [
+      41.13671875,
+      41.13671875
+    ],
+    "diagnosticOnly": {
+      "fixedThresholdRssMiB": 30.60546875,
+      "defaultRepeatRssMiB": 38.71484375,
+      "sameBinary": true,
+      "notAcceptance": true
+    },
+    "policy": "existing128KiB fixed glibc mmap threshold extended to native GNOME Core resident; other routes unchanged"
+  },
+  "reviewScope": "fresh local source readers; Anthropic attempts produced no completed review (earlier transport setup failure, later Claude ACP OAuth refresh failure); no cross-model review claim",
+  "nativeScreenshotInspection": {
+    "passed": true,
+    "scope": "six actual final-source native screenshots inspected for layout, labels and synthetic-only content",
+    "files": [
+      {
+        "name": "cinnamon-capture-dropdown.png",
+        "sha256": "cfb38bc56519cb27e246c1fea89bc54ed96f0e50ec194f333110b84d2bbde0e5"
+      },
+      {
+        "name": "cinnamon-destination.png",
+        "sha256": "2ffc6dbf5e85b4e52be63c48cc9655d795d2295675c3a8df01678a6c94220ae2"
+      },
+      {
+        "name": "cinnamon-general.png",
+        "sha256": "0c91c3e9b86c9ecff3af40fa8b77089df007c0f27663517af8f8d57108c4a555"
+      },
+      {
+        "name": "cinnamon-history.png",
+        "sha256": "f65ea455f8bdfffeb44c6c687da80f46feeff317af5f15ec89284425cf8b427e"
+      },
+      {
+        "name": "gnome-settings.png",
+        "sha256": "93c3d94deda6edd8d835f09fd62a2a889df8c6d652d623241ab5ddaae1575daf"
+      },
+      {
+        "name": "kde-settings.png",
+        "sha256": "aa659f1de955af8d7bc49a9fb2723c237886b0bcc889f5d822f739fa37404de6"
+      }
+    ]
+  },
+  "ciTestHeaderCompatibilityFollowup": {
+    "scope": "test-only direct-header compatibility correction; all application inputs unchanged from measured1010842",
+    "path": "tests/unit/test_operations.cpp",
+    "change": "add #include <QElapsedTimer>; no assertion, timeout or behavior changes",
+    "failedCiHead": "bfae63dae0b91508c6161df2623ba45d8c7d1162",
+    "failedCiJob": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38889896138/job/116936560347",
+    "localToolchain": "existing official Ubuntu26 systemQt6.10.2/GCC15.2 builder plus standard test-development packages",
+    "redCompileLogSha256": "b3d38229e469bb279fd1c69a7d3ca24d51f392e9bd915581b31d7bdcbceb3028",
+    "greenBuildAndSuiteLogSha256": "6a00518a7c3eb0a69261af904b0921f619192dac892190119b8953acdbf4283b",
+    "greenRawSuiteLogSha256": "0d68b63431b4d9a81d73fb9507a100557bd15f5cff3eb9e0296009062a1fa3a6",
+    "operationsSuitePassed": true,
+    "operationsSuiteSeconds": 59.24,
+    "oneTestIncludeOnly": true,
+    "socketPathsChecked": 280,
+    "maxSocketBytes": 88,
+    "diagnosticNotNativeAcceptance": true,
+    "nativeMeasurementsRemainBoundTo": "1010842c9d2540bdd587225fd3dfdeefd4183fc0"
+  }
+}

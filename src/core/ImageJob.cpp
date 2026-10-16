@@ -177,8 +177,11 @@ QList<QByteArray> ImageJob::discover(Error& error,Cancel cancelled) const {
  }
  return types;
 }
+QByteArray ImageJob::decodePng(const QByteArray& input,const ResourceLimits& limits,Error& error,Cancel cancelled) const {
+ return run("decode",&input,{},limits.imagePixels,limits.imageBytes,limits.maxFileBytes,error,cancelled);
+}
 QImage ImageJob::decode(const QByteArray& input,const ResourceLimits& limits,Error& error,Cancel cancelled) const {
- auto encoded=run("decode",&input,{},limits.imagePixels,limits.imageBytes,limits.maxFileBytes,error,cancelled);if(error)return {};
+ auto encoded=decodePng(input,limits,error,cancelled);if(error)return {};
  QBuffer buffer(&encoded);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");
  const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){error=failure("input_excessive");return {};}
  auto image=reader.read();if(image.isNull()){error=failure("source_unsupported");return {};}

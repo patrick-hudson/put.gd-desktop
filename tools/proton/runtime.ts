@@ -76,7 +76,8 @@ export async function inspectAccount(ctx: Context, request: JsonObject): Promise
         if (!node.trashTime) folders.push({ uid: node.uid, name: node.name.value });
         if (folders.length > 10000) throw new ProtocolError('destination_unavailable');
     }
-    return { accountRootUid: root.uid, folders };
+    const accountEmail = root.ownedBy?.email;
+    return { accountRootUid: root.uid, ...(accountEmail ? { accountEmail } : {}), folders };
 }
 async function findCandidate(ctx: Context, request: JsonObject): Promise<NodeEntity | undefined> {
     const folder = await destinationFolder(ctx, request);

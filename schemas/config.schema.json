@@ -37,7 +37,8 @@
             "destination": {
               "enum": [
                 "upload",
-                "local"
+                "local",
+                "default"
               ]
             },
             "profileId": {
@@ -64,7 +65,28 @@
               ],
               "default": "default"
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ]
         },
         "window": {
           "type": "object",
@@ -78,7 +100,8 @@
             "destination": {
               "enum": [
                 "upload",
-                "local"
+                "local",
+                "default"
               ]
             },
             "profileId": {
@@ -105,7 +128,28 @@
               ],
               "default": "default"
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ]
         },
         "desktop": {
           "type": "object",
@@ -119,7 +163,8 @@
             "destination": {
               "enum": [
                 "upload",
-                "local"
+                "local",
+                "default"
               ]
             },
             "profileId": {
@@ -146,7 +191,28 @@
               ],
               "default": "default"
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ]
         },
         "clipboard": {
           "type": "object",
@@ -160,7 +226,8 @@
             "destination": {
               "enum": [
                 "upload",
-                "local"
+                "local",
+                "default"
               ]
             },
             "profileId": {
@@ -187,7 +254,28 @@
               ],
               "default": "default"
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ]
         }
       }
     },
@@ -325,6 +413,7 @@
       ],
       "properties": {
         "keepUploads": {
+          "description": "Save a local copy of new captures and imports, independently of upload routing. With no destination and this disabled, the action is rejected before acquisition.",
           "type": "boolean"
         },
         "root": {
@@ -610,6 +699,41 @@
           "description": "Copy every successful upload link individually as it becomes available, or one ordered list after overlapping uploads settle. Omitted legacy settings use each_link."
         }
       }
+    },
+    "captureDefaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "destination",
+        "profileId",
+        "publicationMode"
+      ],
+      "properties": {
+        "destination": {
+          "enum": [
+            "upload",
+            "local"
+          ]
+        },
+        "profileId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "publicationMode": {
+          "enum": [
+            "default",
+            "share",
+            "private"
+          ]
+        }
+      }
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -763,5 +887,95 @@
       }
     }
   },
-  "description": "SettingsService is authoritative for profile references, uniqueness, shortcuts and registered provider validation."
+  "description": "SettingsService is authoritative for profile references, uniqueness, shortcuts and registered provider validation.",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "region": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "window": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "desktop": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "clipboard": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    }
+  ]
 }

@@ -10,6 +10,7 @@ public:
  void list(const HistoryQuery&,JsonReply);
  void detail(const QString&,JsonReply);
  void clear(JsonReply);
+ void copyImage(const QString&,JsonReply);
  void copyLink(const QString&,JsonReply);
  void changeSharing(const QString& historyId,const QString& action,const QJsonObject& options,JsonReply);
  void inspectSharing(const QString&,JsonReply);

@@ -79,7 +79,8 @@ QJsonObject Settings::developmentTemplate() {
 }
 
 Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validateProfile, const CredentialValidator& validateCredentials) {
-    if (!keys(doc, {"schemaVersion", "actions", "profiles", "archive", "naming", "limits", "retention", "preferences"}))
+    auto root=doc;root.remove("captureDefaults");
+    if (!keys(root, {"schemaVersion", "actions", "profiles", "archive", "naming", "limits", "retention", "preferences"}))
         return invalid("/", "Configuration has missing or unsupported fields.");
     if (!integer(doc["schemaVersion"], 1, 1)) return invalid("/schemaVersion", "Unsupported configuration schema version.");
     if (!doc["profiles"].isArray() || doc["profiles"].toArray().size() > 32)
@@ -105,15 +106,24 @@ Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validat
         if (validateCredentials)
             if (auto error = validateCredentials(profile["provider"].toString(), credentials)) return error;
     }
+    if(doc.contains("captureDefaults")) {
+        const auto output=doc["captureDefaults"].toObject();
+        if(!doc["captureDefaults"].isObject()||!keys(output,{"destination","profileId","publicationMode"})||
+           !choice(output["destination"],{"upload","local"})||!choice(output["publicationMode"],{"default","share","private"})||
+           !(output["profileId"].isNull()||(identifier(output["profileId"])&&profileIds.contains(output["profileId"].toString()))))
+            return invalid("/captureDefaults","Choose a valid default output and destination.");
+    }
     if (!doc["actions"].isObject() || !keys(doc["actions"].toObject(), actionNames()))
         return invalid("/actions", "Define exactly region, window, desktop, and clipboard actions.");
     for (const auto& name : actionNames()) {
         const auto value = doc["actions"].toObject()[name];
         const auto action = value.toObject();
         if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
-            !choice(action["destination"], {"upload", "local"}) || !text(action["shortcut"], 0, 128) ||
+            !choice(action["destination"], {"upload", "local", "default"}) || !text(action["shortcut"], 0, 128) ||
             !(action["profileId"].isNull() || (identifier(action["profileId"]) && profileIds.contains(action["profileId"].toString()))))
             return invalid("/actions/" + name, "Action fields or profile references are invalid.");
+        if(action["destination"]=="default"&&(!doc.contains("captureDefaults")||!action["profileId"].isNull()||action["publicationMode"].toString("default")!="default"))
+            return invalid("/actions/"+name,"Inherited actions need capture defaults and no separate output values.");
         if(action.contains("publicationMode") && !choice(action["publicationMode"],{"default","share","private"}))
             return invalid("/actions/"+name+"/publicationMode","Choose default, share or private publication.");
         if (!action["shortcut"].toString().isEmpty()) {
@@ -176,12 +186,20 @@ Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validat
     return {};
 }
 
+QJsonObject Settings::effectiveAction(const QJsonObject& doc,const QString& name) {
+    auto action=doc["actions"].toObject()[name].toObject();
+    if(action["destination"]=="default") {
+        const auto output=doc["captureDefaults"].toObject();
+        for(const auto& key:QStringList{"destination","profileId","publicationMode"})action[key]=output[key];
+    }
+    return action;
+}
+
 Settings Settings::fromValidated(const QJsonObject& doc) {
     Settings settings;
     settings.document = doc;
-    const auto actions = doc["actions"].toObject();
     for (const auto& name : actionNames()) {
-        const auto action = actions[name].toObject();
+        const auto action = effectiveAction(doc,name);
         settings.actions.insert(name, {action["destination"].toString(), action["profileId"].toString(), action["shortcut"].toString(),action["publicationMode"].toString("default")});
     }
     for (const auto& entry : doc["profiles"].toArray()) settings.profiles.insert(entry.toObject()["id"].toString(), entry.toObject());

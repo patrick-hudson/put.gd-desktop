@@ -88,6 +88,7 @@ public:
  void retry(const QString& id,JsonReply);
  void retryLocalSave(const QString& id,JsonReply);
  void copyResult(const QString& id,JsonReply);
+ void copyHistoryImage(const QString& id,JsonReply);
  void copyHistoryUrl(const QString& url,JsonReply,quint64 ticket=0);
  quint64 invalidateCopyEligibility();
  void cleanup(JsonReply);
@@ -136,8 +137,9 @@ private:
  void releaseActive(const QString&);
  void performCopy(Operation,bool explicitCopy,JsonReply,quint64 ticket=0);
  void deliverCopy(const CopyPayload&,std::function<void(Error)>,std::function<bool()> eligible={},bool upload=false);
+ struct CopyPreparationState {quint64 revision=0;std::shared_ptr<std::atomic_bool> cancelled=std::make_shared<std::atomic_bool>(false);};
  using CopyPreparation=std::function<void(std::function<void(Error)>)>;
- void queueCopy(std::function<CopyPayload()>,std::function<void(Error)>,std::function<bool()>,bool,CopyPreparation={},QStringList={});
+ void queueCopy(std::function<CopyPayload()>,std::function<void(Error)>,std::function<bool()>,bool,CopyPreparation={},QStringList={},std::shared_ptr<CopyPreparationState> = {});
  void interruptUploadCopy(const QString& id={});
  void pumpCopies();
  struct PendingCopy;struct UploadCopy;struct UploadCopyGroup;

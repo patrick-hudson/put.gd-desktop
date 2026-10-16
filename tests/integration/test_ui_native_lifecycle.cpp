@@ -192,7 +192,7 @@ private slots:
    helper.activate("settings");
    QTRY_VERIFY(helper.shown.contains("settings"));
    xcb_window_t window = XCB_WINDOW_NONE;
-   QTRY_VERIFY((window = windows.find(pid, "put.gd — Settings")) != XCB_WINDOW_NONE);
+   QTRY_VERIFY((window = windows.find(pid, "put.gd")) != XCB_WINDOW_NONE);
    QVERIFY(windows.close(window));
    QTRY_VERIFY_WITH_TIMEOUT(!helper.closeSequence.isEmpty() || helper.failure, 5000);
    QVERIFY2(!helper.failure, qPrintable(helper.failure.code));
@@ -270,15 +270,16 @@ private slots:
   QTRY_VERIFY(!operationId.isEmpty());
   QTRY_COMPARE(source.acquisitions.size(), 1);
 
-  const QList<QPair<QString, QString>> views{{"settings", "put.gd — Settings"},
-   {"history", "put.gd — History"}, {"activity", "put.gd — Activity"}, {"about", "About put.gd"}};
+  const QList<QPair<QString, QString>> views{{"settings", "put.gd"},
+   {"history", "put.gd"}, {"activity", "put.gd"}, {"about", "About put.gd"}};
   QList<xcb_window_t> shown;
   for (const auto& [view, title] : views) {
    helper.activate(view);
    QTRY_VERIFY(helper.shown.contains(view));
    xcb_window_t window = XCB_WINDOW_NONE;
    QTRY_VERIFY((window = windows.find(helper.process.processId(), title)) != XCB_WINDOW_NONE);
-   shown.append(window);
+   if(view=="history"||view=="activity")QCOMPARE(window,shown.first());
+   if(!shown.contains(window))shown.append(window);
   }
   for (qsizetype i = 0; i < shown.size() - 1; ++i) {
    QVERIFY(windows.close(shown[i]));

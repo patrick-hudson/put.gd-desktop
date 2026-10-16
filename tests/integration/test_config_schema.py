@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -14,6 +15,27 @@ from jsonschema import Draft202012Validator
 
 
 class ConfigurationSchema(unittest.TestCase):
+    def test_capture_defaults_and_explicit_exceptions(self):
+        root = Path(__file__).resolve().parents[2]
+        schema = json.loads((root / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema)
+        document = json.loads((root / 'config/development.example.json').read_text())
+        document['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
+        for action in document['actions'].values():
+            action.update(destination='default', profileId=None, publicationMode='default')
+        document['actions']['clipboard']['destination'] = 'local'
+        self.assertTrue(validator.is_valid(document))
+        missing = copy.deepcopy(document)
+        del missing['captureDefaults']
+        self.assertFalse(validator.is_valid(missing))
+        for key, value in [('destination', 'default'), ('publicationMode', 'invalid'), ('secretKey', 'synthetic')]:
+            invalid = copy.deepcopy(document)
+            invalid['captureDefaults'][key] = value
+            self.assertFalse(validator.is_valid(invalid))
+        invalid = copy.deepcopy(document)
+        invalid['actions']['region']['profileId'] = 'separate-reference'
+        self.assertFalse(validator.is_valid(invalid))
+
     def test_upload_clipboard_modes_and_legacy_preferences(self):
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text())
         validator = Draft202012Validator(schema['properties']['preferences'])
@@ -52,9 +74,10 @@ class ConfigurationSchema(unittest.TestCase):
             environment = os.environ | {'QT_QPA_PLATFORM': 'offscreen', 'XDG_RUNTIME_DIR': str(runtime),
                 'XDG_CONFIG_HOME': str(root / 'config'), 'XDG_DATA_HOME': str(root / 'data'),
                 'XDG_SESSION_TYPE': 'unspecified', 'XDG_CURRENT_DESKTOP': 'putgd-schema-fixture'}
-            for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS'):
+            for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
                 environment.pop(key, None)
             socket = runtime / 'putgd/session.sock'
+            subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2] / 'tools/diagnostics/check_socket_paths.py'), '--socket', str(socket)], check=True, capture_output=True, text=True)
             with (root / 'resident.log').open('w') as log:
                 resident = subprocess.Popen([app, '--background'], env=environment, stdout=log, stderr=log)
                 try:
@@ -69,6 +92,14 @@ class ConfigurationSchema(unittest.TestCase):
                     document = response['result']['document']
                     errors = list(validator.iter_errors(document))
                     self.assertEqual([error.message for error in errors], [])
+                    inherited = copy.deepcopy(document)
+                    inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
+                    for action in inherited['actions'].values():
+                        action.update(destination='default', profileId=None, publicationMode='default')
+                    validator.validate(inherited)
+                    checked = subprocess.run([cli, '--socket', str(socket), 'settings.validate', json.dumps({'document': inherited})], env=environment,
+                        check=True, capture_output=True, text=True, timeout=20)
+                    self.assertTrue(json.loads(checked.stdout)['ok'])
                     custom = copy.deepcopy(document)
                     custom['naming']['mode'] = 'template'
                     custom['naming']['fileTemplate'] = 'Share-{name}-{uuid}.{ext}'

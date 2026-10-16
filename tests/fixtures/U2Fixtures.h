@@ -55,7 +55,7 @@ public:
 inline QJsonObject configuration(const QString& root,bool local=false) {
  auto doc=Settings::defaults();auto actions=doc["actions"].toObject();for(const auto& action:Settings::actionNames()) {auto a=actions[action].toObject();a["destination"]=local?"local":"upload";a["profileId"]=local?QJsonValue(QJsonValue::Null):QJsonValue("test");actions[action]=a;}doc["actions"]=actions;
  if(!local)doc["profiles"]=QJsonArray{QJsonObject{{"id","test"},{"label","Synthetic opaque provider"},{"provider","opaque"},{"settings",QJsonObject{{"workspace","fixture-workspace"}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}}};
- auto archive=doc["archive"].toObject();archive["root"]=root+"/archive";doc["archive"]=archive;return doc;
+ auto archive=doc["archive"].toObject();archive["root"]=root+"/archive";archive["keepUploads"]=local;doc["archive"]=archive;return doc;
 }
 inline ClipboardPayload textPayload() {ClipboardPayload p;p.kind="text";p.bytes="synthetic source content";return p;}
 inline QString fixture(const QString& root,const QString& name,const QByteArray& bytes) {QFile f(root+"/"+name);if(!f.open(QIODevice::WriteOnly))return {};f.write(bytes);return f.fileName();}

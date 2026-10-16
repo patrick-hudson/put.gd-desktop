@@ -17,6 +17,7 @@ public:
  void setProviderSetup(ProviderSetup handler){providerSetup_=std::move(handler);}
  void start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply);
  void inspect(const QString& id,JsonReply);
+ void credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply);
 signals:
  void changed(const QString& setupId);
 private:

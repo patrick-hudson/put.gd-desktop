@@ -17,17 +17,19 @@ The private helper therefore calls the same official SDK directly and retains
 the official CLI/account foundation for authentication. It does not reimplement
 Proton cryptography. This replaces the initial CLI-only candidate.
 
-In Settings, add a destination, choose Proton Drive and save it. Connect the
-account through the browser. Authentication stays in the desktop secret service
+In Destinations, add a Proton Drive destination. Non-secret edits save automatically.
+Choose Connect account and finish sign-in in the browser. Authentication stays in the desktop secret service
 under put.gd's own namespace; it does not use the official Drive CLI's session.
 Choose a top-level folder in My files or explicitly create a new put.gd folder,
-then save the updated destination. Settings retain its display name alongside
+and the selection saves automatically. Settings retain its display name alongside
 the folder ID so the picker still shows the selected folder after reopening.
-Refresh folders updates a renamed folder’s display name; uploads use the ID.
+The Refresh folders button beside Upload folder updates a renamed folder’s display
+name; uploads use the ID. Queries show Loading folders while working and preserve
+the known account email and selection, including when switching destinations.
 Existing configurations without a name keep working. Account setup never uploads a file.
 
 Sharing is the destination default. Clear that choice for private uploads, or
-use Advanced settings to override publication per app action. Private upload
+use Settings → Capture → Per-action exceptions to override publication per action. Private upload
 creates no public link and leaves the clipboard unchanged. Existing folder and
 member access still applies. Shortcuts remain global app/action settings.
 
@@ -38,7 +40,7 @@ clears that reference for future links. Password entry is excluded from retained
 UI state and CLI arguments. Old receipts keep their original account, folder,
 credential and sharing settings when destinations are edited.
 
-The Proton destination's Advanced settings include **Request deadline** in
+The Proton destination's Advanced link settings include **Request deadline** in
 seconds (default 120; range 1–86,400, or 24 hours). It is saved as `requestTimeoutMs` in that
 profile's settings. This bounds each helper request, including verification,
 encryption and transfer; browser sign-in has a separate ten-minute deadline.
@@ -59,9 +61,9 @@ and reconciliation requests use a stable client UID derived from the account
 reference and publication ID, so subsequent attempts can recognize their own
 new drafts. Drafts left by older builds are preserved.
 
-Activity refreshes through acquisition, preparation, upload, sharing and
+History includes current activity through acquisition, preparation, upload, sharing and
 clipboard results. Proton reports real SDK transferred bytes as encrypted
-blocks finish, with no matching total; Activity therefore shows bytes rather
+blocks finish, with no matching total; the current-operation row therefore shows bytes rather
 than an estimated percentage. Counters can include overhead and decrease during
 SDK retries. Other providers may report a matching total for percentage display.
 A full byte count does not establish a completed file or a usable link: those

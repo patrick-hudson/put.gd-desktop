@@ -5,14 +5,24 @@
 #include <malloc.h>
 #endif
 #include "core/UploadNaming.h"
+#include "core/ImageJob.h"
 #include <QDateTime>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QPointer>
 #include <QTimer>
 #include <QUuid>
+#ifdef Q_OS_UNIX
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#else
+#include <QBuffer>
+#include <QImageReader>
+#endif
 namespace putgd {
 namespace {
 QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
@@ -59,7 +69,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);source_.invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0;
 }
@@ -122,10 +132,12 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  if(!Settings::actionNames().contains(action)) {reply({"invalid_action","Unknown sharing action",{}},{});return;}
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
  if(action!="clipboard"&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
- const auto route=snapshot.actions.value(action);if(route.destination=="upload"&&route.profileId.isEmpty()) {reply({"destination_required","Configure a destination before sharing",{}},{});return;}
- Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=route.destination=="upload"?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
- if(route.destination=="upload") {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(route.destination=="upload")beginUploadCopies(op,true);if(action!="clipboard")selectingId_=op.id;
+ const auto route=snapshot.actions.value(action);
+ const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
+ if(!upload&&!snapshot.archive.keepUploads){reply({"output_required","No output is enabled. Choose a destination in Settings → Capture or enable Keep a local copy in Settings → General.",{}},{});return;}
+ Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
+ if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,true);if(action!="clipboard")selectingId_=op.id;
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
@@ -223,7 +235,8 @@ Operation OperationService::run(Job job) {
  }
  // Archive every acquired item before any item in this batch is published.
  op.phase="saving_local";
- const bool local=op.settings.actions.value(op.action).destination=="local";
+ const auto route=op.settings.actions.value(op.action);
+ const bool local=route.destination=="local"||route.profileId.isEmpty();
  for(auto& item:op.items) if((local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";op.state="completed";for(const auto& item:op.items) if(item.local.status!="saved")op.state="failed";save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.state="failed";save();return op;}
@@ -473,6 +486,47 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
   });return;
  }
  deliverCopy(payload,completeCopy,[this,op,explicitCopy,ticket]{return explicitCopy?ticket==invocation_:(op.invocation==invocation_&&op.clipboardRevision==source_.clipboardRevision());});
+}
+void OperationService::copyHistoryImage(const QString& id,JsonReply reply) {
+ const auto ticket=invalidateCopyEligibility();auto preparation=std::make_shared<CopyPreparationState>();preparation->revision=source_.clipboardRevision();const auto path=databasePath();auto prepared=std::make_shared<CopyPayload>();
+#ifdef __GLIBC__
+ heapReclamationPending_=true;
+#endif
+ const auto eligible=[this,ticket,preparation]{return ticket==invocation_&&preparation->revision==source_.clipboardRevision();};
+ queueCopy([prepared]{return *prepared;},[reply](Error e){reply(e,{{"copied",!e}});},eligible,false,[this,path,id,prepared,eligible,preparation](std::function<void(Error)> complete) {
+  if(!eligible()){complete({"copy_suppressed","A newer clipboard action superseded this image copy",{}});return;}
+  background([path,id,prepared,preparation](Error& e) {
+  HistoryStore store(path);const auto data=store.detail(id,&e);if(e)return QJsonObject{};
+  const auto local=data["local"].toObject();
+  if(local["status"]!="saved"||!data["mime"].toString().startsWith("image/")){e={"image_unavailable","A retained local original image is needed to copy image bytes",{}};return QJsonObject{};}
+  QFile file(local["path"].toString());
+#ifdef Q_OS_UNIX
+  const int fd=::open(QFile::encodeName(file.fileName()).constData(),O_RDONLY|O_CLOEXEC|O_NONBLOCK|O_NOFOLLOW);struct stat identity{};
+  if(fd<0||::fstat(fd,&identity)||!S_ISREG(identity.st_mode)){if(fd>=0)::close(fd);e={"artifact_missing","Cannot read the retained original image",{}};return QJsonObject{};}
+  if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);e={"artifact_missing","Cannot read the retained original image",{}};return QJsonObject{};}
+#else
+  if(!QFileInfo(file).isFile()||!file.open(QIODevice::ReadOnly)){e={"artifact_missing","Cannot read the retained original image",{}};return QJsonObject{};}
+#endif
+  constexpr qint64 inputLimit=32*1024*1024;
+  if(file.size()<1||file.size()>inputLimit){e={"image_limit","This original image is too large to copy safely",{}};return QJsonObject{};}
+  const auto bytes=file.read(inputLimit+1);
+  if(bytes.size()!=data["bytes"].toInteger()||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=data["sha256"].toString()){e={"artifact_changed","The retained original image changed",{}};return QJsonObject{};}
+  // Sixteen-bit RGBA uses eight bytes per pixel; retain that precision.
+  ResourceLimits limits;limits.imagePixels=16000000;limits.imageBytes=128*1024*1024;limits.maxFileBytes=129*1024*1024;
+  // Generic image codecs stay in the transient GUI worker; the resident owns
+  // only the bounded full-size PNG, never a preview or a persistent GUI cache.
+  prepared->kind="image";
+#ifdef Q_OS_UNIX
+  prepared->encodedImage=ImageJob().decodePng(bytes,limits,e,preparation->cancelled);
+#else
+  QBuffer input;input.setData(bytes);input.open(QIODevice::ReadOnly);QImageReader reader(&input);const auto size=reader.size();
+  if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels){e={"image_limit","This original image is too large to copy safely",{}};return QJsonObject{};}
+  const auto image=reader.read();QBuffer output(&prepared->encodedImage);output.open(QIODevice::WriteOnly);
+  if(image.isNull()||image.sizeInBytes()>limits.imageBytes||!image.save(&output,"PNG")||prepared->encodedImage.size()>limits.maxFileBytes)e={"image_read","Could not prepare the retained original image",{}};
+#endif
+  return QJsonObject{};
+  },[complete,eligible,preparation](Error e,QJsonObject){if(preparation->cancelled->load()||!eligible())e={"copy_suppressed","A newer clipboard action superseded this image copy",{}};complete(e);});
+ },{},preparation);
 }
 void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","A newer sharing invocation superseded this copy request",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This record has no confirmed direct URL",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});}
 QJsonObject OperationService::capabilities() const {return {{"source",source_.capabilities()},{"providers",providers_.capabilities()}};}

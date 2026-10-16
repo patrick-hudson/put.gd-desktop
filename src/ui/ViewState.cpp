@@ -34,8 +34,9 @@ bool safeProfile(const QJsonValue& value){
   &&scalars(profile["settings"],provider=="s3"?s3Keys:protonKeys)&&scalars(profile["credentials"],{"mode","reference"});
 }
 bool safeDocument(const QJsonValue& value){
- if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences"}))return false;
+ if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences","captureDefaults"}))return false;
  const auto d=value.toObject();
+ if(d.contains("captureDefaults")&&!scalars(d["captureDefaults"],{"destination","profileId","publicationMode"}))return false;
  if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard"}))return false;
  for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut","publicationMode"}))return false;
  if(!d["profiles"].isArray()||d["profiles"].toArray().size()>32)return false;
@@ -45,9 +46,10 @@ bool safeDocument(const QJsonValue& value){
  return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&scalars(d["preferences"],{"notifications","launchAtLogin","uploadClipboardBehavior"});
 }
 bool protonEditor(const QJsonValue& value){
- if(!fields(value,{"accountRootUid","folders","folderIndex","share","expiration","timeout"}))return false;
+ if(!fields(value,{"accountRootUid","accountEmail","folders","folderIndex","share","expiration","timeout"}))return false;
  const auto editor=value.toObject();const auto folders=editor["folders"];
- if(!editor["accountRootUid"].isString()||!editor["share"].isBool()||!editor["expiration"].isString()||!editor["timeout"].isString()||!folders.isArray()||folders.toArray().size()>10000)return false;
+ if(!editor["accountRootUid"].isString()||!editor["share"].isBool()||!editor["expiration"].isString()||!editor["timeout"].isString()||!folders.isArray()||folders.toArray().size()>10003)return false;
+ if(editor.contains("accountEmail")&&(!editor["accountEmail"].isString()||editor["accountEmail"].toString().size()>320||editor["accountEmail"].toString().contains('\n')||editor["accountEmail"].toString().contains('\r')||editor["accountEmail"].toString().contains(QChar(0))))return false;
  const auto index=editor["folderIndex"].toDouble(-2);
  if(index!=std::floor(index)||index<-1||index>=folders.toArray().size())return false;
  for(const auto& folder:folders.toArray())if(!scalars(folder,{"uid","name","label"},true))return false;
@@ -74,7 +76,8 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
 }
 
 bool settingsState(const QJsonObject& s){
- if(!fields(s,{"draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","geometry","setupJobs","provisionalProfile"}))return false;
+ if(s.contains("autosaveBlocked")&&!s["autosaveBlocked"].isBool())return false;
+ if(!fields(s,{"autosaveBlocked","draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","geometry","setupJobs","provisionalProfile"}))return false;
  if(!safeDocument(s["draft"])||!scalars(s["numbers"],limitKeys+retentionKeys,true)||!geometry(s["geometry"]))return false;
  for(const auto& key:QStringList{"dirty","conflict","initialProfile","advanced"})if(!s[key].isBool())return false;
  for(const auto& key:QStringList{"baseRevision","observedRevision"})if(!s[key].isString())return false;
@@ -86,10 +89,10 @@ bool settingsState(const QJsonObject& s){
   if(!provisional.toObject().isEmpty()&&(!safeProfile(provisional.toObject()["profile"])||!profileEditor(provisional.toObject()["editor"])))return false;
  }
  if(!s["setupJobs"].isArray())return false;
- for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
+ for(auto v:s["setupJobs"].toArray()){if(!scalars(v,{"setupId","kind","profileId","revision"},true))return false;auto job=v.toObject();if(job["setupId"].toString().isEmpty()||!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(job["kind"].toString()))return false;}
  return true;
 }
-bool historyState(const QJsonObject& s){if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry"})||!fields(s["query"],filterKeys+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys,true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;return true;}
+bool historyState(const QJsonObject& s){for(const auto& key:QStringList{"gridMode","showCancelled"})if(s.contains(key)&&!s[key].isBool())return false;if(s.contains("selectedItemId")&&!s["selectedItemId"].isString())return false;if(!fields(s,{"query","filters","selectedIds","deletionId","sharingId","filtersExpanded","managementExpanded","receiptExpanded","geometry","gridMode","showCancelled","selectedItemId"})||!fields(s["query"],filterKeys+QStringList{"limit","offset"})||!scalars(s["filters"],filterKeys,true)||!stringArray(s["selectedIds"])||!s["deletionId"].isString()||(s.contains("sharingId")&&!s["sharingId"].isString())||!geometry(s["geometry"]))return false;auto q=s["query"].toObject();for(auto it=q.begin();it!=q.end();++it)if(it.key()=="limit"||it.key()=="offset"){if(!it.value().isDouble()||std::floor(it.value().toDouble())!=it.value().toDouble()||it.value().toDouble()<0||it.value().toDouble()>2147483647)return false;}else if(!it.value().isString())return false;for(const auto& key:QStringList{"filtersExpanded","managementExpanded","receiptExpanded"})if(!s[key].isBool())return false;return true;}
 }
 Error validateUiState(const QJsonObject& state){
  if(QJsonDocument(state).toJson(QJsonDocument::Compact).size()>maximumUiStateBytes)return {"ui_state_too_large","The draft exceeds the 8 MiB UI state limit. Keep this window open and reduce the draft before closing.",{}};
@@ -99,7 +102,8 @@ Error validateUiState(const QJsonObject& state){
   if(reason=="request_awaiting_acceptance")return {"ui_request_pending","A request is awaiting resident acceptance. Wait for its result before closing this window.",{}};
   return {"ui_state_unclassified","The draft contains unclassified provider settings. Keep this window open and correct these fields before closing.",{}};
  }
- bool valid=fields(state,{"schemaVersion","settings","history","activity"})&&state["schemaVersion"]==1;
+ bool valid=fields(state,{"schemaVersion","settings","history","activity","main"})&&state["schemaVersion"]==1;
+ if(state.contains("main")){const auto main=state["main"].toObject();valid=valid&&fields(state["main"],{"page","geometry"})&&geometry(main["geometry"])&&main["page"].isDouble()&&main["page"].toDouble()==main["page"].toInt()&&main["page"].toInt()>=0&&main["page"].toInt()<=2;}
  if(state.contains("settings"))valid=valid&&state["settings"].isObject()&&settingsState(state["settings"].toObject());
  if(state.contains("history"))valid=valid&&state["history"].isObject()&&historyState(state["history"].toObject());
  if(state.contains("activity")){const auto s=state["activity"].toObject();valid=valid&&fields(state["activity"],{"selectedId","selectedItemId","collapsedIds","geometry"})&&s["selectedId"].isString()&&s["selectedItemId"].isString()&&stringArray(s["collapsedIds"],10000)&&geometry(s["geometry"]);}

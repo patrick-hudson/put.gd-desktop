@@ -72,6 +72,8 @@ deletion-operation ID. Get/cancel default to `kind="operation"`; retry defaults 
 
 History filters are `limit` (1–200), `offset` (nonnegative), `search`, `category`, `mime`,
 `profile_id`, `upload_status`, `local_status`, `remote_status`, `from_date`, `to_date`.
+Configuration patches include the optional `captureDefaults` and inherited action routes;
+the resident validates their complete result.
 The snake-case names map to the CLI's camel-case fields; date bounds are stored ISO UTC
 strings. Search matches a literal display-name substring. Explicit history requests may
 return names/URLs; default diagnostics do not. Browsing fetches no remote bytes.

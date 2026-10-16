@@ -21,7 +21,7 @@ inline QString exact(qint64 bytes, qint64 unit = MiB) {
     return result;
 }
 
-inline QJsonValue fromMiB(const QString& text) {
+inline QJsonValue fromDecimal(const QString& text, qint64 unit = MiB) {
     const auto value = text.trimmed();
     QString digits;
     int decimals = 0;
@@ -40,7 +40,7 @@ inline QJsonValue fromMiB(const QString& text) {
     // Multiply decimal digits by the unit before removing the decimal part. No floating-point rounding.
     qint64 carry = 0;
     for (qsizetype i = digits.size(); i > 0; --i) {
-        const auto n = digits[i - 1].digitValue() * MiB + carry;
+        const auto n = digits[i - 1].digitValue() * unit + carry;
         digits[i - 1] = QChar('0' + int(n % 10));
         carry = n / 10;
     }

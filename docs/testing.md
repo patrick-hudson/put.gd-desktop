@@ -140,7 +140,8 @@ and retain only their controlled report directory. Never include credentials or 
 ## Settings, naming and payload ownership regressions
 
 The standard CTest suite includes settings info-help coverage, fresh S3 drafts,
-Cancel/reload/save feedback, old configuration compatibility, filename templates,
+quiet autosave and explicit reload/retry feedback, in-flight reversion and Quit
+flushing, old configuration compatibility, filename templates,
 Unicode byte bounds, local collision preservation and actual signed S3 collision
 fixtures. `queuedCaptureNameUsesOriginalActionTime` holds an earlier upload for
 1,100 ms, then verifies the queued capture uses its original action timestamp.

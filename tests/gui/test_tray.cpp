@@ -429,7 +429,9 @@ private slots:
   QVERIFY(settings.save(document,{}));CaptureSource source;
   OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
   QStringList views;TrayController controller(operations,[&](const QString& view){views.append(view);},[]{});
-  controller.invokeShortcut("region");controller.invokeShortcut("clipboard");
+  controller.invokeShortcut("region");
+  auto archive=document["archive"].toObject();archive["keepUploads"]=false;document["archive"]=archive;QVERIFY(settings.save(document,settings.revision()));
+  controller.invokeShortcut("clipboard");
   QVERIFY2(views.isEmpty(),"Clipboard bypasses the selection guard but admission errors must not map a view");
   QTRY_COMPARE(source.actions,QStringList{"region"});QCOMPARE(source.copies,0);
  }

@@ -1,10 +1,15 @@
 #include "ui/UiApplicationController.h"
 #include "ui/SettingsWindow.h"
+#include "ui/MainWindow.h"
 #include "ui/AboutWindow.h"
 #include "fixtures/UiSessionFixture.h"
 #include <QApplication>
 #include <QJsonDocument>
 #include <QLineEdit>
+#include <QListWidget>
+#include <QPushButton>
+#include <QScrollBar>
+#include <QStyledItemDelegate>
 #include <QtTest>
 using namespace putgd;using namespace putgd::test;
 class ControlDevice:public QIODevice {
@@ -48,6 +53,48 @@ private slots:
   std::function<void(Error)> pending;fixture.session.setShortcutRecordingHandler([&](bool,auto reply){pending=std::move(reply);});
   completed=false;auto* receiver=new QObject;fixture.session.setShortcutRecording(true,receiver,[&](Error){completed=true;});delete receiver;pending({});QVERIFY(!completed);
  }
+ void finalCloseWaitsForPendingAutosaveDuringAcceptedSetup(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;std::function<void(Error)> complete;UiSessionFixture fixture(settings,secrets,[&](auto,auto,auto reply){complete=reply;});ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);window->findChild<QPushButton*>("testDestination")->click();QTRY_VERIFY(bool(complete));const auto output=dir.filePath("saved-before-close");window->findChild<QLineEdit*>("archiveRoot")->setText(output);window->close();QTest::qWait(500);QVERIFY(device.last("closeRequested").isEmpty());QVERIFY(window->isVisible());complete({});QTRY_COMPARE(settings.document()["archive"].toObject()["root"].toString(),output);QTRY_VERIFY(!window->settings()->saveViewState().contains("stateError"));
+ }
+ void explicitQuitFlushesFinishedEditsBeforeStoppingTheResident_data(){QTest::addColumn<bool>("setupPending");QTest::newRow("debounce")<<false;QTest::newRow("accepted-setup")<<true;}
+ void explicitQuitFlushesFinishedEditsBeforeStoppingTheResident(){
+  QFETCH(bool,setupPending);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;std::function<void(Error)> complete;UiSessionFixture fixture(settings,secrets,[&](auto,auto,auto reply){complete=reply;});ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
+  if(setupPending){window->findChild<QPushButton*>("testDestination")->click();QTRY_VERIFY(bool(complete));}const auto output=dir.filePath("saved-before-quit");fixture.client.replyDelayMs["settings.save"]=350;bool quit=false;QString savedAtQuit;fixture.server.setUiQuit([&]{quit=true;savedAtQuit=settings.document()["archive"].toObject()["root"].toString();});window->findChild<QLineEdit*>("archiveRoot")->setText(output);window->findChild<QPushButton*>("quitApplication")->click();
+  if(setupPending){QTest::qWait(500);QVERIFY(!quit);complete({});}QTRY_VERIFY(quit);QCOMPARE(savedAtQuit,output);
+ }
+ void allMainPagesRemainVisibleWithNativeStyleRowMetrics(){
+  class NativeRows:public QStyledItemDelegate {public:using QStyledItemDelegate::QStyledItemDelegate;QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override{auto size=QStyledItemDelegate::sizeHint(option,index);size.setHeight(qMax(size.height(),52));return size;}};
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);auto* navigation=window.findChild<QListWidget*>("mainNavigation");QVERIFY(navigation);navigation->setItemDelegate(new NativeRows(navigation));window.resize(1060,680);window.show();navigation->setCurrentRow(2);QTest::qWait(100);QCOMPARE(navigation->verticalScrollBar()->maximum(),0);for(int row=0;row<navigation->count();++row){const auto rect=navigation->visualItemRect(navigation->item(row));QVERIFY(rect.top()>=0);QVERIFY(rect.bottom()<navigation->viewport()->height());}
+ }
+ void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch_data(){QTest::addColumn<QString>("action");for(const auto& name:Settings::actionNames())QTest::newRow(qPrintable(name))<<name;}
+ void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch(){
+  QFETCH(QString,action);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);fixture.client.replyDelayMs["settings.save"]=300;
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});device.send("activate",{{"view","about"}});MainWindow* window=nullptr;AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets()){if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;}QVERIFY(window&&about);
+  const auto output=dir.filePath("saved-before-rail");window->findChild<QLineEdit*>("archiveRoot")->setText(output);int invoked=0;bool mainVisible=false,aboutVisible=false;QString savedAtInvocation;
+  fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method!="action.invoke")return;++invoked;mainVisible=window->isVisible();aboutVisible=about->isVisible();savedAtInvocation=settings.document()["archive"].toObject()["root"].toString();fixture.client.failOnce[method]={"fixture_capture_rejected","Synthetic rejection",{}};};
+  QPushButton* button=nullptr;for(auto* candidate:window->findChildren<QPushButton*>())if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);button->click();button->click();QTRY_COMPARE(invoked,1);QCOMPARE(savedAtInvocation,output);QCOMPARE(mainVisible,action=="clipboard");QCOMPARE(aboutVisible,action=="clipboard");QTRY_VERIFY(window->isVisible()&&about->isVisible());QVERIFY(device.last("closeRequested").isEmpty());
+ }
+ void screenRailActionWaitsForAnOpenDialogToBeDismissed(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","history"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);QDialog dialog(window);dialog.setWindowModality(Qt::NonModal);dialog.show();int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke"){++invoked;fixture.client.failOnce[method]={"fixture_rejected","Synthetic rejection",{}};}};QPushButton* button=nullptr;for(auto* candidate:window->findChildren<QPushButton*>())if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();QTest::qWait(300);QCOMPARE(invoked,0);QVERIFY(window->isVisible()&&dialog.isVisible());dialog.reject();button->click();QTRY_COMPARE(invoked,1);QTRY_VERIFY(window->isVisible());
+ }
+ void acceptedScreenRailActionClosesTheHiddenHelperAfterCheckpoint(){
+  QTemporaryDir dir;ProviderRegistry registry;SettingsService settings(dir.filePath("config/config.json"));auto document=Settings::defaults();auto archive=document["archive"].toObject();archive["keepUploads"]=true;archive["root"]=dir.filePath("archive");document["archive"]=archive;QVERIFY(settings.save(document,{}));Source source;source.payload=textPayload();OperationService operations(dir.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
+  ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});QSignalSpy exits(&controller,&UiApplicationController::exitRequested);device.send("activate",{{"view","history"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);QPushButton* button=nullptr;for(auto* candidate:window->findChildren<QPushButton*>())if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);window->move(25,25);QTRY_VERIFY(!device.last("checkpoint").isEmpty());const auto checkpoint=device.last("checkpoint");button->click();QTRY_COMPARE(source.reads,1);QTRY_VERIFY(!window->isEnabled());QVERIFY(!window->isVisible());QVERIFY(device.last("closeRequested").isEmpty());QCOMPARE(exits.size(),0);device.send("checkpointAccepted",{{"replyTo","unknown"}});QVERIFY(device.last("closeRequested").isEmpty());device.send("checkpointAccepted",{{"replyTo",checkpoint["sequence"]}});QTRY_VERIFY(!device.last("closeRequested").isEmpty());const auto close=device.last("closeRequested");device.send("closeAccepted",{{"replyTo",close["sequence"]}});QCOMPARE(exits.size(),1);QCOMPARE(device.last("closeConfirmed")["payload"].toObject()["replyTo"],close["sequence"]);
+ }
+ void screenRailActionKeepsUnstoredCredentialsInTheirWindow_data(){QTest::addColumn<bool>("cached");QTest::newRow("active-destination")<<false;QTest::newRow("other-destination")<<true;}
+ void screenRailActionKeepsUnstoredCredentialsInTheirWindow(){
+  QFETCH(bool,cached);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto other=profiles.first().toObject();other["id"]="synthetic-alternate";other["label"]="Synthetic alternate";profiles.append(other);document["profiles"]=profiles;QVERIFY(settings.save(document,{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","destinations"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);auto* secret=window->findChild<QLineEdit*>("credentialSecretKey");secret->setText("synthetic-unfinished-input");if(cached)window->findChild<QListWidget*>("destinationList")->setCurrentRow(1);int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke")++invoked;};QPushButton* button=nullptr;for(auto* candidate:window->findChildren<QPushButton*>())if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();QTest::qWait(300);QCOMPARE(invoked,0);QVERIFY(window->isVisible());if(cached)window->findChild<QListWidget*>("destinationList")->setCurrentRow(0);QCOMPARE(secret->text(),QString("synthetic-unfinished-input"));QVERIFY(device.last("closeRequested").isEmpty());
+ }
+ void clearedCredentialsAfterDestinationRoundTripAllowScreenCapture(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto other=profiles.first().toObject();other["id"]="synthetic-alternate";other["label"]="Synthetic alternate";profiles.append(other);document["profiles"]=profiles;QVERIFY(settings.save(document,{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","destinations"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);auto* secret=window->findChild<QLineEdit*>("credentialSecretKey");secret->setText("synthetic-unfinished-input");auto* destinations=window->findChild<QListWidget*>("destinationList");destinations->setCurrentRow(1);destinations->setCurrentRow(0);QCOMPARE(secret->text(),QString("synthetic-unfinished-input"));secret->clear();int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke"){++invoked;fixture.client.failOnce[method]={"fixture_rejected","Synthetic rejection",{}};}};QPushButton* button=nullptr;for(auto* candidate:window->findChildren<QPushButton*>())if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();QTRY_COMPARE(invoked,1);QTRY_VERIFY(window->isVisible());
+ }
+ void failedSaveDoesNotLaunchADeferredRailAction(){
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);fixture.client.failOnce["settings.save"]={"config_locked","Synthetic save failure",{}};const auto output=dir.filePath("retry-before-capture");window->findChild<QLineEdit*>("archiveRoot")->setText(output);int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke"){++invoked;fixture.client.failOnce[method]={"fixture_rejected","Synthetic rejection",{}};}};QPushButton* button=nullptr;for(auto* candidate:window->findChildren<QPushButton*>())if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();QTRY_VERIFY(window->settings()->saveViewState()["autosaveBlocked"].toBool());QTest::qWait(300);QCOMPARE(invoked,0);QVERIFY(window->isVisible());for(auto* widget:QApplication::topLevelWidgets())if(auto* notice=qobject_cast<QMessageBox*>(widget))notice->close();window->findChild<QPushButton*>("retryAutosave")->click();QTRY_COMPARE(settings.document()["archive"].toObject()["root"].toString(),output);QTest::qWait(300);QCOMPARE(invoked,0);button->click();QTRY_COMPARE(invoked,1);QTRY_VERIFY(window->isVisible());
+ }
+ void closingOrQuittingDuringRailSaveCancelsOnlyThePendingInvocation_data(){QTest::addColumn<bool>("quit");QTest::newRow("close")<<false;QTest::newRow("quit")<<true;}
+ void closingOrQuittingDuringRailSaveCancelsOnlyThePendingInvocation(){
+  QFETCH(bool,quit);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);fixture.client.replyDelayMs["settings.save"]=300;ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);int invoked=0;fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="action.invoke")++invoked;};const auto output=dir.filePath("saved-without-capture");window->findChild<QLineEdit*>("archiveRoot")->setText(output);QPushButton* button=nullptr;for(auto* candidate:window->findChildren<QPushButton*>())if(candidate->property("captureAction")=="region")button=candidate;QVERIFY(button);button->click();bool stopped=false;fixture.server.setUiQuit([&]{stopped=true;});if(quit)window->findChild<QPushButton*>("quitApplication")->click();else window->close();QTRY_COMPARE(settings.document()["archive"].toObject()["root"].toString(),output);if(quit)QTRY_VERIFY(stopped);else QTRY_VERIFY(!device.last("closeRequested").isEmpty());QTest::qWait(350);QCOMPARE(invoked,0);
+ }
  void finalCloseWaitsForAnOutstandingLargeCheckpoint(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
   const QJsonObject activity{{"selectedId",QString(6*1024*1024,'x')},{"selectedItemId",""},{"collapsedIds",QJsonArray{}},{"geometry",QJsonArray{0,0,500,400}}};
@@ -73,10 +120,10 @@ private slots:
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
   ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
   int exits=0;connect(&controller,&UiApplicationController::exitRequested,this,[&]{++exits;});device.send("activate",{{"view","settings"}});
-  SettingsWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<SettingsWindow*>(widget))window=candidate;
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;
   QVERIFY(window);window->findChild<QLineEdit*>("archiveRoot")->setText("/tmp/retained-draft");
   window->findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-secret-never-checkpointed");window->close();
-  const auto request=device.last("closeRequested");QVERIFY(!request.isEmpty());QVERIFY(!device.output.contains("synthetic-secret"));
+  QTRY_VERIFY(!device.last("closeRequested").isEmpty());const auto request=device.last("closeRequested");QVERIFY(!request.isEmpty());QVERIFY(!device.output.contains("synthetic-secret"));
   device.send("closeRejected",{{"replyTo",request["sequence"]},{"error",QJsonObject{{"code","test_reject"},{"message","Try again"}}}});
   QVERIFY(window->isVisible());QVERIFY(window->isEnabled());QCOMPARE(exits,0);
   QCOMPARE(window->findChild<QLineEdit*>("archiveRoot")->text(),QString("/tmp/retained-draft"));
@@ -89,33 +136,33 @@ private slots:
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);
   ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
   device.send("activate",{{"view","settings"}});device.send("activate",{{"view","about"}});
-  SettingsWindow* window=nullptr;AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets()){if(auto* candidate=qobject_cast<SettingsWindow*>(widget))window=candidate;if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;}
+  MainWindow* window=nullptr;AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets()){if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;}
   QVERIFY(window&&about);window->close();QVERIFY(window->isHidden());QVERIFY(about->isVisible());QVERIFY(device.last("closeRequested").isEmpty());
   device.send("activate",{{"view","settings"}});window->showMinimized();QCoreApplication::processEvents();QVERIFY(device.last("closeRequested").isEmpty());
  }
  void closedMinimizedSettingsDoesNotKeepTheHelperAlive(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
   device.send("activate",{{"view","settings"}});device.send("activate",{{"view","about"}});
-  SettingsWindow* window=nullptr;AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets()){if(auto* candidate=qobject_cast<SettingsWindow*>(widget))window=candidate;if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;}
+  MainWindow* window=nullptr;AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets()){if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;}
   QVERIFY(window&&about);window->showMinimized();window->close();QVERIFY(window->isHidden());about->accept();QTRY_VERIFY(!device.last("closeRequested").isEmpty());
  }
  void closingAboutPreservesCredentialsInOpenSettings(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
   device.send("activate",{{"view","settings"}});device.send("activate",{{"view","about"}});
-  SettingsWindow* window=nullptr;AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets()){if(auto* candidate=qobject_cast<SettingsWindow*>(widget))window=candidate;if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;}
+  MainWindow* window=nullptr;AboutWindow* about=nullptr;for(auto* widget:QApplication::topLevelWidgets()){if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;if(auto* candidate=dynamic_cast<AboutWindow*>(widget))about=candidate;}
   QVERIFY(window&&about);window->findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-input");about->close();QCOMPARE(window->findChild<QLineEdit*>("credentialSecretKey")->text(),QString("synthetic-input"));QVERIFY(device.last("closeRequested").isEmpty());
  }
  void timedOutCloseRemainsImmutableUntilCancellationIsAcknowledged(){
   QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
   int exits=0;connect(&controller,&UiApplicationController::exitRequested,this,[&]{++exits;});device.send("activate",{{"view","settings"}});
-  SettingsWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<SettingsWindow*>(widget))window=candidate;QVERIFY(window);
-  window->findChild<QLineEdit*>("archiveRoot")->setText("/tmp/first-draft");window->close();const auto request=device.last("closeRequested");
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
+  window->findChild<QLineEdit*>("archiveRoot")->setText("/tmp/first-draft");window->close();QTRY_VERIFY(!device.last("closeRequested").isEmpty());const auto request=device.last("closeRequested");
   QTRY_VERIFY_WITH_TIMEOUT(!device.last("closeCancel").isEmpty(),6000);QVERIFY(!window->isEnabled());
   device.send("closeAccepted",{{"replyTo",request["sequence"]}});QCOMPARE(exits,0);QVERIFY(!window->isEnabled());QVERIFY(device.last("closeConfirmed").isEmpty());
   device.send("closeCancelled",{{"replyTo",device.last("closeCancel")["sequence"]}});QVERIFY(window->isEnabled());QCOMPARE(exits,0);
   for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->close();
   QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
-  window->findChild<QLineEdit*>("archiveRoot")->setText("/tmp/newer-draft");window->close();const auto next=device.last("closeRequested");QVERIFY(next["sequence"]!=request["sequence"]);QVERIFY(QJsonDocument(next).toJson().contains("newer-draft"));
+  window->findChild<QLineEdit*>("archiveRoot")->setText("/tmp/newer-draft");window->close();QTRY_VERIFY(device.last("closeRequested")["sequence"]!=request["sequence"]);const auto next=device.last("closeRequested");QVERIFY(next["sequence"]!=request["sequence"]);QVERIFY(QJsonDocument(next).toJson().contains("newer-draft"));
   device.send("closeAccepted",{{"replyTo",request["sequence"]}});QCOMPARE(exits,0);
   device.send("closeAccepted",{{"replyTo",next["sequence"]}});QCOMPARE(exits,1);QCOMPARE(device.last("closeConfirmed")["payload"].toObject()["replyTo"],next["sequence"]);
  }
@@ -124,7 +171,7 @@ private slots:
   ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});
   int exits=0;connect(&controller,&UiApplicationController::exitRequested,this,[&]{++exits;});
   device.send("activate",{{"view","settings"}});
-  SettingsWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<SettingsWindow*>(widget))window=candidate;
+  MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;
   QVERIFY(window);QVERIFY(window->isVisible());window->close();
   QVERIFY2(window->isVisible(),"Keep the last window alive until the resident accepts its draft");
   const auto request=device.last("closeRequested");QVERIFY(!request.isEmpty());QCOMPARE(exits,0);

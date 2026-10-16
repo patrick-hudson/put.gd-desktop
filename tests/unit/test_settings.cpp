@@ -24,6 +24,22 @@ class SettingsContract final : public QObject {
         return file.readAll();
     }
 private slots:
+    void captureDefaultFollowsFutureChangesWithoutChangingExplicitExceptions() {
+        auto doc=putgd::Settings::developmentTemplate();
+        doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","private"}};
+        auto actions=doc["actions"].toObject();
+        for(const auto& name:putgd::Settings::actionNames()){auto action=actions[name].toObject();action["destination"]="default";action["profileId"]=QJsonValue::Null;actions[name]=action;}
+        auto clipboard=actions["clipboard"].toObject();clipboard["destination"]="local";actions["clipboard"]=clipboard;doc["actions"]=actions;
+        auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
+        QVERIFY(!putgd::Settings::validate(doc,validator));const auto accepted=putgd::Settings::fromValidated(doc);
+        QCOMPARE(accepted.actions["region"].profileId,QString("development-s3"));QCOMPARE(accepted.actions["region"].publicationMode,QString("private"));
+        doc["captureDefaults"]=QJsonObject{{"destination","local"},{"profileId",QJsonValue::Null},{"publicationMode","default"}};
+        QVERIFY(!putgd::Settings::validate(doc,validator));const auto changed=putgd::Settings::fromValidated(doc);
+        for(const auto& name:putgd::Settings::actionNames())QCOMPARE(changed.actions[name].destination,QString("local"));
+        QCOMPARE(accepted.actions["region"].destination,QString("upload"));QCOMPARE(changed.document["actions"].toObject()["clipboard"].toObject()["destination"].toString(),QString("local"));
+        doc.remove("captureDefaults");QVERIFY(putgd::Settings::validate(doc,validator));
+    }
+
     void pendingImageBudgetIsOptionalAndValidated() {
         auto document=putgd::Settings::defaults();
         auto limits=document["limits"].toObject();
