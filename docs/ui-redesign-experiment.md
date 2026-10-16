@@ -1,5 +1,10 @@
 # UI redesign experiment — issue 40
 
+This is the historical 2026-10-15 visual experiment record. The user approved the
+first visual round and expanded testing on 2026-10-16. Current merge-preparation
+source and acceptance are recorded in the [dated acceptance receipt](evidence/2026-10-16-issue40-redesign-acceptance.md).
+Deferral statements below describe their original checkpoints.
+
 Baseline: freshly fetched `origin/main` `50fd37c`, branch `codex/ui-redesign-experiment`.
 Source: user-supplied `put.gd-ui-brief.zip` and `BRIEF.md` (2026-10-15).
 The user requested implementation through visual completion in a dedicated directory, local checks only until visual approval. The brief's embedded pause after survey does not override that request. The user explicitly excluded the tray icon pane. No tray source or resident styling is changed.
@@ -93,7 +98,7 @@ The development S3 template differs from fresh defaults: put.gd bucket, us-east-
 - History has no single-record removal endpoint. Keep actual clear/history maintenance and explicitly report that brief item rather than alter storage/history implementation.
 - Copy image and Save as require an available retained original/local copy. Never substitute a thumbnail for the source or silently fetch a remote URL.
 - Proton account disconnection is not part of the current setup endpoint. Preserve browser connect/account inspect/folder creation/password/sharing without pretending a local indicator signs out of the provider.
-- “Make default” means assign the destination to all four actions; independent per-action assignments remain available under Capture, without adding a schema key.
+- “Make default” changes the shared capture default while preserving explicit per-action exceptions. The optional `captureDefaults` object and `destination=default` inheritance are documented below and in configuration.md.
 
 ## Verification record
 

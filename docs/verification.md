@@ -1,5 +1,16 @@
 # Implementation evidence
 
+## Unified UI acceptance — 2026-10-16
+
+The [issue 40 receipt](evidence/2026-10-16-issue40-redesign-acceptance.md) records
+frozen product source `1010842`, including the History clipboard ownership and
+16-bit precision corrections: full
+58/58 Dev and ASan/UBSan suites, audited native
+packages, Cinnamon-first functional/memory gates, then GNOME/Wayland and KDE/Wayland
+acceptance with independent paste and two five-minute post-use observations each.
+The JSON companion binds package, running-process, module and helper identities.
+The wider physical, mixed-display and U9/U10 release gates below remain separate.
+
 ## Current acceptance index — 2026-10-13
 
 The historical source108 GNOME/KDE TLS failures were superseded by the passing
