@@ -511,7 +511,8 @@ void OperationService::copyHistoryImage(const QString& id,JsonReply reply) {
   if(file.size()<1||file.size()>inputLimit){e={"image_limit","This original image is too large to copy safely",{}};return QJsonObject{};}
   const auto bytes=file.read(inputLimit+1);
   if(bytes.size()!=data["bytes"].toInteger()||QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())!=data["sha256"].toString()){e={"artifact_changed","The retained original image changed",{}};return QJsonObject{};}
-  ResourceLimits limits;limits.imagePixels=16000000;limits.imageBytes=64*1024*1024;limits.maxFileBytes=65*1024*1024;
+  // Sixteen-bit RGBA uses eight bytes per pixel; retain that precision.
+  ResourceLimits limits;limits.imagePixels=16000000;limits.imageBytes=128*1024*1024;limits.maxFileBytes=129*1024*1024;
   // Generic image codecs stay in the transient GUI worker; the resident owns
   // only the bounded full-size PNG, never a preview or a persistent GUI cache.
   prepared->kind="image";
