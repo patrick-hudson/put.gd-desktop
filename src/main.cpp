@@ -18,6 +18,7 @@
 #include <QJsonDocument>
 #include "app/LocalIpc.h"
 #include <QUuid>
+#include <QTimer>
 #include <atomic>
 #include <mutex>
 #include <memory>
@@ -232,7 +233,8 @@ int main(int argc,char* argv[]) {
  if(kde)QObject::connect(kde,&putgd::KdeSourceAdapter::capabilitiesChanged,&ui,refreshSettingsDiagnostics);
 #endif
  const auto quitApplication=[&]{ui.shutdown([&]{app.quit();});};
- putgd::TrayController tray(operations,[&](const QString& requested){ui.activate(requested);},quitApplication);
+ QTimer startupRecovery;startupRecovery.setSingleShot(true);startupRecovery.setTimerType(Qt::PreciseTimer);
+ putgd::TrayController tray(operations,[&](const QString& requested){startupRecovery.stop();ui.activate(requested);},quitApplication);
  // Native shortcuts use the tray feedback with selection-safe re-entry handling.
  const auto requested=[&tray,&recordingShortcut](const QString& action){if(!recordingShortcut)tray.invokeShortcut(action);};
 #ifdef PUTGD_NATIVE_X11
@@ -247,7 +249,7 @@ int main(int argc,char* argv[]) {
 #endif
  server.setUiQuit(quitApplication);
  QObject::connect(&ui,&putgd::UiProcessController::failure,&tray,&putgd::TrayController::notifyFailure);
- server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){ui.activate(requested,std::move(reply));});
+ server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){startupRecovery.stop();ui.activate(requested,std::move(reply));});
  server.setUiDiagnostics([&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();return diagnostics;});
  QObject::connect(&settings,&putgd::SettingsService::statusChanged,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&operations,&putgd::OperationService::initialized,&ui,&putgd::UiProcessController::invalidate);
@@ -267,11 +269,11 @@ int main(int argc,char* argv[]) {
  configureLogin();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,configureLogin);
  const auto showInitialView=[&]{if(view=="history")tray.showHistory();else if(view=="activity")tray.showActivity();else tray.showSettings();};
  if(!parser.isSet("background")||settings.revision().isEmpty())showInitialView();
- else {
-  // A pending native registration is not evidence that the tray is absent.
-  // The transport resolves its bounded discovery without a nested event loop.
-  if(tray.availabilityKnown()){if(!tray.available())showInitialView();}
-  else QObject::connect(&tray,&putgd::TrayController::availabilityResolved,&tray,[&tray]{if(!tray.available())tray.showSettings();},Qt::SingleShotConnection);
+ else if(!tray.available()) {
+  // XDG autostart can precede the desktop's tray watcher or host. Give them a
+  // bounded startup grace period before exposing the no-tray recovery window.
+  QObject::connect(&startupRecovery,&QTimer::timeout,&tray,[&]{if(!tray.available())showInitialView();});
+  startupRecovery.start(10000);
  }
  QObject::connect(&app,&QCoreApplication::aboutToQuit,&operations,[&]{proton->shutdown();operations.shutdown();});
  return app.exec();
