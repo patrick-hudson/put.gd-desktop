@@ -145,8 +145,16 @@ TrayController::TrayController(OperationService& operations,
  errorRecoveryTimer_.setSingleShot(true);
  errorRecoveryTimer_.setInterval(3000);
  errorRecoveryTimer_.setTimerType(Qt::PreciseTimer);
- uploadCompleteTimer_.setSingleShot(true);uploadCompleteTimer_.setInterval(300);
- connect(&uploadCompleteTimer_,&QTimer::timeout,this,&TrayController::refreshActivity);
+ uploadRevealTimer_.setSingleShot(true);uploadRevealTimer_.setInterval(200);
+ uploadRevealTimer_.setTimerType(Qt::PreciseTimer);
+ connect(&uploadRevealTimer_,&QTimer::timeout,this,[this] {
+  if(operations_.storageActive()&&!errorFlashTimer_.isActive()) {uploadVisible_=true;uploadVisibleClock_.start();}
+  refreshActivity();
+ });
+ uploadCompleteTimer_.setSingleShot(true);uploadCompleteTimer_.setTimerType(Qt::PreciseTimer);
+ connect(&uploadCompleteTimer_,&QTimer::timeout,this,[this] {
+  uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();refreshActivity();
+ });
  connect(&errorFlashTimer_,&QTimer::timeout,this,[this] {
   errorRed_=!errorRed_;
   refreshActivity();
@@ -195,7 +203,6 @@ bool TrayController::availabilityKnown() const { return true; }
 #endif
 void TrayController::refreshActivity() {
  const auto observations=operations_.activeObservations();
- if(operations_.storageActive()||!observations.isEmpty())uploadCompleteTimer_.stop();
  QSet<QString> activeIds;
  for(const auto& value:observations) {
   const auto op=value.toObject();
@@ -203,21 +210,39 @@ void TrayController::refreshActivity() {
   if(!op["destination"].toObject()["providerId"].toString().isEmpty())activeUploads_.insert(op["id"].toString());
  }
  auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
- for(const auto& id:finished)operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
-  if(!guard||error||operation["state"]!="completed"||guard->errorFlashTimer_.isActive()||guard->operations_.storageActive()||!guard->operations_.activeObservations().isEmpty())return;
-  for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploaded") {
-   guard->uploadCompleteTimer_.start();guard->refreshActivity();break;
-  }
- });
- const bool completing=uploadCompleteTimer_.isActive();
- const auto text=completing?QString("Upload complete"):activityText(observations);
- // Error pulses have priority; the off phase is blue even during other requests.
+ const bool working=operations_.storageActive()||!activeUploads_.isEmpty();
+ if(errorFlashTimer_.isActive()) {
+  uploadRevealTimer_.stop();uploadCompleteTimer_.stop();
+  uploadVisible_=false;uploadCompleted_=false;uploadVisibleClock_.invalidate();
+ } else if(working) {
+  uploadCompleteTimer_.stop();uploadCompleted_=false;
+  if(!uploadVisible_&&operations_.storageActive()&&!uploadRevealTimer_.isActive())uploadRevealTimer_.start();
+ } else uploadRevealTimer_.stop();
+ for(const auto& id:finished) {
+  ++pendingUploadFinishes_;
+  operations_.inspect(id,[guard=QPointer<TrayController>(this)](Error error,QJsonObject operation) {
+   if(!guard)return;
+   --guard->pendingUploadFinishes_;
+   if(!error&&operation["state"]=="completed"&&guard->uploadVisible_&&!guard->errorFlashTimer_.isActive()&&
+      !guard->operations_.storageActive()&&guard->operations_.activeObservations().isEmpty()) {
+    for(const auto& value:operation["items"].toArray())if(value.toObject()["uploadStatus"]=="uploaded") {
+     guard->uploadCompleted_=true;break;
+    }
+   }
+   guard->refreshActivity();
+  });
+ }
+ if(uploadVisible_&&!working&&pendingUploadFinishes_==0&&!uploadCompleteTimer_.isActive())
+  uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
+ const auto text=uploadCompleted_?QString("Upload complete"):
+                 uploadVisible_&&!working?QString("Finishing upload"):activityText(observations);
  const auto color=errorFlashTimer_.isActive()?QColor(errorRed_?"#ffb4ab":"#9bbcff"):
-                  QColor(operations_.storageActive()||completing?"#62d69b":"#9bbcff");
+                  QColor(uploadVisible_?"#62d69b":"#9bbcff");
  int percent=-1;
- if(!errorFlashTimer_.isActive()) {
-  if(completing)percent=100;
+ if(uploadVisible_&&!errorFlashTimer_.isActive()) {
+  if(uploadCompleted_)percent=100;
   else if(operations_.storageActive())percent=uploadPercent(observations);
+  else percent=iconPercent_;
  }
  if(color==iconColor_&&percent==iconPercent_&&text==activityText_)return;
 #ifdef Q_OS_LINUX

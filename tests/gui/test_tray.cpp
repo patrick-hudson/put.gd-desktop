@@ -61,14 +61,31 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
- void fastUploadShowsFullReceiptFrameWithoutProgressCallbacks() {
+ void fastUploadsDoNotFlashTheIcon() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->prepareUploads=true;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
   Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){QFAIL("Completion must not open a view");},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();const auto idle=tray->icon().pixmap(24,24).toImage();
-  operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});
-  QTRY_VERIFY(tray->toolTip().contains("Upload complete"));
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),VisualStyle::icon("tray",QColor("#62d69b")).pixmap(24,24).toImage());
+  bool changed=false;QTimer sampler;sampler.setInterval(1);connect(&sampler,&QTimer::timeout,this,[&]{changed=changed||tray->icon().pixmap(24,24).toImage()!=idle;});sampler.start();
+  for(int i=0;i<3;++i){
+   bool accepted=false;operations.invoke("clipboard",[&](Error error,QJsonObject){QVERIFY(!error);accepted=true;});
+   QTRY_VERIFY(accepted);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  }
+  QTest::qWait(350);QVERIFY2(!changed,"Brief successful uploads must not flash green or a completion frame");
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+ }
+
+ void visibleUploadFinishesWithoutAnIdleGapAndHoldsItsFrame() {
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();const auto idle=tray->icon().pixmap(24,24).toImage();
+  auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});
+  operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});QTRY_COMPARE(provider->requests.size(),1);
+  QTRY_VERIFY(tray->icon().pixmap(24,24).toImage()!=idle);QElapsedTimer visible;visible.start();
+  bool idleGap=false;QTimer sampler;sampler.setInterval(1);connect(&sampler,&QTimer::timeout,this,[&]{idleGap=idleGap||tray->icon().pixmap(24,24).toImage()==idle;});sampler.start();
+  provider->completions.takeFirst()();QTRY_VERIFY(tray->toolTip().contains("Upload complete"));
+  QTest::qWait(qMax(0,450-int(visible.elapsed())));QVERIFY2(!idleGap,"Visible progress must hold green through receipt lookup and completion");sampler.stop();
   QTRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idle);
  }
 
@@ -131,7 +148,7 @@ private slots:
   QVERIFY(views.isEmpty());
   provider->requests.first().progress({"preparing",0,4*1024*1024});
   QTRY_VERIFY(tray->toolTip().contains("Preparing"));
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),idleIcon);
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),empty);
   provider->requests.first().progress({"uploading",8*1024*1024,{}});
   QTRY_VERIFY(tray->toolTip().contains("8 MiB transferred"));
   QVERIFY(tray->toolTip().contains("Source size: 4 MiB"));QVERIFY(tray->toolTip().contains("Estimated 99%"));
@@ -157,6 +174,7 @@ private slots:
   QTRY_COMPARE(provider->requests.size(),2);
   provider->requests.last().progress({"uploading",2*1024*1024,{}});
   QTRY_VERIFY(tray->toolTip().contains("Estimated 50%"));
+  QTRY_COMPARE(tray->icon().pixmap(24,24).toImage(),half);
   provider->completions.takeFirst()();
   QTRY_VERIFY(tray->toolTip().contains("Upload complete"));
   QCOMPARE(tray->icon().pixmap(24,24).toImage(),full);
@@ -218,7 +236,7 @@ private slots:
   QList<bool> transitions;connect(&operations,&OperationService::storageActivityChanged,this,[&]{transitions.append(operations.storageActive());});
   provider->checkCompletions.takeFirst()();QTRY_COMPARE(provider->requests.size(),1);
   QVERIFY2(!transitions.contains(true),"An upload still preparing must not produce even a transient green event");
-  QCOMPARE(tray->icon().pixmap(24,24).toImage(),blue);
+  QCOMPARE(tray->icon().pixmap(24,24).toImage(),green);
   provider->requests.first().progress({"uploading",0,provider->requests.first().artifact.bytes});QTRY_COMPARE(tray->icon().pixmap(24,24).toImage(),green);
   provider->completions.takeFirst()();QTRY_COMPARE(tray->icon().pixmap(24,24).toImage(),blue);
  }

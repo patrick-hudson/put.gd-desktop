@@ -100,8 +100,9 @@ There are no justified unresolved code findings from that review.
 Current-source GNOME/KDE graphical and memory checks, live S3/Proton tray-progress
 replays, native host-restart recovery and native high-DPI/mixed-display checks
 remain pending. This record does not establish full desktop/provider acceptance;
-the pull request remains a draft. No cloud transfers or credential provisioning
-were performed by this local-only campaign.
+those gates remain pending. PR #48 was subsequently marked ready for review by
+the user. No cloud transfers or credential provisioning were performed by the
+local-only campaign above.
 
 The private evidence root is `work/i47/` in the canonical checkout. It retains
 source/archive identities, review and resolution records, all failed test logs,
@@ -109,3 +110,37 @@ package receipts, native scenario identities, rendered PNGs, memory samples and
 cleanup receipts. All 24 scenario evidence directories from the initial and final
 Cinnamon waves were hash-verified; their host-side files remain under
 `work/lab-runs/i47c1/tests/`. These private archives are outside release exports.
+
+## Local preview and upload-timing follow-up
+
+A separate local S3 playground was launched with private configuration/data and
+an OS-keychain LAB reference. The explicit destination test completed its
+synthetic upload, matching public download and exact-object cleanup. User-created
+playground uploads are retained in that isolated history. Credentials were read
+only in memory from the protected local input; no secret values enter this record.
+
+Cinnamon initially resolved the taskbar identity through two older local desktop
+entries with absolute paths to the previous icon. Their icon references were
+updated to Lift with backups preserved, and only the put.gd taskbar group was
+refreshed. The new taskbar glyph was visually verified without restarting the
+desktop or interrupting uploads. Fresh package acceptance remains separate.
+
+The user then reported rapid dim-green/bright-green/blue transitions on small
+uploads. Two tray tests reproduced the fast-upload completion flash and the idle
+gap during asynchronous receipt inspection. Both failed before the timing fix
+and passed afterward. The full tray group then passed all 26 Qt cases in 52.55 s.
+Green now waits 200 ms before appearing. Work that finishes inside that delay
+keeps the blue icon. Revealed activity remains green for at least 600 ms and
+terminal feedback for at least 200 ms; receipt inspection and pipeline gaps keep
+the displayed frame. Immediate red pulses retain priority and their original
+timing. The local playground was refreshed with this change while idle, retaining
+its configuration/history and explicitly unlocking its S3 reference again.
+
+A five-lens simplification pass and focused correctness/adversarial review found
+no unresolved code findings. The attempted Anthropic review could not refresh
+its OAuth session before reviewing; the independent in-process adversarial
+fallback completed instead. Native short-upload burst/threshold rendering, the
+complete suite and the remaining desktop/provider gates still require the final
+committed timing candidate. The pre-fix full-suite run was preserved and stopped
+with SIGINT when that candidate was superseded; it is not final acceptance.
+Private follow-up evidence remains under `work/i47/` and `/tmp/pg48/`.

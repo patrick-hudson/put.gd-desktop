@@ -40,7 +40,10 @@ private:
  void notifyMessage(const QString&, const QString&, bool warning);
  void refreshActivity();
  void flashError();
- QTimer errorFlashTimer_,errorRecoveryTimer_,uploadCompleteTimer_;
+ QTimer errorFlashTimer_,errorRecoveryTimer_,uploadRevealTimer_,uploadCompleteTimer_;
+ QElapsedTimer uploadVisibleClock_;
+ bool uploadVisible_=false,uploadCompleted_=false;
+ int pendingUploadFinishes_=0;
  bool errorRed_=false;
  QColor iconColor_=QColor("#9bbcff");
  int iconPercent_=-1;

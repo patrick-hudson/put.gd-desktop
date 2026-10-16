@@ -228,8 +228,12 @@ the rejected SNI text is redacted from failure evidence.
 Rounded tooltip bytes must fit real observed byte bounds and their own
 integer percentage. A source-size fallback must be labelled `Estimated`, match
 the actual counters/source bytes, and stop at 99% while awaiting finalization or
-receipt. No elapsed-time percentage is accepted. A confirmed successful upload
-briefly displays a full green Lift glyph before returning to blue idle. Partial
+receipt. No elapsed-time percentage is accepted. Green activity is revealed after
+200 ms; successful work that finishes before that delay leaves the blue icon
+unchanged. Once revealed, green stays visible for at least 600 ms, including at
+least 200 ms of terminal feedback. A confirmed successful upload displays full
+green before returning to blue. Pending receipt lookup and gaps between storage
+phases retain the last visible frame. Tooltips update during the reveal delay. Partial
 fills include a dim green base, which is still green storage feedback at 0%.
 Destination checks and storage work without a usable transfer denominator use
 that dim green frame rather than appearing complete before transfer begins.
