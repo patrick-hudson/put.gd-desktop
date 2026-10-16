@@ -8,6 +8,8 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPushButton>
+#include <QScrollBar>
+#include <QStyledItemDelegate>
 #include <QtTest>
 using namespace putgd;using namespace putgd::test;
 class ControlDevice:public QIODevice {
@@ -59,6 +61,10 @@ private slots:
   QFETCH(bool,setupPending);QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(settings.save(Settings::developmentTemplate(),{}));CredentialStore secrets;std::function<void(Error)> complete;UiSessionFixture fixture(settings,secrets,[&](auto,auto,auto reply){complete=reply;});ControlDevice device;UiControl control(device);UiApplicationController controller(fixture.session,control,{});device.send("activate",{{"view","settings"}});MainWindow* window=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(auto* candidate=qobject_cast<MainWindow*>(widget))window=candidate;QVERIFY(window);
   if(setupPending){window->findChild<QPushButton*>("testDestination")->click();QTRY_VERIFY(bool(complete));}const auto output=dir.filePath("saved-before-quit");fixture.client.replyDelayMs["settings.save"]=350;bool quit=false;QString savedAtQuit;fixture.server.setUiQuit([&]{quit=true;savedAtQuit=settings.document()["archive"].toObject()["root"].toString();});window->findChild<QLineEdit*>("archiveRoot")->setText(output);window->findChild<QPushButton*>("quitApplication")->click();
   if(setupPending){QTest::qWait(500);QVERIFY(!quit);complete({});}QTRY_VERIFY(quit);QCOMPARE(savedAtQuit,output);
+ }
+ void allMainPagesRemainVisibleWithNativeStyleRowMetrics(){
+  class NativeRows:public QStyledItemDelegate {public:using QStyledItemDelegate::QStyledItemDelegate;QSize sizeHint(const QStyleOptionViewItem& option,const QModelIndex& index)const override{auto size=QStyledItemDelegate::sizeHint(option,index);size.setHeight(qMax(size.height(),52));return size;}};
+  QTemporaryDir dir;SettingsService settings(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(settings,secrets);MainWindow window(fixture.session);auto* navigation=window.findChild<QListWidget*>("mainNavigation");QVERIFY(navigation);navigation->setItemDelegate(new NativeRows(navigation));window.resize(1060,680);window.show();navigation->setCurrentRow(2);QTest::qWait(100);QCOMPARE(navigation->verticalScrollBar()->maximum(),0);for(int row=0;row<navigation->count();++row){const auto rect=navigation->visualItemRect(navigation->item(row));QVERIFY(rect.top()>=0);QVERIFY(rect.bottom()<navigation->viewport()->height());}
  }
  void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch_data(){QTest::addColumn<QString>("action");for(const auto& name:Settings::actionNames())QTest::newRow(qPrintable(name))<<name;}
  void railActionsFlushSettingsAndHideScreenWindowsBeforeDispatch(){
