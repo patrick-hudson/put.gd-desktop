@@ -452,7 +452,7 @@ QString SettingsWindow::autosaveText()const{
  return {};
 }
 void SettingsWindow::showCaptureSettings(){tabs_->setCurrentIndex(1);}
-bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits and closing.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
+bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;
  if(pendingEdits_.isEmpty())return;
@@ -613,11 +613,28 @@ void SettingsWindow::clearCredentialInputs(){
  access_->clear();secret_->clear();token_->clear();
 }
 void SettingsWindow::closeEvent(QCloseEvent* event){clearCredentialInputs();RetainedWindow::closeEvent(event);}
-bool SettingsWindow::hasRetainedDrafts()const{
- if(!provisionalProfile_.isEmpty()||!access_->text().isEmpty()||!secret_->text().isEmpty()||!token_->text().isEmpty()||!protonPassword_->text().isEmpty())return true;
- for(const auto& editor:profileEditors_)if(editor.toObject()["providers"].toObject().size()>1)return true;
- for(const auto& destination:credentialDrafts_)for(const auto& inputs:destination)
+Error SettingsWindow::actionSaveError()const{
+ if(!conflict_&&!autosaveBlocked_&&!dirty_)return {};
+ const auto message=status_->property("feedbackTone")=="error"&&!status_->text().isEmpty()?status_->text():QStringLiteral("The latest settings couldn’t be saved. The draft is still open.");
+ return {"settings_not_saved",message,{}};
+}
+bool SettingsWindow::hasCredentialInputs()const{
+ if(!access_->text().isEmpty()||!secret_->text().isEmpty()||!token_->text().isEmpty()||!protonPassword_->text().isEmpty())return true;
+ for(int index=0;index<credentialDrafts_.size();++index){
+  const auto& destination=credentialDrafts_[index];
+  for(auto it=destination.cbegin();it!=destination.cend();++it){
+   if(index==profileIndex_&&it.key()==providerType_->currentData().toString())continue;
+   const auto& inputs=it.value();
+   if(!inputs.access.isEmpty()||!inputs.secret.isEmpty()||!inputs.token.isEmpty()||!inputs.password.isEmpty())return true;
+  }
+ }
+ for(const auto& inputs:provisionalCredentials_)
   if(!inputs.access.isEmpty()||!inputs.secret.isEmpty()||!inputs.token.isEmpty()||!inputs.password.isEmpty())return true;
+ return false;
+}
+bool SettingsWindow::hasRetainedDrafts()const{
+ if(!provisionalProfile_.isEmpty()||hasCredentialInputs())return true;
+ for(const auto& editor:profileEditors_)if(editor.toObject()["providers"].toObject().size()>1)return true;
  return false;
 }
 void SettingsWindow::configurationChanged(){

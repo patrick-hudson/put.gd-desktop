@@ -30,3 +30,9 @@ filenames, history URLs, authorization values or credential references.
 Unknown publication/deletion, failed local save and successful remote upload are
 independent states. Cancelling a job cannot promise rollback after a network mutation
 was sent. Origin deletion does not invalidate browser/CDN caches or remove local files.
+
+The UI also reports `settings_not_saved` when an action cannot proceed with unsaved
+settings, and `credentials_not_stored` when a screen capture would close unfinished
+credential entry. The window stays open. Resolve the displayed save failure or
+Store/clear the credentials, then start the action again. No action is admitted
+by either rejection.

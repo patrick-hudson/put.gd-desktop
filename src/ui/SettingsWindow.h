@@ -19,6 +19,7 @@ public:
  QJsonObject saveViewState()const;
  bool restoreViewState(const QJsonObject&);
  bool flushAutosave();
+ Error actionSaveError()const;bool hasCredentialInputs()const;
  QString autosaveText()const;
  void showCaptureSettings();
  QWidget* destinationsPage()const{return destinationPage_;}
