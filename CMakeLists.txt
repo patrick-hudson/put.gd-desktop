@@ -561,6 +561,13 @@ if(BUILD_TESTING)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_executable(test_gnome_bridge tests/integration/test_gnome_bridge.cpp)
     target_link_libraries(test_gnome_bridge PRIVATE putgd_gnome Qt6::Test)
+    add_library(putgd_gnome_mime_fixture MODULE tests/fixtures/GnomeImageMimePlugin.cpp)
+    target_link_libraries(putgd_gnome_mime_fixture PRIVATE Qt6::Gui)
+    set_target_properties(putgd_gnome_mime_fixture PROPERTIES
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture/imageformats")
+    target_compile_definitions(test_gnome_bridge PRIVATE
+      PUTGD_GNOME_MIME_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture")
+    add_dependencies(test_gnome_bridge putgd_gnome_mime_fixture)
     add_test(NAME gnome_bridge_contract COMMAND test_gnome_bridge)
     find_program(PUTGD_DBUS_RUN_SESSION NAMES dbus-run-session REQUIRED)
     add_test(NAME gnome_core_transport_integration COMMAND "${PUTGD_DBUS_RUN_SESSION}" -- $<TARGET_FILE:test_gnome_bridge> --core-adapter-transport)

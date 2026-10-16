@@ -1,0 +1,10 @@
+{
+  "Keys": [
+    "putgd-gnome-image",
+    "putgd-gnome-application"
+  ],
+  "MimeTypes": [
+    "image/x-putgd-gnome-mime",
+    "application/x-putgd-gnome-mime"
+  ]
+}
