@@ -129,7 +129,8 @@ private slots:
  }
  void recreatedHistoryResumesSharingInspectionWithoutReplay(){
   QFETCH(QString,outcome);QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<PendingSharingProvider>();provider->outcome=outcome;registry.add("opaque",provider);
-  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
+  // Keep journal directory metadata outside the config directory watcher.
+  SettingsService settings(d.filePath("config/config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));Source source;source.payload=textPayload();
   OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->storage.uploads.load(),1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);
   auto drain=qScopeGuard([&]{provider->released.store(true);operations.shutdown();});
@@ -137,7 +138,8 @@ private slots:
   QJsonObject acceptedState;connect(original.get(),&HistoryWindow::viewStateChanged,this,[&]{const auto state=original->saveViewState();if(!state["sharingId"].toString().isEmpty())acceptedState=state;});
   create->click();QTRY_VERIFY(provider->entered.load());QTRY_VERIFY(!acceptedState["sharingId"].toString().isEmpty());QVERIFY(!validateUiState({{"schemaVersion",1},{"history",acceptedState}}));
   auto legacyState=acceptedState;legacyState.remove("sharingId");QVERIFY(!validateUiState({{"schemaVersion",1},{"history",legacyState}}));auto invalidState=acceptedState;invalidState["sharingId"]=QJsonObject{{"unsupported","value"}};QCOMPARE(validateUiState({{"schemaVersion",1},{"history",invalidState}}).code,QString("ui_state_invalid"));
-  original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(acceptedState));reopened.show();QCOMPARE(reopened.saveViewState()["sharingId"].toString(),acceptedState["sharingId"].toString());QTRY_COMPARE(reopened.findChild<QListView*>("historyList")->selectionModel()->selectedRows().size(),1);QVERIFY(!reopened.findChild<QPushButton*>("shareHistoryLink")->isEnabled());
+  // Selection is restored before the asynchronous inspector details arrive.
+  fixture.client.replyDelayMs["history.detail"]=350;original.reset();HistoryWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(acceptedState));reopened.show();QCOMPARE(reopened.saveViewState()["sharingId"].toString(),acceptedState["sharingId"].toString());QTRY_COMPARE(reopened.findChild<QListView*>("historyList")->selectionModel()->selectedRows().size(),1);QTRY_VERIFY(!reopened.findChild<QPlainTextEdit*>("historyDetails")->toPlainText().isEmpty());QVERIFY(!reopened.findChild<QPushButton*>("shareHistoryLink")->isEnabled());
   provider->released.store(true);QLabel* status=nullptr;for(auto* label:reopened.findChildren<QLabel*>())if(label->accessibleName()=="History status")status=label;QVERIFY(status);
   QTRY_VERIFY(status->text().contains("Link: "+outcome));if(outcome=="failed")QVERIFY(status->text().contains("Synthetic sharing failure"));
   QTRY_VERIFY(reopened.findChild<QLabel*>("historySummary")->text().contains(outcome=="shared"?"Shared link":"Sharing failed"));QVERIFY(status->text().contains("Link: "+outcome));
