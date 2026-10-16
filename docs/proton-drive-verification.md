@@ -6,8 +6,8 @@ Proton is a retained experimental integration intended for production shipment
 and ongoing support. Upstream endorsement/general availability is not a release
 gate under the user-approved decision. The [evidence and release-gate register](proton-drive-release-gates.md)
 is the current reconciliation: it credits the merged local and native campaigns,
-links the P1 recipient/service and native recovery receipts, and lists the concrete
-notices, shipping-pipeline, compatibility and final-acceptance work still open.
+links the P1 recipient/service and native recovery receipts and the completed
+notice, shipping, maintenance and source-specific package acceptance records.
 The [service campaign](evidence/2026-10-15-proton-p1-recovery.md) and
 [normal-use application follow-up](evidence/2026-10-15-proton-p1-app-recovery.md)
 complete P1 within their recorded scope. The
@@ -16,7 +16,15 @@ recorded Cinnamon workload: 487.25 MiB active peak, 31.305 MiB post-use idle,
 helpers drained, and a smaller-heap experiment measured and reverted. The user
 chose optimization without a hard total active-memory ceiling; the provisional
 512 MiB reference is not a release gate. Frozen idle limits remain unchanged.
-P3–P6, including final-main packaged multi-desktop acceptance, remain open.
+P3 is complete in its linked redistribution/rebuild records. The
+[final P4/P6 receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) records actual shipping artifacts, source
+publication and extracted rebuild, Cinnamon-first then GNOME/KDE native checks,
+Fedora/AppImage smoke checks, and retained cleanup evidence at `a5112bc`. P5
+credits the actual completed Crypto maintenance transition. The official JS
+helper remains the production path; the separate native trial is preserved and
+unadopted. Merge the local wrap-up changes before closing #10. Tagged application
+release and general project certification remain separate; no current-main
+acceptance is claimed.
 
 The checkpoints below are historical. PR #30 supersedes their initial pending
 native tray/setup statements for its tested source and scope; newer changes still

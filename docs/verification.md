@@ -20,15 +20,18 @@ Full release readiness has not been established. The requirements remain in the
 
 ## Proton evidence reconciliation — 2026-10-15
 
-The [Proton register](proton-drive-release-gates.md) is the current feature-specific
-acceptance index for issue #10. It credits the merged authenticated local and
-PR #30 native campaigns at their exact sources, separates later offline S3 tray
-and incomplete settings desktop evidence, and retains recipient verification as
-issue-reported pending its supporting receipt. Recovery, authenticated helper
-memory, notices, Proton-enabled release/source assets, update-path verification
-and final-candidate acceptance remain open. The user approved production shipment
-and ongoing support as an experimental integration; upstream endorsement is not
-a gate. This documentation audit ran no build, tests or live acceptance campaign.
+The [Proton register](proton-drive-release-gates.md) credits the merged integration
+and the source-specific P1 recovery/recipient, P2 resource and P3 source/rebuild
+receipts. The [final P4/P6 receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) records the actual packaged
+experimental Proton candidate `a5112bc`: source publication/extracted production
+rebuild, package inventories, Cinnamon-first functional/memory acceptance then
+GNOME/KDE, Fedora/AppImage smoke checks and secure test-session cleanup. P5 credits
+the actual completed Crypto maintenance transition. The official JS helper is
+retained; the native trial remains separate and unadopted.
+
+Merge the local wrap-up changes before closing #10. No tagged application release,
+full hosted CI, physical/current-main certification or new S3 regression result
+is claimed. The wider project release gates above remain in force.
 
 ## Historical implementation checkpoints
 

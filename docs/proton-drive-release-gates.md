@@ -46,19 +46,25 @@ SDK process families and rejects a memory experiment. None certifies final main.
 | Cold/resident memory | PR #30 records two five-minute physical whole-family cold peaks of 25.09/25.18 MiB and VM resident observations of 25.53 MiB Cinnamon, 27.46 MiB GNOME and 29.06 MiB KDE | VM samples exclude the compositor and do not measure authenticated active-helper memory. The cold target is not an active-upload budget. |
 | Later shared tray changes | [Issue #33 native receipt](evidence/2026-10-14-storage-tray-native.md), source `061c2d9c569dc10b5c8681a7ad7beb3093e61b80`: three-desktop rendered states and two post-use memory windows passed | Uses a synthetic offline S3 wire oracle, not a live Proton account. Do not substitute it for the earlier live Proton campaign. |
 | Later settings changes | [Issue #37 record](evidence/2026-10-14-settings-drafts.md), final tested candidate `337773f4d5cef719b3f54d59bdb336ba3121f453`: Cinnamon graphical/memory passed; KDE 59/59 and GNOME 60/60 development suites passed | Final host suite was 58/59 before a passing tmpfs retry. KDE graphical work stopped after a cancellation timeout; remaining KDE/GNOME graphical/memory work was not completed. Current-main three-desktop acceptance remains open. |
-| Bundling and package integrity | Integration checkpoints record repeated offline helper builds, stale-source rejection, installed runtime/manifest/notices checks. PR #30 records an ordinary distribution DEB audit | Demonstrates those artifacts. Standard release workflows do not yet provision/enable Proton; existing package audits do not establish complete Proton notices or all shipping formats. |
+| Bundling and package integrity | Integration checkpoints record repeated offline helper builds, stale-source rejection, installed runtime/manifest/notices checks. PR #30 records an ordinary distribution DEB audit | Historical artifact evidence only. The final P4/P6 receipt below supersedes the former shipping-pipeline, notices and format gaps for its recorded candidate. |
 | Authentication isolation and disposable lab setup | [Supported setup](proton-drive.md), [native replay](testing-tray-progress.md) and PR #30 describe the private keychain bridge, serialized refreshed-state handoff and removal of copied guest entries | This does not establish expired/revoked session acceptance. Never revoke a copied shared session to manufacture a disposable-session failure. |
+| Final experimental Proton candidate | [P4/P6 receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md), clean `a5112bc`: four audited artifacts, source export/rebuild, Cinnamon-first then GNOME/KDE native checks, Fedora/AppImage smoke checks, anonymous download and secure session cleanup | Bounded VM workload; P1 controlled-only cases and four upstream type diagnostics remain disclosed. Merge local work before closing #10; wider application certification remains separate. |
 
 The historical pending statements in the integration/helper records retain their
 original meaning. PR #30 supersedes their initial pending tray/compositor/setup
 claims for its tested scope only. The P1 follow-up above addresses current
 recovery. The P2 campaign below adds bounded authenticated process-family
-measurements; distribution and final-candidate gates remain open.
+measurements. The final P4/P6 receipt below completes distribution and candidate
+checks for its exact artifacts and bounded workload.
 
 ## Release gates
 
 P1 is complete for its recorded owned-folder and bounded-response scope.
-P2 is complete for its recorded Cinnamon resource workload. P3 notice/source/rebuild work is complete; P4–P6 remain open.
+P2 is complete for its recorded Cinnamon resource workload. P3 notice/source/rebuild
+work is complete. The [final shipping/package receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) completes P4 and
+P6 for clean candidate `a5112bc`; P5 credits the actual maintenance transition.
+These are source-specific feature results, not current-main or whole-application
+release certification.
 Owners are project roles: the integration maintainer owns P1, P2 and P5; the release maintainer owns
 P3, P4 and P6. The same person may perform both roles. Before the first production
 shipment advertising Proton, retain a dated pass/failure/blocker and exact source,
@@ -187,9 +193,11 @@ claimed. These marked proof executables are not production replacements.
 The official helper was reprovisioned offline and retains its exact fingerprint.
 Actual Proton install-rule fixtures verify delivery and tamper checks for all
 twelve redistribution files; they do not establish final package acceptance.
-Publish all six assets beside final binaries, finish P4's full application source
-handoff and inspect each shipping package at P6. Current-helper live, resource
-and graphical acceptance remains required. No S3 operation was used in this work.
+The subsequent [P4/P6 receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) records public delivery of all six sealed
+packets through two hashed transport parts, the complete application source
+export/rebuild, and actual package/live/resource/graphical checks. The original
+P3 install-rule fixtures alone did not prove those later results. No S3 operation
+was used in this work.
 
 ### P4 — Shipping pipeline and supported assets
 
@@ -288,17 +296,14 @@ remaining general release requirements in [release.md](release.md) and
 
 ## Issue closure and next work
 
-Issue #10 remains open for the concrete distribution/maintenance gates P4–P6. P1 is complete within the documented normal-use and controlled-response
-scope. Its body was reconciled on 2026-10-15 with the accepted product decision,
-these gate IDs and the source-specific evidence limits. It remains open. The
-existing recipient checkbox stays checked; its historical provenance remains issue-reported and the fresh P1 repeat is linked above; the
-stale “four groups” instruction was replaced. The historical requirements below
-the issue’s disclosure section were preserved verbatim.
+The [final receipt](evidence/2026-10-15-proton-p4-p6-acceptance.md) completes the feature-specific P4/P6 checks at
+`a5112bc` and credits P5 using the completed Crypto source transition. It retains
+failed attempts, the Fedora dependency and GNOME MIME fixes, actual package
+hashes, source delivery/rebuild, native functional/resource evidence and secure
+session cleanup. P1/P2/P3 remain credited at their recorded scopes and sources.
 
-P4 shipping/source integration is implemented; actual package and extracted-source
-checks remain to be recorded. P5 credits the completed maintenance transition.
-P6 acceptance must use the resulting candidate. P1/P2 are complete only within their recorded workloads and fingerprints;
-the changed GPL-source helper still needs final functional/resource evidence.
-P3 notice/source/rebuild work is complete. P4/P6 execution is still in progress;
-P5 is credited as described above. The linked receipts preserve actual checks, failures,
-controlled-only cases and limitations.
+The wrap-up implementation and acceptance documentation remain local until
+merged. Close #10 with that merge and the final receipt. The source-only release
+is published; a tagged application release/full hosted CI, physical performance,
+and wider U9/U10/desktop certification remain separate project release work.
+No current-main certification or S3 regression credit is implied.

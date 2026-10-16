@@ -1,0 +1,2076 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-15",
+  "recordedUtc": "2026-10-16T03:24:04.439251+00:00",
+  "issue": "https://github.com/patrick-hudson/put.gd-desktop/issues/10",
+  "disposition": "P4 and P6 complete for the recorded local experimental Proton candidate and bounded package/desktop workload; P5 credits actual maintenance. No merge, tagged application release, full hosted CI or current-main certification claimed.",
+  "candidate": {
+    "baseVersion": "0.1.1",
+    "commitCount": 198,
+    "dirty": false,
+    "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+    "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+    "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+    "schemaVersion": 1,
+    "sourceProvenance": "git",
+    "version": "0.1.1-dev.198+ga5112bc55df9"
+  },
+  "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+  "sourceCatalogSha256": "62e176c99b1e2d22196d0183d1c5a5a175eff331c409574fdf92f72c12602d4a",
+  "packages": [
+    {
+      "target": "cinnamon-deb",
+      "file": "cinnamon-deb/putgd_0.1.1~dev.198+ga5112bc55df9_amd64.deb",
+      "bytes": 50360486,
+      "sha256": "8382885202fd4eafede22769f095e217e11a6c3be0ec264bf972180ca5d33b00",
+      "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+      "sourceCatalogSha256": "62e176c99b1e2d22196d0183d1c5a5a175eff331c409574fdf92f72c12602d4a",
+      "allCompiledIdentities": {
+        "putgd": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-cli": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-ui": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-capture": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-s3-worker": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-kde-region": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    },
+    {
+      "target": "ubuntu26-deb",
+      "file": "builders/ubuntu26/out/packages/putgd_0.1.1~dev.198+ga5112bc55df9_amd64.deb",
+      "bytes": 50590058,
+      "sha256": "8613d914eebf92471808fe527462354e8c3928c0b46a57d2dddc256cced26336",
+      "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+      "sourceCatalogSha256": "62e176c99b1e2d22196d0183d1c5a5a175eff331c409574fdf92f72c12602d4a",
+      "allCompiledIdentities": {
+        "putgd": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-cli": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-ui": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-capture": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-s3-worker": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-kde-region": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    },
+    {
+      "target": "fedora44-rpm",
+      "file": "builders/fedora44/out/packages/putgd-0.1.1~dev.198+ga5112bc55df9-1.fc44.x86_64.rpm",
+      "bytes": 38083685,
+      "sha256": "e9825030748f5314a8da53f22310cee41917019f4608de99a234322932977c3e",
+      "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+      "sourceCatalogSha256": "62e176c99b1e2d22196d0183d1c5a5a175eff331c409574fdf92f72c12602d4a",
+      "allCompiledIdentities": {
+        "putgd": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-cli": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-ui": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-capture": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-s3-worker": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        },
+        "putgd-kde-region": {
+          "schemaVersion": 1,
+          "version": "0.1.1-dev.198+ga5112bc55df9",
+          "baseVersion": "0.1.1",
+          "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+          "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+          "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+          "commitCount": 198,
+          "dirty": false,
+          "sourceProvenance": "git"
+        }
+      }
+    },
+    {
+      "target": "appimage",
+      "file": "builders/appimage/build/appimage-output/putgd-0.1.1-dev.198+ga5112bc55df9-x86_64.AppImage",
+      "bytes": 98089464,
+      "sha256": "4b40af363d87bbced94ebf540dd2c808419b2b71bf54e2c30e706f0f0c0f51f0",
+      "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+      "sourceCatalogSha256": "62e176c99b1e2d22196d0183d1c5a5a175eff331c409574fdf92f72c12602d4a",
+      "postDeploymentAuditPassed": true
+    }
+  ],
+  "sourceExport": {
+    "bytes": 3560725,
+    "file": "putgd-0.1.1-dev.198+ga5112bc55df9-source.tar.gz",
+    "sha256": "5bed7267da2a0d83f12025f1c36a4bc719e48bab848d456db3839a4d82a94ce4"
+  },
+  "sourceRebuild": {
+    "schemaVersion": 1,
+    "passed": true,
+    "commands": [
+      [
+        "/usr/bin/python3",
+        "tools/proton/provision_runtime.py",
+        "--source",
+        "/home/patrick/.codex/worktrees/issue-10-wrapup/put.gd/build/dependencies/proton-runtime/sdk-source",
+        "--crypto-source",
+        "/home/patrick/.codex/worktrees/issue-10-wrapup/put.gd/build/dependencies/proton-runtime/crypto-source",
+        "--offline"
+      ],
+      [
+        "cmake",
+        "--preset",
+        "release",
+        "-DBUILD_TESTING=OFF",
+        "-DPUTGD_LAB_FIXTURE=OFF",
+        "-DPUTGD_PHYSICAL_BENCHMARKS=OFF",
+        "-DCMAKE_PREFIX_PATH=/home/patrick/work/put.gd/build/sdk",
+        "-DPUTGD_AWS_SOURCE_DIR=/home/patrick/work/put.gd/build/dependencies/aws-sdk-cpp",
+        "-DPUTGD_AWS_RUNTIME_DIR=/home/patrick/work/put.gd/build/sdk/lib",
+        "-DPUTGD_SOURCE_COMMIT=a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+        "-DPUTGD_SOURCE_TREE=4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+        "-DPUTGD_SOURCE_COMMIT_COUNT=198",
+        "-DPUTGD_BUNDLE_PROTON=ON"
+      ],
+      [
+        "cmake",
+        "--build",
+        "--preset",
+        "release"
+      ]
+    ],
+    "rebuiltProton": {
+      "sha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+      "bundledSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+      "manifestSha256": "cf5d47d458930cea461c33add5dab04f48b838e01bda6b7b8ceec738f08f62a9"
+    },
+    "compiledBuild": {
+      "schemaVersion": 1,
+      "version": "0.1.1-dev.198+ga5112bc55df9",
+      "baseVersion": "0.1.1",
+      "packageVersion": "0.1.1~dev.198+ga5112bc55df9",
+      "gitCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+      "gitTree": "4d0a19c5c8c1eb3f5bd077a8d475039ec9170ead",
+      "commitCount": 198,
+      "dirty": null,
+      "sourceProvenance": "supplied"
+    },
+    "identityMatchedPrograms": [
+      "putgd",
+      "putgd-cli",
+      "putgd-ui",
+      "putgd-capture",
+      "putgd-s3-worker",
+      "putgd-kde-region"
+    ],
+    "wallSeconds": 431.94581467799435
+  },
+  "nativeDesktops": [
+    {
+      "desktop": "Cinnamon/X11",
+      "sourceCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+      "qtVersion": "6.4.2",
+      "platform": "xcb",
+      "protocolPassed": true,
+      "graphicalInspectionPassed": true,
+      "workloadChecks": {
+        "local-only-control": {
+          "completed": true,
+          "noUpload": true
+        },
+        "first-account-use": {
+          "passed": true
+        },
+        "small-first": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "large": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 2097152,
+              "sha256": "91d3beb88a9b2f778a6c44a1c53b63d3c79931845a9aef84b3fb414610bd1938"
+            },
+            {
+              "bytes": 2097152,
+              "sha256": "91d3beb88a9b2f778a6c44a1c53b63d3c79931845a9aef84b3fb414610bd1938"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "cancel": {
+          "passed": true,
+          "afterRealSdkProgress": true,
+          "noUnconfirmedLink": true
+        },
+        "retry": {
+          "passed": true,
+          "sameOperationAndPublication": true,
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-1": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-2": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-3": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "historyRestart": {
+          "passed": true,
+          "confirmedOperations": 6,
+          "identitiesRetained": true
+        }
+      },
+      "sampledActivePeakMiB": {
+        "rssBytes": 200.438,
+        "pssBytes": 156.484,
+        "privateBytes": 150.539,
+        "swapBytes": 0.0
+      },
+      "settledRepeatRssMiB": [
+        28.809,
+        29.07,
+        29.258
+      ],
+      "repeatGrowthMiB": 0.449,
+      "idleWindows": [
+        {
+          "window": 1,
+          "observedSeconds": 300.00013187700097,
+          "peakMiB": {
+            "rssBytes": 29.258,
+            "pssBytes": 14.157,
+            "privateBytes": 8.281
+          },
+          "cpuPercentOneCore": 0.02666665494427173,
+          "maximumSwapBytes": 0,
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "residentIdentity": {
+            "pid": 225523,
+            "startTicks": 4280154,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1195875
+          }
+        },
+        {
+          "window": 2,
+          "observedSeconds": 300.0003044210025,
+          "peakMiB": {
+            "rssBytes": 29.258,
+            "pssBytes": 14.154,
+            "privateBytes": 8.281
+          },
+          "cpuPercentOneCore": 0.009999989852643545,
+          "maximumSwapBytes": 0,
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "residentIdentity": {
+            "pid": 225523,
+            "startTicks": 4280154,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64771,
+            "inode": 1195875
+          }
+        }
+      ],
+      "traceCoverage": {
+        "passed": true,
+        "observedChildren": 40,
+        "children": [
+          {
+            "pid": 226768,
+            "startTicks": 4285060,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 227420,
+            "startTicks": 4288894,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 227610,
+            "startTicks": 4289207,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 227868,
+            "startTicks": 4289460,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 228548,
+            "startTicks": 4290123,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 229120,
+            "startTicks": 4290728,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 230048,
+            "startTicks": 4291857,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 231192,
+            "startTicks": 4296107,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 231378,
+            "startTicks": 4296359,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 231709,
+            "startTicks": 4296686,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 232528,
+            "startTicks": 4297482,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 232572,
+            "startTicks": 4297505,
+            "executable": "/usr/bin/putgd-ui",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 232585,
+            "startTicks": 4298097,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 233139,
+            "startTicks": 4298931,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 234674,
+            "startTicks": 4304067,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 234862,
+            "startTicks": 4304568,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 235150,
+            "startTicks": 4305134,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 235657,
+            "startTicks": 4306221,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": false,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 236112,
+            "startTicks": 4310269,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 236505,
+            "startTicks": 4311355,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 236946,
+            "startTicks": 4312397,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 237345,
+            "startTicks": 4313432,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 238318,
+            "startTicks": 4318415,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 238450,
+            "startTicks": 4318757,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 238766,
+            "startTicks": 4319206,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 239305,
+            "startTicks": 4319922,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 239773,
+            "startTicks": 4320600,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 240314,
+            "startTicks": 4321409,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 241424,
+            "startTicks": 4325711,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 241753,
+            "startTicks": 4326222,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 241977,
+            "startTicks": 4326481,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 242798,
+            "startTicks": 4327431,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 243506,
+            "startTicks": 4328220,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 244121,
+            "startTicks": 4329383,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 245466,
+            "startTicks": 4334910,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 245700,
+            "startTicks": 4335389,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 245991,
+            "startTicks": 4335908,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 246533,
+            "startTicks": 4337023,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 246859,
+            "startTicks": 4338033,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 247335,
+            "startTicks": 4339527,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          }
+        ],
+        "scope": "Cross-check only product generations observed by frozen sampler against full strace process birth/exit/wait events; not claim every unobserved process or kernel peak.",
+        "terminationNote": "Cancelled helpers may be killed and successfully reaped without calling exit_group; each exitGroupTraced observation is retained separately.",
+        "waitResourceUsage": "waitid siginfo CPU fields are not used: ABI-decoded fields are unreliable on this guest."
+      },
+      "confirmedTestLinksRevoked": 12,
+      "sessionReturnedAndGuestReferenceCleaned": true,
+      "privatePacket": "cinnamon-acceptance",
+      "packetIndexSha256": "9cdc76a0e95a05996607873d7efed1867824ff22c74d95403e05a7d7324fa57a"
+    },
+    {
+      "desktop": "GNOME/Wayland",
+      "sourceCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+      "qtVersion": "6.10.2",
+      "platform": "wayland",
+      "protocolPassed": true,
+      "graphicalInspectionPassed": true,
+      "workloadChecks": {
+        "local-only-control": {
+          "completed": true,
+          "noUpload": true
+        },
+        "first-account-use": {
+          "passed": true
+        },
+        "small-first": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "large": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 2097152,
+              "sha256": "91d3beb88a9b2f778a6c44a1c53b63d3c79931845a9aef84b3fb414610bd1938"
+            },
+            {
+              "bytes": 2097152,
+              "sha256": "91d3beb88a9b2f778a6c44a1c53b63d3c79931845a9aef84b3fb414610bd1938"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "cancel": {
+          "passed": true,
+          "afterRealSdkProgress": true,
+          "noUnconfirmedLink": true
+        },
+        "retry": {
+          "passed": true,
+          "sameOperationAndPublication": true,
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-1": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-2": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-3": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "historyRestart": {
+          "passed": true,
+          "confirmedOperations": 6,
+          "identitiesRetained": true
+        }
+      },
+      "sampledActivePeakMiB": {
+        "rssBytes": 235.098,
+        "pssBytes": 159.656,
+        "privateBytes": 150.586,
+        "swapBytes": 0.0
+      },
+      "settledRepeatRssMiB": [
+        31.742,
+        31.871,
+        31.609
+      ],
+      "repeatGrowthMiB": -0.133,
+      "idleWindows": [
+        {
+          "window": 1,
+          "observedSeconds": 300.0003131600006,
+          "peakMiB": {
+            "rssBytes": 31.621,
+            "pssBytes": 14.737,
+            "privateBytes": 7.77
+          },
+          "cpuPercentOneCore": 0.00999998956134421,
+          "maximumSwapBytes": 0,
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "residentIdentity": {
+            "pid": 73309,
+            "startTicks": 790429,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64770,
+            "inode": 1053090
+          }
+        },
+        {
+          "window": 2,
+          "observedSeconds": 300.00024154399944,
+          "peakMiB": {
+            "rssBytes": 31.621,
+            "pssBytes": 14.74,
+            "privateBytes": 7.77
+          },
+          "cpuPercentOneCore": 0.013333322598053112,
+          "maximumSwapBytes": 0,
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "residentIdentity": {
+            "pid": 73309,
+            "startTicks": 790429,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64770,
+            "inode": 1053090
+          }
+        }
+      ],
+      "traceCoverage": {
+        "passed": true,
+        "observedChildren": 40,
+        "children": [
+          {
+            "pid": 75825,
+            "startTicks": 795796,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 77111,
+            "startTicks": 799833,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 77645,
+            "startTicks": 800268,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 78116,
+            "startTicks": 800620,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 79254,
+            "startTicks": 801377,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 80095,
+            "startTicks": 802000,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 81611,
+            "startTicks": 803112,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 83907,
+            "startTicks": 807854,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 84219,
+            "startTicks": 808156,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 84621,
+            "startTicks": 808469,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 86916,
+            "startTicks": 810041,
+            "executable": "/usr/bin/putgd-ui",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 86955,
+            "startTicks": 810167,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 87294,
+            "startTicks": 811029,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 87952,
+            "startTicks": 811635,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 90188,
+            "startTicks": 816308,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 90562,
+            "startTicks": 816650,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 91039,
+            "startTicks": 817069,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 91968,
+            "startTicks": 817749,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": false,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 92794,
+            "startTicks": 821488,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 93419,
+            "startTicks": 822053,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 95763,
+            "startTicks": 823620,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 97039,
+            "startTicks": 824736,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 99006,
+            "startTicks": 829117,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 99538,
+            "startTicks": 829649,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 100054,
+            "startTicks": 830134,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 100967,
+            "startTicks": 831086,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 102374,
+            "startTicks": 832050,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 102994,
+            "startTicks": 832668,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 105290,
+            "startTicks": 837582,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 105666,
+            "startTicks": 837926,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 106208,
+            "startTicks": 838278,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 107925,
+            "startTicks": 839356,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 108795,
+            "startTicks": 839900,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 110287,
+            "startTicks": 841012,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 112718,
+            "startTicks": 846048,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 112938,
+            "startTicks": 846362,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 113449,
+            "startTicks": 846854,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 114293,
+            "startTicks": 847433,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 115331,
+            "startTicks": 848300,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 116066,
+            "startTicks": 848922,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          }
+        ],
+        "scope": "Cross-check only product generations observed by frozen sampler against full strace process birth/exit/wait events; not claim every unobserved process or kernel peak.",
+        "terminationNote": "Cancelled helpers may be killed and successfully reaped without calling exit_group; each exitGroupTraced observation is retained separately.",
+        "waitResourceUsage": "waitid siginfo CPU fields are not used: ABI-decoded fields are unreliable on this guest."
+      },
+      "confirmedTestLinksRevoked": 12,
+      "sessionReturnedAndGuestReferenceCleaned": true,
+      "privatePacket": "gnome-acceptance",
+      "packetIndexSha256": "0e0955e7a258b4835d9e46404298400b07a070d40a067663f54f2e22419ac331"
+    },
+    {
+      "desktop": "KDE/Wayland",
+      "sourceCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+      "qtVersion": "6.10.2",
+      "platform": "wayland",
+      "protocolPassed": true,
+      "graphicalInspectionPassed": true,
+      "workloadChecks": {
+        "local-only-control": {
+          "completed": true,
+          "noUpload": true
+        },
+        "first-account-use": {
+          "passed": true
+        },
+        "small-first": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "large": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 2097152,
+              "sha256": "91d3beb88a9b2f778a6c44a1c53b63d3c79931845a9aef84b3fb414610bd1938"
+            },
+            {
+              "bytes": 2097152,
+              "sha256": "91d3beb88a9b2f778a6c44a1c53b63d3c79931845a9aef84b3fb414610bd1938"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "cancel": {
+          "passed": true,
+          "afterRealSdkProgress": true,
+          "noUnconfirmedLink": true
+        },
+        "retry": {
+          "passed": true,
+          "sameOperationAndPublication": true,
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-1": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-2": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "repeat-3": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            },
+            {
+              "bytes": 262144,
+              "sha256": "2312394bd99545d9de131c24efb781e765ac1aec243f2ed9347597a793a415e9"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "historyRestart": {
+          "passed": true,
+          "confirmedOperations": 6,
+          "identitiesRetained": true
+        }
+      },
+      "sampledActivePeakMiB": {
+        "rssBytes": 295.109,
+        "pssBytes": 157.398,
+        "privateBytes": 148.656,
+        "swapBytes": 0.0
+      },
+      "settledRepeatRssMiB": [
+        30.891,
+        30.953,
+        30.902
+      ],
+      "repeatGrowthMiB": 0.011,
+      "idleWindows": [
+        {
+          "window": 1,
+          "observedSeconds": 300.0001917170001,
+          "peakMiB": {
+            "rssBytes": 30.867,
+            "pssBytes": 8.158,
+            "privateBytes": 6.34
+          },
+          "cpuPercentOneCore": 0.023333318422020632,
+          "maximumSwapBytes": 0,
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "residentIdentity": {
+            "pid": 2881,
+            "startTicks": 10659,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64769,
+            "inode": 1311227
+          }
+        },
+        {
+          "window": 2,
+          "observedSeconds": 300.00024526799984,
+          "peakMiB": {
+            "rssBytes": 30.867,
+            "pssBytes": 8.161,
+            "privateBytes": 6.34
+          },
+          "cpuPercentOneCore": 0.01666665304067782,
+          "maximumSwapBytes": 0,
+          "gates": {
+            "rssAtMost40MiB": true,
+            "noHelpersOrEscapedChildren": true,
+            "noSwap": true,
+            "cpuBelowHalfPercentOfOneCore": true
+          },
+          "residentIdentity": {
+            "pid": 2881,
+            "startTicks": 10659,
+            "uid": 1000,
+            "executable": "/usr/bin/putgd",
+            "device": 64769,
+            "inode": 1311227
+          }
+        }
+      ],
+      "traceCoverage": {
+        "passed": true,
+        "observedChildren": 39,
+        "children": [
+          {
+            "pid": 5139,
+            "startTicks": 15638,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 6434,
+            "startTicks": 19658,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 7032,
+            "startTicks": 20130,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 7551,
+            "startTicks": 20593,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 8852,
+            "startTicks": 21625,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 10700,
+            "startTicks": 23172,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 12248,
+            "startTicks": 24261,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 14176,
+            "startTicks": 28738,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 14684,
+            "startTicks": 29145,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 15087,
+            "startTicks": 29476,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 16930,
+            "startTicks": 30796,
+            "executable": "/usr/bin/putgd-ui",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 16932,
+            "startTicks": 30843,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 17369,
+            "startTicks": 31820,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 18854,
+            "startTicks": 32852,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 20966,
+            "startTicks": 38094,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 21037,
+            "startTicks": 38198,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 21351,
+            "startTicks": 38739,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 22696,
+            "startTicks": 43148,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 23073,
+            "startTicks": 43513,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 25258,
+            "startTicks": 45057,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 26007,
+            "startTicks": 45640,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 28725,
+            "startTicks": 50589,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 29075,
+            "startTicks": 50961,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 29577,
+            "startTicks": 51358,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 30624,
+            "startTicks": 52097,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 31554,
+            "startTicks": 52658,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 32241,
+            "startTicks": 53400,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 34725,
+            "startTicks": 58048,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 35250,
+            "startTicks": 58452,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 35690,
+            "startTicks": 58721,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 36713,
+            "startTicks": 59416,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 37846,
+            "startTicks": 60128,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 39454,
+            "startTicks": 61222,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 41441,
+            "startTicks": 65725,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 41913,
+            "startTicks": 66084,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 42339,
+            "startTicks": 66338,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 43464,
+            "startTicks": 67049,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 44150,
+            "startTicks": 67690,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          },
+          {
+            "pid": 44660,
+            "startTicks": 68395,
+            "executable": "/usr/libexec/putgd/proton/putgd-proton-runtime",
+            "birthTraced": true,
+            "exitGroupTraced": true,
+            "successfulReapTraced": true,
+            "observerExited": true
+          }
+        ],
+        "scope": "Cross-check only product generations observed by frozen sampler against full strace process birth/exit/wait events; not claim every unobserved process or kernel peak.",
+        "terminationNote": "Cancelled helpers may be killed and successfully reaped without calling exit_group; each exitGroupTraced observation is retained separately.",
+        "waitResourceUsage": "waitid siginfo CPU fields are not used: ABI-decoded fields are unreliable on this guest."
+      },
+      "confirmedTestLinksRevoked": 12,
+      "sessionReturnedAndGuestReferenceCleaned": true,
+      "privatePacket": "kde-acceptance",
+      "packetIndexSha256": "051be672d1c86c38a2cd25891215d5032f77831c359c0e69123c2f2f36ef823f"
+    }
+  ],
+  "formatSmokes": [
+    {
+      "format": "fedora",
+      "protocolPassed": true,
+      "graphicalInspectionPassed": true,
+      "checks": {
+        "rpm-upload": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "historyRestart": {
+          "passed": true,
+          "sameReceipts": true,
+          "nativePasteMatchedReceipts": true
+        }
+      },
+      "confirmedTestLinksRevoked": 2,
+      "sessionReturnedAndGuestReferenceCleaned": true,
+      "privatePacket": "fedora-acceptance",
+      "packetIndexSha256": "1547b58b66554ae6c97c5aa2af64bcf875185a4be81141abb97310dc547c0706"
+    },
+    {
+      "format": "appimage",
+      "protocolPassed": true,
+      "graphicalInspectionPassed": true,
+      "checks": {
+        "image-local-only-control": {
+          "passed": true,
+          "noUpload": true
+        },
+        "image-upload": {
+          "passed": true,
+          "files": [
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            },
+            {
+              "bytes": 1048576,
+              "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83"
+            }
+          ],
+          "nativePasteMatchedReceipts": true
+        },
+        "image-upload-progress": {
+          "passed": true,
+          "realSdkBytes": true,
+          "greenStorageWitness": true
+        },
+        "historyRestart": {
+          "passed": true,
+          "sameReceipts": true,
+          "nativePasteMatchedReceipts": true,
+          "externalPopupRecovery": true
+        }
+      },
+      "confirmedTestLinksRevoked": 2,
+      "sessionReturnedAndGuestReferenceCleaned": true,
+      "privatePacket": "appimage-acceptance",
+      "packetIndexSha256": "63086b2609fef5f882ee5a7c420c932d49347fe988199792891b4852f1f68079",
+      "wholeFormatResourceDiagnostic": {
+        "passedFormatResourcePolicy": true,
+        "sampling": "Unmodified supplemental active observer; 0.02-second lifecycle/0.2-second memory intervals; one five-minute post-use format diagnostic, separate from native frozen two-window acceptance.",
+        "imageSha256": "4b40af363d87bbced94ebf540dd2c808419b2b71bf54e2c30e706f0f0c0f51f0",
+        "includesResidentAndReparentedFuse": true,
+        "quietProcessCount": 2,
+        "peakMiB": {
+          "rssBytes": 38.316,
+          "pssBytes": 32.623,
+          "privateBytes": 32.297,
+          "swapBytes": 0.0
+        },
+        "cpuPercentOneCore": 0.003332633730719525,
+        "observedSeconds": 300.062977453,
+        "strict40MiBNumericalGatePassed": true,
+        "formatOverheadPolicy": "Existing user-approved AppImage format exception; numerical outcome retained, native gate unchanged.",
+        "activePeakMiB": {
+          "rssBytes": 193.191,
+          "pssBytes": 174.063,
+          "privateBytes": 172.75,
+          "swapBytes": 0.0
+        },
+        "observerSha256": "88766b77b9cb2e2201fc5554a05da1bccddc94d71442beaf5e5610d465f2c0f4",
+        "limits": [
+          "Sampled image family including reparented FUSE; no new process strace for the AppImage smoke.",
+          "Fixture, observer and CLI driver are excluded; product UI/SDK helpers are included.",
+          "Not a replacement for general AppImage all-action, autostart and three-desktop certification."
+        ]
+      }
+    }
+  ],
+  "anonymousRecipient": {
+    "passed": true,
+    "sourceCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+    "operationId": "9800da15-36ef-46c8-bb13-08a495c79cbb",
+    "artifactId": "458a3af8-1d6c-4813-9118-bcece683e661",
+    "bytes": 1048576,
+    "sha256": "fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83",
+    "browser": "Chrome signed-out recipient page: Sign up visible; actual browser transfer Done / 1 of 1 completed / Downloaded",
+    "transport": "Browser download menu; event observer timed out, verified actual browser download file instead",
+    "auth": "No recipient sign-in",
+    "scope": "Synthetic Proton payload only"
+  },
+  "recipientRevocation": {
+    "passed": true,
+    "sourceCommit": "a5112bc55df93cfa42e0824f9a0a3d33fb7f9efa",
+    "observedUtc": "2026-10-16T01:44:03.586348+00:00",
+    "browser": "Chrome signed-out recipient tab",
+    "preRevocation": "Current packaged synthetic 1MiB download matched source SHA256",
+    "postRevocation": "Same recipient page reloaded after completed exact-link revocation; Shared link not found and file-unavailable message displayed",
+    "remoteFilesDeleted": 0,
+    "capabilityUrlOmitted": true
+  },
+  "confirmedLinksRevoked": 40,
+  "remoteFilesDeleted": 0,
+  "publicSourceRelease": "https://github.com/patrick-hudson/put.gd-desktop/releases/tag/proton-sources-0.22.2-crypto2.0.1",
+  "publicSourcesVerifiedAt": "proton-p4-packages-20261015/public-source-verified",
+  "scopeLimits": [
+    "Proton only: no S3 credentials, configuration, tests or service actions. Unchanged SDK/module are compiled and inventoried.",
+    "Capacity-bounded smaller upload workload; not an active-memory or throughput comparison with P2 large-file runs.",
+    "VM process-family measurements are not physical/host performance certification. Host concurrency was reduced after user reported pressure.",
+    "Fixture, observer, CLI driver and compositor are excluded; product UI and SDK helper family members are included. No GNOME Shell heap claim.",
+    "Four known upstream Crypto/Bun type diagnostics remain.",
+    "P1 controlled-only permission/rate-limit response cases retain their documented limits.",
+    "General U9/U10, full action/display/lifecycle matrix and tagged application release are separate.",
+    "KDE uses the user-completed passwordless disposable lab keyring; no production-keyring security-policy claim.",
+    "Frozen bundled catalog retains historical build-time P6-pending flags; this exact-hash receipt records subsequent acceptance without changing tested bytes."
+  ],
+  "nativeTrial": "Preserved separately and unadopted; official JS helper retained",
+  "p5Credit": "Actual Crypto 2.0.0 unresolved provenance to explicit GPL 2.0.1 source selection, rebuild/relink/notices/source/protocol/install proof; no artificial additional SDK upgrade",
+  "privateEvidenceRoot": "/home/patrick/work/put.gd/work/evidence/proton-p6-mime-fixed-20261015"
+}
