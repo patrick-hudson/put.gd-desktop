@@ -5,6 +5,7 @@
 #include <QColor>
 #include <QTimer>
 #include <QSet>
+#include <QUrl>
 #include <functional>
 #include <memory>
 
@@ -35,9 +36,12 @@ signals:
 
 private:
  void invokeAction(const QString&, bool fromShortcut = false);
+#ifdef Q_OS_LINUX
+ void openNotificationLink(const QUrl&);
+#endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;
- void notifyMessage(const QString&, const QString&, bool warning);
+ void notifyMessage(const QString&, const QString&, bool warning, const QUrl& link = {});
  void refreshActivity();
  void flashError();
  QTimer errorFlashTimer_,errorRecoveryTimer_,uploadRevealTimer_,uploadCompleteTimer_;

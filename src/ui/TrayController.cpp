@@ -10,6 +10,7 @@
 #include <QMenu>
 #include <QPointer>
 #include <QSystemTrayIcon>
+#include <QProcess>
 #include <utility>
 #include <algorithm>
 
@@ -98,6 +99,7 @@ TrayController::TrayController(OperationService& operations,
 #ifdef Q_OS_LINUX
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
   native_ = std::make_unique<NativeTray>(this);
+  connect(native_.get(), &NativeTray::notificationActivated,this,&TrayController::openNotificationLink);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
    if (Settings::actionNames().contains(action)) invokeAction(action);
@@ -179,10 +181,18 @@ TrayController::TrayController(OperationService& operations,
    if(!guard->available()||!guard->operations_.settingsSnapshot().notifications)return;
    if ((state == "completed" || state == "partial") && operation["copyStatus"] == "pending")
     return;
+   QUrl link;
+#ifdef Q_OS_LINUX
+   const auto items=operation["items"].toArray();
+   if(guard->native_&&items.size()==1) {
+    const auto item=OperationItem::fromJson(items.first().toObject());
+    if(item.linkAvailable())link=QUrl(item.receipt.directUrl);
+   }
+#endif
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
     guard->notifyMessage("put.gd — " + state,
-      "Clipboard: " + operation["copyStatus"].toString() + ". Open recent activity for per-item results.",
-      state != "completed");
+      "Clipboard: " + operation["copyStatus"].toString() + (link.isEmpty()?". Open recent activity for per-item results.":". Click to open in browser."),
+      state != "completed",link);
   });
  });
 }
@@ -286,9 +296,16 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut) {
   }
  });
 }
-void TrayController::notifyMessage(const QString& title, const QString& message, bool warning) {
 #ifdef Q_OS_LINUX
- if (native_) native_->notify(title, message, warning);
+void TrayController::openNotificationLink(const QUrl& link) {
+ if(!link.isValid()||(link.scheme()!="https"&&link.scheme()!="http"))return;
+ QProcess::startDetached("xdg-open",{link.toString(QUrl::FullyEncoded)});
+}
+#endif
+void TrayController::notifyMessage(const QString& title, const QString& message, bool warning,const QUrl& link) {
+ Q_UNUSED(link);
+#ifdef Q_OS_LINUX
+ if (native_) native_->notify(title, message, warning,link);
  else
 #endif
  if (tray_) tray_->showMessage(title, message, warning ? QSystemTrayIcon::Warning : QSystemTrayIcon::Information);

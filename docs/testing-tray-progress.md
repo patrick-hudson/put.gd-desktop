@@ -328,3 +328,33 @@ They check the replay's socket, identity, privacy, color, accounting and
 nonsecret-settings assertions. They do not establish a probe build, live S3 or
 Proton success, a desktop functional pass, human rendering inspection or memory
 acceptance. Record those actual executions separately.
+
+## Opening an upload from its notification
+
+The native Linux resident gives a single-item upload notification a browser action
+only when the item has a confirmed, available link. Clicking the toast opens that
+receipt's HTTP(S) URL through the default browser. A batch or local-only result
+keeps its existing Recent Activity guidance. Upload completion itself never opens
+the browser.
+
+The transport uses the notification server's returned ID and the standard
+[`default` action](https://specifications.freedesktop.org/notification/latest-single/).
+Separate toasts retain separate links. Activation or dismissal discards the ID;
+a departing notification service invalidates its IDs and pending replies. The
+first appearance of a service preserves replies for notifications that started
+it. The generic Qt fallback has no per-notification click ID and does not promise
+browser activation.
+
+The private-bus regressions exercise production result handling and outgoing
+browser arguments with an isolated opener, plus notification-owner appearance:
+
+```sh
+dbus-run-session -- build/dev/test_native_tray   uploadToastOpensItsOwnLink   firstNotificationOwnerAppearancePreservesClickTarget
+```
+
+These contracts are not desktop proof. Native acceptance must use the installed
+candidate, create a synthetic image in an isolated destination, visibly click the
+real toast through the console, and inspect the default browser's exact receipt
+URL and image. Preserve operation/history IDs, package and running-byte identities,
+QMP frames and public-download hashes; clean only the exact test uploads through
+reviewed guarded deletion. Keep the original display wall on port 8765.

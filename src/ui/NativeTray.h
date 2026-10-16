@@ -2,6 +2,7 @@
 #include <QDBusConnection>
 #include <QObject>
 #include <QColor>
+#include <QUrl>
 #include <memory>
 
 namespace putgd {
@@ -18,8 +19,9 @@ public:
  bool available() const;
  bool availabilityKnown() const;
  void setActivity(const QColor& color, const QString& description, int percent = -1);
- void notify(const QString& title, const QString& message, bool warning = false);
+ void notify(const QString& title, const QString& message, bool warning = false, const QUrl& link = {});
 signals:
+ void notificationActivated(const QUrl& link);
  void actionActivated(const QString& action);
  void availabilityChanged(bool available);
  void availabilityResolved();

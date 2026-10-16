@@ -18,6 +18,7 @@
 #include <QFile>
 #include <QElapsedTimer>
 #include <QTimer>
+#include <QScopeGuard>
 #include <csignal>
 #include <sys/types.h>
 #include "fixtures/X11DesktopFixture.h"
@@ -85,6 +86,9 @@ public slots:
    {"body", body}, {"actions", actions}, {"hints", hints}, {"timeout", timeout}});
   return uint(values.size());
  }
+signals:
+ void ActionInvoked(uint id, const QString& action);
+ void NotificationClosed(uint id, uint reason);
 };
 
 class ActivitySignalPeer final:public QObject {
@@ -121,7 +125,7 @@ private slots:
   qDBusRegisterMetaType<WireLayout>(); qDBusRegisterMetaType<WireImage>(); qDBusRegisterMetaType<WireImages>();
   qDBusRegisterMetaType<WireTooltip>(); qDBusRegisterMetaType<WireEvent>(); qDBusRegisterMetaType<WireEvents>(); qDBusRegisterMetaType<QList<int>>();
   QVERIFY(peer.registerObject("/StatusNotifierWatcher", &watcher, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllProperties | QDBusConnection::ExportAllSignals));
-  QVERIFY(peer.registerObject("/org/freedesktop/Notifications", &notifications, QDBusConnection::ExportAllSlots));
+  QVERIFY(peer.registerObject("/org/freedesktop/Notifications", &notifications, QDBusConnection::ExportAllSlots | QDBusConnection::ExportAllSignals));
   QVERIFY(peer.registerService("org.freedesktop.Notifications"));
  }
  void init() {
@@ -465,6 +469,43 @@ private slots:
   QCOMPARE(value["summary"].toString(), QString("put.gd — failed")); QCOMPARE(value["timeout"].toInt(), 10000);
   QCOMPARE(value["hints"].toMap()["urgency"].toUInt(), uint(2)); QVERIFY(value["actions"].toStringList().isEmpty());
   changeHost(false); QTRY_VERIFY(!tray.available()); tray.notify("Hidden", "Unavailable"); QTest::qWait(50); QCOMPARE(notifications.values.size(), 1);
+ }
+ void firstNotificationOwnerAppearancePreservesClickTarget() {
+  QVERIFY(peer.unregisterService("org.freedesktop.Notifications"));
+  NativeTray tray;QTRY_VERIFY(tray.available());QSignalSpy activated(&tray,&NativeTray::notificationActivated);
+  QVERIFY(peer.registerService("org.freedesktop.Notifications"));
+  const QUrl link("https://example.invalid/first-image.png");
+  tray.notify("put.gd — completed","Click to open in browser",false,link);
+  QTRY_COMPARE(notifications.values.size(),1);QTest::qWait(50);
+  emit notifications.ActionInvoked(1,"default");
+  QTRY_COMPARE(activated.count(),1);QCOMPARE(activated.first().first().toUrl(),link);
+ }
+ void uploadToastOpensItsOwnLink() {
+  QTemporaryDir directory; QVERIFY(directory.isValid());
+  const auto output=directory.filePath("opened-links");
+  QFile opener(directory.filePath("xdg-open")); QVERIFY(opener.open(QIODevice::WriteOnly));
+  opener.write(("#!/bin/sh\nprintf '%s\\n' \"$1\" >> '"+output+"'\n").toUtf8()); opener.close();
+  QVERIFY(opener.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  const auto previousPath=qgetenv("PATH");auto restorePath=qScopeGuard([&]{qputenv("PATH",previousPath);});
+  qputenv("PATH",directory.path().toUtf8()+":"+previousPath);
+  auto opened=[&]{QFile file(output);if(!file.open(QIODevice::ReadOnly))return QStringList{};return QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts);};
+  ProviderRegistry providers; auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
+  auto config=configuration(directory.path());auto naming=config["naming"].toObject();naming["mode"]="generated";config["naming"]=naming;QVERIFY(settings.save(config,{}));
+  Source source;source.payload=textPayload();OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){QFAIL("Clicking a single upload must open its link, not a view");},[]{});QTRY_VERIFY(controller.available());
+  QStringList links;
+  for(int index=0;index<3;++index) {
+   operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});
+   QTRY_COMPARE(source.copies,index+1);QTRY_COMPARE(notifications.values.size(),index+1);links.append(source.copied.text);
+   QCOMPARE(notifications.values[index]["actions"].toStringList(),QStringList({"default","Open in browser"}));
+  }
+  QVERIFY(links[0]!=links[1]);QVERIFY(opened().isEmpty());
+  emit notifications.ActionInvoked(999,"default");emit notifications.ActionInvoked(1,"unrecognized");QTest::qWait(50);QVERIFY(opened().isEmpty());
+  emit notifications.ActionInvoked(1,"default");QTRY_COMPARE(opened(),QStringList{links[0]});
+  emit notifications.ActionInvoked(2,"default");QTRY_COMPARE(opened(),links.mid(0,2));
+  emit notifications.NotificationClosed(3,2);emit notifications.ActionInvoked(3,"default");QTest::qWait(50);QCOMPARE(opened(),links.mid(0,2));
+  QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
  }
  void coreControllerRoutesAllFourActionsWithoutViews() {
   QTemporaryDir directory; QVERIFY(directory.isValid()); ProviderRegistry providers;
