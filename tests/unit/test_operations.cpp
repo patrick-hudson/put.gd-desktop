@@ -6,6 +6,7 @@
 #include <QSqlQuery>
 #include <QUuid>
 #include <QBuffer>
+#include <QElapsedTimer>
 #include <QProcess>
 #include <QProcessEnvironment>
 #ifdef Q_OS_UNIX

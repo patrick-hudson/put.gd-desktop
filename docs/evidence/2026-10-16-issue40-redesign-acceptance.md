@@ -7,12 +7,12 @@ Production tray pane source is unchanged.
 
 ## Exact candidate
 
-All final host suites and native desktop gates below use product source
+The complete local host suites and native desktop gates below use frozen source
 `1010842c9d2540bdd587225fd3dfdeefd4183fc0`, tree `b5e1bee9cb3a61497d3921370c8917b3fc60e79e`, count 211.
 Tracked-source archive SHA-256: `520322813d54ab70a1e216151264b80470a2706f9e6b1007a984a41c02cc9dde`.
 The JSON companion binds the curated source export, audited packages, installed
 binaries, live resident identity, private storage module and Proton helper.
-Later documentation-only evidence commits do not relabel measured binaries.
+Later evidence and test-compatibility commits are recorded separately and do not relabel measured binaries.
 
 Cinnamon uses Mint 22.3 / system Qt 6.4.2. GNOME and KDE use Ubuntu/Kubuntu 26.04
 with system Qt 6.10.2. Each uses an audited Release DEB; the independent synthetic
@@ -155,6 +155,17 @@ revoked and confirmed absent. The private synthetic folder/file remain because
 safe remote deletion is unsupported. Existing user objects/settings were unchanged.
 The recorded CLI/probe identities precede the UI corrections and are not relabeled.
 This is backend evidence, not native cloud GUI or recipient/browser acceptance.
+
+## CI test-header follow-up
+
+The Ubuntu 26.04 CI test build at `bfae63d` exposed a missing direct `QElapsedTimer`
+include in `tests/unit/test_operations.cpp`. Older Qt headers supplied the type
+indirectly; Qt 6.10 did not. The same compile failure was reproduced with distro
+Qt 6.10.2/GCC 15.2, then passed after adding the explicit header. The unchanged
+`operations_contract` suite passed in 59.24 s with preflighted private socket paths.
+No assertion, timeout or production source changed. This is component evidence;
+the native packages and observations above remain bound to `1010842`. The JSON
+companion records the CI job, local red/green log hashes and scope.
 
 ## Native screenshots
 

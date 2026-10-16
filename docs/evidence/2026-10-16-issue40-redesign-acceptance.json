@@ -1369,5 +1369,23 @@
         "sha256": "aa659f1de955af8d7bc49a9fb2723c237886b0bcc889f5d822f739fa37404de6"
       }
     ]
+  },
+  "ciTestHeaderCompatibilityFollowup": {
+    "scope": "test-only direct-header compatibility correction; all application inputs unchanged from measured1010842",
+    "path": "tests/unit/test_operations.cpp",
+    "change": "add #include <QElapsedTimer>; no assertion, timeout or behavior changes",
+    "failedCiHead": "bfae63dae0b91508c6161df2623ba45d8c7d1162",
+    "failedCiJob": "https://github.com/patrick-hudson/put.gd-desktop/actions/runs/38889896138/job/116936560347",
+    "localToolchain": "existing official Ubuntu26 systemQt6.10.2/GCC15.2 builder plus standard test-development packages",
+    "redCompileLogSha256": "b3d38229e469bb279fd1c69a7d3ca24d51f392e9bd915581b31d7bdcbceb3028",
+    "greenBuildAndSuiteLogSha256": "6a00518a7c3eb0a69261af904b0921f619192dac892190119b8953acdbf4283b",
+    "greenRawSuiteLogSha256": "0d68b63431b4d9a81d73fb9507a100557bd15f5cff3eb9e0296009062a1fa3a6",
+    "operationsSuitePassed": true,
+    "operationsSuiteSeconds": 59.24,
+    "oneTestIncludeOnly": true,
+    "socketPathsChecked": 280,
+    "maxSocketBytes": 88,
+    "diagnosticNotNativeAcceptance": true,
+    "nativeMeasurementsRemainBoundTo": "1010842c9d2540bdd587225fd3dfdeefd4183fc0"
   }
 }
