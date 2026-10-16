@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('tray_progress_lab', ROOT / 'tools/lab/tray_progress.py')
@@ -67,13 +68,68 @@ class TrayProgressContracts(unittest.TestCase):
         for defect in ({'pid': 9}, {'hostRegistered': False},
                        {'description': 'Queued synthetic-1.txt'},
                        {'description': 'Queued https://example.invalid/#private'},
-                       {'icons': observation('Queued', color='#9bbcff')['icons']}):
+                       {'icons': observation('Queued', color='#ffffff')['icons']}):
             with self.subTest(defect=defect), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip({**observation('Queued'), **defect}, records, 's3', 42)
         idle = observation('', color='#9bbcff', title='put.gd — Share and local capture')
         self.assertTrue(tray.check_tooltip(idle, [], 's3', 42)['idle'])
         with self.assertRaises(tray.TrayProgressError):
             tray.check_tooltip({**idle, 'description': 'Uploading'}, [], 's3', 42)
+
+    def test_proton_preparation_is_working_blue_without_storage_coverage(self):
+        records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2}]
+        result = tray.check_tooltip(observation('Uploading', color='#9bbcff'),
+                                    records, 'proton-drive', 42)
+        self.assertFalse(result['idle'])
+        self.assertFalse(result['storageActive'])
+        self.assertFalse(result['counter'])
+        queued = tray.check_tooltip(observation('Queued', color='#9bbcff'),
+                    [{'phase': 'queued', 'sourceBytes': 0}], 'proton-drive', 42)
+        self.assertFalse(queued['storageActive'])
+        records[0]['bytesTransferred'] = 1024**2
+        green = tray.check_tooltip(observation('Uploading: 1 MiB transferred · Source size: 4 MiB'),
+                                   records, 'proton-drive', 42)
+        self.assertTrue(green['storageActive'])
+        self.assertTrue(green['counter'])
+        mixed = observation('Uploading', color='#9bbcff')
+        mixed['icons'].append(observation('Uploading')['icons'][0])
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(mixed, records, 'proton-drive', 42)
+
+    def test_blue_only_proton_replay_cannot_pass_storage_activity_gate(self):
+        class PastQueueGate(Exception):
+            pass
+        for transfer_color in ('#9bbcff', '#62d69b'):
+            with self.subTest(transfer_color=transfer_color), tempfile.TemporaryDirectory() as directory:
+                replay = tray.Replay.__new__(tray.Replay)
+                replay.args = SimpleNamespace(provider='proton-drive')
+                replay.pid = 42
+                replay.history, replay.mismatch_since = [], None
+                replay.output, replay.result = Path(directory), {'coverage': {}}
+                replay.save = replay.witness = lambda *args: None
+                for phase, text, color, progress in (
+                    ('queued', 'Queued', '#9bbcff', {}),
+                    ('uploading', 'Uploading: 1 MiB transferred · Source size: 4 MiB',
+                     transfer_color, {'bytesTransferred': 1024**2})):
+                    op = {'id': 'operation', 'state': 'running', 'phase': phase,
+                          'items': [{'artifact': {'id': 'artifact', 'bytes': 4*1024**2},
+                                     'uploadProgress': progress}]}
+                    replay.cli = lambda *args, op=op: {'operations': [op]}
+                    replay.snapshot = lambda text=text, color=color: observation(text, color)
+                    replay.observe('queue')
+                replay.setup = replay.clipboard = lambda: None
+                replay.invoke = lambda: 'operation'
+                replay.settled = lambda *args: {'operation': {}}
+                replay.successful_uploads = lambda *args: None
+                def past_gate(*args):
+                    raise PastQueueGate()
+                replay.independent_paste = past_gate
+                if transfer_color == '#9bbcff':
+                    with self.assertRaisesRegex(tray.TrayProgressError, 'storage'):
+                        replay.execute()
+                else:
+                    with self.assertRaises(PastQueueGate):
+                        replay.execute()
 
     def test_intermediate_phase_requires_a_real_observation(self):
         for phase, text in (('sharing', 'Creating share link'),

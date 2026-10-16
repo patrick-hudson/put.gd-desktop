@@ -101,18 +101,20 @@ def check_tooltip(snapshot, records, provider, pid):
             'Tray tooltip exposes a source name, path or link')
     idle = snapshot.get('title') == IDLE
     require(idle or snapshot.get('title') == 'put.gd — Working', 'Unexpected tray title')
-    color = '#9bbcff' if idle else '#62d69b'
     icons = snapshot.get('icons', [])
-    require(icons and all(icon.get('opaqueColors', {}).get(color, 0) > 0 for icon in icons),
+    colors = ('#9bbcff',) if idle else ('#9bbcff', '#62d69b')
+    present = [color for color in colors if icons and
+               all(icon.get('opaqueColors', {}).get(color, 0) > 0 for icon in icons)]
+    require(len(present) == 1,
             'SNI icon does not have the required idle/active brand color')
     if idle:
         observed(not text, 'Idle tooltip retains stale work')
         observed(not records, 'Idle tray while production work remains active')
-        return {'idle': True, 'counter': False, 'phases': []}
+        return {'idle': True, 'storageActive': False, 'counter': False, 'phases': []}
     observed(text, 'Working tray has no activity text')
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
-    result = {'idle': False, 'counter': False, 'phases': []}
+    result = {'idle': False, 'storageActive': present[0] == '#62d69b', 'counter': False, 'phases': []}
     for row_index, line in enumerate(text.splitlines()):
         overflow = re.fullmatch(r'([0-9]+) more active operations', line)
         if overflow:
@@ -411,9 +413,10 @@ class Replay:
             require(now - self.mismatch_since <= 2, 'Tray mismatch persisted beyond batching grace: ' + checked['error'])
             return after, snapshot, checked
         flags = self.result['coverage'].setdefault(label, {'active': False, 'counter': False,
-                  'queued': False, 'concurrentAdmission': False, 'finalizing': False, 'sharing': False})
+                  'storageActive': False, 'queued': False, 'concurrentAdmission': False, 'finalizing': False, 'sharing': False})
         new = []
         for key, value in [('active', not checked['idle']), ('counter', checked['counter']),
+                           ('storageActive', checked['storageActive']),
                            ('queued', 'queued' in checked['phases']),
                            ('concurrentAdmission', concurrent_admission(checked, after_rows)),
                            ('finalizing', 'finalizing' in checked['phases']), ('sharing', 'sharing' in checked['phases'])]:
@@ -697,6 +700,8 @@ print(json.dumps(results))
         self.successful_uploads(queued)
         require(self.result['coverage']['queue']['active'] and self.result['coverage']['queue']['counter']
                 and self.result['coverage']['queue']['queued'], 'Queued active work/counters were not observed; preserve this run')
+        require(self.result['coverage']['queue']['storageActive'],
+                'Queued upload green storage activity was not observed; preserve this run')
         self.independent_paste(queued[queue_ids[-1]], 'upload')
         if self.args.provider == 's3':
             self.s3_public_bytes(queued[queue_ids[-1]])
@@ -724,6 +729,8 @@ print(json.dumps(results))
         require(accepted.get('operationId') == cancelled_id and accepted.get('retryAccepted'), 'Retry did not retain operation ID')
         retried = self.settled([cancelled_id], 'retry')
         self.successful_uploads(retried)
+        require(self.result['coverage']['retry']['storageActive'],
+                'Retry green storage activity was not observed; preserve this run')
         require([item['artifact']['id'] for item in original['items']] ==
                 [item['artifact']['id'] for item in retried[cancelled_id]['items']], 'Retry changed retained artifact identity')
         require([item['publicationId'] for item in original['items']] ==

@@ -28,6 +28,10 @@ system package. Check `gnome-extensions info putgd@put.gd` and retain the loaded
 path/version in the acceptance receipt. If a previous manual installation exists,
 disable it and remove only that owned user copy before testing the package.
 
+After upgrading an enabled extension, log out of GNOME and log back in before
+verifying the new version. Replacing the installed files or checking their hashes
+alone does not establish which code the current Shell session has loaded.
+
 For a standalone helper installation, install the release's matching GNOME ZIP
 with `gnome-extensions install /absolute/path/to/putgd-gnome50-VERSION.zip`, then
 enable it. Keep its identity aligned with the application. A fresh Wayland login
@@ -55,10 +59,12 @@ reads and remove only the companion's own label/signals/timers.
 The existing `gjs -m tests/desktop/test_gnome_ownership.mjs
 integrations/gnome/extension.js` suite adds synthetic tooltip ownership,
 updates, ambiguity, bounds and lifecycle contracts. They prove no graphical
-hover behavior. Current-package visible hover, active/idle text and icon/menu
-preservation, lock/unlock, disable/re-enable, actor replacement and memory still
-require native GNOME acceptance. An ambiguous or unavailable public actor leaves
-the companion hidden; no private-field or replacement-icon fallback is used.
+hover behavior. The [current Proton package receipt](../evidence/2026-10-15-proton-p4-p6-acceptance.md) records
+visible active/idle companion text, the existing icon, native Activity/paste and
+product-family post-use memory at `a5112bc` on a fresh GNOME session. It does not
+certify every menu/lock/disable/actor-replacement case or the Shell heap. An
+ambiguous or unavailable public actor leaves the companion hidden; no private-field
+or replacement-icon fallback is used.
 
 `tests/integration/test_gnome_bridge.cpp` proves bounded transfer decoding and
 request metadata validation. It does not run GNOME, prove global shortcuts,

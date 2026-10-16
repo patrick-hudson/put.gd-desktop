@@ -5,13 +5,13 @@ set -euo pipefail
 case "$ID" in
   ubuntu)
     apt-get update
-    DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates python3 cmake ninja-build pkg-config tar gzip xz-utils binutils file dpkg-dev qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
+    DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates python3 nodejs npm cmake ninja-build pkg-config tar gzip xz-utils binutils file dpkg-dev qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
     if [ "$VERSION_ID" = '26.04' ]; then
       apt-get install -y liblayershellqtinterface-dev
     fi
     ;;
   fedora)
-    dnf install -y gcc-c++ git ca-certificates python3 cmake ninja-build pkgconf-pkg-config tar gzip xz binutils file rpm-build cpio qt6-qtbase-devel qt6-qtbase-private-devel qt6-qtwayland-devel qtkeychain-qt6-devel layer-shell-qt-devel libxcb-devel xcb-util-keysyms-devel xcb-util-devel xcb-util-image-devel libXcursor-devel libxkbcommon-devel libxkbcommon-x11-devel libcurl-devel openssl-devel zlib-devel wayland-devel wayland-protocols-devel
+    dnf install -y gcc-c++ git ca-certificates python3 nodejs npm cmake ninja-build pkgconf-pkg-config tar gzip xz binutils file rpm-build cpio qt6-qtbase-devel qt6-qtbase-private-devel qt6-qtwayland-devel qtkeychain-qt6-devel layer-shell-qt-devel libxcb-devel xcb-util-keysyms-devel xcb-util-devel xcb-util-image-devel libXcursor-devel libxkbcommon-devel libxkbcommon-x11-devel libcurl-devel openssl-devel zlib-devel wayland-devel wayland-protocols-devel
     ;;
   *) echo "Unsupported native release builder: $ID" >&2; exit 1 ;;
 esac

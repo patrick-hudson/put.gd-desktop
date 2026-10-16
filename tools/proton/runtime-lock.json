@@ -4,7 +4,11 @@
   "sourceUrl": "https://github.com/ProtonDriveApps/sdk.git",
   "sourceReference": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
   "sdkVersion": "0.22.2",
-  "cryptoVersion": "2.0.0",
+  "cryptoVersion": "2.0.1",
   "bunVersion": "1.4.2",
-  "platform": "linux-x64"
+  "platform": "linux-x64",
+  "cryptoRegistryBootstrapVersion": "2.0.0",
+  "cryptoSourceUrl": "https://github.com/ProtonMail/WebPackages.git",
+  "cryptoSourceReference": "956a713c0823b365cc512018974eb4fcba47c9dd",
+  "cryptoLicenseSha256": "1b3782ccad7b8614100cda30d3faf42fc39f2e97932908c543005053b654ca68"
 }

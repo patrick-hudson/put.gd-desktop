@@ -31,7 +31,7 @@ jobs:
       - name: Install distro dependencies
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates passwd util-linux python3 cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
+          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential git ca-certificates passwd util-linux python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
           if [ '${{ matrix.distribution }}' = '26.04' ]; then
             apt-get install -y liblayershellqtinterface-dev
           fi
@@ -86,9 +86,18 @@ jobs:
             build/sdk
             build/sdk-cache.json
           key: ${{ steps.sdk-key.outputs.key }}
+      - name: Provision and verify pinned Proton helper
+        run: |
+          python3 tools/proton/provision_runtime.py
+          python3 tools/proton/test_crypto_source.py
+          python3 tools/proton/test_redistribution.py
+          python3 tests/unit/test_proton_package_audit.py
+          python3 tests/releases/test_proton_sources.py
+          python3 tests/releases/test_check_source_build.py
+          python3 tests/ci/test_proton_release.py
       - name: Build and test
         run: |
-          cmake --preset dev
+          cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON
           cmake --build --preset dev
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           ctest --preset dev --show-only=json-v1 > build/dev/registered-tests.json
@@ -241,7 +250,7 @@ jobs:
       - name: Build without test dependencies
         if: steps.package-gate.outputs.coordinated != 'true'
         run: |
-          cmake --preset release -DBUILD_TESTING=OFF
+          cmake --preset release -DBUILD_TESTING=OFF -DPUTGD_BUNDLE_PROTON=ON
           cmake --build --preset release
 
   portable:

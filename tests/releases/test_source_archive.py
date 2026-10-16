@@ -31,6 +31,16 @@ class SourceArchive(unittest.TestCase):
             'docs/build.md': '# synthetic build guide\n',
             'tools/verify_dependencies.py': '# synthetic verifier\n',
             'tools/releases/provision-sdk.sh': '#!/bin/sh\nexit 0\n',
+            'tools/proton/runtime.ts': '// committed Proton helper\n',
+            'tools/proton/runtime.test.ts': '// required provisioning checks\n',
+            'tools/proton/runtime-lock.json': '{}\n',
+            'tools/proton/package-lock.json': '{}\n',
+            'tools/proton/provision_runtime.py': '# pinned provisioner\n',
+            'tools/proton/notices/SOURCES.json': '{}\n',
+            'tools/proton/notices/REBUILD.md': '# rebuild instructions\n',
+            'docs/proton-drive.md': '# Proton setup\n',
+            'tools/proton/credentials.txt': 'synthetic excluded credential input\n',
+            'tools/proton/work/session.json': '{}\n',
             'work/tracked.txt': 'synthetic excluded work\n',
             'docs/evidence/receipt.json': '{}\n', 'docs/plans/plan.md': 'excluded plan\n',
             'tests/fixtures/payload.txt': 'excluded synthetic payload\n',
@@ -86,13 +96,18 @@ class SourceArchive(unittest.TestCase):
         for name in ['CMakeLists.txt', 'CMakePresets.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                      'src/main.cpp', 'cmake/dependency-lock.json', 'packaging/linux/CMakeLists.txt',
                      'integrations/gnome/extension.js', 'docs/build.md', 'tools/verify_dependencies.py',
-                     'tools/releases/provision-sdk.sh', 'README_SOURCE.md', 'source-info.json']:
+                     'tools/releases/provision-sdk.sh', 'tools/proton/runtime.ts',
+                     'tools/proton/runtime.test.ts', 'tools/proton/runtime-lock.json',
+                     'tools/proton/package-lock.json', 'tools/proton/provision_runtime.py',
+                     'tools/proton/notices/SOURCES.json', 'tools/proton/notices/REBUILD.md',
+                     'docs/proton-drive.md', 'README_SOURCE.md', 'source-info.json']:
             self.assertIn(name, contents)
         for name in ['credentials.txt', 'src/credentials.txt', 'src/.env', 'src/context/private.md', 'src/.context/session.md',
                      'src/.claude/commands.md', 'src/CLAUDE.md', 'src/MEMORY.md',
                      'work/tracked.txt', 'work/untracked.txt', 'src/untracked.cpp', 'AGENTS.md',
                      '.agents/context.md', '.github/workflows/ci.yml', 'docs/evidence/receipt.json',
-                     'docs/plans/plan.md', 'tests/fixtures/payload.txt']:
+                     'docs/plans/plan.md', 'tests/fixtures/payload.txt',
+                     'tools/proton/credentials.txt', 'tools/proton/work/session.json']:
             self.assertNotIn(name, contents)
         info = json.loads(contents['source-info.json'])
         self.assertEqual(info['identity'], self.identity)
@@ -102,6 +117,9 @@ class SourceArchive(unittest.TestCase):
         for flag in [b'PUTGD_SOURCE_COMMIT', b'PUTGD_SOURCE_TREE', b'PUTGD_SOURCE_COMMIT_COUNT',
                      b'-DPUTGD_LAB_FIXTURE=OFF', b'-DPUTGD_PHYSICAL_BENCHMARKS=OFF']:
             self.assertIn(flag, contents['README_SOURCE.md'])
+        for text in [b'python3 tools/proton/provision_runtime.py', b'-DPUTGD_BUNDLE_PROTON=ON',
+                     b'Linux x86-64', b'notices/REBUILD.md', b'Git/npm']:
+            self.assertIn(text, contents['README_SOURCE.md'])
         self.assertEqual(receipt['identity'], self.identity)
         self.assertEqual(receipt['artifact']['sha256'], hashlib.sha256(self.output.read_bytes()).hexdigest())
         for member in receipt['members']:

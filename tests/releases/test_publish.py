@@ -66,6 +66,11 @@ class RemoteDraftTest(unittest.TestCase):
 
     def test_command_requires_exact_acceptance_before_public_mutation(self):
         release = {'gitCommit': 'a' * 40}
+        self.files = {name: ('synthetic ' + name).encode() for name in
+                      publish.public_inventory('v0.1.1-rc.1') - {'SHA256SUMS'}}
+        for name, body in self.files.items():
+            (self.directory / name).write_bytes(body)
+        self.listed = {name: hashlib.sha256(body).hexdigest() for name, body in self.files.items()}
         (self.directory / 'release-builds.json').write_text(json.dumps({'release': release}))
         self.listed['release-builds.json'] = publish.sha256(self.directory / 'release-builds.json')
         (self.directory / 'SHA256SUMS').write_text(''.join(d + '  ' + n + '\n' for n, d in self.listed.items()))
@@ -92,6 +97,52 @@ class RemoteDraftTest(unittest.TestCase):
                 publish.main()
             mutate.assert_not_called()
 
+
+    def test_candidate_and_stable_incomplete_inventory_block_public_mutation(self):
+        for tag in ('v0.1.1-rc.1', 'v0.1.1'):
+            with self.subTest(tag=tag):
+                release = {'gitCommit': 'a' * 40}
+                (self.directory / 'release-builds.json').write_text(json.dumps({'release': release}))
+                self.listed['release-builds.json'] = publish.sha256(self.directory / 'release-builds.json')
+                (self.directory / 'SHA256SUMS').write_text(''.join(d + '  ' + n + '\n' for n, d in self.listed.items()))
+                acceptance = self.directory / 'acceptance.json'
+                acceptance.write_text(json.dumps({'tag': tag, 'gitCommit': 'a' * 40,
+                    'status': 'passed', 'assetSha256': self.listed}))
+                argv = ['publish.py', '--tag', tag, '--directory', str(self.directory),
+                        '--publish', '--acceptance', str(acceptance)]
+                with patch.object(sys, 'argv', argv), patch.object(publish, 'verify', return_value=release), \
+                        patch.object(publish, 'verify_remote_draft', return_value={'releaseId': 42}) as remote, \
+                        patch.object(publish.subprocess, 'run') as mutate:
+                    with self.assertRaisesRegex(ValueError, 'inventory'):
+                        publish.main()
+                    remote.assert_not_called()
+                    mutate.assert_not_called()
+
+    def test_each_source_part_is_required_for_candidate_and_stable(self):
+        for tag in ('v0.1.1-rc.1', 'v0.1.1'):
+            for part in ('putgd-proton-corresponding-source.tar.gz.part1',
+                         'putgd-proton-corresponding-source.tar.gz.part2'):
+                with self.subTest(tag=tag, missing=part):
+                    names = publish.public_inventory(tag) - {'SHA256SUMS'}
+                    self.assertIn(part, names)
+                    release = {'gitCommit': 'a' * 40}
+                    for name in names:
+                        (self.directory / name).write_bytes(('synthetic ' + name).encode())
+                    (self.directory / 'release-builds.json').write_text(json.dumps({'release': release}))
+                    listed = {name: publish.sha256(self.directory / name) for name in names - {part}}
+                    (self.directory / 'SHA256SUMS').write_text(''.join(d + '  ' + n + '\n' for n, d in listed.items()))
+                    acceptance = self.directory / 'acceptance.json'
+                    acceptance.write_text(json.dumps({'tag': tag, 'gitCommit': 'a' * 40,
+                        'status': 'passed', 'assetSha256': listed}))
+                    argv = ['publish.py', '--tag', tag, '--directory', str(self.directory),
+                            '--publish', '--acceptance', str(acceptance)]
+                    with patch.object(sys, 'argv', argv), patch.object(publish, 'verify', return_value=release), \
+                            patch.object(publish, 'verify_remote_draft') as remote, \
+                            patch.object(publish.subprocess, 'run') as mutate:
+                        with self.assertRaisesRegex(ValueError, 'inventory'):
+                            publish.main()
+                        remote.assert_not_called()
+                        mutate.assert_not_called()
 
     def test_first_draft_is_created_verified_and_uploaded_without_replacement(self):
         draft = copy.deepcopy(self.metadata)
@@ -269,8 +320,7 @@ class NightlyPublicationTest(unittest.TestCase):
                         'baseVersion': '0.1.1', 'packageVersion': self.tag[1:].replace('-dev.', '~dev.'),
                         'channel': 'nightly', 'prerelease': True, 'gitCommit': 'a' * 40,
                         'gitTree': 'b' * 40, 'commitCount': 42}
-        names = release_bundle.expected_members(self.release['version'])
-        names += ['putgd-' + self.release['version'] + '-release.zip']
+        names = sorted(publish.public_inventory(self.tag) - {'SHA256SUMS'})
         self.files = {name: ('synthetic ' + name).encode() for name in names}
         self.files['release-builds.json'] = json.dumps({'release': self.release}).encode()
         self.listed = {name: hashlib.sha256(data).hexdigest() for name, data in self.files.items()}
@@ -361,10 +411,10 @@ class NightlyPublicationTest(unittest.TestCase):
              patch.object(subprocess, 'run', side_effect=self.command):
             publish.main()
 
-    def test_cli_publishes_all_nine_verified_assets_as_nightly_prerelease(self):
+    def test_cli_publishes_all_twelve_verified_assets_as_nightly_prerelease(self):
         self.invoke()
         self.assertEqual(self.remote_files, self.files)
-        self.assertEqual(len(self.remote_files), 9)
+        self.assertEqual(len(self.remote_files), 12)
         self.assertFalse(self.metadata['draft'])
         self.assertTrue(self.metadata['prerelease'])
         self.assertIn('--latest=false', self.commands[0])
@@ -500,7 +550,7 @@ class NightlyPublicationTest(unittest.TestCase):
     def test_positive_inventory_is_required_before_any_remote_mutation(self):
         checksums = (self.directory / 'SHA256SUMS').read_text().splitlines()
         (self.directory / 'SHA256SUMS').write_text('\n'.join(checksums[:-1]) + '\n')
-        with self.assertRaisesRegex(ValueError, 'all nine'):
+        with self.assertRaisesRegex(ValueError, 'all twelve'):
             self.invoke()
         self.assertEqual(self.commands, [])
 
@@ -528,9 +578,12 @@ class NightlyPublicationTest(unittest.TestCase):
 
     def test_stable_and_candidate_still_require_acceptance_to_publish(self):
         for tag, channel in [('v0.1.1', 'stable'), ('v0.1.1-rc.1', 'candidate')]:
-            release = {**self.release, 'tag': tag, 'channel': channel}
+            release = {**self.release, 'tag': tag, 'channel': channel, 'version': tag[1:]}
+            for name in publish.public_inventory(tag) - {'SHA256SUMS'}:
+                (self.directory / name).write_bytes(('synthetic ' + name).encode())
             (self.directory / 'release-builds.json').write_text(json.dumps({'release': release}))
-            listed = {**self.listed, 'release-builds.json': publish.sha256(self.directory / 'release-builds.json')}
+            listed = {name: publish.sha256(self.directory / name)
+                      for name in publish.public_inventory(tag) - {'SHA256SUMS'}}
             (self.directory / 'SHA256SUMS').write_text(''.join(d + '  ' + n + '\n' for n, d in sorted(listed.items())))
             argv = ['publish.py', '--tag', tag, '--directory', str(self.directory), '--publish']
             with self.subTest(tag=tag), patch.object(sys, 'argv', argv), \

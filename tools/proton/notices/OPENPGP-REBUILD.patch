@@ -1,0 +1,5 @@
+--- a/rollup.config.js
++++ b/rollup.config.js
+@@ -42 +42 @@
+-  `${new Date().toISOString().split('T')[0]} - ` +
++  `${(process.env.SOURCE_DATE_EPOCH ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date()).toISOString().split('T')[0]} - ` +

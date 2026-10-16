@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-15",
+  "baseCommit": "50fd37cafafcc4611925642b93dccb9d9f0949ab",
+  "candidateState": "dirty development candidate; source fingerprints below",
+  "finalHelperSha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99",
+  "sourceSha256": {
+    "tools/proton/runtime.ts": "edd0318caeb8ce79076e276eb3a1d3252007ab56dcd301af2c283e677eba4413",
+    "tools/proton/protocol.ts": "3cd9c90d0329c45e981ba5467d40f3bed514cb40d30801634db92bebb2c44982",
+    "tools/proton/runtime.test.ts": "3bb8682078860828aad367c1bebb64e59a6884f94146348af49d9f92d6467c83",
+    "tests/performance/proton_recovery.cpp": "35fb5ee230d406ef92d66a1fe469bc9701b68f1759afad08aca4e0ec7cb19fe7",
+    "cmake/Proton.cmake": "3297d3e0325af2e3281f63b299b3816820b8061c11bdc93df9e784d5c5e145df"
+  },
+  "recipient": {
+    "anonymousPublicDownload": {
+      "passed": true,
+      "source": {
+        "kind": "public",
+        "bytes": 65536,
+        "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2",
+        "expirationDays": 1
+      },
+      "download": {
+        "bytes": 65536,
+        "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2"
+      },
+      "browser": "Chrome; sign-in page witnessed before share navigation",
+      "limitation": "Browser download-event observer timed out; actual completed file independently hashed."
+    },
+    "protectedPasswordGate": {
+      "missingPassword": "password form; Continue disabled",
+      "wrongPassword": "remained on password form; no content/download exposed",
+      "correctPassword": "file opened; download bytes match",
+      "download": {
+        "bytes": 65536,
+        "sha256": "7daca2095d0438260fa849183dfc67faa459fdf4936e1bc91eec6b281b27e4c2"
+      },
+      "passed": true,
+      "toolingLimit": "Initial password transfer was redacted by browser tool; corrected local synthetic input transfer succeeded."
+    }
+  },
+  "finalRevocation": {
+    "independentSession": true,
+    "ownTestSessionRevocationHttpStatus": 200,
+    "shareAfterRevocation": {
+      "status": "unknown",
+      "errorCode": "authentication_required",
+      "linkAvailable": false
+    },
+    "statAfterRevocation": {
+      "status": "unknown",
+      "errorCode": "authentication_required",
+      "linkAvailable": false
+    },
+    "primaryAccountStillUsable": {
+      "ok": true,
+      "errorCode": ""
+    }
+  },
+  "localTestKeychainCleanup": {
+    "onlyOwnedLocalTestReferences": true,
+    "removed": 1,
+    "alreadyAbsent": 3
+  },
+  "checks": {
+    "helperTests": 41,
+    "helperAssertions": 253,
+    "compiledNoAccountCases": 11,
+    "compiledStdoutBytes": 1048337,
+    "fullDevBeforeFinalAuthFix": {
+      "passed": 59,
+      "total": 59,
+      "seconds": 500.29
+    },
+    "finalProtonTests": {
+      "passed": 2,
+      "total": 2,
+      "seconds": 14.79
+    },
+    "upstreamTypeScriptDiagnostics": 4,
+    "helperTypeScriptDiagnostics": 0,
+    "socketPathsChecked": 59,
+    "maximumSocketUtf8Bytes": 77
+  },
+  "open": [
+    "authenticated folder access loss through complete application",
+    "final candidate application failure recovery/clipboard/restart",
+    "P2-P6"
+  ],
+  "liveQuota": {
+    "sourceBytes": 6442450944,
+    "sourceSha256": "5c32c2b28999325bc5ad39d6530bcb46fbdf1f86375a991b7269764c50b0d109",
+    "syntheticSparseSource": true,
+    "upload": {
+      "status": "unknown",
+      "errorCode": "quota_exceeded",
+      "linkAvailable": false,
+      "elapsedSeconds": 27.985
+    },
+    "reconcile": {
+      "status": "missing",
+      "errorCode": "",
+      "linkAvailable": false,
+      "elapsedSeconds": 2.77
+    }
+  },
+  "liveViewerPermissionAndRateProbe": {
+    "scope": "official SDK anonymous viewer fixture; Proton only",
+    "permission": {
+      "viewerRole": true,
+      "errorCode": "permission_denied",
+      "sdkErrorClass": "ValidationError",
+      "providerCode": 2011,
+      "httpStatuses": [
+        422
+      ]
+    },
+    "rateLimit": {
+      "maxWrongPasswordAttempts": 10,
+      "attempts": 10,
+      "httpStatuses": [
+        200,
+        422,
+        200,
+        422,
+        200,
+        422,
+        200,
+        422,
+        200,
+        422,
+        200,
+        422,
+        200,
+        422,
+        200,
+        422,
+        200,
+        422,
+        200,
+        422
+      ],
+      "lastErrorCode": "permission_denied"
+    },
+    "testLinkExpiresAtUtc": "2026-10-15T13:19:32.685Z",
+    "fixtureHttpStatuses": [
+      200,
+      200,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422,
+      200,
+      422
+    ],
+    "anonymousSessionHttpStatus": 200,
+    "phase": "bounded_rate_probe",
+    "networkRequests": 46
+  },
+  "rateLimitDisposition": {
+    "live429Observed": false,
+    "additionalWrongPasswordAttemptsExecuted": 0,
+    "reasonStopped": "Authentication-abuse limiting does not represent the application upload/share path.",
+    "acceptance": "Bounded actual SDK Retry-After/cancellation and helper uncertain-outcome tests; live 429 absence is a limitation, not a separate release blocker."
+  },
+  "viewerFixtureExpiry": {
+    "onlyOwnedProtonFixture": true,
+    "expired": true,
+    "expirationUtc": "2026-10-15T13:19:32.000Z",
+    "privateObjectRetained": true
+  },
+  "additionalTestSessionRevocation": {
+    "ownTestSessionRevocationHttpStatus": 200
+  },
+  "additionalLocalTestSessionCleanup": {
+    "onlyOwnedLocalTestReference": true,
+    "absent": true
+  },
+  "coverageLimits": [
+    "Extended SDK 50-consecutive-429 cooldown timing was source-inspected, not timed.",
+    "No naturally occurring live HTTP 429 observed."
+  ]
+}

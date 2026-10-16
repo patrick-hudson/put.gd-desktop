@@ -1,15 +1,14 @@
 """Extracted native-package checks; actual ELF/desktop validation is separate."""
-import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("native_audit", REPO / "tools/releases/audit_native.py")
-audit = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(audit)
+sys.path.insert(0, str(REPO / "tools/releases"))
+import audit_native as audit
 
 class NativeInventoryTests(unittest.TestCase):
     def setUp(self):

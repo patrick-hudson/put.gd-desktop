@@ -1,0 +1,273 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-15",
+  "sourceBaseline": "011cca05f2ea605a2fd87ee2251b70a543f64bc5",
+  "p3Complete": true,
+  "scope": "Proton-only notice/source/rebuild proof in disposable pinned-toolchain environments; synthetic/offline tests; no S3, accounts or full application build",
+  "productionHelperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+  "productionHelperChanged": false,
+  "productionRuntime": "Official Bun1.4.2 / Proton JS SDK0.22.2 / approved explicit GPL crypto2.0.1 source; marked native binaries are proof artifacts only",
+  "toolchainException": "User explicitly approved disposable pinned toolchains; no host toolchain installed",
+  "nativeProof": {
+    "nativeBunSha256": "b1f7f292666e5cb85a1c6fb46bbaec17868c63a8e913f741eea313c9845b401a",
+    "proofHelperSha256": "5ad6597e8225f39a693595fdf86f516b88dfc76cc3931a9364e421b482fbf028",
+    "nativeCryptoProofSha256": "9cc676dd5008a2bbeac753235eea9cb5736511ca2176adf5b0dc1e083320de80",
+    "markers": [
+      "putgd-bun-native-proof putgd-jsc-source-proof putgd-tinycc-source-proof",
+      "1.4.2-canary.1+744846f84"
+    ],
+    "nativeVersion": "1.4.2",
+    "tinyccCompileAndExecute": true,
+    "compiledHelperCallsNativeSourceMarkers": true,
+    "compiledHelperTinyccCompileAndExecute": true,
+    "helperTests": 41,
+    "compiledStdioCases": 11,
+    "stdoutBytes": 1048337,
+    "crypto": {
+      "argon2Packet": true,
+      "rebuildRoundtrip": true,
+      "publishedDecryptsRebuilt": true,
+      "rebuiltDecryptsPublished": true,
+      "modifiedWasmMarker": true,
+      "markedInstantiations": 1
+    },
+    "productionHelperChanged": false,
+    "accountsOrServicesUsed": false,
+    "nativeBitIdentityClaimed": false
+  },
+  "officialRuntimeChecks": {
+    "runtimeManifestSha256": "c6e0ad8b47453014c1d9a2b67f17dd6b6e985e8e11ea215559a82806857ee24f",
+    "commands": [
+      {
+        "command": [
+          "python3",
+          "tools/proton/provision_runtime.py",
+          "--source",
+          "build/dependencies/proton-runtime/sdk-source",
+          "--crypto-source",
+          "build/dependencies/proton-runtime/crypto-source",
+          "--offline"
+        ],
+        "exitCode": 0,
+        "seconds": 7.843179941177368,
+        "log": "01-provision_runtime.log"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/proton/test_crypto_source.py"
+        ],
+        "exitCode": 0,
+        "seconds": 0.22751665115356445,
+        "log": "02-test_crypto_source.log"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/proton/test_redistribution.py"
+        ],
+        "exitCode": 0,
+        "seconds": 0.11097598075866699,
+        "log": "03-test_redistribution.log"
+      },
+      {
+        "command": [
+          "python3",
+          "tools/proton/test_install.py"
+        ],
+        "exitCode": 0,
+        "seconds": 1.8314871788024902,
+        "log": "04-test_install.log"
+      }
+    ],
+    "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+    "helperUnchanged": true,
+    "helperTests": 41,
+    "compiledStdioCases": 11,
+    "stdoutBytes": 1048337,
+    "cryptoSourceTests": 7,
+    "inventoryTests": 8,
+    "installRuleFixtureTests": 3,
+    "pythonSyntaxPassed": true,
+    "fullAppBuildOrS3TestsRun": false,
+    "accountsUsed": false
+  },
+  "sourceCatalog": {
+    "schemaVersion": 1,
+    "materialsReady": true,
+    "distributionReady": false,
+    "published": false,
+    "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
+    "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+    "sourcePins": {
+      "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
+      "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "webkit": "2e2aa2290fac856d6f451ceacb58f7f5b44dd057",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "proof": {
+      "helperExactRebuildVerified": true,
+      "bunOfflineSourceReplayVerified": true,
+      "openpgpPreferredJsExactRebuildVerified": true,
+      "openpgpModifiedCompiledRoundtripVerified": true,
+      "nativeBunRelinkVerified": true,
+      "argon2WasmRebuildVerified": true,
+      "finalPackageAcceptanceVerified": false,
+      "nativeCompiledHelperSourceSelectionVerified": true,
+      "argon2ModifiedCompiledCryptoVerified": true
+    },
+    "openGates": [
+      "Corresponding-source publication beside final binaries (P4)",
+      "Fresh final-helper functional, resource and actual package acceptance (P6)"
+    ],
+    "artifacts": [
+      {
+        "filename": "putgd-proton-build-controls.tar.gz",
+        "bytes": 3223548,
+        "sha256": "0dd9bb6985606925b4cd71d85d23079c14b480f4f6c7d5df0d32fa8e89197fd6",
+        "purpose": "Proton component sources, locks, provisioner, audit/tests, notices and CMake integration; SOURCES.json accompanies separately to avoid a hash cycle"
+      },
+      {
+        "filename": "putgd-proton-helper-rebuild.tar.gz",
+        "bytes": 15261507,
+        "sha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+        "purpose": "Selected patched helper/SDK/account/crypto source graph and dependencies; 6298 public files, exact helper rebuild verified"
+      },
+      {
+        "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
+        "bytes": 326295,
+        "sha256": "7e726a9974c73616d8c47c60a84939238970066088e47b8e93eb4d1fc2aa506a",
+        "purpose": "Official GPL source snapshot, historical evidence and recovered predecessor notices; no retroactive interpretation of 2.0.0 ISC metadata"
+      },
+      {
+        "filename": "putgd-proton-openpgp-preferred-source.tar.gz",
+        "bytes": 86740453,
+        "sha256": "b980431b29868350e6b09cee3782db60cfaffe9ffba4b74d722e0b97984a621c",
+        "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source and prebundled preferred source/notices; use accompanying supplement for clean pinned compiler replay"
+      },
+      {
+        "filename": "putgd-proton-bun-sources-1.4.2.tar",
+        "bytes": 2352957440,
+        "sha256": "754765f1f38e6e57e369806ac8e19b190a6eea812696848003bd40df9f06df27",
+        "purpose": "Full pinned Bun/WebKit/native/Cargo/npm source/build inputs, patches and offline reconstruction; includes optional build-tool binaries, not a pure text-only source archive"
+      },
+      {
+        "filename": "putgd-proton-native-rebuild-supplement.tar.gz",
+        "bytes": 47345002,
+        "sha256": "a8ca1e3a313a40d55542470a01770cfd7037e221e3761156c18ee7723f7034fc",
+        "purpose": "Corrected native/Argon rebuild recipes, pinned disposable toolchains, Rust standard-library preferred source/notices, proof fixtures and optional published bootstrap Bun; supersedes original preflight and Argon replay commands"
+      }
+    ],
+    "rebuildToolchains": {
+      "nativeCpp": "LLVM 21.1.8",
+      "rustNightly": "2026-07-20",
+      "rustSource": "9f36de775bc636c8e88c31a173c2bcb6995956a0",
+      "cargoSource": "3efb1f477e99b42974b982d939fd100303cdf7db",
+      "profile": "release-local with local JSC and system ICU 74.2",
+      "emscriptenImage": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
+      "nativeOrWasmByteIdentityClaimed": false
+    }
+  },
+  "argonProof": {
+    "preferredSource": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a",
+    "image": "emscripten/emsdk@sha256:e92eed60a35c9b43588e3fa3dae56c4236b4e7462e6ee5276fae6e98f914b4e4",
+    "compiler": "Emscripten 3.1.45 ef3e4e3b044de98e1811546e0bc605c65d3412f4",
+    "publishedRebuiltModifiedVectorChecks": 24,
+    "cleanReplayVectorChecks": 16,
+    "cleanRealWasmBuilds": 4,
+    "sourceMarkerModifiedCryptoInterop": true,
+    "bitIdentityClaimed": false,
+    "artifactHashes": {
+      "source/dist/no-simd.wasm": "9bdf38bb8d3d8573b036baf4ad192f30dafd02e9852ee9a60dcfaf6289cb16fa",
+      "source/dist/simd.wasm": "51d1b32a1bfdce522f873712562cb0ef744df33f561b1550397936b4fc3ad354",
+      "modified/dist/no-simd.wasm": "cd96fed5b02931a567aaa0676b8d262af85c348e26b59dce089d881848dfe6c0",
+      "modified/dist/simd.wasm": "2dca321c7ce5ff2f42be453396bb0d98fcef121c90e47e30d2f05c5b2d22bfee"
+    },
+    "originalEvidenceRoot": "/home/patrick/work/put.gd/work/evidence/proton-p3-argon-rebuild-20261015",
+    "originalArchiveSha256": "6797fd117079dbb66622b7a08acb8ec31f9805e2a7b0bf6c56fd44296f0cec07",
+    "correctionArchiveSha256": "f0503ed8f1680126d450d3446f084359a8eefd93da38125f17259ef202afa3c8"
+  },
+  "nativeToolchain": {
+    "rustNightly": "2026-07-20",
+    "rustSourceCommit": "9f36de775bc636c8e88c31a173c2bcb6995956a0",
+    "cargoSourceCommit": "3efb1f477e99b42974b982d939fd100303cdf7db",
+    "cargoCommitSourceUrl": "https://api.github.com/repos/rust-lang/rust/contents/src/tools/cargo?ref=9f36de775bc636c8e88c31a173c2bcb6995956a0",
+    "cargoCommitSourceSha256": "8bb91325f3c1c1575d47e80d016e595679ca68964dac54ea4ed0ba4e9f445000",
+    "llvmVersion": "21.1.8",
+    "llvmPackageVersion": "1:21.1.8~++20251221032922+2078da43e25a-1~exp1~20251221153059.70",
+    "rustComponents": {
+      "rustc": {
+        "url": "https://static.rust-lang.org/dist/2026-07-20/rustc-nightly-x86_64-unknown-linux-gnu.tar.xz",
+        "sha256": "a0e461ac8f2ec75b38cd9590188db2d90e0acde3279434194a0ecebd7c099fa0"
+      },
+      "cargo": {
+        "url": "https://static.rust-lang.org/dist/2026-07-20/cargo-nightly-x86_64-unknown-linux-gnu.tar.xz",
+        "sha256": "4e5500fc62034d3b42450a921f408ee9e4aacd5e6de52a78fd736d6215889a38"
+      },
+      "rust-std": {
+        "url": "https://static.rust-lang.org/dist/2026-07-20/rust-std-nightly-x86_64-unknown-linux-gnu.tar.xz",
+        "sha256": "4b746e74f07cc3e3a16e1c0d367183eb5ca5374d6e87b9ab2002bbd463b3f8f0"
+      },
+      "rust-src": {
+        "url": "https://static.rust-lang.org/dist/2026-07-20/rust-src-nightly.tar.xz",
+        "sha256": "d4ffe57cc99d8846761bdbefc631bfd8f06fc001d7208576887e381c5709341a"
+      }
+    },
+    "rustStdCargoLockSha256": "9e87d1ac04edbf5fa61e27cb21984a83566573a007767713868965fba70acb6d"
+  },
+  "completeToolchainImage": "sha256:e03506599806414d63560d67e4208a0ee976e916e467bbcf366491e981be7348",
+  "actualBuildImage": "sha256:1f7e970fd2c42f660d9f5d88bd313f55fe61e13976fb665606383db970ed2f67 plus verified rust-src component installed inside container",
+  "nativeProfile": "release-local, local JSC, system ICU 74.2; native/Argon byte identity with published artifacts is not claimed",
+  "nativeProofContainerLimits": {
+    "cpus": 6,
+    "memoryGiB": 10,
+    "swapGiB": 0,
+    "pids": 2048,
+    "network": "none",
+    "hostMounts": [],
+    "capabilities": "all dropped",
+    "noNewPrivileges": true,
+    "uid": 1000
+  },
+  "rustNotices": {
+    "sourceFileCount": 77,
+    "vendoredSourceDirectories": 30,
+    "scope": "Preferred-source/build/platform notice superset, not additional unique-text or exact linked ELF counts",
+    "originalNoticeMappings": 23143,
+    "originalUniqueTexts": 6105
+  },
+  "socketPreflight": {
+    "dockerResolvedPath": "/run/docker.sock",
+    "utf8Bytes": 16,
+    "limit": 107,
+    "guiOrSessionSocketsCreated": false
+  },
+  "recipeCorrections": [
+    "Cargo must report its exact submodule commit, not the Rust monorepo commit",
+    "Require pinned rust-src and merge its 30 checksum-verified vendored packages offline",
+    "Check Rust standard-library source Cargo.lock hash before building",
+    "Clear Argon dist outputs, invoke upstream script with bash -e and require both scalar/SIMD outputs"
+  ],
+  "failedAndInterruptedAttemptsPreserved": true,
+  "nativeTrial": {
+    "head": "e1f20ef75126ff0cf5a5cf8d48837744757a679a",
+    "unchanged": true
+  },
+  "reviewReceipts": {
+    "rebuildArtifacts": "/home/patrick/work/put.gd/work/evidence/proton-p3-native-rebuild-20261015/artifact-review/review.json",
+    "finalGitDiff": "/home/patrick/work/put.gd/work/evidence/proton-p3-native-rebuild-20261015/git-review/review.json"
+  },
+  "remainingReleaseGates": [
+    "P4 shipping/source publication and full application source handoff",
+    "P5 SDK update rehearsal",
+    "P6 fresh final-helper live, resource, native desktop and actual package acceptance"
+  ],
+  "historicalHelperEvidence": "P1/P2 remains credited to prior93fc77e6\u2026; final eeffe97c\u2026 candidate still needs P6 acceptance",
+  "knownTypecheckLimit": "Four previously recorded upstream Crypto/Bun stream declaration diagnostics; no clean TypeScript claim; no JS/TS implementation changed in this follow-up",
+  "durableEvidenceRoot": "/home/patrick/work/put.gd/work/evidence/proton-p3-native-rebuild-20261015",
+  "durableIndex": "/home/patrick/work/put.gd/work/evidence/proton-p3-native-rebuild-20261015/INDEX.json",
+  "completionReceipt": "/home/patrick/work/put.gd/work/evidence/proton-p3-native-rebuild-20261015/COMPLETION.json"
+}

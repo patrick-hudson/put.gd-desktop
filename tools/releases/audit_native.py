@@ -11,6 +11,11 @@ import re
 import stat
 import subprocess
 
+try:
+    from audit_proton import audit_proton
+except ModuleNotFoundError:
+    from tools.releases.audit_proton import audit_proton
+
 PROGRAMS = ("putgd", "putgd-cli", "putgd-ui", "putgd-capture", "putgd-s3-worker", "putgd-launcher")
 SDK_LICENSES = ("aws-sdk-LICENSE", "aws-crt-cpp-LICENSE", *(
     "aws-crt-cpp-crt-" + name + "-LICENSE" for name in (
@@ -28,7 +33,8 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def validate_inventory(root: Path, expected_manifest: dict | None = None, *, require_kde=False) -> dict:
+def validate_inventory(root: Path, expected_manifest: dict | None = None, *, require_kde=False,
+                       require_proton=False, expected_proton_manifest: dict | None = None) -> dict:
     root = root.resolve()
     files = sorted(path for path in root.rglob("*") if not path.is_dir())
     for path in files:
@@ -41,6 +47,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
             raise ValueError(f"Bundled Qt in native package: {relative}")
         if not path.resolve().is_relative_to(root):
             raise ValueError(f"Package symlink escapes extracted tree: {relative}")
+    proton = audit_proton(root, required=require_proton, expected_manifest=expected_proton_manifest)
     programs = list(PROGRAMS)
     if require_kde or (root / "usr/bin/putgd-kde-region").exists():
         programs.append("putgd-kde-region")
@@ -79,7 +86,7 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     recorded = {record["file"] for record in records}
     if any(path.name not in recorded for path in private.iterdir() if path.is_file()):
         raise ValueError("Unrecorded private runtime library")
-    return {"manifest": manifest, "programs": programs,
+    return {**({"proton": proton} if proton else {}), "manifest": manifest, "programs": programs,
             "privateLibraryDirectory": str(private.relative_to(root)),
             "runtimeModule": module,
             "inventory": [{"path": str(path.relative_to(root)), "size": path.stat().st_size,
@@ -93,9 +100,11 @@ def command(argv: list[str], *, env=None) -> str:
     return result.stdout.strip()
 
 
-def audit_tree(root: Path, expected_manifest=None, *, require_kde=False) -> dict:
+def audit_tree(root: Path, expected_manifest=None, *, require_kde=False, require_proton=False,
+               expected_proton_manifest: dict | None = None) -> dict:
     root = root.resolve()
-    result = validate_inventory(root, expected_manifest, require_kde=require_kde)
+    result = validate_inventory(root, expected_manifest, require_kde=require_kde,
+                                require_proton=require_proton, expected_proton_manifest=expected_proton_manifest)
     private = root / result["privateLibraryDirectory"]
     env = {**os.environ, "LD_LIBRARY_PATH": str(private)}
     result["compiledIdentities"] = {}
@@ -113,7 +122,8 @@ def audit_tree(root: Path, expected_manifest=None, *, require_kde=False) -> dict
                 raise ValueError(f"Compiled version mismatch: {name}")
         result["compiledIdentities"][name] = identity
     for path in [*(root / "usr/bin" / name for name in result["programs"] if name != "putgd-launcher"),
-                 *(path for path in private.iterdir() if path.is_file())]:
+                 *(path for path in private.iterdir() if path.is_file()),
+                 *([root / result["proton"]["helper"]] if "proton" in result else [])]:
         dynamic = command(["readelf", "-d", str(path)])
         needed = re.findall(r"\(NEEDED\).*?\[(.*?)\]", dynamic)
         resolved = command(["ldd", str(path)], env=env)
@@ -135,10 +145,14 @@ def main():
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--manifest", type=Path, help="Expected build-info.json from the release build")
     parser.add_argument("--require-kde", action="store_true")
+    parser.add_argument("--require-proton", action="store_true")
+    parser.add_argument("--proton-manifest", type=Path, help="Expected provisioned Proton runtime manifest")
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     expected = json.loads(args.manifest.read_text()) if args.manifest else None
-    result = audit_tree(args.root, expected, require_kde=args.require_kde)
+    proton_expected = json.loads(args.proton_manifest.read_text()) if args.proton_manifest else None
+    result = audit_tree(args.root, expected, require_kde=args.require_kde,
+                        require_proton=args.require_proton, expected_proton_manifest=proton_expected)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
 
 

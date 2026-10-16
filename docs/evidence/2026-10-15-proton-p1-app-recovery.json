@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-15",
+  "gate": "P1",
+  "disposition": "complete for supported owned-folder normal-use workflow and bounded service-response scope; P2-P6 remain open",
+  "candidate": {
+    "schemaVersion": 1,
+    "version": "0.1.1-dev.188+ge558436e30c9",
+    "baseVersion": "0.1.1",
+    "packageVersion": "0.1.1~dev.188+ge558436e30c9",
+    "gitCommit": "e558436e30c96d0e68fea14d9429e5ed2b811eaf",
+    "gitTree": "3ea6cff261485806ac0d47b681fb4198a4c71a1f",
+    "commitCount": 188,
+    "dirty": false,
+    "sourceProvenance": "git"
+  },
+  "deploymentKind": "private Release executable deployment; not a shipping package",
+  "binarySha256": {
+    "putgd": "5f315b177d5e96573bf016b17c7fc9df0813dcc7adec353038d090446fcd7fe2",
+    "putgd-cli": "6fb718e29cdf6df742b566da06915100f93eecf47b68ce55a23d9baec391db40",
+    "putgd-ui": "85287e2adae7cadaff2df83ef452bdc1e72cb66027fdbbe54461ea44bc036288",
+    "putgd-desktop-fixture": "1aa4dc3f9a2f7a8cace43ffd231f9f48dd058d8fd89b31ba8738c6fed5b1e4cc",
+    "putgd-proton-runtime": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99",
+    "putgd-tray-probe": "54f4bdd2e084ebd1f131483bc8afe971f918a68160326064e22b5774b5d78975"
+  },
+  "runtime": {
+    "sdk": "0.22.2",
+    "crypto": "2.0.0",
+    "bun": "1.4.2",
+    "upstreamCommit": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9"
+  },
+  "native": {
+    "desktop": "X-Cinnamon",
+    "session": "x11",
+    "qtPlatform": "xcb",
+    "qtVersion": "6.4.2",
+    "environment": {
+      "machine": "x86_64",
+      "kernel": "6.14.0-37-generic",
+      "packages": [
+        "cinnamon 6.6.4+zena",
+        "gnome-shell ",
+        "libc6 2.39-0ubuntu8.6",
+        "libqt6core6 ",
+        "libqt6core6t64 6.4.2+dfsg-21.1build5",
+        "libqt6widgets6 ",
+        "libqt6widgets6t64 6.4.2+dfsg-21.1build5",
+        "muffin 6.6.1+zena"
+      ],
+      "virtualization": "kvm"
+    },
+    "sourceFiles": [
+      {
+        "bytes": 16777216,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
+      },
+      {
+        "bytes": 16777216,
+        "sha256": "341aacac661ccb210720bedaa9ead5d668fe5ea41a73532fc147c71e34040df1"
+      }
+    ],
+    "destinationUnavailableSourceCommit": "f7b97bb0a65f717e5d9b9f2b800d811569255b28",
+    "destinationUnavailable": {
+      "identityPreserved": true,
+      "noFailedLinkCopied": true,
+      "errors": [
+        "destination_unavailable",
+        "destination_unavailable"
+      ]
+    },
+    "oldInterruptedJournalRepair": {
+      "identityPreserved": true,
+      "sameOperationRetry": true,
+      "nativeSourceClipboardRetainedOnFailure": true,
+      "nativeCopyMatchedReceipts": true
+    },
+    "crashThenTimeoutRecovery": {
+      "freshCrashHadInterruptedNoResult": true,
+      "nativeSourceClipboardRetainedAfterCrash": true,
+      "partialResultCopiedOnlyConfirmedLink": true,
+      "confirmedReceiptUnchanged": true,
+      "sameOperationRetry": true,
+      "identityPreserved": true,
+      "nativeCopyMatchedReceipts": true,
+      "retryDeadlineMs": 120000
+    },
+    "accountAccessRestartRetry": {
+      "errorCodes": [
+        "authentication_required",
+        "authentication_required"
+      ],
+      "identityPreserved": true,
+      "nativeSourceClipboardRetainedOnFailure": true,
+      "sameOperationRetry": true,
+      "nativeCopyMatchedReceipts": true
+    },
+    "completeTrayRenderingProtocolClaimed": false
+  },
+  "confirmedUploadInventory": {
+    "ok": true,
+    "confirmedNodes": 10,
+    "uniqueConfirmedNodes": 10,
+    "expectedReceipts": 10,
+    "noDuplicateConfirmedUpload": true,
+    "visibleUnfinishedDrafts": 0,
+    "folderRestored": true
+  },
+  "cleanup": {
+    "revokedOwnedTestLinks": 10,
+    "remoteObjectDeletion": false,
+    "folderRestored": true,
+    "ok": true,
+    "ownTestSessionRevocationHttpStatus": 200,
+    "onlyOwnTestReference": true,
+    "hostAbsent": true,
+    "guestAbsent": true,
+    "primaryReferenceUntouched": true,
+    "websiteMyFilesStillVisible": true,
+    "privateSyntheticObjectsRetained": true
+  },
+  "tests": {
+    "configureDev": true,
+    "ordinaryDevBuild": true,
+    "releaseNativeTargetBuild": true,
+    "finalScopedCtest": {
+      "passed": 5,
+      "total": 5,
+      "seconds": 85.05,
+      "names": [
+        "payload_contract",
+        "history_contract",
+        "operations_contract",
+        "proton_contract",
+        "proton_transport"
+      ]
+    },
+    "regressionBeforeFix": {
+      "failingAssertions": 7
+    },
+    "regressionAfterFix": {
+      "qtOutcomesIncludingSetupCleanup": 11,
+      "failed": 0
+    },
+    "fullSuiteClaimed": false,
+    "s3TestsRun": false
+  },
+  "review": {
+    "depth": "focused",
+    "findings": 0,
+    "correctness": "completed",
+    "independentAdversarial": "local fallback completed",
+    "crossModel": "not run; shared transport npm ETARGET before egress",
+    "simplification": [
+      "reuse",
+      "quality",
+      "efficiency",
+      "test-value"
+    ],
+    "reviewedDiffBase": "f7b97bb0a65f717e5d9b9f2b800d811569255b28"
+  },
+  "socketPreflight": {
+    "linuxLimitBytesExcludingNul": 107,
+    "vmMaximumBytes": 53,
+    "appSocketBytes": 33,
+    "unitRootMaximumBytes": 39,
+    "passed": true
+  },
+  "memory": {
+    "observerSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40",
+    "scope": "two serial Cinnamon VM post-use idle windows; no active-transfer or cold physical acceptance",
+    "windows": [
+      {
+        "window": 1,
+        "requestedSeconds": 300,
+        "sampleIntervalSeconds": 5,
+        "samples": 61,
+        "observedSeconds": 300.0002488340001,
+        "peakBytes": {
+          "rssBytes": 28037120,
+          "pssBytes": 12963840,
+          "privateBytes": 6950912
+        },
+        "peakMiB": {
+          "rssBytes": 26.738,
+          "pssBytes": 12.363,
+          "privateBytes": 6.629
+        },
+        "maximumSwapBytes": 0,
+        "cpuPercentOneCore": 0.0033333305685134033,
+        "maxProcesses": 1,
+        "maxUiProcesses": 0,
+        "maxEscapedProcesses": 0,
+        "exitedDescendants": 0,
+        "residentIdentity": {
+          "pid": 42904,
+          "startTicks": 218379,
+          "uid": 1000,
+          "executable": "/home/lab/p1/bin/putgd",
+          "device": 64771,
+          "inode": 393744
+        },
+        "gates": {
+          "rssAtMost40MiB": true,
+          "noHelpersOrEscapedChildren": true,
+          "noSwap": true,
+          "cpuBelowHalfPercentOfOneCore": true
+        },
+        "resultsSha256": "cca257bf0dbf6481ba6e3ad3312005497f25b0f63571c35fafb36270cb891534",
+        "samplesSha256": "1781e1accea8e72d81d5dd7b6e2b491be5fe15e5fd4d93dae02de73f5cdbdd07"
+      },
+      {
+        "window": 2,
+        "requestedSeconds": 300,
+        "sampleIntervalSeconds": 5,
+        "samples": 61,
+        "observedSeconds": 300.0001933220001,
+        "peakBytes": {
+          "rssBytes": 28037120,
+          "pssBytes": 12963840,
+          "privateBytes": 6950912
+        },
+        "peakMiB": {
+          "rssBytes": 26.738,
+          "pssBytes": 12.363,
+          "privateBytes": 6.629
+        },
+        "maximumSwapBytes": 0,
+        "cpuPercentOneCore": 0.0066666623706249884,
+        "maxProcesses": 1,
+        "maxUiProcesses": 0,
+        "maxEscapedProcesses": 0,
+        "exitedDescendants": 0,
+        "residentIdentity": {
+          "pid": 42904,
+          "startTicks": 218379,
+          "uid": 1000,
+          "executable": "/home/lab/p1/bin/putgd",
+          "device": 64771,
+          "inode": 393744
+        },
+        "gates": {
+          "rssAtMost40MiB": true,
+          "noHelpersOrEscapedChildren": true,
+          "noSwap": true,
+          "cpuBelowHalfPercentOfOneCore": true
+        },
+        "resultsSha256": "efb99cf4836287fdec1c38f156c11f9f4cf994344fe1cc403ef554c0e0cff60d",
+        "samplesSha256": "bc6454460d30ade02e6815f493262fffb37cac8bbd27b387a0c004efa9bd3053"
+      }
+    ]
+  },
+  "limits": [
+    "Private Release executable deployment, not a shipping package.",
+    "Destination-unavailable native case used f7b97bb; corrected crash/account/timeout cases used e558436.",
+    "No second authenticated account ACL downgrade; supported setup is My files/direct child.",
+    "Live permission refusal was anonymous Viewer SDK evidence in the earlier service receipt; controlled typed responses cover classification.",
+    "No manufactured live 429; actual SDK bounded Retry-After/cancellation evidence is in the earlier receipt; extended cooldown remains unmeasured.",
+    "Memory is post-use idle on Cinnamon VM only, not active-helper budget or cold physical acceptance.",
+    "Memory-only guest Secret Service does not establish persistent keyring initialization.",
+    "Four known upstream TypeScript diagnostics remain as recorded previously.",
+    "No S3 service access, tests, object/configuration/policy changes; common local build compiled existing targets."
+  ],
+  "privateArtifacts": "/tmp/p1a1; temporary and excluded from public replay material",
+  "artifactHashes": {
+    "native.py": "aeb8c16f0b381363bce5fe08e2c628c51984797825c04e9d0f23f96644fcdb4a",
+    "continue-native.py": "f5b7b1bb30981154cc9f0099585337933d116d8bdbc1330bf96c034f6f40942b",
+    "finish-native.py": "c057b792fea488fe8e2b36ba01f11df180eed1933800eb2091ab0019c4ee30ce",
+    "memory.py": "5cc6496407b9f1dfc0a61c8e83c9e9ebbc324a2c2247f2d596e515d582942a09",
+    "final-tests.xml": "5ec6596f79a2036d28bb04816b0577718926c2ca8fd1212a5b78d54f92b8faac"
+  }
+}

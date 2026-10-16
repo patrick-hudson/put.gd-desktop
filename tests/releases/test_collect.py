@@ -1,5 +1,7 @@
 """Release collection rejects bytes/source mismatches before exposing any output."""
 import hashlib
+import io
+import tarfile
 from datetime import datetime, timezone
 import json
 import os
@@ -13,6 +15,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tools/releases'))
 import collect
+import proton_sources
 from stage_artifacts import stage
 from source_archive import create_archive
 
@@ -35,6 +38,27 @@ class ReleaseCollection(unittest.TestCase):
         extension.mkdir(parents=True)
         (extension / 'extension.js').write_text('// synthetic extension fixture\n')
         (extension / 'metadata.json').write_text('{}\n')
+        bundle = self.root / 'build/source-transport.tar.gz'
+        bundle.parent.mkdir()
+        source_data = b'preferred source byte fixture'
+        with tarfile.open(bundle, 'w:gz') as archive:
+            info = tarfile.TarInfo('helper-source.tar.gz')
+            info.size = len(source_data)
+            archive.addfile(info, io.BytesIO(source_data))
+        data = bundle.read_bytes()
+        halves = (data[:len(data) // 2], data[len(data) // 2:])
+        self.proton_catalog = self.root / 'tools/proton/notices/SOURCES.json'
+        self.proton_catalog.parent.mkdir(parents=True)
+        catalog = {'schemaVersion': 1, 'materialsReady': True, 'helperSha256': 'a' * 64,
+            'delivery': {'file': proton_sources.BUNDLE_NAME, 'bytes': len(data),
+                'sha256': hashlib.sha256(data).hexdigest(),
+                'parts': [{'file': name, 'bytes': len(part), 'sha256': hashlib.sha256(part).hexdigest()}
+                          for name, part in zip(proton_sources.PART_NAMES, halves)]},
+            'artifacts': [{'filename': 'helper-source.tar.gz', 'bytes': len(source_data),
+                           'sha256': hashlib.sha256(source_data).hexdigest()}]}
+        self.proton_catalog.write_text(json.dumps(catalog))
+        self.proton_inventory = {'runtimeSha256': catalog['helperSha256'],
+            'sourceCatalogSha256': hashlib.sha256(self.proton_catalog.read_bytes()).hexdigest()}
         commands = [['git', 'init', '-q', str(self.root)],
                     ['git', '-C', str(self.root), 'add', '.'],
                     ['git', '-C', str(self.root), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'fixture'],
@@ -50,13 +74,13 @@ class ReleaseCollection(unittest.TestCase):
             directory.mkdir(parents=True)
             path = directory / ('synthetic' + suffix)
             path.write_bytes(b'byte-integrity fixture, not a native package')
-            receipt = {'manifest': dict(identity), 'package': {'format': kind, 'architecture': arch, 'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'size': path.stat().st_size}}
+            receipt = {'manifest': dict(identity), 'proton': self.proton_inventory, 'package': {'format': kind, 'architecture': arch, 'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'size': path.stat().st_size}}
             (directory / 'native-audit.json').write_text(json.dumps(receipt))
         directory = self.inputs / 'release-appimage'
         directory.mkdir()
         path = directory / 'synthetic.AppImage'
         path.write_bytes(b'byte-integrity fixture, not an AppImage')
-        (directory / 'appimage-build.json').write_text(json.dumps({'format': 'AppImage', 'architecture': 'x86_64', 'build': identity, 'artifact': {'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'bytes': path.stat().st_size}}))
+        (directory / 'appimage-build.json').write_text(json.dumps({'format': 'AppImage', 'architecture': 'x86_64', 'build': identity, 'postDeploymentAudit': {'proton': self.proton_inventory}, 'artifact': {'file': path.name, 'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'bytes': path.stat().st_size}}))
         directory = self.inputs / 'release-native-ubuntu24.04'
         archive = directory / ('putgd-' + identity['version'] + '-source.tar.gz')
         self.source_receipt = create_archive(self.root, archive, identity)
@@ -65,8 +89,10 @@ class ReleaseCollection(unittest.TestCase):
                     'version': self.source_receipt['localBuild']['version'],
                     'packageVersion': identity['baseVersion'] + '~dev.' + str(identity['commitCount']) + '+g' + identity['gitCommit'][:12]}
         self.source_result = {'passed': True, 'compiledBuild': compiled,
+                              'rebuiltProton': {'sha256': catalog['helperSha256'], 'bundledSha256': catalog['helperSha256']},
                               'identityMatchedPrograms': ['putgd', 'putgd-cli', 'putgd-ui', 'putgd-capture', 'putgd-s3-worker']}
         (directory / 'source-build-results.json').write_text(json.dumps(self.source_result))
+        proton_sources.prepare(self.proton_catalog, self.inputs / 'proton-sources', bundle)
         self.output = self.root / 'build/output'
 
     def git_show_commit_time(self):
@@ -85,7 +111,7 @@ class ReleaseCollection(unittest.TestCase):
         self.assertIn('putgd-0.1.1-rc.1-source.tar.gz', files)
         self.assertIn('putgd-0.1.1-rc.1-fedora44-x86_64.rpm', files)
         self.assertIn('putgd-0.1.1-rc.1-x86_64.AppImage', files)
-        self.assertEqual(len(lines), 8)
+        self.assertEqual(len(lines), 11)
         self.assertEqual((self.output / 'putgd-0.1.1-rc.1-source.tar.gz').read_bytes(),
                          (self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']).read_bytes())
         combined = self.output / 'putgd-0.1.1-rc.1-release.zip'
@@ -95,7 +121,7 @@ class ReleaseCollection(unittest.TestCase):
         expected_time = (utc.year, utc.month, utc.day, utc.hour, utc.minute, utc.second - utc.second % 2)
         with zipfile.ZipFile(combined) as archive:
             self.assertTrue(all(item.date_time == expected_time for item in archive.infolist()))
-            underlying = files - {combined.name, 'SHA256SUMS'}
+            underlying = files - {combined.name, 'SHA256SUMS', *proton_sources.PART_NAMES}
             self.assertEqual(set(archive.namelist()), underlying | {'SHA256SUMS'})
             for line in archive.read('SHA256SUMS').decode().splitlines():
                 digest, name = line.split('  ', 1)
@@ -147,6 +173,63 @@ class ReleaseCollection(unittest.TestCase):
         self.assertEqual({p.name for p in output.iterdir()}, {'source-archive.json',
             'putgd-0.1.1-rc.1-source.tar.gz', 'source-build-results.json', 'source-build-parameters.json', 'source-build.log'})
         self.assertEqual((output / 'source-build-results.json').read_bytes(), b'results.json')
+
+    def test_corresponding_source_parts_and_exact_catalog_are_public(self):
+        self.run_collection()
+        for name in (*proton_sources.PART_NAMES, proton_sources.CATALOG_NAME):
+            self.assertEqual((self.output / name).read_bytes(), (self.inputs / 'proton-sources' / name).read_bytes())
+        with zipfile.ZipFile(self.output / 'putgd-0.1.1-rc.1-release.zip') as archive:
+            self.assertIn(proton_sources.CATALOG_NAME, archive.namelist())
+            self.assertTrue(set(proton_sources.PART_NAMES).isdisjoint(archive.namelist()))
+
+    def test_corrupt_source_transport_rejected_before_output(self):
+        path = self.inputs / 'proton-sources' / proton_sources.PART_NAMES[0]
+        path.write_bytes(path.read_bytes() + b'bad')
+        with self.assertRaisesRegex(ValueError, 'bundle bytes'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+
+    def test_other_source_catalog_rejected_before_output(self):
+        path = self.inputs / 'proton-sources' / proton_sources.CATALOG_NAME
+        path.write_bytes(path.read_bytes() + b'\n')
+        with self.assertRaisesRegex(ValueError, 'catalog differs'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+
+    def test_appimage_missing_proton_inventory_rejected_before_output(self):
+        path = self.inputs / 'release-appimage/appimage-build.json'
+        receipt = json.loads(path.read_text())
+        del receipt['postDeploymentAudit']['proton']
+        path.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, 'Proton package'):
+            self.run_collection()
+        self.assertFalse(self.output.exists())
+
+    def test_other_helper_or_catalog_package_inventory_rejected_before_output(self):
+        path = self.inputs / 'release-native-fedora44/native-audit.json'
+        original = json.loads(path.read_text())
+        for field in ('runtimeSha256', 'sourceCatalogSha256'):
+            receipt = json.loads(json.dumps(original))
+            receipt['proton'][field] = '0' * 64
+            path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, 'Proton package'):
+                self.run_collection()
+            self.assertFalse(self.output.exists())
+
+    def test_missing_or_mismatched_rebuilt_proton_rejected_before_output(self):
+        path = self.inputs / 'release-native-ubuntu24.04/source-build-results.json'
+        for index, rebuilt in enumerate((None, {'sha256': '0' * 64, 'bundledSha256': 'a' * 64},
+                        {'sha256': 'a' * 64, 'bundledSha256': '0' * 64})):
+            with self.subTest(rebuilt=rebuilt):
+                self.output = self.root / ('output-rebuild-' + str(index))
+                result = {**self.source_result}
+                result.pop('rebuiltProton')
+                if rebuilt is not None:
+                    result['rebuiltProton'] = rebuilt
+                path.write_text(json.dumps(result))
+                with self.assertRaisesRegex(ValueError, 'rebuilt Proton'):
+                    self.run_collection()
+                self.assertFalse(self.output.exists())
 
     def test_corrupt_source_archive_rejected_before_output(self):
         archive = self.inputs / 'release-native-ubuntu24.04' / self.source_receipt['artifact']['file']
@@ -234,7 +317,7 @@ class ReleaseCollection(unittest.TestCase):
         (directory / 'source-archive.json').write_text(json.dumps(self.source_receipt))
         return tag, archive
 
-    def test_nightly_cli_preserves_all_nine_raw_assets_and_exact_compiled_source(self):
+    def test_nightly_cli_preserves_all_twelve_raw_assets_and_exact_compiled_source(self):
         tag, source = self.nightly_inputs()
         (self.inputs / 'credentials.txt').write_text('synthetic excluded fixture')
         argv = ['collect.py', '--tag', tag, '--root', str(self.root),
@@ -245,9 +328,9 @@ class ReleaseCollection(unittest.TestCase):
         files = {path.name for path in self.output.iterdir()}
         from release_bundle import expected_members
         expected = set(expected_members(self.release['version']) +
-                       ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS'])
+                       ['putgd-' + self.release['version'] + '-release.zip', 'SHA256SUMS', *proton_sources.PART_NAMES])
         self.assertEqual(files, expected)
-        self.assertEqual(len(files), 9)
+        self.assertEqual(len(files), 12)
         self.assertEqual((self.output / source.name).read_bytes(), source.read_bytes())
         builds = json.loads((self.output / 'release-builds.json').read_text())
         self.assertEqual(builds['release']['channel'], 'nightly')
@@ -255,7 +338,7 @@ class ReleaseCollection(unittest.TestCase):
         self.assertEqual(builds['receipts']['sourceBuild']['compiledBuild']['sourceProvenance'], 'supplied')
         self.assertNotEqual(builds['receipts']['sourceBuild']['compiledBuild']['version'], self.release['version'])
         with zipfile.ZipFile(self.output / ('putgd-' + self.release['version'] + '-release.zip')) as archive:
-            for name in expected - {'SHA256SUMS', 'putgd-' + self.release['version'] + '-release.zip'}:
+            for name in expected - {'SHA256SUMS', 'putgd-' + self.release['version'] + '-release.zip', *proton_sources.PART_NAMES}:
                 self.assertEqual(archive.read(name), (self.output / name).read_bytes())
             self.assertNotIn('credentials.txt', archive.namelist())
         for line in (self.output / 'SHA256SUMS').read_text().splitlines():

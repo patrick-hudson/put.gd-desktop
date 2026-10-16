@@ -146,7 +146,7 @@ def stage_draft(tag, directory, listed, release, notes):
 def publish_nightly(args, release, listed):
     """Publish one automated nightly, retaining exact producer and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
-        raise ValueError('Collected nightly inventory must contain all nine public assets')
+        raise ValueError('Collected nightly inventory must contain all twelve public assets')
     identifiers = (args.build_run_id, args.build_workflow_id, args.package_run_id, args.coordinator_run_id)
     if any(type(value) is not int or value <= 0 for value in identifiers):
         raise ValueError('Nightly publication requires positive producer and coordinator IDs')
@@ -182,6 +182,10 @@ def publish_nightly(args, release, listed):
             'combined ZIP and SHA256SUMS are available separately. DEB/RPM use distro Qt. '
             'AppImage bundles dynamically linked Qt 6.8.3 and requires glibc 2.39 or newer. '
             'GNOME 50 requires the included host extension.\n\n'
+            'Proton corresponding source is delivered as two separate transport parts plus '
+            'proton-source-catalog.json. Verify SHA256SUMS, concatenate part1 then part2, '
+            'and unpack the resulting tar.gz. The combined ZIP includes the catalog; '
+            'download the two source parts separately.\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
         stage_draft(args.tag, args.directory, listed, release, notes)
@@ -237,6 +241,8 @@ def main():
         if name in listed:
             raise ValueError('Duplicate collected release checksum')
         listed[name] = digest
+    if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
+        raise ValueError('Collected release inventory must include all twelve public assets, including Proton sources')
     if args.nightly:
         publish_nightly(args, release, listed)
         return
@@ -262,6 +268,9 @@ def main():
     notes.write_text('Linux x86_64 prerelease with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
                      'GNOME 50 requires the included host extension. Flatpak is tracked in issue #14.\n\n'
+                     'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
+                     'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '
+                     'The combined ZIP includes the catalog; download the two source parts separately.\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
                      'Full release certification remains separate from this prerelease; package-specific acceptance is recorded before publication.\n')
     stage_draft(args.tag, args.directory, listed, release, notes)

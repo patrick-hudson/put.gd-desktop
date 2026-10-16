@@ -132,7 +132,8 @@ void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,st
 void GnomeAdapter::start(const QString& id,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){
  if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
  auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
- QJsonArray imageMimes;for(const auto& mime:QImageReader::supportedMimeTypes())imageMimes.append(QString::fromLatin1(mime));
+ // Qt readers can advertise application/* formats; the bridge accepts image/* offers.
+ QJsonArray imageMimes;for(const auto& mime:QImageReader::supportedMimeTypes())if(mime.startsWith("image/"))imageMimes.append(QString::fromLatin1(mime));
  QJsonObject bounds{{"imageMimes",imageMimes},{"textBytes",double(limits.clipboardTextBytes)},{"imageBytes",double(limits.imageBytes)},{"imagePixels",double(limits.imagePixels)},{"maxFiles",limits.maxFiles}};
  call("Acquire",{id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
   if(!transfers_.contains(transfer->id))return;

@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-15",
+  "scope": "Proton-only P3 materials; no account operations, project S3 paths, full app build or S3 tests",
+  "sourceBaseline": "55daa86ce65fb046be1fefac0c0ca1b547a73094",
+  "runtimeSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+  "previousRuntimeSha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99",
+  "runtimeLockSha256": "419547e7a3b703b4dd88c03aa9db2fec7e98a52898ace75caf8a09bf53deffd6",
+  "cryptoSelection": "User-approved official explicit GPL source 956a713c0823b365cc512018974eb4fcba47c9dd, version 2.0.1; npm 2.0.0 is dependency bootstrap only",
+  "historicalIscProvenanceResolved": false,
+  "bundledMissingSuppliedTexts": [],
+  "classificationCounts": {
+    "installed-not-bundled": 9,
+    "bundled-js": 10,
+    "not-installed": 10,
+    "embedded-runtime": 1,
+    "build-only": 6
+  },
+  "helperSourceFiles": 6298,
+  "checks": {
+    "cryptoSourceTests": 7,
+    "inventoryTests": 8,
+    "installRuleFixtureTests": 3,
+    "helperTests": 41,
+    "helperAssertions": 253,
+    "compiledStdioCases": 11,
+    "compiledStdoutBytes": 1048337,
+    "exactHelperRebuild": true,
+    "openpgpOfflineRelocatedSourceRebuild": true,
+    "openpgpUnmodifiedJsSha256": "70a6e1a013779d79ee8c47a19d23da37f5458918ecbb216efbd6a4ae49e67e58",
+    "openpgpModifiedCompiledRoundtrip": true,
+    "nativeDependenciesOfflineIdentityChecks": 21,
+    "offlineNpmGroups": 3,
+    "webKitRestoredGitFsck": true,
+    "typecheckPassed": false,
+    "knownUpstreamTypeDiagnostics": 4,
+    "fullApplicationBuildRun": false,
+    "realPackageAcceptanceRun": false,
+    "modifiedGplHelperCryptoVersion": "2.0.1",
+    "modifiedGplHelperSha256": "943387ceecda79e12a3e26b0b6611b707f8bec6e781e7ba7c6215e7fdd7328a6"
+  },
+  "bunNoticeCollection": {
+    "records": 23143,
+    "uniqueTexts": 6105,
+    "scope": "Conservative source superset, not exact linked ELF closure",
+    "linuxCargoRegistry": 94,
+    "linuxCargoWorkspaceOrVendor": 101,
+    "lockOnlyRegistry": 87,
+    "unresolvedCrateContexts": 0
+  },
+  "review": {
+    "receipt": "code-review/review.json",
+    "findingsResolved": 2,
+    "remainingCodeFindings": 0,
+    "independentSameFamilyAdversarial": true,
+    "crossModelReview": false,
+    "crossModelLimit": "Prior acpx@0.19.5 npm ETARGET before egress; local independent fallback used",
+    "simplification": {
+      "passes": [
+        "reuse",
+        "quality",
+        "efficiency",
+        "test-value",
+        "comments"
+      ],
+      "applied": {
+        "reuse": 1,
+        "quality": 0,
+        "efficiency": 0,
+        "tests": 0,
+        "comments": 0
+      },
+      "skipped": 0,
+      "proofTestsPreserved": true,
+      "projectWideChecks": "Excluded under user Proton-only/S3 boundary; focused Python checks, helper tests and actual Proton install-rule fixture used"
+    }
+  },
+  "sourceCatalog": {
+    "schemaVersion": 1,
+    "materialsReady": true,
+    "distributionReady": false,
+    "published": false,
+    "distributionRequirement": "Deliver every listed artifact and this catalog beside the binary packages; retain corresponding-source availability. Public release URLs must be added to the release receipt at P4.",
+    "helperSha256": "eeffe97c9c7f473895f790434dabafb13a018b8909a2f5215c3b769e7b7bb539",
+    "sourcePins": {
+      "sdk": "8ffae007b0fbb8bcef53514719d6f093bb32dcf9",
+      "crypto": "956a713c0823b365cc512018974eb4fcba47c9dd",
+      "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "bun": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "webkit": "2e2aa2290fac856d6f451ceacb58f7f5b44dd057",
+      "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
+    },
+    "proof": {
+      "helperExactRebuildVerified": true,
+      "bunOfflineSourceReplayVerified": true,
+      "openpgpPreferredJsExactRebuildVerified": true,
+      "openpgpModifiedCompiledRoundtripVerified": true,
+      "nativeBunRelinkVerified": false,
+      "argon2WasmRebuildVerified": false,
+      "finalPackageAcceptanceVerified": false
+    },
+    "openGates": [
+      "Native Bun/JSC/TinyCC modification and relink proof with the required compiler toolchain",
+      "Argon2 WASM preferred-source compiler proof with a pinned Emscripten version",
+      "Corresponding-source publication beside final binaries (P4)",
+      "Fresh final-helper functional, resource and actual package acceptance (P6)"
+    ],
+    "artifacts": [
+      {
+        "filename": "putgd-proton-build-controls.tar.gz",
+        "bytes": 3200271,
+        "sha256": "f5888717ebeecec985005eb83333c60e0bcdf3a6344235819a8b285c66484162",
+        "purpose": "Proton component sources, locks, provisioner, audit/tests, notices and CMake integration; SOURCES.json accompanies separately to avoid a hash cycle"
+      },
+      {
+        "filename": "putgd-proton-helper-rebuild.tar.gz",
+        "bytes": 15261507,
+        "sha256": "5f6060a5b744db2d69ac858c310c667d1ea1fea3918c438bce1f172fb2012b96",
+        "purpose": "Selected patched helper/SDK/account/crypto source graph and dependencies; 6298 public files, exact helper rebuild verified"
+      },
+      {
+        "filename": "putgd-proton-crypto-source-and-provenance.tar.gz",
+        "bytes": 326295,
+        "sha256": "7e726a9974c73616d8c47c60a84939238970066088e47b8e93eb4d1fc2aa506a",
+        "purpose": "Official GPL source snapshot, historical evidence and recovered predecessor notices; no retroactive interpretation of 2.0.0 ISC metadata"
+      },
+      {
+        "filename": "putgd-proton-openpgp-preferred-source.tar.gz",
+        "bytes": 86740453,
+        "sha256": "b980431b29868350e6b09cee3782db60cfaffe9ffba4b74d722e0b97984a621c",
+        "purpose": "Preferred OpenPGP source and offline npm inputs, full Argon2 C/WASM source, prebundled preferred source/notices; WASM compiler proof pending"
+      },
+      {
+        "filename": "putgd-proton-bun-sources-1.4.2.tar",
+        "bytes": 2352957440,
+        "sha256": "754765f1f38e6e57e369806ac8e19b190a6eea812696848003bd40df9f06df27",
+        "purpose": "Full pinned Bun/WebKit/native/Cargo/npm source/build inputs, patches and offline reconstruction; includes optional build-tool binaries, not a pure text-only source archive"
+      }
+    ]
+  },
+  "p3Complete": false,
+  "limits": [
+    "Native Bun/JSC/TinyCC modification and relink proof with the required compiler toolchain",
+    "Argon2 WASM preferred-source compiler proof with a pinned Emscripten version",
+    "Corresponding-source publication beside final binaries (P4)",
+    "Fresh final-helper functional, resource and actual package acceptance (P6)"
+  ],
+  "newHelperAcceptance": "Historical P1/P2 evidence remains credited to its original helper. Fresh final functional/resource/package acceptance required for eeffe97c... at P6.",
+  "durableEvidenceRoot": "/home/patrick/work/put.gd/work/evidence/proton-p3-materials-20261015",
+  "nativeTrial": "Unchanged separate worktree at e1f20ef75126ff0cf5a5cf8d48837744757a679a; original indexed evidence retained",
+  "sealedMaterialsVerification": {
+    "sourceAssetHashes": 5,
+    "buildControlFilesMatchCheckout": 40,
+    "bunDeliveryEntriesVerified": 388,
+    "runtimeSourceAndNoticeHashes": "pass",
+    "pythonSyntax": "pass",
+    "bunProvenanceJson": "pass",
+    "catalogMatchesRuntime": true
+  },
+  "durableIndex": {
+    "filename": "INDEX.json",
+    "files": 1503,
+    "sha256": "4c6c1c729d00e5b617a792290c976b9d56d41dfc7486714e4c5c098b97857bb7"
+  }
+}

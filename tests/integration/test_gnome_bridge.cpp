@@ -4,6 +4,7 @@
 #include <QSignalSpy>
 #include <QBuffer>
 #include <QImage>
+#include <QImageReader>
 #include <QTemporaryDir>
 #include <QFile>
 #include <QUrl>
@@ -82,7 +83,7 @@ class GnomeHelperFixture final:public QObject {
  Q_OBJECT
  Q_CLASSINFO("D-Bus Interface","org.putgd.Gnome50")
  uint currentPid_=0,failPid_=0,failures_=0;
- QJsonArray registrations_;
+ QJsonArray registrations_,lastAcquireMimes_;
  int hellos_=0,binds_=0,commits_=0;
  QJsonObject lastBindings_;
  QString copyId_,copyMime_;QByteArray copyBytes_;qulonglong copySize_=0;
@@ -109,11 +110,17 @@ public slots:
   ++commits_;return json({{"clipboardRevision",2}});
  }
  QString Prepare(const QString& id,const QString&){return json({{"version",1},{"requestId",id}});}
- QString Acquire(const QString& id,const QString&){return json({{"version",1},{"requestId",id},{"mime","text/plain;charset=utf-8"},{"bytes",1}});}
+ QString Acquire(const QString& id,const QString& encoded){
+  const auto mimes=QJsonDocument::fromJson(encoded.toUtf8()).object()["imageMimes"].toArray();lastAcquireMimes_=mimes;
+  for(const auto& mime:mimes)
+   if(!mime.isString()||!mime.toString().startsWith("image/"))
+    return json({{"error",QJsonObject{{"code","bridge_protocol"},{"message","Invalid supported image MIME list"}}}});
+  return json({{"version",1},{"requestId",id},{"mime","text/plain;charset=utf-8"},{"bytes",1}});
+ }
  QString Read(const QString& id,qulonglong offset,uint){return json({{"version",1},{"requestId",id},{"offset",double(offset)},{"data","eA=="}});}
  QString Release(const QString&){return json({});}
  void FailRegistration(uint pid,uint count){failPid_=pid;failures_=count;}
- QString State(){return json({{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
+ QString State(){return json({{"imageMimes",lastAcquireMimes_},{"currentPid",int(currentPid_)},{"registrations",registrations_},{"hellos",hellos_},{"binds",binds_},{"lastBindings",lastBindings_},{"copyMime",copyMime_},{"copyData",QString::fromLatin1(copyBytes_.toBase64())},{"commits",commits_}});}
  void TriggerWindow(const QString& ticket){emit Action("window",ticket);}
  signals:
  void Action(const QString& action,const QString& ticket);
@@ -140,6 +147,9 @@ private:
  void stopFixture(){if(fixture_.state()!=QProcess::NotRunning){fixture_.terminate();if(!fixture_.waitForFinished(3000)){fixture_.kill();fixture_.waitForFinished(3000);}}}
 private slots:
  void initTestCase(){
+  QCoreApplication::addLibraryPath(QStringLiteral(PUTGD_GNOME_MIME_FIXTURE_DIR));
+  QVERIFY(QImageReader::supportedMimeTypes().contains("application/x-putgd-gnome-mime"));
+  QVERIFY(QImageReader::supportedMimeTypes().contains("image/x-putgd-gnome-mime"));
   if(coreMode_){
    QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));
    QCOMPARE(qEnvironmentVariable("XDG_SESSION_TYPE"),QString("wayland"));
@@ -152,6 +162,16 @@ private slots:
  }
  void init(){QVERIFY2(startFixture(),fixture_.readAllStandardError().constData());}
  void cleanup(){stopFixture();}
+ void nonImageReaderMetadataCannotBreakClipboardAcquisition(){
+  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  bool completed=false;PayloadResult result;
+  source.acquire("clipboard",{},[&](PayloadResult value){result=std::move(value);completed=true;});
+  QTRY_VERIFY(completed);QVERIFY2(!result.error,qPrintable(result.error.message));
+  QCOMPARE(result.payload.kind,QString("text"));QCOMPARE(result.payload.bytes,QByteArray("x"));
+  const auto mimes=state()["imageMimes"].toArray();
+  QVERIFY(mimes.contains("image/x-putgd-gnome-mime"));
+  QVERIFY(!mimes.contains("application/x-putgd-gnome-mime"));
+ }
  void clipboardAndShortcutTransport(){
   GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
   source.bindShortcuts({{"region","Ctrl+Shift+1"},{"clipboard","Ctrl+Alt+V"}});

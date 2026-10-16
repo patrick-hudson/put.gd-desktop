@@ -1,0 +1,589 @@
+{
+  "schemaVersion": 1,
+  "runtimeSha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99",
+  "bunSha256": "a83d263767d839e4d2649ca8e35d07159c7afc99afdc96d731ced29e056dda0c",
+  "dependencyLockSha256": "ed04b9896fec4ec2684fa6f00db6857741619835227ca4d26e2f1cb955aafa56",
+  "exactRebuild": true,
+  "classificationCounts": {
+    "installed-not-bundled": 9,
+    "bundled-js": 10,
+    "not-installed": 10,
+    "embedded-runtime": 1,
+    "build-only": 6
+  },
+  "packages": [
+    {
+      "location": "node_modules/@boltffi/runtime",
+      "name": "@boltffi/runtime",
+      "version": "0.31.0",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-nxht21tsG0KLzkdN2gHqSAZv7Ainht5v/Q6ZGVT8xXAmJKdewk4PwwryLeQR4xrejwDOtuWRD7p7OGkKGw8JIQ==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@noble/hashes",
+      "name": "@noble/hashes",
+      "version": "2.4.0",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA==",
+      "classification": "bundled-js",
+      "bundledBytes": 5479,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/@noble/hashes/LICENSE",
+          "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/@openpgp/web-stream-tools",
+      "name": "@openpgp/web-stream-tools",
+      "version": "0.3.1",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-EV+VQ4Dr8b+JmlGnc74FLgx7EhLyydOr4j6s6Hp+2scQh6sLQMs2h+1oEYUIslXcQPicWKG5ZQx+/dua0dgPWA==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/@openpgp/web-stream-tools/LICENSE",
+          "sha256": "b0cde112196e45798d9e9b46e50663d82536c07b343bf157cec92b7229d052c4"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/@oven/bun-darwin-aarch64",
+      "name": "node_modules/@oven/bun-darwin-aarch64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-MXdZkP1featqxZ+/VTXWG1BVjM4OGBehVY2Q88EeUj/7L0UMeCGItmyPYTN+wxvlGJ6F66JEtzsw+GvQWewnag==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-darwin-x64",
+      "name": "node_modules/@oven/bun-darwin-x64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-gZTxZuLjkUhAWjTETu3tw0WhsEdNkJ64daj60ybhPf835a2yollV3yTkK9JozvzKPx4TRFzLSl8C+U525pxVbw==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-freebsd-aarch64",
+      "name": "node_modules/@oven/bun-freebsd-aarch64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-SMNItMw1Z8QeeQVKnw8jA7xQNkeXdP+OPgin4Wi/QTx/B8RHHLnuZfqmFy7NtVeT2NF0kKYppW4WWd2CCYZjhQ==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-freebsd-x64",
+      "name": "node_modules/@oven/bun-freebsd-x64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-THbPKXhO54N0DpFRKZNDZpQ7dpbX0bWASuARckAUS9wRtFIHsiY+uULXJvxJGo2YD1YewvXQ4G8Fj7XT5oBCiw==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-linux-aarch64",
+      "name": "node_modules/@oven/bun-linux-aarch64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-3BBP9ovJ2RGHFH6Ae1CAtxNtG1+YY6GD6rmYbsUosoAk9+OEl6zeDQ/k4fBkc6dYOJCtWnx8hUxzNzQATSmvYQ==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-linux-aarch64-android",
+      "name": "node_modules/@oven/bun-linux-aarch64-android",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-3mZKO2rhsNgbAUtAHC1UKUlF2zTxFraDZT/Elv8wzyH0fJL9h+Iv3TgB9lO63w89PRn3eFe+NRA1bhVgikKNPQ==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-linux-aarch64-musl",
+      "name": "node_modules/@oven/bun-linux-aarch64-musl",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-+Sm6y+lSiSFBOtXmnekp5Q6n1tUKlyv71FCPWBc61Cgb14T5eBs8SN/nh4MUCOKzONkI3O+as3MGUgikS4aCBQ==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-linux-x64",
+      "name": "@oven/bun-linux-x64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-9/E/UXOTpSo3YsV5g+FhtTd/qTpiWoKuxS12cqtuYA1ssu9fRAoPQnipFgGyck3tWO63iUdxBiygq+kELFawng==",
+      "classification": "embedded-runtime",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-linux-x64-android",
+      "name": "node_modules/@oven/bun-linux-x64-android",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-6HC5tzcC79113n2IHCTJMWv+HsQImv4ZFEK2XpYLxY6HbT8tM4cUM2Zv1bHZBQsS3jv/zYBamDJ1UX7If0d5tw==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-linux-x64-musl",
+      "name": "@oven/bun-linux-x64-musl",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-vVTKUg1bnPhRP/Hp73jIVoFh2vPFNYEqYX0ERKfZBOQEEHitNAeukZzzuUDZS0SoDCIpuWUGSpd/CDMbjdR+Uw==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-windows-aarch64",
+      "name": "node_modules/@oven/bun-windows-aarch64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-8EJ1ST7339WJE3poPW5nBgVW/lWf9HBz4W27ZUNhburKmcBLOByPyE6DP9fHD8FQGm5c+ilUN2hX1mrW0jxq9Q==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@oven/bun-windows-x64",
+      "name": "node_modules/@oven/bun-windows-x64",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-+bN6OuVld/9diT/RLSXSW7JE6CvNE3gL9XsAEjULi1nUsXd6DNO6GuA9jNdNb3r8PdJFnYHr5aypNV1Oj3Rd9g==",
+      "classification": "not-installed",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@protontech/crypto",
+      "name": "@protontech/crypto",
+      "version": "2.0.0",
+      "declaredLicense": "ISC",
+      "integrity": "sha512-D3M023jLq/aMNCSr5p1KVlLV0grAeVXpUh8WyN2HITCIX83KLJo5BReNbVT1mXMvodPf/qYIxUoYXyaEW3pfOQ==",
+      "classification": "bundled-js",
+      "bundledBytes": 35066,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@protontech/crypto/node_modules/@openpgp/web-stream-tools",
+      "name": "@openpgp/web-stream-tools",
+      "version": "0.1.3",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-mT/ds43cH6c+AO5RFpxs+LkACr7KjC3/dZWHrP6KPrWJu4uJ/XJ+p7telaoYiqUfdjiiIvdNSOfhezW9fkmboQ==",
+      "classification": "bundled-js",
+      "bundledBytes": 8479,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/@protontech/crypto/node_modules/@openpgp/web-stream-tools/LICENSE",
+          "sha256": "b0cde112196e45798d9e9b46e50663d82536c07b343bf157cec92b7229d052c4"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/@protontech/drive-sdk",
+      "name": "@protontech/drive-sdk",
+      "version": "0.22.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-J5qM6SkQ2TsymagFJR3Al+f3TjFzwxb+eUUK6ZDMlzv52MOCDjNNaOIHF3+44uXI/Lka0g1kaSaTF2tFISL6tw==",
+      "classification": "bundled-js",
+      "bundledBytes": 225122,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/@protontech/drive-sdk/node_modules/@noble/hashes",
+      "name": "@noble/hashes",
+      "version": "1.8.0",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==",
+      "classification": "bundled-js",
+      "bundledBytes": 3996,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/@protontech/drive-sdk/node_modules/@noble/hashes/LICENSE",
+          "sha256": "4f221aee6e072336700c408c68ab3b96a3fc09f6aebe6f48f1bd99e5ef13faec"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/@types/bun",
+      "name": "@types/bun",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ==",
+      "classification": "build-only",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/@types/bun/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/@types/node",
+      "name": "@types/node",
+      "version": "26.6.5",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg==",
+      "classification": "build-only",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/@types/node/LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/@xmldom/xmldom",
+      "name": "@xmldom/xmldom",
+      "version": "0.9.12",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/@xmldom/xmldom/LICENSE",
+          "sha256": "4da724fc305d81606b245b324d4d2586916b9d248b23d82183df753ace0fdf71"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/bcryptjs",
+      "name": "bcryptjs",
+      "version": "3.0.3",
+      "declaredLicense": "BSD-3-Clause",
+      "integrity": "sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==",
+      "classification": "bundled-js",
+      "bundledBytes": 18750,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/bcryptjs/LICENSE",
+          "sha256": "095017ef78d2c818465eea7d71ebed918eb415aee9d38d36ce0b1240ae5781ee"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/bun",
+      "name": "bun",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-TrSXo6HJfIEaczpb3kjX82I2pL47vK1QUNmHRCUdz9IzaOwa9lzOXSWwu2l18YHE3sNfGRapVLd4nNm+22vVVA==",
+      "classification": "build-only",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/bun-types",
+      "name": "bun-types",
+      "version": "1.4.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-bxV1FgK7yBIzjRe5zBozIM4Bem11ZJcCXSrjWRG3YWLt8yFDePu4cLjpebO8OvPeIE9trbyPF4fuj3Cia4Fj3w==",
+      "classification": "build-only",
+      "bundledBytes": 0,
+      "suppliedNotices": []
+    },
+    {
+      "location": "node_modules/comlink",
+      "name": "comlink",
+      "version": "4.4.2",
+      "declaredLicense": "Apache-2.0",
+      "integrity": "sha512-OxGdvBmJuNKSCMO4NTl1L47VRp6xn2wG4F/2hYzB6tiCb709otOxtEYCSvK80PtjODfXXZu8ds+Nw5kVCjqd2g==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/comlink/LICENSE",
+          "sha256": "bcf29b4fd3ec2cb5f9d40a0866da446f6da62170d2ccedf4aeca9cf9406dd20c"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/core-js",
+      "name": "core-js",
+      "version": "3.50.0",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-BRWgOLKkFeCgRudR6zrs8p9XJZcE14grzKMMssoYrk6krtuEZ7MTKPIY5RzOnqsEKIR9kst7wNzphttraT+Yqw==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/core-js/LICENSE",
+          "sha256": "b87653fff2d44426ab5cd4723cee3b1364dc8d35a0acdf098c54689543123bf8"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/dedent",
+      "name": "dedent",
+      "version": "1.5.1",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-+LxW+KLWxu3HW3M2w2ympwtqPrqYRzU8fqi6Fhd18fBALe15blJPI/I4+UHveMVG6lJqB4JNd4UG0S5cnVHwIg==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/dedent/LICENSE",
+          "sha256": "5ee163766ce8b2e8f45d5731fd892c630a2ebc9489db1d4aef3267d532f1912c"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/exifreader",
+      "name": "exifreader",
+      "version": "4.50.0",
+      "declaredLicense": "MPL-2.0",
+      "integrity": "sha512-RUtdkMPWJd2BdinNSO0JVw0QkMigxDTsuambp+jMlPM1b5k3xvXa4p9Wat+JhW4iVBOEfpBw66PS6oYHS1yFTg==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/exifreader/LICENSE",
+          "sha256": "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/jsmimeparser",
+      "name": "@protontech/jsmimeparser",
+      "version": "3.0.2",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-PConkdRdY8xc1A8+oEmQ2pGC7nnJPqWwkUb/+odjFPbof2w3zpIws77D9J9assvZg8OdB8dRe/cZdBU+BCijgA==",
+      "classification": "bundled-js",
+      "bundledBytes": 24710,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/jsmimeparser/LICENSE",
+          "sha256": "d7cc10b09e57053b82df0c5533b7c3e28e011746af67e4915353b8f6a2d7cb96"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/ky",
+      "name": "ky",
+      "version": "1.14.3",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-9zy9lkjac+TR1c2tG+mkNSVlyOpInnWdSMiue4F+kq8TwJSgv6o8jhLRg8Ho6SnZ9wOYUq/yozts9qQCfk7bIw==",
+      "classification": "bundled-js",
+      "bundledBytes": 14314,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/ky/license",
+          "sha256": "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/openpgp",
+      "name": "@protontech/openpgp",
+      "version": "6.3.1",
+      "declaredLicense": "LGPL-3.0+",
+      "integrity": "sha512-+NUfnF0rbw553xwT09YROb3TBmitumSSgOEx3eQh8LOx7CAKQzo2CLfsbBQz7KFc3+d9iMIMOKLrLzerYCtLIw==",
+      "classification": "bundled-js",
+      "bundledBytes": 426284,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/openpgp/LICENSE",
+          "sha256": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/plural-forms",
+      "name": "plural-forms",
+      "version": "0.5.5",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-rJw4xp22izsfJOVqta5Hyvep2lR3xPkFUtj7dyQtpf/FbxUiX7PQCajTn2EHDRylizH5N/Uqqodfdu22I0ju+g==",
+      "classification": "installed-not-bundled",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/plural-forms/LICENSE",
+          "sha256": "9dc1211e9228e47c9eca55c18229129859063bd936a59cbb90b6403484502360"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/ttag",
+      "name": "ttag",
+      "version": "1.8.12",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-bg8IqDOY1MtJrWmBiY+Frl8T5dhDJ00du4jIaDh/Uwbo+UPyNPvBJcgfin/W+yTMEKLEs4Pve8YaygzJCMuvOg==",
+      "classification": "bundled-js",
+      "bundledBytes": 12849,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/ttag/LICENSE",
+          "sha256": "d9860e2290aac09d0629a0252488ea320934b69b5b3e7b7aa887bac829c80cc7"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/typescript",
+      "name": "typescript",
+      "version": "5.9.3",
+      "declaredLicense": "Apache-2.0",
+      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+      "classification": "build-only",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/typescript/LICENSE.txt",
+          "sha256": "a7d00bfd54525bc694b6e32f64c7ebcf5e6b7ae3657be5cc12767bce74654a47"
+        }
+      ]
+    },
+    {
+      "location": "node_modules/undici-types",
+      "name": "undici-types",
+      "version": "8.9.0",
+      "declaredLicense": "MIT",
+      "integrity": "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==",
+      "classification": "build-only",
+      "bundledBytes": 0,
+      "suppliedNotices": [
+        {
+          "path": "node_modules/undici-types/LICENSE",
+          "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27"
+        }
+      ]
+    }
+  ],
+  "inventoryScope": "Compiler-visible JavaScript packages only; OpenPGP prebundled dependencies and Bun native components need separate inventories",
+  "bundledMissingSuppliedTexts": [
+    "node_modules/@protontech/crypto",
+    "node_modules/@protontech/drive-sdk"
+  ],
+  "reviewComplete": false,
+  "remainingEvidence": [
+    "Authoritative crypto2.0.0 terms/notice provenance or separately reviewed dependency/licensing change",
+    "Complete linux-x64 Bun attribution and corresponding native source/relink materials",
+    "Full OpenPGP/Argon2 preferred-source and modified-library rebuild evidence",
+    "Reviewed notices/source/rebuild materials installed/published with final shipping packages"
+  ],
+  "sourceFiles": 6294,
+  "sourceArchiveSha256": "3967c85dbd9fb0926979be903e5d6d641afff170c47b1b22b926af92387c3871",
+  "gate": "P3",
+  "status": "open",
+  "capturedUtc": "2026-10-15T18:23:07.360637+00:00",
+  "startingCommit": "2aa56a8aa7f0944b9bfc3a96e499311514640480",
+  "productionChoice": "official-js-helper",
+  "nativeTrial": {
+    "branch": "codex/proton-native-trial",
+    "commit": "e1f20ef75126ff0cf5a5cf8d48837744757a679a",
+    "adopted": false,
+    "archives": [
+      {
+        "path": "/home/patrick/work/put.gd/work/evidence/proton-native-trial-20261015",
+        "indexedFiles": 327,
+        "verified": true,
+        "indexSha256": "48095d4d88ae40ed3fc2c1c000b248bb01c81067c83269e638d56186b131f9a8"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/evidence/proton-native-latency-20261015",
+        "indexedFiles": 702,
+        "verified": true,
+        "indexSha256": "e3ffeecd2015e48c755c8bef7a13e98a168ac9f10c46b848c8464e96d67cf6d3"
+      },
+      {
+        "path": "/home/patrick/work/put.gd/work/evidence/proton-native-latency-private-20261015",
+        "indexedFiles": 1,
+        "verified": true,
+        "indexSha256": "a99840bfacbb1a2446172a17751a6570765dfb2f825388775ec0472bbcc7fe7a"
+      }
+    ]
+  },
+  "retainedArchive": {
+    "path": "/home/patrick/work/put.gd/work/evidence/proton-p3-20261015",
+    "indexedFiles": 1118,
+    "indexSha256": "a21760dc410d9420a56cd7745797acc473b1c80d4e7c753a4139364165883e1b"
+  },
+  "verification": {
+    "archive": "audit-1/helper-rebuild.tar.gz",
+    "extractedSourceFiles": 6294,
+    "rebuiltRuntimeSha256": "93fc77e63913dd39075a7ede049289325fb7c16a3aaf20985bc62adbc25b0e99",
+    "helperTests": 41,
+    "helperAssertions": 253,
+    "compiledNoAccountStdioCases": 11,
+    "newAuditTests": 6,
+    "networkAccountOrKeychainOperations": false,
+    "failedAttempt": {
+      "commandWorkingDirectory": "/tmp",
+      "result": "ModuleNotFound resolving ./runtime.ts; source was extracted successfully before compile",
+      "correctedWorkingDirectory": "/tmp/pg-p3-replay/build-source",
+      "correctedCommand": "PINNED_BUN build --compile --target=bun-linux-x64 --minify ./runtime.ts --outfile=putgd-proton-runtime.new --compile-executable-path=PINNED_BUN"
+    },
+    "nativeBunOrOpenPGPSourceBuild": false
+  },
+  "review": {
+    "status": "complete",
+    "findings": 0,
+    "artifact": "/home/patrick/work/put.gd/work/evidence/proton-p3-20261015/code-review.json",
+    "runId": "20261015-p3-bj5kyy4y",
+    "independentLens": "same-family local fallback; cross-model transport failed before code egress"
+  },
+  "scope": {
+    "accountOperations": false,
+    "s3Operations": false,
+    "runtimeOrLockOrShippingNoticesChanged": false,
+    "wholeAppOrShippingPackageBuilt": false
+  },
+  "provenance": {
+    "crypto": {
+      "sourceRepository": "https://github.com/ProtonMail/WebPackages",
+      "sourceTag": "@protontech/crypto@2.0.0",
+      "sourceCommit": "1184183ec0f83c677c1af1ab006846c7d5d5b14b",
+      "archiveUrl": "https://codeload.github.com/ProtonMail/WebPackages/tar.gz/1184183ec0f83c677c1af1ab006846c7d5d5b14b",
+      "byteIdenticalFileCount": 62,
+      "differentFiles": [
+        "package.json"
+      ],
+      "differenceExplanation": "package.json whitespace/key order and workspace devDependency specifications resolved to concrete published versions; all62 other npm files match source",
+      "licenseFilesInTag": []
+    },
+    "cryptoTerms": {
+      "npmAndExactSourceTagLicense": "ISC",
+      "noticeTextSuppliedByNpmOrSourceTag": false,
+      "laterCommit": "956a713c0823b365cc512018974eb4fcba47c9dd",
+      "laterCommitUrl": "https://github.com/ProtonMail/WebPackages/commit/956a713c0823b365cc512018974eb4fcba47c9dd",
+      "laterCommitDate": "2026-06-16T12:00:39Z",
+      "laterCommitTitle": "Use consistent licenses in each package",
+      "laterChange": "crypto2.0.1 package.json license ISC\u2192GPL-3.0",
+      "currentPublicProjectLicense": "GPL3; current state does not establish earlier release terms",
+      "action": "Keep release license/provenance gate open; do not invent ISCcopyright or silently apply later GPL text. Clarify redistribution terms or perform a consciously reviewed dependency/license change."
+    },
+    "openpgp": {
+      "sourceCommit": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
+      "archiveSha256": "454691e6a27087169a3cd763f705287c5c60f7a81b572df0f7a1d0ac30c8576a",
+      "prebundlePackageNames": 9,
+      "prebundleLocations": 10,
+      "mappedSourcesMatched": 51,
+      "preferredSourceBuildVerified": false
+    },
+    "bun": {
+      "commit": "744846f844374847c902b5e7fd59b4342a51ef99",
+      "webkitCommit": "2e2aa2290fac856d6f451ceacb58f7f5b44dd057",
+      "tinyccCommit": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
+      "nativeRelinkVerified": false
+    }
+  }
+}
