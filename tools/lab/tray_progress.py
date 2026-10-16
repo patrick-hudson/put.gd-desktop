@@ -86,7 +86,7 @@ SIZE = r'(?:<0\.01|[0-9]+(?:\.[0-9]{1,2})?) (?:MiB|GiB)'
 COUNTER = re.compile(r'^(.+?): (' + SIZE + r')(?: of (' + SIZE + r')(?: \(([0-9]+)%\))?| transferred · Source size: (' + SIZE + r')(?: · Estimated ([0-9]+)%)?)$')
 
 
-def check_tooltip(snapshot, records, provider, pid):
+def check_tooltip(snapshot, records, provider, pid, *, error_pulse=False):
     """Compare SNI bytes/phase with recent independent production CLI observations.
 
     The resident batches observations, and CLI and DBus calls are not atomic.
@@ -103,7 +103,8 @@ def check_tooltip(snapshot, records, provider, pid):
     idle = snapshot.get('title') == IDLE
     require(idle or snapshot.get('title') == 'put.gd — Working', 'Unexpected tray title')
     icons = snapshot.get('icons', [])
-    colors = (('#9bbcff',),) if idle else (('#9bbcff',), ('#62d69b', '#2b5d43'))
+    colors = ((('#9bbcff',), ('#ffb4ab',)) if error_pulse else
+              (('#9bbcff',),) if idle else (('#9bbcff',), ('#62d69b', '#2b5d43')))
     present = [family[0] for family in colors if icons and
                all(any(icon.get('opaqueColors', {}).get(color, 0) > 0 for color in family) for icon in icons)]
     require(len(present) == 1,
@@ -111,7 +112,8 @@ def check_tooltip(snapshot, records, provider, pid):
     if idle:
         observed(not text, 'Idle tooltip retains stale work')
         observed(not records, 'Idle tray while production work remains active')
-        return {'idle': True, 'storageActive': False, 'counter': False, 'phases': []}
+        return {'idle': not error_pulse, 'storageActive': False, 'counter': False, 'phases': [],
+                **({'errorColor': present[0]} if error_pulse else {})}
     if text == 'Upload complete':
         observed(not records and present == ['#62d69b'], 'Completion fill must be green with no remaining work')
         require(all(icon.get('opaqueColors', {}).get('#62d69b', 0) > 0 and
@@ -122,6 +124,8 @@ def check_tooltip(snapshot, records, provider, pid):
     labels = {LABELS.get(record['phase'], record['phase'].replace('_', ' ').capitalize()): record['phase']
               for record in records}
     result = {'idle': False, 'storageActive': present[0] == '#62d69b', 'counter': False, 'phases': []}
+    if error_pulse:
+        result['errorColor'] = present[0]
     for row_index, line in enumerate(text.splitlines()):
         overflow = re.fullmatch(r'([0-9]+) more active operations', line)
         if overflow:
@@ -298,6 +302,7 @@ class Replay:
         self.pid = None
         self.history = []
         self.mismatch_since = None
+        self.error_pulse = None
         self.witness_number = 0
         self.result = {'schemaVersion': 1, 'protocolPassed': False,
                        'graphicalAcceptance': 'pending-human-inspection',
@@ -392,18 +397,119 @@ class Replay:
         require(value.get('ok'), 'Real tray probe failed: ' + value.get('error', 'unknown'))
         return value
 
+    def read_observation(self):
+        # One SSH session preserves independent ordered CLI/SNI/CLI reads
+        # without three network round trips aliasing the 300 ms error blink.
+        commands = [['/usr/bin/putgd-cli', 'operation.recent', '{}'],
+                    [self.args.probe, '--pid', str(self.pid)],
+                    ['/usr/bin/putgd-cli', 'operation.recent', '{}']]
+        script = "import json,subprocess\nrows=[]\n"
+        script += 'for command in ' + repr(commands) + ':\n'
+        script += " result=subprocess.run(command,capture_output=True,text=True,timeout=5)\n"
+        script += " rows.append(json.loads(result.stdout))\n"
+        script += "print(json.dumps(rows))\n"
+        before, snapshot, after = json.loads(self.session('python3 -c ' + shlex.quote(script) + '\n'))
+        require(before.get('ok') and after.get('ok'), 'Bracketed production CLI read failed')
+        require(snapshot.get('ok'), 'Real tray probe failed: ' + snapshot.get('error', 'unknown'))
+        return before['result']['operations'], snapshot, after['result']['operations']
+
+    def expect_error(self, ids, kind, required=False):
+        # Call only for a runner-created failure or the bounded original-ID
+        # Proton busy scenario. A declaration alone never authorizes red.
+        self.error_pulse = {'operationIds': list(ids), 'kind': kind, 'required': required}
+
+    def error_window(self, operations, now):
+        pulse = getattr(self, 'error_pulse', None)
+        if not pulse or pulse.get('recoveredAt') is not None:
+            return False
+        failed = [op for op in operations if op['id'] in pulse['operationIds']
+                  and op['state'] in {'failed', 'partial', 'interrupted'}]
+        for op in failed:
+            items = op.get('items', [])
+            if pulse['kind'] == 'local-save':
+                valid = items and all(item.get('uploadStatus') == 'local_only' and
+                    item.get('local', {}).get('status') == 'failed' for item in items)
+            else:
+                valid = pulse['kind'] == 'proton-busy' and self.args.provider == 'proton-drive' and items and all(
+                    (item.get('uploadStatus') == 'uploaded' and item.get('shareStatus') == 'shared') or
+                    (item.get('uploadStatus') != 'unknown' and item.get('shareStatus') != 'unknown' and
+                     item.get('error', {}).get('code') == 'proton_account_busy') for item in items) and any(
+                    item.get('error', {}).get('code') == 'proton_account_busy' for item in items)
+            require(valid, 'Expected error does not match independently observed failed operation')
+        new_ids = sorted({op['id'] for op in failed} - set(pulse.get('failedOperationIds', [])))
+        if new_ids:
+            if 'failureObservedAt' not in pulse:
+                pulse['failureObservedAt'] = now
+                self.result.setdefault('errorPulses', []).append(pulse)
+            # Only a distinct independently failed operation can extend a pulse;
+            # repeated red frames or historical failures never reset its clock.
+            pulse.setdefault('failedOperationIds', []).extend(new_ids)
+            pulse.setdefault('failureObservations', []).append({'operationIds': new_ids, 'monotonicSeconds': now})
+            window_fields = ('windowStartedAt', 'windowOperationIds', 'deadline',
+                             'redObservedAt', 'blueAfterRedObservedAt', 'redAfterBlueObservedAt')
+            if 'deadline' in pulse:
+                pulse.setdefault('previousWindows', []).append({key: pulse[key] for key in window_fields if key in pulse})
+            for key in window_fields:
+                pulse.pop(key, None)
+            pulse['windowStartedAt'] = now
+            pulse['windowOperationIds'] = new_ids
+            pulse['deadline'] = now + 3
+        if 'deadline' not in pulse:
+            return False
+        return now < pulse['deadline']
+
+    def error_evidence(self, checked, now, label):
+        pulse = getattr(self, 'error_pulse', None)
+        if not pulse or 'failureObservedAt' not in pulse or pulse.get('recoveredAt') is not None:
+            return
+        color = checked.get('errorColor')
+        if color == '#ffb4ab' and 'redObservedAt' not in pulse:
+            pulse['redObservedAt'] = now
+            self.witness(label + '-error-red', hover=False)
+        elif color == '#ffb4ab' and 'blueAfterRedObservedAt' in pulse and 'redAfterBlueObservedAt' not in pulse:
+            pulse['redAfterBlueObservedAt'] = now
+            self.witness(label + '-error-red-returned', hover=False)
+        elif color == '#9bbcff' and 'redObservedAt' in pulse and 'blueAfterRedObservedAt' not in pulse:
+            pulse['blueAfterRedObservedAt'] = now
+            self.witness(label + '-error-blue', hover=False)
+        if now >= pulse['deadline'] and checked['idle']:
+            require('redObservedAt' in pulse and 'blueAfterRedObservedAt' in pulse and 'redAfterBlueObservedAt' in pulse,
+                    'Expected error needs real red, blue and returning red pulse observations before recovery')
+            pulse['recoveredAt'] = now
+            self.witness(label + '-error-recovered', hover=False)
+
     def observe(self, label):
-        before = self.cli('operation.recent')['operations']
-        snapshot = self.snapshot()
-        after = self.cli('operation.recent')['operations']
+        before, snapshot, after = self.read_observation()
         now = time.monotonic()
         before_rows, after_rows = records_from(before), records_from(after)
         self.history.append((now, before_rows + after_rows))
         self.history = [(stamp, rows) for stamp, rows in self.history if now - stamp <= 2]
         recent = correlated_records([row for _, rows in self.history for row in rows], after_rows)
         try:
-            checked = {**check_tooltip(snapshot, recent, self.args.provider, self.pid), 'matched': True}
-            self.mismatch_since = None
+            pulse_active = self.error_window(after, now)
+            green_grace = False
+            # Only the initial bracket can retain green from before failure.
+            # Later green may return near the end because observing a failed
+            # operation trails the resident's pulse clock. Neither grants pulse
+            # coverage; green in the established pulse must fail error priority.
+            if pulse_active and any(icon.get('opaqueColors', {}).get(color, 0) for icon in snapshot.get('icons', [])
+                                    for color in ('#62d69b', '#2b5d43')):
+                pulse = self.error_pulse
+                before_failed = {op['id'] for op in before if op['state'] in {'failed', 'partial', 'interrupted'}}
+                bracketed_failure = not set(pulse['failedOperationIds']) <= before_failed
+                require(bracketed_failure or now >= pulse['deadline'] - .5,
+                        'Green frame overrides an established error pulse')
+                pulse_active = False
+                green_grace = True
+            checked = {**check_tooltip(snapshot, recent, self.args.provider, self.pid,
+                                      error_pulse=pulse_active), 'matched': True}
+            if green_grace:
+                checked.update(idle=False, matched=False, error='Bracketed error color transition')
+                if self.mismatch_since is None:
+                    self.mismatch_since = now
+            else:
+                self.error_evidence(checked, now, label)
+                self.mismatch_since = None
         except ObservationMismatch as error:
             # Separate DBus/CLI reads may straddle a queued-row, file or phase
             # transition. Preserve the sample, grant no coverage, and bound the
@@ -429,7 +535,7 @@ class Replay:
         flags = self.result['coverage'].setdefault(label, {'active': False, 'counter': False,
                   'storageActive': False, 'queued': False, 'concurrentAdmission': False, 'finalizing': False, 'sharing': False})
         new = []
-        for key, value in [('active', not checked['idle']), ('counter', checked['counter']),
+        for key, value in [('active', not checked['idle'] and 'errorColor' not in checked), ('counter', checked['counter']),
                            ('storageActive', checked['storageActive']),
                            ('queued', 'queued' in checked['phases']),
                            ('concurrentAdmission', concurrent_admission(checked, after_rows)),
@@ -457,6 +563,9 @@ class Replay:
                     op.get('copyStatus') in ('copied', 'suppressed', 'failed', 'no_result') for op in found.values()):
                 return found
         found = self.wait(terminal, 'Operations did not settle: ' + label)
+        pulse = getattr(self, 'error_pulse', None)
+        require(not pulse or not pulse['required'] or 'failureObservedAt' in pulse,
+                'Expected failed operation was not independently observed')
         self.save(label + '-outcomes.json', {key: {
             'state': op['state'], 'copyStatus': op['copyStatus'], 'items': [{
                 'historyId': item['artifact']['id'], 'sourceBytes': item['artifact']['bytes'],
@@ -471,6 +580,7 @@ class Replay:
         require([icon['sha256'] for icon in snapshot['icons']] == self.idle_hashes,
                 'Settled tray did not restore the exact original idle icon')
         self.witness(label + '-idle')
+        self.error_pulse = None
         return found
 
     def clipboard(self):
@@ -690,6 +800,7 @@ print(json.dumps(results))
                 accepted = self.cli('operation.retry', {'id': operation_id})
                 require(accepted.get('operationId') == operation_id and accepted.get('retryAccepted'),
                         'Busy recovery did not retain original operation ID')
+                self.expect_error([operation_id], 'proton-busy')
                 op = self.settled([operation_id], 'concurrent-recovery-' + str(attempt))[operation_id]
                 old_items, items = initial[operation_id]['items'], op['items']
                 require([item['artifact']['id'] for item in items] == [item['artifact']['id'] for item in old_items]
@@ -722,6 +833,8 @@ print(json.dumps(results))
         self.patch({'limits': {'concurrentUploads': 2}})
         self.clipboard()
         concurrent_ids = [self.invoke(), self.invoke()]
+        if self.args.provider == 'proton-drive':
+            self.expect_error(concurrent_ids, 'proton-busy')
         concurrent = self.settled(concurrent_ids, 'concurrent')
         concurrent = self.recover_proton_busy(concurrent)
         self.successful_uploads(concurrent)
@@ -754,9 +867,10 @@ print(json.dumps(results))
         blocked = self.guest + '/blocked'
         lab.ssh(self.run, 'umask 077\nprintf synthetic > ' + shlex.quote(blocked) + '\n')
         self.patch({'actions': {'clipboard': {'destination': 'local', 'profileId': None}},
-                    'archive': {'root': blocked}})
+                    'archive': {'root': blocked, 'keepUploads': True}})
         self.clipboard()
         local_id = self.invoke()
+        self.expect_error([local_id], 'local-save', required=True)
         failed = self.settled([local_id], 'local-failure')[local_id]
         require(failed['items'] and all(item['local']['status'] == 'failed' and item['uploadStatus'] == 'local_only'
                 for item in failed['items']), 'Synthetic local-save failure was not observed')

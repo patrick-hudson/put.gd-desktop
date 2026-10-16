@@ -216,7 +216,8 @@ The scenario uses two deterministic synthetic files per operation and drives:
 6. Resident quit/restart, a new matching process identity, exact preserved
    history receipts and the original idle icon hashes/empty tooltip.
 
-CLI and SNI reads are separate, and the product batches observations. Counter
+CLI and SNI reads are independent and ordered within one SSH session, avoiding
+network round trips that can alias the 300 ms blink. The product batches observations. Counter
 assertions use before/after CLI reads plus a two-second recent observation
 window, restricted to the current row’s operation and artifact identity.
 An operation moving up a row keeps its own observations; a previous operation
@@ -225,6 +226,23 @@ without coverage credit and retried for at most two consecutive seconds. A
 persistently idle tray while CLI work remains active fails this same bound.
 Privacy, identity, icon color and malformed accounting failures stop immediately;
 the rejected SNI text is redacted from failure evidence.
+Expected error overlays are scoped to the runner's original local-save failure
+ID or explicit `proton_account_busy` failures on original concurrent/retry IDs.
+Independent terminal CLI items must prove the expected failure before red is
+accepted. Each newly failed ID supplies one monotonic three-second pulse window;
+repeated frames never renew it. A newly failed ID archives the previous window
+and requires a fresh red/blue/red sequence. Red, a subsequent blue off-phase and returning red must all be
+observed and receive native screenshot witnesses. A single red frame followed
+by blue for the rest of the window is insufficient. Blue during that window is
+not idle recovery. Recovery requires the window to expire, no active CLI work,
+and the exact original blue idle icon/empty tooltip. `errorPulses` records the
+failure IDs/times, deadline, red/blue observations and recovery time separately
+from upload activity coverage. Initial bracketed green and green within the
+last 500 ms of the observed deadline can be validated as transition grace;
+they receive no pulse or upload coverage and cannot establish idle recovery.
+Green during the established pulse fails immediately. Missing phases fail the replay and require a new
+preserved run; the harness never invents error coverage from a declaration.
+
 Rounded tooltip bytes must fit real observed byte bounds and their own
 integer percentage. A source-size fallback must be labelled `Estimated`, match
 the actual counters/source bytes, and stop at 99% while awaiting finalization or
