@@ -12,6 +12,7 @@
 namespace putgd {
 UiApplicationController::UiApplicationController(UiSession& session,UiControl& control,QJsonObject state,QObject* parent)
  :QObject(parent),session_(session),control_(control),saved_(std::move(state)) {
+ quitDelay_.setSingleShot(true);quitDelay_.setInterval(40);connect(&quitDelay_,&QTimer::timeout,this,&UiApplicationController::requestQuit);
  recordingDeadline_.setSingleShot(true);recordingDeadline_.setInterval(12000);
  connect(&recordingDeadline_,&QTimer::timeout,this,[this]{
   // A timeout is not evidence of suspension: discard capture and restore via
@@ -56,7 +57,7 @@ QWidget* UiApplicationController::view(const QString& name){
    if(saved_.contains("history")&&!main_->history()->restoreViewState(saved_["history"].toObject()))notify({"ui_state_invalid","Saved history state could not be restored.",{}});
    if(saved_.contains("main"))main_->restoreViewState(saved_["main"].toObject());
    main_->installEventFilter(this);connect(main_.get(),&MainWindow::viewStateChanged,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
-   connect(main_.get(),&MainWindow::quitRequested,this,[this]{session_.request("ui.quit",{},this,[this](Error error,QJsonObject){if(error)notify(error);});});
+   connect(main_.get(),&MainWindow::quitRequested,this,&UiApplicationController::requestQuit);
    connect(main_.get(),&MainWindow::actionRequested,this,[this](const QString& action){session_.request("action.invoke",{{"action",action}},this,[this](Error error,QJsonObject){if(error)notify(error);});});
   }
   main_->navigate(name);return main_.get();
@@ -172,6 +173,12 @@ bool UiApplicationController::eventFilter(QObject* object,QEvent* event){
   openViews_.remove(window);dirtyCheckpoint_=true;checkpointDelay_.start();return QObject::eventFilter(object,event);
  }
  close->ignore();requestClose(window);return true;
+}
+void UiApplicationController::requestQuit(){
+ if(quitting_||exiting_)return;
+ if(main_&&!main_->settings()->flushAutosave()){quitDelay_.start();return;}
+ quitting_=true;
+ session_.request("ui.quit",{},this,[this](Error error,QJsonObject){if(error){quitting_=false;notify(error);}});
 }
 void UiApplicationController::requestClose(QWidget* window){
  const auto state=snapshot();

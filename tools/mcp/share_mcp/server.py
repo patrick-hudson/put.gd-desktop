@@ -220,7 +220,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def patch_configuration(patch: Json, expected_revision: str) -> Json:
         """Patch non-secret settings with expected file revision; conflicts require reread/rebase. Null is explicit."""
-        allowed = {'schemaVersion', 'actions', 'profiles', 'archive', 'naming', 'limits', 'retention', 'preferences'}
+        allowed = {'schemaVersion', 'actions', 'captureDefaults', 'profiles', 'archive', 'naming', 'limits', 'retention', 'preferences'}
         if (not isinstance(patch, dict) or set(patch) - allowed or not safe_patch(patch) or
             not isinstance(expected_revision, str) or len(expected_revision) > 256):
             return invalid()

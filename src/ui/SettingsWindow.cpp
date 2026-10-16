@@ -251,7 +251,7 @@ bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  return RetainedWindow::eventFilter(watched,event);
 }
 void SettingsWindow::refreshMetadata(){if(configPath_)configPath_->setText(settings_.path());metadata_->setText("Configuration: "+settings_.path()+"\nAccepted revision: "+settings_.revision()+"\nObserved file revision: "+settings_.metadata()["observedRevision"].toString());}
-void SettingsWindow::dirty(){if(loading_)return;dirty_=true;++editGeneration_;emit viewStateChanged();}
+void SettingsWindow::dirty(){if(loading_)return;dirty_=true;emit viewStateChanged();}
 void SettingsWindow::status(const Error& error){
  auto e=error;
  if(e.code=="s3_settings_invalid"&&providerType_->currentData()=="s3"){
@@ -315,7 +315,7 @@ void SettingsWindow::addS3Profile(const QString& defaultLabel){
 }
 void SettingsWindow::resetDraft(bool reloadFile){
  if(resetting_||saving_||setupAccepting_)return;
- autosave_->stop();pendingEdits_.clear();clearCredentialInputs();resetting_=true;setEnabled(false);destinationPage_->setEnabled(false);emit viewStateChanged();
+ autosave_->stop();pendingEdits_.clear();pendingEditSerials_.clear();editControls_.clear();clearCredentialInputs();resetting_=true;setEnabled(false);destinationPage_->setEnabled(false);emit viewStateChanged();
  const auto finish=[g=QPointer<SettingsWindow>(this),reloadFile](Error error){
   if(!g)return;
   g->resetting_=false;g->setEnabled(true);g->destinationPage_->setEnabled(true);
@@ -383,6 +383,12 @@ QJsonValue replacePath(QJsonValue value,const QStringList& path,int index,const 
 }
 qint64 SettingsWindow::displayUnit(const QString& key){return key=="imagePixels"?1000000:key=="maxFileBytes"||key=="maxBatchBytes"||key=="pendingArtifactBytes"?ByteSize::GiB:key.endsWith("Bytes")?ByteSize::MiB:1;}
 void SettingsWindow::inlineError(QWidget* control,const QString& message){if(!control)return;control->setProperty("invalid",!message.isEmpty());control->style()->unpolish(control);control->style()->polish(control);if(auto* label=errors_.value(control)){VisualStyle::role(label,"error");label->setText(message);label->setVisible(!message.isEmpty());}control->setAccessibleDescription(message.isEmpty()?control->toolTip():control->toolTip()+"\n"+message);}
+bool SettingsWindow::editChangedSinceSubmission(const QString& path)const{
+ return pendingEdits_.contains(path)&&(!saving_||!submittedEditSerials_.contains(path)||pendingEditSerials_.value(path)!=submittedEditSerials_.value(path));
+}
+void SettingsWindow::stageEdit(const QString& path,const QJsonValue& value,QWidget* control){
+ pendingEdits_[path]=value;editControls_[path]=control;pendingEditSerials_[path]=++editSerial_;
+}
 void SettingsWindow::queueEdit(QWidget* control,QString path){
  if(loading_||resetting_||!autosave_)return;
  if(path.isEmpty())path=control->property("configPath").toString();
@@ -400,15 +406,14 @@ void SettingsWindow::queueEdit(QWidget* control,QString path){
    if(draft["provider"]!=saved["provider"]||draft["id"]!=saved["id"])path="/profiles/"+QString::number(profileIndex_);
   }
  }
- for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||it.key().startsWith(path+"/")){editControls_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
+ for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if(path=="/"||it.key().startsWith(path+"/")){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
  const auto parts=path.split('/',Qt::SkipEmptyParts);
- auto baseline=settings_.document().isEmpty()?Settings::defaults():settings_.document();
- // Retain ancestor proposals: reverting a field must override an older root edit.
- for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
+ auto baseline=saving_?savingDocument_:settings_.document().isEmpty()?Settings::defaults():settings_.document();
+ for(auto it=pendingEdits_.cbegin();it!=pendingEdits_.cend();++it)if(it.key()!=path&&editChangedSinceSubmission(it.key())&&(it.key()=="/"||path.startsWith(it.key()+"/")))baseline=replacePath(baseline,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
  if(atPath(doc,parts)==atPath(baseline,parts)){
-  pendingEdits_.remove(path);editControls_.remove(path);inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
+  pendingEdits_.remove(path);pendingEditSerials_.remove(path);editControls_.remove(path);inlineError(control,{});if(pendingEdits_.isEmpty())autosave_->stop();dirty_=dirty_&&candidate()!=settings_.document();emit viewStateChanged();return;
  }
- pendingEdits_[path]=atPath(doc,parts);editControls_[path]=control;inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
+ stageEdit(path,atPath(doc,parts),control);inlineError(control,{});dirty();autosave_->start();refreshDestinationList(doc);
  if(updateProviderVisibility_)updateProviderVisibility_();
 }
 void SettingsWindow::updateCaptureInheritance(){
@@ -434,11 +439,11 @@ void SettingsWindow::queueCaptureEdit(QWidget* control){
   loading_=true;clearCurrentCredentialInputs();draft_["profiles"]=QJsonArray{};profileEditors_={};credentialDrafts_.clear();initialProfile_=false;rebuildProfiles(-1);loading_=false;
  }
  const auto proposed=candidate();
- auto projected=pendingEdits_.contains("/")?pendingEdits_["/"].toObject():settings_.document();if(projected.isEmpty())projected=Settings::defaults();
+ auto projected=editChangedSinceSubmission("/")?pendingEdits_["/"].toObject():saving_?savingDocument_:settings_.document();if(projected.isEmpty())projected=Settings::defaults();
  projected["captureDefaults"]=proposed["captureDefaults"];
  auto routes=projected["actions"].toObject();for(const auto& name:Settings::actionNames()){auto route=routes[name].toObject();const auto proposal=proposed["actions"].toObject()[name].toObject();for(const auto& key:QStringList{"destination","profileId","publicationMode"}){if(proposal.contains(key))route[key]=proposal[key];else route.remove(key);}routes[name]=route;}projected["actions"]=routes;
- for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if((it.key().startsWith("/actions")&&!it.key().endsWith("/shortcut"))||it.key().startsWith("/captureDefaults")){editControls_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
- pendingEdits_["/"]=projected;editControls_["/"]=control;inlineError(control,{});dirty();autosave_->start();
+ for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();){if((it.key().startsWith("/actions")&&!it.key().endsWith("/shortcut"))||it.key().startsWith("/captureDefaults")){editControls_.remove(it.key());pendingEditSerials_.remove(it.key());it=pendingEdits_.erase(it);}else ++it;}
+ stageEdit("/",projected,control);inlineError(control,{});dirty();autosave_->start();
 }
 QString SettingsWindow::autosaveText()const{
  if(conflict_)return "Settings changed elsewhere — reload to continue.";
@@ -447,34 +452,38 @@ QString SettingsWindow::autosaveText()const{
  return {};
 }
 void SettingsWindow::showCaptureSettings(){tabs_->setCurrentIndex(1);}
-bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){VisualStyle::feedback(status_,"Waiting for destination setup to finish before saving your edits and closing.");return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
+bool SettingsWindow::flushAutosave(){if(autosave_)autosave_->stop();if(!autosaveBlocked_&&!pendingEdits_.isEmpty()&&!conflict_&&(setupAccepting_||!setupJobs_.isEmpty())){const auto waiting=QStringLiteral("Waiting for destination setup to finish before saving your edits and closing.");if(status_->text()!=waiting||status_->property("feedbackTone").toString()!="neutral")VisualStyle::feedback(status_,waiting);return false;}if(!saving_&&!pendingEdits_.isEmpty()&&!conflict_)save();return !saving_;}
 void SettingsWindow::save(){
  if(autosaveBlocked_||conflict_||saving_||resetting_||setupAccepting_||!setupJobs_.isEmpty())return;
  if(pendingEdits_.isEmpty())return;
  storeProfile();auto doc=settings_.document().isEmpty()?Settings::defaults():settings_.document();for(auto it=pendingEdits_.begin();it!=pendingEdits_.end();++it)doc=replacePath(doc,it.key().split('/',Qt::SkipEmptyParts),0,it.value()).toObject();
- if(doc==settings_.document()){pendingEdits_.clear();editControls_.clear();dirty_=candidate()!=settings_.document();emit viewStateChanged();return;}
- saving_=true;emit viewStateChanged();const auto edits=editGeneration_;
- settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),edits](Result result){
+ if(doc==settings_.document()){pendingEdits_.clear();pendingEditSerials_.clear();editControls_.clear();dirty_=candidate()!=settings_.document();emit viewStateChanged();return;}
+ saving_=true;savingDocument_=doc;submittedEditSerials_=pendingEditSerials_;emit viewStateChanged();
+ settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this)](Result result){
   if(!g)return;
   if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"){g->autosaveFailure(result.error);return;}g->persistNextEdit();return;}
   g->saving_=false;g->autosaveBlocked_=false;for(auto* button:g->retryAutosave_)button->hide();g->baseRevision_=g->settings_.revision();g->observed_=g->settings_.metadata()["observedRevision"].toString();if(!g->settings_.document()["profiles"].toArray().isEmpty())g->initialProfile_=false;g->draft_=g->candidate();
-  if(g->editGeneration_==edits){g->pendingEdits_.clear();g->dirty_=g->candidate()!=g->settings_.document();for(auto it=g->editControls_.begin();it!=g->editControls_.end();++it)g->inlineError(it.value(),{});g->editControls_.clear();g->status_->clear();g->destinationStatus_->clear();}else{g->dirty_=true;g->autosave_->start();}
+  for(auto it=g->submittedEditSerials_.cbegin();it!=g->submittedEditSerials_.cend();++it)if(g->pendingEdits_.contains(it.key())&&g->pendingEditSerials_.value(it.key())==it.value()){g->pendingEdits_.remove(it.key());g->pendingEditSerials_.remove(it.key());g->inlineError(g->editControls_.take(it.key()),{});}
+  g->submittedEditSerials_.clear();g->dirty_=g->candidate()!=g->settings_.document();
+  if(!g->pendingEdits_.isEmpty())g->autosave_->start();
+  else if(!g->dirty_){g->status_->clear();g->destinationStatus_->clear();}
   g->refreshMetadata();g->refreshDestinationList();g->refreshCredentialHint();emit g->viewStateChanged();
  });
 }
 void SettingsWindow::autosaveFailure(const Error& error){
- saving_=false;autosaveBlocked_=true;autosave_->stop();if(error.code=="config_conflict")conflict_=true;
+ saving_=false;submittedEditSerials_.clear();autosaveBlocked_=true;autosave_->stop();if(error.code=="config_conflict")conflict_=true;
  auto message=error;message.message+=" Your edits remain in this draft. "+QString(conflict_?"Reload from file to resolve the conflict.":"Use Retry saving when ready; the request will not repeat automatically.");status(message);
  for(auto* button:retryAutosave_)button->setVisible(!conflict_);
  emit viewStateChanged();
 }
 void SettingsWindow::persistNextEdit(){
- if(pendingEdits_.isEmpty()){saving_=false;dirty_=candidate()!=settings_.document();emit viewStateChanged();return;}
- const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
+ if(pendingEdits_.isEmpty()){saving_=false;submittedEditSerials_.clear();dirty_=candidate()!=settings_.document();emit viewStateChanged();return;}
+ const auto path=pendingEdits_.firstKey();const auto value=pendingEdits_.take(path);const auto serial=pendingEditSerials_.take(path);const QPointer<QWidget> control=editControls_.take(path);const auto accepted=settings_.document().isEmpty()?Settings::defaults():settings_.document();const auto doc=replacePath(accepted,path.split('/',Qt::SkipEmptyParts),0,value).toObject();
  if(doc==accepted){inlineError(control,{});persistNextEdit();return;}
+ savingDocument_=doc;submittedEditSerials_={{path,serial}};
  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),control,path,value](Result result){
   if(!g)return;
-  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->pendingEdits_[path]=value;g->editControls_[path]=control;}g->autosaveFailure(result.error);return;}g->inlineError(control,result.error.message);g->status(result.error);g->persistNextEdit();return;}
+  if(!result){if(result.error.code!="config_invalid"&&result.error.code!="s3_settings_invalid"){bool superseded=false;for(auto it=g->pendingEdits_.begin();it!=g->pendingEdits_.end();++it)if(it.key()=="/"||path==it.key()||path.startsWith(it.key()+"/"))superseded=true;if(!superseded){g->stageEdit(path,value,control);}g->autosaveFailure(result.error);return;}g->inlineError(control,result.error.message);g->status(result.error);g->persistNextEdit();return;}
   g->baseRevision_=g->settings_.revision();g->observed_=g->settings_.metadata()["observedRevision"].toString();g->draft_=g->candidate();g->inlineError(control,{});g->refreshMetadata();g->persistNextEdit();
  });
 }
@@ -645,7 +654,7 @@ bool SettingsWindow::applyProtonAccountResult(const QString& id,const QJsonObjec
  if(index==profileIndex_){const bool previousLoading=loading_;loading_=true;applyProfileEditor(editor);loading_=previousLoading;}
  const auto accepted=settings_.document()["profiles"].toArray();
  if(index<accepted.size()&&accepted[index].toObject()["id"]==id&&accepted[index].toObject()["settings"]!=settings){
-  const auto path="/profiles/"+QString::number(index)+"/settings";pendingEdits_[path]=settings;editControls_[path]=protonFolder_;dirty();autosave_->start();
+  const auto path="/profiles/"+QString::number(index)+"/settings";stageEdit(path,settings,protonFolder_);dirty();autosave_->start();
  }
  refreshDestinationList();return true;
 }

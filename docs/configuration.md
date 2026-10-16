@@ -10,7 +10,7 @@ The resident JSON CLI and Settings window use this service. Native acceptance mu
 verify live edits in an installed desktop session; headless checks alone do not
 establish that behavior.
 
-The entire document is required and unknown fields are rejected. Schema version 1
+All required schema fields must be present and unknown fields are rejected. Declared optional fields, including `captureDefaults`, may be absent in older documents. Schema version 1
 has no predecessor to migrate. Unsupported versions stay untouched for explicit recovery.
 Maximum configuration size is 1 MiB. Missing or invalid configuration on first startup
 means setup; it never selects the development destination. An invalid later edit preserves
@@ -20,14 +20,16 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | --- | --- |
 | `schemaVersion` | `1` |
 | `actions` | Exactly `region`, `window`, `desktop`, `clipboard` |
-| Each action's `destination` | `upload` by default; `local` saves and copies a local result |
+| Each action's `destination` | `upload` by default; `local` disables uploads; `default` inherits `captureDefaults` |
 | Each action's `profileId` | A configured profile ID, or `null` until destination setup |
-| Each action's `shortcut` | One Qt PortableText combination; empty means unbound |
+| Each action's `shortcut` | One Qt PortableText combination; empty means unbound; independent of output inheritance |
+| Each action's `publicationMode` | Optional `default`, `share` or `private`; `default` uses the destination's sharing preference |
+| `captureDefaults` | Optional shared output: `destination` (`upload` or `local`), `profileId` (configured ID or `null`), and `publicationMode` (`default`, `share` or `private`) |
 | `profiles` | At most 32 provider destinations; empty on fresh startup |
 | Each profile's `id`, `label`, `provider` | Unique stable ID, display label, registered adapter ID |
 | Each profile's `settings` | Non-secret settings validated by its provider adapter |
 | Each profile's `credentials` | `keychain` plus a nonempty `reference`, or `session` plus `null` reference |
-| `archive.keepUploads` | `false`; enables a local copy before remote publication |
+| `archive.keepUploads` | `false`; enables local saving for every new action, independently of its upload destination |
 | `archive.root` | User Documents folder plus `put.gd`; must be absolute |
 | `archive.folders` | `images`, `videos`, `text`, `other`; each absolute or `null` |
 | `naming.mode` | `original` by default preserves imported basenames; `generated` uses UUIDs; `template` also renames imported files |
@@ -48,6 +50,36 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `retention.historyRetentionDays` | `null` means no automatic record expiry |
 | `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
+
+Local saving and uploading are independent outputs. An upload route with a configured
+profile uploads; `archive.keepUploads: true` also saves a local copy before publication.
+With no upload destination, that flag enables local-only output. If neither output is
+enabled, `output_required` is returned before creating an operation or acquiring a source.
+Changing these settings does not affect already accepted operations or delete existing files.
+
+This changes the earlier meaning of `destination: "local"`: it now disables uploading,
+while the shared local-copy switch controls saving. A legacy local route with
+`archive.keepUploads: false` is still valid configuration, but produces `output_required`.
+To deliberately enable local-only clipboard output, apply this non-secret patch through
+`settings.patch` or MCP `patch_configuration`, with the current expected revision:
+
+```json
+{"archive":{"keepUploads":true},"actions":{"clipboard":{"destination":"local","profileId":null}}}
+```
+
+Before this patch the local route may have no enabled output; afterward it saves locally.
+To make region capture inherit a shared local-only default instead, use:
+
+```json
+{"archive":{"keepUploads":true},"captureDefaults":{"destination":"local","profileId":null,"publicationMode":"default"},"actions":{"region":{"destination":"default","profileId":null,"publicationMode":"default"}}}
+```
+
+An inherited action requires `captureDefaults`, a null own `profileId`, and absent/default
+own `publicationMode`. Its shortcut is always its own setting. Explicit action routes
+remain exceptions when the default changes. Documents without `captureDefaults` retain
+explicit per-action routing; changing capture output in the GUI adopts the optional shared
+default. This extension remains schema version 1; older strict readers that do not support
+it reject the new field, so use matching application/CLI/MCP versions.
 
 The first three shortcuts default to `Ctrl+Shift+1`, `Ctrl+Shift+2`, and `Ctrl+Shift+3`.
 Clipboard sharing starts unbound, allowing explicit setup on GNOME. Availability and
@@ -84,8 +116,10 @@ An editor ignoring the lock can race a write; this is cooperative conflict detec
 The shared patch service recursively overlays objects, replaces arrays/scalars, and treats
 JSON `null` as an explicit value. It is not RFC 7396 merge patch: `null` clears optional
 folder/profile fields rather than removing required keys. The complete resulting document
-must validate. GUI forms retain dirty drafts across external acceptance and require reload
-or rebase before saving; that GUI behavior is implemented in the settings unit.
+must validate. GUI forms autosave finished changes through the same revision check. Dirty drafts survive
+external acceptance and require explicit reload or reconciliation; focusing an unchanged
+field issues no save. Invalid fields retain local feedback while independently valid fields
+may save. A transport/write failure blocks automatic replay until Retry saving is pressed.
 
 Access keys, secrets, session tokens, and source payloads are never configuration values.
 Provider adapters must reject secret-bearing settings fields. Credential references identify

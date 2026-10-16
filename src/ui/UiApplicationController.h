@@ -22,17 +22,17 @@ private:
  void receive(const QString&,const QString&,const QJsonObject&);
  QJsonObject snapshot()const;
  void finishShortcutRecordingRequests(Error);
- void requestClose(QWidget*);void submitClose();void checkpoint();void notify(const Error&);void allowClose();
+ void requestQuit();void requestClose(QWidget*);void submitClose();void checkpoint();void notify(const Error&);void allowClose();
  UiSession& session_;UiControl& control_;QJsonObject saved_;
  std::unique_ptr<MainWindow> main_;
  std::unique_ptr<AboutWindow> about_;
  struct RecordingRequest {bool active;std::function<void(Error)> reply;};
  QHash<QString,RecordingRequest> recordingRequests_;
  QTimer recordingDeadline_;
- QTimer checkpointDelay_,closeDeadline_;
+ QTimer checkpointDelay_,closeDeadline_,quitDelay_;
  QString checkpointSequence_,closeSequence_,closeCancelSequence_;
  QPointer<QWidget> closing_;
  QSet<QWidget*> openViews_;
- bool dirtyCheckpoint_=false,exiting_=false;
+ bool dirtyCheckpoint_=false,exiting_=false,quitting_=false;
 };
 }

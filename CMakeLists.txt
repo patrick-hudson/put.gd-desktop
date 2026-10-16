@@ -544,6 +544,8 @@ if(BUILD_TESTING)
     add_test(NAME ${contract}_contract COMMAND test_${contract})
     set_tests_properties(${contract}_contract PROPERTIES TIMEOUT 60)
   endforeach()
+  # The 86-case operation matrix takes about 55 s without instrumentation.
+  set_tests_properties(operations_contract PROPERTIES TIMEOUT 120)
   # Generic image previews use the production transient GUI worker even under
   # a Core-only test parent; this remains a widget/dependency contract.
   add_dependencies(test_payload putgd-ui)
@@ -604,10 +606,9 @@ if(BUILD_TESTING)
     add_test(NAME gui_${view} COMMAND test_gui_${view})
     set_tests_properties(gui_${view} PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   endforeach()
-  if(PUTGD_SANITIZER STREQUAL "thread")
-    # Instrumented Qt plus the full Settings matrix exceeds the normal 60 s.
-    set_tests_properties(gui_settings PROPERTIES TIMEOUT 120)
-  endif()
+  # Delayed saves, setup polling and shortcut deadlines expand this suite;
+  # the complete ASan/UBSan matrix takes longer than the former 60 s budget.
+  set_tests_properties(gui_settings PROPERTIES TIMEOUT 120)
 endif()
 
 if(BUILD_TESTING)

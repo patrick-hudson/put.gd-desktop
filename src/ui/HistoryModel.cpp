@@ -25,6 +25,11 @@ AggregateProgress aggregateProgress(const QJsonObject& operation){
  }
  return result;
 }
+bool localSaveFailed(const QJsonObject& r){
+ if(r["local"].toObject()["status"]=="failed")return true;
+ for(const auto& value:r["records"].toArray())if(value.toObject()["local"].toObject()["status"]=="failed")return true;
+ return false;
+}
 bool active(const QJsonObject& r){return Operation::activeState(r["operation"].toObject()["state"].toString());}
 }
 QString HistoryModel::fileSize(qint64 bytes){if(bytes<1024)return QString("%1 B").arg(bytes);if(bytes<1024*1024)return QString("%1 KiB").arg(QString::number(double(bytes)/1024,'f',bytes<10*1024?1:0));return ByteSize::summary(bytes);}
@@ -43,9 +48,9 @@ QString HistoryModel::statusText(const QJsonObject& r){
   return "Preparing capture…";
  }
  auto message=r["error"].toObject()["message"].toString();if(message.isEmpty())message=op["error"].toObject()["message"].toString();
- if(r["uploadStatus"]=="local_only")return r["local"].toObject()["status"]=="failed"?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):QString("Saved locally");
+ if(r["uploadStatus"]=="local_only")return localSaveFailed(r)?QString("Local save failed"):op["copyStatus"]=="copied"?QString("Saved locally · Copied to clipboard"):QString("Saved locally");
  if(r["uploadStatus"]=="uploaded"&&QStringList{"failed","unknown","changed"}.contains(r["shareStatus"].toString()))return message.isEmpty()?QString("Share link needs attention"):message;
- if(r["local"].toObject()["status"]=="failed"&&r["uploadStatus"]!="failed")return "Local save failed";
+ if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
  if(r["uploadStatus"]=="failed"||state=="failed"||state=="partial")return (message.isEmpty()?QString("Upload failed"):message)+(r["local"].toObject()["status"]=="saved"?" · Saved locally":QString{});
  if(state=="cancelled"||op["cancelled"].toBool()||r["uploadStatus"]=="cancelled")return "Cancelled";
  if(r["remoteStatus"]=="removed"||r["remoteStatus"]=="already_missing")return "Deleted from destination";
@@ -65,8 +70,8 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  if(role==Qt::ToolTipRole)return r["name"].toString()+"\n"+statusText(r);
  if(role==DayRole){const auto currentDay=day(r);return i.row()==0||currentDay!=day(record(i.row()-1))?currentDay:QString{};}
  if(role==ActiveRole)return active(r);
- if(role==FailedRole){if(r["uploadStatus"]=="local_only")return r["local"].toObject()["status"]=="failed";return r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial";}
- if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"){if(r["local"].toObject()["status"]=="failed")return "Retry local save";if(r["local"].toObject()["status"]=="saved")return "Copy result";}if(data(i,FailedRole).toBool()&&!r["operationId"].toString().isEmpty())return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
+ if(role==FailedRole){if(r["uploadStatus"]=="local_only")return localSaveFailed(r);return r["uploadStatus"]=="failed"||op["state"]=="failed"||op["state"]=="partial";}
+ if(role==PrimaryActionRole){if(active(r))return "Cancel";if(r["uploadStatus"]=="local_only"){if(localSaveFailed(r))return "Retry local save";if(r["local"].toObject()["status"]=="saved")return "Copy result";}if(data(i,FailedRole).toBool()&&!r["operationId"].toString().isEmpty())return "Retry upload";if(linkAvailable(i.row()))return "Copy link";return QString{};}
  if(role==ProgressRole)return aggregateProgress(op).percent();
  if(role==SubtitleRole){if(data(i,FailedRole).toBool()||active(r)||op["state"]=="cancelled")return statusText(r);auto text=friendlyAction(op["action"].toString(r["category"].toString()))+" · "+fileSize(r["bytes"].toInteger());const auto time=relativeTime(r);if(!time.isEmpty())text+=" · "+time;if(op["copyStatus"]=="copied")text+=r["uploadStatus"]=="local_only"?" · Copied to clipboard":" · Link copied";else if(op["copyStatus"]=="failed")text+=r["uploadStatus"]=="local_only"?" · Could not copy result":" · Could not copy link";if(r["records"].toArray().size()>1)text+=QString(" · %1 files").arg(r["records"].toArray().size());return text;}
  if(role==ThumbnailRole){const auto path=r["previewPath"].toString();if(path.isEmpty())return {};if(auto* img=thumbnails_.object(path))return *img;loadThumbnail(path);}

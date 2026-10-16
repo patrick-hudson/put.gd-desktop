@@ -6,7 +6,7 @@ filenames, history URLs, authorization values or credential references.
 
 | Code/state | User action |
 |---|---|
-| `destination_required` | Configure a validated destination explicitly |
+| `output_required` | Choose an upload destination or enable Keep a local copy in General; neither output is currently enabled |
 | `source_unsupported` | Inspect native support and choose an available source |
 | `busy_selecting` | Finish or cancel that interactive selection |
 | `queue_full`, `input_excessive` | Finish queued work or adjust documented resource limits |

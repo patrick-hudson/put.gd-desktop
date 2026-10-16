@@ -1,7 +1,7 @@
 # Credentials
 
-Enter credentials through the saved profile in **Settings**, following
-[First setup](user-guide.md#first-setup). CLI/MCP configuration accepts credential
+Enter credentials through the saved profile in **Destinations**, following
+[Destinations and credentials](user-guide.md#destinations-and-credentials). CLI/MCP configuration accepts credential
 references only; neither interface accepts raw keys. The C++ methods below are
 internal APIs, not CLI commands. A session-mode profile needs explicit credential
 entry again after the resident exits.

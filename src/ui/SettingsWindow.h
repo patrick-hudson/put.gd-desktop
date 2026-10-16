@@ -40,8 +40,10 @@ private:
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
  bool captureDefaultsEnabled_=false,captureRoutingEdited_=false;
  QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_;
+ bool editChangedSinceSubmission(const QString&)const;
+ void stageEdit(const QString&,const QJsonValue&,QWidget*);
  void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);void autosaveFailure(const Error&);
- QMap<QString,QJsonValue> pendingEdits_;QHash<QString,QPointer<QWidget>> editControls_;
+ QMap<QString,QJsonValue> pendingEdits_;QHash<QString,quint64> pendingEditSerials_,submittedEditSerials_;quint64 editSerial_=0;QHash<QString,QPointer<QWidget>> editControls_;
  QHash<QWidget*,QLabel*> errors_;QSet<QString> testedDestinations_,requestedFolders_;
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
  QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
@@ -62,8 +64,8 @@ private:
  UiSession& settings_;
  QJsonArray setupJobs_;QTimer* setupTimer_=nullptr;bool setupPollActive_=false,testAccepting_=false,saving_=false,resetting_=false;
  QJsonArray profileEditors_;int setupAccepting_=0;
- QString baseRevision_;quint64 editGeneration_=0;
- QJsonObject draft_;QString observed_;bool loading_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
+ QString baseRevision_;
+ QJsonObject draft_,savingDocument_;QString observed_;bool loading_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
  QLabel *status_,*metadata_,*capabilities_;QPushButton *quit_;
  ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;

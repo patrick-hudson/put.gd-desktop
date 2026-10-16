@@ -1,8 +1,9 @@
 # Testing shortcut dispatch
 
 A confirmed desktop binding proves registration, not that a capture was accepted.
-An upload action without a destination is a valid saved setup state, but
-`OperationService::invoke` rejects it with `destination_required` before creating
+An action without an upload destination is a valid saved setup state. When
+`archive.keepUploads` is enabled, it saves locally. With both outputs disabled,
+`OperationService::invoke` rejects it with `output_required` before creating
 an operation, opening a selector, reading pixels or copying the clipboard.
 Native hotkeys and tray actions share admission-error presentation. Native
 `busy_selecting` and `initializing` re-entry stays quiet so feedback cannot map a
@@ -49,10 +50,10 @@ ordinary tray suite cannot inject input on an inherited physical desktop.
 ## Desktop acceptance and diagnosis
 
 Use an isolated local-only destination and cancel selections before capturing.
-Verify the GUI Save/rebind path, new-chord activation, old-chord removal and
+Verify the GUI autosave/rebind path, new-chord activation, old-chord removal and
 unchanged actions on Cinnamon first. Include foreground applications and lock
-states. Also verify a missing destination produces visible feedback without an
-operation, then explicitly select a destination and retry. Preserve failure
+states. Also verify disabling both outputs produces visible feedback without an
+operation, then enable a destination or local saving and retry. Preserve failure
 attempts separately from corrected test-driver runs. Record build manifests,
 executable hashes, revisions, operation IDs, terminal outcomes and UI/helper
 lifetimes; exclude secrets and payloads.
@@ -65,7 +66,7 @@ versions do not establish these desktop gates.
 
 The original issue #8 preview had an accepted/bound Ctrl+1 but no region upload
 destination; the other actions retained theirs. The preview setup script assigned
-all four destinations. A clean shortcut-only GUI Save preserves them. The cause
+all four destinations. A clean shortcut-only GUI save preserves them. The cause
 of the original assignment becoming empty is unresolved; do not attribute it to
 keyboard mapping or claim this change repairs unknown settings corruption.
 Activity records accepted operations only. If desktop notification support is
