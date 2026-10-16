@@ -207,13 +207,31 @@ its strict local red/blue/return-red/idle samples and supplemental native frames
 both passed. Sharing was observed; finalizing was not. Session collect/CAS and
 all owned reference cleanup completed; no app/SDK/fixture work remained.
 
-The final private inventories retain 38 confirmed synthetic Proton objects in
-four isolated folders: Cinnamon’s 14 original-plus-fresh receipts, GNOME’s ten
-16 MiB plus four superseded 23-byte receipts, and KDE’s ten 16 MiB receipts.
-Production guarded deletion correctly reports unsupported capability for Proton;
-no remote deletion of these new acceptance objects was performed. Account/session
-maintenance is separate from that production contract. All disposable credential
-references used by the campaigns were cleaned, with the latest session preserved.
+At acceptance export, the private inventories recorded 38 confirmed synthetic
+Proton objects in four isolated folders: Cinnamon’s 14 original-plus-fresh
+receipts, GNOME’s ten 16 MiB plus four superseded 23-byte receipts, and KDE’s ten
+16 MiB receipts. Production guarded deletion correctly reports unsupported
+capability for Proton; the application’s deletion contract remains unchanged.
+
+The user subsequently requested cleanup. Separate maintenance through the pinned
+official SDK matched all 38 node identities, active revisions and parent folders
+against those receipts, and matched all four folder names/UIDs against their
+creation records. It rechecked the account root, live/trash roots, file revisions
+and exact folder children before mutation. All four trash results and four
+permanent-deletion results succeeded. The four folders and their 38 files are
+removed; the unrelated live entry and existing trash set were preserved. The
+account stayed logged in, the latest session was returned by exact source CAS,
+and the temporary host LAB reference was cleaned. Historical acceptance journals
+and receipts remain unchanged; they are not relabelled as production deletions.
+
+The private completion receipt is `work/i47/p48-clean2/completion.json`, SHA256
+`d532b9547fd8f52c4550e36100823b23595bf3340f971ec2988638861dc8ce82`.
+The immediate account quota counter still reported its prior
+570,572,074 bytes; actual SDK results and the absence of the exact target folders
+establish deletion, rather than a quota assumption. The first private helper
+attempt stopped before mutations because it compared the SDK’s Result-wrapped
+name directly with a string. That attempt and its safe session handoff remain
+preserved; the corrected helper unwraps the value before identity comparison.
 
 Earlier failures remain unchanged in the private archive: initial shared-name
 concurrency fixture, superseded test runs, missed error-blink samples, a missing
@@ -227,9 +245,9 @@ full campaign exports and checksum verification. A fresh GNOME overlay was used
 only for Proton acceptance; its verified 336-file export preceded guarded
 retirement. KDE’s original owned overlay was stopped and resumed for Proton,
 retaining its run identity and sealed backing base. It was guarded-retired after
-a verified 588-file campaign export. All remote Proton test objects remain
-inventoried. No golden disk was booted directly or modified. All isolated socket
-paths were checked against Linux’s 107-byte UTF-8 limit before launch; failed
+a verified 588-file campaign export. All remote Proton test objects were
+inventoried before the later cleanup. No golden disk was booted directly or
+modified. All isolated socket paths were checked against Linux’s 107-byte UTF-8 limit before launch; failed
 preflight/setup attempts are retained.
 
 ## Exact identities and evidence retention
