@@ -25,15 +25,20 @@ from pathlib import Path
 import sys
 import time
 root = Path(sys.argv[1])
+def publish_pid(name):
+    target = root / name
+    pending = target.with_suffix('.pending')
+    pending.write_text(str(os.getpid()))
+    pending.replace(target)
 child = os.fork()
 if child == 0:
     grandchild = os.fork()
     if grandchild == 0:
-        (root / 'grandchild.pid').write_text(str(os.getpid()))
+        publish_pid('grandchild.pid')
         while not (root / 'exec').exists():
             time.sleep(.01)
         os.execv(sys.argv[2], [sys.argv[2], '60'])
-    (root / 'child.pid').write_text(str(os.getpid()))
+    publish_pid('child.pid')
     while not (root / 'exit-parent').exists():
         time.sleep(.01)
     os._exit(0)
@@ -400,7 +405,20 @@ class ColdFamilyTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform == 'linux' and Path('/proc').is_dir(), 'Linux /proc and fork required')
     def test_preidentification_dead_parent_live_orphan(self):
-        self.exercise_tree(pre_identification=True)
+        slow_writes = r"""
+original_write = Path.write_text
+def delayed_write(path, data, *args, **kwargs):
+    if path.parent == root:
+        with path.open('w') as stream:
+            time.sleep(.2)
+            return stream.write(data)
+    return original_write(path, data, *args, **kwargs)
+Path.write_text = delayed_write
+"""
+        fixture = FORK_FIXTURE.replace('root = Path(sys.argv[1])\n',
+                                       'root = Path(sys.argv[1])\n' + slow_writes + '\n')
+        with patch.dict(globals(), FORK_FIXTURE=fixture):
+            self.exercise_tree(pre_identification=True)
 
     @unittest.skipUnless(sys.platform == 'linux' and Path('/proc').is_dir(), 'Linux /proc and fork required')
     def test_cap_failure_still_cleans_known_generations(self):
