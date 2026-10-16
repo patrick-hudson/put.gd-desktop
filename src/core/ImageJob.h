@@ -17,6 +17,7 @@ public:
  explicit ImageJob(QString helperPath={},int timeoutMs=10000);
  QList<QByteArray> discover(Error&,Cancel={}) const;
  QImage decode(const QByteArray&,const ResourceLimits&,Error&,Cancel={}) const;
+ QByteArray decodePng(const QByteArray&,const ResourceLimits&,Error&,Cancel={}) const;
  QByteArray preview(const QString& file,qint64 maximumPixels,qint64 budget,Error&,Cancel={}) const;
 private:
  QByteArray run(const QString& task,const QByteArray* input,const QString& file,

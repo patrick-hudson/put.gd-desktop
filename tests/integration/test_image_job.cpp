@@ -90,6 +90,9 @@ class ImageJobTest : public QObject {
     }
 private slots:
     void cleanup(){qunsetenv("PUTGD_TEST_IMAGE_JOB_MODE");qunsetenv("PUTGD_TEST_IMAGE_JOB_RECORD");}
+    void encodedPngPreservesFullSizeUnderCoreParent(){
+        ScopedDisplayEnvironment environment;environment.clear();QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));QImage original(391,257,QImage::Format_RGB32);original.fill(Qt::cyan);QByteArray input;QBuffer buffer(&input);QVERIFY(buffer.open(QIODevice::WriteOnly));QVERIFY(original.save(&buffer,"BMP"));Error error;const auto png=ImageJob(product()).decodePng(input,ResourceLimits{},error);QVERIFY2(!error,qPrintable(error.code));const auto decoded=readPng(png);QCOMPARE(decoded.size(),original.size());QCOMPARE(decoded.pixelColor(0,0),QColor(Qt::cyan));QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));ResourceLimits limits;limits.imagePixels=100;QVERIFY(ImageJob(product()).decodePng(input,limits,error).isEmpty());QCOMPARE(error.code,QString("input_excessive"));
+    }
     void coreParentIsPreserved(){
         QVERIFY(QCoreApplication::instance());
         QVERIFY(!qobject_cast<QGuiApplication*>(QCoreApplication::instance()));

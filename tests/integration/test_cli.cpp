@@ -13,6 +13,10 @@ class CliContract:public QObject {
  Q_OBJECT
  static QJsonObject raw(const QString& path,const QByteArray& bytes) {QLocalSocket socket;socket.connectToServer(path);if(!socket.waitForConnected(1000))return {};socket.write(bytes);QElapsedTimer timer;timer.start();QByteArray response;while(timer.elapsed()<5000&&!response.contains('\n')) {QCoreApplication::processEvents();response+=socket.readAll();QTest::qWait(1);}return QJsonDocument::fromJson(response).object();}
 private slots:
+ void historyImageEndpointAcceptsOnlyJournalId(){
+  QTemporaryDir d;ProviderRegistry registry;SettingsService settings(d.filePath("config/config.json"));Source source;OperationService operations(d.filePath("data"),settings,registry,source);HistoryService history(operations);LocalServer server(settings,operations,history);QTRY_VERIFY(operations.ready());
+  for(const auto& params:QList<QJsonObject>{QJsonObject{{"id","missing"}},QJsonObject{{"id","missing"},{"path","/synthetic/untrusted.png"}},QJsonObject{{"id",QJsonArray{}}}}){bool done=false;Error error;server.dispatch({{"schemaVersion",1},{"requestId","image"},{"session",server.socketPath()},{"method","history.copyImage"},{"params",params}},[&](Error e,QJsonObject){error=e;done=true;});QTRY_VERIFY(done);QCOMPARE(error.code,params.size()==1&&params["id"].isString()?QString("history_not_found"):QString("invalid_request"));}QCOMPARE(source.copies,0);QCOMPARE(source.reads,0);
+ }
  void credentialEntryIsRejectedBeforeConnecting() {
   QTemporaryDir d;QLocalServer server;server.setSocketOptions(QLocalServer::UserAccessOption);QVERIFY(server.listen(d.filePath("session.sock")));int connections=0;
   connect(&server,&QLocalServer::newConnection,this,[&]{++connections;auto* socket=server.nextPendingConnection();socket->setParent(&server);socket->disconnectFromServer();});

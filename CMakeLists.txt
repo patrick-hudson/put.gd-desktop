@@ -549,6 +549,11 @@ if(BUILD_TESTING)
   # Generic image previews use the production transient GUI worker even under
   # a Core-only test parent; this remains a widget/dependency contract.
   add_dependencies(test_payload putgd-ui)
+  add_dependencies(test_operations putgd-ui)
+  if(TARGET test_image_job_fixture)
+    target_compile_definitions(test_operations PRIVATE PUTGD_IMAGE_JOB_FIXTURE="$<TARGET_FILE:test_image_job_fixture>")
+    add_dependencies(test_operations test_image_job_fixture)
+  endif()
   set_tests_properties(payload_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   if(PUTGD_SANITIZER STREQUAL "thread")
     # The 10,000-row contract instruments SQLite and Qt as well as the app.

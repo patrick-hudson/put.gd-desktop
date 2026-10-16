@@ -7,7 +7,7 @@ struct OperationService::PendingCopy {
  std::function<CopyPayload()> payload;
  std::function<void(Error)> reply;
  std::function<bool()> eligible;
- CopyPreparation prepare;QStringList operations;
+ CopyPreparation prepare;QStringList operations;std::shared_ptr<CopyPreparationState> preparationState;
  bool upload=false,retryUnsent=false,nativeStarted=false;
 };
 struct OperationService::UploadCopy {
@@ -29,6 +29,8 @@ struct OperationService::UploadCopyGroup {
 };
 quint64 OperationService::invalidateCopyEligibility() {
  ++uploadCopyEpoch_;
+ if(currentCopy_&&currentCopy_->preparationState)currentCopy_->preparationState->cancelled->store(true);
+ for(const auto& copy:copies_)if(copy->preparationState)copy->preparationState->cancelled->store(true);
  source_.invalidateCopyEligibility();
  return ++invocation_;
 }
@@ -51,7 +53,7 @@ void OperationService::beginUploadCopies(const Operation& op,bool acquiring) {
   // before freezing an import, then retry only a confirmed unsent suppression.
   interruptUploadCopy();
  }
- if(currentCopy_&&!currentCopy_->upload)source_.invalidateCopyEligibility();
+ if(currentCopy_&&!currentCopy_->upload){if(currentCopy_->preparationState)currentCopy_->preparationState->cancelled->store(true);source_.invalidateCopyEligibility();}
 }
 void OperationService::abandonUploadCopies(const QString& id) {
  clipboardImports_.remove(id);
@@ -190,12 +192,14 @@ void OperationService::acknowledgeCopyRevision(quint64 before,quint64 after) {
   if(state->revision==before)state->revision=after;
   if(state->group&&state->group->revision==before)state->group->revision=after;
  }
+ const auto advance=[before,after](const std::shared_ptr<PendingCopy>& copy){if(copy&&copy->preparationState&&copy->preparationState->revision==before)copy->preparationState->revision=after;};
+ advance(currentCopy_);for(const auto& copy:copies_)advance(copy);
 }
 void OperationService::deliverCopy(const CopyPayload& payload,std::function<void(Error)> reply,std::function<bool()> eligible,bool upload) {
  queueCopy([payload]{return payload;},std::move(reply),std::move(eligible),upload);
 }
-void OperationService::queueCopy(std::function<CopyPayload()> payload,std::function<void(Error)> reply,std::function<bool()> eligible,bool upload,CopyPreparation prepare,QStringList operations) {
- auto request=std::make_shared<PendingCopy>();request->payload=std::move(payload);request->reply=std::move(reply);request->eligible=std::move(eligible);request->upload=upload;request->prepare=std::move(prepare);request->operations=std::move(operations);
+void OperationService::queueCopy(std::function<CopyPayload()> payload,std::function<void(Error)> reply,std::function<bool()> eligible,bool upload,CopyPreparation prepare,QStringList operations,std::shared_ptr<CopyPreparationState> preparationState) {
+ auto request=std::make_shared<PendingCopy>();request->payload=std::move(payload);request->reply=std::move(reply);request->eligible=std::move(eligible);request->upload=upload;request->prepare=std::move(prepare);request->operations=std::move(operations);request->preparationState=std::move(preparationState);
  copies_.enqueue(request);pumpCopies();
 }
 void OperationService::pumpCopies() {

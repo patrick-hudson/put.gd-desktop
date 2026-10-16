@@ -46,7 +46,7 @@ Methods and parameters:
 | `operation.recent` | empty object; configured recent-activity bound |
 | `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id` |
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
-| `history.detail`, `history.copyLink` | history `id` |
+| `history.detail`, `history.copyLink`, `history.copyImage` | history `id` |
 | `history.clear`, `cache.clear` | empty object |
 | `delete.prepare` | `ids` array of confirmed history IDs |
 | `delete.confirm` | identical ordered `ids`, exact returned `acknowledgement` |
@@ -115,3 +115,5 @@ deadline when the account and folder still match. Inspection exposes that
 separate attempt budget as `requestTimeoutMs`; the original destination
 snapshot remains unchanged. Retry retains the original publication ID and
 reconciles before another upload.
+
+`history.copyImage` copies the selected retained original image through the resident clipboard adapter, so it remains available after closing History. It accepts only a history ID; input is limited to 32 MiB and 16 million pixels, with a bounded full-size PNG conversion. Changed or unavailable originals are rejected.
