@@ -34,6 +34,21 @@ public:
 class OperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ void destinationAndLocalCopiesAreIndependent_data() {
+  QTest::addColumn<bool>("destination");QTest::addColumn<bool>("localCopy");QTest::addColumn<bool>("inherit");QTest::addColumn<bool>("unconfiguredUpload");
+  for(const bool inherit:{false,true})for(const bool destination:{false,true})for(const bool localCopy:{false,true})QTest::newRow(qPrintable(QString("destination-%1-local-%2-inherit-%3").arg(destination).arg(localCopy).arg(inherit)))<<destination<<localCopy<<inherit<<false;
+  for(const bool localCopy:{false,true})QTest::newRow(localCopy?"unconfigured-with-local":"unconfigured-without-local")<<false<<localCopy<<false<<true;
+ }
+ void destinationAndLocalCopiesAreIndependent() {
+  QFETCH(bool,destination);QFETCH(bool,localCopy);QFETCH(bool,inherit);QFETCH(bool,unconfiguredUpload);
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();registry.add("opaque",provider);SettingsService settings(d.filePath("config.json"),[&](auto id,auto value){return registry.validate(id,value);});
+  auto doc=configuration(d.path());auto archive=doc["archive"].toObject();archive["keepUploads"]=localCopy;doc["archive"]=archive;
+  QJsonObject output{{"destination",destination||unconfiguredUpload?"upload":"local"},{"profileId",destination?QJsonValue("test"):QJsonValue(QJsonValue::Null)},{"publicationMode","default"}};
+  auto actions=doc["actions"].toObject();for(const auto& name:Settings::actionNames()){auto action=actions[name].toObject();action["destination"]=inherit?QJsonValue("default"):output["destination"];action["profileId"]=inherit?QJsonValue(QJsonValue::Null):output["profileId"];actions[name]=action;}doc["actions"]=actions;if(inherit)doc["captureDefaults"]=output;QVERIFY(settings.save(doc,{}));
+  Source source;source.payload=textPayload();OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());QString id;Error error;bool replied=false;operations.invoke("clipboard",[&](Error e,QJsonObject result){error=e;id=result["operationId"].toString();replied=true;});QTRY_VERIFY(replied);
+  if(!destination&&!localCopy){QCOMPARE(error.code,QString("output_required"));QVERIFY(id.isEmpty());QCOMPARE(source.reads,0);QCOMPARE(provider->uploads.load(),0);QCOMPARE(operations.diagnostics()["activeOperations"].toInt(),0);return;}
+  QVERIFY2(!error,qPrintable(error.message));QVERIFY(!id.isEmpty());HistoryStore journal(operations.databasePath());QTRY_COMPARE(journal.operation(id).state,QString("completed"));QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);const auto item=op.items.first();QCOMPARE(provider->uploads.load(),destination?1:0);QCOMPARE(item.uploadStatus,destination?QString("uploaded"):QString("local_only"));QCOMPARE(item.local.status=="saved",localCopy);if(localCopy){QFile file(item.local.path);QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),source.payload.bytes);}
+ }
  void pendingUploadsRetainTheirConfiguredClipboardMode_data() {QTest::addColumn<QString>("firstMode");QTest::newRow("each-then-list")<<QString("each_link");QTest::newRow("list-then-each")<<QString("list");}
  void pendingUploadsRetainTheirConfiguredClipboardMode() {
   QFETCH(QString,firstMode);const QString secondMode=firstMode=="list"?"each_link":"list";QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);

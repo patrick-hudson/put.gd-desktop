@@ -5,28 +5,54 @@
 #include <QHash>
 #include <QJsonArray>
 #include <QVector>
-class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
+#include <QMap>
+#include <QPointer>
+#include <QSet>
+class QToolButton;class QTabWidget;class QListWidget;class QSpinBox;class QDoubleSpinBox;class QTimer;class QComboBox;class QLineEdit;class QCheckBox;class QLabel;class QPushButton;class QPlainTextEdit;
 namespace putgd {
 class ShortcutEditor;
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
  SettingsWindow(UiSession&,QWidget* parent=nullptr);
+ ~SettingsWindow()override;
  QJsonObject saveViewState()const;
  bool restoreViewState(const QJsonObject&);
+ bool flushAutosave();
+ QString autosaveText()const;
+ void showCaptureSettings();
+ QWidget* destinationsPage()const{return destinationPage_;}
  void clearCredentialInputs();
  void refreshDiagnostics();
+ void activateDestinations(bool forceRefresh=false);
 signals:
  void viewStateChanged();
  void actionRequested(const QString&);
  void quitRequested();
 protected:
  void closeEvent(QCloseEvent*) override;
+ bool eventFilter(QObject*,QEvent*)override;
 private:
+ template<class T>T findControl(const QString& name)const{auto value=findChild<T>(name);return value?value:destinationPage_->findChild<T>(name);}
+ static qint64 displayUnit(const QString&);
+ void queueCaptureEdit(QWidget*);void updateCaptureInheritance();
+ QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;
+ QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
+ bool captureDefaultsEnabled_=false,captureRoutingEdited_=false;
+ QLabel* captureOutputNotice_=nullptr;QHash<QString,QLabel*> captureStatus_;
+ void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);void autosaveFailure(const Error&);
+ QMap<QString,QJsonValue> pendingEdits_;QHash<QString,QPointer<QWidget>> editControls_;
+ QHash<QWidget*,QLabel*> errors_;QSet<QString> testedDestinations_,requestedFolders_;
+ bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
+ QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
+ QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
+ QLabel* credentialHint_=nullptr;
+ QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
+ void updateProtonAccountDisplay();bool applyProtonAccountResult(const QString&,const QJsonObject&);
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
- void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile();void cancel();void resetDraft(bool reloadFile);QJsonObject candidate() const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
- void switchProvider();void importDevelopmentProfile();void parkInitialProfile();
+ void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
+ void switchProvider();void importDevelopmentProfile();
  QJsonObject retainedProfileEditor()const;bool hasRetainedDrafts()const;
  void rememberCredentialInputs();void restoreCredentialInputs();void clearCurrentCredentialInputs();
  struct CredentialInputs {QString access,secret,token,password;};
@@ -38,13 +64,13 @@ private:
  QJsonArray profileEditors_;int setupAccepting_=0;
  QString baseRevision_;quint64 editGeneration_=0;
  QJsonObject draft_;QString observed_;bool loading_=false,dirty_=false,conflict_=false,initialProfile_=false;int profileIndex_=-1;
- QLabel *status_,*metadata_,*capabilities_;QPushButton *save_,*quit_;
- ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> destinations_,actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
+ QLabel *status_,*metadata_,*capabilities_;QPushButton *quit_;
+ ShortcutEditor* shortcuts_;QHash<QString,QComboBox*> actionProfiles_;QHash<QString,QLineEdit*> folders_,s3_,numbers_,templates_;
  QComboBox *providerType_=nullptr,*protonFolder_=nullptr;QSpinBox* protonExpiration_=nullptr;QDoubleSpinBox* protonTimeout_=nullptr;
  QCheckBox* protonShare_=nullptr;QLineEdit* protonPassword_=nullptr;
- QWidget* protonPanel_=nullptr;QLabel* protonAccount_=nullptr;
+ QWidget* protonPanel_=nullptr;QLabel *protonAccount_=nullptr,*protonFolderStatus_=nullptr;
  QHash<QString,QComboBox*> publicationModes_;
- QString protonAccountUid_;bool protonBrowserOpened_=false;
+ QString protonAccountUid_,protonAccountEmail_;QSet<QString> folderRequests_;bool protonBrowserOpened_=false;
  std::function<void()> updateProviderVisibility_;
  QLineEdit *root_,*profileId_,*profileLabel_,*reference_,*access_,*secret_,*token_;QComboBox *profile_,*credentialMode_,*acl_,*naming_,*collision_,*addressing_,*regionChoices_,*uploadClipboard_;QPlainTextEdit* providerJson_;QCheckBox *keep_,*notifications_,*login_;
 };

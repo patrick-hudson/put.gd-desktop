@@ -174,7 +174,7 @@ private slots:
   desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
   desktop.key(XK_1,false);desktop.key(XK_Control_L,false);
   QTRY_COMPARE_WITH_TIMEOUT(notifications.values.size(), 1, 5000);
-  QCOMPARE(notifications.values.first()["body"].toString(), QString("Configure a destination before sharing"));
+  const auto body=notifications.values.first()["body"].toString();QVERIFY(body.contains("No output is enabled"));QVERIFY(body.contains("Settings → Capture"));QVERIFY(body.contains("Keep a local copy in Settings → General"));
   for(int repeat=0;repeat<2;++repeat){
    desktop.key(XK_Control_L,true);desktop.key(XK_1,true);
    desktop.key(XK_1,false);desktop.key(XK_Control_L,false);

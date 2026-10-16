@@ -71,6 +71,18 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  else if(tester_)tester_(profileId,profile,complete);
  else complete({"test_unsupported","This resident has no destination test",{}});
 }
+void SetupService::credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
+ if(expectedRevision!=settings_.revision()){reply({"config_conflict","Configuration changed; refresh this destination",{}},{});return;}
+ const auto profiles=settings_.snapshot().profiles;
+ if(!profiles.contains(profileId)){reply({"profile_not_found","This destination is not saved yet",{}},{});return;}
+ const auto profile=profiles[profileId];const auto reference=profile["credentials"].toObject();
+ // A UI hint never unlocks or reads the OS secret store. Explicit credential
+ // setup already owns that consent, and only this bounded hint leaves its cache.
+ const auto cached=credentials_.cached(profileId,reference);
+ QJsonObject hint{{"available",bool(cached)},{"mode",reference["mode"]}};
+ if(cached){hint["accessKeyHint"]=cached->accessKey.size()>4?cached->accessKey.left(4)+QString::fromUtf8("…"):QString::fromUtf8("••••");hint["secretStored"]=!cached->secretKey.isEmpty();hint["tokenStored"]=!cached->sessionToken.isEmpty();}
+ reply({},hint);
+}
 void SetupService::inspect(const QString& id,JsonReply reply) {
  const auto found=jobs_.constFind(id);
  if(found==jobs_.cend()) {reply({"setup_not_found","Setup job is no longer available in this resident",{}},{});return;}

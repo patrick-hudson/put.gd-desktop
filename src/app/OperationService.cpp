@@ -122,10 +122,12 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
  if(!Settings::actionNames().contains(action)) {reply({"invalid_action","Unknown sharing action",{}},{});return;}
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
  if(action!="clipboard"&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
- const auto route=snapshot.actions.value(action);if(route.destination=="upload"&&route.profileId.isEmpty()) {reply({"destination_required","Configure a destination before sharing",{}},{});return;}
- Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=route.destination=="upload"?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
- if(route.destination=="upload") {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(route.destination=="upload")beginUploadCopies(op,true);if(action!="clipboard")selectingId_=op.id;
+ const auto route=snapshot.actions.value(action);
+ const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
+ if(!upload&&!snapshot.archive.keepUploads){reply({"output_required","No output is enabled. Choose a destination in Settings → Capture or enable Keep a local copy in Settings → General.",{}},{});return;}
+ Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
+ if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,true);if(action!="clipboard")selectingId_=op.id;
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
@@ -223,7 +225,8 @@ Operation OperationService::run(Job job) {
  }
  // Archive every acquired item before any item in this batch is published.
  op.phase="saving_local";
- const bool local=op.settings.actions.value(op.action).destination=="local";
+ const auto route=op.settings.actions.value(op.action);
+ const bool local=route.destination=="local"||route.profileId.isEmpty();
  for(auto& item:op.items) if((local||op.settings.archive.keepUploads)&&item.local.status!="saved") {item.phase="saving_local";observe(op.publicJson());item.local=LocalArchive::save(item.artifact,op.settings.archive);item.phase="stored";if(!saveItem(item))return op;}
  if(local) {for(auto& item:op.items) item.uploadStatus="local_only";op.state="completed";for(const auto& item:op.items) if(item.local.status!="saved")op.state="failed";save();return op;}
  auto provider=providers_.find(op.destination.providerId);if(!provider) {op.error={"provider_unavailable","Restore access to the original destination",{}};op.state="failed";save();return op;}

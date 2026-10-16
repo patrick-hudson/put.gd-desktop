@@ -56,7 +56,7 @@ function statRequest(): JsonObject {
 }
 test('inspect accepts a matching configured account before any folder is selected', async () => {
     const stub = context();
-    expect(await inspectAccount(stub.ctx, setup)).toEqual({ accountRootUid: 'root', folders: [{ uid: 'folder', name: 'Uploads' }] });
+    expect(await inspectAccount(stub.ctx, setup)).toEqual({ accountRootUid: 'root', accountEmail: 'synthetic@example.invalid', folders: [{ uid: 'folder', name: 'Uploads' }] });
     expect(stub.calls.map(call => call.method)).toEqual(['root', 'children']);
     expect(stub.calls[1].args[0]).toBe('root');
     expect(stub.calls[1].args[1]).toEqual({ type: NodeType.Folder });

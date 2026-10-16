@@ -7,7 +7,7 @@
 #include <memory>
 class QWidget;
 namespace putgd {
-class SettingsWindow;class HistoryWindow;class RecentOperations;class AboutWindow;
+class MainWindow;class AboutWindow;
 class UiApplicationController final:public QObject {
  Q_OBJECT
 public:
@@ -24,9 +24,7 @@ private:
  void finishShortcutRecordingRequests(Error);
  void requestClose(QWidget*);void submitClose();void checkpoint();void notify(const Error&);void allowClose();
  UiSession& session_;UiControl& control_;QJsonObject saved_;
- std::unique_ptr<SettingsWindow> settings_;
- std::unique_ptr<HistoryWindow> history_;
- std::unique_ptr<RecentOperations> activity_;
+ std::unique_ptr<MainWindow> main_;
  std::unique_ptr<AboutWindow> about_;
  struct RecordingRequest {bool active;std::function<void(Error)> reply;};
  QHash<QString,RecordingRequest> recordingRequests_;

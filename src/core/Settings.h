@@ -56,6 +56,7 @@ struct Settings {
     static QJsonObject defaults();
     static QJsonObject developmentTemplate();
     static Error validate(const QJsonObject&, const ProfileValidator& = {}, const CredentialValidator& = {});
+    static QJsonObject effectiveAction(const QJsonObject&, const QString&);
     static Settings fromValidated(const QJsonObject&);
     static QStringList actionNames();
 };

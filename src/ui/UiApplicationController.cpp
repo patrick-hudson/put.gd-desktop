@@ -1,7 +1,7 @@
 #include "UiApplicationController.h"
 #include "SettingsWindow.h"
 #include "HistoryWindow.h"
-#include "RecentOperations.h"
+#include "MainWindow.h"
 #include "AboutWindow.h"
 #include "ViewState.h"
 #include <QApplication>
@@ -45,37 +45,21 @@ UiApplicationController::~UiApplicationController(){
  disconnect(&control_,nullptr,this,nullptr);
  // QWidget destruction emits hide events. Remove filters and callbacks before
  // state/timer members are destroyed, then let the view owners release widgets.
- for(auto* window:QList<QWidget*>{settings_.get(),history_.get(),activity_.get(),about_.get()})
+ for(auto* window:QList<QWidget*>{main_.get(),about_.get()})
   if(window){window->removeEventFilter(this);disconnect(window,nullptr,this,nullptr);}
 }
 QWidget* UiApplicationController::view(const QString& name){
- const auto restore=[this](auto* window,const QString& key){
-  if(saved_.contains(key)&&!window->restoreViewState(saved_[key].toObject()))
-   notify({"ui_state_invalid","The saved window state could not be restored.",{}});
-  window->installEventFilter(this);
-  connect(window,&std::remove_pointer_t<decltype(window)>::viewStateChanged,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
- };
- if(name=="settings"){
-  if(!settings_){
-   settings_=std::make_unique<SettingsWindow>(session_);restore(settings_.get(),name);
-   connect(settings_.get(),&SettingsWindow::quitRequested,this,[this]{
-    session_.request("ui.quit",{},this,[this](Error error,QJsonObject){if(error)notify(error);});
-   });
-   connect(settings_.get(),&SettingsWindow::actionRequested,this,[this](const QString& action){
-    session_.request("action.invoke",{{"action",action}},this,[this](Error error,QJsonObject){if(error)notify(error);});
-   });
+ if(QStringList{"settings","history","activity","destinations"}.contains(name)){
+  if(!main_){
+   main_=std::make_unique<MainWindow>(session_);
+   if(saved_.contains("settings")&&!main_->settings()->restoreViewState(saved_["settings"].toObject()))notify({"ui_state_invalid","Saved settings draft could not be restored.",{}});
+   if(saved_.contains("history")&&!main_->history()->restoreViewState(saved_["history"].toObject()))notify({"ui_state_invalid","Saved history state could not be restored.",{}});
+   if(saved_.contains("main"))main_->restoreViewState(saved_["main"].toObject());
+   main_->installEventFilter(this);connect(main_.get(),&MainWindow::viewStateChanged,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
+   connect(main_.get(),&MainWindow::quitRequested,this,[this]{session_.request("ui.quit",{},this,[this](Error error,QJsonObject){if(error)notify(error);});});
+   connect(main_.get(),&MainWindow::actionRequested,this,[this](const QString& action){session_.request("action.invoke",{{"action",action}},this,[this](Error error,QJsonObject){if(error)notify(error);});});
   }
-  return settings_.get();
- }
- if(name=="history"){
-  if(!history_){history_=std::make_unique<HistoryWindow>(session_);restore(history_.get(),name);}
-  else history_->refresh();
-  return history_.get();
- }
- if(name=="activity"){
-  if(!activity_){activity_=std::make_unique<RecentOperations>(session_);restore(activity_.get(),name);}
-  else activity_->refresh();
-  return activity_.get();
+  main_->navigate(name);return main_.get();
  }
  if(name=="about"){
   if(!about_){about_=std::make_unique<AboutWindow>(session_.build());about_->installEventFilter(this);}
@@ -85,9 +69,7 @@ QWidget* UiApplicationController::view(const QString& name){
 }
 QJsonObject UiApplicationController::snapshot()const{
  auto state=saved_;state["schemaVersion"]=1;
- if(settings_)state["settings"]=settings_->saveViewState();
- if(history_)state["history"]=history_->saveViewState();
- if(activity_)state["activity"]=activity_->saveViewState();
+ if(main_){state["settings"]=main_->settings()->saveViewState();state["history"]=main_->history()->saveViewState();state["main"]=main_->saveViewState();}
  return state;
 }
 void UiApplicationController::checkpoint(){
@@ -107,8 +89,8 @@ void UiApplicationController::notify(const Error& error){
 }
 void UiApplicationController::allowClose(){
  exiting_=true;checkpointDelay_.stop();closeDeadline_.stop();
- if(settings_)settings_->clearCredentialInputs();
- if(history_)history_->releasePreview();
+ if(main_)main_->settings()->clearCredentialInputs();
+ if(main_)main_->history()->releasePreview();
  emit exitRequested();
 }
 void UiApplicationController::finishShortcutRecordingRequests(Error error){
@@ -178,14 +160,14 @@ bool UiApplicationController::eventFilter(QObject* object,QEvent* event){
  if(event->type()!=QEvent::Close)return QObject::eventFilter(object,event);
  auto* close=static_cast<QCloseEvent*>(event);
  if(closing_){close->ignore();return true;}
+ if(window==main_.get()&&!main_->settings()->flushAutosave()){close->ignore();QTimer::singleShot(40,this,[guard=QPointer<QWidget>(window)]{if(guard)guard->close();});return true;}
  // Native dialogs and transient children must finish before their owning view.
  if(QApplication::activeModalWidget()||QGuiApplication::modalWindow()){close->ignore();return true;}
  for(auto* child:window->findChildren<QWidget*>())if(child->isWindow()&&child->isVisible()){close->ignore();return true;}
  if(auto* native=window->windowHandle())for(auto* child:QGuiApplication::allWindows())
   if(child->isVisible())for(auto* parent=child->transientParent();parent;parent=parent->transientParent())
    if(parent==native){close->ignore();return true;}
- if(window==settings_.get())settings_->clearCredentialInputs();
- if(window==history_.get())history_->releasePreview();
+ if(window==main_.get()){main_->settings()->clearCredentialInputs();main_->history()->releasePreview();}
  if(openViews_.size()>(openViews_.contains(window)?1:0)){
   openViews_.remove(window);dirtyCheckpoint_=true;checkpointDelay_.start();return QObject::eventFilter(object,event);
  }

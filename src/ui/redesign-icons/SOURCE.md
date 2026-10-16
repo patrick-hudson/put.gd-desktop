@@ -1,0 +1,1 @@
+These small control glyphs are authored for put.gd. SVG files retain the vector sources; the bundled PNG and @2x PNG equivalents keep controls visible with the minimum distro Qt Widgets packages, without requiring an SVG image plugin.
