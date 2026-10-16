@@ -193,7 +193,7 @@ private slots:
   struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(provider->requests.size(),1);
   operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.reads,2);
-  QTRY_VERIFY(tray->toolTip().contains("Queued"));QVERIFY(tray->icon().pixmap(24,24).toImage()!=idleIcon);
+  QTRY_VERIFY(tray->toolTip().contains("Queued"));QTRY_VERIFY(tray->icon().pixmap(24,24).toImage()!=idleIcon);
   provider->completions.takeFirst()();QTRY_COMPARE(provider->requests.size(),2);
   QVERIFY(tray->toolTip()!=idleTooltip);
   provider->failUpload=true;provider->completions.takeFirst()();
