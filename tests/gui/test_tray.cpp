@@ -75,10 +75,11 @@ private slots:
  void concurrentTransferFillUsesSourceByteWeights() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
-  auto document=configuration(directory.path());auto limits=document["limits"].toObject();limits["concurrentUploads"]=2;document["limits"]=limits;QVERIFY(settings.save(document,{}));
+  auto document=configuration(directory.path());auto limits=document["limits"].toObject();limits["concurrentUploads"]=2;document["limits"]=limits;
+  auto naming=document["naming"].toObject();naming["mode"]="generated";document["naming"]=naming;QVERIFY(settings.save(document,{}));
   Source source;source.payload.kind="text";source.payload.bytes=QByteArray(1024*1024,'x');OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
   TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();
-  auto drain=qScopeGuard([provider]{for(auto complete:std::exchange(provider->completions,{}))complete();});
+  auto drain=qScopeGuard([provider]{provider->deferUploads=false;for(auto complete:std::exchange(provider->completions,{}))complete();});
   operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});QTRY_COMPARE(provider->requests.size(),1);
   source.payload.bytes=QByteArray(9*1024*1024,'x');operations.invoke("clipboard",[](Error error,QJsonObject){QVERIFY(!error);});QTRY_COMPARE(provider->requests.size(),2);
   provider->requests[0].progress({"uploading",1024*1024,1024*1024});provider->requests[1].progress({"uploading",0,9*1024*1024});
