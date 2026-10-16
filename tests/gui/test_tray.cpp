@@ -374,7 +374,7 @@ private slots:
    });
   });
   for (const auto& name : QStringList{"region", "window", "desktop", "clipboard"}) {
-   auto* action = actionNamed(tray, "Capture " + name);
+   auto* action = actionNamed(tray, name == "clipboard" ? QString("Upload Clipboard") : "Capture " + name);
    QVERIFY(action);
    action->trigger();
    QTRY_VERIFY(source.actions.contains(name));

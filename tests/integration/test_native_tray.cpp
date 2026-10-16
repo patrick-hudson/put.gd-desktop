@@ -376,6 +376,7 @@ private slots:
   auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 11);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(0).variant()).props["label"].toString(), QString("Capture region"));
+  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(3).variant()).props["label"].toString(), QString("Upload Clipboard"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(4).variant()).props["type"].toString(), QString("separator"));
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 0, QStringList{"label"}});
   layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QVERIFY(layout.children.isEmpty()); QVERIFY(layout.props.isEmpty());
