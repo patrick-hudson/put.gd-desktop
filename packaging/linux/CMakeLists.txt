@@ -99,7 +99,7 @@ set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
 set(CPACK_RPM_PACKAGE_LICENSE "MIT AND Apache-2.0")
 set(CPACK_RPM_PACKAGE_URL "https://github.com/patrick-hudson/put.gd-desktop")
-set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase-sqlite, qt6-qtwayland")
+set(CPACK_RPM_PACKAGE_REQUIRES "qt6-qtbase-gui, qt6-qtbase, qt6-qtwayland")
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 # Private AWS libraries satisfy only this app, never another RPM. Keep automatic
 # detection of their system dependencies; filter only the bundled SONAMEs.
