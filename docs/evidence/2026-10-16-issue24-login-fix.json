@@ -1,0 +1,1224 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "executionConcurrency": {
+    "cinnamon": "single VM, before Wayland build",
+    "wayland": "independent parallel native campaigns; both finished before memory; each VM has two serial windows",
+    "resourcePlan": {
+      "availableBytes": 16450830336,
+      "vmReservationsBytes": {
+        "gnome-wayland": 6442450944,
+        "kde-wayland": 6442450944
+      },
+      "hostReserveBytes": 3221225472,
+      "parallelApproved": true,
+      "policy": "Reserve the full configured RAM of both guests plus3GiB host headroom; recheck remaining reservation before each launch. Finish all builds and both native GUI campaigns before any memory observation."
+    }
+  },
+  "issue": 24,
+  "broaderAcceptanceIssue": 44,
+  "source": {
+    "commit": "09ce25b7851624e602c96dba855b4465e688fec9",
+    "tree": "5e0fc4ff4e89dc1dc9ec0f259a89f9e4f7516a2e",
+    "count": 217,
+    "archiveSha256": "48e1de5d9a43ee2a677aeeed5feeb7f77c4e43f033bd1ba2b0f75e6c0a96eba6",
+    "clean": true
+  },
+  "hostTests": {
+    "dev": {
+      "passed": true,
+      "ctestTests": 59,
+      "seconds": 643.43,
+      "junitSha256": "448b50ec2be5744f1a45cefe7ecb53acd8d52ee253176dcdd935fb0938b0a2d4"
+    },
+    "asanUbsan": {
+      "passed": true,
+      "ctestTests": 3,
+      "scope": "native tray, nine-row production background startup, login startup contract; affected application/test targets instrumented, external distro libraries and AWS not instrumented",
+      "seconds": 85.82,
+      "junitSha256": "9cfbe80a1cd3df2c1640ebc7b96e32e4a2219c3c84c4737899760c85c45f2c28"
+    },
+    "startupScenarios": [
+      "late-watcher",
+      "late-host",
+      "ready-tray",
+      "absent-tray-recovery",
+      "tray-after-recovery-bound",
+      "explicit-activation-cancels-recovery",
+      "missing-config-recovery",
+      "invalid-config-recovery",
+      "explicit-launch"
+    ],
+    "redRegression": {
+      "baseCommit": "a5cbb5e87ade27202af071a04b6e906285c639d7",
+      "newTestBeforeProductionChange": true,
+      "failedRows": [
+        "late-watcher",
+        "late-host",
+        "absent-tray-recovery"
+      ],
+      "logSha256": "2eb359e09eabcbca7e03afe1fc95b8615b0704540b43a808defe0ba045878fa4"
+    }
+  },
+  "login": {
+    "passed": true,
+    "realCinnamonLogins": 2,
+    "configurationUnchanged": true,
+    "readOnlyProcessObserverIntervalSeconds": 0.1,
+    "processTraceSha256": "4f4d4402c0a661a84b73e4f8e60fa9c2472c5e55bd1a3fe6ef8fa76f4f768c94",
+    "observerCliCanStartResident": false,
+    "cliSourceProofSha256": "17c9a845c0b1cecbf867039c57ac4b07f89a91f5782cee0ca6c4f043f09dda3f",
+    "cases": [
+      {
+        "case": "login1",
+        "resident": {
+          "pid": 4123,
+          "startTicks": 79059,
+          "sha256": "9d724efbcd25feacf09da310b9a9e59f783f34bd90cb1071d556c410c4751f64"
+        },
+        "installedVersion": "0.1.1~dev.217+g09ce25b78516",
+        "observationSeconds": 16.044954843993764,
+        "uiSnapshotSamples": 30,
+        "trayRegistered": true,
+        "noWindow": true,
+        "helperNeverStarted": true,
+        "configSha256": "b4f6686c3018d36579e98704854a4592ed1cf8cebd81769bc7e707f7bdf006d9",
+        "autostartSha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+        "rawReceiptSha256": "21bc8acbd301711d072fee3b68d9b8b82d5c24965a07129539d152ccc79f31c1",
+        "screenshotSha256": "99b416f1b830aaf36c679905a289582ebbdd17a08f875ebb9e0e424165db0116"
+      },
+      {
+        "case": "login2",
+        "resident": {
+          "pid": 6243,
+          "startTicks": 84910,
+          "sha256": "9d724efbcd25feacf09da310b9a9e59f783f34bd90cb1071d556c410c4751f64"
+        },
+        "installedVersion": "0.1.1~dev.217+g09ce25b78516",
+        "observationSeconds": 16.63327688697609,
+        "uiSnapshotSamples": 33,
+        "trayRegistered": true,
+        "noWindow": true,
+        "helperNeverStarted": true,
+        "configSha256": "b4f6686c3018d36579e98704854a4592ed1cf8cebd81769bc7e707f7bdf006d9",
+        "autostartSha256": "4662cdb185a7ab7eea947549bc21e9a38fa9d4fd197e7dc9660323446812307a",
+        "rawReceiptSha256": "b35a50bb95ee92d14da00536d8a3805e2e8781c7f57f9070644fb0d23304fb98",
+        "screenshotSha256": "80534d67ff014291032d481d0f6b48f8ee9a528c16ef46c5e94731c357a2a816"
+      }
+    ]
+  },
+  "desktops": [
+    {
+      "profile": "cinnamon-x11",
+      "passed": true,
+      "runId": "473964e8-e303-4b2f-8d59-460d3573c34b",
+      "sourceCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+      "buildManifest": {
+        "schemaVersion": 1,
+        "version": "0.1.1-dev.217+g09ce25b78516",
+        "baseVersion": "0.1.1",
+        "packageVersion": "0.1.1~dev.217+g09ce25b78516",
+        "gitCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+        "gitTree": "5e0fc4ff4e89dc1dc9ec0f259a89f9e4f7516a2e",
+        "commitCount": 217,
+        "dirty": false,
+        "sourceProvenance": "git"
+      },
+      "package": {
+        "format": "DEB",
+        "name": "putgd",
+        "version": "0.1.1~dev.217+g09ce25b78516",
+        "architecture": "amd64",
+        "sha256": "a81f547bb103ad41ed179d2853b085cafaee16947a2f630a59f8fdbd262e75ac",
+        "size": 50847488
+      },
+      "runningResident": {
+        "pid": 14714,
+        "startTicks": 104300,
+        "sha256": "9d724efbcd25feacf09da310b9a9e59f783f34bd90cb1071d556c410c4751f64"
+      },
+      "observedBuild": {
+        "baseVersion": "0.1.1",
+        "commitCount": 217,
+        "dirty": false,
+        "gitCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+        "gitTree": "5e0fc4ff4e89dc1dc9ec0f259a89f9e4f7516a2e",
+        "packageVersion": "0.1.1~dev.217+g09ce25b78516",
+        "schemaVersion": 1,
+        "sourceProvenance": "git",
+        "version": "0.1.1-dev.217+g09ce25b78516"
+      },
+      "installedBinaries": {
+        "/usr/bin/putgd": "9d724efbcd25feacf09da310b9a9e59f783f34bd90cb1071d556c410c4751f64",
+        "/usr/bin/putgd-launcher": "f2b1462cb97419bec6c164b6626212f02e6377dc8ffee364c32bbcdaf7e38839",
+        "/usr/bin/putgd-ui": "f7abe8053876df6ac6e930d990c965160bafb8e92688900f36ae6cd53dd1eca1",
+        "/usr/bin/putgd-cli": "01313806cfb7ce3cabf96e3b0110b15b21cb778516c76dc5ade3a4e4d011183f",
+        "/usr/bin/putgd-capture": "464636e1390e57955fba06a83c3252ba1fd54a40e5932b92fda9fa8b6ef7d7fd",
+        "/usr/bin/putgd-s3-worker": "8552ef8d1ce8b17e2ae37d5ebfe3b111380211bcf15105bedc104876313d1fd7",
+        "/usr/bin/putgd-kde-region": "df32239fe785123a5846190b1f0909cc771edce833664310e66aacb34b4f688c"
+      },
+      "privateS3ModuleSha256": "0cf29cd6eecaf6381499c2bb84ae6bbcc29d30cf17881ff26026829fe3841e88",
+      "protonHelperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+      "qtVersion": "6.4.2",
+      "desktopVersions": {
+        "kernel": "6.14.0-37-generic",
+        "packages": [
+          "cinnamon 6.6.4+zena",
+          "gjs ",
+          "gnome-shell ",
+          "libqt6core6 ",
+          "libqt6core6t64 6.4.2+dfsg-21.1build5",
+          "muffin 6.6.1+zena",
+          "putgd 0.1.1~dev.217+g09ce25b78516",
+          "xdg-desktop-portal 1.20.0+ds-2ubuntu1",
+          "xdg-desktop-portal-backend ",
+          "xdg-desktop-portal-gnome ",
+          "xdg-desktop-portal-gtk 1.15.1-1build2",
+          "xdg-desktop-portal-xapp 1.1.3+zena"
+        ]
+      },
+      "displayLayout": [
+        {
+          "height": 800,
+          "name": "Virtual-1",
+          "nativeHeight": 800,
+          "nativeWidth": 1280,
+          "rotation": 2,
+          "scale": 1,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "runnerSha256": "b033a8ac0df208823ea116371fae24e7394c93f153ad46bdb9aeb9033f888e3d",
+      "goldenSha256": "ebc60005f72aaf67f1c14f51a16e09749cf09d91ad1890e50a0eedda30b40252",
+      "acceleration": "kvm",
+      "timingSeconds": {
+        "keyHold": 0.05,
+        "focusPoll": 0.1,
+        "focusAttemptLimit": 2,
+        "clipboardSourceSettle": 0.3,
+        "selectorSettle": 0.5,
+        "dragPhaseSettle": 0.1,
+        "operationPoll": 0.2
+      },
+      "nativeCases": [
+        {
+          "testId": "dce31b4fd84f4fc4b8008c40bf2bd8b7",
+          "scenario": "region-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "a55bcbf8-b2ff-4554-ae28-6b937c3d5ab9",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "dd3007781c8b41584ba8fabe7e3c9c6457ff1cda97fe8d54baba21cf069da3e8",
+          "artifact": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          },
+          "paste": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          }
+        },
+        {
+          "testId": "15a569be6253486593b04d7e2b218bc7",
+          "scenario": "window-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "ebedccb6-e6fe-4d52-b8f2-db2f2802ba07",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "fd53a200692b31ae212dda2578609a0b05a28ea5a1addc1e55c465469fbe0114",
+          "artifact": {
+            "ok": true,
+            "width": 640,
+            "height": 452,
+            "sha256": "e857f005b51c75ecaacac5701db1017ebf37f3f428830730b00b8262cd1b5181"
+          },
+          "paste": {
+            "ok": true,
+            "width": 640,
+            "height": 452,
+            "sha256": "e857f005b51c75ecaacac5701db1017ebf37f3f428830730b00b8262cd1b5181"
+          }
+        },
+        {
+          "testId": "d80d892eb576485482cf9bc41fbe5c9a",
+          "scenario": "desktop-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "f5533503-48da-4f82-b9dd-2f76ea94d596",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "c649e936b51ae5fb4f8ddfcd22c09bb2862ad3295d56155ce5002edcfa54abbf",
+          "artifact": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "18fae4c2e425c69b6a2fdb8fa110dbd88119a16cc1c630bd49b7a81257758137"
+          },
+          "paste": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "18fae4c2e425c69b6a2fdb8fa110dbd88119a16cc1c630bd49b7a81257758137"
+          }
+        },
+        {
+          "testId": "02db41adab0940b7b471c5616f97df2a",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "48b4f517-b52b-4bf4-92d9-8b2bfa1747bc",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "a88a3869487f5d10b8b4e5711eeaeb535077f5079c5a2e5b819e101a2ec3f4f6",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "212606e5f4344db690d2f988f90d6380",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "5dfd0f95-4edb-4cd6-87a3-a4312893fa64",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "c534cb460ee4dd376290a647af0cba17d2871df12b0b8080e2e133f3481b735b",
+          "artifact": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "paste": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          }
+        },
+        {
+          "testId": "8eff65cae1e5471b84da51c47ab9d78d",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "c7ec9783-69bd-4c7a-89ff-380f26146be0",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "39c0089c6ca359919c1ab7493b34bd2302101ed9df51bae5cc96927aea048981",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "7d47ed32c6524fbba2cadb39250bf0a2",
+          "scenario": "region-cancel-escape-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "dfd6ba44-6f25-4e23-9b0a-cee6cd4f1f26",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "33322158035fdf49e27ce31a239871da2192bae0577a00b26138b1f32eb64aeb",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "db2b769cf19e4552bb5b0b65f41dc2b8",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "2010300f-5d27-4403-92be-2e9f06b14da3",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "63e9ad322ded441c2f48a5ff1514585a0a428a0d4083b9d6006ce76b641e7af4",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "9cf2c803c836481c89da6a4041647de4",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "18389541-532d-4259-9b47-ba216cfa26cf",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "8d3b00bbfd980562787168f5e0250ed98a18c4145e7169696818840d9f87aff6",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "a8c0e462aeb0473a8090629635a0bac8",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "ba26619d-464f-4150-b418-47ee7adfd22e",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "29422deaad53ff436295b70bc2c1097c5bbcd353c8461ee8ef1738ef0a071ea8",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "68c1b7389b0f46a7946f125956525ddc",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "d66f1962-d8e5-4fc9-804b-e64ca454914f",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "4d65983ce4baa683ad3e1ed50dff7b5113bfef3cec0336e511d7c594802eb33e",
+          "artifact": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "paste": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          }
+        },
+        {
+          "testId": "aeed2d401b04476e84d2b539536bfd5b",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "6c85a5b9-c158-47ce-9ada-90a952b06b13",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "bd56753f0e96dd70c96dc646a052f2ca0fe1a1aa4878de6ccd5d77cd7c8da1cf",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        }
+      ],
+      "viewReopens": {
+        "passed": true,
+        "activations": 8,
+        "cycles": 2,
+        "helperExitedAfterEveryFinalClose": true
+      },
+      "restart": {
+        "passed": true,
+        "gracefulQuit": true,
+        "acceptedConfigurationAndRevisionRetained": true,
+        "historyRecordsRetained": 24,
+        "historyTotal": 24,
+        "historyExactEquality": true,
+        "nativeHistoryReopened": true,
+        "helperClosed": true
+      },
+      "memory": {
+        "workloadAttribution": {
+          "nativeCasesResident": {
+            "pid": 7922,
+            "startTicks": 91858,
+            "sha256": "9d724efbcd25feacf09da310b9a9e59f783f34bd90cb1071d556c410c4751f64"
+          },
+          "memoryResident": {
+            "pid": 14714,
+            "startTicks": 104300,
+            "sha256": "9d724efbcd25feacf09da310b9a9e59f783f34bd90cb1071d556c410c4751f64"
+          },
+          "memoryResidentMatchesRestartedProcess": true,
+          "nativeHistoryReopenedBeforeSampling": true,
+          "scope": "post-restart/post-History-view idle; native capture cases ran before restart, so these windows do not establish retained post-capture memory on that preceding resident"
+        },
+        "scope": "two serial 300-second post-restart/post-History-view resident observations; native capture cases preceded restart, so no same-resident post-capture retention claim",
+        "windows": [
+          {
+            "passed": true,
+            "peakMiB": 25.41796875,
+            "peakPssMiB": 15.9541015625,
+            "durationSeconds": 300.000220251,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.006666661772203594
+          },
+          {
+            "passed": true,
+            "peakMiB": 25.41796875,
+            "peakPssMiB": 15.95703125,
+            "durationSeconds": 300.0002803699999,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.006666660436228046
+          }
+        ],
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+      },
+      "retirement": {
+        "status": "completed",
+        "completedUtc": "2026-10-16T16:38:13.247235+00:00",
+        "evidenceManifestSha256": "0e3856df2af39cc545d651403d31f092f5d25ed5b048bb7f8b839cb2a15d6000",
+        "receiptSha256": "11431c2dbd84de42a9a4daf68dd6dea76dd2cffedc03f938e84e68fdf9cc8423"
+      },
+      "acceptanceReceiptSha256": "60c8430afa135c12f2fd3df1480e13ca8e818d09ef3204aed241e3b69638feb3"
+    },
+    {
+      "profile": "gnome-wayland",
+      "passed": true,
+      "runId": "27ae177d-c445-412b-9bec-3c71c8f36c6b",
+      "sourceCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+      "buildManifest": {
+        "schemaVersion": 1,
+        "version": "0.1.1-dev.217+g09ce25b78516",
+        "baseVersion": "0.1.1",
+        "packageVersion": "0.1.1~dev.217+g09ce25b78516",
+        "gitCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+        "gitTree": "5e0fc4ff4e89dc1dc9ec0f259a89f9e4f7516a2e",
+        "commitCount": 217,
+        "dirty": null,
+        "sourceProvenance": "supplied"
+      },
+      "package": {
+        "format": "DEB",
+        "name": "putgd",
+        "version": "0.1.1~dev.217+g09ce25b78516",
+        "architecture": "amd64",
+        "sha256": "3e312e1a8599cb49e88b538a38adc87b849aa683c46bf1ad8bbfdf75cc432dcd",
+        "size": 51061098
+      },
+      "runningResident": {
+        "pid": 17959,
+        "startTicks": 30237,
+        "sha256": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd"
+      },
+      "observedBuild": {
+        "baseVersion": "0.1.1",
+        "commitCount": 217,
+        "dirty": null,
+        "gitCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+        "gitTree": "5e0fc4ff4e89dc1dc9ec0f259a89f9e4f7516a2e",
+        "packageVersion": "0.1.1~dev.217+g09ce25b78516",
+        "schemaVersion": 1,
+        "sourceProvenance": "supplied",
+        "version": "0.1.1-dev.217+g09ce25b78516"
+      },
+      "installedBinaries": {
+        "/usr/bin/putgd": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd",
+        "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+        "/usr/bin/putgd-ui": "c43bc3f28372e69d0ffbd52de53f68a67aad9b71bde1be6c9dade41eeb3a049a",
+        "/usr/bin/putgd-cli": "8b34a0a66f2164cd4351c7f0fb901b508570bdf362fff38c72935ed90c389ab7",
+        "/usr/bin/putgd-capture": "76b5cb989bf9ed052eaf5609b2ae6befda20341f7dbc85ffb8308bdf38a0c303",
+        "/usr/bin/putgd-s3-worker": "376ab07380e3e8f1cecac21fb0846bbe10efaa8136fe1412564246419d84f114",
+        "/usr/bin/putgd-kde-region": "1bf4a36267761c4b281e9cd7a03b5957928b05d0b8a37375ed0fbbb51e269e3d"
+      },
+      "privateS3ModuleSha256": "f59bcbf5bbed665662fe305318bf3a0bf50e56668fb845af41578e66992553cb",
+      "protonHelperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+      "qtVersion": "6.10.2",
+      "desktopVersions": {
+        "kernel": "7.0.0-38-generic",
+        "packages": [
+          "cinnamon ",
+          "gjs 1.88.0-1",
+          "gnome-shell 50.1-0ubuntu1.2",
+          "libqt6core6 ",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "mutter ",
+          "mutter-common 50.1-0ubuntu2.2",
+          "mutter-common-bin 50.1-0ubuntu2.2",
+          "putgd 0.1.1~dev.217+g09ce25b78516",
+          "xdg-desktop-portal 1.21.1+ds-1ubuntu3.1",
+          "xdg-desktop-portal-backend ",
+          "xdg-desktop-portal-gnome 50.0-0ubuntu1",
+          "xdg-desktop-portal-gtk 1.15.3-2ubuntu1"
+        ]
+      },
+      "displayLayout": [
+        {
+          "height": 800,
+          "name": "Virtual-1",
+          "nativeHeight": 800,
+          "nativeWidth": 1280,
+          "rotation": 2,
+          "scale": 1,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "runnerSha256": "b033a8ac0df208823ea116371fae24e7394c93f153ad46bdb9aeb9033f888e3d",
+      "goldenSha256": "563730cc1d929bd946d20cf30a9aecfe3c4ad40eb12ba7f9abcff1c461e342bb",
+      "acceleration": "kvm",
+      "timingSeconds": {
+        "keyHold": 0.05,
+        "focusPoll": 0.1,
+        "focusAttemptLimit": 2,
+        "clipboardSourceSettle": 0.3,
+        "selectorSettle": 0.5,
+        "dragPhaseSettle": 0.1,
+        "operationPoll": 0.2
+      },
+      "nativeCases": [
+        {
+          "testId": "dbbb971c74b1444a89b4ec3622d441a6",
+          "scenario": "region-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "921a56b3-cab4-42c4-9a95-6add39261dde",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "0da97535e3e0d48c26289db2f423fc7bd99b371b6b8cd838b2f18f89ced9cfbc",
+          "artifact": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          },
+          "paste": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          }
+        },
+        {
+          "testId": "6957429234824486b3f6265b8bb936c3",
+          "scenario": "window-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "71b76ed9-9d3c-4369-9713-55ab4017744a",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "dfe9a92126170e66dd412c2b744004921161fa23f0e47f20e02cd027a3d80b20",
+          "artifact": {
+            "ok": true,
+            "width": 662,
+            "height": 480,
+            "sha256": "8e32eb138d2f59bca8c53f275a81f334b3727256f7bf8d334096f521c8d68ddd"
+          },
+          "paste": {
+            "ok": true,
+            "width": 662,
+            "height": 480,
+            "sha256": "8e32eb138d2f59bca8c53f275a81f334b3727256f7bf8d334096f521c8d68ddd"
+          }
+        },
+        {
+          "testId": "e40b46e129344b86b68c4005576910ad",
+          "scenario": "desktop-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "8f87539a-21d7-4fdd-9aa2-459caac7751f",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "c14c41eafb64606a628eada83f5406db0f30f0f9865666703e3719c36db25eb5",
+          "artifact": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "01cc18386dbf06e3fbf072cbe653f6068217847ce6471b200e1afd7d5fd72333"
+          },
+          "paste": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "01cc18386dbf06e3fbf072cbe653f6068217847ce6471b200e1afd7d5fd72333"
+          }
+        },
+        {
+          "testId": "50216f9391084176b6a8897d427b3e84",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "f2a3c6a0-f6fb-4481-8df1-012c5cb40702",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "b3d9dc1ed28b90282b3003f5fbc1d88cabf6a2296016d86f4bb1e3fe43af3fa0",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "02cc0bdcb9e446c1abb57651cec4f738",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "c8d1814f-b336-430d-90c9-4267b28f99ef",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "e55d044e6e770bebf336efce738175f5937e69e6e65e88a96d94783e2ae4f563",
+          "artifact": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "paste": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          }
+        },
+        {
+          "testId": "3160cbf305cd4315a8765b8c6f916221",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "9a4cda4d-8230-4327-97e3-a35a8eec08db",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "a35da30edad682c837dc9c884f8577849cac74e5817a22abdb49e95bab9978b1",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "56ae907b99e74bc6a40be66038e20b6f",
+          "scenario": "region-cancel-escape-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "f8104042-78ca-4872-81d5-9e9740a276f0",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "357fb2cc1c842d5d0e09f349e3f11aaa9f0cf4549cc00941577ff7ae6bec47ef",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "368191e2449d4a7aa07624bfae4ea42f",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "18aeab19-7d83-40f2-98d7-8828e2963c4e",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "4cb625a84d47788d38a57551d3bd5927b622ccd9740bfffebea7e5ac82eabd87",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "23094a83b23440479f6cb201023035c2",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "4b510503-98f4-4961-b5e4-3850b4900c78",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "db3d83895c727741af6019264bf00a23d1c5d0ee528fb37132ba143e9f9ba9f6",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "afed64a2c0e14f11b92796e8204cc8aa",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "f079cc56-8bc5-4da7-a74f-420198e7abe4",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "f654410a6fbfb2170eaa635c4445b1a342e5ab2290676bc749ce28fb226297f3",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "347f8be322304f419fdccfe82c588ea7",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "1ebbec4d-d6b2-4208-a74a-422da0a240eb",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "be1a838251ce38bc0be9b5137cd226470e99950fca03985f4222a5ac43265457",
+          "artifact": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "paste": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          }
+        },
+        {
+          "testId": "b65de025d26543f2ac873345066756a3",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "7b723f0f-35e2-4543-ae0f-398938a99d8b",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "24d8a63d293ac66acf78add30721a3e2123f47e099079cbe21231ff9d92a39c4",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        }
+      ],
+      "viewReopens": {
+        "passed": true,
+        "activations": 8,
+        "cycles": 2,
+        "helperExitedAfterEveryFinalClose": true
+      },
+      "restart": {
+        "passed": true,
+        "gracefulQuit": true,
+        "acceptedConfigurationAndRevisionRetained": true,
+        "historyRecordsRetained": 23,
+        "historyTotal": 23,
+        "historyExactEquality": true,
+        "nativeHistoryReopened": true,
+        "helperClosed": true
+      },
+      "memory": {
+        "workloadAttribution": {
+          "nativeCasesResident": {
+            "pid": 3675,
+            "startTicks": 16851,
+            "sha256": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd"
+          },
+          "memoryResident": {
+            "pid": 17959,
+            "startTicks": 30237,
+            "sha256": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd"
+          },
+          "memoryResidentMatchesRestartedProcess": true,
+          "nativeHistoryReopenedBeforeSampling": true,
+          "scope": "post-restart/post-History-view idle; native capture cases ran before restart, so these windows do not establish retained post-capture memory on that preceding resident"
+        },
+        "scope": "two serial 300-second post-restart/post-History-view resident observations; native capture cases preceded restart, so no same-resident post-capture retention claim",
+        "windows": [
+          {
+            "passed": true,
+            "peakMiB": 28.12109375,
+            "peakPssMiB": 17.8486328125,
+            "durationSeconds": 300.00025854899997,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.00999999138170743
+          },
+          {
+            "passed": true,
+            "peakMiB": 28.12109375,
+            "peakPssMiB": 17.84375,
+            "durationSeconds": 300.00018627299994,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.006666662527269239
+          }
+        ],
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+      },
+      "retirement": {
+        "status": "completed",
+        "completedUtc": "2026-10-16T17:02:38.492125+00:00",
+        "evidenceManifestSha256": "40de5a171b678fcf9a7cb32f8e60dafad4f549422eed54049580103bc55b1b93",
+        "receiptSha256": "7caff61940005f75d22519693b3efa5001363fe0276422205d1edce82c3192ef"
+      },
+      "acceptanceReceiptSha256": "1ea07b1246dd5f19f9d1e3e91d7a479b8387e1d13b9cd4a4586697a8ac9988bd"
+    },
+    {
+      "profile": "kde-wayland",
+      "passed": true,
+      "runId": "fe010aa3-029a-4e8e-84cc-cb379fb7f4ca",
+      "sourceCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+      "buildManifest": {
+        "schemaVersion": 1,
+        "version": "0.1.1-dev.217+g09ce25b78516",
+        "baseVersion": "0.1.1",
+        "packageVersion": "0.1.1~dev.217+g09ce25b78516",
+        "gitCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+        "gitTree": "5e0fc4ff4e89dc1dc9ec0f259a89f9e4f7516a2e",
+        "commitCount": 217,
+        "dirty": null,
+        "sourceProvenance": "supplied"
+      },
+      "package": {
+        "format": "DEB",
+        "name": "putgd",
+        "version": "0.1.1~dev.217+g09ce25b78516",
+        "architecture": "amd64",
+        "sha256": "3e312e1a8599cb49e88b538a38adc87b849aa683c46bf1ad8bbfdf75cc432dcd",
+        "size": 51061098
+      },
+      "runningResident": {
+        "pid": 16910,
+        "startTicks": 29525,
+        "sha256": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd"
+      },
+      "observedBuild": {
+        "baseVersion": "0.1.1",
+        "commitCount": 217,
+        "dirty": null,
+        "gitCommit": "09ce25b7851624e602c96dba855b4465e688fec9",
+        "gitTree": "5e0fc4ff4e89dc1dc9ec0f259a89f9e4f7516a2e",
+        "packageVersion": "0.1.1~dev.217+g09ce25b78516",
+        "schemaVersion": 1,
+        "sourceProvenance": "supplied",
+        "version": "0.1.1-dev.217+g09ce25b78516"
+      },
+      "installedBinaries": {
+        "/usr/bin/putgd": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd",
+        "/usr/bin/putgd-launcher": "16cd129d55f6e9f2cdc5fac7fef7b3d23cfcf9e26631f9cefef6a8d251a95517",
+        "/usr/bin/putgd-ui": "c43bc3f28372e69d0ffbd52de53f68a67aad9b71bde1be6c9dade41eeb3a049a",
+        "/usr/bin/putgd-cli": "8b34a0a66f2164cd4351c7f0fb901b508570bdf362fff38c72935ed90c389ab7",
+        "/usr/bin/putgd-capture": "76b5cb989bf9ed052eaf5609b2ae6befda20341f7dbc85ffb8308bdf38a0c303",
+        "/usr/bin/putgd-s3-worker": "376ab07380e3e8f1cecac21fb0846bbe10efaa8136fe1412564246419d84f114",
+        "/usr/bin/putgd-kde-region": "1bf4a36267761c4b281e9cd7a03b5957928b05d0b8a37375ed0fbbb51e269e3d"
+      },
+      "privateS3ModuleSha256": "f59bcbf5bbed665662fe305318bf3a0bf50e56668fb845af41578e66992553cb",
+      "protonHelperSha256": "b75fa484a33933c5e74d4cb0e5b5428f174cfabdb4aa932dd84dce2dfe233ff0",
+      "qtVersion": "6.10.2",
+      "desktopVersions": {
+        "kernel": "7.0.0-38-generic",
+        "packages": [
+          "cinnamon ",
+          "gnome-shell ",
+          "kwin-wayland 4:6.6.6-0ubuntu0.1",
+          "libqt6core6 ",
+          "libqt6core6t64 6.10.2+dfsg-7",
+          "plasma-workspace 4:6.6.6-0ubuntu0.1",
+          "putgd 0.1.1~dev.217+g09ce25b78516",
+          "xdg-desktop-portal 1.21.1+ds-1ubuntu3.1",
+          "xdg-desktop-portal-backend ",
+          "xdg-desktop-portal-gnome ",
+          "xdg-desktop-portal-gtk 1.15.3-2ubuntu1",
+          "xdg-desktop-portal-kde 6.6.6-0ubuntu0.1"
+        ]
+      },
+      "displayLayout": [
+        {
+          "height": 800,
+          "name": "Virtual-1",
+          "nativeHeight": 800,
+          "nativeWidth": 1280,
+          "rotation": 2,
+          "scale": 1,
+          "width": 1280,
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "runnerSha256": "b033a8ac0df208823ea116371fae24e7394c93f153ad46bdb9aeb9033f888e3d",
+      "goldenSha256": "49fcacff969b81ac38e36fefdf21407d20c82187e1725c58f128a3b76065a81c",
+      "acceleration": "kvm",
+      "timingSeconds": {
+        "keyHold": 0.05,
+        "focusPoll": 0.1,
+        "focusAttemptLimit": 2,
+        "clipboardSourceSettle": 0.3,
+        "selectorSettle": 0.5,
+        "dragPhaseSettle": 0.1,
+        "operationPoll": 0.2
+      },
+      "nativeCases": [
+        {
+          "testId": "becdba450d8040eca5eec6277b2510f3",
+          "scenario": "region-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "2dce9a50-363d-4d22-8f56-15fda32bed3e",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "a361c5c2a3ab37e83af13a7092334cc9ac33c3ccaf7459a7892b965c58aeb667",
+          "artifact": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          },
+          "paste": {
+            "ok": true,
+            "width": 80,
+            "height": 60,
+            "sha256": "4512ef7e71aafa60b9616c645c6aacf1667dfc84f5a42712cf788d1795eaf1ff"
+          }
+        },
+        {
+          "testId": "ece2c2509c974d5091e15e5d16db1762",
+          "scenario": "window-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "33b504f4-5105-4197-95f9-6be54908d892",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "1b2242a9720365eaa27657c2054a456f0f0972b805358be299f3cdea1eda415b",
+          "artifact": {
+            "ok": true,
+            "width": 640,
+            "height": 448,
+            "sha256": "21989991f27f619d0d660b5dd5f79ef9aa789f9eb82da9afa256c30e21cdcde0"
+          },
+          "paste": {
+            "ok": true,
+            "width": 640,
+            "height": 448,
+            "sha256": "21989991f27f619d0d660b5dd5f79ef9aa789f9eb82da9afa256c30e21cdcde0"
+          }
+        },
+        {
+          "testId": "8c1c01c8c1614457889311a942e4cdcc",
+          "scenario": "desktop-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "303c94bb-c827-4a8a-bac7-57c33a5c76d8",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "1c810af68878aa86ed0c6cc65a9f9f611386977ff3eca5cb3fdcccc47e1dd8ac",
+          "artifact": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "c78524080fd5e9ebcf3245e8b4fa4ed4756f464fa051591dcffc9607899ef21a"
+          },
+          "paste": {
+            "ok": true,
+            "width": 1280,
+            "height": 800,
+            "sha256": "c78524080fd5e9ebcf3245e8b4fa4ed4756f464fa051591dcffc9607899ef21a"
+          }
+        },
+        {
+          "testId": "aa78554df3b947a9b051776175f69cfa",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "a66bb377-1654-42f4-9b66-dc6b5b2a2cdb",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "82f33116f595fe44cb8f1a207bb2ed29bd4e66ea801a20cd10dd42a65e0590d2",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "9d58a8762ec141caac0631c0b914b491",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "2ef56279-ed92-4f3f-8e44-fc823e11a48e",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "31fff7bcc85f6342626558b30261e6986ecee9e5f20a8d7a2940685dcc2b1b93",
+          "artifact": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "paste": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          }
+        },
+        {
+          "testId": "270c614d125e43e698007d9405f9d9f5",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "b03b714a-af8f-4496-baff-b7bc76458e7f",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "75d6b28d284dec4b37d19f9daa005ab82318748507b8416b21c8349a67118194",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "234e85c5c3b94e67bd93ee87a9e2b8be",
+          "scenario": "region-cancel-escape-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "4fb9c5da-ec19-4445-aed3-c02c85543a95",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "73e53521378958349c4852db4d9befcb3e03d47af322ef2e96b4d221064602da",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "3689ca9c55834acfa92a287cb009c4df",
+          "scenario": "region-cancel-right-click-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "7afc415f-1a2d-49e8-9a8c-c50ed58c2fab",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "038a33a39be4616e376c83bd556a2b0d5ef57ac7e165b183ff9249aa19ec5799",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "0837a54dd6e8479f8c55965cb368d4c6",
+          "scenario": "region-cancel-zero-area-independent-paste",
+          "clipboardClient": "qt",
+          "operationId": "99aa0f8e-aeee-44a7-95d6-63b4fe9ff0ea",
+          "operationState": "cancelled",
+          "copyStatus": "no_result",
+          "rawReceiptSha256": "86d5958b0060fa2a2fff12e9b2745dfd884287be2301b4d3dfb55d8d8d2c6366",
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "02bc177581434bc29e48ef4a3e76ae4d",
+          "scenario": "clipboard-text-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "a2345413-be9e-48e4-95e5-e9559e19199f",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "f11beafc6972ab237ad5dc0828bd028953c3e65babb22985cacccc9efaf50e16",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        },
+        {
+          "testId": "332fea8c127e4f769f978fba6953ceb7",
+          "scenario": "clipboard-image-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "a16295ed-c3a1-4a99-b7ec-1f7a1a85cc4e",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "cb0ffcd1c1ecb027a6a3fcc63ce944ed3e368d969f237ec30ab6c488b24a7282",
+          "artifact": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          },
+          "paste": {
+            "ok": true,
+            "width": 96,
+            "height": 64,
+            "sha256": "f5654929819c71f75c6e43b5917cd1f527ef6b818b8b649587da41096e29a849"
+          }
+        },
+        {
+          "testId": "10d5bebab41946bf940c0405bf3d9923",
+          "scenario": "clipboard-files-independent-paste",
+          "clipboardClient": "gtk",
+          "operationId": "0b3f29d3-b77e-4118-856c-3fb2b1e61b8a",
+          "operationState": "completed",
+          "copyStatus": "copied",
+          "rawReceiptSha256": "3481c331f361abc051443439cf48210db158d2730a33a65e21c384a087616171",
+          "artifact": {
+            "ok": true
+          },
+          "paste": {
+            "ok": true
+          }
+        }
+      ],
+      "viewReopens": {
+        "passed": true,
+        "activations": 8,
+        "cycles": 2,
+        "helperExitedAfterEveryFinalClose": true
+      },
+      "restart": {
+        "passed": true,
+        "gracefulQuit": true,
+        "acceptedConfigurationAndRevisionRetained": true,
+        "historyRecordsRetained": 11,
+        "historyTotal": 11,
+        "historyExactEquality": true,
+        "nativeHistoryReopened": true,
+        "helperClosed": true
+      },
+      "memory": {
+        "workloadAttribution": {
+          "nativeCasesResident": {
+            "pid": 2649,
+            "startTicks": 16382,
+            "sha256": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd"
+          },
+          "memoryResident": {
+            "pid": 16910,
+            "startTicks": 29525,
+            "sha256": "e3bcdd5c7ae73eda21b4400570f07cd55726b69ce5a98a9cae6459c4bdc299bd"
+          },
+          "memoryResidentMatchesRestartedProcess": true,
+          "nativeHistoryReopenedBeforeSampling": true,
+          "scope": "post-restart/post-History-view idle; native capture cases ran before restart, so these windows do not establish retained post-capture memory on that preceding resident"
+        },
+        "scope": "two serial 300-second post-restart/post-History-view resident observations; native capture cases preceded restart, so no same-resident post-capture retention claim",
+        "windows": [
+          {
+            "passed": true,
+            "peakMiB": 29.671875,
+            "peakPssMiB": 7.36328125,
+            "durationSeconds": 300.000122571,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.009999995914301668
+          },
+          {
+            "passed": true,
+            "peakMiB": 29.671875,
+            "peakPssMiB": 7.359375,
+            "durationSeconds": 300.000251381,
+            "samples": 61,
+            "zeroSwap": true,
+            "noHelpers": true,
+            "cpuPercentOneCore": 0.013333322160853808
+          }
+        ],
+        "harnessSha256": "a28c94b075036ea65f8eca8e068d480cff46ee959d4680593f5c4d55cce3fc40"
+      },
+      "retirement": {
+        "status": "completed",
+        "completedUtc": "2026-10-16T17:02:44.238741+00:00",
+        "evidenceManifestSha256": "721aaf5dbf70def9fd49e972a45fb28cb4e7e8e69af3c9be7a6e67fe7e01fe71",
+        "receiptSha256": "8ddb24712b5c35e0725a58936c70ff624f19312a40c4bdc9285176b2d316bf98"
+      },
+      "acceptanceReceiptSha256": "6788cb04d939ba98015e87e496fe122e9cc82789ef358c72d7e07be2d1e79b2a"
+    }
+  ],
+  "review": {
+    "scope": "three fix-owned files against a5cbb5e; simplification readers plus focused correctness and independent Anthropic review",
+    "fixedFindings": [
+      "observe beyond grace after resident readiness",
+      "cancel recovery after explicit UI activation"
+    ],
+    "recoveryCeilingSeconds": 10,
+    "lateTrayAfterCeiling": "visible recovery remains open; boundary pinned by regression"
+  },
+  "preservedAttempts": [
+    "initial build provisioning/configure attempts corrected using existing official dependencies",
+    "red pre-fix startup regression retained",
+    "initial full Dev command ended143 after30 passing tests, no terminal CTest result; final full suite completed under an owned supervisor",
+    "final test-only positive-PID guard checkpoint rebuilt/repackaged before native acceptance; initial checkpoint/package retained without final acceptance credit",
+    "same-count amended development hash sorted below initial package; apt rejected unapproved downgrade, explicit disposable-guest apt allowance followed by unchanged lab installation and exact hash verification",
+    "candidate-worktree cleanup rejected the main-workspace canonical lab root; main-workspace guarded cleanup completed without changing guards",
+    "final passive D-Bus sender-to-PID query happened after stopping that resident; attribution unavailable and not used as resident-attributed proof"
+  ],
+  "coverageLimits": [
+    "single-display synthetic native Linux VMs and host contracts",
+    "two real Cinnamon login cycles; GNOME/KDE native functional regression, not their login certification",
+    "two serial five-minute post-use VM resident observations per desktop; not physical performance or populated-history acceptance",
+    "no live cloud, full release lifecycle, fresh-agent walkthrough or mixed-display acceptance claim; remaining work is issue44",
+    "historical local-only copy-suppressed event remains unreproduced with unknown cause"
+  ]
+}
