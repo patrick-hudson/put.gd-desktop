@@ -10,6 +10,7 @@ import unittest
 
 LAB = Path(__file__).resolve().parents[2] / 'tools/lab'
 sys.path.insert(0, str(LAB))
+import overlay_cleanup
 spec = importlib.util.spec_from_file_location('windows_lab', LAB / 'windows.py')
 windows = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(windows)
@@ -24,6 +25,9 @@ class WindowsIsolation(unittest.TestCase):
         root_patch = patch.object(windows, 'ROOT', self.root)
         root_patch.start()
         self.addCleanup(root_patch.stop)
+        lock_root = patch.object(overlay_cleanup, 'ROOT', self.root)
+        lock_root.start()
+        self.addCleanup(lock_root.stop)
         self.base = self.root / 'base'
         self.base.mkdir()
         windows.command('qemu-img', 'create', '-f', 'qcow2', self.base / 'disk.qcow2', '16M')
@@ -38,6 +42,9 @@ class WindowsIsolation(unittest.TestCase):
         one, two = self.root / 'one', self.root / 'two'
         windows.clone(self.base, one)
         windows.clone(self.base, two)
+        self.assertNotEqual(windows.load(one / 'state.json').get('run_id'),
+                            windows.load(two / 'state.json').get('run_id'))
+        self.assertEqual(windows.load(one / 'state.json')['uuid'], windows.load(two / 'state.json')['uuid'])
         windows.command('qemu-io', '-f', 'qcow2', '-c', 'write -P 0x5a 0 4096', one / 'disk.qcow2')
         (one / 'vars.fd').write_bytes(b'changed firmware')
         (one / 'tpm/state').write_bytes(b'changed TPM')
@@ -70,7 +77,7 @@ class WindowsIsolation(unittest.TestCase):
         windows.clone(self.base, self.root / 'still-valid')
 
     def test_cross_process_lifecycle_lock(self):
-        script = "import sys; from pathlib import Path; sys.path.insert(0,sys.argv[1]); import windows; windows.ROOT=Path(sys.argv[2]); windows.seal(Path(sys.argv[3]),'blocked')"
+        script = "import sys; from pathlib import Path; sys.path.insert(0,sys.argv[1]); import windows, overlay_cleanup; windows.ROOT=Path(sys.argv[2]); overlay_cleanup.ROOT=Path(sys.argv[2]); windows.seal(Path(sys.argv[3]),'blocked')"
         with windows.bundle_lock(self.base):
             for operation in (lambda: windows.launch(self.base, 30), lambda: windows.shutdown(self.base), lambda: windows.clone(self.base, self.root / 'blocked-clone')):
                 with self.assertRaisesRegex(windows.LabError, 'VM busy'):
@@ -91,6 +98,9 @@ class ShutdownTransitions(unittest.TestCase):
         root_patch = patch.object(windows, 'ROOT', self.root)
         root_patch.start()
         self.addCleanup(root_patch.stop)
+        lock_root = patch.object(overlay_cleanup, 'ROOT', self.root)
+        lock_root.start()
+        self.addCleanup(lock_root.stop)
         windows.save(self.vm / 'state.json', {'clean_shutdown': False})
 
     def test_clean_and_repeated_shutdown(self):

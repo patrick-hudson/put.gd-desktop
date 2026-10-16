@@ -32,6 +32,24 @@ The current Linux runner records the golden SHA256 but does not enforce
 Windows-style sealing or verify a sealed manifest before launch. Existing golden
 files may still be writable. These workflow restrictions remain mandatory.
 
+The local provisioned GNOME/KDE goldens are standalone images at
+`work/lab-images/gnome-provisioned-20261016.qcow2` and
+`work/lab-images/kde-provisioned-20261016.qcow2`. Use these for new provisioned
+runs. Their private sidecar manifests record the source chain, image SHA256,
+integrity check and successful guest-visible comparison. The migration receipts
+live under `work/housekeeping/standalone-goldens-20261016/`. Historical run
+metadata retains the old paths and hashes; do not rewrite it to name the new
+goldens. Never resume a retired run directory.
+
+To flatten another chain, create a **new** golden path with `qemu-img convert`
+and no backing-file option. Before retiring any old image, require successful
+`qemu-img check` and `qemu-img compare OLD NEW`, equal virtual sizes, no backing
+file in the new image, and a saved SHA256/manifest. Inventory actual host
+processes, open files and every surviving lab backing chain. Remove dependent
+leaf images before their unreferenced parents; preserve other goldens and all
+host evidence. Do not use an unsafe rebase, modify an existing golden in place,
+or delete a parent merely because its directory is named `lab-runs`.
+
 ## Protected login inputs
 
 Agents restore existing locked sessions. First inspect the run's profile and
@@ -221,9 +239,15 @@ python3 tools/lab/lab.py run --run "$lab_run" --scenario region --keep
 ```
 
 `run` stops the VM on pass, mismatch, timeout or crash and preserves the private run
-directory. Use `--keep` for interactive investigation. `reset` stops an owned VM and
-retains its writable disk and diagnostics; a fresh run directory creates an independent
-overlay. Repeat with another new run path to prove two independent runs. Do not reuse
+directory. After a successful scenario exports its hashed evidence bundle and
+finished journal event, it automatically retires the stopped, unreferenced overlay.
+Failed runs and incomplete evidence collections retain their disks. A later pass
+in the same guest also retains the disk if an earlier scenario failed, lacked
+complete collection, or did not finish; retire it
+with explicit reviewed completion evidence after investigation. Use `--keep`
+for interactive investigation or a campaign that needs the guest again. `reset`
+only stops an owned VM and retains its writable disk and diagnostics; a fresh run
+directory creates an independent overlay. Repeat with another new run path to prove two independent runs. Do not reuse
 a running golden disk. The guest app uses isolated `~/putgd-lab/config` and `data`
 settings/history directories. Evidence does not need a source checkout in the guest.
 
@@ -272,6 +296,63 @@ Input uses QMP `input-send-event` objects. Query output capabilities are stored 
 `qmp-features.json`; witnesses identify device `video0` and the requested head. `collect`
 exports only whitelisted package/kernel versions and production sanitized diagnostics.
 Private app/QEMU logs stay private; review them before including any diagnostic bundle.
+
+## Retire completed overlays
+
+Run lifecycle commands on the actual QEMU host. A sandbox with a filtered process
+view cannot certify that a VM stopped. Linux launch/reset, Windows lifecycle
+operations and overlay cleanup share a host lock. Cleanup also checks actual
+process/open-file identities and QEMU backing chains, identified by their image
+headers rather than filename extensions. It holds a native QEMU image lock
+through final verification and unlink, preventing a competing writer from
+opening the disk. Unrelated nondumpable applications may hide their memory maps;
+the held image lock handles that normal host restriction, while hidden VM
+processes and incomplete image inventories still refuse cleanup. It refuses running,
+referenced, symlinked or mismatched disks, changed evidence and unrecorded
+completion. It only removes `disk.qcow2`; screenshots, logs, parameters, results,
+keys, firmware/TPM state and historical metadata remain in place. The separate
+`overlay-cleanup.json` records the exact disk identity and evidence digest, with
+a durable prepared/completed transition and safe retry after interruption.
+
+For a passed, fully exported standard scenario retained with `--keep`, first stop
+the VM, then preview and apply cleanup:
+
+```sh
+python3 tools/lab/lab.py reset --run "$lab_run"
+python3 tools/lab/lab.py cleanup --run "$lab_run" --dry-run
+python3 tools/lab/lab.py cleanup --run "$lab_run"
+```
+
+Legacy journals without explicit collection-completeness records require an
+explicit completion manifest after review. An automatic cleanup refusal is recorded in `overlay-cleanup-status.json`; it
+does not turn a passing scenario into a test failure or silently erase its disk.
+Resolve the reported ownership/dependency/evidence problem and retry explicitly.
+
+Custom campaigns and reviewed failures need an explicit completion manifest.
+Export all required failure context, source/package identities, parameters,
+results and witnesses first. Keep them private. In that evidence directory save
+`completion.json` containing `run` (absolute run directory), `runId` (Linux state
+`id` or Windows state `run_id`), `completed: true` and `outcome: "passed"` or
+`"failed"`. A separate manifest has `schemaVersion: 1`,
+`kind: "vm-overlay-cleanup-evidence"`, those same four fields, and a `files`
+object mapping relative evidence paths, including `completion.json`, to their
+SHA256 hashes. Members must be owned regular files within the manifest directory,
+with no symlink components or parent traversal. This records that investigation
+is complete; it never changes a failed acceptance result to a pass.
+
+```sh
+python3 tools/lab/lab.py cleanup --run "$lab_run" \
+  --evidence-manifest "$completion_manifest" --dry-run
+python3 tools/lab/lab.py cleanup --run "$lab_run" \
+  --evidence-manifest "$completion_manifest"
+```
+
+Windows custom runs use `python3 tools/lab/windows.py cleanup --vm RUN
+--evidence-manifest MANIFEST` after shutdown, with the same preview and evidence
+rules. Do not place evidence manifests or private run files in release exports.
+Retirement removes the old guest filesystem permanently; future tests use a
+fresh run directory cloned from the preserved golden.
+
 
 ## Evidence and gates
 

@@ -17,7 +17,7 @@ import subprocess
 import time
 import uuid
 
-from lab import LabError, QMP, read_json as load
+from lab import LabError, QMP, cleanup_overlay, lifecycle_operation, read_json as load
 
 ROOT = Path(__file__).resolve().parents[2] / 'work/windows'
 FIRMWARE = Path('/usr/share/OVMF')
@@ -43,6 +43,7 @@ def serialized(*names):
     def decorate(function):
         signature = inspect.signature(function)
         @wraps(function)
+        @lifecycle_operation
         def locked(*args, **kwargs):
             bound = signature.bind(*args, **kwargs)
             with bundle_lock(*(bound.arguments[name] for name in names)):
@@ -124,7 +125,7 @@ def clone(base, directory):
         if path.is_file():
             path.chmod(0o600)
     state = load(base / 'state.json')
-    state.update(base=str(base), clean_shutdown=False)
+    state.update(base=str(base), clean_shutdown=False, run_id=str(uuid.uuid4()))
     save(directory / 'state.json', state)
 
 
@@ -266,6 +267,10 @@ def main():
     p = sub.add_parser('shutdown')
     p.add_argument('--vm', type=Path, required=True)
     p.add_argument('--force', action='store_true', help='Abrupt stop; disallows sealing')
+    p = sub.add_parser('cleanup')
+    p.add_argument('--vm', type=Path, required=True)
+    p.add_argument('--evidence-manifest', required=True, help='Verified completion evidence; disk only, preserves witnesses and bundle metadata')
+    p.add_argument('--dry-run', action='store_true')
     p = sub.add_parser('seal')
     p.add_argument('--vm', type=Path, required=True)
     p.add_argument('--notes', required=True, help='OS build, activation expiry and provisioning summary; no secrets')
@@ -291,6 +296,8 @@ def main():
         launch(directory, args.display, args.iso.resolve() if args.iso else None, args.network, args.memory)
     elif args.action == 'shutdown':
         shutdown(directory, args.force)
+    elif args.action == 'cleanup':
+        print(json.dumps(cleanup_overlay(args.vm, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run)))
     elif args.action == 'seal':
         seal(directory, args.notes)
     else:

@@ -2,6 +2,7 @@
 """Private QEMU/QMP graphical acceptance lab. Python stdlib only."""
 import argparse
 import datetime
+from functools import wraps
 import shutil
 import hashlib
 import json
@@ -18,9 +19,29 @@ import time
 import uuid
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import overlay_cleanup
 
 class LabError(RuntimeError):
     pass
+
+
+def lifecycle_operation(function):
+    @wraps(function)
+    def locked(*args, **kwargs):
+        try:
+            with overlay_cleanup.lifecycle_lock():
+                return function(*args, **kwargs)
+        except overlay_cleanup.CleanupError as error:
+            raise LabError(str(error)) from error
+    return locked
+
+
+def cleanup_overlay(run, *, evidence_manifest=None, dry_run=False):
+    try:
+        return overlay_cleanup.cleanup(run, evidence_manifest=evidence_manifest, dry_run=dry_run)
+    except overlay_cleanup.CleanupError as error:
+        raise LabError(str(error)) from error
 
 
 def read_json(path):
@@ -280,6 +301,35 @@ export XDG_DATA_HOME=$HOME/putgd-lab/data
     return ssh(run, script)
 
 
+@lifecycle_operation
+def _launch_machine(args, profile, golden, run, golden_sha256, golden_identity):
+    current = golden.stat()
+    if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns) != golden_identity:
+        raise LabError('Golden changed before launch')
+    run.mkdir(parents=True, mode=0o700, exist_ok=False)
+    os.chmod(run, 0o700)
+    overlay = run / 'disk.qcow2'
+    command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', golden, overlay])
+    command(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', run / 'identity'])
+    known_hosts = run / 'known_hosts'
+    known_hosts.write_bytes(Path(args.known_hosts).read_bytes())
+    info = {'schemaVersion': 1, 'id': str(uuid.uuid4()), 'profile': args.profile,
+            'guest_user': profile['guest_user'], 'ssh_port': args.ssh_port,
+            'vnc_display': args.vnc_display, 'acceleration': args.acceleration,
+            'golden': str(golden), 'golden_sha256': golden_sha256,
+            'bootstrap_key': str(Path(args.bootstrap_key).resolve()),
+            'known_hosts': str(known_hosts), 'overlay': str(overlay)}
+    write_json(run / 'state.json', info)
+    result = command(qemu_command(profile, run, overlay, args.ssh_port,
+                                  args.vnc_display, args.acceleration), timeout=15, check=False)
+    (run / 'qemu.log').write_text(result.stderr)
+    if result.returncode:
+        raise LabError('QEMU startup failed; private qemu.log preserved')
+    info['pid'] = int((run / 'qemu.pid').read_text().strip())
+    write_json(run / 'state.json', info)
+    return info
+
+
 def launch(args):
     profile = load_profile(args.profile)
     golden = Path(args.golden).resolve()
@@ -294,27 +344,10 @@ def launch(args):
     if pinned.returncode or not pinned.stdout.strip():
         raise LabError(f'{endpoint} is missing from --known-hosts; see docs/vm-lab.md for authenticated port remapping')
     run = Path(args.run).resolve()
-    run.mkdir(parents=True, mode=0o700, exist_ok=False)
-    os.chmod(run, 0o700)
-    overlay = run / 'disk.qcow2'
-    command(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', golden, overlay])
-    command(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '', '-f', run / 'identity'])
-    known_hosts = run / 'known_hosts'
-    known_hosts.write_bytes(Path(args.known_hosts).read_bytes())
-    info = {'schemaVersion': 1, 'id': str(uuid.uuid4()), 'profile': args.profile,
-            'guest_user': profile['guest_user'], 'ssh_port': args.ssh_port,
-            'vnc_display': args.vnc_display, 'acceleration': args.acceleration,
-            'golden': str(golden), 'golden_sha256': hash_file(golden),
-            'bootstrap_key': str(Path(args.bootstrap_key).resolve()),
-            'known_hosts': str(known_hosts), 'overlay': str(overlay)}
-    write_json(run / 'state.json', info)
-    result = command(qemu_command(profile, run, overlay, args.ssh_port,
-                                  args.vnc_display, args.acceleration), timeout=15, check=False)
-    (run / 'qemu.log').write_text(result.stderr)
-    if result.returncode:
-        raise LabError('QEMU startup failed; private qemu.log preserved')
-    info['pid'] = int((run / 'qemu.pid').read_text().strip())
-    write_json(run / 'state.json', info)
+    before = golden.stat()
+    golden_identity = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
+    golden_sha256 = hash_file(golden)
+    info = _launch_machine(args, profile, golden, run, golden_sha256, golden_identity)
     try:
         deadline = time.monotonic() + args.timeout
         while True:
@@ -348,6 +381,7 @@ def hash_file(path):
     return digest.hexdigest()
 
 
+@lifecycle_operation
 def reset(run):
     run = Path(run)
     info = state(run)
@@ -916,10 +950,19 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
             'profile': result['profile'], 'scenario': args.scenario, 'files': files})
         test_event(run, {'event': 'finished', 'testId': test_id, 'profile': result['profile'],
             'scenario': args.scenario, 'ok': result['ok'], 'elapsedSeconds': result['elapsedSeconds'],
+            'collectionIncomplete': bool(result.get('collectionIncomplete')),
             'operationId': result.get('operationId'), 'error': result.get('error'),
             'evidenceDirectory': result['evidenceDirectory']})
         if not args.keep:
-            reset(run)
+            try:
+                reset(run)
+                if result['ok'] and not result.get('collectionIncomplete'):
+                    cleanup_status = cleanup_overlay(run)
+                else:
+                    cleanup_status = {'status': 'retained', 'reason': 'failed-or-incomplete-scenario'}
+            except (LabError, OSError, ValueError, subprocess.TimeoutExpired) as error:
+                cleanup_status = {'status': 'retained', 'error': str(error)}
+            write_json(run / 'overlay-cleanup-status.json', cleanup_status)
     return result
 
 
@@ -956,9 +999,12 @@ def main():
     launch_parser.add_argument('--vnc-display', type=int, default=20)
     launch_parser.add_argument('--acceleration', choices=['kvm', 'tcg'], default='kvm')
     launch_parser.add_argument('--timeout', type=int, default=180)
-    for name in ('reset', 'collect', 'screenshot', 'key', 'input', 'install', 'run', 'cli'):
+    for name in ('reset', 'cleanup', 'collect', 'screenshot', 'key', 'input', 'install', 'run', 'cli'):
         child = sub.add_parser(name)
         child.add_argument('--run', required=True)
+        if name == 'cleanup':
+            child.add_argument('--evidence-manifest', help='Verified completion manifest for a custom or reviewed failed run')
+            child.add_argument('--dry-run', action='store_true', help='Validate retirement without removing the disk')
         if name == 'cli':
             child.add_argument('--method', required=True)
             child.add_argument('--params', default='{}', help='Production JSON parameters (credential references only)')
@@ -989,6 +1035,8 @@ def main():
             value = launch(args)
         elif args.action == 'reset':
             value = reset(args.run)
+        elif args.action == 'cleanup':
+            value = cleanup_overlay(args.run, evidence_manifest=args.evidence_manifest, dry_run=args.dry_run)
         elif args.action == 'collect':
             value = collect(args.run)
         elif args.action == 'screenshot':

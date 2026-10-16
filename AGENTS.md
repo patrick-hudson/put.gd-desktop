@@ -89,6 +89,14 @@ or delete a disk referenced by overlays. Linux tests use fresh disks under
 `work/lab-runs/` through `tools/lab/lab.py`; provision a new golden disk for updates.
 See `docs/vm-lab.md`.
 
+Retire completed disposable VM overlays after their evidence is exported and
+verified. Normal successful `tools/lab/lab.py run` calls do this automatically;
+`--keep`, failed runs and incomplete collections retain their disks for
+investigation. After custom/manual campaigns finish, use the guarded `cleanup`
+command in `docs/vm-lab.md` with a completion evidence manifest. Never remove a
+running overlay, a golden or a disk still referenced by another image. Preserve
+all host-side evidence, run identities and retirement receipts.
+
 Evidence retention is documented in `docs/evidence-retention.md`. Preserve merged
 acceptance summaries, exact identities, reproducible parameters, failure context
 and cleanup receipts. Compress cold bulk evidence only with verified checksums
