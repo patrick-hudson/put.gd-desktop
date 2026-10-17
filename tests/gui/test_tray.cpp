@@ -435,6 +435,8 @@ private slots:
    action->trigger();
   }
   QCOMPARE(views, QStringList({"settings", "history", "activity", "about"}));
+  // A single & would be eaten as a mnemonic marker in the menu.
+  QVERIFY(actionNamed(tray, "Capture region && edit"));
   QCOMPARE(QApplication::topLevelWidgets(), windows);
   QCOMPARE(quits, 0);
   controller->activate();

@@ -116,7 +116,8 @@ TrayController::TrayController(OperationService& operations,
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  for (const auto& action : Settings::actionNames()) {
-  auto* item = menu_->addAction(VisualStyle::icon(action), action == "clipboard" ? QString("Upload Clipboard") : action == "edit" ? QString("Capture region & edit") : "Capture " + action);
+  // QAction text treats a single & as a mnemonic marker; && shows one &.
+  auto* item = menu_->addAction(VisualStyle::icon(action), action == "clipboard" ? QString("Upload Clipboard") : action == "edit" ? QString("Capture region && edit") : "Capture " + action);
   connect(item, &QAction::triggered, this, [this, action] {
    invokeAction(action);
   });
