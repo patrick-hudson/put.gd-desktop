@@ -128,13 +128,13 @@ private slots:
   QVERIFY(service.save(doc,{}));int uploads=0,inspections=0;JsonReply finish;
   UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++uploads;reply({"test_unsupported","S3-only tester",{}});});
   fixture.setup.setProviderSetup([&](const QString& kind,const Destination& destination,const QJsonObject& input,JsonReply reply,auto){
-   QCOMPARE(kind,QString("inspectAccount"));QCOMPARE(destination.settings,account);QVERIFY(input.isEmpty());++inspections;finish=std::move(reply);
+   QCOMPARE(kind,QString("testDestination"));QCOMPARE(destination.settings,account);QVERIFY(input.isEmpty());++inspections;finish=std::move(reply);
   });
   MainWindow window(fixture.session);window.navigate("destinations");window.show();
   auto* test=window.findChild<QPushButton*>("testDestination");QVERIFY(test->isVisible());test->click();
   QTRY_COMPARE(inspections,1);QVERIFY(!test->isEnabled());
   auto* status=window.findChild<QLabel*>("destinationStatus");QVERIFY(status->text().contains("account and selected folder"));
-  finish({},{{"accountRootUid","synthetic-root"},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"},{"name","Uploads"}}}}});
+  finish({},{{"testScope","account-folder"}});
   QTRY_VERIFY(status->text().contains("Account and selected folder are accessible"));QVERIFY(!status->text().contains("upload, public link"));QCOMPARE(uploads,0);
   if(editAfterTest){auto* folder=window.findChild<QComboBox*>("protonFolder");folder->addItem("Another folder","synthetic-other");folder->setCurrentIndex(folder->count()-1);QTRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["folderUid"].toString(),QString("synthetic-other"));}
   bool warned=false;QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){warned=true;box->button(QMessageBox::Yes)->click();}});dismiss.start(10);
@@ -142,24 +142,20 @@ private slots:
   QTRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("synthetic-proton"));
   QCOMPARE(warned,editAfterTest);QCOMPARE(service.snapshot().actions["region"].profileId,QString("synthetic-proton"));
  }
- void protonConnectionTestRejectsUnavailableDestinations_data(){
-  QTest::addColumn<QString>("root");QTest::addColumn<QString>("folder");QTest::addColumn<QString>("returnedRoot");QTest::addColumn<bool>("denied");QTest::addColumn<QString>("expected");
-  QTest::newRow("signed-out")<<""<<""<<"synthetic-root"<<false<<"proton_setup_required";
-  QTest::newRow("no-folder")<<"synthetic-root"<<""<<"synthetic-root"<<false<<"proton_setup_required";
-  QTest::newRow("changed-account")<<"synthetic-root"<<"synthetic-folder"<<"another-root"<<false<<"proton_account_changed";
-  QTest::newRow("missing-folder")<<"synthetic-root"<<"missing-folder"<<"synthetic-root"<<false<<"proton_folder_unavailable";
-  QTest::newRow("denied")<<"synthetic-root"<<"synthetic-folder"<<"synthetic-root"<<true<<"authentication_required";
+ void protonConnectionTestPropagatesProviderErrors_data(){
+  QTest::addColumn<QString>("expected");
+  for(const auto& code:QStringList{"proton_setup_required","proton_account_changed","proton_folder_unavailable","authentication_required"})QTest::newRow(qPrintable(code))<<code;
  }
- void protonConnectionTestRejectsUnavailableDestinations(){
-  QFETCH(QString,root);QFETCH(QString,folder);QFETCH(QString,returnedRoot);QFETCH(bool,denied);QFETCH(QString,expected);
+ void protonConnectionTestPropagatesProviderErrors(){
+  QFETCH(QString,expected);
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
-  auto doc=configuration(dir.path(),true);auto account=ProtonProvider::defaults();account["accountRootUid"]=root;account["folderUid"]=folder;
+  auto doc=configuration(dir.path(),true);auto account=ProtonProvider::defaults();account["accountRootUid"]="synthetic-root";account["folderUid"]="synthetic-folder";
   doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Proton"},{"provider","proton-drive"},{"settings",account},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-proton"}}}}};QVERIFY(service.save(doc,{}));
   int uploads=0,inspections=0;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++uploads;reply({});});
-  fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){++inspections;QCOMPARE(kind,QString("inspectAccount"));reply(denied?Error{"authentication_required","Sign in again",{}}:Error{},{{"accountRootUid",returnedRoot},{"folders",QJsonArray{QJsonObject{{"uid","synthetic-folder"}}}}});});
+  fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){++inspections;QCOMPARE(kind,QString("testDestination"));reply({expected,"Synthetic provider failure",{}},{});});
   QString id;fixture.setup.start("testDestination","synthetic-proton",service.revision(),{},[&](Error error,QJsonObject data){QVERIFY(!error);id=data["setupId"].toString();});
   QJsonObject job;auto inspect=[&]{fixture.setup.inspect(id,[&](Error error,QJsonObject data){QVERIFY(!error);job=data;});return job["state"]=="failed";};
-  QTRY_VERIFY(inspect());QCOMPARE(job["error"].toObject()["code"].toString(),expected);QCOMPARE(uploads,0);QCOMPARE(inspections,root.isEmpty()||folder.isEmpty()?0:1);
+  QTRY_VERIFY(inspect());QCOMPARE(job["error"].toObject()["code"].toString(),expected);QCOMPARE(uploads,0);QCOMPARE(inspections,1);
  }
 
  void protonToS3DraftSavesProviderTogetherWithFinishedBucket(){

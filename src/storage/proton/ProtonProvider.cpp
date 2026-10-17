@@ -182,5 +182,18 @@ void ProtonProvider::share(const ShareRequest& req,DurableCheckpoint checkpoint,
  if(e)receipt.directUrl.clear();
  reply({e?(uncertain?"unknown":"failed"):r["status"].toString("unknown"),receipt,r["progress"].toObject(),e?e:parseError(r["error"].toObject())});
 }
-QJsonObject ProtonProvider::setup(const QString& method,const Destination& d,const QJsonObject& input,Error& e,SetupEvent event){return call(method,d,{{"options",input}},e,{},std::move(event));}
+QJsonObject ProtonProvider::setup(const QString& method,const Destination& d,const QJsonObject& input,Error& e,SetupEvent event){
+ if(method!="testDestination")return call(method,d,{{"options",input}},e,{},std::move(event));
+ const auto root=d.settings["accountRootUid"].toString(),folder=d.settings["folderUid"].toString();
+ if(root.isEmpty()||folder.isEmpty()){
+  e={"proton_setup_required","Connect your Proton account and choose an upload folder before testing",{}};return {};
+ }
+ const auto account=call("inspectAccount",d,{{"options",input}},e,{},std::move(event));
+ if(e)return {};
+ if(account["accountRootUid"]!=root){e={"proton_account_changed","Reconnect the saved Proton account before testing",{}};return {};}
+ bool found=folder==root;
+ for(const auto& value:account["folders"].toArray())if(value.toObject()["uid"]==folder)found=true;
+ if(!found){e={"proton_folder_unavailable","The selected Proton folder is unavailable. Refresh folders and choose an upload folder",{}};return {};}
+ return {{"testScope","account-folder"}};
+}
 }
