@@ -5,14 +5,15 @@ The minimum Qt API is 6.4.2. Keep Qt dynamically linked to distro libraries.
 Use standard system development packages; ask the user to install missing packages
 when administrator authentication is required. Do not assemble a substitute toolchain.
 
-Prefer Patrick's Fedora 44 (`192.168.68.70`) and Debian 13 (`192.168.68.69`)
-physical build/test servers for builds, VM hosting and graphical acceptance.
+Prefer Patrick's Fedora 44 (`192.168.68.70`), Debian 13 (`192.168.68.69`) and
+Kubuntu 26.04 (`192.168.68.72`) physical build/test servers for builds, VM hosting
+and graphical acceptance.
 Their existing GNOME and Plasma sessions are graphical acceptance targets too:
-run and verify the app directly on either physical desktop, visible on its host
-wall tile, with saved visuals and exact host/session/source/build identities.
+run and verify the app directly on the appropriate physical desktop, visible on
+its host wall tile, with saved visuals and exact host/session/source/build identities.
 Use local workstation VMs as a fallback when those hosts cannot run the required
 profile; record the reason. Connection pins, host selection, visual evidence and
-golden-image transfer rules are in `docs/remote-builders.md`. On these two servers,
+golden-image transfer rules are in `docs/remote-builders.md`. On these three servers,
 the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;

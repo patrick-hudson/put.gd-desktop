@@ -81,11 +81,11 @@ Fedora and Debian; Cinnamon, GNOME and KDE; native X11 and Wayland coverage.
 Choose physical hosts and VMs per gate, prefer builders, provision missing
 profiles, and keep physical-hardware release gates on physical machines.
 
-Prefer the [Fedora and Debian physical servers](remote-builders.md) for builds,
+Prefer the [Fedora, Debian and Kubuntu physical servers](remote-builders.md) for builds,
 VMs and native graphical acceptance directly on their existing GNOME/Plasma
 desktops; use local VMs only when the required remote host/profile
 is unavailable or unsuitable, and record why. Passwordless `sudo -n` setup is
-authorized on those two servers. Preserve their existing projects and desktops;
+authorized on those three servers. Preserve their existing projects and desktops;
 keep the workstation SSH key local. Check KVM, capacity and ports on the actual
 VM host before launch. A physical host's OS/desktop is not a substitute for a
 different version in the declared acceptance matrix. Keep Cinnamon-first ordering.

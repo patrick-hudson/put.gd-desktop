@@ -15,9 +15,9 @@ Plan host/guest placement with the [Linux acceptance matrix](acceptance-matrix.m
 Cover Mint, Ubuntu, Kubuntu, Fedora and Debian plus GNOME/KDE X11/Wayland;
 provision missing VM profiles while using physical machines for physical release gates.
 
-Use the [preferred Fedora/Debian build servers](remote-builders.md) before local
+Use the [preferred Fedora/Debian/Kubuntu build servers](remote-builders.md) before local
 workstation VMs. Select a host with the required capacity, KVM access and visible
-guest display; record a local fallback reason if neither can run the profile.
+guest display; record a local fallback reason if none can run the profile.
 The runner executes on the actual QEMU host, via pinned SSH for remote hosts;
 it does not currently provide a remote-host switch. Run its storage/process/port
 inventory there, check resolved socket lengths there, and export receipts and
