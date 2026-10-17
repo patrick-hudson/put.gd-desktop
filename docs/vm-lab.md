@@ -414,6 +414,26 @@ Stop the unit after the campaign; its devices disappear with it. On Kubuntu
 Wayland sessions still need their own verification before use as evidence.
 `tests/desktop/test_host_input.py` covers the accepted protocol and rejections.
 
+## Editor acceptance drivers
+
+These drivers run against a run directory that has passed `lab.py run --keep`
+with the region scenario, so the resident and the clipboard fixture are live:
+
+| Driver | Covers |
+| --- | --- |
+| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, every tool, undo/redo, crop, save copy, submit, cancel, PNG sanitization and screenshots. |
+| `tools/lab/edit_memory.py RUN [SAMPLER]` | Whole-family RSS+swap (`family_sampler.py` in the guest) for desktop, region and 24 MP file cases. Gate: incremental peak at most 3R + 96 MiB, and the resident returns within 8 MiB of baseline once the fixture takes the clipboard. |
+| `tools/lab/mcp_editor_e2e.py EVIDENCE` | Official MCP client through `putgd-mcp` and the target's production `putgd-cli` (a small wrapper running it over pinned SSH): all editor tools, preview image, save copy, submit and cancel. |
+| `tools/lab/guest_reboot.py RUN` | Reboot through the session manager when a session-loaded integration such as the GNOME extension must reload; verifies the boot time changed. |
+
+`tools/lab/physical.py HOSTCFG.json install DEB|region|script DRIVER` runs the
+same runner and drivers on a physical desktop. It swaps the runner's shell,
+copy and screenshot helpers for pinned SSH, `scp` and the host's loopback VNC
+tile (`tools/lab/rfb.py`, security type None only), reads input from the
+forwarded agent above, and labels results `graphical-physical`. Keep the host
+config and its run directory under `work/` or the scratchpad; they name only
+key and known-hosts paths, never secrets.
+
 ## Evidence and gates
 
 Each named run emits `results.json` and JUnit `results.xml`, independent paste JSON,
