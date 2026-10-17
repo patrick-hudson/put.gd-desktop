@@ -17,7 +17,7 @@ Implement its dependencies in order and record blocked acceptance separately fro
 | Provider contract | `src/core/StorageProvider.h`, `StorageReceipt.h` | `tests/fixtures/U2Fixtures.h`, storage contract tests |
 | S3 / explicit credential resolution | `src/storage/s3/`, `src/secrets/` | isolated S3/keychain fixtures; [credentials](credentials.md), [S3](s3.md) |
 | Settings/activity/history widgets and login startup | `src/ui/`, `src/app/LoginStartup.*` | `tests/gui/`, `test_login_startup.cpp`, [user guide](user-guide.md) |
-| Disposable desktop VM lab / development package | `tools/lab/`, `packaging/linux/` | `tests/desktop/test_lab.py`, [VM lab](vm-lab.md) |
+| Disposable desktop VM lab / development package | `tools/lab/`, `packaging/linux/` | `tests/desktop/test_lab.py`, [VM lab](vm-lab.md), [preferred remote hosts](remote-builders.md) |
 | UI process lifecycle and total memory | `src/app/UiProcessController.*`, `src/ui/UiApplicationController.*`, `UiSession.*`, `ViewState.*` | [protocol](ui-process-protocol.md), [state allowlists](ui-process-state.md), `test_ui_process`, `test_ui_split_services`, `test_gui_application` |
 | Session JSON transport | `src/app/LocalServer.*`, `src/cli/main.cpp` | `test_cli.cpp`, [CLI](cli.md) |
 | Optional stdio MCP | `tools/mcp/` | `tests/integration/test_mcp.py`, [MCP](mcp.md) |
@@ -74,6 +74,20 @@ round trips, replacement/missing/denied deletes, and lost deletion replies.
 Do not teach shared code to decode URLs or provider object keys.
 
 ## Desktop and release gates
+
+Prefer the [Fedora and Debian physical servers](remote-builders.md) for builds,
+VMs and native checks; use local VMs only when the required remote host/profile
+is unavailable or unsuitable, and record why. Passwordless `sudo -n` setup is
+authorized on those two servers. Preserve their existing projects and desktops;
+keep the workstation SSH key local. Check KVM, capacity and ports on the actual
+VM host before launch. A physical host's OS/desktop is not a substitute for a
+different version in the declared acceptance matrix. Keep Cinnamon-first ordering.
+
+Every graphical run must stay visible at the workstation's display wall and
+produce saved screenshots or recordings, including failure evidence, tied to its
+host/session and source/build identity. Remote guest displays need their own
+loopback VNC tunnel/tile; a physical-host tile does not automatically show a VM.
+Retain the scenario's independent paste/artifact and QMP witnesses as required.
 
 Use the shared C++/Qt contracts without introducing Node.js into guest test
 requirements. The GNOME extension ownership fixture uses the GNOME desktop's

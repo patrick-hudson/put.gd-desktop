@@ -1,13 +1,32 @@
 # Disposable graphical lab
 
 The host interface is `python3 tools/lab/lab.py`. It uses QEMU, QMP, SSH and ordinary
-Mint packages. It never shares the host clipboard. All control sockets are private;
+distro packages. It never shares the host clipboard. All control sockets are private;
 VNC and SSH forwarding bind to 127.0.0.1. A QMP witness is independent of guest capture.
 The user watches active machines at http://127.0.0.1:8765/. Keep each guest’s VNC
 listener and graphical output active during interaction; use `run --keep` while
 continuing a test session so subsequent actions remain visible on the display wall.
 A locked or blanked session must be visibly restored before graphical acceptance.
 Host protocol tests and offscreen fixture checks do not prove desktop acceptance.
+
+## Host selection
+
+Use the [preferred Fedora/Debian build servers](remote-builders.md) before local
+workstation VMs. Select a host with the required capacity, KVM access and visible
+guest display; record a local fallback reason if neither can run the profile.
+The runner executes on the actual QEMU host, via pinned SSH for remote hosts;
+it does not currently provide a remote-host switch. Run its storage/process/port
+inventory there, check resolved socket lengths there, and export receipts and
+visual evidence to the workstation. Do not treat workstation capacity or process
+absence as evidence about a remote host.
+
+The existing Fedora GNOME and Debian Plasma display-wall tiles show physical
+desktops. Add a distinct loopback-only SSH tunnel and tile for each remote guest
+before graphical acceptance. Save screenshots or recordings of actions, results
+and failures as well as the existing independent QMP/paste/artifact witnesses.
+Host selection leaves Cinnamon-first ordering and the required guest OS/desktop
+versions unchanged. Follow the remote-host runbook when copying goldens; never
+boot or alter the source golden or reuse another run's writable overlay.
 
 Linux source-build guests also require the standard cursor development package: `libxcursor-dev` on Ubuntu/Mint or `libXcursor-devel` on Fedora. Install it in disposable development guests using their normal package manager. The desktop profile files describe runtime sessions; they do not contain development package lists. Provision a new golden disk for persistent package updates, preserving sealed bases and active overlays.
 
