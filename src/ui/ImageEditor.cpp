@@ -205,9 +205,14 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    active=true;
    if(!files.intact()||!files.checkInput()){refuse("image_job_io");return;}
    // Static PNG or JPEG only, decoded once here with the file's orientation applied.
-   QImageReader reader(&files.input);reader.setAutoTransform(true);
-   const auto format=reader.format();const auto size=reader.size();
-   if((format!="png"&&format!="jpeg"&&format!="jpg")||!size.isValid()||reader.supportsAnimation()||reader.imageCount()>1){refuse("source_unsupported");return;}
+   // The format comes from the signature: a reader left to detect it instantiates
+   // every installed image plugin (30 plugins, 12 MiB with KDE's kimageformats).
+   const auto signature=files.input.peek(8);
+   const QByteArray format=signature.startsWith("\x89PNG\r\n\x1a\n")?"png":signature.startsWith("\xff\xd8\xff")?"jpeg":"";
+   if(format.isEmpty()){refuse("source_unsupported");return;}
+   QImageReader reader(&files.input,format);reader.setAutoDetectImageFormat(false);reader.setAutoTransform(true);
+   const auto size=reader.size();
+   if(!size.isValid()||reader.supportsAnimation()||reader.imageCount()>1){refuse("source_unsupported");return;}
    const auto pixels=qint64(size.width())*size.height();
    if(pixels>maxPixels){refuse("input_excessive");return;}
    reader.setAllocationLimit(int(std::min<qint64>(pixels*4/(1024*1024)+2,INT_MAX)));

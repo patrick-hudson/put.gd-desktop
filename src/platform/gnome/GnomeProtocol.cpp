@@ -1,5 +1,7 @@
 #include "GnomeProtocol.h"
 #include "platform/Geometry.h"
+#include "core/ImageFormat.h"
+#include "core/ImageJob.h"
 #include <QBuffer>
 #include <QImageReader>
 #include <QJsonArray>
@@ -19,11 +21,18 @@ QRectF rect(const QJsonValue& value,bool& valid){
 }
 PayloadResult image(const QByteArray& bytes,const ResourceLimits& limits){
  if(bytes.size()>limits.imageBytes)return fail("input_excessive","GNOME image bytes exceed resource limits");
- QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer);const auto size=reader.size();
- if(!size.isValid())return fail("source_unsupported","GNOME image is not decodable");
- const qint64 pixels=qint64(size.width())*size.height();
- if(pixels>limits.imagePixels||pixels>limits.imageBytes/4)return fail("input_excessive","GNOME image dimensions exceed resource limits");
- PayloadResult result;result.payload.kind="image";result.payload.mime="image/png";result.payload.image=reader.read();
+ PayloadResult result;result.payload.kind="image";result.payload.mime="image/png";
+ if(imageFormatHint(bytes)=="png"){
+  QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");const auto size=reader.size();
+  if(!size.isValid())return fail("source_unsupported","GNOME image is not decodable");
+  const qint64 pixels=qint64(size.width())*size.height();
+  if(pixels>limits.imagePixels||pixels>limits.imageBytes/4)return fail("input_excessive","GNOME image dimensions exceed resource limits");
+  result.payload.image=reader.read();
+ }else{
+  // Other formats need Qt's image plugins; the transient image job decodes
+  // them so the Core resident never instantiates those codecs.
+  Error error;result.payload.image=ImageJob().decode(bytes,limits,error);if(error)return {{},error};
+ }
  if(result.payload.image.isNull())return fail("source_unsupported","GNOME image decoding failed");
  return result;
 }

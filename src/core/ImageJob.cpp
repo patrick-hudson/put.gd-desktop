@@ -130,10 +130,10 @@ QByteArray ImageJob::run(const QString& task,const QByteArray* bytes,const QStri
   }
   protocolFailed=true;
  });
- const auto inheritedEnvironment=QProcessEnvironment::systemEnvironment();
- if(inheritedEnvironment.value("QT_QPA_PLATFORM").isEmpty()&&inheritedEnvironment.value("DISPLAY").isEmpty()&&inheritedEnvironment.value("WAYLAND_DISPLAY").isEmpty()){
-  auto childEnvironment=inheritedEnvironment;childEnvironment.insert("QT_QPA_PLATFORM","offscreen");process.setProcessEnvironment(childEnvironment);
- }
+ // Codec work never shows a window, so the child never connects to the
+ // compositor or X server. The offscreen platform ships with Qt GUI itself
+ // (libqt6gui6, qt6-qtbase-gui), unlike the other optional platform plugins.
+ auto childEnvironment=QProcessEnvironment::systemEnvironment();childEnvironment.insert("QT_QPA_PLATFORM","offscreen");process.setProcessEnvironment(childEnvironment);
  process.start(helperPath_,{"--image-job"});
  bool started=false;
  while(!started&&!protocolFailed&&!stopped()){

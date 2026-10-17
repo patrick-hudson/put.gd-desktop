@@ -148,6 +148,8 @@ private:
 private slots:
  void initTestCase(){
   QCoreApplication::addLibraryPath(QStringLiteral(PUTGD_GNOME_MIME_FIXTURE_DIR));
+  // Clipboard image types are listed by the transient image job, a child process.
+  qputenv("QT_PLUGIN_PATH",PUTGD_GNOME_MIME_FIXTURE_DIR);
   QVERIFY(QImageReader::supportedMimeTypes().contains("application/x-putgd-gnome-mime"));
   QVERIFY(QImageReader::supportedMimeTypes().contains("image/x-putgd-gnome-mime"));
   if(coreMode_){
@@ -171,6 +173,17 @@ private slots:
   const auto mimes=state()["imageMimes"].toArray();
   QVERIFY(mimes.contains("image/x-putgd-gnome-mime"));
   QVERIFY(!mimes.contains("application/x-putgd-gnome-mime"));
+ }
+ void screenCapturesSendOnlyPngWithoutListingImagePlugins(){
+  // Listing image types instantiates every installed Qt image plugin; only a
+  // clipboard import needs them, and the image job lists them out of process.
+  GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));
+  for(const char* action:{"region","desktop"}){
+   bool completed=false;source.acquire(action,{},[&](PayloadResult){completed=true;});QTRY_VERIFY(completed);
+   QCOMPARE(state()["imageMimes"].toArray(),QJsonArray{"image/png"});
+  }
+  bool completed=false;source.acquire("clipboard",{},[&](PayloadResult){completed=true;});QTRY_VERIFY(completed);
+  const auto mimes=state()["imageMimes"].toArray();QCOMPARE(mimes.first().toString(),QString("image/png"));QVERIFY(mimes.contains("image/x-putgd-gnome-mime"));
  }
  void clipboardAndShortcutTransport(){
   GnomeAdapter source;QTRY_VERIFY(helperAvailable(source));

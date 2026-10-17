@@ -4,6 +4,7 @@
 #include "StdioDevice.h"
 #include "ViewState.h"
 #include "VisualStyle.h"
+#include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include <QApplication>
 #include <QJsonDocument>
@@ -29,6 +30,10 @@ int main(int argc,char** argv){
  if(argc==2&&std::strcmp(argv[1],"--edit-image")==0){
   qputenv("QT_QPA_PLATFORMTHEME","generic");
   for(const char* name:{"XDG_CURRENT_DESKTOP","XDG_SESSION_DESKTOP","DESKTOP_SESSION","KDE_FULL_SESSION","GNOME_DESKTOP_SESSION_ID"})qunsetenv(name);
+  // Previews and exports allocate full-size rasters and PNG buffers. Without a
+  // fixed mmap threshold the freed ones stay in the heap: on Fedora 44 one
+  // 1920x1080 preview kept 36 MiB resident until the editor closed.
+  if(!putgd::applyResidentAllocatorPolicy())std::fputs("Could not apply the editor allocation threshold\n",stderr);
  }
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");

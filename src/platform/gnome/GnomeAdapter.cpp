@@ -1,6 +1,8 @@
 #include "GnomeAdapter.h"
 #include "GnomeProtocol.h"
 #include "platform/NativeSession.h"
+#include "core/ImageJob.h"
+#include <QThread>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
@@ -9,7 +11,6 @@
 #include <QJsonArray>
 #include <QGuiApplication>
 #include <QKeySequence>
-#include <QImageReader>
 #include <QUrl>
 #include <QUuid>
 #include <cmath>
@@ -126,16 +127,35 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
  else if(action=="window"&&uiProcessError_){error=uiProcessError_;if(hotkey)release(id);}
  else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
- return [guard,id,error](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,limits,std::move(reply));};
+ return [guard,id,action,error](const ResourceLimits& limits,std::function<void(PayloadResult)> reply){if(error){reply({{},error});return;}if(!guard){reply({{},{"source_unavailable","GNOME adapter closed",{}}});return;}guard->start(id,action,limits,std::move(reply));};
 }
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
-void GnomeAdapter::start(const QString& id,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){
+void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){
  if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
  auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
- // Qt readers can advertise application/* formats; the bridge accepts image/* offers.
- QJsonArray imageMimes;for(const auto& mime:QImageReader::supportedMimeTypes())if(mime.startsWith("image/"))imageMimes.append(QString::fromLatin1(mime));
+ // Only clipboard imports choose among image types; screen captures are PNG.
+ // Listing Qt's readers instantiates every installed image plugin (30 plugins,
+ // 12 MiB with KDE's kimageformats), so the transient image job lists them,
+ // once and off the session thread, and the Core resident never loads them.
+ if(action!="clipboard"){requestTransfer(transfer,QJsonArray{"image/png"});return;}
+ if(clipboardImageMimes_){requestTransfer(transfer,*clipboardImageMimes_);return;}
+ auto types=std::make_shared<QList<QByteArray>>();auto error=std::make_shared<Error>();
+ auto* worker=QThread::create([types,error]{*types=ImageJob().discover(*error);});workers_.append(worker);
+ connect(worker,&QThread::finished,this,[this,worker,types,error,transfer]{
+  workers_.removeOne(worker);worker->deleteLater();
+  if(stopping_||!transfers_.contains(transfer->id))return;
+  if(*error){transfers_.remove(transfer->id);release(transfer->id);auto reply=std::move(transfer->reply);reply({{},*error});return;}
+  // The bridge accepts at most 128 image/* types; Qt can also list application/*.
+  QJsonArray imageMimes{"image/png"};
+  for(const auto& mime:*types)if(mime.startsWith("image/")&&mime!="image/png"&&mime.size()<=128&&imageMimes.size()<128)imageMimes.append(QString::fromLatin1(mime));
+  clipboardImageMimes_=imageMimes;requestTransfer(transfer,imageMimes);
+ });
+ worker->start();
+}
+void GnomeAdapter::requestTransfer(const std::shared_ptr<Transfer>& transfer,const QJsonArray& imageMimes){
+ const auto limits=transfer->limits;
  QJsonObject bounds{{"imageMimes",imageMimes},{"textBytes",double(limits.clipboardTextBytes)},{"imageBytes",double(limits.imageBytes)},{"imagePixels",double(limits.imagePixels)},{"maxFiles",limits.maxFiles}};
- call("Acquire",{id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
+ call("Acquire",{transfer->id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
   if(!transfers_.contains(transfer->id))return;
   const auto bytes=metadata["bytes"].toDouble(-1);const auto bound=std::max(transfer->limits.clipboardTextBytes,transfer->limits.imageBytes);
   if(!error&&(metadata["version"].toInt()!=gnome::protocolVersion||metadata["requestId"].toString()!=transfer->id||bytes<0||bytes>bound||bytes!=std::floor(bytes)))error={"bridge_protocol","GNOME transfer metadata exceeds limits or has invalid identity",{}};

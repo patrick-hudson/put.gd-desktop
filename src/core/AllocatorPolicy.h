@@ -9,6 +9,7 @@ namespace putgd {
 // mmapped and unmapped on free. Without it glibc raises the threshold after the
 // first large free, later rasters land in per-thread arenas, and their freed
 // tops stay resident because malloc_trim only shrinks the main arena's top.
+// The editor helper uses the same policy for its previews and exports.
 // Call before application construction. Returns false only if glibc refused.
 inline bool applyResidentAllocatorPolicy() {
 #if defined(__linux__) && defined(__GLIBC__)
