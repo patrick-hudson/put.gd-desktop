@@ -9,6 +9,15 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Edit & upload — 2026-10-17
+
+The [issue 51 receipt](evidence/2026-10-17-issue51-edit-and-upload.md) records
+candidate `9dd61d3`: the Dev suite on Mint and Kubuntu, and Cinnamon-first
+graphical (21/21) and memory gates, then GNOME/Wayland and KDE/Wayland on KVM.
+It also records MCP end-to-end runs on Cinnamon and physical Kubuntu X11.
+Physical Debian/Fedora desktops, KDE/X11 region-sourced editing (issue #54) and
+Windows remain uncovered.
+
 ## Local S3 settings controls — 2026-10-16
 
 The [scoped receipt](evidence/2026-10-16-s3-settings-controls.md) records the
