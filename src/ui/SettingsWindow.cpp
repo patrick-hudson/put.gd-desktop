@@ -578,7 +578,7 @@ QJsonObject SettingsWindow::retainedProfileEditor()const{
 }
 void SettingsWindow::resetCredentialSecretDisplay(){
  ++secretRevealSerial_;
- if(savedSecretShown_){savedSecretShown_=false;secret_->clear();}
+ if(savedSecretShown_){savedSecretShown_=false;secret_->setText(QString{});}
  if(secret_){secret_->setReadOnly(false);secret_->setEchoMode(QLineEdit::Password);}
  if(showSecret_){const QSignalBlocker block(showSecret_);showSecret_->setChecked(false);showSecret_->setText("Show");showSecret_->setAccessibleName("Show secret access key");}
 }

@@ -277,6 +277,9 @@ private slots:
   QVERIFY(!QJsonDocument(window.settings()->saveViewState()).toJson().contains("synthetic-saved-secret"));
   QVERIFY(!QJsonDocument(service.document()).toJson().contains("synthetic-saved-secret"));
   show->click();QVERIFY(secret->text().isEmpty());QVERIFY(!secret->isReadOnly());QCOMPARE(secret->echoMode(),QLineEdit::Password);
+  secret->setFocus();QTest::keyClicks(secret,"x");show->click();
+  QTest::keyClick(secret,Qt::Key_Z,Qt::ControlModifier);QTest::keyClick(secret,Qt::Key_Z,Qt::ControlModifier);
+  QVERIFY(secret->text().isEmpty());show->click();
   secret->setText("synthetic-typed-secret");show->click();QCOMPARE(secret->echoMode(),QLineEdit::Normal);
   show->click();QCOMPARE(secret->text(),QString("synthetic-typed-secret"));QCOMPARE(secret->echoMode(),QLineEdit::Password);
   secret->clear();show->click();QTRY_COMPARE(secret->text(),QString("synthetic-saved-secret"));
