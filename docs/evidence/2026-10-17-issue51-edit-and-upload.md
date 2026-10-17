@@ -128,6 +128,28 @@ host's other windows.
 - **Outline on X11.** The issue #54 compositor-settle fix, merged here, is
   verified on physical Kubuntu: 6/6 region runs and 4/4 editor runs.
 
+## Follow-up: tool switching and moving marks (`b280fbf`)
+
+User testing found two problems:
+
+- **Tool switching restyled marks.** Choosing a tool re-applied its style to the
+  selected mark, so a selected rectangle turned yellow when Highlight was chosen.
+- **Moving needed Select.** Adjusting a mark meant switching to the Select tool.
+
+Now only style controls edit the selection, and choosing a drawing tool
+deselects. Drawing tools pick up the visible mark under the pointer and move it;
+Ctrl draws over marks instead. New contract tests fail on the previous code.
+
+The Cinnamon gate reran on `b280fbf`:
+
+- Region baseline: pass.
+- Editor: 23/23. The two new real-mouse checks move the redaction with the
+  Rectangle tool (no new shape) and undo the move.
+- Memory: 5/5 within target.
+
+The other desktops' results above are from `329d736`. This follow-up changes
+only platform-neutral canvas input handling.
+
 ## Not covered
 
 - The physical Fedora 44 GNOME desktop. Its display was being reconfigured
