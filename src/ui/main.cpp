@@ -19,6 +19,10 @@ int main(int argc,char** argv){
   std::printf("putgd-ui %s\n",putgd::buildVersion());return 0;
  }
  putgd::UiControlPipes handles;if(!handles.valid())return 2;
+ // The editor draws its own theme. Qt's built-in generic platform theme avoids
+ // loading the desktop's GTK/KDE integration stack into this short-lived image
+ // process (about 22 MiB RSS on GNOME 50); Save a copy uses Qt's file dialog.
+ if(argc==2&&std::strcmp(argv[1],"--edit-image")==0)qputenv("QT_QPA_PLATFORMTHEME","generic");
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());
