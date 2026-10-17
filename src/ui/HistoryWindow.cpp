@@ -39,9 +39,19 @@
 #include <QToolButton>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <algorithm>
 #include <utility>
 namespace putgd {
 namespace {
+// A push button laid out by its child row. It reports that row's size in the
+// current font and theme, so a wider desktop font never clips the label.
+class RowButton final:public QPushButton {
+public:
+ using QPushButton::QPushButton;
+ QSize sizeHint()const override{const auto row=layout()?layout()->totalSizeHint():QSize();return {row.width(),std::max(row.height(),QPushButton::sizeHint().height())};}
+ QSize minimumSizeHint()const override{return sizeHint();}
+};
 class HistoryDelegate final:public QStyledItemDelegate {
 public:
  explicit HistoryDelegate(QListView* view):QStyledItemDelegate(view),view_(view){}
@@ -82,13 +92,14 @@ private:QListView* view_;
 HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(parent),session_(session){
  setObjectName("historyPage");setWindowTitle("put.gd — History");resize(1080,760);auto* layout=new QVBoxLayout(this);layout->setContentsMargins(24,22,24,18);layout->setSpacing(14);
  auto* header=new QHBoxLayout;auto* heading=new QLabel("History",this);VisualStyle::role(heading,"title");header->addWidget(heading);header->addStretch();
- // Edit an image that is not a fresh capture. The chevron is drawn by IconArt
- // inside the button, like the rail's labels, so it matches the theme.
- auto* editImage=new QPushButton(this);editImage->setObjectName("historyEditImage");editImage->setAccessibleName("Edit image");editImage->setToolTip("Edit the clipboard image or an image file, then upload it");
- auto* editRow=new QHBoxLayout(editImage);editRow->setContentsMargins(10,0,8,0);editRow->setSpacing(6);
- auto* editIcon=new QLabel(editImage);editIcon->setPixmap(VisualStyle::icon("edit").pixmap(16,16));auto* editText=new QLabel("Edit image",editImage);auto* editChevron=new QLabel(editImage);editChevron->setPixmap(VisualStyle::icon("chevron-down",RedesignTheme::textSecondary()).pixmap(12,12));
+ // Edit an image that is not a fresh capture. Icon, label and IconArt chevron
+ // are child widgets, like the rail buttons, so the chevron matches the theme.
+ auto* editImage=new RowButton(this);editImage->setObjectName("historyEditImage");editImage->setAccessibleName("Edit image");editImage->setToolTip("Edit the clipboard image or an image file, then upload it");
+ auto* editRow=new QHBoxLayout(editImage);editRow->setContentsMargins(13,0,11,0);editRow->setSpacing(6);
+ auto* editIcon=new QLabel(editImage);editIcon->setPixmap(VisualStyle::icon("edit").pixmap(16,16));auto* editText=new QLabel("Edit image",editImage);editText->setObjectName("historyEditText");
+ auto* editChevron=new QLabel(editImage);editChevron->setObjectName("historyEditChevron");editChevron->setPixmap(VisualStyle::icon("chevron-down",RedesignTheme::textSecondary()).pixmap(12,12));
  for(auto* label:{editIcon,editText,editChevron}){label->setAttribute(Qt::WA_TransparentForMouseEvents);editRow->addWidget(label);}
- editImage->setMinimumWidth(editRow->sizeHint().width());
+ editRow->insertSpacing(2,2);
  auto* editSources=new QMenu(editImage);editSources->setObjectName("historyEditSources");
  connect(editSources->addAction(VisualStyle::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
  connect(editSources->addAction(VisualStyle::icon("images"),"Edit an image file…"),&QAction::triggered,this,&HistoryWindow::chooseImageRequested);

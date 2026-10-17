@@ -1,6 +1,8 @@
 #include "ui/HistoryModel.h"
 #include "ui/HistoryWindow.h"
+#include "ui/RedesignTheme.h"
 #include "fixtures/UiSessionFixture.h"
+#include <QLayout>
 #include <QListView>
 #include <QComboBox>
 #include <QMenu>
@@ -227,7 +229,13 @@ private slots:
   HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();
   QStringList requests;connect(&window,&HistoryWindow::editRequested,this,[&](const QString& from,const QString& path){requests.append(from+"|"+path);});int chooser=0;connect(&window,&HistoryWindow::chooseImageRequested,this,[&]{++chooser;});
   auto* header=window.findChild<QPushButton*>("historyEditImage");QVERIFY(header);QVERIFY(header->menu());QStringList labels;for(auto* action:header->menu()->actions())labels.append(action->text());
-  QCOMPARE(labels,QStringList({"Edit clipboard image","Edit an image file…"}));header->menu()->actions()[0]->trigger();header->menu()->actions()[1]->trigger();QCOMPARE(requests,QStringList({"clipboard|"}));QCOMPARE(chooser,1);requests.clear();
+  QCOMPARE(labels,QStringList({"Edit clipboard image","Edit an image file…"}));
+  // The label fits in any font: the button sizes from its child row in the current font and theme.
+  RedesignTheme::apply(window);auto* text=header->findChild<QLabel*>("historyEditText");auto* chevron=header->findChild<QLabel*>("historyEditChevron");QVERIFY(text&&chevron);QCOMPARE(text->text(),QString("Edit image"));
+  for(const int extra:{0,6}){QFont font=header->font();if(font.pixelSize()>0)font.setPixelSize(font.pixelSize()+extra);else font.setPointSizeF(font.pointSizeF()+extra);header->setFont(font);header->adjustSize();header->layout()->activate();
+   QVERIFY2(text->width()>=text->fontMetrics().horizontalAdvance(text->text()),qPrintable(QString("%1 < %2").arg(text->width()).arg(text->fontMetrics().horizontalAdvance(text->text()))));
+   QVERIFY(chevron->geometry().left()>=text->geometry().right());QVERIFY(chevron->geometry().right()<header->width());}
+  header->menu()->actions()[0]->trigger();header->menu()->actions()[1]->trigger();QCOMPARE(requests,QStringList({"clipboard|"}));QCOMPARE(chooser,1);requests.clear();
   auto* list=window.findChild<QListView*>("historyList");QTRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);auto* again=window.findChild<QPushButton*>("editHistoryImage");QVERIFY(again);QTRY_VERIFY(again->isEnabled());
   again->click();QCOMPARE(requests.size(),1);QVERIFY(requests.first().startsWith("file|"));const auto path=requests.first().section('|',1);QVERIFY(QFileInfo(path).isAbsolute());
   const QImage retained(path);QCOMPARE(retained.size(),QSize(40,30));QCOMPARE(retained.pixelColor(0,0),QColor(Qt::cyan));
