@@ -160,10 +160,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   pkg_check_modules(PUTGD_XCB REQUIRED IMPORTED_TARGET xcb xcb-randr xcb-keysyms xcb-xfixes xcb-render)
   add_library(putgd_x11_listeners STATIC src/platform/x11/X11Clipboard.cpp src/platform/x11/X11Shortcuts.cpp)
   target_link_libraries(putgd_x11_listeners PUBLIC putgd_app Qt6::Gui PRIVATE PkgConfig::PUTGD_XCB)
+  pkg_check_modules(PUTGD_XCB_DAMAGE REQUIRED IMPORTED_TARGET xcb-damage)
   add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp src/platform/x11/CinnamonRegionCapture.cpp
-    src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
+    src/platform/x11/X11CompositorSettle.cpp src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
     src/ui/RegionOverlay.cpp src/ui/RegionSelector.h)
-  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB Qt6::DBus)
+  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_DAMAGE Qt6::DBus)
   add_library(putgd_capture_control STATIC src/platform/x11/CaptureControl.cpp)
   target_include_directories(putgd_capture_control PUBLIC src)
   target_link_libraries(putgd_capture_control PUBLIC Qt6::Core putgd_build_options)

@@ -8,12 +8,12 @@ sudo apt-get update
 sudo apt-get install build-essential git cmake ninja-build pkg-config \
   qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev \
   qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev \
-  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon \
+  libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon \
   libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev \
   zlib1g-dev libwayland-dev wayland-protocols
 ```
 
-Linux capture helpers use the distro Xcursor development library. On Fedora, install `libXcursor-devel` alongside the normal Qt/X11 development packages. Runtime package dependencies remain distro-resolved; do not vendor Xcursor or build a replacement toolchain.
+Generic composited X11 region capture follows root repaints through the distro XCB Damage library (`libxcb-damage0-dev`; part of `libxcb-devel` on Fedora). Linux capture helpers use the distro Xcursor development library. On Fedora, install `libXcursor-devel` alongside the normal Qt/X11 development packages. Runtime package dependencies remain distro-resolved; do not vendor Xcursor or build a replacement toolchain.
 
 Build the pinned AWS SDK with its own official CMake project. The app configuration
 never downloads dependencies. SDK libraries install under `build/sdk`; this is a normal
