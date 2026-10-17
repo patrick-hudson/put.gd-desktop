@@ -86,9 +86,12 @@ def release_clipboard():
     # Let the independent fixture take ownership through real input to measure the rest.
     paint = dict(READY['paint'])
     if READY['session'] == 'wayland':
+        # Physical VNC frames include the cursor; park it before locating.
+        lab.pointer(run, SCREEN['width'] - 40, 40, SCREEN['width'], SCREEN['height']); time.sleep(.3)
         located = lab.locate_fixture_paint(lab.screenshot(run, 'memory-fixture')['path'])
-        if located:
-            paint.update(x=located['x'], y=located['y'])
+        if not located:
+            raise lab.LabError('fixture not visible; cannot hand it clipboard ownership')
+        paint.update(x=located['x'], y=located['y'])
     lab.pointer(run, paint['x'] + 30, paint['y'] + 30, SCREEN['width'], SCREEN['height'], True)
     lab.pointer(run, paint['x'] + 30, paint['y'] + 30, SCREEN['width'], SCREEN['height'], False)
     time.sleep(.5); lab.key(run, ['ctrl', 'alt', 'shift', 't']); time.sleep(4)

@@ -21,8 +21,15 @@ int main(int argc,char** argv){
  putgd::UiControlPipes handles;if(!handles.valid())return 2;
  // The editor draws its own theme. Qt's built-in generic platform theme avoids
  // loading the desktop's GTK/KDE integration stack into this short-lived image
- // process (about 22 MiB RSS on GNOME 50); Save a copy uses Qt's file dialog.
- if(argc==2&&std::strcmp(argv[1],"--edit-image")==0)qputenv("QT_QPA_PLATFORMTHEME","generic");
+ // process (about 22 MiB RSS on GNOME 50; about 85 MiB on Plasma, whose theme
+ // pulls in Qt Quick and the GPU driver); Save a copy uses Qt's file dialog.
+ // Qt tries a theme plugin for every candidate name before falling back to the
+ // built-in generic theme, and derives candidates from the desktop identity, so
+ // that identity is cleared as well.
+ if(argc==2&&std::strcmp(argv[1],"--edit-image")==0){
+  qputenv("QT_QPA_PLATFORMTHEME","generic");
+  for(const char* name:{"XDG_CURRENT_DESKTOP","XDG_SESSION_DESKTOP","DESKTOP_SESSION","KDE_FULL_SESSION","GNOME_DESKTOP_SESSION_ID"})qunsetenv(name);
+ }
  QApplication app(argc,argv);
  QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-ui");
  QCoreApplication::setApplicationVersion(putgd::buildVersion());

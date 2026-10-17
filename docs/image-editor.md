@@ -42,7 +42,10 @@ zooms, the wheel or Space/middle-drag pans. **Save a copy…** (Ctrl+S) writes t
 same sanitized export as Upload to a user-chosen file; it never overwrites the
 private source. The editor runs on Qt's built-in `generic` platform theme, so its
 file dialog is Qt's own (styled like the editor) rather than the GTK/KDE one;
-this keeps the desktop's integration libraries out of the image process.
+this keeps the desktop's integration libraries out of the image process. The
+helper also clears its desktop identity variables (`XDG_CURRENT_DESKTOP` and
+similar), because Qt would otherwise still load the desktop's theme plugin; on
+Plasma that plugin brings in Qt Quick and the GPU driver (about 85 MiB).
 
 Use **Redact** for passwords and other private information. Blur and pixelation
 can leave information that helps reconstruct or infer text.
