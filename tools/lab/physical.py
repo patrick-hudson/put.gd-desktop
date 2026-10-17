@@ -1,7 +1,7 @@
 """Run the lab's scenarios against a physical desktop instead of a QEMU guest.
 
 Usage (workstation, repo root):
-  python3 tools/lab/physical.py HOSTCFG.json install DEB
+  python3 tools/lab/physical.py HOSTCFG.json install DEB|RPM
   python3 tools/lab/physical.py HOSTCFG.json region
   python3 tools/lab/physical.py HOSTCFG.json script tools/lab/edit_acceptance.py
 
@@ -61,8 +61,13 @@ action = sys.argv[2]
 if action == 'install':
     deb = Path(sys.argv[3]).resolve()
     (run / 'package.json').unlink(missing_ok=True)
-    host_put(run, deb, '/tmp/putgd-lab.deb')
-    host_ssh(run, 'sudo -n apt-get update -qq\nsudo -n apt-get install --reinstall -y -qq /tmp/putgd-lab.deb >/dev/null\n', timeout=300)
+    if deb.suffix == '.rpm':
+        # Remove first: dnf will not reinstall or downgrade a same-version dev build.
+        host_put(run, deb, '/tmp/putgd-lab.rpm')
+        host_ssh(run, 'sudo -n dnf -y -q remove putgd >/dev/null 2>&1 || true\nsudo -n dnf -y -q install /tmp/putgd-lab.rpm >/dev/null\n', timeout=300)
+    else:
+        host_put(run, deb, '/tmp/putgd-lab.deb')
+        host_ssh(run, 'sudo -n apt-get update -qq\nsudo -n apt-get install --reinstall -y -qq /tmp/putgd-lab.deb >/dev/null\n', timeout=300)
     installed = lab.verify_installed_binaries(run, deb)
     lab.write_json(run / 'package.json', {'sha256': lab.hash_file(deb), 'filename': deb.name, 'installedBinarySha256': installed})
     print(json.dumps({'status': 'installed', 'host': cfg['host']}))

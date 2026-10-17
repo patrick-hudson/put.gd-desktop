@@ -986,7 +986,14 @@ def verify_installed_binaries(run, deb):
     # than recording only the requested archive's hash.
     import tempfile
     with tempfile.TemporaryDirectory(prefix='putgd-package-') as directory:
-        command(['dpkg-deb', '--extract', str(Path(deb).resolve()), directory])
+        if str(deb).endswith('.rpm'):
+            archive = subprocess.Popen(['rpm2cpio', str(Path(deb).resolve())], stdout=subprocess.PIPE)
+            unpacked = subprocess.run(['cpio', '-idm', '--quiet'], stdin=archive.stdout, cwd=directory)
+            archive.stdout.close()
+            if archive.wait() or unpacked.returncode:
+                raise LabError('Could not extract the requested RPM')
+        else:
+            command(['dpkg-deb', '--extract', str(Path(deb).resolve()), directory])
         expected = {}
         for path in (Path(directory) / 'usr/bin').iterdir():
             if path.is_file() and path.name.startswith('putgd'):
