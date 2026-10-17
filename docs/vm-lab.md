@@ -38,8 +38,11 @@ Linux source-build guests also require the standard cursor development package: 
 
 Provisioned Linux golden disks under `work/lab-images/` are immutable inputs.
 Never boot or modify them directly, or move, overwrite or delete a disk referenced
-by overlays. Tests use independent disks under `work/lab-runs/` created through
-`tools/lab/lab.py`; provision a new golden path for updates. Preserve each run's
+by overlays. Since 2026-10-17 the goldens live on the Fedora and Debian builders
+and in S3, not on the workstation; see
+[golden storage and restore](remote-golden-images.md). Tests use independent
+disks under `work/lab-runs/` created through `tools/lab/lab.py`; provision a new
+golden path for updates. Preserve each run's
 recorded backing path and base identity.
 
 Before provisioning or resuming, inventory existing run/base metadata and the
@@ -55,11 +58,12 @@ The current Linux runner records the golden SHA256 but does not enforce
 Windows-style sealing or verify a sealed manifest before launch. Existing golden
 files may still be writable. These workflow restrictions remain mandatory.
 
-The local provisioned GNOME/KDE goldens are standalone images at
-`work/lab-images/gnome-provisioned-20261016.qcow2` and
-`work/lab-images/kde-provisioned-20261016.qcow2`. Use these for new provisioned
-runs. Their private sidecar manifests record the source chain, image SHA256,
-integrity check and successful guest-visible comparison. The migration receipts
+The provisioned GNOME/KDE goldens are the standalone images
+`gnome-provisioned-20261016` and `kde-provisioned-20261016`. Their host paths
+and hashes are in the [golden inventory](remote-golden-images.md#current-inventory).
+Use these for new provisioned runs. A workstation fallback first restores the
+one it needs to `work/lab-images/<name>.qcow2`. Their private sidecar manifests
+record the source chain, image SHA256, integrity check and successful guest-visible comparison. The migration receipts
 live under `work/housekeeping/standalone-goldens-20261016/`. Historical run
 metadata retains the old paths and hashes; do not rewrite it to name the new
 goldens. Never resume a retired run directory.
@@ -248,8 +252,11 @@ checksums and final notice auditing.
 The guest bootstrap grants the narrowly scoped `/usr/bin/apt-get` rule used by `install`; it never changes host privileges. Package dependency resolution uses distro repositories.
 
 After inventory and clean golden image shutdown, choose a new run path and
-verify that it does not exist. The example consumes the existing verified base;
-it never boots that base directly. Verify the profile's reserved SSH/VNC ports
+verify that it does not exist. On a builder, replace the `--golden` path with
+that host's inventory path. On the workstation,
+[restore `cinnamon-x11`](remote-golden-images.md#restore-to-the-workstation)
+first. The example consumes the existing verified base; it never boots that
+base directly. Verify the profile's reserved SSH/VNC ports
 are free on the actual host before launching:
 
 ```sh
