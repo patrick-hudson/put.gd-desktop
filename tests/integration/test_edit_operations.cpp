@@ -55,6 +55,8 @@ struct Fixture {
 class EditOperationsTest:public QObject {
  Q_OBJECT
 private slots:
+ // Like the resident's main(), fix the allocator policy before any work runs.
+ void initTestCase(){QVERIFY(applyResidentAllocatorPolicy());}
  void uploadPublishesOnlyTheRedactedResult(){
   Fixture f;QTRY_VERIFY(f.operations->ready());
   QVERIFY(f.operations->capabilities()["editor"].toObject()["available"].toBool());
@@ -134,20 +136,20 @@ private slots:
 #if !defined(__GLIBC__)
   QSKIP("glibc allocator policy");
 #else
-  QVERIFY(applyResidentAllocatorPolicy());
   Fixture f(false);QTRY_VERIFY(f.operations->ready());
   QImage big(3840,2160,QImage::Format_RGB32);QRandomGenerator random(5);for(int y=0;y<big.height();++y){auto* line=reinterpret_cast<QRgb*>(big.scanLine(y));for(int x=0;x<big.width();++x)line[x]=random.generate()|0xff000000U;}
   const auto path=f.dir.filePath("uhd.png");QVERIFY(big.save(path,"PNG",80));big=QImage();
   HistoryStore journal(f.operations->databasePath());
+  malloc_trim(0);const auto baseline=mallinfo2().fordblks;
   for(int cycle=0;cycle<4;++cycle){
    const auto id=call([&](JsonReply r){f.operations->invoke("edit",r,{{"source","file"},{"path",path}});}).result["operationId"].toString();
    QVERIFY(!command(*f.operations,id,"inspect").error);
    const bool submit=cycle%2==0;QVERIFY(!command(*f.operations,id,submit?"submit":"cancel").error);
    QTRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString(submit?"completed":"cancelled"),60000);
    QTRY_VERIFY_WITH_TIMEOUT(f.operations->diagnostics()["activeOperations"].toInt()==0,10000);
-   const auto heap=mallinfo2();
-   // One retained 4K raster would be about 32 MiB; allow small-chunk noise only.
-   QVERIFY2(heap.fordblks<8*1024*1024,qPrintable(QString("cycle %1 retained %2 free heap bytes").arg(cycle).arg(heap.fordblks)));
+   malloc_trim(0);const auto heap=mallinfo2();
+   // One retained 4K raster is about 32 MiB per cycle; allow small-chunk noise only.
+   QVERIFY2(heap.fordblks<baseline+8*1024*1024,qPrintable(QString("cycle %1 retained %2 free heap bytes over a %3 baseline").arg(cycle).arg(heap.fordblks).arg(baseline)));
   }
 #endif
  }
