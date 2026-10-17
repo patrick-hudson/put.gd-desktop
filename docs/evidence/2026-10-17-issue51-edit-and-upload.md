@@ -9,8 +9,9 @@ No Windows behavior, release-package or full physical-matrix claim is made.
 ## Automated
 
 The full Dev suite passed 63/63 on the Mint 22.3 workstation (Qt 6.4.2) and
-63/63 on native Kubuntu 26.04.1 (Qt 6.10.2). Earlier candidates on this branch
-also passed 64/64 on Debian 13 (`216b132`). Fedora 44 (`909f8ee`) passed 63/64;
+63/63 on native Kubuntu 26.04.1 (Qt 6.10.2) and 64/64 on native Debian 13
+(Qt 6.8.2, with LayerShellQt). Fedora 44 (`909f8ee`, an earlier candidate)
+passed 63/64;
 the one failure, `cli_integration`, fails the same way on builds without the
 editor.
 
@@ -74,9 +75,25 @@ and the target's production `putgd-cli`. It covers:
 - submit, with the artifact hash equal to the saved copy
 - cancel, which stores nothing
 
-Results: 13/13 on Cinnamon and 13/13 on the physical Kubuntu 26.04.1 Plasma
-6.6.6 X11 desktop at 1920x1080, both on `9dd61d3`. The physical run used the
-uinput agent and VNC frames through `tools/lab/physical.py`.
+Results on `9dd61d3`: 13/13 on each of the following.
+
+- Cinnamon (VM)
+- The physical Kubuntu 26.04.1 Plasma 6.6.6 X11 desktop at 1920x1080
+- The physical Debian 13 Plasma 6.3.6 Wayland desktop (KWin 6.3.6, Qt 6.8.2)
+  at 1920x1080
+
+The physical runs used the uinput agent and VNC frames through
+`tools/lab/physical.py`. On Debian Wayland the agent's absolute pointer input
+was first checked by hovering a panel icon and seeing its tooltip.
+
+On physical Debian, region-sourced editing opened correctly, but its graphical
+check stopped at `editorImageLocatedUniquely`. The captured pixels contain the
+selector's frame and dimmed edge. A plain region capture in the same session
+shows the same frame, so this is the selection-outline bug of
+[issue #54](https://github.com/patrick-hudson/put.gd-desktop/issues/54) on a
+physical Plasma/Wayland compositor, not an editor defect. Result copying there
+reports `clipboard_unavailable`: KWin 6.3 does not offer `ext-data-control-v1`,
+and the KDE adapter targets Plasma 6.6 ([KDE notes](../desktops/kde.md)).
 
 After the physical run the idle resident showed 118 MiB RSS but 30 MiB PSS
 and 14 MiB private dirty. About 94 MiB is shared clean library pages: Plasma's
@@ -86,12 +103,11 @@ platform theme loads Qt Quick and the Mesa/LLVM GPU driver into the resident.
 
 ## Not covered
 
-- Physical Debian 13 Plasma/Wayland and Fedora 44 GNOME desktops.
-- Region-sourced editing on KDE/X11. That is blocked by the outline bug in
-  [issue #54](https://github.com/patrick-hudson/put.gd-desktop/issues/54); file
-  and desktop sources work there.
+- The physical Fedora 44 GNOME desktop, and physical-host memory gates.
+- Region-sourced editing on physical KDE (X11 and Debian Wayland). It is
+  blocked by the outline bug in issue #54; file and desktop sources work there.
 - Windows, which is portable code only, and live remote uploads. All runs used
   local output.
 
 Private evidence: `work/verification/2026-10-17-editor-{cinnamon,gnome-vm,kde-vm}/gate-9dd61d3/`
-and `.../mcp-9dd61d3/`, plus `work/verification/2026-10-17-editor-kubuntu-physical/mcp-9dd61d3/`.
+and `.../mcp-9dd61d3/`, plus `work/verification/2026-10-17-editor-{kubuntu,debian}-physical/`.
