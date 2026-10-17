@@ -1,5 +1,13 @@
 # Lab storage and retention
 
+Prefer the [remote Fedora/Debian hosts](remote-builders.md), then fall back to
+local VMs with a recorded reason. Apply the checks below separately on every
+actual build/VM host. `storage_preflight.py --host-path` measures the machine
+running the controller, not an SSH builder elsewhere. Run the controller on the
+remote QEMU host for its host/guest checks and export the receipt. Include copied
+goldens, transfer staging, overlays, build outputs and retained evidence in that
+host's capacity budget; workstation free space does not establish remote capacity.
+
 Before a build or graphical campaign, record available space on the host and
 each guest. Require at least 10 GiB host reserve, 2 GiB guest reserve, and more than 1,024
 free inodes. Add the anticipated build size to the reserve before starting a

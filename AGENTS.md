@@ -5,6 +5,31 @@ The minimum Qt API is 6.4.2. Keep Qt dynamically linked to distro libraries.
 Use standard system development packages; ask the user to install missing packages
 when administrator authentication is required. Do not assemble a substitute toolchain.
 
+Prefer Patrick's Fedora 44 (`192.168.68.70`) and Debian 13 (`192.168.68.69`)
+physical build/test servers for builds, VM hosting and graphical acceptance.
+Their existing GNOME and Plasma sessions are graphical acceptance targets too:
+run and verify the app directly on either physical desktop, visible on its host
+wall tile, with saved visuals and exact host/session/source/build identities.
+Use local workstation VMs as a fallback when those hosts cannot run the required
+profile; record the reason. Connection pins, host selection, visual evidence and
+golden-image transfer rules are in `docs/remote-builders.md`. On these two servers,
+the user authorizes dependency/tool setup and testing with passwordless
+`sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
+on the workstation. Verify host capacity, KVM and display access before VM runs;
+host preference does not change Cinnamon-first ordering or required guest versions.
+Find and copy golden images using `docs/remote-golden-images.md`, and expose
+each remote VM on the wall using `docs/remote-vm-displays.md`. Provision new remote
+lab VM goldens with guest login `lab` / `putgd-lab`, verifying login visibly.
+The user explicitly approved documenting this default disposable-guest login
+as the exception to the no-credentials-in-source rule. Preserve immutable sources.
+
+Required Linux testing covers Mint, Ubuntu, Kubuntu, Fedora and Debian, with
+Cinnamon plus GNOME/KDE and real X11/Wayland coverage as mapped in
+`docs/acceptance-matrix.md`. Prefer the build servers, using their native desktops
+and new VMs as needed; fall back locally with a recorded reason. Run any release
+gate requiring physical/native hardware on the appropriate physical machine.
+Provision missing profiles; never substitute VM or XWayland evidence for such gates.
+
 The implementation contract is in GitHub issue #1 and
 `docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md` when present locally.
 Preserve its user-approved choices and explicit non-goals. Implement in dependency order.
@@ -51,11 +76,16 @@ Full U9 acceptance still requires current-version real Cinnamon evidence and the
 complete fresh-agent walkthrough gates recorded in `docs/verification.md`;
 headless parity or an earlier partial walkthrough alone cannot establish those gates.
 
-Keep graphical lab interactions visible through each VM’s localhost VNC listener.
+Keep graphical lab interactions visible through each VM or physical desktop's
+localhost VNC listener and the workstation's SSH tunnels.
 The user watches the live display wall at http://127.0.0.1:8765/; do not disable or
 redirect guest display output during graphical tests. Distinguish SSH build/log work
 from graphical acceptance, and restore an idle/locked test session through its
 visible console before using it as acceptance evidence.
+Capture visual results for every graphical acceptance run, including failures,
+and retain screenshots or recordings with the tested host/session, source/build
+identity and functional artifacts. A live tile or SSH log alone is not a saved
+visual result. Never capture a revealed credential or protected login value.
 
 Before launching any isolated Linux test, calculate the UTF-8 byte length of
 every resolved Unix socket path, including the harness-added runtime directory
