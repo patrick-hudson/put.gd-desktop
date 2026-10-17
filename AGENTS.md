@@ -18,7 +18,9 @@ the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
 host preference does not change Cinnamon-first ordering or required guest versions.
-Find and copy golden images using `docs/remote-golden-images.md`, and expose
+Linux goldens and Windows bases are not kept on the workstation. They live on the
+Fedora and Debian builders and in a private S3 bucket. Find, copy and restore
+them using `docs/remote-golden-images.md`, and expose
 each remote VM on the wall using `docs/remote-vm-displays.md`. Provision new remote
 lab VM goldens with guest login `lab` / `putgd-lab`, verifying login visibly.
 The user explicitly approved documenting this default disposable-guest login
@@ -122,7 +124,9 @@ Apply the same immutable-base rule to provisioned Linux golden disks under
 `work/lab-images/`: never boot or modify them directly, and never move, overwrite
 or delete a disk referenced by overlays. Linux tests use fresh disks under
 `work/lab-runs/` through `tools/lab/lab.py`; provision a new golden disk for updates.
-See `docs/vm-lab.md`.
+See `docs/vm-lab.md`. Goldens and Windows bases each have Fedora, Debian and S3
+copies. Never delete any copy without Patrick's approval and two other copies
+verified against the same SHA-256.
 
 Retire completed disposable VM overlays after their evidence is exported and
 verified. Normal successful `tools/lab/lab.py run` calls do this automatically;

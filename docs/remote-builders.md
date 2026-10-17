@@ -110,7 +110,7 @@ retain the existing independent QMP, saved-artifact and native-paste witnesses.
 
 Use [remote VM display tunnels](remote-vm-displays.md) to add each builder-hosted
 QEMU guest to the existing wall. Use [golden image discovery and copying](remote-golden-images.md)
-for exact workstation paths, verified transfers and the approved shared guest login.
+for current golden locations, restores, verified transfers and the approved shared guest login.
 
 ## VM preflight and golden-image copies
 
@@ -122,13 +122,16 @@ with the authorized noninteractive sudo. Do not count TCG as KVM acceptance or
 start a hidden guest because display setup is incomplete. If the host cannot
 meet the profile, record the blocked gate and use a suitable local VM fallback.
 
-Golden-image copying is authorized; it is not a request to move or retire the
-originals. For each transfer:
+Golden-image copying is authorized. The workstation originals were retired on
+2026-10-17, after Patrick approved moving them to verified Fedora, Debian and S3
+copies. Those copies are now the immutable sources. Copying one is not a request
+to move or retire it. For each transfer:
 
 1. Inventory the source and its complete backing chain. Never copy a running
    guest's writable disk as a golden. Prefer the existing standalone provisioned
-   goldens documented in [VM lab](vm-lab.md). If flattening is needed, produce a
-   new standalone image and verify it; never rebase or alter the original chain.
+   goldens in the [golden inventory](remote-golden-images.md#current-inventory).
+   If flattening is needed, produce a new standalone image and verify it; never
+   rebase or alter the original chain.
 2. Record the source image SHA-256, virtual size and sidecar/provisioning identity.
    Check remote capacity for the copy, staging and future overlays before transfer.
 3. Copy to a fresh private directory under
