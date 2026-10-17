@@ -11,11 +11,20 @@ desktop acceptance beyond the evidence listed at the end.
 1. Invoke **Capture region & edit** from its global shortcut, the tray menu or the main
    window rail. By default the existing native region selector runs first; drag
    the area to edit. Escape cancels without creating an editor. To edit the
-   clipboard image or an existing PNG/JPEG instead, use the arrow on the rail
-   button (**Edit clipboard image**, **Edit an image file…**) or the tray's
-   **Edit image** submenu (**From clipboard**, **From a file…**). The tray's
-   file entry opens the main window's file picker, because the resident shows no
-   dialogs of its own.
+   clipboard image or an existing PNG/JPEG instead:
+   - History's **Edit image** menu (**Edit clipboard image**, **Edit an image
+     file…**) is the visible entry point.
+   - On the rail, right-click **Capture region & edit** for the same menu, or
+     drop one local PNG or JPEG file on the button. The rail keeps five
+     matching buttons, so these are accelerators, not the only route.
+   - The tray's **Edit image** submenu (**From clipboard**, **From a file…**)
+     works too. Its file entry opens the main window's file picker, because the
+     resident shows no dialogs of its own.
+   - **Edit again** in a History item's inspector or **⋯** menu opens that item's
+     retained local copy. It needs **Keep a local copy** to have been on when
+     the item was captured. The 256 px history preview is never edited, and
+     put.gd does not download an upload back from its destination. The result
+     is a new history item; the original is left unchanged.
 2. The editor opens with the selection fitted to the window. The result goes
    to the output configured for the edit action when the edit started.
 3. Edit, then press **Upload** or Ctrl+Enter. Plain Enter never uploads: it

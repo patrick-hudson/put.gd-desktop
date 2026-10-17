@@ -118,6 +118,8 @@ QImage symbol(const QString& name,const QColor& color,int scale) {
  } else if(name=="highlight") {
   fill(secondary);rounded(2,19,20,3,1);
   fill(color);QPainterPath marker;marker.moveTo(14,2);marker.lineTo(21,9);marker.lineTo(12,18);marker.lineTo(7,18);marker.lineTo(5,16);marker.lineTo(5,11);marker.closeSubpath();p.drawPath(marker);
+ } else if(name=="chevron-down") {
+  line(color,2.5);QPainterPath chevron;chevron.moveTo(6,9);chevron.lineTo(12,15);chevron.lineTo(18,9);p.drawPath(chevron);
  } else if(name=="text") {
   fill(secondary);rounded(2,2,20,20,3);
   line(color,3);p.drawLine(7,7,17,7);p.drawLine(12,7,12,18);

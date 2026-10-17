@@ -21,7 +21,7 @@ Local image results copy image MIME, text results copy text, and file results us
 
 ## Edit before uploading
 
-Choose **Capture region & edit** from the rail or tray, or assign it a key in **Settings → Shortcuts** (it has no default key). Drag the region to edit; Escape cancels. In the editor:
+Choose **Capture region & edit** from the rail or tray, or assign it a key in **Settings → Shortcuts** (it has no default key). Drag the region to edit; Escape cancels. To edit something you already have, use **Edit image** at the top of History (the clipboard image or a PNG/JPEG file), right-click the rail button, or drop a PNG or JPEG on it. **Edit again** on a History item reopens its local copy when **Keep a local copy** was on; the edited result is uploaded as a new item. In the editor:
 
 - **Redact** (X) covers an area with opaque black and removes those pixels from the uploaded image. Use it for passwords, tokens, names and other private information.
 - **Blur** (B) is only a visual effect; it can leave enough detail to guess text. Prefer Redact for anything private.
