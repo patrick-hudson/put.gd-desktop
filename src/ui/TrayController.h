@@ -29,6 +29,9 @@ public:
  void showHistory();
  void showActivity();
  void notifyFailure(const Error&);
+ // Completion toast text: the operation's own error when it failed outright,
+ // otherwise the clipboard outcome.
+ static QString completionMessage(const QJsonObject& operation,bool hasLink);
  void invokeShortcut(const QString&);
 
 signals:

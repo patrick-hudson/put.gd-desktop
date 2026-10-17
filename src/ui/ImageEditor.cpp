@@ -199,7 +199,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const auto image=reader.read();if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
-   window=std::make_unique<EditorWindow>(*document,destination);
+   window=std::make_unique<EditorWindow>(*document);
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    deadline.stop();

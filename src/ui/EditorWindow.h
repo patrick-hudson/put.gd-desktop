@@ -10,7 +10,7 @@ namespace putgd {
 class EditorWindow final:public QWidget {
  Q_OBJECT
 public:
- EditorWindow(editor::EditDocument&,const QString& destination,QWidget* parent=nullptr);
+ EditorWindow(editor::EditDocument&,QWidget* parent=nullptr);
  editor::EditorCanvas& canvas() {return *canvas_;}
  void setBusy(const QString& message);
  void setFailure(const QString& message);

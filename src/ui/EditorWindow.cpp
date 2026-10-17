@@ -44,7 +44,7 @@ QFrame* separator(QWidget* parent){auto* line=new QFrame(parent);VisualStyle::ro
 QWidget* row(QWidget* parent,QHBoxLayout*& layout){auto* widget=new QWidget(parent);layout=new QHBoxLayout(widget);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);return widget;}
 }
 
-EditorWindow::EditorWindow(editor::EditDocument& doc,const QString& destination,QWidget* parent):QWidget(parent),doc_(doc){
+EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(parent),doc_(doc){
  setObjectName("putgdWindow");setWindowTitle("Edit & upload — put.gd");setWindowIcon(VisualStyle::icon("brand"));
  setAttribute(Qt::WA_DeleteOnClose,false);
  auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
@@ -106,7 +106,6 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,const QString& destination,
 
  auto* footer=new QWidget(this);footer->setObjectName("editorFooter");footer->setAttribute(Qt::WA_StyledBackground);
  auto* actions=new QHBoxLayout(footer);actions->setContentsMargins(12,10,12,10);actions->setSpacing(8);
- auto* target=new QLabel(destination,footer);VisualStyle::role(target,"secondary");target->setToolTip("Output chosen when this edit started");actions->addWidget(target);
  message_=new QLabel(footer);message_->hide();actions->addWidget(message_,1);
  actions->addStretch(1);
  save_=new QPushButton("Save a copy…",footer);save_->setIcon(VisualStyle::icon("save",iconColor));save_->setToolTip("Save the edited image to a file (Ctrl+S)");actions->addWidget(save_);

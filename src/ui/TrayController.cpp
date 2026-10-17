@@ -190,11 +190,15 @@ TrayController::TrayController(OperationService& operations,
    }
 #endif
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("put.gd — " + state,
-      "Clipboard: " + operation["copyStatus"].toString() + (link.isEmpty()?". Open recent activity for per-item results.":". Click to open in browser."),
-      state != "completed",link);
+    guard->notifyMessage("put.gd — " + state,completionMessage(operation,!link.isEmpty()),state != "completed",link);
   });
  });
+}
+
+QString TrayController::completionMessage(const QJsonObject& operation,bool hasLink) {
+ const auto error=operation["error"].toObject();
+ if(operation["items"].toArray().isEmpty()&&meaningfulError(error)&&!error["message"].toString().isEmpty())return error["message"].toString();
+ return "Clipboard: " + operation["copyStatus"].toString() + (hasLink?". Click to open in browser.":". Open recent activity for per-item results.");
 }
 
 TrayController::~TrayController() {

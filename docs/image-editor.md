@@ -11,9 +11,8 @@ desktop acceptance beyond the evidence listed at the end.
 1. Invoke **Edit & upload** from its global shortcut, the tray menu or the main
    window rail. By default the existing native region selector runs first; drag
    the area to edit. Escape cancels without creating an editor.
-2. The editor opens with the selection fitted to the window. The bottom bar
-   names the output chosen when the edit started, for example
-   *Upload to Project archive* or *Save to the local archive*.
+2. The editor opens with the selection fitted to the window. The result goes
+   to the output configured for Edit & upload when the edit started.
 3. Edit, then press **Upload** or Ctrl+Enter. Plain Enter never uploads: it
    finishes text entry or applies a pending crop.
 4. Only the sanitized PNG becomes an artifact, history preview, local archive
@@ -82,8 +81,9 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
 
 1. `bootstrap`: role, nonce, generation, build, input (`input.img`) and output descriptors
    (path, device, inode, bytes, sha256), limits (imagePixels, outputBytes) and a
-   destination label. Files are opened through a pinned directory descriptor with
-   `O_NOFOLLOW`, identity and digest checks.
+   destination label that `editor.inspect` reports to agents. Files are opened
+   through a pinned directory descriptor with `O_NOFOLLOW`, identity and digest
+   checks.
 2. `ready` with the matching build, then `activate`; the helper decodes with an
    allocation limit and shows the window, then sends `editing`.
 3. Agent commands: `command` (requestId, command, params) → `commandResult`

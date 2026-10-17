@@ -102,7 +102,7 @@ int main(int argc,char** argv){
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{61,348,180,28}}}}},
    QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
   if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
-  EditorWindow editor(doc,"Upload to Project archive");editor.resize(1180,820);editor.show();
+  EditorWindow editor(doc);editor.resize(1180,820);editor.show();
   auto grab=[&](const QString& name){QTest::qWait(450);app.processEvents();const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
   editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
   editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
