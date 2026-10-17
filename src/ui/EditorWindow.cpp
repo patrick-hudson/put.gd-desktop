@@ -115,6 +115,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,const QString& destination,
  root->addWidget(footer);
 
  RedesignTheme::apply(*this);setStyleSheet(styleSheet()+QString::fromLatin1(editorStyle));
+ // Every option row is still visible here. Reserve the tallest height so tool and
+ // selection changes never resize, refit and shift the canvas under the pointer.
+ options->ensurePolished();options->setFixedHeight(options->sizeHint().height());
 
  connect(tools_,&QButtonGroup::idClicked,this,[this](int id){selectTool(Tool(id));});
  connect(canvas_,&editor::EditorCanvas::toolRequested,this,[this](Tool tool){if(auto* button=toolButtons_.value(int(tool)))button->setChecked(true);refresh();});

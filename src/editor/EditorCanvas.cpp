@@ -80,7 +80,11 @@ void EditorCanvas::clampOffset(){
  auto axis=[](double offset,double content,double room){return content<=room?(room-content)/2:std::clamp(offset,room-content-48,48.0);};
  offset_=QPointF(axis(offset_.x(),w,width()),axis(offset_.y(),h,height()));
 }
-void EditorCanvas::resizeEvent(QResizeEvent*){if(fitted_)fit();else{clampOffset();update();}}
+void EditorCanvas::resizeEvent(QResizeEvent*){
+ // Never move the image while a gesture maps pointer positions through it.
+ if(drag_!=Drag::None){update();return;}
+ if(fitted_)fit();else{clampOffset();update();}
+}
 
 Shape::Kind EditorCanvas::kindFor(Tool tool) const {
  switch(tool){case Tool::Redact:return Shape::Kind::Redact;case Tool::Blur:return Shape::Kind::Blur;case Tool::Arrow:return Shape::Kind::Arrow;

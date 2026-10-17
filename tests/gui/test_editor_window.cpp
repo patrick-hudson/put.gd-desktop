@@ -34,6 +34,19 @@ private slots:
   QTest::keyClick(&window,Qt::Key_Z,Qt::ControlModifier);QTest::keyClick(&window,Qt::Key_Y,Qt::ControlModifier);QCOMPARE(doc.shapes().size(),1);
   QTest::keyClick(&window,Qt::Key_Return,Qt::ControlModifier);QCOMPARE(uploads.size(),1);
  }
+ void canvasGeometryIsStableAcrossToolsAndSelection(){
+  // Cinnamon acceptance found the options row collapsing mid-drag, refitting the image under the pointer.
+  EditDocument doc(canvasImage());EditorWindow window(doc,"Upload");window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  const auto geometry=window.canvas().geometry();
+  for(auto tool:{Tool::Select,Tool::Redact,Tool::Blur,Tool::Crop,Tool::Arrow,Tool::Rectangle,Tool::Highlight,Tool::Text,Tool::Redact}){window.selectTool(tool);QApplication::processEvents();QCOMPARE(window.canvas().geometry(),geometry);}
+  auto& canvas=window.canvas();const QPoint start=canvas.rect().center()-QPoint(60,30),end=canvas.rect().center()+QPoint(60,30);
+  QTest::mousePress(&canvas,Qt::LeftButton,{},start);QApplication::processEvents();QCOMPARE(canvas.geometry(),geometry);
+  QMouseEvent move(QEvent::MouseMove,QPointF(end),canvas.mapToGlobal(QPointF(end)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},end);QApplication::processEvents();QCOMPARE(canvas.geometry(),geometry);
+  QCOMPARE(doc.shapes().size(),1);const auto rect=doc.shapes().first().rect;
+  // 400x260 image fitted at 100% and centered: the drag maps to a 120x60 box around the image center.
+  QVERIFY2(qAbs(rect.left()-140)<=1&&qAbs(rect.top()-100)<=1&&qAbs(rect.right()+1-260)<=1&&qAbs(rect.bottom()+1-160)<=1,qPrintable(QString("%1,%2 %3x%4").arg(rect.x()).arg(rect.y()).arg(rect.width()).arg(rect.height())));
+ }
  void agentEditsRefreshTheWindowAndBusyStateBlocksActions(){
   EditDocument doc(canvasImage());EditorWindow window(doc,"Save to the local archive");window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
   add(doc,{{"kind","redact"},{"rect",QJsonArray{10,10,50,20}}});window.documentEdited();
