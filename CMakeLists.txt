@@ -191,6 +191,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_custom_command(OUTPUT "${protocol_dir}/ext-data-control-v1-protocol.c"
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${data_control_protocol}" "${protocol_dir}/ext-data-control-v1-protocol.c"
     DEPENDS "${data_control_protocol}" VERBATIM)
+  set(wlr_data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml")
+  add_custom_command(OUTPUT "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h"
+    COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${wlr_data_control_protocol}" "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h"
+    DEPENDS "${wlr_data_control_protocol}" VERBATIM)
+  add_custom_command(OUTPUT "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
+    COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${wlr_data_control_protocol}" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
+    DEPENDS "${wlr_data_control_protocol}" VERBATIM)
   pkg_get_variable(PUTGD_WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
   if(NOT PUTGD_WAYLAND_PROTOCOLS_DIR)
     message(FATAL_ERROR "The installed wayland-protocols development package is required")
@@ -210,6 +217,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     src/platform/kde/KdeKeyboardMap.cpp src/platform/kde/DataControlClipboard.cpp
     src/platform/kde/KdeRegionOverlay.cpp src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KdeOutputs.cpp
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
+    "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
   target_include_directories(putgd_kde PRIVATE "${protocol_dir}")
   target_link_libraries(putgd_kde PUBLIC putgd_app putgd_kde_region_process Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
@@ -360,8 +368,14 @@ if(BUILD_TESTING)
     add_custom_command(OUTPUT "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
       COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
       DEPENDS "${xdg_output_protocol}" VERBATIM)
+    foreach(protocol_name ext-data-control-v1 wlr-data-control-unstable-v1)
+      add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-server-protocol.h"
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" "${protocol_dir}/${protocol_name}-server-protocol.h"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" VERBATIM)
+    endforeach()
     add_executable(test_kde_ownership tests/integration/test_kde_ownership.cpp
-      "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h")
+      "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
+      "${protocol_dir}/ext-data-control-v1-server-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-server-protocol.h")
     target_include_directories(test_kde_ownership PRIVATE "${protocol_dir}")
     target_link_libraries(test_kde_ownership PRIVATE putgd_kde Qt6::Test PkgConfig::PUTGD_WAYLAND_TEST_SERVER)
     add_test(NAME kde_ownership_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kde_ownership>)
