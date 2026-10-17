@@ -74,9 +74,15 @@ and the target's production `putgd-cli`. It covers:
 - submit, with the artifact hash equal to the saved copy
 - cancel, which stores nothing
 
-Results: 13/13 on Cinnamon (`9dd61d3`). Also 13/13 on the physical Kubuntu
-26.04.1 Plasma 6.6.6 X11 desktop at 1920x1080, on `7a26092`, the candidate
-before the footer-label change.
+Results: 13/13 on Cinnamon and 13/13 on the physical Kubuntu 26.04.1 Plasma
+6.6.6 X11 desktop at 1920x1080, both on `9dd61d3`. The physical run used the
+uinput agent and VNC frames through `tools/lab/physical.py`.
+
+After the physical run the idle resident showed 118 MiB RSS but 30 MiB PSS
+and 14 MiB private dirty. About 94 MiB is shared clean library pages: Plasma's
+platform theme loads Qt Quick and the Mesa/LLVM GPU driver into the resident.
+2026-10-08 evidence shows the same mapping before the editor existed, and no
+`putgd-ui` helper was left running.
 
 ## Not covered
 
@@ -88,4 +94,4 @@ before the footer-label change.
   local output.
 
 Private evidence: `work/verification/2026-10-17-editor-{cinnamon,gnome-vm,kde-vm}/gate-9dd61d3/`
-and `.../mcp-9dd61d3/`, plus `work/verification/2026-10-17-editor-kubuntu-physical/`.
+and `.../mcp-9dd61d3/`, plus `work/verification/2026-10-17-editor-kubuntu-physical/mcp-9dd61d3/`.
