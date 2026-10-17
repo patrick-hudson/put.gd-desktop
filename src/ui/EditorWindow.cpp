@@ -163,10 +163,15 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,const QString& destination,
  connect(save_,&QPushButton::clicked,this,&EditorWindow::saveCopy);
  connect(cancel_,&QPushButton::clicked,this,&EditorWindow::requestCancel);
 
- const auto available=screen()?screen()->availableGeometry().size():QSize(1280,800);
- const QSize wanted(doc_.size().width()+64,doc_.size().height()+150);
- resize(QSize(std::clamp(wanted.width(),900,int(available.width()*0.9)),std::clamp(wanted.height(),620,int(available.height()*0.9))));
+ resize(initialSize(doc_.size(),screen()?screen()->availableGeometry().size():QSize(1280,800)));
  selectTool(Tool::Redact);
+}
+
+QSize EditorWindow::initialSize(const QSize& image,const QSize& available){
+ // Prefer at least 900x620, but never exceed 90% of a smaller screen.
+ const QSize wanted(image.width()+64,image.height()+150);
+ const int maximumWidth=std::max(320,int(available.width()*0.9)),maximumHeight=std::max(240,int(available.height()*0.9));
+ return {std::min(std::max(wanted.width(),900),maximumWidth),std::min(std::max(wanted.height(),620),maximumHeight)};
 }
 
 void EditorWindow::selectTool(Tool tool){

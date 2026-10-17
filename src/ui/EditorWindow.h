@@ -20,6 +20,7 @@ public:
  void selectTool(editor::Tool);
  // Agent commands change the document directly; refresh selection, tiles and controls.
  void documentEdited();
+ static QSize initialSize(const QSize& image,const QSize& availableScreen);
 signals:
  void uploadRequested();
  void cancelRequested();

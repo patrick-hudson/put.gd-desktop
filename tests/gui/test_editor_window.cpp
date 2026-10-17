@@ -34,6 +34,13 @@ private slots:
   QTest::keyClick(&window,Qt::Key_Z,Qt::ControlModifier);QTest::keyClick(&window,Qt::Key_Y,Qt::ControlModifier);QCOMPARE(doc.shapes().size(),1);
   QTest::keyClick(&window,Qt::Key_Return,Qt::ControlModifier);QCOMPARE(uploads.size(),1);
  }
+ void initialSizeFitsSmallScreens(){
+  // Fedora's assertion-enabled libstdc++ trapped an inverted clamp on screens under 1000 px.
+  QCOMPARE(EditorWindow::initialSize({640,320},{800,600}),QSize(720,540));
+  QCOMPARE(EditorWindow::initialSize({6000,4000},{1920,1080}),QSize(1728,972));
+  QCOMPARE(EditorWindow::initialSize({100,80},{2560,1440}),QSize(900,620));
+  QCOMPARE(EditorWindow::initialSize({100,80},{200,100}),QSize(320,240));
+ }
  void canvasGeometryIsStableAcrossToolsAndSelection(){
   // Cinnamon acceptance found the options row collapsing mid-drag, refitting the image under the pointer.
   EditDocument doc(canvasImage());EditorWindow window(doc,"Upload");window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
