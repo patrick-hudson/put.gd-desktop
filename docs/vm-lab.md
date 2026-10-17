@@ -433,13 +433,23 @@ with the region scenario, so the resident and the clipboard fixture are live:
 | `tools/lab/mcp_editor_e2e.py EVIDENCE` | Official MCP client through `putgd-mcp` and the target's production `putgd-cli` (a small wrapper running it over pinned SSH): all editor tools, preview image, save copy, submit and cancel. |
 | `tools/lab/guest_reboot.py RUN` | Reboot through the session manager when a session-loaded integration such as the GNOME extension must reload; verifies the boot time changed. |
 
-`tools/lab/physical.py HOSTCFG.json install DEB|region|script DRIVER` runs the
+`tools/lab/physical.py HOSTCFG.json install DEB|RPM|region|script DRIVER` runs the
 same runner and drivers on a physical desktop. It swaps the runner's shell,
 copy and screenshot helpers for pinned SSH, `scp` and the host's loopback VNC
 tile (`tools/lab/rfb.py`, security type None only), reads input from the
 forwarded agent above, and labels results `graphical-physical`. Keep the host
 config and its run directory under `work/` or the scratchpad; they name only
 key and known-hosts paths, never secrets.
+
+On Fedora, `install` takes the RPM: it removes any installed `putgd` with dnf
+first, because dnf will not reinstall or downgrade a same-version development
+build. Verification extracts the RPM with `rpm2cpio`. A first install of the
+GNOME extension loads only after a fresh login. Physical runs also need:
+
+- Close put.gd windows left by earlier steps with `ui.quit`. On GNOME, a leftover
+  Settings window covered the fixture.
+- Keep the workstation wall's tile for the host view-only. With input enabled,
+  moving the mouse over it injects pointer events into the run.
 
 ## Evidence and gates
 

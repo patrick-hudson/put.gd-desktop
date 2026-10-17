@@ -24,7 +24,9 @@ The full Dev suite passed on every build host:
 | Debian 13 | 6.8.2, with LayerShellQt | 64/64 |
 
 An earlier candidate on this branch (`909f8ee`) passed 63/64 on Fedora 44. Its
-one failure, `cli_integration`, fails the same way on builds without the editor.
+one failure, `cli_integration`, also failed on builds without the editor. `cf13456`
+fixed it (see [Fedora](#fedora-44-gnome-physical-and-memory-fixes-cf13456-to-cf52883)),
+and Fedora 44 now passes 64/64.
 
 `kde_ownership_integration` now serves both data-control protocols from its
 fixture compositor. It proves wlr-only fallback, ext preference and result
@@ -182,12 +184,92 @@ driven with real input on the Cinnamon VM:
   editor, with the main window left in place.
 - The tray's **From a file…** opened the main window and the same chooser.
 
+## Follow-up: History entry points and Edit again (`ce865c4`, `5e55c2f`)
+
+The rail's arrow menu was removed. The rail is back to five matching buttons.
+Other sources moved:
+
+- History has an **Edit image** menu button.
+- The rail button has a right-click menu and accepts a dropped PNG or JPEG.
+- **Edit again** appears in a History item's inspector and **⋯** menu.
+
+Driven with real input on the Cinnamon VM:
+
+- On `cf52883`, right-clicking the rail button showed **Edit clipboard image**
+  and **Edit an image file…**.
+- The same run showed History's button reading "Edit imag" with the chevron
+  over the last letter. Its width was fixed before the theme set Mint's font.
+  `5e55c2f` sizes the button from its own row in the current font.
+- On `5e55c2f`:
+  - The region baseline passed.
+  - The full label and menu showed.
+  - The row menu's **Edit again** opened the 80×60 local copy of a region
+    capture.
+  - Dragging `drop-test.png` from Nemo onto the rail button showed the dashed
+    drop outline. Releasing it opened the 320×200 file in the editor.
+
+## Fedora 44 GNOME physical and memory fixes (`cf13456` to `cf52883`)
+
+Host: Fedora 44 Workstation, GNOME Shell 50.0 on Wayland, Qt 6.11.2, kernel
+6.19.10, physical 1920x1080 desktop. The RPM was installed with dnf, and the
+`putgd@put.gd` extension loaded after a fresh login. Input came from the uinput
+agent; a pointer move to (300, 200) landed exactly there.
+
+`cf13456` fixed the one failing suite, `cli_integration`. Fedora's Qt sends
+`qWarning` to journald when stderr is not a terminal, which hid the launcher's
+`ui_incompatible` and activation errors from scripts. The launcher now writes
+them to stderr.
+
+On `cf13456` the editor memory gate failed:
+
+- Full HD: 149.3 MiB against a 119.7 MiB target.
+- 4K: 195.0 MiB against 190.9 MiB.
+
+Attribution with the same commit on Fedora and on the physical Debian desktop
+found two causes:
+
+- **Image plugins.** A `QImageReader` with no format, and
+  `QImageReader::supportedMimeTypes()`, instantiate all 30 installed image
+  plugins (+12 MiB). A reader with `"png"` loads none.
+  - The GNOME adapter listed types on every acquisition, so the resident grew
+    about 17 MiB on its first capture.
+  - The editor decoded its input without a format.
+- **Retained heap.** One preview raised the editor from 95.9 to 132.0 MiB, all
+  heap, and the memory stayed until the editor closed. Debian's same step added
+  4 MiB. The editor process had no fixed mmap threshold.
+
+`cf52883` fixes both causes ([memory strategy](../memory-strategy.md)). Cinnamon
+ran first.
+
+| Desktop | Region | Editor | Memory peaks (MiB) | Resident baseline | MCP |
+| --- | --- | --- | --- | --- | --- |
+| Cinnamon / X11 (KVM) | pass | 23/23 | 90.3, 138.6, 290.7, 83.5, 82.3 | 28.9 MiB | — |
+| Fedora 44 GNOME (physical), before (`cf13456`) | 5/6 | 23/23 ×2 | 149.3, 195.0, 332.2, 119.9, 118.9 | 45.7 MiB | 13/13 |
+| Fedora 44 GNOME (physical), after (`cf52883`) | 5/6 | 23/23 ×2 | 116.3, 166.9, 319.1, 110.8, 110.2 | 36.4 MiB | 13/13 |
+
+Memory columns follow the earlier tables: Full HD, 4K, 24 MP, 100 edits and
+five open/cancel cycles. All `cf52883` cases are within target. On Cinnamon the
+4K peak fell from 158.2 to 138.6 MiB.
+
+Both Fedora region failures came from the desktop, not the selector:
+
+- On `cf13456`, the drag's end corner was pulled to (1838, 22). The workstation
+  wall had a viewer connected that could inject input.
+- On `cf52883`, the selection was correct, but a put.gd Settings window from an
+  earlier step covered the fixture.
+
+After `ui.quit` closed the views, three more runs on `cf52883` passed.
+
+Packages (SHA-256 prefixes):
+
+- Fedora RPMs: `ed00c38c` (`cf13456`) and `033714d7` (`cf52883`).
+- Cinnamon packages: `ebb267d9` (`cf52883`) and `c9268eb7` (`5e55c2f`).
+
 ## Not covered
 
-- The physical Fedora 44 GNOME desktop. Its display was being reconfigured
-  separately.
 - Windows, which is portable code only, and live remote uploads. All runs used
   local output.
 
-Private evidence: `work/verification/2026-10-17-editor-{cinnamon,gnome-vm,kde-vm,debian-physical,kubuntu-physical}/gate-329d736/`
-and `work/verification/2026-10-17-editor-cinnamon/mcp-329d736/`.
+Private evidence: `work/verification/2026-10-17-editor-{cinnamon,gnome-vm,kde-vm,debian-physical,kubuntu-physical}/gate-329d736/`,
+`work/verification/2026-10-17-editor-cinnamon/mcp-329d736/` and `ui-5e55c2f/`, and
+`work/verification/2026-10-17-editor-fedora-physical/gate-{cf13456-attempt1,cf13456,cf52883}/`.
