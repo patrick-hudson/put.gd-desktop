@@ -345,6 +345,12 @@ first appearance of a service preserves replies for notifications that started
 it. The generic Qt fallback has no per-notification click ID and does not promise
 browser activation.
 
+Browser activation uses `gio open` and the configured HTTP(S) URI handler.
+KDE’s generic `xdg-open` path can choose an image application for a remote PNG
+even when Firefox is the default browser. Keep the native desktop’s data/config
+search paths when launching an isolated test session; a missing browser desktop
+entry is a setup failure. See the [GIO URI launch contract](https://docs.gtk.org/gio/type_func.AppInfo.launch_default_for_uri.html).
+
 The private-bus regressions exercise production result handling and outgoing
 browser arguments with an isolated opener, plus notification-owner appearance:
 

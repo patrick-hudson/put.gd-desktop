@@ -483,9 +483,12 @@ private slots:
  void uploadToastOpensItsOwnLink() {
   QTemporaryDir directory; QVERIFY(directory.isValid());
   const auto output=directory.filePath("opened-links");
-  QFile opener(directory.filePath("xdg-open")); QVERIFY(opener.open(QIODevice::WriteOnly));
-  opener.write(("#!/bin/sh\nprintf '%s\\n' \"$1\" >> '"+output+"'\n").toUtf8()); opener.close();
+  QFile opener(directory.filePath("gio")); QVERIFY(opener.open(QIODevice::WriteOnly));
+  opener.write(("#!/bin/sh\n[ \"$#\" -eq 2 ] && [ \"$1\" = open ] || exit 1\nprintf '%s\\n' \"$2\" >> '"+output+"'\n").toUtf8()); opener.close();
   QVERIFY(opener.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  QFile genericOpener(directory.filePath("xdg-open"));QVERIFY(genericOpener.open(QIODevice::WriteOnly));
+  genericOpener.write("#!/bin/sh\nexit 1\n");genericOpener.close();
+  QVERIFY(genericOpener.setPermissions(QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
   const auto previousPath=qgetenv("PATH");auto restorePath=qScopeGuard([&]{qputenv("PATH",previousPath);});
   qputenv("PATH",directory.path().toUtf8()+":"+previousPath);
   auto opened=[&]{QFile file(output);if(!file.open(QIODevice::ReadOnly))return QStringList{};return QString::fromUtf8(file.readAll()).split('\n',Qt::SkipEmptyParts);};

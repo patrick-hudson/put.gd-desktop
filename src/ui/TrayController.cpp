@@ -299,7 +299,7 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut) {
 #ifdef Q_OS_LINUX
 void TrayController::openNotificationLink(const QUrl& link) {
  if(!link.isValid()||(link.scheme()!="https"&&link.scheme()!="http"))return;
- QProcess::startDetached("xdg-open",{link.toString(QUrl::FullyEncoded)});
+ QProcess::startDetached("gio",{"open",link.toString(QUrl::FullyEncoded)});
 }
 #endif
 void TrayController::notifyMessage(const QString& title, const QString& message, bool warning,const QUrl& link) {
