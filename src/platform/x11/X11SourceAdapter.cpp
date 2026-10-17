@@ -1,5 +1,6 @@
 #include "X11SourceAdapter.h"
 #include "CinnamonRegionCapture.h"
+#include "X11CompositorSettle.h"
 #include "NativeRegionOverlay.h"
 #include "ui/RegionOverlay.h"
 #include <QThread>
@@ -39,6 +40,8 @@ X11SourceAdapter::~X11SourceAdapter(){
  }
  const auto captures=findChildren<CinnamonRegionCapture*>(QString{},Qt::FindDirectChildrenOnly);
  for(auto* request:captures)delete request;
+ const auto settles=findChildren<X11CompositorSettle*>(QString{},Qt::FindDirectChildrenOnly);
+ for(auto* settle:settles)delete settle;
 }
 quint64 X11SourceAdapter::clipboardRevision()const{return clipboard_.revision();}
 QJsonObject X11SourceAdapter::capabilities()const {
@@ -108,7 +111,22 @@ void X11SourceAdapter::acquireSelectedRegionFrozen(const X11Target& target,const
 void X11SourceAdapter::captureSelected(const X11Target& target,QRectF selection,const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 generation){
  if(generation!=generation_){cb({{},{"cancelled","Capture acquisition cancelled",{}}});return;}
  Error error;if(!capture_.unchanged(target,error)){cb({{},error});return;}
- if(!capture_.cinnamonCompositor()){auto frames=capture_.frames(target,error);if(error){cb({{},error});return;}compose(std::move(frames),selection,limits,std::move(cb));return;}
+ if(!capture_.cinnamonCompositor()){
+  // The server has processed the selector's unmap, but a compositor presents
+  // that later. Read the root only once its repaints over the selection settle.
+  QGuiApplication::sync();
+  QList<QRect> areas;
+  for(const auto& frame:target.layout){const auto part=selection.intersected(frame.logicalRect);if(!part.isEmpty())areas.append(QRectF(QPointF(frame.nativeRect.topLeft())+(part.topLeft()-frame.logicalRect.topLeft())*frame.density,part.size()*frame.density).toAlignedRect());}
+  auto* settle=new X11CompositorSettle(areas,this);settles_.insert(settle);
+  connect(settle,&X11CompositorSettle::settled,this,[this,settle,target,selection,limits,generation,cb=std::move(cb)]()mutable{
+   settles_.remove(settle);settle->deleteLater();
+   if(generation!=generation_){cb({{},{"cancelled","Capture acquisition cancelled",{}}});return;}
+   Error error;auto frames=capture_.frames(target,error);if(error){cb({{},error});return;}
+   compose(std::move(frames),selection,limits,std::move(cb));
+  });
+  settle->start();
+  return;
+ }
  // A root read can precede Muffin's presentation of the surface unmaps. Read
  // Cinnamon's freshly painted scene directly, using its native-coordinate API.
  QGuiApplication::sync();
@@ -127,7 +145,7 @@ void X11SourceAdapter::compose(QList<CaptureFrame> frames,QRectF selection,const
  const auto generation=generation_;auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([frames=std::move(frames),selection,limits,result]{result->payload.image=composeFrames(frames,selection,std::min(limits.imagePixels,limits.imageBytes/4),result->error);result->payload.kind="image";result->payload.mime="image/png";});workers_.append(worker);
  connect(worker,&QThread::finished,this,[this,worker,generation,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture acquisition cancelled",{}}});else cb(std::move(*result));});worker->start();
 }
-void X11SourceAdapter::cancelAcquisition(){++generation_;selectedGeneration_=0;selectedTarget_={};if(overlay_)overlay_->cancel();const auto captures=std::move(regionCaptures_);regionCaptures_.clear();for(auto* request:captures)request->cancel();}
+void X11SourceAdapter::cancelAcquisition(){++generation_;selectedGeneration_=0;selectedTarget_={};if(overlay_)overlay_->cancel();const auto captures=std::move(regionCaptures_);regionCaptures_.clear();for(auto* request:captures)request->cancel();const auto settles=std::move(settles_);settles_.clear();for(auto* settle:settles)settle->cancel();}
 void X11SourceAdapter::copy(const CopyPayload& payload,std::function<void(Error)> cb){clipboard_.copy(payload,std::move(cb));}
 void X11SourceAdapter::bindShortcuts(const QHash<QString,QString>& shortcuts){shortcuts_.bind(shortcuts);}
 }

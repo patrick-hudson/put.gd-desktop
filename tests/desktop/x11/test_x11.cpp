@@ -3,8 +3,10 @@
 #include "platform/x11/X11Capture.h"
 #include "platform/x11/X11SourceAdapter.h"
 #include "platform/x11/CinnamonRegionCapture.h"
+#include "platform/x11/X11CompositorSettle.h"
 #include <QDBusConnection>
 #include <QDBusContext>
+#include <QElapsedTimer>
 #include <QFileInfo>
 #include <QtTest>
 #include <QClipboard>
@@ -53,9 +55,71 @@ public slots:
   output->flush(); // Complete bytes are present while the writer is still open.
  }
 };
+// Owns the compositing-manager selection and paints override-redirect "scene"
+// windows, standing in for a compositor's delayed presentation. Xvfb has no
+// compositor; this proves the settle contract, not any compositor's timing.
+class X11CompositorFixture {
+public:
+ X11CompositorFixture(){
+  connection=xcb_connect(nullptr,nullptr);screen=xcb_setup_roots_iterator(xcb_get_setup(connection)).data;owner=xcb_generate_id(connection);
+  xcb_create_window(connection,XCB_COPY_FROM_PARENT,owner,screen->root,0,0,1,1,0,XCB_WINDOW_CLASS_INPUT_ONLY,XCB_COPY_FROM_PARENT,0,nullptr);
+  auto* atom=xcb_intern_atom_reply(connection,xcb_intern_atom(connection,0,strlen("_NET_WM_CM_S0"),"_NET_WM_CM_S0"),nullptr);xcb_set_selection_owner(connection,owner,atom->atom,XCB_CURRENT_TIME);free(atom);sync();
+ }
+ ~X11CompositorFixture(){for(auto window:scenes)xcb_destroy_window(connection,window);xcb_destroy_window(connection,owner);sync();xcb_disconnect(connection);}
+ xcb_window_t scene(QRect r,uint32_t color){auto w=xcb_generate_id(connection);uint32_t values[]{color,1};xcb_create_window(connection,screen->root_depth,w,screen->root,r.x(),r.y(),r.width(),r.height(),0,XCB_WINDOW_CLASS_INPUT_OUTPUT,screen->root_visual,XCB_CW_BACK_PIXEL|XCB_CW_OVERRIDE_REDIRECT,values);xcb_map_window(connection,w);scenes.append(w);sync();return w;}
+ void repaint(xcb_window_t w){xcb_clear_area(connection,0,w,0,0,0,0);sync();}
+ void withdraw(xcb_window_t w){xcb_unmap_window(connection,w);sync();}
+ void sync(){xcb_flush(connection);free(xcb_get_input_focus_reply(connection,xcb_get_input_focus(connection),nullptr));}
+ xcb_connection_t* connection=nullptr;xcb_screen_t* screen=nullptr;xcb_window_t owner=0;QList<xcb_window_t> scenes;
+};
 class X11Test:public QObject {
  Q_OBJECT
 private slots:
+ void compositorSettleFollowsRepaintsOverSelection() {
+  const QRect selected(30,30,40,30);
+  {X11CompositorSettle settle({selected});int settled=0;connect(&settle,&X11CompositorSettle::settled,this,[&]{++settled;});settle.start();QCOMPARE(settled,1);QVERIFY(!settle.composited());}
+  X11CompositorFixture compositor;const auto inside=compositor.scene({40,40,10,10},0x000000),outside=compositor.scene({300,300,10,10},0x000000);
+  auto repaints=[&](xcb_window_t window,int count,QElapsedTimer& last,QObject& scope){auto* timer=new QTimer(&scope);timer->setInterval(20);connect(timer,&QTimer::timeout,this,[&compositor,&last,timer,window,count,done=0]()mutable{compositor.repaint(window);last.start();if(++done==count)timer->deleteLater();});timer->start();return QPointer<QTimer>(timer);};
+  {// Repaints over the selection hold the read until they have been quiet.
+   QObject scope;X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;qint64 quiet=-1;QElapsedTimer last;connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;quiet=last.isValid()?last.elapsed():-1;});
+   settle.start();QVERIFY(settle.composited());auto timer=repaints(inside,8,last,scope);QTest::qWait(120);QVERIFY(!settled);QTRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY(timer.isNull());QVERIFY2(quiet>=70,qPrintable(QString::number(quiet)));QVERIFY(settle.repaints()>=8);}
+  {// Unrelated repaints elsewhere do not delay it.
+   QObject scope;X11CompositorSettle settle({selected},nullptr,{80,5000});bool settled=false;QElapsedTimer last,elapsed;elapsed.start();connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;});
+   settle.start();auto timer=repaints(outside,30,last,scope);QTRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY2(elapsed.elapsed()<400,qPrintable(QString::number(elapsed.elapsed())));QTRY_VERIFY(timer.isNull());}
+  {// Continuous repaints over the selection are bounded.
+   QObject scope;X11CompositorSettle settle({selected},nullptr,{80,300});bool settled=false;QElapsedTimer last,elapsed;elapsed.start();connect(&settle,&X11CompositorSettle::settled,this,[&]{settled=true;});
+   settle.start();auto timer=repaints(inside,40,last,scope);QTRY_VERIFY_WITH_TIMEOUT(settled,3000);QVERIFY2(elapsed.elapsed()>=290&&elapsed.elapsed()<700,qPrintable(QString::number(elapsed.elapsed())));QVERIFY(!timer.isNull());QTRY_VERIFY(timer.isNull());}
+  {// Cancellation completes immediately and exactly once.
+   X11CompositorSettle settle({selected});int settled=0;connect(&settle,&X11CompositorSettle::settled,this,[&]{++settled;});settle.start();QCOMPARE(settled,0);settle.cancel();QCOMPARE(settled,1);settle.cancel();QTest::qWait(150);QCOMPARE(settled,1);}
+ }
+ void compositedRegionReadsAfterStaleSelectorFrames() {
+  X11DesktopFixture desktop;QVERIFY(desktop.window);X11CompositorFixture compositor;
+  bool completed=false,staleAtCompletion=true;PayloadResult captured;X11SourceAdapter source;
+  source.acquire("region",{},[&](PayloadResult result){captured=std::move(result);completed=true;});
+  QWidget* surface=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(widget->objectName()=="putgd-region-overlay"&&widget->isVisible())surface=widget;QVERIFY(surface);
+  // The compositor's last presented frame still shows the selector outline.
+  const auto stale=compositor.scene({30,30,40,30},0x000000);bool presented=false;
+  QTest::mousePress(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(30,30)));QTest::mouseMove(surface,surface->mapFromGlobal(QPoint(70,60)));
+  QTest::mouseRelease(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(70,60)));QVERIFY(!completed);
+  // It keeps repainting the closing selector for a few frames, then presents the desktop.
+  QTimer fade;fade.setInterval(16);int frames=0;
+  connect(&fade,&QTimer::timeout,this,[&]{if(++frames<6){compositor.repaint(stale);return;}fade.stop();compositor.withdraw(stale);presented=true;});
+  fade.start();
+  QTRY_VERIFY_WITH_TIMEOUT(completed,5000);staleAtCompletion=!presented;
+  QVERIFY2(!captured.error,qPrintable(captured.error.message));QVERIFY(!staleAtCompletion);QCOMPARE(captured.payload.image.size(),QSize(40,30));
+  for(int y=0;y<captured.payload.image.height();++y){for(int x=0;x<captured.payload.image.width();++x)QCOMPARE(captured.payload.image.pixelColor(x,y),QColor(Qt::green));}
+ }
+ void compositedRegionCancellationDuringSettle() {
+  X11DesktopFixture desktop;X11CompositorFixture compositor;int calls=0;PayloadResult captured;X11SourceAdapter source;
+  source.acquire("region",{},[&](PayloadResult result){captured=std::move(result);++calls;});
+  QWidget* surface=nullptr;for(auto* widget:QApplication::topLevelWidgets())if(widget->objectName()=="putgd-region-overlay"&&widget->isVisible())surface=widget;QVERIFY(surface);
+  // The compositor keeps repainting the selection, so only the bound or cancellation ends the wait.
+  const auto busy=compositor.scene({40,40,10,10},0x000000);QTimer repaint;repaint.setInterval(16);connect(&repaint,&QTimer::timeout,this,[&]{compositor.repaint(busy);});repaint.start();
+  QTest::mousePress(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(30,30)));QTest::mouseMove(surface,surface->mapFromGlobal(QPoint(70,60)));QTest::mouseRelease(surface,Qt::LeftButton,Qt::NoModifier,surface->mapFromGlobal(QPoint(70,60)));
+  // Let the selector be destroyed, so the adapter is waiting on the compositor.
+  QTest::qWait(100);QCOMPARE(calls,0);
+  source.cancelAcquisition();QCOMPARE(calls,1);QCOMPARE(captured.error.code,QString("cancelled"));QTest::qWait(250);QCOMPARE(calls,1);
+ }
  void nativeSelectionTextAndRevision() {
   X11Clipboard importer;QVERIFY(importer.available());
   auto before=importer.revision();QGuiApplication::clipboard()->setText("synthetic native clipboard");QTRY_VERIFY(importer.revision()>before);
