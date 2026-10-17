@@ -10,7 +10,12 @@ desktop acceptance beyond the evidence listed at the end.
 
 1. Invoke **Capture region & edit** from its global shortcut, the tray menu or the main
    window rail. By default the existing native region selector runs first; drag
-   the area to edit. Escape cancels without creating an editor.
+   the area to edit. Escape cancels without creating an editor. To edit the
+   clipboard image or an existing PNG/JPEG instead, use the arrow on the rail
+   button (**Edit clipboard image**, **Edit an image file…**) or the tray's
+   **Edit image** submenu (**From clipboard**, **From a file…**). The tray's
+   file entry opens the main window's file picker, because the resident shows no
+   dialogs of its own.
 2. The editor opens with the selection fitted to the window. The result goes
    to the output configured for the edit action when the edit started.
 3. Edit, then press **Upload** or Ctrl+Enter. Plain Enter never uploads: it
@@ -74,7 +79,8 @@ can leave information that helps reconstruct or infer text.
 ## Sources
 
 `action.invoke {"action":"edit"}` and the shortcut use the native region
-selector. Agents may open other sources with `editor.open`:
+selector. The UI entries above and agents (`editor.open`, or `action.invoke`
+with `source`/`path`) open the other sources:
 
 | Source | Behavior |
 | --- | --- |
@@ -163,6 +169,46 @@ it is never resumed or uploaded, retry reports `artifact_missing`, and startup
 removes all abandoned `<data>/editing` staging before new work. Cancellation
 before submission stores nothing; after submission the normal operation
 cancellation and unknown-publication reconciliation rules apply.
+
+A failed upload retries the finalized bytes: the retry neither reacquires the
+source nor reopens the editor, and its artifact keeps the submitted digest.
+Before an editor starts, a failed write to private staging (a full disk or a
+quota) reports `edit_staging_failed`, not `source_unsupported`.
+`editor_job_integration` covers a helper killed while editing, a helper that
+never becomes ready or hangs while finalizing (startup and finalize timeouts),
+a non-PNG export, a digest mismatch, and a full disk. Each fails closed: no image
+is handed off, staging is empty and the helper is gone.
+`edit_operations_integration` covers the failed-upload retry.
+
+## Why a custom canvas
+
+Issue #51 proposed evaluating kImageAnnotator (the ksnip annotation library)
+first, with a small custom Qt canvas as the fallback. put.gd uses the custom
+canvas. kImageAnnotator was not built or benchmarked. The decision rests on its
+inspected source, license and packaging documentation, and on the custom canvas
+meeting every redaction and memory gate in the
+[acceptance receipt](evidence/2026-10-17-issue51-edit-and-upload.md).
+
+- **Licensing.** kImageAnnotator and kColorPicker are LGPL-3.0, and their
+  Windows builds are documented as static only. Statically linking LGPL code
+  into this MIT-licensed app would add relinking obligations to the Windows
+  package. ShareX.ImageEditor, Greenshot and Flameshot are GPL-3.0, which this
+  project cannot adopt without relicensing.
+- **Memory.** kImageAnnotator's export renders a full ARGB image, crop undo
+  keeps both the original and the cropped pixmap, and its undo stack has no byte
+  accounting. Here the document holds one immutable base raster, undo is
+  geometry-only and bounded (200 steps, 4 MiB), and export renders once, at
+  finalization.
+- **Redaction guarantee.** Redaction geometry is separate from annotations and
+  overwrites source pixels before anything else renders, so one short export
+  path holds the guarantee. With a third-party scene, every library update would
+  need that path re-audited.
+- **Dependencies.** Nothing new to package; the Qt 6.4.2 floor and distro Qt
+  linking are unchanged.
+
+The cost is owning selection handles, text entry, coordinate mapping and
+accessibility, so the tool set stays deliberately small. Greenshot, ShareX and
+Flameshot informed the interaction design; no code was copied from them.
 
 ## Agent and MCP control
 
