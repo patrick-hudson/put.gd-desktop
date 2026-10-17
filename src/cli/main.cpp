@@ -18,6 +18,7 @@ int main(int argc,char** argv) {
  auto error=[&](QString code,QString message) {output(putgd::LocalServer::response(id,{code,message,{}},{}));return 1;};
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
  if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword")return error("credentials_require_settings","Enter credentials through Settings.");
+ if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials through Settings.");
  const auto bytes=args.size()==2?args[1].toUtf8():QByteArray("{}");if(bytes.size()>1024*1024)return error("request_too_large","Request exceeds 1 MiB");
  QJsonParseError parseError;auto params=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!params.isObject())return error("invalid_json","Parameters must be a JSON object");
  const auto path=parser.isSet("socket")?parser.value("socket"):putgd::LocalServer::defaultSocketPath();QLocalSocket socket;socket.connectToServer(path);

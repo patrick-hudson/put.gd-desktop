@@ -28,6 +28,12 @@ name; uploads use the ID. Queries show Loading folders while working and preserv
 the known account email and selection, including when switching destinations.
 Existing configurations without a name keep working. Account setup never uploads a file.
 
+Use **Test connection** to check that the saved account and selected upload folder
+are still accessible. A successful check satisfies the current session's
+untested-destination warning when choosing **Make default**. This check is
+read-only: it does not verify upload permission, file transfer, or share-link
+creation. Its result states those limits explicitly.
+
 Sharing is the destination default. Clear that choice for private uploads, or
 use Settings → Capture → Per-action exceptions to override publication per action. Private upload
 creates no public link and leaves the clipboard unchanged. Existing folder and

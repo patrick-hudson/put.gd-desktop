@@ -41,24 +41,57 @@ bool stopped(const std::shared_ptr<std::atomic_bool>& token) { return token && t
 Error cancelled() {
     return {"cancelled", "Cancellation requested; sent requests may still have taken effect", {}};
 }
-Error accessError() { return {"credential_setup_required", "Restore explicit credentials for this original destination", {}}; }
+Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter and Store credentials for this session.", {}}; }
+QString requestGuidance(const QString& name, int status, const QString& stage, int curlCode) {
+    if (name == "InvalidAccessKeyId") return "S3 does not recognize the access key ID. Check that it is correct, active, and belongs to the selected storage service; then Store credentials again.";
+    if (name == "SignatureDoesNotMatch") return "S3 could not verify the request signature. Check that the secret access key matches the access key ID, then check the region, endpoint and system clock.";
+    if (name == "ExpiredToken" || name == "InvalidToken" || name == "TokenRefreshRequired") return "The temporary session token is expired or invalid. Renew and Store the complete access key, secret key and session token together.";
+    if (name == "RequestTimeTooSkewed" || name == "RequestExpired") return "S3 rejected the request time. Synchronize the system clock and try again.";
+    if (name == "NoSuchBucket") return "S3 could not find the bucket. Check the bucket name, region and endpoint; the bucket must already exist.";
+    if (name == "InvalidBucketName") return "S3 rejected the bucket name. Enter only the existing bucket name, without a URL or folder path.";
+    if (name == "AuthorizationHeaderMalformed" || name == "PermanentRedirect" || status == 301) return "S3 rejected the destination region or endpoint. Check that the region and endpoint match the bucket's location.";
+    if (name == "AccessControlListNotSupported") return "This bucket does not accept ACLs. Set Who can open files to Follow the bucket's policy (send no ACL), and ensure its public-read policy supports the intended links.";
+    if (status == 403) {
+        if (stage == "upload_put") return "S3 denied the upload. Check s3:PutObject in IAM and the bucket policy. Request public read also needs s3:PutObjectAcl and bucket settings that permit public ACLs.";
+        if (stage == "delete_versioning") return "S3 denied the bucket versioning check required for safe cleanup. Check s3:GetBucketVersioning in IAM and the bucket policy.";
+        if (stage == "delete_version") return "S3 denied deletion of the recorded object version. Check s3:DeleteObjectVersion in IAM and the bucket policy, plus Object Lock, retention and MFA restrictions.";
+        if (stage == "delete_object" || stage == "delete_marker") return "S3 denied object cleanup. Check s3:DeleteObject in IAM and the bucket policy, and s3:DeleteObjectVersion when targeting a recorded version (including the null version). Also check Object Lock, retention and MFA restrictions.";
+        return "S3 denied the object check. Verify the key pair and s3:GetObject access in IAM and the bucket policy, plus s3:GetObjectVersion for recorded-version checks. A missing object can also return 403 without s3:ListBucket; S3 did not identify the exact cause.";
+    }
+    if (curlCode == 6) return "The S3 endpoint hostname could not be resolved. Check the endpoint, DNS and network connection.";
+    if (curlCode == 7) return "Could not connect to the S3 endpoint. Check the endpoint, network connection, proxy and firewall.";
+    if (curlCode == 28 || name == "RequestTimeout") return "The S3 request timed out. Check the network and endpoint, or increase the connection/request deadlines in Advanced connection settings.";
+    if (curlCode == 35 || curlCode == 60) return "The secure connection to S3 failed. Check the endpoint, system clock and trusted certificates, including any proxy certificate.";
+    if (name == "SlowDown" || status == 429) return "S3 is limiting requests. Wait before retrying and reduce concurrent uploads if this continues.";
+    if (status >= 500) return "The S3 service returned a server error. Check service availability and retry after it recovers; any uncertain upload or cleanup remains recorded.";
+    if (status < 200) return "S3 could not be reached reliably. Check the endpoint, network, proxy and TLS settings; any uncertain upload or cleanup remains recorded.";
+    return QString("S3 rejected the request (HTTP %1). Check the bucket, region, endpoint and access permissions.").arg(status);
+}
 template<class E> Error wireError(const E& error, const char* stage, qint64 elapsedMs) {
     const auto name = qt(error.GetExceptionName());
     const int status = int(error.GetResponseCode());
+    const int curlCode = sdkCurlCode({error.GetMessage().data(), error.GetMessage().size()});
     QString code = "s3_request_failed";
     if (name == "AccessControlListNotSupported") code = "s3_acl_incompatible";
-    else if (name == "InvalidAccessKeyId" || name == "SignatureDoesNotMatch" || name == "ExpiredToken") code = "s3_authentication_failed";
+    else if (QStringList{"InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired"}.contains(name)) code = "s3_authentication_failed";
+    else if (name == "NoSuchBucket") code = "s3_bucket_not_found";
+    else if (name == "InvalidBucketName") code = "s3_bucket_invalid";
+    else if (name == "AuthorizationHeaderMalformed" || name == "PermanentRedirect" || status == 301) code = "s3_region_mismatch";
     else if (name == "ObjectLocked" || qt(error.GetMessage()).contains("retention", Qt::CaseInsensitive) ||
              qt(error.GetMessage()).contains("legal hold", Qt::CaseInsensitive)) code = "s3_retention_blocked";
     else if (qt(error.GetMessage()).contains("MFA", Qt::CaseInsensitive)) code = "s3_mfa_required";
     else if (status == 403) code = "s3_permission_denied";
     else if (status == 409 || status == 412) code = "precondition_changed";
     else if (status < 200 || status >= 500) code = "s3_transport_unknown";
-    return {code, "S3 request failed; check destination access, ACL and retention settings",
+    QString message=requestGuidance(name,status,QString::fromLatin1(stage),curlCode);
+    if(code=="s3_retention_blocked")message="S3 blocked deletion because of Object Lock, retention or a legal hold. Review the object's protection settings with the bucket administrator; put.gd does not bypass them.";
+    else if(code=="s3_mfa_required")message="S3 requires MFA for this deletion. Ask the bucket administrator to use the required MFA-authorized workflow; put.gd does not bypass it.";
+    else if(code=="precondition_changed")message="The S3 object changed while the request was running. Refresh its state before retrying; put.gd will not overwrite or delete an unchecked replacement.";
+    return {code, message,
             {{"httpStatus", status}, {"sdkErrorType", int(error.GetErrorType())},
-             {"curlCode", sdkCurlCode({error.GetMessage().data(), error.GetMessage().size()})},
+             {"curlCode", curlCode},
              {"sdkRetryable", error.ShouldRetry()}, {"requestStage", QString::fromLatin1(stage)},
-             {"elapsedMs", qMin(elapsedMs, qint64(86400000))}, {"serviceCode", QStringList{"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable"}.contains(name) ? name : QString("Unclassified")}}};
+             {"elapsedMs", qMin(elapsedMs, qint64(86400000))}, {"serviceCode", QStringList{"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked", "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "InvalidBucketName", "AuthorizationHeaderMalformed", "PermanentRedirect"}.contains(name) ? name : QString("Unclassified")}}};
 }
 template<class E> bool absent(const E& error) { return int(error.GetResponseCode()) == 404; }
 template<class E> bool ambiguous(const E& error) {
@@ -699,7 +732,11 @@ void NetworkS3Driver::testDestination(const Destination& destination, DurableChe
             remove(removeRequest, save, [result, reachable, reply](DeleteResult removed) mutable {
                 result["cleanupStatus"] = removed.status;
                 result["cleanupProgress"] = removed.progress;
-                reply(result, reachable ? removed.error : Error{"public_url_unreachable", "Synthetic upload succeeded but unauthenticated public GET did not return its bytes", {}});
+                if (reachable) { reply(result, removed.error); return; }
+                Error error{"public_url_unreachable", "The test upload succeeded, but its public link did not return the test file. Check Link domain and the bucket public-read policy or ACL settings.", {}};
+                if (removed.error) error.message += " Cleanup also failed: " + removed.error.message;
+                else if (removed.status != "removed" && removed.status != "missing") error.message += " Test cleanup is incomplete; inspect the recorded test target before retrying.";
+                reply(result, error);
             });
         });
     });

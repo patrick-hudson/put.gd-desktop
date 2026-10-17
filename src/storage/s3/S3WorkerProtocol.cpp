@@ -114,7 +114,7 @@ bool errorDetails(const QJsonObject& details) {
     if (details.contains("httpStatus") && !integer(details["httpStatus"], -1, 599)) return false;
     if (details.contains("serviceCode") && !choice(details["serviceCode"], {"AccessControlListNotSupported", "AccessDenied", "InvalidAccessKeyId",
             "SignatureDoesNotMatch", "ExpiredToken", "PreconditionFailed", "ConditionalRequestConflict", "InvalidRequest", "ObjectLocked",
-            "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "Unclassified"})) return false;
+            "SlowDown", "RequestTimeout", "InternalError", "ServiceUnavailable", "InvalidToken", "TokenRefreshRequired", "RequestTimeTooSkewed", "RequestExpired", "NoSuchBucket", "InvalidBucketName", "AuthorizationHeaderMalformed", "PermanentRedirect", "Unclassified"})) return false;
     if (details.contains("sdkErrorType") && !integer(details["sdkErrorType"], -1, 65535)) return false;
     if (details.contains("curlCode") && !integer(details["curlCode"], -1, 999)) return false;
     if (details.contains("sdkRetryable") && !details["sdkRetryable"].isBool()) return false;

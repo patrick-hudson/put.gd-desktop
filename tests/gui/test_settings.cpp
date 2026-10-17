@@ -114,6 +114,50 @@ private slots:
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});auto doc=configuration(dir.path(),true);doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Proton"},{"provider","proton-drive"},{"settings",ProtonProvider::defaults()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-proton"}}}}};QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);int starts=0;JsonReply complete;fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply done,auto event){QCOMPARE(kind,QString("connectAccount"));++starts;complete=done;event({{"event","auth"},{"url","https://account.proton.me/cli?synthetic=true"}});});openedUrls_.clear();QDesktopServices::setUrlHandler("https",this,"recordProtonUrl");auto cleanup=qScopeGuard([]{QDesktopServices::unsetUrlHandler("https");});MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* button=window.findChild<QPushButton*>("connectProtonAccount");button->click();QTRY_COMPARE(openedUrls_.size(),1);QCOMPARE(openedUrls_.first().host(),QString("account.proton.me"));auto* account=window.findChild<QLabel*>("protonAccountStatus");QVERIFY(account);QVERIFY(account->text().contains("browser"));QVERIFY(account->isVisible());QTest::qWait(600);QCOMPARE(openedUrls_.size(),1);QCOMPARE(starts,1);QVERIFY(complete);complete({"proton_runtime_unavailable","Synthetic runtime unavailable",{}},{});QTRY_VERIFY(account->text().contains("Synthetic runtime unavailable"));QTRY_VERIFY(button->isEnabled());
  }
 
+ void protonConnectionTestAllowsMakingTheDestinationDefault_data(){
+  QTest::addColumn<bool>("rootFolder");QTest::addColumn<bool>("editAfterTest");
+  QTest::newRow("top-level-folder")<<false<<false;QTest::newRow("my-files-root")<<true<<false;QTest::newRow("changed-folder-needs-retest")<<false<<true;
+ }
+ void protonConnectionTestAllowsMakingTheDestinationDefault(){
+  QFETCH(bool,rootFolder);QFETCH(bool,editAfterTest);
+  QTemporaryDir dir;CredentialStore secrets;
+  SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=configuration(dir.path(),true);auto account=ProtonProvider::defaults();
+  account["accountRootUid"]="synthetic-root";account["folderUid"]=rootFolder?"synthetic-root":"synthetic-folder";
+  doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Proton"},{"provider","proton-drive"},{"settings",account},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-proton"}}}}};
+  QVERIFY(service.save(doc,{}));int uploads=0,inspections=0;JsonReply finish;
+  UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++uploads;reply({"test_unsupported","S3-only tester",{}});});
+  fixture.setup.setProviderSetup([&](const QString& kind,const Destination& destination,const QJsonObject& input,JsonReply reply,auto){
+   QCOMPARE(kind,QString("testDestination"));QCOMPARE(destination.settings,account);QVERIFY(input.isEmpty());++inspections;finish=std::move(reply);
+  });
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* test=window.findChild<QPushButton*>("testDestination");QVERIFY(test->isVisible());test->click();
+  QTRY_COMPARE(inspections,1);QVERIFY(!test->isEnabled());
+  auto* status=window.findChild<QLabel*>("destinationStatus");QVERIFY(status->text().contains("account and selected folder"));
+  finish({},{{"testScope","account-folder"}});
+  QTRY_VERIFY(status->text().contains("Account and selected folder are accessible"));QVERIFY(!status->text().contains("upload, public link"));QCOMPARE(uploads,0);
+  if(editAfterTest){auto* folder=window.findChild<QComboBox*>("protonFolder");folder->addItem("Another folder","synthetic-other");folder->setCurrentIndex(folder->count()-1);QTRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["folderUid"].toString(),QString("synthetic-other"));}
+  bool warned=false;QTimer dismiss;connect(&dismiss,&QTimer::timeout,this,[&]{if(auto* box=qobject_cast<QMessageBox*>(QApplication::activeModalWidget())){warned=true;box->button(QMessageBox::Yes)->click();}});dismiss.start(10);
+  window.findChild<QPushButton*>("makeDefaultDestination")->click();
+  QTRY_COMPARE(service.document()["captureDefaults"].toObject()["profileId"].toString(),QString("synthetic-proton"));
+  QCOMPARE(warned,editAfterTest);QCOMPARE(service.snapshot().actions["region"].profileId,QString("synthetic-proton"));
+ }
+ void protonConnectionTestPropagatesProviderErrors_data(){
+  QTest::addColumn<QString>("expected");
+  for(const auto& code:QStringList{"proton_setup_required","proton_account_changed","proton_folder_unavailable","authentication_required"})QTest::newRow(qPrintable(code))<<code;
+ }
+ void protonConnectionTestPropagatesProviderErrors(){
+  QFETCH(QString,expected);
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=configuration(dir.path(),true);auto account=ProtonProvider::defaults();account["accountRootUid"]="synthetic-root";account["folderUid"]="synthetic-folder";
+  doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Proton"},{"provider","proton-drive"},{"settings",account},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-proton"}}}}};QVERIFY(service.save(doc,{}));
+  int uploads=0,inspections=0;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++uploads;reply({});});
+  fixture.setup.setProviderSetup([&](const QString& kind,const Destination&,const QJsonObject&,JsonReply reply,auto){++inspections;QCOMPARE(kind,QString("testDestination"));reply({expected,"Synthetic provider failure",{}},{});});
+  QString id;fixture.setup.start("testDestination","synthetic-proton",service.revision(),{},[&](Error error,QJsonObject data){QVERIFY(!error);id=data["setupId"].toString();});
+  QJsonObject job;auto inspect=[&]{fixture.setup.inspect(id,[&](Error error,QJsonObject data){QVERIFY(!error);job=data;});return job["state"]=="failed";};
+  QTRY_VERIFY(inspect());QCOMPARE(job["error"].toObject()["code"].toString(),expected);QCOMPARE(uploads,0);QCOMPARE(inspections,1);
+ }
+
  void protonToS3DraftSavesProviderTogetherWithFinishedBucket(){
   QTemporaryDir dir;CredentialStore secrets;ProviderRegistry registry;registry.add("s3",std::make_shared<S3Provider>(secrets));registry.add("proton-drive",std::make_shared<ProtonProvider>());SettingsService service(dir.filePath("config.json"),[&](auto id,auto values){return registry.validate(id,values);},nullptr,[&](auto id,auto reference){return registry.validateCredentials(id,reference);});auto doc=configuration(dir.path(),true);doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic destination"},{"provider","proton-drive"},{"settings",ProtonProvider::defaults()},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-proton"}}}}};QVERIFY(service.save(doc,{}));UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* provider=window.findChild<QComboBox*>("storageProvider");provider->setCurrentIndex(provider->findData("s3"));auto* status=window.findChild<QLabel*>("settingsStatus");QTRY_VERIFY(status->text().contains("Invalid S3 settings"));QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["provider"].toString(),QString("proton-drive"));QVERIFY(!service.document()["profiles"].toArray()[0].toObject()["settings"].toObject().contains("bucket"));auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("synthetic-valid-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");QTRY_COMPARE(service.document()["profiles"].toArray()[0].toObject()["provider"].toString(),QString("s3"));QCOMPARE(service.document()["profiles"].toArray()[0].toObject()["settings"].toObject()["bucket"].toString(),QString("synthetic-valid-bucket"));QVERIFY(!status->text().contains("Proton"));
  }
@@ -194,11 +238,64 @@ private slots:
  void storedCredentialHintsNeverExportFullKeysOrOverwriteInputs(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider s3(secrets);auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;doc["profiles"]=profiles;SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return s3.validateSettings(value);});QVERIFY(service.save(doc,{}));secrets.setSession("development-s3",{"AKIA-synthetic-full-access","synthetic-full-secret","synthetic-token"});UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto* hint=window.findChild<QLabel*>("storedCredentialHint");QTRY_VERIFY(hint->text().contains("AKIA"));QVERIFY(hint->text().contains("Secret key stored"));auto* access=window.findChild<QLineEdit*>("credentialAccessKey");QVERIFY(access->text().isEmpty());QVERIFY(access->placeholderText().contains("AKIA"));QVERIFY(!access->placeholderText().contains("full-access"));QCOMPARE(window.findChild<QLineEdit*>("credentialSecretKey")->echoMode(),QLineEdit::Password);const auto state=QJsonDocument(window.settings()->saveViewState()).toJson();QVERIFY(!state.contains("AKIA"));QVERIFY(!state.contains("synthetic-full-secret"));bool done=false;QJsonObject reply;fixture.session.request("setup.credentialHint",{{"profileId","development-s3"},{"expectedRevision",service.revision()}},this,[&](Error error,QJsonObject value){QVERIFY(!error);reply=value;done=true;});QTRY_VERIFY(done);const auto encoded=QJsonDocument(reply).toJson();QVERIFY(!encoded.contains("synthetic-full-access"));QVERIFY(!encoded.contains("synthetic-full-secret"));QVERIFY(!encoded.contains("synthetic-token"));
  }
+ void connectionTestShowsItsResultOnTheDestinationPage(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto document=Settings::developmentTemplate();auto profiles=document["profiles"].toArray();auto second=profiles[0].toObject();
+  second["id"]="second";second["label"]="Second destination";profiles.append(second);document["profiles"]=profiles;
+  QVERIFY(service.save(document,{}));CredentialStore secrets;std::function<void(Error)> complete;
+  UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){complete=reply;});MainWindow window(fixture.session);
+  window.navigate("destinations");window.show();QLabel* status=nullptr;
+  for(auto* label:window.findChildren<QLabel*>())if(label->accessibleName()=="Destination status")status=label;
+  QVERIFY(status);auto* test=window.findChild<QPushButton*>("testDestination");test->click();QTRY_VERIFY(bool(complete));
+  complete({});QTRY_VERIFY(test->isEnabled());QTRY_VERIFY(status->text().contains("Connection successful"));
+  QVERIFY(status->isVisible());QCOMPARE(status->property("feedbackTone").toString(),QString("success"));
+  auto* destinations=window.findChild<QListWidget*>("destinationList");destinations->setCurrentRow(1);QVERIFY(status->text().isEmpty());destinations->setCurrentRow(0);
+  complete={};test->click();QTRY_VERIFY(bool(complete));QVERIFY(status->text().contains("Testing connection"));
+  complete({"s3_permission_denied","S3 denied the test upload. Check IAM and bucket policy permissions.",{}});
+  QTRY_VERIFY(test->isEnabled());QTRY_VERIFY(status->text().contains("IAM and bucket policy"));
+  QCOMPARE(status->property("feedbackTone").toString(),QString("error"));
+ }
+ void savedSecretCanBeShownHiddenAndNeverRetainedAsAnInput(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=Settings::developmentTemplate();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();
+  profile["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=profile;
+  auto second=profile;second["id"]="second";profiles.append(second);doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  secrets.setSession("development-s3",{"synthetic-access","synthetic-saved-secret",{}});
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* secret=window.findChild<QLineEdit*>("credentialSecretKey");QPushButton* show=nullptr;
+  for(auto* button:window.findChildren<QPushButton*>())if(button->accessibleName()=="Show secret access key")show=button;
+  QVERIFY(show);QVERIFY(secret->text().isEmpty());show->click();
+  QTRY_COMPARE(secret->text(),QString("synthetic-saved-secret"));QCOMPARE(secret->echoMode(),QLineEdit::Normal);
+  QVERIFY(secret->isReadOnly());QCOMPARE(show->text(),QString("Hide"));
+  QVERIFY(!window.settings()->hasCredentialInputs());
+  QVERIFY(window.settings()->autosaveText().isEmpty());
+  QVERIFY(!QJsonDocument(window.saveViewState()).toJson().contains("synthetic-saved-secret"));
+  QVERIFY(!QJsonDocument(window.settings()->saveViewState()).toJson().contains("synthetic-saved-secret"));
+  QVERIFY(!QJsonDocument(service.document()).toJson().contains("synthetic-saved-secret"));
+  show->click();QVERIFY(secret->text().isEmpty());QVERIFY(!secret->isReadOnly());QCOMPARE(secret->echoMode(),QLineEdit::Password);
+  secret->setFocus();QTest::keyClicks(secret,"x");show->click();
+  QTest::keyClick(secret,Qt::Key_Z,Qt::ControlModifier);QTest::keyClick(secret,Qt::Key_Z,Qt::ControlModifier);
+  QVERIFY(secret->text().isEmpty());show->click();
+  secret->setText("synthetic-typed-secret");show->click();QCOMPARE(secret->echoMode(),QLineEdit::Normal);
+  show->click();QCOMPARE(secret->text(),QString("synthetic-typed-secret"));QCOMPARE(secret->echoMode(),QLineEdit::Password);
+  secret->clear();show->click();QTRY_COMPARE(secret->text(),QString("synthetic-saved-secret"));
+  auto* list=window.findChild<QListWidget*>("destinationList");list->setCurrentRow(1);
+  QVERIFY(secret->text().isEmpty());QCOMPARE(show->text(),QString("Show"));list->setCurrentRow(0);QVERIFY(secret->text().isEmpty());
+  fixture.client.replyDelayMs["setup.revealCredentialSecret"]=150;
+  show->click();show->click();QTest::qWait(250);QVERIFY(secret->text().isEmpty());QCOMPARE(secret->echoMode(),QLineEdit::Password);
+  show->click();list->setCurrentRow(1);list->setCurrentRow(0);QTest::qWait(250);QVERIFY(secret->text().isEmpty());
+  show->click();QTRY_COMPARE(secret->text(),QString("synthetic-saved-secret"));window.settings()->clearCredentialInputs();
+  QVERIFY(secret->text().isEmpty());QCOMPARE(show->text(),QString("Show"));QVERIFY(!show->isChecked());QVERIFY(!secret->isReadOnly());
+  show->click();window.navigate("settings");QTest::qWait(250);QVERIFY(secret->text().isEmpty());window.navigate("destinations");
+  secrets.forget("development-s3",profile["credentials"].toObject());show->click();
+  QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("credential_setup_required"));
+  QVERIFY(secret->text().isEmpty());QVERIFY(!show->isChecked());QVERIFY(!secret->isReadOnly());
+ }
  void uiStateStrictlyRejectsUnexpectedAndSecretFields(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);auto state=QJsonObject{{"schemaVersion",1},{"settings",window.settings()->saveViewState()},{"main",window.saveViewState()}};QVERIFY(!validateUiState(state));auto main=state["main"].toObject();main["secretKey"]="synthetic-secret";state["main"]=main;auto error=validateUiState(state);QVERIFY(error);QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
  }
  void acceptedSetupIdSurvivesAnUncertainInspectionReply(){
-  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(service.save(Settings::developmentTemplate(),{}));int starts=0;std::function<void(Error)> finish;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++starts;finish=reply;});fixture.client.failOnce["setup.inspect"]={"client_unavailable","Synthetic lost inspection reply",{}};SettingsWindow window(fixture.session);window.findChild<QPushButton*>("testDestination")->click();QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("client_unavailable"));const auto saved=window.saveViewState();QCOMPARE(saved["setupJobs"].toArray().size(),1);SettingsWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));QVERIFY(finish);finish({});QTRY_VERIFY(reopened.findChild<QLabel*>("settingsStatus")->text().contains("Setup completed"));QCOMPARE(starts,1);
+  QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(d.filePath("config.json"),[&](auto,auto settings){return provider.validateSettings(settings);});QVERIFY(service.save(Settings::developmentTemplate(),{}));int starts=0;std::function<void(Error)> finish;UiSessionFixture fixture(service,secrets,[&](auto,auto,auto reply){++starts;finish=reply;});fixture.client.failOnce["setup.inspect"]={"client_unavailable","Synthetic lost inspection reply",{}};SettingsWindow window(fixture.session);window.findChild<QPushButton*>("testDestination")->click();QTRY_VERIFY(window.findChild<QLabel*>("settingsStatus")->text().contains("client_unavailable"));const auto saved=window.saveViewState();QCOMPARE(saved["setupJobs"].toArray().size(),1);SettingsWindow reopened(fixture.session);QVERIFY(reopened.restoreViewState(saved));QVERIFY(finish);finish({});QTRY_VERIFY(reopened.findChild<QLabel*>("settingsStatus")->text().contains("Connection successful"));QCOMPARE(starts,1);
  }
  void transientSetupInspectionRecoversWithoutReplayingAcceptedWork(){
   QTemporaryDir d;CredentialStore secrets;S3Provider provider(secrets);
@@ -217,7 +314,7 @@ private slots:
   window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-unsubmitted-secret");
   finish({});
   QTRY_VERIFY_WITH_TIMEOUT(window.saveViewState()["setupJobs"].toArray().isEmpty(),2000);
-  QVERIFY(status->text().contains("Setup completed"));QVERIFY(test->isEnabled());
+  QVERIFY(status->text().contains("original destination settings"));QVERIFY(test->isEnabled());
   QCOMPARE(starts,1);
   QCOMPARE(window.findChild<QLineEdit*>("s3Bucket")->text(),QString("unsaved-bucket"));
   QCOMPARE(window.findChild<QLineEdit*>("credentialSecretKey")->text(),QString("synthetic-unsubmitted-secret"));

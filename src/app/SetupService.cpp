@@ -54,7 +54,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  if(!guarded)return;
  emit changed(id);
  if(!guarded)return;
- if(QStringList{"connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(kind)) {
+ if((kind=="testDestination"&&providerSetup_)||QStringList{"connectAccount","inspectAccount","createFolder","storeSharePassword"}.contains(kind)) {
   if(!providerSetup_){complete({"setup_unsupported","Account setup is unavailable",{}});return;}
   const Destination destination{profile["provider"].toString(),profileId,expectedRevision,profile["settings"].toObject(),reference};
   auto finish=[context=completion_,id](Error error,QJsonObject result){
@@ -82,6 +82,22 @@ void SetupService::credentialHint(const QString& profileId,const QString& expect
  QJsonObject hint{{"available",bool(cached)},{"mode",reference["mode"]}};
  if(cached){hint["accessKeyHint"]=cached->accessKey.size()>4?cached->accessKey.left(4)+QString::fromUtf8("…"):QString::fromUtf8("••••");hint["secretStored"]=!cached->secretKey.isEmpty();hint["tokenStored"]=!cached->sessionToken.isEmpty();}
  reply({},hint);
+}
+void SetupService::revealCredentialSecret(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
+ const auto metadata=settings_.metadata();
+ if(expectedRevision!=settings_.revision()||expectedRevision!=metadata["observedRevision"].toString()){
+  reply({"config_conflict","Configuration changed; refresh this destination",{}},{});return;
+ }
+ if(!metadata["validation"].toObject()["ok"].toBool()){
+  reply({"config_invalid","Resolve the configuration error before showing credentials",{}},{});return;
+ }
+ const auto profiles=settings_.snapshot().profiles;
+ if(!profiles.contains(profileId)){reply({"profile_not_found","Save the destination before showing credentials",{}},{});return;}
+ const auto profile=profiles[profileId];
+ if(profile["provider"]!="s3"){reply({"setup_unsupported","This destination has no S3 secret access key",{}},{});return;}
+ const auto cached=credentials_.cached(profileId,profile["credentials"].toObject());
+ if(!cached){reply({"credential_setup_required","Unlock saved credentials first, or enter credentials for this session",{}},{});return;}
+ reply({},{{"secretKey",cached->secretKey}});
 }
 void SetupService::inspect(const QString& id,JsonReply reply) {
  const auto found=jobs_.constFind(id);

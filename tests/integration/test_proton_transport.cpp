@@ -28,6 +28,24 @@ class ProtonTransportTest:public QObject {
   req.progress=std::move(progress);UploadResult result;provider.upload(req,[&](UploadResult r){result=r;});return result;
  }
 private slots:
+ void connectionTestValidatesAccountAndSelectedFolder_data(){
+  QTest::addColumn<QString>("root");QTest::addColumn<QString>("folder");QTest::addColumn<QString>("fixture");QTest::addColumn<QString>("expected");
+  QTest::newRow("top-level-folder")<<"synthetic-root"<<"synthetic-folder"<<"inspect-account"<<"";
+  QTest::newRow("my-files-root")<<"synthetic-root"<<"synthetic-root"<<"inspect-account"<<"";
+  QTest::newRow("signed-out")<<""<<""<<"inspect-account"<<"proton_setup_required";
+  QTest::newRow("no-folder")<<"synthetic-root"<<""<<"inspect-account"<<"proton_setup_required";
+  QTest::newRow("changed-account")<<"another-root"<<"synthetic-folder"<<"inspect-account"<<"proton_account_changed";
+  QTest::newRow("missing-folder")<<"synthetic-root"<<"missing-folder"<<"inspect-account"<<"proton_folder_unavailable";
+  QTest::newRow("denied")<<"synthetic-root"<<"synthetic-folder"<<"auth"<<"authentication_required";
+ }
+ void connectionTestValidatesAccountAndSelectedFolder(){
+  QFETCH(QString,root);QFETCH(QString,folder);QFETCH(QString,fixture);QFETCH(QString,expected);
+  ProtonProvider provider;auto d=destination(fixture);d.settings["accountRootUid"]=root;d.settings["folderUid"]=folder;
+  Error error;const auto result=provider.setup("testDestination",d,{},error);
+  QCOMPARE(error.code,expected);
+  if(expected.isEmpty())QCOMPARE(result,QJsonObject({{"testScope","account-folder"}}));else QVERIFY(result.isEmpty());
+  QCOMPARE(provider.diagnostics()["activeHelpers"].toInt(),0);
+ }
  void transportFailureDisposition_data(){
   QTest::addColumn<QString>("fixture");QTest::addColumn<QString>("status");QTest::addColumn<QString>("error");
   QTest::newRow("confirmed-auth-failure")<<QString("auth")<<QString("failed")<<QString("authentication_required");

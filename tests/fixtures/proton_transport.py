@@ -5,6 +5,14 @@ import sys
 import time
 request = json.loads(sys.stdin.buffer.readline())
 case = request['destination']['settings'].get('fixture', 'auth')
+if case == 'inspect-account':
+    if request['method'] != 'inspectAccount':
+        print(json.dumps({'ok': False, 'error': {'code': 'invalid_request',
+            'message': 'Connection tests may only inspect the account.', 'details': {}}}), flush=True)
+    else:
+        print(json.dumps({'ok': True, 'result': {'accountRootUid': 'synthetic-root',
+            'folders': [{'uid': 'synthetic-folder', 'name': 'Uploads'}]}}), flush=True)
+    sys.exit(0)
 if case == 'budget-delay':
     time.sleep(1.2)
     print(json.dumps({'ok': False, 'error': {'code': 'authentication_required', 'message': 'Synthetic authentication failure', 'details': {'attemptTimeoutMs': request.get('requestTimeoutMs')}}}), flush=True)

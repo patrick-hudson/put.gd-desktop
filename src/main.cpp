@@ -196,6 +196,10 @@ int main(int argc,char* argv[]) {
  QJsonObject loginStatus;
  putgd::SetupService setup(settings,credentials,tester);
  setup.setProviderSetup([&](const QString& kind,const putgd::Destination& destination,const QJsonObject& input,putgd::JsonReply reply,std::function<void(QJsonObject)> event){
+  if(kind=="testDestination"&&destination.providerId=="s3"){
+   const QJsonObject profile{{"provider",destination.providerId},{"settings",destination.settings},{"credentials",destination.credentialReference}};
+   tester(destination.profileId,profile,[reply=std::move(reply)](putgd::Error error){reply(error,{});});return;
+  }
   if(destination.providerId!="proton-drive"){reply({"setup_unsupported","This provider has no account setup",{}},{});return;}
   const auto method=kind=="connectAccount"?QString("connect"):kind=="storeSharePassword"?QString("storeSharePassword"):kind;
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));

@@ -60,6 +60,21 @@ private slots:
         QCOMPARE(result.error.code, QString("disk_full"));
         QCOMPARE(f.events("DELETE").size(), 0);
     }
+    void deniedVersioningCheckExplainsRequiredPermission() {
+        S3Fixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.request());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        auto configuration = rules({{{"method", "GET"}, {"query", "versioning"}, {"status", 403}}});
+        configuration["objects"] = f.state()["objects"];
+        f.reset(configuration);
+        const auto result = f.remove(uploaded.receipt);
+        QCOMPARE(result.error.code, QString("s3_permission_denied"));
+        QCOMPARE(result.error.details["requestStage"].toString(), QString("delete_versioning"));
+        QVERIFY(result.error.message.contains("s3:GetBucketVersioning"));
+        QVERIFY(result.error.message.contains("bucket policy"));
+        QCOMPARE(f.events("DELETE").size(), 0);
+    }
     void unsupportedJournalNeverDeletes_data() {
         QTest::addColumn<QJsonObject>("progress");
         QTest::newRow("future-schema") << QJsonObject{{"schemaVersion", 2}};
@@ -212,6 +227,10 @@ private slots:
         f.reset(configuration);
         auto result = f.remove(uploaded.receipt);
         QCOMPARE(result.status, QString("hidden_version_retained"));
+        QCOMPARE(result.error.code, QString("s3_permission_denied"));
+        QCOMPARE(result.error.details["requestStage"].toString(), QString("delete_version"));
+        QVERIFY(result.error.message.contains("s3:DeleteObjectVersion"));
+        QVERIFY(result.error.message.contains("bucket policy"));
         QVERIFY(result.progress.contains("markerVersionId"));
         QCOMPARE(f.events("DELETE").size(), 2);
         const QJsonValue objects = f.state().value("objects");

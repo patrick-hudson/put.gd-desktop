@@ -64,7 +64,7 @@ private slots:
  }
  void setupEndpointsWithoutServiceReportUnavailable() {
   Fixture f;
-  for(const auto& method:QStringList{"setup.storeCredentials","setup.unlockCredentials","setup.testDestination","setup.inspect"}) {
+  for(const auto& method:QStringList{"setup.storeCredentials","setup.unlockCredentials","setup.testDestination","setup.revealCredentialSecret","setup.inspect"}) {
    QJsonObject params{{"profileId","test"},{"expectedRevision","saved-revision"}};
    if(method=="setup.storeCredentials")params["credentials"]=QJsonObject{{"accessKey","synthetic-access"},{"secretKey","synthetic-secret"}};
    if(method=="setup.inspect")params={{"id","missing"}};
@@ -85,6 +85,17 @@ private slots:
   const auto reference=f.settings.snapshot().profiles["test"]["credentials"].toObject();const auto cached=credentials.cached("test",reference);QVERIFY(cached);QCOMPARE(cached->sessionToken,QString("synthetic-token"));QVERIFY(!credentials.cached("other",reference));
   const auto bytes=QJsonDocument(record).toJson()+QJsonDocument(f.settings.document()).toJson();QVERIFY(!bytes.contains("synthetic-access"));QVERIFY(!bytes.contains("synthetic-secret"));QVERIFY(!bytes.contains("synthetic-token"));
   QFile saved(f.settings.path());QVERIFY(saved.open(QIODevice::ReadOnly));QVERIFY(!saved.readAll().contains("synthetic-secret"));
+ }
+ void credentialRevealRejectsStaleMissingAndNonS3Destinations() {
+  Fixture f;QVERIFY(f.saveProfiles());CredentialStore credentials;SetupService setup(f.settings,credentials,{});f.server.setSetupService(&setup);
+  Error error;QJsonObject result;
+  auto reveal=[&](const QString& id,const QString& revision){
+   request(f.server,"setup.revealCredentialSecret",{{"profileId",id},{"expectedRevision",revision}},[&](Error e,QJsonObject value){error=e;result=value;});
+   QVERIFY(result.isEmpty());
+  };
+  reveal("test","stale");QCOMPARE(error.code,QString("config_conflict"));
+  reveal("missing",f.settings.revision());QCOMPARE(error.code,QString("profile_not_found"));
+  reveal("test",f.settings.revision());QCOMPARE(error.code,QString("setup_unsupported"));
  }
  void setupRequiresCurrentValidSavedProfileAndStrictCredentialInput() {
   Fixture f;QVERIFY(f.saveProfiles());CredentialStore credentials;int calls=0;
@@ -173,6 +184,8 @@ private slots:
    {"setup.unlockCredentials",{{"profileId","test"},{"expectedRevision",revision},{"reference","not-saved"}}},
    {"setup.storeCredentials",{{"profileId","test"},{"expectedRevision",revision},{"credentials",QJsonObject{{"accessKey","synthetic"},{"secretKey","synthetic"},{"reference","not-saved"}}}}},
    {"setup.inspect",{{"id",42}}},
+   {"setup.revealCredentialSecret",{{"profileId","test"},{"expectedRevision",revision},{"reference","untrusted"}}},
+   {"setup.revealCredentialSecret",{{"profileId",42},{"expectedRevision",revision}}},
    {"settings.save",{{"document",QJsonArray{}},{"expectedRevision",revision}}},
    {"settings.save",{{"document",f.settings.document()},{"expectedRevision",42}}}
   };
