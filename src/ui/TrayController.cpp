@@ -103,6 +103,8 @@ TrayController::TrayController(OperationService& operations,
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
    if (Settings::actionNames().contains(action)) invokeAction(action);
+   else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
+   else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
    else if (action == "history") showHistory();
    else if (action == "activity") showActivity();
@@ -122,6 +124,10 @@ TrayController::TrayController(OperationService& operations,
    invokeAction(action);
   });
  }
+ // Other editor sources stay one level down so the menu does not grow.
+ auto* editImage = menu_->addMenu(VisualStyle::icon("edit"), "Edit image");
+ connect(editImage->addAction("From clipboard"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
+ connect(editImage->addAction("From a file..."), &QAction::triggered, this, [this] { showView("editFile"); });
  menu_->addSeparator();
  connect(menu_->addAction(VisualStyle::icon("preferences"), "Settings and setup"),
          &QAction::triggered, this, &TrayController::showSettings);
@@ -284,7 +290,7 @@ void TrayController::showView(const QString& view) {
  open(view);
 }
 void TrayController::invokeShortcut(const QString& action) { invokeAction(action, true); }
-void TrayController::invokeAction(const QString& action, bool fromShortcut) {
+void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
@@ -299,7 +305,7 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut) {
    if (!fromShortcut) guard->showActivity();
    if (guard) guard->notifyFailure(error);
   }
- });
+ }, options);
 }
 #ifdef Q_OS_LINUX
 void TrayController::openNotificationLink(const QUrl& link) {

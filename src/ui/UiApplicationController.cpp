@@ -52,7 +52,7 @@ UiApplicationController::~UiApplicationController(){
   if(window){window->removeEventFilter(this);disconnect(window,nullptr,this,nullptr);}
 }
 QWidget* UiApplicationController::view(const QString& name){
- if(QStringList{"settings","history","activity","destinations"}.contains(name)){
+ if(QStringList{"settings","history","activity","destinations","editFile"}.contains(name)){
   if(!main_){
    main_=std::make_unique<MainWindow>(session_);
    if(saved_.contains("settings")&&!main_->settings()->restoreViewState(saved_["settings"].toObject()))notify({"ui_state_invalid","Saved settings draft could not be restored.",{}});
@@ -61,7 +61,10 @@ QWidget* UiApplicationController::view(const QString& name){
    main_->installEventFilter(this);connect(main_.get(),&MainWindow::viewStateChanged,this,[this]{dirtyCheckpoint_=true;checkpointDelay_.start();});
    connect(main_.get(),&MainWindow::quitRequested,this,&UiApplicationController::requestQuit);
    connect(main_.get(),&MainWindow::actionRequested,this,&UiApplicationController::requestAction);
+   connect(main_.get(),&MainWindow::editRequested,this,&UiApplicationController::requestEdit);
   }
+  // The tray's "Edit image > From a file" shows the main window, then its picker.
+  if(name=="editFile"){QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->chooseImageToEdit();});return main_.get();}
   main_->navigate(name);return main_.get();
  }
  if(name=="about"){
@@ -179,18 +182,23 @@ bool UiApplicationController::eventFilter(QObject* object,QEvent* event){
  close->ignore();requestClose(window);return true;
 }
 void UiApplicationController::clearPendingAction(bool restore){
- actionDelay_.stop();captureDelay_.stop();pendingAction_.clear();const auto windows=std::exchange(actionWindows_,{});
+ actionDelay_.stop();captureDelay_.stop();pendingAction_.clear();pendingOptions_={};const auto windows=std::exchange(actionWindows_,{});
  if(restore)for(auto window:windows)if(window){openViews_.insert(window);window->show();window->raise();window->activateWindow();}
 }
 void UiApplicationController::requestAction(const QString& action){
  if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||!Settings::actionNames().contains(action))return;
- pendingAction_=action;prepareAction();
+ pendingAction_=action;pendingOptions_={};prepareAction();
+}
+void UiApplicationController::requestEdit(const QString& source,const QString& path){
+ if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||(source!="clipboard"&&source!="file"))return;
+ pendingAction_="edit";pendingOptions_={{"source",source}};if(source=="file")pendingOptions_["path"]=path;prepareAction();
 }
 void UiApplicationController::prepareAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()){pendingAction_.clear();return;}
  if(main_&&!main_->settings()->flushAutosave()){actionDelay_.start();return;}
  if(main_)if(const auto error=main_->settings()->actionSaveError();error){pendingAction_.clear();notify(error);return;}
- const bool screen=pendingAction_!="clipboard";
+ // Clipboard and file sources capture nothing, so windows stay in place.
+ const bool screen=pendingAction_!="clipboard"&&!pendingOptions_.contains("source");
  if(screen&&main_&&main_->settings()->hasCredentialInputs()){
   pendingAction_.clear();notify({"credentials_not_stored","Store or clear unfinished credentials in Destinations before taking a screen capture.",{}});return;
  }
@@ -205,12 +213,13 @@ void UiApplicationController::prepareAction(){
 }
 void UiApplicationController::invokeAction(){
  if(exiting_||quitting_||closing_||pendingAction_.isEmpty()||actionDispatching_)return;
- actionDispatching_=true;const auto action=pendingAction_;
- session_.request("action.invoke",{{"action",action}},this,[this,action](Error error,QJsonObject){
+ actionDispatching_=true;const auto action=pendingAction_;const bool screen=action!="clipboard"&&!pendingOptions_.contains("source");
+ auto params=pendingOptions_;params["action"]=action;
+ session_.request("action.invoke",params,this,[this,screen](Error error,QJsonObject){
   actionDispatching_=false;if(exiting_||quitting_||closing_){clearPendingAction(false);return;}
   if(error){clearPendingAction(true);notify(error);return;}
   clearPendingAction(false);
-  if(action!="clipboard"){if(about_)about_->close();if(main_)main_->close();}
+  if(screen){if(about_)about_->close();if(main_)main_->close();}
  });
 }
 void UiApplicationController::requestQuit(){

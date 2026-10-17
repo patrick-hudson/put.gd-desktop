@@ -1,4 +1,8 @@
 #include "MainWindow.h"
+#include <QDir>
+#include <QStandardPaths>
+#include <QFileDialog>
+#include <QMenu>
 #include "SettingsWindow.h"
 #include "HistoryWindow.h"
 #include "UiSession.h"
@@ -27,7 +31,17 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Import copied local files, an image, or plain text, in that order. Text URLs are imported as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload."}};
  for(const auto& action:Settings::actionNames()){
   auto* button=new QPushButton;button->setObjectName("captureRailButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));button->setMinimumHeight(52);
-  auto* box=new QVBoxLayout(button);box->setContentsMargins(10,6,10,6);box->setSpacing(2);auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(8);auto* icon=new QLabel;icon->setPixmap(VisualStyle::icon(action).pixmap(19,19));line->addWidget(icon);auto* name=new QLabel(labels.value(action));line->addWidget(name);line->addStretch();box->addLayout(line);auto* shortcut=new QLabel;shortcut->setProperty("visualRole","mono");box->addWidget(shortcut);for(auto* label:{name,icon,shortcut})label->setAttribute(Qt::WA_TransparentForMouseEvents);
+  auto* box=new QVBoxLayout(button);box->setContentsMargins(10,6,10,6);box->setSpacing(2);auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(8);auto* icon=new QLabel;icon->setPixmap(VisualStyle::icon(action).pixmap(19,19));line->addWidget(icon);auto* name=new QLabel(labels.value(action));line->addWidget(name);line->addStretch();
+  // Other editor sources sit behind one small menu so the rail does not grow.
+  if(action=="edit"){
+   auto* more=new QToolButton(button);more->setObjectName("editSourceMenu");more->setAutoRaise(true);more->setArrowType(Qt::DownArrow);more->setPopupMode(QToolButton::InstantPopup);
+   more->setToolTip("Edit the clipboard image or an image file");more->setAccessibleName("More ways to edit");
+   auto* menu=new QMenu(more);
+   connect(menu->addAction(VisualStyle::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
+   connect(menu->addAction(VisualStyle::icon("images"),"Edit an image file…"),&QAction::triggered,this,&MainWindow::chooseImageToEdit);
+   more->setMenu(menu);line->addWidget(more);
+  }
+  box->addLayout(line);auto* shortcut=new QLabel;shortcut->setProperty("visualRole","mono");box->addWidget(shortcut);for(auto* label:{name,icon,shortcut})label->setAttribute(Qt::WA_TransparentForMouseEvents);
   auto update=[this,shortcut,button,action,explanations]{
    const auto document=session_.document();const auto saved=Settings::effectiveAction(document,action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);shortcut->setText(key);shortcut->setVisible(!key.isEmpty());QString output;
    const bool local=document["archive"].toObject()["keepUploads"].toBool();
@@ -71,6 +85,11 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
 }
 MainWindow::~MainWindow(){
  disconnect(settings_,nullptr,this,nullptr);disconnect(history_,nullptr,this,nullptr);disconnect(navigation_,nullptr,this,nullptr);disconnect(&session_,nullptr,this,nullptr);
+}
+void MainWindow::chooseImageToEdit(){
+ auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
+ const auto path=QFileDialog::getOpenFileName(this,"Edit an image file",folder,"Images (*.png *.jpg *.jpeg)");
+ if(!path.isEmpty())emit editRequested("file",path);
 }
 void MainWindow::navigate(const QString& name){navigation_->setCurrentRow(name=="settings"?2:name=="destinations"?1:0);if(name=="activity"||name=="history")history_->refresh();}
 QJsonObject MainWindow::saveViewState()const{return {{"page",navigation_->currentRow()},{"geometry",QJsonArray{x(),y(),width(),height()}}};}

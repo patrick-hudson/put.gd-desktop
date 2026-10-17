@@ -38,7 +38,7 @@ signals:
  void availabilityResolved();
 
 private:
- void invokeAction(const QString&, bool fromShortcut = false);
+ void invokeAction(const QString&, bool fromShortcut = false, const QJsonObject& options = {});
 #ifdef Q_OS_LINUX
  void openNotificationLink(const QUrl&);
 #endif

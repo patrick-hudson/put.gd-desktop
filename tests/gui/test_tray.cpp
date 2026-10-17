@@ -450,6 +450,11 @@ private slots:
   QCOMPARE(views, QStringList({"settings", "history", "activity", "about"}));
   // A single & would be eaten as a mnemonic marker in the menu.
   QVERIFY(actionNamed(tray, "Capture region && edit"));
+  // Other editor sources sit in one submenu; a file opens the main window's picker.
+  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
+  QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);
+  QCOMPARE(editImage->actions().at(1)->text(), QString("From a file...")); editImage->actions().at(1)->trigger();
+  QCOMPARE(views.last(), QString("editFile"));
   QCOMPARE(QApplication::topLevelWidgets(), windows);
   QCOMPARE(quits, 0);
   controller->activate();

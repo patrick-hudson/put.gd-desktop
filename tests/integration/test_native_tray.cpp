@@ -388,12 +388,21 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 12);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 13);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(0).variant()).props["label"].toString(), QString("Capture region"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(3).variant()).props["label"].toString(), QString("Upload Clipboard"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(4).variant()).props["label"].toString(), QString("Capture region & edit"));
-  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(5).variant()).props["type"].toString(), QString("separator"));
+  // Other editor sources sit in one submenu right after the region editor.
+  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(5).variant());
+  QCOMPARE(editImage.id, 13); QCOMPARE(editImage.props["label"].toString(), QString("Edit image")); QCOMPARE(editImage.props["children-display"].toString(), QString("submenu"));
+  QCOMPARE(editImage.children.size(), 2);
+  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("From clipboard"));
+  QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("From a file..."));
+  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(6).variant()).props["type"].toString(), QString("separator"));
+  // Depth 1 lists the submenu header without expanding it.
+  layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));
+  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(5).variant()).children.isEmpty());
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 0, QStringList{"label"}});
   layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QVERIFY(layout.children.isEmpty()); QVERIFY(layout.props.isEmpty());
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).arguments().at(0).toBool(), false);
@@ -404,18 +413,19 @@ private slots:
  }
  void everyActionAndActivationUsesFixedIds() {
   NativeTray tray; QTRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
-  const QList<int> ids{1,2,3,4,5,7,8,9,11,12};
-  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","activity","about","quit"};
+  const QList<int> ids{1,2,3,4,5,7,8,9,11,12,14,15};
+  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","activity","about","quit","edit-clipboard","edit-file"};
   for (int i = 0; i < ids.size(); ++i) { QCOMPARE(click(ids[i]).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(actions.size(), i+1); QCOMPARE(actions.at(i).at(0).toString(), expected[i]); }
-  QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(10).type(), QDBusMessage::ReplyMessage);
+  // Separators and the submenu header dispatch nothing.
+  QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(10).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(13).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(click(1, "hovered").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(99).type(), QDBusMessage::ErrorMessage);
-  QCOMPARE(actions.size(), 10);
+  QCOMPARE(actions.size(), 12);
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
-  QTRY_COMPARE(actions.size(), 11); QCOMPARE(actions.last().at(0).toString(), QString("activity"));
+  QTRY_COMPARE(actions.size(), 13); QCOMPARE(actions.last().at(0).toString(), QString("activity"));
   WireEvents events{{1,"clicked",QDBusVariant(0),0},{99,"clicked",QDBusVariant(0),0}};
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
-  QTRY_COMPARE(actions.size(), 12); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+  QTRY_COMPARE(actions.size(), 14); QCOMPARE(actions.last().at(0).toString(), QString("region"));
  }
  void lateHostAndWatcherRestartDoNotDuplicateRegistration() {
   watcher.hostPresent = false; NativeTray tray;
