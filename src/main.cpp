@@ -7,6 +7,7 @@
 #include "app/LoginStartup.h"
 #include "app/UiProcessController.h"
 #include "app/SetupService.h"
+#include "ui/ResidentTheme.h"
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
 #include <QApplication>
@@ -126,7 +127,8 @@ int main(int argc,char* argv[]) {
  std::unique_ptr<QCoreApplication> application;
  if(coreResident||gnomeCoreResident||kdeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
  else {
-  auto graphical=std::make_unique<QApplication>(argc,argv);
+  std::unique_ptr<QApplication> graphical;
+  {putgd::GenericResidentTheme theme;graphical=std::make_unique<QApplication>(argc,argv);}
   putgd::VisualStyle::apply(*graphical);
   graphical->setDesktopFileName("putgd");
   graphical->setWindowIcon(putgd::VisualStyle::icon("brand"));

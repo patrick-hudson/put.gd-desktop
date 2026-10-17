@@ -1,5 +1,6 @@
 #include "fixtures/U2Fixtures.h"
 #include "ui/TrayController.h"
+#include "ui/ResidentTheme.h"
 #include "ui/VisualStyle.h"
 #include <QAction>
 #include <QApplication>
@@ -61,6 +62,18 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ void residentThemeScopeRestoresTheEnvironmentForChildren() {
+  // Views and helpers inherit the environment; only the resident's own
+  // QApplication construction may see the generic theme override.
+  const bool aware=QGuiApplication::desktopSettingsAware();
+  qputenv("QT_QPA_PLATFORMTHEME","qt6ct");
+  {GenericResidentTheme theme;QCOMPARE(qgetenv("QT_QPA_PLATFORMTHEME"),QByteArray("generic"));QVERIFY(!QGuiApplication::desktopSettingsAware());}
+  QCOMPARE(qgetenv("QT_QPA_PLATFORMTHEME"),QByteArray("qt6ct"));
+  qunsetenv("QT_QPA_PLATFORMTHEME");
+  {GenericResidentTheme theme;QCOMPARE(qgetenv("QT_QPA_PLATFORMTHEME"),QByteArray("generic"));}
+  QVERIFY(!qEnvironmentVariableIsSet("QT_QPA_PLATFORMTHEME"));
+  QGuiApplication::setDesktopSettingsAware(aware);
+ }
  void failedOperationsWithoutItemsShowTheirError() {
   const QJsonObject tooLarge{{"state","failed"},{"copyStatus","no_result"},{"items",QJsonArray{}},{"error",QJsonObject{{"code","edit_input_too_large"},{"message","This image is too large to edit; use a smaller copy"}}}};
   QCOMPARE(TrayController::completionMessage(tooLarge,false),QString("This image is too large to edit; use a smaller copy"));

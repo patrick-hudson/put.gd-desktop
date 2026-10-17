@@ -10,6 +10,27 @@ Settings, History, Activity and About live in `putgd-ui`. The last window closin
 
 Cinnamon acquisition uses transient `putgd-capture`; KDE region selection uses transient `putgd-kde-region`. The KDE selector returns geometry only, and the resident retains KWin authorization and pixel capture. GNOME retains its Shell bridge. Selection stays transparent over a live desktop. Startup, control frames, selection and shutdown are bounded; accepted results require matching build identity and normal helper exit. A helper that exits without required cleanup proof fails closed.
 
+The graphical fallback resident (X11 sessions other than Cinnamon: Plasma X11,
+GNOME X11, MATE, Xfce) constructs `QApplication` on Qt's built-in generic
+platform theme (`src/ui/ResidentTheme.h`):
+desktop-settings awareness is turned off and `QT_QPA_PLATFORMTHEME=generic`
+is set for construction only. The variable is then restored, so `putgd-ui`
+views and helpers keep the desktop's native theme. The resident's own visible
+surfaces are unaffected:
+
+- The tray menu and notifications are drawn by the desktop over D-Bus.
+- The region overlay is custom-painted.
+- Only a desktop without StatusNotifierItem support would see Qt's fallback
+  menu in the plain Fusion style.
+
+On Plasma X11 the KDE theme plugin otherwise creates an OpenGL context at
+startup, mapping Qt Quick, KF6, Mesa and `libLLVM` into the idle resident. On
+physical Kubuntu 26.04 / Plasma 6.6 X11 (Release `444f0bf`, 300 s, 61 samples)
+the resident dropped from 116.1 to 35.4 MiB RSS, 29.4 to 10.6 MiB PSS and
+23.6 to 8.6 MiB private. Plasma/Wayland (a `QCoreApplication` resident)
+measured 29.0 MiB RSS either way. Evidence:
+`work/verification/2026-10-17-kde-resident-theme/`.
+
 Sleeping a graphical process would retain its address space and stop callbacks the listener needs. Normal helper exit releases its graphical allocations without freezing clipboard, shortcuts or uploads. Retaining a hidden helper to improve reopen timings is outside this design.
 
 ## Load only the decoder the action needs
