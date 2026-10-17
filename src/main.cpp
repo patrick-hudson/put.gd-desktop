@@ -42,6 +42,12 @@
 namespace {
 // -1 means no connection was made and normal resident startup may proceed.
 // Once connected, a failed UI request must never fall through to a second resident.
+// Launcher results are for the person or script that started put.gd. Qt
+// builds with journald support (Fedora) send qWarning to the journal whenever
+// stderr is not a terminal, so write these lines to stderr directly.
+void launcherError(const QString& line) {
+ const auto bytes=line.toUtf8();std::fwrite(bytes.constData(),1,size_t(bytes.size()),stderr);std::fputc('\n',stderr);std::fflush(stderr);
+}
 int activateResident(const QString& view,bool background) {
  const auto path=putgd::LocalServer::defaultSocketPath();
  if(background)return putgd::activateLocalSession(path,{}).connected?0:-1;
@@ -70,8 +76,8 @@ int activateResident(const QString& view,bool background) {
    code=known.contains(error["code"].toString())?error["code"].toString():QStringLiteral("ui_activation_failed");
   }
  }
- if(code=="ui_incompatible")qWarning("ui_incompatible: The installed UI version does not match the running app. Restart put.gd after pending uploads finish.");
- else qWarning("%s: Could not confirm that the requested window opened. Retry opening the window; check the resident if this continues.",qPrintable(code));
+ if(code=="ui_incompatible")launcherError("ui_incompatible: The installed UI version does not match the running app. Restart put.gd after pending uploads finish.");
+ else launcherError(code+": Could not confirm that the requested window opened. Retry opening the window; check the resident if this continues.");
  return 1;
 }
 putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
@@ -173,7 +179,7 @@ int main(int argc,char* argv[]) {
  putgd::OperationService operations(dataRoot,settings,providers,*source);
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
- const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
+ const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
 #ifdef PUTGD_NATIVE_X11
  if(coreNative) {
   const auto bind=[&] {coreNative->bindShortcuts(bindings());};
