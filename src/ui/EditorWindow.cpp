@@ -211,6 +211,8 @@ void EditorWindow::useColor(const QColor& color){
 void EditorWindow::pickCustomColor(){
  const auto* shape=doc_.find(canvas_->selected());
  const bool highlight=canvas_->tool()==Tool::Highlight||(shape&&shape->kind==editor::Shape::Kind::Highlight);
+ // The dialog's own custom-color grid shows the same recent picks.
+ for(int i=0;i<QColorDialog::customCount();++i)QColorDialog::setCustomColor(i,i<recentColors_.size()?QColor(recentColors_[i]):QColor(Qt::white));
  const auto color=QColorDialog::getColor(highlight?highlightColor_:annotationColor_,this,"Custom color");
  if(!color.isValid())return;
  // Palette colors are already one click away; only custom colors are remembered.
