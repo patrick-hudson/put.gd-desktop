@@ -11,6 +11,9 @@
 #include <QScopeGuard>
 #include <QTest>
 #include <thread>
+#include <csignal>
+#include <sys/resource.h>
+#include <unistd.h>
 using namespace putgd;
 
 namespace {
@@ -30,6 +33,18 @@ Answer ask(EditorSession& session,const QString& command,const QJsonObject& para
 bool waitPhase(EditorSession& session,const QString& phase,int ms=20000){
  for(int waited=0;waited<ms;waited+=20){if(session.phase()==phase)return true;QTest::qSleep(20);}
  return false;
+}
+// Direct children of this test process with the given executable name.
+QList<int> childProcesses(const QByteArray& name){
+ QList<int> pids;
+ for(const auto& entry:QDir("/proc").entryList(QDir::Dirs|QDir::NoDotAndDotDot)){
+  bool numeric=false;const int pid=entry.toInt(&numeric);if(!numeric)continue;
+  QFile stat("/proc/"+entry+"/stat");if(!stat.open(QIODevice::ReadOnly))continue;
+  const auto line=stat.readAll();const auto open=line.indexOf('('),close=line.lastIndexOf(')');if(open<0||close<0)continue;
+  const auto fields=line.mid(close+2).split(' ');
+  if(line.mid(open+1,close-open-1).startsWith(name.left(15))&&fields.size()>1&&fields[1].toInt()==int(::getpid()))pids.append(pid);
+ }
+ return pids;
 }
 int filesUnder(const QString& root){int count=0;QDirIterator it(root,QDir::Files|QDir::Hidden,QDirIterator::Subdirectories);while(it.hasNext()){it.next();++count;}return count;}
 }
@@ -91,6 +106,43 @@ private slots:
   QVERIFY(!ask(*session,"cancel").error);if(worker.joinable())worker.join();
   QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);
   QVERIFY(result.recentColors);QCOMPARE(*result.recentColors,QStringList({"#123456","#abcdef"}));
+ }
+ void helperCrashWhileEditingFailsClosed(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({64,64},4);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  const auto helpers=childProcesses("putgd-ui");QCOMPARE(helpers.size(),1);QCOMPARE(::kill(helpers.first(),SIGKILL),0);
+  if(worker.joinable())worker.join();
+  QCOMPARE(result.error.code,QString("editor_exit"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
+ }
+ void misbehavingHelpersNeverHandOffAnImage_data(){
+  QTest::addColumn<QString>("mode");QTest::addColumn<QString>("code");
+  QTest::newRow("never ready (startup timeout)")<<"silent"<<"editor_timeout";
+  QTest::newRow("crash while editing")<<"crash"<<"editor_exit";
+  QTest::newRow("hang while finalizing (finalize timeout)")<<"hang-finalizing"<<"editor_timeout";
+  QTest::newRow("output is not a PNG")<<"bad-png"<<"edit_output_invalid";
+  QTest::newRow("output digest mismatch")<<"wrong-digest"<<"editor_io";
+ }
+ void misbehavingHelpersNeverHandOffAnImage(){
+  QFETCH(QString,mode);QFETCH(QString,code);
+  qputenv("PUTGD_TEST_EDITOR_MODE",mode.toUtf8());auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_EDITOR_MODE");});
+  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();
+  auto image=noise({32,32},6);
+  const auto result=EditorJob(staging,PUTGD_EDITOR_FIXTURE,800,800,800).run(image,"Upload",1024*1024,session);
+  QCOMPARE(result.error.code,code);QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
+  QVERIFY(childProcesses("test_editor_hel").isEmpty());
+ }
+ void fullDiskWhileStagingIsReportedAsStorage(){
+  // A file-size limit stands in for a full disk: staging writes fail with EFBIG.
+  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();
+  auto image=noise({256,256},7);
+  rlimit previous{};QCOMPARE(::getrlimit(RLIMIT_FSIZE,&previous),0);const auto handler=std::signal(SIGXFSZ,SIG_IGN);
+  rlimit small=previous;small.rlim_cur=16*1024;QCOMPARE(::setrlimit(RLIMIT_FSIZE,&small),0);
+  const auto result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Upload",1024*1024,session);
+  QCOMPARE(::setrlimit(RLIMIT_FSIZE,&previous),0);std::signal(SIGXFSZ,handler);
+  QCOMPARE(result.error.code,QString("edit_staging_failed"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);
+  QVERIFY(childProcesses("putgd-ui").isEmpty());
  }
  void residentCancellationTerminatesTheHelper(){
   QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;

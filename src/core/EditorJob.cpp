@@ -56,6 +56,7 @@ Error failure(const QString& code){
  if(code=="edit_export_failed")return {"edit_export_failed","The edited image could not be prepared",{}};
  if(code=="editor_timeout")return {code,"The image editor did not respond in time",{}};
  if(code=="editor_start")return {code,"The image editor could not start",{}};
+ if(code=="edit_staging_failed")return {code,"Could not save the image for editing; check free disk space",{}};
  if(code=="editor_unavailable")return {code,"The image editor is not available on this platform",{}};
  if(code=="editor_output_invalid"||code=="edit_output_invalid")return {"edit_output_invalid","The editor returned an image that is not a sanitized PNG",{}};
  return {code,"The image editor stopped before handing off an image",{}};
@@ -135,8 +136,11 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  const auto inputPath=directory.path()+"/input.img",outputPath=directory.path()+"/output.png";
  QFile input(inputPath),output(outputPath);struct stat inputIdentity{},outputIdentity{};
  if(!input.open(QIODevice::ReadWrite|QIODevice::NewOnly)||!input.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return fail("editor_io");
- if(!stage(input))return fail(session->cancelled()?"cancelled":"source_unsupported");
- if(!input.flush()||!input.setPermissions(QFile::ReadOwner)||::fstat(input.handle(),&inputIdentity)||!privateFile(inputIdentity,0400)||inputIdentity.st_size<1)return fail("editor_io");
+ // A failed write (a full disk, a quota) is not an unsupported image.
+ const auto writeFailed=[&input]{return input.error()==QFileDevice::WriteError||input.error()==QFileDevice::ResourceError;};
+ if(!stage(input))return fail(session->cancelled()?"cancelled":writeFailed()?"edit_staging_failed":"source_unsupported");
+ if(!input.flush())return fail("edit_staging_failed");
+ if(!input.setPermissions(QFile::ReadOwner)||::fstat(input.handle(),&inputIdentity)||!privateFile(inputIdentity,0400)||inputIdentity.st_size<1)return fail("editor_io");
  const auto inputHash=digest(input,inputIdentity.st_size);if(inputHash.isEmpty())return fail("editor_io");
  if(!output.open(QIODevice::ReadWrite|QIODevice::NewOnly)||!output.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||::fstat(output.handle(),&outputIdentity)||!privateFile(outputIdentity,0600))return fail("editor_io");
  if(session->cancelled())return fail("cancelled");

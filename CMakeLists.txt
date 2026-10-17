@@ -418,8 +418,11 @@ if(BUILD_TESTING)
     # Both suites run the real product editor helper offscreen through its private protocol.
     add_executable(test_editor_job tests/integration/test_editor_job.cpp)
     target_link_libraries(test_editor_job PRIVATE putgd_core putgd_ui_control Qt6::Test)
-    target_compile_definitions(test_editor_job PRIVATE PUTGD_PRODUCT_UI_PATH="$<TARGET_FILE:putgd-ui>")
-    add_dependencies(test_editor_job putgd-ui)
+    add_executable(test_editor_helper_fixture tests/fixtures/editor_helper_fixture.cpp)
+    target_link_libraries(test_editor_helper_fixture PRIVATE putgd_core putgd_ui_control Qt6::Gui)
+    target_compile_definitions(test_editor_job PRIVATE PUTGD_PRODUCT_UI_PATH="$<TARGET_FILE:putgd-ui>"
+      PUTGD_EDITOR_FIXTURE="$<TARGET_FILE:test_editor_helper_fixture>")
+    add_dependencies(test_editor_job putgd-ui test_editor_helper_fixture)
     add_test(NAME editor_job_integration COMMAND test_editor_job)
     add_executable(test_edit_operations tests/integration/test_edit_operations.cpp)
     target_include_directories(test_edit_operations PRIVATE tests)

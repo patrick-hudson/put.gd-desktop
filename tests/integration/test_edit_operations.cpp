@@ -83,6 +83,26 @@ private slots:
   QCOMPARE(QDir(f.dir.filePath("data/editing")).entryList(QDir::NoDotAndDotDot|QDir::AllEntries).size(),0);
   QCOMPARE(f.source.reads,1);
  }
+ void failedUploadRetriesTheEditedBytesOnly(){
+  // Retry binds to the finalized digest: it never reacquires or reopens the source.
+  Fixture f;QTRY_VERIFY(f.operations->ready());f.provider->failUpload=true;
+  const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
+  HistoryStore journal(f.operations->databasePath());QTRY_COMPARE(journal.operation(id).state,QString("editing"));
+  QVERIFY(!command(*f.operations,id,"apply",redactSecret()).error);QVERIFY(!command(*f.operations,id,"submit").error);
+  QTRY_VERIFY_WITH_TIMEOUT(QStringList({"failed","partial"}).contains(journal.operation(id).state),20000);
+  const auto failed=journal.operation(id);QCOMPARE(failed.items.size(),1);QCOMPARE(failed.items.first().uploadStatus,QString("failed"));
+  const auto digest=failed.items.first().artifact.sha256;QVERIFY(!digest.isEmpty());QCOMPARE(f.source.reads,1);QTRY_COMPARE(f.operations->editingOperation(),QString());
+  f.provider->failUpload=false;
+  // Retry is offered once the failed operation has finished its follow-up steps.
+  QTRY_COMPARE_WITH_TIMEOUT(f.operations->diagnostics()["activeOperations"].toInt(),0,10000);
+  auto retried=call([&](JsonReply r){f.operations->retry(id,r);});QVERIFY2(!retried.error,qPrintable(retried.error.code));
+  QTRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString("completed"),20000);
+  const auto done=journal.operation(id);QCOMPARE(done.items.size(),1);QCOMPARE(done.items.first().uploadStatus,QString("uploaded"));
+  QCOMPARE(done.items.first().artifact.sha256,digest);QCOMPARE(f.source.reads,1);QCOMPARE(f.operations->editingOperation(),QString());
+  QFile artifact(done.items.first().artifact.path);QVERIFY(artifact.open(QIODevice::ReadOnly));
+  const auto uploaded=QImage::fromData(artifact.readAll(),"PNG").convertToFormat(QImage::Format_RGB32);QCOMPARE(uploaded.pixel(secret.center()),qRgb(0,0,0));
+  verifyNoSecret(f.dir.filePath("data"));
+ }
  void cancellingAnOpenEditStoresAndUploadsNothing(){
   Fixture f;QTRY_VERIFY(f.operations->ready());
   const auto id=call([&](JsonReply r){f.operations->invoke("edit",r);}).result["operationId"].toString();QVERIFY(!id.isEmpty());
