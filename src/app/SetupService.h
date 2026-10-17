@@ -19,9 +19,14 @@ public:
  void inspect(const QString& id,JsonReply);
  void credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply);
  void revealCredentialSecret(const QString& profileId,const QString& expectedRevision,JsonReply);
+ // Once per resident: starts an unlock job for each saved S3 keychain profile
+ // that is not cached, unless the preference is off. The desktop keyring may
+ // show its own unlock prompt. Returns the started setup IDs.
+ QStringList unlockSavedCredentials();
 signals:
  void changed(const QString& setupId);
 private:
+ bool startupUnlockDone_=false;
  struct CompletionContext {std::mutex mutex;SetupService* owner=nullptr;};
  void finish(const QString& id,Error,QJsonObject result={});
  SettingsService& settings_;

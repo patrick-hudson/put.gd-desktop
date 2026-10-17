@@ -52,6 +52,12 @@ struct Settings {
     QString uploadClipboardBehavior = "each_link";
     bool notifications = true;
     bool launchAtLogin = false;
+    // Read saved keychain credentials once when the resident starts; the
+    // desktop keyring may show its own unlock prompt. Uploads never unlock.
+    bool unlockCredentialsAtStartup = true;
+    // Most recent first; custom colors picked in the editor.
+    static constexpr int maximumRecentColors = 8;
+    QStringList editorRecentColors;
 
     static QJsonObject defaults();
     static QJsonObject developmentTemplate();

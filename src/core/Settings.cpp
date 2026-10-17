@@ -193,9 +193,21 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         !(retention["historyRetentionDays"].isNull() || integer(retention["historyRetentionDays"], 1, 36500)))
         return invalid("/retention", "Retention limits are invalid; null history retention means no automatic expiry.");
     const auto preferences = doc["preferences"].toObject();
-    if (!doc["preferences"].isObject() || !keys(preferences, preferences.contains("uploadClipboardBehavior")?QStringList{"notifications", "launchAtLogin", "uploadClipboardBehavior"}:QStringList{"notifications", "launchAtLogin"}) ||
+    QStringList preferenceKeys{"notifications", "launchAtLogin"};
+    for (const auto* optional : {"uploadClipboardBehavior", "unlockCredentialsAtStartup", "editorRecentColors"})
+        if (preferences.contains(optional)) preferenceKeys.append(optional);
+    if (!doc["preferences"].isObject() || !keys(preferences, preferenceKeys) ||
         !preferences["notifications"].isBool() || !preferences["launchAtLogin"].isBool())
         return invalid("/preferences", "Notifications and launch at login must be booleans.");
+    if (preferences.contains("unlockCredentialsAtStartup") && !preferences["unlockCredentialsAtStartup"].isBool())
+        return invalid("/preferences/unlockCredentialsAtStartup", "Unlocking saved credentials at startup must be true or false.");
+    if (preferences.contains("editorRecentColors")) {
+        const auto colors = preferences["editorRecentColors"];
+        bool valid = colors.isArray() && colors.toArray().size() <= Settings::maximumRecentColors;
+        if (valid) for (const auto& color : colors.toArray())
+            valid = valid && color.isString() && QRegularExpression("^#[0-9a-f]{6}$").match(color.toString()).hasMatch();
+        if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 8 lowercase #rrggbb values.");
+    }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
     return {};
@@ -251,6 +263,8 @@ Settings Settings::fromValidated(const QJsonObject& original) {
     settings.uploadClipboardBehavior = doc["preferences"].toObject()["uploadClipboardBehavior"].toString("each_link");
     settings.notifications = doc["preferences"].toObject()["notifications"].toBool();
     settings.launchAtLogin = doc["preferences"].toObject()["launchAtLogin"].toBool();
+    settings.unlockCredentialsAtStartup = doc["preferences"].toObject()["unlockCredentialsAtStartup"].toBool(true);
+    for (const auto& color : doc["preferences"].toObject()["editorRecentColors"].toArray()) settings.editorRecentColors.append(color.toString());
     return settings;
 }
 }

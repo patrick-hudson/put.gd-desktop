@@ -24,6 +24,19 @@ class SettingsContract final : public QObject {
         return file.readAll();
     }
 private slots:
+    void startupUnlockAndRecentColorPreferencesAreOptionalAndBounded() {
+        auto doc=putgd::Settings::developmentTemplate();auto validator=[](const QString&,const QJsonObject&){return putgd::Error{};};
+        QVERIFY(!putgd::Settings::validate(doc,validator));
+        const auto defaults=putgd::Settings::fromValidated(doc);QVERIFY(defaults.unlockCredentialsAtStartup);QVERIFY(defaults.editorRecentColors.isEmpty());
+        auto preferences=doc["preferences"].toObject();
+        preferences["unlockCredentialsAtStartup"]=false;preferences["editorRecentColors"]=QJsonArray{"#a1b2c3","#000000"};doc["preferences"]=preferences;
+        QVERIFY(!putgd::Settings::validate(doc,validator));
+        const auto chosen=putgd::Settings::fromValidated(doc);QVERIFY(!chosen.unlockCredentialsAtStartup);QCOMPARE(chosen.editorRecentColors,QStringList({"#a1b2c3","#000000"}));
+        const QList<QJsonValue> invalid{QJsonArray{"#A1B2C3"},QJsonArray{"red"},QJsonArray{1},QJsonArray{"#1","#2"},QJsonValue("#a1b2c3")};
+        for(const auto& colors:invalid){preferences["editorRecentColors"]=colors;doc["preferences"]=preferences;QCOMPARE(putgd::Settings::validate(doc,validator).code,QString("config_invalid"));}
+        QJsonArray nine;for(int i=0;i<9;++i)nine.append(QString("#00000%1").arg(i));preferences["editorRecentColors"]=nine;doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
+        preferences.remove("editorRecentColors");preferences["unlockCredentialsAtStartup"]="yes";doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
+    }
     void captureDefaultFollowsFutureChangesWithoutChangingExplicitExceptions() {
         auto doc=putgd::Settings::developmentTemplate();
         doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","development-s3"},{"publicationMode","private"}};

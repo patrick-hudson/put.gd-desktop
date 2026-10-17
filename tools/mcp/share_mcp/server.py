@@ -135,7 +135,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         'Inspect actual capabilities and configuration before acting. Actions use the configured '
         'local-save/public-upload destination and may write the clipboard. Preserve operation IDs. '
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
-        'Edit & upload opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
+        'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
         'Use redact, never blur, for private information. '
         'Supply only non-secret configuration and credential references.'))
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
@@ -163,7 +163,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=effect)
     async def open_editor(source: str = 'region', path: str | None = None) -> Json:
-        """Start Edit & upload from region/window/desktop/clipboard, or an absolute PNG/JPEG file path. Returns the operation ID; the editor window opens and nothing uploads until submit_editor. Region/window selection may need the user."""
+        """Start Capture region & edit (the edit action) from region/window/desktop/clipboard, or an absolute PNG/JPEG file path. Returns the operation ID; the editor window opens and nothing uploads until submit_editor. Region/window selection may need the user."""
         if source not in EDITOR_SOURCES or (source == 'file') != (path is not None):
             return invalid()
         if path is not None and (not identifier(path, 4096) or not path.startswith('/')):

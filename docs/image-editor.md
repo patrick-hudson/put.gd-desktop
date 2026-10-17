@@ -1,6 +1,6 @@
-# Edit & upload image editor
+# Capture region & edit (image editor)
 
-Issue #51 adds a small **Edit & upload** workflow: choose what to share, remove
+Issue #51 adds a small editing workflow, **Capture region & edit** (the `edit` action): choose what to share, remove
 private information or add a few marks, review it, then send only the finished
 image through the normal archive/upload/history pipeline. This document is the
 implementation contract and records what has been verified. It does not claim
@@ -8,17 +8,17 @@ desktop acceptance beyond the evidence listed at the end.
 
 ## User workflow
 
-1. Invoke **Edit & upload** from its global shortcut, the tray menu or the main
+1. Invoke **Capture region & edit** from its global shortcut, the tray menu or the main
    window rail. By default the existing native region selector runs first; drag
    the area to edit. Escape cancels without creating an editor.
 2. The editor opens with the selection fitted to the window. The result goes
-   to the output configured for Edit & upload when the edit started.
+   to the output configured for the edit action when the edit started.
 3. Edit, then press **Upload** or Ctrl+Enter. Plain Enter never uploads: it
    finishes text entry or applies a pending crop.
 4. Only the sanitized PNG becomes an artifact, history preview, local archive
    copy and upload. Normal progress, retry and link copying follow.
 5. **Cancel**, closing the window (after confirming unsaved edits) or cancelling
-   the operation stores and uploads nothing. A second Edit & upload invocation
+   the operation stores and uploads nothing. A second edit invocation
    raises the open editor and reports `editor_active` with its operation ID.
 
 The shortcut is unbound by default. Assign it under Settings → Shortcuts, where

@@ -81,7 +81,7 @@ struct Entry { const char* label; const char* action; };
 constexpr Entry entries[] {
  {"Capture region", "region"}, {"Capture window", "window"},
  {"Capture desktop", "desktop"}, {"Upload Clipboard", "clipboard"},
- {"Edit & upload", "edit"},
+ {"Capture region & edit", "edit"},
  {"", ""}, {"Settings and setup", "settings"}, {"Upload history", "history"},
  {"Recent activity", "activity"}, {"", ""}, {"About put.gd", "about"}, {"Quit", "quit"}
 };

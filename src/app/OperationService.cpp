@@ -240,7 +240,7 @@ QString OperationService::editorDestination(const Operation& op) const {
 void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_bool> flag,ClipboardPayload payload) {
  auto session=editor_;
  if(!session||editingId_!=op.id||flag->load()){op.cancelled=true;op.state="cancelled";finish(op);return;}
- if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","Edit & upload needs exactly one static PNG or JPEG image",{}};op.state="failed";finish(op);return;}
+ if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","The editor needs exactly one static PNG or JPEG image",{}};op.state="failed";finish(op);return;}
  op.state="editing";op.phase="editing";
  const auto path=databasePath(),staging=root_+"/editing",helper=editorHelper_,destination=editorDestination(op);
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
@@ -261,9 +261,9 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     // Static PNG or JPEG by signature; an animated PNG declares acTL before its image data.
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
-    if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","Edit & upload opens static PNG or JPEG files",{}};return QJsonObject{};}
+    if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
     *edited=EditorJob(staging,helper).runFile(file,maximum,destination,outputBytes,session);
-    if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","Edit & upload opens static PNG or JPEG files",{}};
+    if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
    *edited=EditorJob(staging,helper).run(*image,destination,outputBytes,session);

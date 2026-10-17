@@ -207,6 +207,9 @@ int main(int argc,char* argv[]) {
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  });
  server.setSetupService(&setup);
+ // After the tray settles, read saved S3 credentials once so uploads work
+ // without a manual Unlock; a locked keyring shows its own prompt here.
+ QTimer::singleShot(3000,&setup,[&setup]{setup.unlockSavedCredentials();});
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;
  putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);

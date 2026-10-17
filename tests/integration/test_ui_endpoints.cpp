@@ -86,6 +86,27 @@ private slots:
   const auto bytes=QJsonDocument(record).toJson()+QJsonDocument(f.settings.document()).toJson();QVERIFY(!bytes.contains("synthetic-access"));QVERIFY(!bytes.contains("synthetic-secret"));QVERIFY(!bytes.contains("synthetic-token"));
   QFile saved(f.settings.path());QVERIFY(saved.open(QIODevice::ReadOnly));QVERIFY(!saved.readAll().contains("synthetic-secret"));
  }
+ void startupUnlockReadsSavedS3KeychainCredentialsOnce() {
+  // Never reach a real keyring: point QtKeychain at a nonexistent session bus.
+  const auto bus=qgetenv("DBUS_SESSION_BUS_ADDRESS");qputenv("DBUS_SESSION_BUS_ADDRESS","unix:path=/nonexistent-putgd-synthetic-bus");
+  QTemporaryDir root;SettingsService settings(root.filePath("config.json"),[](auto,auto){return Error{};});
+  auto document=configuration(root.path(),true);
+  auto profile=[](const QString& id,const QString& provider,const QString& mode){return QJsonObject{{"id",id},{"label","Synthetic "+id},{"provider",provider},{"settings",QJsonObject{}},{"credentials",mode=="session"?QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}:QJsonObject{{"mode","keychain"},{"reference","putgd-synthetic/"+id}}}};};
+  document["profiles"]=QJsonArray{profile("s3saved","s3","keychain"),profile("s3session","s3","session"),profile("proton","proton-drive","keychain")};
+  QVERIFY(settings.save(document,{}));
+  {
+   CredentialStore credentials;SetupService setup(settings,credentials,{});
+   const auto started=setup.unlockSavedCredentials();QCOMPARE(started.size(),1);
+   Error error;QJsonObject record;setup.inspect(started.first(),[&](Error e,QJsonObject value){error=e;record=value;});
+   QVERIFY(!error);QCOMPARE(record["kind"].toString(),QString("unlockCredentials"));QCOMPARE(record["profileId"].toString(),QString("s3saved"));
+   QVERIFY(setup.unlockSavedCredentials().isEmpty());
+   QTRY_COMPARE_WITH_TIMEOUT((setup.inspect(started.first(),[&](Error,QJsonObject value){record=value;}),record["state"].toString()),QString("failed"),10000);
+  }
+  auto preferences=document["preferences"].toObject();preferences["unlockCredentialsAtStartup"]=false;document["preferences"]=preferences;
+  QVERIFY(settings.save(document,settings.revision()));
+  {CredentialStore credentials;SetupService setup(settings,credentials,{});QVERIFY(setup.unlockSavedCredentials().isEmpty());}
+  if(bus.isNull())qunsetenv("DBUS_SESSION_BUS_ADDRESS");else qputenv("DBUS_SESSION_BUS_ADDRESS",bus);
+ }
  void credentialRevealRejectsStaleMissingAndNonS3Destinations() {
   Fixture f;QVERIFY(f.saveProfiles());CredentialStore credentials;SetupService setup(f.settings,credentials,{});f.server.setSetupService(&setup);
   Error error;QJsonObject result;

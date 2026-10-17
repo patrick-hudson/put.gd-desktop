@@ -45,7 +45,7 @@ QWidget* row(QWidget* parent,QHBoxLayout*& layout){auto* widget=new QWidget(pare
 }
 
 EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(parent),doc_(doc){
- setObjectName("putgdWindow");setWindowTitle("Edit & upload — put.gd");setWindowIcon(VisualStyle::icon("brand"));
+ setObjectName("putgdWindow");setWindowTitle("Edit image — put.gd");setWindowIcon(VisualStyle::icon("brand"));
  setAttribute(Qt::WA_DeleteOnClose,false);
  auto* root=new QVBoxLayout(this);root->setContentsMargins(0,0,0,0);root->setSpacing(0);
 

@@ -761,6 +761,20 @@
           ],
           "default": "each_link",
           "description": "Copy every successful upload link individually as it becomes available, or one ordered list after overlapping uploads settle. Omitted legacy settings use each_link."
+        },
+        "unlockCredentialsAtStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Read saved keychain credentials once when put.gd starts. A locked desktop keyring shows its own unlock prompt then; uploads and hotkeys never unlock. Omitted means true."
+        },
+        "editorRecentColors": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "pattern": "^#[0-9a-f]{6}$"
+          },
+          "description": "Custom colors recently picked in the editor, most recent first. Written by put.gd."
         }
       }
     },

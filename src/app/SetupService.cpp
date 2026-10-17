@@ -71,6 +71,18 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  else if(tester_)tester_(profileId,profile,complete);
  else complete({"test_unsupported","This resident has no destination test",{}});
 }
+QStringList SetupService::unlockSavedCredentials() {
+ QStringList started;
+ if(std::exchange(startupUnlockDone_,true))return started;
+ const auto snapshot=settings_.snapshot();
+ if(!snapshot.unlockCredentialsAtStartup||!settings_.metadata()["validation"].toObject()["ok"].toBool())return started;
+ for(auto it=snapshot.profiles.cbegin();it!=snapshot.profiles.cend();++it){
+  const auto reference=it.value()["credentials"].toObject();
+  if(it.value()["provider"]!="s3"||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
+  start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
+ }
+ return started;
+}
 void SetupService::credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
  if(expectedRevision!=settings_.revision()){reply({"config_conflict","Configuration changed; refresh this destination",{}},{});return;}
  const auto profiles=settings_.snapshot().profiles;
