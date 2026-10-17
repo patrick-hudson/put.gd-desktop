@@ -39,7 +39,21 @@ bool folder(const QJsonValue& value, bool nullable) {
 }
 }
 
-QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard"}; }
+QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit"}; }
+QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
+
+QJsonObject Settings::normalized(const QJsonObject& doc) {
+    auto actions = doc["actions"].toObject();
+    if (!doc["actions"].isObject() || actions.contains("edit") || !actions["region"].isObject()) return doc;
+    // Edit & upload was added after schema 1 shipped. Older documents inherit the
+    // region output route with no shortcut; the user assigns a key explicitly.
+    auto edit = actions["region"].toObject();
+    edit["shortcut"] = QString{};
+    actions["edit"] = edit;
+    auto result = doc;
+    result["actions"] = actions;
+    return result;
+}
 
 QJsonObject Settings::defaults() {
     const Settings initial;
@@ -47,7 +61,7 @@ QJsonObject Settings::defaults() {
     int shortcut = 1;
     for (const auto& action : actionNames()) {
         actions[action] = QJsonObject{{"destination", "upload"}, {"profileId", QJsonValue::Null},
-            {"shortcut", action == "clipboard" ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
+            {"shortcut", action == "clipboard" || action == "edit" ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
         ++shortcut;
     }
     auto documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
@@ -78,7 +92,8 @@ QJsonObject Settings::developmentTemplate() {
     auto actions=document["actions"].toObject();for(const auto& name:actionNames()) {auto action=actions[name].toObject();action["profileId"]="development-s3";actions[name]=action;}document["actions"]=actions;return document;
 }
 
-Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validateProfile, const CredentialValidator& validateCredentials) {
+Error Settings::validate(const QJsonObject& original, const ProfileValidator& validateProfile, const CredentialValidator& validateCredentials) {
+    const auto doc = normalized(original);
     auto root=doc;root.remove("captureDefaults");
     if (!keys(root, {"schemaVersion", "actions", "profiles", "archive", "naming", "limits", "retention", "preferences"}))
         return invalid("/", "Configuration has missing or unsupported fields.");
@@ -114,7 +129,7 @@ Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validat
             return invalid("/captureDefaults","Choose a valid default output and destination.");
     }
     if (!doc["actions"].isObject() || !keys(doc["actions"].toObject(), actionNames()))
-        return invalid("/actions", "Define exactly region, window, desktop, and clipboard actions.");
+        return invalid("/actions", "Define exactly region, window, desktop, clipboard, and optional edit actions.");
     for (const auto& name : actionNames()) {
         const auto value = doc["actions"].toObject()[name];
         const auto action = value.toObject();
@@ -186,7 +201,8 @@ Error Settings::validate(const QJsonObject& doc, const ProfileValidator& validat
     return {};
 }
 
-QJsonObject Settings::effectiveAction(const QJsonObject& doc,const QString& name) {
+QJsonObject Settings::effectiveAction(const QJsonObject& original,const QString& name) {
+    const auto doc=normalized(original);
     auto action=doc["actions"].toObject()[name].toObject();
     if(action["destination"]=="default") {
         const auto output=doc["captureDefaults"].toObject();
@@ -195,7 +211,8 @@ QJsonObject Settings::effectiveAction(const QJsonObject& doc,const QString& name
     return action;
 }
 
-Settings Settings::fromValidated(const QJsonObject& doc) {
+Settings Settings::fromValidated(const QJsonObject& original) {
+    const auto doc = normalized(original);
     Settings settings;
     settings.document = doc;
     for (const auto& name : actionNames()) {

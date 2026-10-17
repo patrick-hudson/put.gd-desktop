@@ -388,11 +388,12 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 11);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 12);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(0).variant()).props["label"].toString(), QString("Capture region"));
   QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(3).variant()).props["label"].toString(), QString("Upload Clipboard"));
-  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(4).variant()).props["type"].toString(), QString("separator"));
+  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(4).variant()).props["label"].toString(), QString("Edit & upload"));
+  QCOMPARE(qdbus_cast<WireLayout>(layout.children.at(5).variant()).props["type"].toString(), QString("separator"));
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 0, QStringList{"label"}});
   layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QVERIFY(layout.children.isEmpty()); QVERIFY(layout.props.isEmpty());
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).arguments().at(0).toBool(), false);
@@ -403,18 +404,18 @@ private slots:
  }
  void everyActionAndActivationUsesFixedIds() {
   NativeTray tray; QTRY_VERIFY(tray.available()); QSignalSpy actions(&tray, &NativeTray::actionActivated);
-  const QList<int> ids{1,2,3,4,6,7,8,10,11};
-  const QStringList expected{"region","window","desktop","clipboard","settings","history","activity","about","quit"};
+  const QList<int> ids{1,2,3,4,5,7,8,9,11,12};
+  const QStringList expected{"region","window","desktop","clipboard","edit","settings","history","activity","about","quit"};
   for (int i = 0; i < ids.size(); ++i) { QCOMPARE(click(ids[i]).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(actions.size(), i+1); QCOMPARE(actions.at(i).at(0).toString(), expected[i]); }
-  QCOMPARE(click(5).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(9).type(), QDBusMessage::ReplyMessage);
+  QCOMPARE(click(6).type(), QDBusMessage::ReplyMessage); QCOMPARE(click(10).type(), QDBusMessage::ReplyMessage);
   QCOMPARE(click(1, "hovered").type(), QDBusMessage::ReplyMessage); QCOMPARE(click(99).type(), QDBusMessage::ErrorMessage);
-  QCOMPARE(actions.size(), 9);
+  QCOMPARE(actions.size(), 10);
   QCOMPARE(call("/StatusNotifierItem", "org.kde.StatusNotifierItem", "Activate", {0,0}).type(), QDBusMessage::ReplyMessage);
-  QTRY_COMPARE(actions.size(), 10); QCOMPARE(actions.last().at(0).toString(), QString("activity"));
+  QTRY_COMPARE(actions.size(), 11); QCOMPARE(actions.last().at(0).toString(), QString("activity"));
   WireEvents events{{1,"clicked",QDBusVariant(0),0},{99,"clicked",QDBusVariant(0),0}};
   auto reply = call("/Menu", "com.canonical.dbusmenu", "EventGroup", {QVariant::fromValue(events)});
   QCOMPARE(reply.type(), QDBusMessage::ReplyMessage); QCOMPARE(qdbus_cast<QList<int>>(reply.arguments().at(0)), QList<int>{99});
-  QTRY_COMPARE(actions.size(), 11); QCOMPARE(actions.last().at(0).toString(), QString("region"));
+  QTRY_COMPARE(actions.size(), 12); QCOMPARE(actions.last().at(0).toString(), QString("region"));
  }
  void lateHostAndWatcherRestartDoNotDuplicateRegistration() {
   watcher.hostPresent = false; NativeTray tray;
@@ -455,7 +456,7 @@ private slots:
   const auto service = watcher.registrations.last();
   QPointer<NativeTray> guard(tray.get()); bool invoked = false;
   connect(tray.get(), &NativeTray::actionActivated, this, [&](const QString&) { invoked = true; tray.reset(); });
-  QCOMPARE(click(11).type(), QDBusMessage::ReplyMessage); QTRY_VERIFY(invoked); QVERIFY(guard.isNull());
+  QCOMPARE(click(12).type(), QDBusMessage::ReplyMessage); QTRY_VERIFY(invoked); QVERIFY(guard.isNull());
   QVERIFY(!client.interface()->isServiceRegistered(service).value());
   QTRY_VERIFY(!watcher.activeServices.contains(service));
   QVERIFY(QDBusConnection::sessionBus().isConnected());
@@ -545,7 +546,7 @@ private slots:
   QStringList views; int quits = 0;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [&] { ++quits; });
   auto* native = controller.findChild<NativeTray*>(); QVERIFY(native); QTRY_VERIFY(native->available());
-  for (int id : {6,7,8,10}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
+  for (int id : {7,8,9,11}) QCOMPARE(click(id).type(), QDBusMessage::ReplyMessage);
   QTRY_COMPARE(views, QStringList({"settings","history","activity","about"}));
   QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(source.copies, 1); QTRY_COMPARE(notifications.values.size(), 1);
   QVERIFY(notifications.values.first()["summary"].toString().contains("completed"));
@@ -557,7 +558,7 @@ private slots:
   QVERIFY2(saved, qPrintable(saved.error.code)); QVERIFY(!settings.snapshot().notifications);
   QCOMPARE(click(4).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(source.copies, 2);
   QTest::qWait(100); QCOMPARE(notifications.values.size(), 1);
-  QCOMPARE(click(11).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(quits, 1);
+  QCOMPARE(click(12).type(), QDBusMessage::ReplyMessage); QTRY_COMPARE(quits, 1);
   QVERIFY(!QCoreApplication::instance()->inherits("QGuiApplication"));
  }
 };

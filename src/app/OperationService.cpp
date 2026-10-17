@@ -6,6 +6,8 @@
 #endif
 #include "core/UploadNaming.h"
 #include "core/ImageJob.h"
+#include "core/ImageFormat.h"
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QCryptographicHash>
 #include <QDir>
@@ -57,6 +59,8 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)) {e={"history_io","Cannot create private journal storage",{}};return QJsonObject{};}
   journalOwner_=std::make_unique<QLockFile>(root_+"/resident.lock");journalOwner_->setStaleLockTime(0);
   if(!journalOwner_->tryLock(0)) {e={"journal_busy","Another resident owns this operation journal",{}};return QJsonObject{};}
+  // Unsubmitted editor sources never survive their resident.
+  EditorJob::discardStaging(root_+"/editing");
   HistoryStore store(path);e=store.error();if(e)return QJsonObject{};e=store.indexPublications(providers_);if(e)return QJsonObject{};ArtifactStore artifacts(artifactsRoot);artifacts.discardIncomplete();const auto recovered=store.recover(&e);
   for(auto op:recovered)if(op.items.isEmpty()) {auto batch=artifacts.recover(op.id);if(batch.error) {op.error=batch.error;e=store.saveOperation(op);if(e)break;}else if(!batch.artifacts.isEmpty()) {for(const auto& artifact:batch.artifacts) {OperationItem item;item.artifact=artifact;item.publicationId=uuid();op.items.append(item);}op.error={"operation_interrupted","Acquired artifacts retained; retry explicitly",{}};e=store.saveOperation(op);if(e)break;}}
   return QJsonObject{};
@@ -69,7 +73,7 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  });
 }
 OperationService::~OperationService() {shutdown();}
-void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
+void OperationService::shutdown() {if(stopping_)return;stopping_=true;heapReclamationTimer_.stop();observationTimer_.stop();for(auto flag:active_) flag->store(true);if(editor_)editor_->cancel();invalidateCopyEligibility();source_.cancelAcquisition();for(auto* thread:threads_) {thread->wait();delete thread;}threads_.clear();}
 bool OperationService::heapReclamationIdle() const {
  return !stopping_&&threads_.isEmpty()&&queue_.isEmpty()&&running_==0&&active_.isEmpty()&&copies_.isEmpty()&&!currentCopy_&&selectingId_.isEmpty()&&payloadBytes_->load()==0;
 }
@@ -127,17 +131,24 @@ QJsonObject OperationService::currentObservation(QJsonObject document)const{
  for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();const auto observed=observedItems.constFind(item["artifact"].toObject()["id"].toString());if(observed!=observedItems.cend()){item["phase"]=(*observed)["phase"];item["uploadProgress"]=(*observed)["uploadProgress"]; }items[i]=item;}
  document["items"]=items;return document;
 }
-void OperationService::invoke(const QString& action,JsonReply reply) {
+void OperationService::invoke(const QString& action,JsonReply reply,const QJsonObject& options) {
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
  if(!Settings::actionNames().contains(action)) {reply({"invalid_action","Unknown sharing action",{}},{});return;}
+ // Edit & upload acquires from a chosen source, by default the native region
+ // selector; every other action is its own source and takes no options.
+ const auto source=action=="edit"?options["source"].toString("region"):action;
+ const auto sourcePath=options["path"].toString();
+ if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
+ if(action=="edit"&&editor_){editor_->request("raise",{},[](Error,QJsonObject){});reply({"editor_active","An edit is already open; finish or cancel it first",{{"operationId",editingId_}}},{});return;}
+ const bool interactive=source!="clipboard"&&source!="file";
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Pending operation limit reached",{}},{});return;}
- if(action!="clipboard"&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
+ if(interactive&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another interactive acquisition is active",{}},{});return;}
  const auto route=snapshot.actions.value(action);
  const bool upload=route.destination=="upload"&&!route.profileId.isEmpty();
  if(!upload&&!snapshot.archive.keepUploads){reply({"output_required","No output is enabled. Choose a destination in Settings → Capture or enable Keep a local copy in Settings → General.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,true);if(action!="clipboard")selectingId_=op.id;
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();}
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
@@ -166,9 +177,14 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
   if(QThread::currentThread()==owner->thread())release();
   else QMetaObject::invokeMethod(owner,std::move(release),Qt::QueuedConnection);
  };
- auto acquisition=source_.prepareAcquisition(action,snapshot.limits,std::move(earlyTerminal),std::move(released));
+ SourceAdapter::PreparedAcquisition acquisition;
+ if(source=="file"){
+  // A file is read and decoded by the editor stage; no native source is involved.
+  acquisition=[sourcePath](const ResourceLimits&,std::function<void(PayloadResult)> deliver){ClipboardPayload payload;payload.kind="files";payload.files={sourcePath};deliver({payload,{}});};
+  released();
+ }else acquisition=source_.prepareAcquisition(source,snapshot.limits,std::move(earlyTerminal),std::move(released));
  const auto path=databasePath();background([path,op](Error& e) {HistoryStore store(path);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,reply,acquisition,earlyError](Error e,QJsonObject result) mutable {
-  if(e) {abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();reply(e,{});return;}
+  if(e) {abandonUploadCopies(op.id);releaseActive(op.id);if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();if(editingId_==op.id){editor_.reset();editingId_.clear();}reply(e,{});return;}
   observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
   // Acceptance stays durable and observable before acquiring pixels. Region
   // preview may already be visible; a terminal event skips the remaining work.
@@ -187,7 +203,10 @@ void OperationService::invoke(const QString& action,JsonReply reply) {
       if(!guarded||guarded->stopping_)return;
       if(guarded->selectingId_==op.id&&!guarded->preparedOwners_.contains(op.id))guarded->selectingId_.clear();
       if(r.error||flag->load()) {op.error=r.error;op.cancelled=flag->load()||r.error.code=="cancelled"||r.error.code=="source_cancelled";op.state=op.cancelled?"cancelled":"failed";guarded->finish(op);return;}
-      guarded->clipboardImports_.remove(op.id);guarded->enqueue({op,std::move(r.payload),true,flag,{}});guarded->pumpCopies();
+      guarded->clipboardImports_.remove(op.id);
+      if(op.action=="edit")guarded->startEditing(op,flag,std::move(r.payload));
+      else guarded->enqueue({op,std::move(r.payload),true,flag,{}});
+      guarded->pumpCopies();
      },Qt::QueuedConnection);
     });
    });
@@ -209,6 +228,66 @@ void OperationService::enqueue(Job job) {
   job.payloadLease=std::shared_ptr<qint64>(new qint64(bytes),[counter=payloadBytes_](qint64* value){counter->fetch_sub(*value);delete value;});
  }
  job.op.phase="queued";observe(job.op.publicJson());queue_.enqueue(std::move(job));pump();
+}
+QString OperationService::editorDestination(const Operation& op) const {
+ const auto route=op.settings.actions.value(op.action);
+ if(route.destination!="upload"||route.profileId.isEmpty())return "Save to the local archive";
+ const auto label=op.settings.profiles.value(route.profileId)["label"].toString();
+ return label.isEmpty()?QStringLiteral("Upload"):QStringLiteral("Upload to %1").arg(label.left(160));
+}
+// The acquired source stays private to the editor stage. Only the editor's
+// validated PNG becomes an artifact, preview, archive or publication input.
+void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_bool> flag,ClipboardPayload payload) {
+ auto session=editor_;
+ if(!session||editingId_!=op.id||flag->load()){op.cancelled=true;op.state="cancelled";finish(op);return;}
+ if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","Edit & upload needs exactly one static PNG or JPEG image",{}};op.state="failed";finish(op);return;}
+ op.state="editing";op.phase="editing";
+ const auto path=databasePath(),staging=root_+"/editing",helper=editorHelper_,destination=editorDestination(op);
+ const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
+ auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
+ const auto file=payload.kind=="files"?payload.files.first():QString();payload={};
+ auto edited=std::make_shared<EditorResult>();
+ background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[=,this](Error e,QJsonObject) mutable {
+  if(e){op.error=e;op.state="failed";finish(op);return;}
+  observe(op.publicJson());emit changed(op.id);emit observationsChanged();
+  background([=](Error&){
+   if(!file.isEmpty()){
+    // Files go through the transient codec worker; the resident decodes no formats.
+    QFile input(file);
+    if(!QFileInfo(file).isFile()||!input.open(QIODevice::ReadOnly)){edited->error={"source_unavailable","Cannot read the image file",{}};return QJsonObject{};}
+    if(input.size()<1||input.size()>std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024)){edited->error={"edit_input_too_large","This image file is too large to edit",{}};return QJsonObject{};}
+    const auto bytes=input.readAll();
+    // Static PNG or JPEG by signature; an animated PNG is refused, not reduced to one frame.
+    const bool png=imageFormatHint(bytes)=="png",jpeg=bytes.startsWith(QByteArray::fromHex("ffd8ff"));
+    const auto frames=bytes.indexOf("acTL"),data=bytes.indexOf("IDAT");
+    if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","Edit & upload opens static PNG or JPEG files",{}};return QJsonObject{};}
+    ResourceLimits limits;limits.imagePixels=EditorJob::admissionPixels;limits.imageBytes=EditorJob::admissionPixels*8;limits.maxFileBytes=limits.imageBytes+1024*1024;
+    Error decodeError;*image=ImageJob().decode(bytes,limits,decodeError,flag);
+    if(decodeError){edited->error=decodeError.code=="input_excessive"?Error{"edit_input_too_large","This image is too large to edit; use a smaller copy",{}}:decodeError;return QJsonObject{};}
+   }
+   *edited=EditorJob(staging,helper).run(*image,destination,outputBytes,session);
+   return QJsonObject{};
+  },[=,this](Error,QJsonObject) mutable {
+   if(editingId_==op.id){editor_.reset();editingId_.clear();}
+   if(flag->load()||edited->error.code=="cancelled"){op.cancelled=true;op.state="cancelled";op.error=flag->load()?Error{}:edited->error;finish(op);return;}
+   if(edited->error){op.error=edited->error;op.state="failed";finish(op);return;}
+   ClipboardPayload finalized;finalized.kind="png";finalized.bytes=std::move(edited->png);finalized.mime="image/png";
+   op.state="acquiring";op.phase="queued";
+   enqueue({op,std::move(finalized),true,flag,{}});
+  });
+ });
+}
+void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
+ if(!editor_||editingId_!=id){reply({"editor_unavailable","No open editor has this operation ID",{}},{});return;}
+ QPointer<OperationService> owner(this);
+ editor_->request(command,params,[owner,id,reply](Error error,QJsonObject result){
+  if(!owner)return;
+  QMetaObject::invokeMethod(owner,[owner,id,reply,error,result]() mutable {
+   if(!owner||owner->stopping_)return;
+   if(!error)result["operationId"]=id;
+   reply(error,result);
+  },Qt::QueuedConnection);
+ });
 }
 void OperationService::pump() {
  while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_) {auto job=queue_.dequeue();++running_;background([this,job=std::move(job)](Error&) mutable {return run(std::move(job)).toJson();},[this](Error,QJsonObject doc) {--running_;auto op=Operation::fromJson(doc);finish(op);pump();});}
@@ -369,6 +448,7 @@ void OperationService::releaseActive(const QString& id) {
 }
 void OperationService::finish(Operation op,JsonReply reply) {
  clipboardImports_.remove(op.id);pumpCopies();
+ if(editingId_==op.id){if(editor_)editor_->cancel();editor_.reset();editingId_.clear();}
  op.phase=op.state;
  if(selectingId_==op.id&&!preparedOwners_.contains(op.id))selectingId_.clear();
  if((op.cancelled||op.state=="failed"||op.state=="interrupted")&&op.copyStatus=="pending")op.copyStatus="no_result";
@@ -385,7 +465,7 @@ void OperationService::finish(Operation op,JsonReply reply) {
 void OperationService::recent(JsonReply reply) {const auto path=databasePath();const int limit=settings_.snapshot().recentActivityLimit;background([path,limit](Error& e) {HistoryStore store(path);return QJsonObject{{"operations",store.recent(limit,&e)}};},[this,reply](Error e,QJsonObject data){auto values=data["operations"].toArray();for(qsizetype i=0;i<values.size();++i)values[i]=currentObservation(values[i].toObject());data["operations"]=values;reply(e,data);});}
 void OperationService::inspect(const QString& id,JsonReply reply) {const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);return store.operation(id,&e).publicJson();},[this,reply](Error e,QJsonObject data){reply(e,currentObservation(data));});}
 void OperationService::cancel(const QString& id,JsonReply reply) {
- if(active_.contains(id)) {active_[id]->store(true);interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();
+ if(active_.contains(id)) {active_[id]->store(true);interruptUploadCopy(id);if(selectingId_==id)source_.cancelAcquisition();if(editingId_==id&&editor_)editor_->cancel();
   for(int index=0;index<queue_.size();++index)if(queue_[index].op.id==id){auto job=queue_.takeAt(index);job.payload={};job.payloadLease.reset();job.op.cancelled=true;job.op.state="cancelled";finish(job.op);break;}
   reply({},{{"operationId",id},{"cancellationRequested",true},{"effect","Already sent network requests cannot be rolled back"}});return;}
  const auto path=databasePath();background([path,id](Error& e) {HistoryStore store(path);auto op=store.operation(id,&e);if(e)return QJsonObject{};op.cancelled=true;op.state="cancelled";op.phase="cancelled";for(auto& item:op.items)item.phase=item.uploadStatus;e=store.saveOperation(op);return op.publicJson();},reply);
@@ -529,7 +609,18 @@ void OperationService::copyHistoryImage(const QString& id,JsonReply reply) {
  },{},preparation);
 }
 void OperationService::copyHistoryUrl(const QString& url,JsonReply reply,quint64 ticket) {if(ticket==0)ticket=invalidateCopyEligibility();if(ticket!=invocation_) {reply({"copy_suppressed","A newer sharing invocation superseded this copy request",{}},{});return;}if(url.isEmpty()) {reply({"link_unavailable","This record has no confirmed direct URL",{}},{});return;}CopyPayload p;p.kind="text";p.text=url;deliverCopy(p,[reply](Error e) {reply(e,{{"copied",!e}});},[this,ticket]{return ticket==invocation_;});}
-QJsonObject OperationService::capabilities() const {return {{"source",source_.capabilities()},{"providers",providers_.capabilities()}};}
+QJsonObject OperationService::capabilities() const {
+#ifdef Q_OS_UNIX
+ const bool editor=QFileInfo(editorHelper_.isEmpty()?QCoreApplication::applicationDirPath()+"/putgd-ui":editorHelper_).isExecutable();
+#else
+ const bool editor=false;
+#endif
+ return {{"source",source_.capabilities()},{"providers",providers_.capabilities()},
+  {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
+   {"sources",QJsonArray{"region","window","desktop","clipboard","file"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
+   {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight"}},
+   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","submit","cancel","raise"}}}}};
+}
 QJsonObject OperationService::diagnostics() const {
 #ifdef __GLIBC__
  constexpr bool reclaimSupported=true;

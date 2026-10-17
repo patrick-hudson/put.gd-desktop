@@ -1,5 +1,6 @@
 #pragma once
 #include "core/HistoryStore.h"
+#include "core/EditorJob.h"
 #include "core/SettingsService.h"
 #include <QObject>
 #include <QQueue>
@@ -77,7 +78,13 @@ class OperationService final:public QObject {
 public:
  OperationService(QString dataRoot,SettingsService&,ProviderRegistry&,SourceAdapter&,QObject* parent=nullptr);
  ~OperationService() override;
- void invoke(const QString& action,JsonReply);
+ // `edit` accepts options {source: region|window|desktop|clipboard|file, path}.
+ void invoke(const QString& action,JsonReply,const QJsonObject& options={});
+ // Relays one editor.* command to the open editor for this operation.
+ void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
+ QString editingOperation() const {return editingId_;}
+ // Tests may run a fixture helper; production always uses the sibling putgd-ui.
+ void setEditorHelper(QString path) {editorHelper_=std::move(path);}
  void inspect(const QString& id,JsonReply);
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
@@ -143,7 +150,9 @@ private:
  void interruptUploadCopy(const QString& id={});
  void pumpCopies();
  struct PendingCopy;struct UploadCopy;struct UploadCopyGroup;
- void beginUploadCopies(const Operation&,bool acquiring=false);
+ void beginUploadCopies(const Operation&,bool importing=false);
+ void startEditing(Operation,std::shared_ptr<std::atomic_bool>,ClipboardPayload);
+ QString editorDestination(const Operation&) const;
  void abandonUploadCopies(const QString&);
  bool detachCompletedUploadCopies(const QString&,JsonReply&);
  void uploadLinkReady(const QString&,const QString&,int,const QString&);
@@ -177,6 +186,8 @@ private:
  int running_=0,storageRequests_=0;
  quint64 invocation_=0;
  QString selectingId_;
+ // At most one editor session exists; it holds no pixels on the session thread.
+ QString editingId_,editorHelper_;std::shared_ptr<EditorSession> editor_;
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;

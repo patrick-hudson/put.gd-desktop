@@ -166,7 +166,7 @@ The complete workflow must also pass the Verification Contract on every R13 prof
 
 ### Scope Boundaries
 
-V1 excludes image editing/annotation, screen recording, OCR, embedded AI chat/models, additional production storage-provider implementations, automatic remote deletion, and background clipboard monitoring that reads content without an action. Manual history deletion is included; bucket-wide browsing, cross-device history synchronization, and purging unrecorded versions are deferred.
+V1 excludes image editing/annotation (later approved separately as the #51 Edit & upload editor; see `docs/image-editor.md`), screen recording, OCR, embedded AI chat/models, additional production storage-provider implementations, automatic remote deletion, and background clipboard monitoring that reads content without an action. Manual history deletion is included; bucket-wide browsing, cross-device history synchronization, and purging unrecorded versions are deferred.
 
 Deferred for later: screen recording, Windows/macOS capture adapters and distributables, other Linux desktops, Flatpak/Snap/AppImage, HDR fidelity, remote MCP, folders/recursive sharing, and multipart uploads beyond the selected single-PUT limit.
 

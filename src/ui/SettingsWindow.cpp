@@ -157,7 +157,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  captureExceptions_=new QToolButton;captureExceptions_->setObjectName("captureExceptionsToggle");captureExceptions_->setText("Per-action exceptions");captureExceptions_->setCheckable(true);captureExceptions_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);captureExceptions_->setArrowType(Qt::RightArrow);capture->addWidget(captureExceptions_,0,Qt::AlignLeft);
  auto* exceptionBody=new QWidget;auto* exceptionBox=new QVBoxLayout(exceptionBody);exceptionBox->setContentsMargins(0,0,0,0);exceptionBox->setSpacing(16);capture->addWidget(exceptionBody);exceptionBody->hide();
  connect(captureExceptions_,&QToolButton::toggled,this,[=,this](bool open){exceptionBody->setVisible(open);captureExceptions_->setArrowType(open?Qt::DownArrow:Qt::RightArrow);emit viewStateChanged();});
- const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard import"}};
+ const QHash<QString,QString> labels{{"region","Region capture"},{"window","Window capture"},{"desktop","Desktop capture"},{"clipboard","Clipboard import"},{"edit","Edit & upload"}};
  for(const auto& action:Settings::actionNames()){
   auto* outer=section(exceptionBox,labels.value(action));auto* inherit=useCaptureDefault_[action]=new QCheckBox("Use default");inherit->setObjectName("useDefault"+title(action));inherit->setAccessibleName(labels.value(action)+": use default output");outer->addRow(inherit);
   auto* editor=captureEditors_[action]=new QWidget;auto* form=new QFormLayout(editor);VisualStyle::styleForm(form);outer->addRow(editor);

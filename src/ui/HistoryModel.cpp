@@ -37,10 +37,12 @@ HistoryModel::HistoryModel(UiSession& history,QObject* parent):QAbstractListMode
 int HistoryModel::rowCount(const QModelIndex& parent)const{return parent.isValid()?0:rows_.size();}
 QJsonObject HistoryModel::record(int row)const{return row>=0&&row<rows_.size()?rows_.at(row):QJsonObject{};}
 bool HistoryModel::linkAvailable(int row)const{return record(row)["linkAvailable"].toBool();}
-QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="clipboard")return "Clipboard";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
+QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="clipboard")return "Clipboard";if(action=="edit")return "Edit & upload";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 QString HistoryModel::statusText(const QJsonObject& r){
  const auto op=r["operation"].toObject();const auto state=op["state"].toString();const auto phase=op["phase"].toString();
  if(active(r)){
+  if(state=="editing"||phase=="editing")return "Editing · Upload or cancel in the editor window";
+  if(op["action"]=="edit"&&(state=="acquiring"||phase=="acquiring"))return "Choose what to edit… · Press Esc to cancel";
   if(state=="acquiring"||phase=="acquiring")return op["action"]=="region"?"Selecting a region… · Press Esc to cancel":op["action"]=="clipboard"?"Reading the clipboard…":"Selecting a capture…";
   if(phase=="uploading"){const auto progress=aggregateProgress(op);if(progress.total>0)return QString("Uploading · %1%").arg(progress.percent());if(progress.known)return "Uploading · "+ByteSize::summary(progress.sent)+" transferred";return "Uploading…";}
   if(phase=="saving_local")return "Saving locally…";

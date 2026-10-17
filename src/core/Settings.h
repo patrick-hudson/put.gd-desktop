@@ -58,6 +58,11 @@ struct Settings {
     static Error validate(const QJsonObject&, const ProfileValidator& = {}, const CredentialValidator& = {});
     static QJsonObject effectiveAction(const QJsonObject&, const QString&);
     static Settings fromValidated(const QJsonObject&);
+    // Every invocable action, including the later optional "edit" action.
     static QStringList actionNames();
+    // Actions a schema-1 document must define; "edit" may be absent.
+    static QStringList requiredActionNames();
+    // Adds an absent edit action inheriting the region route without a shortcut.
+    static QJsonObject normalized(const QJsonObject&);
 };
 }

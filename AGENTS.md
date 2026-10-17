@@ -63,8 +63,12 @@ Anthropic for review. This permission does not select an external implementation
 Keep review material bounded to the code/specification needed, excluding secrets and payloads.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
-owned paths, preserving unrelated pre-existing changes. Do not add recording/editor/OCR
+owned paths, preserving unrelated pre-existing changes. Do not add recording or OCR
 features: future video support currently means finalized video files in the shared pipeline.
+The user-approved Edit & upload image editor (#51) is the only editing feature; its
+contract, privacy boundaries and agent control are in `docs/image-editor.md`.
+New windows reuse the redesign theme and IconArt glyphs, and every interactive
+capability stays controllable through session methods, `putgd-cli` and the MCP helper.
 
 Agent source, workflow and acceptance maps are in `docs/agents.md`. The optional Python
 3.12+ official-SDK stdio helper is under `tools/mcp/`; follow `docs/mcp.md` for locked

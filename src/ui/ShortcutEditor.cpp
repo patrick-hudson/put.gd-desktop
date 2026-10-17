@@ -58,7 +58,7 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"muted");layout->addWidget(status_);
  recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);VisualStyle::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* form=new QFormLayout;VisualStyle::styleForm(form);layout->addLayout(form);
- const QHash<QString,QString> labels{{"region","Screen region"},{"window","Active window"},{"desktop","Full desktop"},{"clipboard","Clipboard"}};
+ const QHash<QString,QString> labels{{"region","Screen region"},{"window","Active window"},{"desktop","Full desktop"},{"clipboard","Clipboard"},{"edit","Edit & upload"}};
  const auto defaultActions=Settings::defaults()["actions"].toObject();
  for(const auto& action:Settings::actionNames()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(6);

@@ -276,6 +276,70 @@
               }
             }
           ]
+        },
+        "edit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "destination",
+            "profileId",
+            "shortcut"
+          ],
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local",
+                "default"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
         }
       }
     },
@@ -961,6 +1025,28 @@
           "actions": {
             "properties": {
               "clipboard": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "edit": {
                 "properties": {
                   "destination": {
                     "const": "default"

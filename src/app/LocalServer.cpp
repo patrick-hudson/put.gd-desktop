@@ -86,7 +86,19 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   const auto view=p["view"].toString();uiActivation_(view,[reply=std::move(reply),view](Error error){reply(error,{{"shown",view}});});return;
  }
- if(method=="action.invoke") {if(!fields(p,{"action"})||!string(p,"action"))reply(invalid(),{});else operations_.invoke(p["action"].toString(),reply);return;}
+ if(method=="action.invoke") {
+  if(!fields(p,{"action"},{"source","path"})||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))){reply(invalid(),{});return;}
+  auto options=p;options.remove("action");operations_.invoke(p["action"].toString(),reply,options);return;
+ }
+ if(method=="editor.open") {
+  if(!fields(p,{},{"source","path"})||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))){reply(invalid(),{});return;}
+  operations_.invoke("edit",reply,p);return;
+ }
+ // Agent control of the one open editor; the helper validates each command.
+ if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
+  if(!string(p,"id")){reply(invalid(),{});return;}
+  auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);return;
+ }
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
  if(method.startsWith("operation.")) {if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="operation.inspect")operations_.inspect(id,reply);else if(method=="operation.cancel")operations_.cancel(id,reply);else if(method=="operation.retry")operations_.retry(id,reply);else if(method=="operation.copy")operations_.copyResult(id,reply);else if(method=="operation.retryLocalSave")operations_.retryLocalSave(id,reply);else reply({"unknown_method","Unknown operation method",{}},{});return;}
  if(method=="history.share"||method=="history.revokeLink"||method=="history.inspectLink") {

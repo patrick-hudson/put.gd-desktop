@@ -2,7 +2,7 @@
 
 Open put.gd to reach one window with **History**, **Destinations**, and **Settings**. The tray's Settings, History, and Activity commands open that window; Activity opens History with current work. Closing the window keeps the tray and accepted work running. The launcher reopens it. The tray pane and its capture commands are unchanged.
 
-The left rail starts **Capture region**, **Capture window**, **Capture desktop**, or **Import clipboard** after finished settings edits are saved. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; desktop capture includes enabled monitors and panels. Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. The information button and action tooltips explain the selected action and its saved output. Capture is also available through global shortcuts and the CLI.
+The left rail starts **Capture region**, **Capture window**, **Capture desktop**, or **Import clipboard** after finished settings edits are saved. Screen captures close this window to keep it out of the capture. Clipboard imports keep it open. A save failure keeps the window open; retry saving and start the action again. Store or clear unfinished credential entry before a screen capture. Region capture supports Escape to cancel. Window capture targets the focused external app where supported; desktop capture includes enabled monitors and panels. Clipboard import prefers copied local files, then an image, then plain text. Text URLs are imported as text. **Edit & upload** selects a region and opens a small editor first; see [Edit before uploading](#edit-before-uploading). The information button and action tooltips explain the selected action and its saved output. Capture is also available through global shortcuts and the CLI.
 
 ## Choose outputs
 
@@ -18,6 +18,18 @@ In **Settings → General → Local copies**, **Keep a local copy** controls loc
 | None | Off | Report an output error before capturing or importing |
 
 Local image results copy image MIME, text results copy text, and file results use local file URIs. Private uploads create no share link and do not change the clipboard. An upload failure does not turn an upload-only action into local saving; local-save and upload recovery remain separate. Existing files, accepted operations, and historical receipts are preserved when outputs change.
+
+## Edit before uploading
+
+Choose **Edit & upload** from the rail or tray, or assign it a key in **Settings → Shortcuts** (it has no default key). Drag the region to edit; Escape cancels. In the editor:
+
+- **Redact** (X) covers an area with opaque black and removes those pixels from the uploaded image. Use it for passwords, tokens, names and other private information.
+- **Blur** (B) is only a visual effect; it can leave enough detail to guess text. Prefer Redact for anything private.
+- **Crop** (C): drag the area to keep, then **Apply crop** or Enter; Escape cancels.
+- **Arrow** (A), **Rectangle** (R), **Highlight** (H) and **Text** (T) add simple marks. Select (V) moves, resizes or deletes them.
+- Ctrl+Z / Ctrl+Shift+Z undo and redo; Ctrl+1 shows 100% to check edges; Ctrl+0 fits.
+
+**Upload** (Ctrl+Enter) sends only the edited image to the output shown at the bottom of the window, with the usual local copy, history and link copying. Plain Enter never uploads. **Save a copy…** writes the same edited PNG to a file. **Cancel** or closing the window discards the edit: nothing is saved or uploaded. Inputs above 24 megapixels are refused; output is PNG. An edit interrupted by quitting put.gd is listed as interrupted and is never uploaded automatically.
 
 ## Destinations and credentials
 

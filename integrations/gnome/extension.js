@@ -20,7 +20,10 @@ const SNI_WATCHER = 'org.kde.StatusNotifierWatcher';
 const SNI_ITEM_PATH = '/StatusNotifierItem';
 const SNI_WATCHER_PATH = '/StatusNotifierWatcher';
 const CHUNK = 65536;
-const ACTIONS = ['region', 'window', 'desktop', 'clipboard'];
+// Capture sources the Shell can prepare; Edit & upload binds its own key and
+// prepares a native region selection.
+const SOURCES = ['region', 'window', 'desktop', 'clipboard'];
+const ACTIONS = [...SOURCES, 'edit'];
 const XML = `<node><interface name="${IFACE}">
 <method name="Hello"><arg type="s" direction="out"/></method>
 <method name="SetUiProcess"><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
@@ -606,7 +609,7 @@ export default class PutgdExtension extends Extension {
         // uploads preserve earlier links; explicit/local copies use InvalidateCopy.
         if (action === 'clipboard')
             this._copyEpoch++;
-        check(ACTIONS.includes(action), 'source_unsupported', 'Unknown GNOME source action');
+        check(SOURCES.includes(action), 'source_unsupported', 'Unknown GNOME source action');
         const request = this._new(id, sender);
         request.action = action;
         request.stage = 'prepare';
@@ -637,7 +640,7 @@ export default class PutgdExtension extends Extension {
                 'org.freedesktop.DBus', 'GetNameOwner', new GLib.Variant('(s)', [CLIENT]),
                 new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
             try {
-                await this._prepare(id, action, sender);
+                await this._prepare(id, action === 'edit' ? 'region' : action, sender);
             } catch (error) {
                 const request = this._requests.get(id);
                 if (!request)

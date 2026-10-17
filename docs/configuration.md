@@ -19,7 +19,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Field | Meaning and default |
 | --- | --- |
 | `schemaVersion` | `1` |
-| `actions` | Exactly `region`, `window`, `desktop`, `clipboard` |
+| `actions` | Exactly `region`, `window`, `desktop`, `clipboard`, plus optional `edit` (Edit & upload). An absent `edit` inherits the region route with no shortcut; saved documents include it |
 | Each action's `destination` | `upload` by default; `local` disables uploads; `default` inherits `captureDefaults` |
 | Each action's `profileId` | A configured profile ID, or `null` until destination setup |
 | Each action's `shortcut` | One Qt PortableText combination; empty means unbound; independent of output inheritance |

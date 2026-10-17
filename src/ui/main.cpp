@@ -1,5 +1,6 @@
 #include "UiApplicationController.h"
 #include "ImageJob.h"
+#include "ImageEditor.h"
 #include "StdioDevice.h"
 #include "ViewState.h"
 #include "VisualStyle.h"
@@ -27,6 +28,11 @@ int main(int argc,char** argv){
   return putgd::runImageJob(app,pipes);
  }
  putgd::VisualStyle::apply(app);app.setWindowIcon(putgd::VisualStyle::icon("brand"));
+ if(argc==2&&std::strcmp(argv[1],"--edit-image")==0){
+  // A separate on-demand process: closing it frees the image regardless of other views.
+  putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;
+  return putgd::runImageEditor(app,pipes);
+ }
  putgd::StdioDevice pipes(handles.input(),handles.output());if(!pipes.isOpen())return 2;
  putgd::UiControl control(pipes);
  std::unique_ptr<putgd::SessionClient> client;std::unique_ptr<putgd::UiSession> session;

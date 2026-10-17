@@ -93,6 +93,45 @@ QImage symbol(const QString& name,const QColor& color,int scale) {
  } else if(name=="images"||name=="image") {
   fill(secondary);rounded(2,2,20,20,3);fill(color);p.drawEllipse(QPointF(8,7),2,2);
   QPainterPath mountains;mountains.moveTo(3,19);mountains.lineTo(10,12);mountains.lineTo(14,16);mountains.lineTo(18,11);mountains.lineTo(21,15);mountains.lineTo(21,19);mountains.closeSubpath();p.drawPath(mountains);
+ } else if(name=="edit") {
+  line(secondary,4);QPainterPath corners;
+  corners.moveTo(8,3);corners.lineTo(3,3);corners.lineTo(3,8);
+  corners.moveTo(3,16);corners.lineTo(3,21);corners.lineTo(8,21);
+  corners.moveTo(16,3);corners.lineTo(21,3);corners.lineTo(21,8);p.drawPath(corners);
+  fill(color);QPainterPath pencil;pencil.moveTo(19,10);pencil.lineTo(22,13);pencil.lineTo(13,22);pencil.lineTo(9,23);pencil.lineTo(10,19);pencil.closeSubpath();p.drawPath(pencil);
+ } else if(name=="select") {
+  fill(color);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
+ } else if(name=="redact") {
+  line(secondary,2);p.drawLine(3,5,21,5);p.drawLine(3,19,15,19);
+  fill(color);rounded(2,9,20,6,1.5);
+ } else if(name=="blur") {
+  fill(secondary);for(int y:{4,12,20})for(int x:{4,12,20})p.drawEllipse(QPointF(x,y),1.6,1.6);
+  fill(color);for(int y:{8,16})for(int x:{8,16})p.drawEllipse(QPointF(x,y),2.6,2.6);
+ } else if(name=="crop") {
+  line(secondary,2.5);p.drawLine(7,2,7,17);p.drawLine(7,17,22,17);
+  line(color,2.5);p.drawLine(2,7,17,7);p.drawLine(17,7,17,22);
+ } else if(name=="annotate-arrow") {
+  line(color,2.5);p.drawLine(4,20,16,8);
+  fill(color);QPainterPath head;head.moveTo(21,3);head.lineTo(19,13);head.lineTo(11,5);head.closeSubpath();p.drawPath(head);
+ } else if(name=="rectangle") {
+  line(secondary,2);rounded(3,5,18,14,2);line(color,2.5);rounded(6,8,12,8,1);
+ } else if(name=="highlight") {
+  fill(secondary);rounded(2,19,20,3,1);
+  fill(color);QPainterPath marker;marker.moveTo(14,2);marker.lineTo(21,9);marker.lineTo(12,18);marker.lineTo(7,18);marker.lineTo(5,16);marker.lineTo(5,11);marker.closeSubpath();p.drawPath(marker);
+ } else if(name=="text") {
+  fill(secondary);rounded(2,2,20,20,3);
+  line(color,3);p.drawLine(7,7,17,7);p.drawLine(12,7,12,18);
+ } else if(name=="undo"||name=="redo") {
+  if(name=="redo"){p.translate(24,0);p.scale(-1,1);}
+  line(secondary,2.5);QPainterPath turn;turn.moveTo(7,9);turn.lineTo(15,9);turn.quadTo(21,9,21,15);turn.quadTo(21,21,15,21);turn.lineTo(10,21);p.drawPath(turn);
+  fill(color);QPainterPath tip;tip.moveTo(2,9);tip.lineTo(9,3);tip.lineTo(9,15);tip.closeSubpath();p.drawPath(tip);
+ } else if(name=="zoom-fit"||name=="zoom-actual") {
+  line(secondary,2);p.drawEllipse(QRectF(3,3,14,14));line(color,3);p.drawLine(15,15,21,21);
+  if(name=="zoom-fit"){line(color,1.6);p.drawRect(QRectF(7,7,6,6));}
+  else{fill(color);rounded(9,6,2,8,0.5);}
+ } else if(name=="save") {
+  fill(secondary);rounded(3,3,18,18,3);
+  fill(color);rounded(7,3,9,6,1);rounded(6,13,12,8,1.5);
  } else if(name=="activity") {
   fill(secondary);rounded(2,2,20,20,4);line(color);QPainterPath pulse;
   pulse.moveTo(4,13);pulse.lineTo(7,13);pulse.lineTo(10,6);pulse.lineTo(14,19);pulse.lineTo(17,11);pulse.lineTo(20,11);p.drawPath(pulse);

@@ -37,7 +37,7 @@ bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences","captureDefaults"}))return false;
  const auto d=value.toObject();
  if(d.contains("captureDefaults")&&!scalars(d["captureDefaults"],{"destination","profileId","publicationMode"}))return false;
- if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard"}))return false;
+ if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard","edit"}))return false;
  for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut","publicationMode"}))return false;
  if(!d["profiles"].isArray()||d["profiles"].toArray().size()>32)return false;
  for(auto v:d["profiles"].toArray())if(!safeProfile(v))return false;
