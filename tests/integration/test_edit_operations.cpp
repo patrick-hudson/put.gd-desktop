@@ -3,6 +3,7 @@
 #include <QDirIterator>
 #include <QImageReader>
 #include <QRandomGenerator>
+#include "core/AllocatorPolicy.h"
 using namespace putgd;using namespace putgd::test;
 
 namespace {
@@ -124,6 +125,31 @@ private slots:
   QCOMPARE(op.state,QString("interrupted"));QCOMPARE(op.error.code,QString("edit_interrupted"));QVERIFY(op.items.isEmpty());
   QVERIFY(!QDir(dir.filePath("data/editing")).exists());QCOMPARE(provider->uploads.load(),0);
   QCOMPARE(call([&](JsonReply r){operations.retry("interrupted-edit",r);}).error.code,QString("artifact_missing"));
+ }
+
+ void residentReturnsEditBuffersAfterEachCycle(){
+  // Cinnamon acceptance showed the resident ratcheting 29 -> 140 MiB across edits:
+  // freed 4K rasters stayed in per-thread arena tops. The production policy must
+  // keep freed-but-retained heap small. glibc only; other allocators skip.
+#if !defined(__GLIBC__)
+  QSKIP("glibc allocator policy");
+#else
+  QVERIFY(applyResidentAllocatorPolicy());
+  Fixture f(false);QTRY_VERIFY(f.operations->ready());
+  QImage big(3840,2160,QImage::Format_RGB32);QRandomGenerator random(5);for(int y=0;y<big.height();++y){auto* line=reinterpret_cast<QRgb*>(big.scanLine(y));for(int x=0;x<big.width();++x)line[x]=random.generate()|0xff000000U;}
+  const auto path=f.dir.filePath("uhd.png");QVERIFY(big.save(path,"PNG",80));big=QImage();
+  HistoryStore journal(f.operations->databasePath());
+  for(int cycle=0;cycle<4;++cycle){
+   const auto id=call([&](JsonReply r){f.operations->invoke("edit",r,{{"source","file"},{"path",path}});}).result["operationId"].toString();
+   QVERIFY(!command(*f.operations,id,"inspect").error);
+   const bool submit=cycle%2==0;QVERIFY(!command(*f.operations,id,submit?"submit":"cancel").error);
+   QTRY_COMPARE_WITH_TIMEOUT(journal.operation(id).state,QString(submit?"completed":"cancelled"),60000);
+   QTRY_VERIFY_WITH_TIMEOUT(f.operations->diagnostics()["activeOperations"].toInt()==0,10000);
+   const auto heap=mallinfo2();
+   // One retained 4K raster would be about 32 MiB; allow small-chunk noise only.
+   QVERIFY2(heap.fordblks<8*1024*1024,qPrintable(QString("cycle %1 retained %2 free heap bytes").arg(cycle).arg(heap.fordblks)));
+  }
+#endif
  }
  void legacyConfigurationInheritsRegionRouteWithoutShortcut(){
   auto doc=Settings::defaults();auto actions=doc["actions"].toObject();actions.remove("edit");auto region=actions["region"].toObject();region["destination"]="local";actions["region"]=region;doc["actions"]=actions;

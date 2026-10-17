@@ -1,4 +1,5 @@
 #include "ui/VisualStyle.h"
+#include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
@@ -115,11 +116,12 @@ int main(int argc,char* argv[]) {
  kdeCoreResident=putgd::kdeCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
 #endif
 #if defined(Q_OS_LINUX) && defined(__GLIBC__)
- // Favor mmap for larger transient native Wayland image/bridge allocations. A fixed threshold
- // prevents adaptation after large transfers; existing free arena chunks may
- // still satisfy allocations. Keep the existing idle cleanup gate active.
- if((gnomeCoreResident||kdeCoreResident)&&mallopt(M_MMAP_THRESHOLD,128*1024)==0)
-  qWarning("Could not apply native Wayland transient allocation threshold");
+ // Every resident handles large transient rasters: captures, bridge transfers
+ // and Edit & upload staging/handoffs. A fixed mmap threshold returns them on
+ // free instead of growing per-thread arenas that malloc_trim cannot shrink.
+ // Keep the existing idle cleanup gate active for small-chunk fragmentation.
+ if(!putgd::applyResidentAllocatorPolicy())
+  qWarning("Could not apply the resident transient allocation threshold");
 #endif
  std::unique_ptr<QCoreApplication> application;
  if(coreResident||gnomeCoreResident||kdeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
