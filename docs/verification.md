@@ -12,11 +12,16 @@ rows and current-candidate evidence remain gates.
 ## Edit & upload — 2026-10-17
 
 The [issue 51 receipt](evidence/2026-10-17-issue51-edit-and-upload.md) records
-candidate `9dd61d3`: the Dev suite on Mint and Kubuntu, and Cinnamon-first
-graphical (21/21) and memory gates, then GNOME/Wayland and KDE/Wayland on KVM.
-It also records MCP end-to-end runs on Cinnamon and on physical Kubuntu X11 and
-Debian Wayland. Physical Fedora, region-sourced editing on physical KDE
-(issue #54) and Windows remain uncovered.
+candidate `329d736`:
+
+- Dev suites on Mint, Kubuntu and Debian.
+- Cinnamon-first graphical (21/21), memory and MCP gates, then GNOME/Wayland and
+  KDE/Wayland on KVM.
+- The same gates on the physical Debian Plasma/Wayland and Kubuntu Plasma/X11
+  desktops, including both halves of the issue #54 outline fix and the
+  wlr-data-control clipboard fallback.
+
+Physical Fedora and Windows remain uncovered.
 
 ## Local S3 settings controls — 2026-10-16
 
