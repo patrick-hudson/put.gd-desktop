@@ -33,6 +33,7 @@ Transient Qt strings/JSON are released normally; this is not a cryptographic wip
 | `setup.unlockCredentials` | `profileId`, `expectedRevision` | `setupId` |
 | `setup.testDestination` | `profileId`, `expectedRevision` | `setupId` |
 | `setup.credentialHint` | `profileId`, `expectedRevision` | cached availability/mode, at most four access-key ID characters plus ellipsis, secret/token presence; no keychain IO |
+| `setup.revealCredentialSecret` | `profileId`, `expectedRevision` | unlocked cached S3 `secretKey` only, on explicit GUI Show; no job record or keychain IO; rejected by CLI |
 | `setup.inspect` | `id` | setup ID, kind, profile ID, state and error |
 
 Credential input contains accessKey/secretKey and an optional sessionToken. It is

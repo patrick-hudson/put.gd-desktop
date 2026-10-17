@@ -160,18 +160,27 @@ private slots:
         QTest::addColumn<int>("http");
         QTest::addColumn<QString>("service");
         QTest::addColumn<QString>("expected");
-        QTest::newRow("ownership") << 400 << QString("AccessControlListNotSupported") << QString("s3_acl_incompatible");
-        QTest::newRow("public-access-block") << 403 << QString("AccessDenied") << QString("s3_permission_denied");
-        QTest::newRow("authentication") << 403 << QString("InvalidAccessKeyId") << QString("s3_authentication_failed");
+        QTest::addColumn<QString>("guidance");
+        QTest::newRow("ownership") << 400 << QString("AccessControlListNotSupported") << QString("s3_acl_incompatible") << QString("Follow the bucket's policy");
+        QTest::newRow("public-access-block") << 403 << QString("AccessDenied") << QString("s3_permission_denied") << QString("s3:PutObject");
+        QTest::newRow("authentication") << 403 << QString("InvalidAccessKeyId") << QString("s3_authentication_failed") << QString("access key ID");
+        QTest::newRow("wrong-secret") << 403 << QString("SignatureDoesNotMatch") << QString("s3_authentication_failed") << QString("secret access key");
+        QTest::newRow("expired-token") << 400 << QString("ExpiredToken") << QString("s3_authentication_failed") << QString("session token");
+        QTest::newRow("missing-bucket") << 404 << QString("NoSuchBucket") << QString("s3_bucket_not_found") << QString("bucket name");
+        QTest::newRow("wrong-region") << 400 << QString("AuthorizationHeaderMalformed") << QString("s3_region_mismatch") << QString("region and endpoint");
+        QTest::newRow("clock-skew") << 403 << QString("RequestTimeTooSkewed") << QString("s3_authentication_failed") << QString("system clock");
     }
     void terminalErrors() {
-        QFETCH(int, http); QFETCH(QString, service); QFETCH(QString, expected);
+        QFETCH(int, http); QFETCH(QString, service); QFETCH(QString, expected);QFETCH(QString, guidance);
         S3Fixture f;
         f.destination.settings["aclMode"] = "public-read";
         f.reset({{"rules", QJsonArray{QJsonObject{{"method", "PUT"}, {"status", http}, {"code", service}}}}});
         auto result = f.upload(f.request());
         QCOMPARE(result.status, QString("failed"));
         QCOMPARE(result.error.code, expected);
+        QVERIFY2(result.error.message.contains(guidance),qPrintable(result.error.message));
+        QVERIFY(!QJsonDocument(result.error.toJson()).toJson().contains("synthetic fixture"));
+        QCOMPARE(result.error.details["serviceCode"].toString(),service);
         QCOMPARE(f.events("PUT").size(), 1);
         QCOMPARE(f.events("DELETE").size(), 0);
         QCOMPARE(f.events("PUT")[0].toObject()["headers"].toObject()["x-amz-acl"].toString(), QString("public-read"));
@@ -322,26 +331,31 @@ private slots:
     void explicitSyntheticDestinationTest_data() {
         QTest::addColumn<QString>("publicBody");
         QTest::addColumn<bool>("reachable");
-        QTest::newRow("matching-public-bytes") << QString{} << true;
-        QTest::newRow("wrong-public-bytes") << QString("unexpected public content") << false;
-        QTest::newRow("oversized-public-response") << QString(1024 * 1024, 'x') << false;
+        QTest::addColumn<bool>("cleanupDenied");
+        QTest::newRow("matching-public-bytes") << QString{} << true << false;
+        QTest::newRow("wrong-public-bytes") << QString("unexpected public content") << false << false;
+        QTest::newRow("oversized-public-response") << QString(1024 * 1024, 'x') << false << false;
+        QTest::newRow("public-and-cleanup-failed") << QString("unexpected public content") << false << true;
     }
     void explicitSyntheticDestinationTest() {
         QFETCH(QString, publicBody);
         QFETCH(bool, reachable);
+        QFETCH(bool, cleanupDenied);
         S3Fixture f;
-        f.reset(publicBody.isEmpty() ? QJsonObject{} : QJsonObject{{"rules", QJsonArray{
-            QJsonObject{{"method", "GET"}, {"responseBody", publicBody}, {"remaining", 1}}
-        }}});
+        QJsonArray rules;
+        if (!publicBody.isEmpty()) rules.append(QJsonObject{{"method", "GET"}, {"responseBody", publicBody}, {"remaining", 1}});
+        if (cleanupDenied) rules.append(QJsonObject{{"method", "DELETE"}, {"status", 403}, {"code", "AccessDenied"}});
+        f.reset({{"rules", rules}});
         std::atomic_bool done{false};
         QJsonObject result;
         Error error;
         f.provider.testDestination(f.destination, [](auto, auto ack) { ack({}); }, [&](auto value, auto e) { result = value; error = e; done = true; });
         QTRY_VERIFY(done.load());
         if (reachable) QVERIFY2(!error, qPrintable(error.code));
-        else QCOMPARE(error.code, QString("public_url_unreachable"));
+        else {QCOMPARE(error.code, QString("public_url_unreachable"));QVERIFY(error.message.contains("Link domain"));QVERIFY(error.message.contains("public-read"));}
         QCOMPARE(result["publicReachable"].toBool(), reachable);
-        QCOMPARE(result["cleanupStatus"].toString(), QString("removed"));
+        QCOMPARE(result["cleanupStatus"].toString(), cleanupDenied ? QString("failed") : QString("removed"));
+        if (cleanupDenied) {QVERIFY(error.message.contains("Cleanup also failed"));QVERIFY(error.message.contains("s3:DeleteObject"));}
         bool unauthenticated = false;
         for (auto event : f.events("GET"))
             if (!event.toObject()["headers"].toObject().contains("authorization")) unauthenticated = true;

@@ -119,10 +119,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!setup_) {reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
   setup_->start(method.mid(6),p["profileId"].toString(),p["expectedRevision"].toString(),p["credentials"].toObject(),std::move(reply));return;
  }
- if(method=="setup.credentialHint") {
+ if(method=="setup.credentialHint"||method=="setup.revealCredentialSecret") {
   if(!fields(p,{"profileId","expectedRevision"})||!string(p,"profileId")||!p["expectedRevision"].isString()){reply(invalid(),{});return;}
   if(!setup_){reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
-  setup_->credentialHint(p["profileId"].toString(),p["expectedRevision"].toString(),std::move(reply));return;
+  if(method=="setup.credentialHint")setup_->credentialHint(p["profileId"].toString(),p["expectedRevision"].toString(),std::move(reply));
+  else setup_->revealCredentialSecret(p["profileId"].toString(),p["expectedRevision"].toString(),std::move(reply));
+  return;
  }
  if(method=="setup.inspect") {
   if(!fields(p,{"id"})||!string(p,"id")) {reply(invalid(),{});return;}

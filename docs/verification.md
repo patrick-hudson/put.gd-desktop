@@ -1,5 +1,13 @@
 # Implementation evidence
 
+## Local S3 settings controls — 2026-10-16
+
+The [scoped receipt](evidence/2026-10-16-s3-settings-controls.md) records the
+user-approved saved-secret reveal, visible connection-test progress/success,
+actionable sanitized S3 errors and synthetic regression checks. Current-candidate
+graphical and resident-memory acceptance remains pending; prior desktop evidence
+does not cover this change.
+
 ## Clipboard tray wording — 2026-10-16
 
 The [issue 36 receipt](evidence/2026-10-16-issue36-tray-label.md) records the exact

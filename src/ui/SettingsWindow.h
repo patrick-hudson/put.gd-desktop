@@ -45,7 +45,7 @@ private:
  void stageEdit(const QString&,const QJsonValue&,QWidget*);
  void queueEdit(QWidget*,QString path={});void persistNextEdit();void refreshDestinationList(const QJsonObject& document={});void refreshCredentialHint();void inlineError(QWidget*,const QString&);void autosaveFailure(const Error&);
  QMap<QString,QJsonValue> pendingEdits_;QHash<QString,quint64> pendingEditSerials_,submittedEditSerials_;quint64 editSerial_=0;QHash<QString,QPointer<QWidget>> editControls_;
- QHash<QWidget*,QLabel*> errors_;QSet<QString> testedDestinations_,requestedFolders_;
+ QHash<QWidget*,QLabel*> errors_;QHash<QString,QJsonObject> testedDestinations_;QSet<QString> requestedFolders_;
  bool autosaveBlocked_=false;QVector<QPushButton*> retryAutosave_;
  QTimer* autosave_=nullptr;QPointer<QWidget> destinationPage_;QTabWidget* tabs_=nullptr;QListWidget* destinationList_=nullptr;
  QWidget *linksPanel_=nullptr,*connectionPanel_=nullptr;QPushButton* defaultButton_=nullptr;
@@ -53,11 +53,14 @@ private:
  QLabel *configPath_=nullptr,*endpointHint_=nullptr,*linkExample_=nullptr,*destinationStatus_=nullptr;
  void updateProtonAccountDisplay();bool applyProtonAccountResult(const QString&,const QJsonObject&);
  void beginSetup(const QString&,const QJsonObject& input={});void pollSetup();void updateSetupButton();void configurationChanged();
+ void setupFeedback(const QString&,bool success=false);
  void populate();QJsonObject profileEditorState()const;void applyProfileEditor(const QJsonObject&);QJsonObject editedProfile()const;
  void refresh(bool preserveDrafts=false);void refreshMetadata();void dirty();void save();void addS3Profile(const QString& defaultLabel="S3 destination");void resetDraft(bool reloadFile);QJsonObject candidate() const;bool selectedDestinationChanged()const;void loadProfile();void storeProfile();void rebuildProfiles(int selected,const QString& defaultProfile={});void status(const Error&);
  void switchProvider();void importDevelopmentProfile();
  QJsonObject retainedProfileEditor()const;bool hasRetainedDrafts()const;
  void rememberCredentialInputs();void restoreCredentialInputs();void clearCurrentCredentialInputs();
+ void toggleCredentialSecret(bool shown);void resetCredentialSecretDisplay();
+ QPushButton* showSecret_=nullptr;bool savedSecretShown_=false;quint64 secretRevealSerial_=0;
  struct CredentialInputs {QString access,secret,token,password;};
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;
  QHash<QString,CredentialInputs> provisionalCredentials_;

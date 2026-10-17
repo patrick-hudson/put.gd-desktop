@@ -18,6 +18,7 @@ public:
  void start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply);
  void inspect(const QString& id,JsonReply);
  void credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply);
+ void revealCredentialSecret(const QString& profileId,const QString& expectedRevision,JsonReply);
 signals:
  void changed(const QString& setupId);
 private:

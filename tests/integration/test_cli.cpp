@@ -24,6 +24,16 @@ private slots:
   QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);const auto output=client.readAllStandardOutput();const auto response=QJsonDocument::fromJson(output).object();
   QCOMPARE(response["error"].toObject()["code"].toString(),QString("credentials_require_settings"));QCOMPARE(connections,0);QVERIFY(!server.hasPendingConnections());QVERIFY(!output.contains("synthetic-access"));QVERIFY(!output.contains("synthetic-secret"));QVERIFY(client.readAllStandardError().isEmpty());
  }
+ void credentialRevealIsRejectedBeforeConnecting() {
+  QTemporaryDir dir;QLocalServer server;server.setSocketOptions(QLocalServer::UserAccessOption);QVERIFY(server.listen(dir.filePath("session.sock")));
+  int connections=0;connect(&server,&QLocalServer::newConnection,this,[&]{++connections;});
+  QProcess client;client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"setup.revealCredentialSecret"});
+  QTRY_COMPARE(client.state(),QProcess::NotRunning);QCOMPARE(client.exitCode(),1);
+  const auto response=QJsonDocument::fromJson(client.readAllStandardOutput()).object();
+  QCOMPARE(response["error"].toObject()["code"].toString(),QString("credentials_require_settings"));
+  QCOMPARE(connections,0);QVERIFY(!server.hasPendingConnections());
+  QVERIFY(client.readAllStandardError().isEmpty());
+ }
  void quitAcknowledgesBeforeDeferredShutdownAndRejectsUnexpectedParameters(){
   QTemporaryDir d;ProviderRegistry providers;SettingsService settings(d.filePath("config.json"));Source source;OperationService operations(d.filePath("data"),settings,providers,source);HistoryService history(operations);LocalServer server(settings,operations,history);
   auto request=[&](const QJsonObject& params){return QJsonObject{{"schemaVersion",1},{"requestId","quit"},{"session",server.socketPath()},{"method","ui.quit"},{"params",params}};};
