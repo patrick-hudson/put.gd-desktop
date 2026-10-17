@@ -150,6 +150,25 @@ The Cinnamon gate reran on `b280fbf`:
 The other desktops' results above are from `329d736`. This follow-up changes
 only platform-neutral canvas input handling.
 
+## Follow-up gates on `dd05194`
+
+`dd05194` also fixes the lab runner. GNOME guest sessions had lacked
+`WAYLAND_DISPLAY`, so on the GNOME VM every earlier run, including the
+`329d736` row above, exercised the graphical fallback resident (about 61 MiB
+idle). The native GNOME core resident (32 MiB) was never used there.
+
+On `dd05194`, which adds font, custom-color and text-scaling controls, the VM
+gates reran with the real GNOME core resident:
+
+| Desktop | Region | Editor | Memory peaks (MiB, targets as above) | Resident idle |
+| --- | --- | --- | --- | --- |
+| Cinnamon / X11 | pass | 23/23 | 90.1, 158.2, 306.3, 83.7, 82.5 | 29.1 MiB |
+| GNOME / Wayland (core resident) | pass | 23/23 | 94.9, 166.7, 313.0, 94.2, 93.2 | 32.1 MiB |
+| Plasma / Wayland | pass | 23/23 | 111.1, 175.9, 318.4, 103.0, 101.8 | 32.6 MiB |
+
+The 23 checks add two real-mouse checks: a drawing tool moves a visible mark,
+and the move undoes.
+
 ## Not covered
 
 - The physical Fedora 44 GNOME desktop. Its display was being reconfigured
