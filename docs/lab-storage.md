@@ -51,6 +51,12 @@ Keep current source, SDK installation, packages, profile/history, unresolved
 publication records, protected login input and unknown files. Build retention
 does not authorize deleting user data or unresolved test artifacts.
 
+The same rule covers the workstation's per-commit candidate trees
+(`build/archive-<sha>`, `build/local-install-<sha>` and the CPack staging inside
+`build/packages-lab-*`). Each commit adds about 2.8 GB. Once a newer candidate
+is built, remove superseded trees beyond the one rollback, keeping each final
+`.deb`. Never remove the candidate an active session is still gating.
+
 Screenshot evidence can dominate host usage. Once a campaign is obsolete and
 has no active owner, losslessly gzip raw PPM frames and verify decompressed bytes
 against the original SHA256 before unlinking the original. Fsync the compressed
@@ -112,3 +118,24 @@ back the provisioned current golden images and guests. They were protected.
 Testing paused during cleanup and compression; interrupted and failed native
 attempts remain recorded. Resume the unchanged suites after capacity and idle
 checks, rather than relaxing timing gates to accommodate storage contention.
+
+## 2026-10-17 workstation cleanup and golden offload
+
+The workstation reached 97% with 13.2 GB available. Thirteen per-commit
+candidate build sets from one day accounted for most of the growth. Removing
+superseded candidate trees, merged worktree build directories, duplicate evidence
+bytes (by hard link) and stale scratch reclaimed 59.0 GB. The active `dd05194`
+candidate and every final `.deb` were kept.
+
+All seven Linux goldens and both sealed Windows bundles were then copied to
+Fedora and Debian, following [golden storage and restore](remote-golden-images.md).
+Each workstation original was removed only after both LAN copies verified against
+it: SHA-256 for disks, and per-file mode/size/SHA-256 for Windows bundles. That
+reclaimed 109.7 GB and left 171.6 GB available. The first S3 object
+(`fedora-gnome-wayland`) was uploaded from the workstation file. At Patrick's
+request, the rest stream from the verified Fedora copies. Each object is zstd
+round-trip checked against the inventory SHA-256 before upload. A test restore
+of `fedora-gnome-wayland` from S3 reproduced its exact SHA-256. Private receipts
+are under `work/housekeeping/disk-cleanup-20261017/` and
+`work/housekeeping/golden-offload-20261017/`. No VM was booted, and no overlay
+or run directory referenced the removed workstation copies.

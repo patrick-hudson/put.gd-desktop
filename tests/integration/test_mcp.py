@@ -3,16 +3,26 @@
 Run with PUTGD_CLI pointing at the built production binary. No desktop/cloud proof.
 """
 import asyncio
+import base64
 import json
 import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+import zlib
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from share_mcp.server import CliAdapter, create_server
+
+
+def synthetic_png() -> bytes:
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return len(data).to_bytes(4, 'big') + kind + data + zlib.crc32(kind + data).to_bytes(4, 'big')
+    header = (2).to_bytes(4, 'big') + (1).to_bytes(4, 'big') + bytes([8, 2, 0, 0, 0])
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header) +
+            chunk(b'IDAT', zlib.compress(b'\x00' + bytes(6))) + chunk(b'IEND', b''))
 
 
 class AdapterTests(unittest.IsolatedAsyncioTestCase):
@@ -26,6 +36,17 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
             ('patch_configuration', {'patch': {'captureDefaults': {'accessKey': 'synthetic'}}, 'expected_revision': 'r'}),
             ('list_history', {'limit': 201}),
+            ('perform_action', {'action': 'record'}),
+            ('open_editor', {'source': 'shell'}),
+            ('open_editor', {'source': 'file'}),
+            ('open_editor', {'source': 'file', 'path': 'relative.png'}),
+            ('open_editor', {'source': 'region', 'path': '/synthetic.png'}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': []}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'shell'}]}),
+            ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'add', 'shape': {'password': 'synthetic'}}]}),
+            ('preview_editor', {'id': 'synthetic-operation', 'max_edge': 10}),
+            ('save_editor_copy', {'id': 'synthetic-operation', 'path': 'relative.png'}),
+            ('submit_editor', {'id': ''}),
         ]:
             result = await server.call_tool(name, args)
             self.assertIn('invalid_request', str(result), name)
@@ -69,6 +90,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
         if method == 'settings.get':
             result = {'document': {'actions': {'clipboard': {'destination': 'upload'}}},
                       'metadata': {'path': '/synthetic/config.json', 'acceptedRevision': 'synthetic-revision', 'observedRevision': 'synthetic-revision'}}
+        if method == 'editor.preview':
+            result = {'operationId': 'synthetic-operation', 'mime': 'image/png', 'width': 2, 'height': 1,
+                      'sourceWidth': 2, 'sourceHeight': 1, 'png': base64.b64encode(synthetic_png()).decode()}
         if method == 'delete.prepare':
             result = {'acknowledgement': 'synthetic-effect', 'targets': request['params']['ids']}
         error = {'code': '', 'message': '', 'details': {}}
@@ -92,7 +116,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 expected = {'inspect', 'perform_action', 'get_operation', 'retry_operation',
                             'copy_result', 'cancel_operation', 'list_history', 'get_history_entry',
                             'copy_history_link', 'delete_history_uploads', 'reload_configuration',
-                            'patch_configuration'}
+                            'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
+                            'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
+                            'raise_editor'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -141,11 +167,40 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}, 'delete.confirm', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}),
                     ('patch_configuration', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expected_revision': 'synthetic-revision'}, 'settings.patch', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expectedRevision': 'synthetic-revision'}),
                     ('reload_configuration', {}, 'settings.reload', {}),
+                    ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
+                    ('open_editor', {}, 'editor.open', {'source': 'region'}),
+                    ('open_editor', {'source': 'file', 'path': '/synthetic dir/image.png'}, 'editor.open', {'source': 'file', 'path': '/synthetic dir/image.png'}),
+                    ('get_editor', {'id': 'synthetic-operation'}, 'editor.inspect', {'id': 'synthetic-operation'}),
+                    ('edit_image', {'id': 'synthetic-operation', 'commands': [
+                        {'op': 'add', 'shape': {'kind': 'redact', 'rect': [1, 2, 30, 40]}},
+                        {'op': 'add', 'shape': {'kind': 'text', 'at': [5, 5], 'text': 'synthetic', 'color': '#ffffff'}},
+                        {'op': 'crop', 'rect': [0, 0, 100, 50]}, {'op': 'undo'}]},
+                     'editor.apply', {'id': 'synthetic-operation', 'commands': [
+                        {'op': 'add', 'shape': {'kind': 'redact', 'rect': [1, 2, 30, 40]}},
+                        {'op': 'add', 'shape': {'kind': 'text', 'at': [5, 5], 'text': 'synthetic', 'color': '#ffffff'}},
+                        {'op': 'crop', 'rect': [0, 0, 100, 50]}, {'op': 'undo'}]}),
+                    ('save_editor_copy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png'}, 'editor.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png'}),
+                    ('save_editor_copy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png', 'overwrite': True}, 'editor.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/copy.png', 'overwrite': True}),
+                    ('submit_editor', {'id': 'synthetic-operation'}, 'editor.submit', {'id': 'synthetic-operation'}),
+                    ('cancel_editor', {'id': 'synthetic-operation'}, 'editor.cancel', {'id': 'synthetic-operation'}),
+                    ('raise_editor', {'id': 'synthetic-operation'}, 'editor.raise', {'id': 'synthetic-operation'}),
                 ]
                 for name, args, method, params in cases:
                     await call(name, args)
                     self.assertEqual(self.calls[-1]['method'], method)
                     self.assertEqual(self.calls[-1]['params'], params)
+                preview = await session.call_tool('preview_editor', {'id': 'synthetic-operation', 'max_edge': 800})
+                self.assertFalse(preview.isError, preview)
+                self.assertEqual(self.calls[-1]['method'], 'editor.preview')
+                self.assertEqual(self.calls[-1]['params'], {'id': 'synthetic-operation', 'maxEdge': 800})
+                image, envelope = preview.content
+                self.assertEqual(image.type, 'image')
+                self.assertEqual(image.mimeType, 'image/png')
+                self.assertEqual(base64.b64decode(image.data), synthetic_png())
+                metadata = json.loads(envelope.text)
+                self.assertTrue(metadata['ok'])
+                self.assertNotIn('png', metadata['result'])
+                self.assertEqual(metadata['result']['sourceWidth'], 2)
                 conflict = await call('patch_configuration', {'patch': {'preferences': {'notifications': False}}, 'expected_revision': 'stale'})
                 self.assertEqual(conflict['error']['code'], 'config_conflict')
                 self.assertTrue(all(r['schemaVersion'] == 1 and r['session'] == self.socket for r in self.calls))

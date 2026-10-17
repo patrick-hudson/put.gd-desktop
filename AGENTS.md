@@ -5,19 +5,22 @@ The minimum Qt API is 6.4.2. Keep Qt dynamically linked to distro libraries.
 Use standard system development packages; ask the user to install missing packages
 when administrator authentication is required. Do not assemble a substitute toolchain.
 
-Prefer Patrick's Fedora 44 (`192.168.68.70`) and Debian 13 (`192.168.68.69`)
-physical build/test servers for builds, VM hosting and graphical acceptance.
+Prefer Patrick's Fedora 44 (`192.168.68.70`), Debian 13 (`192.168.68.69`) and
+Kubuntu 26.04 (`192.168.68.72`) physical build/test servers for builds, VM hosting
+and graphical acceptance.
 Their existing GNOME and Plasma sessions are graphical acceptance targets too:
-run and verify the app directly on either physical desktop, visible on its host
-wall tile, with saved visuals and exact host/session/source/build identities.
+run and verify the app directly on the appropriate physical desktop, visible on
+its host wall tile, with saved visuals and exact host/session/source/build identities.
 Use local workstation VMs as a fallback when those hosts cannot run the required
 profile; record the reason. Connection pins, host selection, visual evidence and
-golden-image transfer rules are in `docs/remote-builders.md`. On these two servers,
+golden-image transfer rules are in `docs/remote-builders.md`. On these three servers,
 the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
 host preference does not change Cinnamon-first ordering or required guest versions.
-Find and copy golden images using `docs/remote-golden-images.md`, and expose
+Linux goldens and Windows bases are not kept on the workstation. They live on the
+Fedora and Debian builders and in a private S3 bucket. Find, copy and restore
+them using `docs/remote-golden-images.md`, and expose
 each remote VM on the wall using `docs/remote-vm-displays.md`. Provision new remote
 lab VM goldens with guest login `lab` / `putgd-lab`, verifying login visibly.
 The user explicitly approved documenting this default disposable-guest login
@@ -63,8 +66,12 @@ Anthropic for review. This permission does not select an external implementation
 Keep review material bounded to the code/specification needed, excluding secrets and payloads.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
-owned paths, preserving unrelated pre-existing changes. Do not add recording/editor/OCR
+owned paths, preserving unrelated pre-existing changes. Do not add recording or OCR
 features: future video support currently means finalized video files in the shared pipeline.
+The user-approved Edit & upload image editor (#51) is the only editing feature; its
+contract, privacy boundaries and agent control are in `docs/image-editor.md`.
+New windows reuse the redesign theme and IconArt glyphs, and every interactive
+capability stays controllable through session methods, `putgd-cli` and the MCP helper.
 
 Agent source, workflow and acceptance maps are in `docs/agents.md`. The optional Python
 3.12+ official-SDK stdio helper is under `tools/mcp/`; follow `docs/mcp.md` for locked
@@ -117,7 +124,9 @@ Apply the same immutable-base rule to provisioned Linux golden disks under
 `work/lab-images/`: never boot or modify them directly, and never move, overwrite
 or delete a disk referenced by overlays. Linux tests use fresh disks under
 `work/lab-runs/` through `tools/lab/lab.py`; provision a new golden disk for updates.
-See `docs/vm-lab.md`.
+See `docs/vm-lab.md`. Goldens and Windows bases each have Fedora, Debian and S3
+copies. Never delete any copy without Patrick's approval and two other copies
+verified against the same SHA-256.
 
 Retire completed disposable VM overlays after their evidence is exported and
 verified. Normal successful `tools/lab/lab.py run` calls do this automatically;

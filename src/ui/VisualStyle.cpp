@@ -93,7 +93,9 @@ QToolButton* helpButton(const QString& title,const QString& description,QWidget*
  });return button;
 }
 QWidget* settingLabel(const QString& title,const QString& description,QWidget* control,QWidget* parent){
- control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);auto* label=new QLabel(title,row);label->setBuddy(control);layout->addWidget(label);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
+ control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);
+ // A label with a buddy treats & as a mnemonic marker; show titles literally.
+ auto* label=new QLabel(QString(title).replace('&',QLatin1String("&&")),row);label->setBuddy(control);layout->addWidget(label);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;
 }
 QWidget* settingRow(const QString& title,const QString& description,QWidget* control,QWidget* parent){
  control->setAccessibleName(title);auto* row=new QWidget(parent);auto* layout=new QHBoxLayout(row);layout->setContentsMargins(0,0,0,0);layout->setSpacing(6);layout->addWidget(control);layout->addWidget(helpButton(title,description,control,row));layout->addStretch();return row;

@@ -103,6 +103,8 @@ TrayController::TrayController(OperationService& operations,
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
    if (Settings::actionNames().contains(action)) invokeAction(action);
+   else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
+   else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
    else if (action == "history") showHistory();
    else if (action == "activity") showActivity();
@@ -116,11 +118,16 @@ TrayController::TrayController(OperationService& operations,
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
  for (const auto& action : Settings::actionNames()) {
-  auto* item = menu_->addAction(VisualStyle::icon(action), action == "clipboard" ? QString("Upload Clipboard") : "Capture " + action);
+  // QAction text treats a single & as a mnemonic marker; && shows one &.
+  auto* item = menu_->addAction(VisualStyle::icon(action), action == "clipboard" ? QString("Upload Clipboard") : action == "edit" ? QString("Capture region && edit") : "Capture " + action);
   connect(item, &QAction::triggered, this, [this, action] {
    invokeAction(action);
   });
  }
+ // Other editor sources stay one level down so the menu does not grow.
+ auto* editImage = menu_->addMenu(VisualStyle::icon("edit"), "Edit image");
+ connect(editImage->addAction("From clipboard"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
+ connect(editImage->addAction("From a file..."), &QAction::triggered, this, [this] { showView("editFile"); });
  menu_->addSeparator();
  connect(menu_->addAction(VisualStyle::icon("preferences"), "Settings and setup"),
          &QAction::triggered, this, &TrayController::showSettings);
@@ -190,11 +197,15 @@ TrayController::TrayController(OperationService& operations,
    }
 #endif
    if (QStringList{"completed", "partial", "failed", "interrupted"}.contains(state))
-    guard->notifyMessage("put.gd — " + state,
-      "Clipboard: " + operation["copyStatus"].toString() + (link.isEmpty()?". Open recent activity for per-item results.":". Click to open in browser."),
-      state != "completed",link);
+    guard->notifyMessage("put.gd — " + state,completionMessage(operation,!link.isEmpty()),state != "completed",link);
   });
  });
+}
+
+QString TrayController::completionMessage(const QJsonObject& operation,bool hasLink) {
+ const auto error=operation["error"].toObject();
+ if(operation["items"].toArray().isEmpty()&&meaningfulError(error)&&!error["message"].toString().isEmpty())return error["message"].toString();
+ return "Clipboard: " + operation["copyStatus"].toString() + (hasLink?". Click to open in browser.":". Open recent activity for per-item results.");
 }
 
 TrayController::~TrayController() {
@@ -279,7 +290,7 @@ void TrayController::showView(const QString& view) {
  open(view);
 }
 void TrayController::invokeShortcut(const QString& action) { invokeAction(action, true); }
-void TrayController::invokeAction(const QString& action, bool fromShortcut) {
+void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
@@ -294,7 +305,7 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut) {
    if (!fromShortcut) guard->showActivity();
    if (guard) guard->notifyFailure(error);
   }
- });
+ }, options);
 }
 #ifdef Q_OS_LINUX
 void TrayController::openNotificationLink(const QUrl& link) {

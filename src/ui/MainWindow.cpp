@@ -1,4 +1,13 @@
 #include "MainWindow.h"
+#include <QDir>
+#include <QStandardPaths>
+#include <QFileDialog>
+#include <QMenu>
+#include <QDropEvent>
+#include <QFileInfo>
+#include <QMimeData>
+#include <QStyle>
+#include <QUrl>
 #include "SettingsWindow.h"
 #include "HistoryWindow.h"
 #include "UiSession.h"
@@ -21,13 +30,24 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  auto* rail=new QWidget;rail->setObjectName("mainRail");rail->setFixedWidth(210);layout->addWidget(rail);auto* railBox=new QVBoxLayout(rail);railBox->setContentsMargins(14,20,14,14);railBox->setSpacing(6);
  auto* brand=new QLabel("put.gd");VisualStyle::role(brand,"title");railBox->addWidget(brand);railBox->addSpacing(14);
  auto* captureHeading=new QHBoxLayout;captureHeading->setContentsMargins(0,0,0,0);auto* captureLabel=new QLabel("CAPTURE & IMPORT");captureLabel->setObjectName("captureActionsHeading");VisualStyle::role(captureLabel,"railHeading");captureHeading->addWidget(captureLabel);captureHeading->addStretch();
- const QString actionHelp="Capture region: drag to select a screen area; Escape cancels.\n\nCapture window: capture the focused external app window, including its frame where supported.\n\nCapture desktop: capture every enabled monitor, including desktop panels.\n\nImport clipboard: import copied local files, an image, or plain text, in that order. URLs copied as text are imported as text.\n\nEach button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard imports keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination. Keep a local copy in Settings → General independently enables local saving. Both can be enabled. With neither enabled, the action fails before capturing. Shared uploads copy a link; private uploads create no link. Hover a button for its current output behavior. Results and recovery actions appear in History.";
+ const QString actionHelp="Capture region: drag to select a screen area; Escape cancels.\n\nCapture window: capture the focused external app window, including its frame where supported.\n\nCapture desktop: capture every enabled monitor, including desktop panels.\n\nImport clipboard: import copied local files, an image, or plain text, in that order. URLs copied as text are imported as text.\n\nCapture region & edit: select a region, then redact, blur, crop or annotate it in the editor. Nothing uploads until you choose Upload. Right-click it, or drop a PNG or JPEG on it, to edit the clipboard image or an image file instead.\n\nEach button starts that action after finished settings edits are saved. Screen captures close this window to keep it out of the capture; clipboard imports keep it open. Store or clear unfinished credentials before a screen capture. Settings → Capture selects the upload destination. Keep a local copy in Settings → General independently enables local saving. Both can be enabled. With neither enabled, the action fails before capturing. Shared uploads copy a link; private uploads create no link. Hover a button for its current output behavior. Results and recovery actions appear in History.";
  auto* captureHelp=VisualStyle::helpButton("Capture and clipboard actions",actionHelp,captureLabel,rail);captureHeading->addWidget(captureHelp);railBox->addLayout(captureHeading);railBox->addSpacing(4);
- const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Import clipboard"}};
- const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Import copied local files, an image, or plain text, in that order. Text URLs are imported as text."}};
+ const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Import clipboard"},{"edit","Capture region & edit"}};
+ const QHash<QString,QString> explanations{{"region","Drag to select an area of your screen. Press Escape to cancel."},{"window","Capture the focused external app window, including its frame where supported."},{"desktop","Capture all enabled monitors, including desktop panels."},{"clipboard","Import copied local files, an image, or plain text, in that order. Text URLs are imported as text."},{"edit","Select a region, then redact, blur, crop or annotate it. Nothing uploads until you choose Upload.\n\nRight-click to edit the clipboard image or an image file instead, or drop a PNG or JPEG on this button."}};
  for(const auto& action:Settings::actionNames()){
   auto* button=new QPushButton;button->setObjectName("captureRailButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));button->setMinimumHeight(52);
-  auto* box=new QVBoxLayout(button);box->setContentsMargins(10,6,10,6);box->setSpacing(2);auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(8);auto* icon=new QLabel;icon->setPixmap(VisualStyle::icon(action).pixmap(19,19));line->addWidget(icon);auto* name=new QLabel(labels.value(action));line->addWidget(name);line->addStretch();box->addLayout(line);auto* shortcut=new QLabel;shortcut->setProperty("visualRole","mono");box->addWidget(shortcut);for(auto* label:{name,icon,shortcut})label->setAttribute(Qt::WA_TransparentForMouseEvents);
+  auto* box=new QVBoxLayout(button);box->setContentsMargins(10,6,10,6);box->setSpacing(2);auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(8);auto* icon=new QLabel;icon->setPixmap(VisualStyle::icon(action).pixmap(19,19));line->addWidget(icon);auto* name=new QLabel(labels.value(action));line->addWidget(name);line->addStretch();
+  box->addLayout(line);auto* shortcut=new QLabel;shortcut->setProperty("visualRole","mono");
+  box->addWidget(shortcut);
+  if(action=="edit"){
+   // The clipboard image and image files are secondary sources: right-click
+   // the button or drop a file on it. History shows the same menu visibly.
+   editButton_=button;button->setContextMenuPolicy(Qt::CustomContextMenu);button->setAcceptDrops(true);button->installEventFilter(this);
+   auto* sources=new QMenu(this);sources->setObjectName("editSourceMenu");
+   connect(sources->addAction(VisualStyle::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
+   connect(sources->addAction(VisualStyle::icon("images"),"Edit an image file…"),&QAction::triggered,this,&MainWindow::chooseImageToEdit);
+   connect(button,&QWidget::customContextMenuRequested,sources,[sources,button](const QPoint& at){sources->popup(button->mapToGlobal(at));});
+  }for(auto* label:{name,icon,shortcut})label->setAttribute(Qt::WA_TransparentForMouseEvents);
   auto update=[this,shortcut,button,action,explanations]{
    const auto document=session_.document();const auto saved=Settings::effectiveAction(document,action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);shortcut->setText(key);shortcut->setVisible(!key.isEmpty());QString output;
    const bool local=document["archive"].toObject()["keepUploads"].toBool();
@@ -48,7 +68,7 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  navigation_->setFixedHeight(168);railBox->addWidget(navigation_);railBox->addStretch();destination_=new QLabel;destination_->setObjectName("captureOutputSummary");destination_->setTextFormat(Qt::PlainText);destination_->setWordWrap(true);VisualStyle::role(destination_,"muted");railBox->addWidget(destination_);
  auto* changeOutput=new QPushButton("Change capture output…");changeOutput->setObjectName("changeCaptureOutput");VisualStyle::role(changeOutput,"link");railBox->addWidget(changeOutput);
  pages_=new QStackedWidget;pages_->setObjectName("mainPages");layout->addWidget(pages_,1);settings_=new SettingsWindow(session_,pages_);history_=new HistoryWindow(session_,pages_);pages_->addWidget(history_);pages_->addWidget(settings_->destinationsPage());pages_->addWidget(settings_);
- connect(navigation_,&QListWidget::currentRowChanged,pages_,&QStackedWidget::setCurrentIndex);connect(navigation_,&QListWidget::currentRowChanged,this,[this](int row){if(row==1)settings_->activateDestinations();emit viewStateChanged();});connect(settings_,&SettingsWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
+ connect(navigation_,&QListWidget::currentRowChanged,pages_,&QStackedWidget::setCurrentIndex);connect(navigation_,&QListWidget::currentRowChanged,this,[this](int row){if(row==1)settings_->activateDestinations();emit viewStateChanged();});connect(settings_,&SettingsWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(history_,&HistoryWindow::viewStateChanged,this,&MainWindow::viewStateChanged);connect(settings_,&SettingsWindow::actionRequested,this,&MainWindow::actionRequested);connect(history_,&HistoryWindow::editRequested,this,&MainWindow::editRequested);connect(history_,&HistoryWindow::chooseImageRequested,this,&MainWindow::chooseImageToEdit);connect(settings_,&SettingsWindow::quitRequested,this,&MainWindow::quitRequested);
  auto updateDestination=[this]{
   const auto document=session_.document();QString label;int exceptions=0;
   auto outputName=[&](const QJsonObject& output){const bool local=document["archive"].toObject()["keepUploads"].toBool();if(output["destination"]=="local"||output["profileId"].toString().isEmpty())return local?QString("Local files only"):QString("No output enabled");for(const auto& value:document["profiles"].toArray())if(value.toObject()["id"]==output["profileId"])return value.toObject()["label"].toString()+(local?QString(" + local copy"):QString{});return QString("Choose a destination");};
@@ -71,6 +91,26 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
 }
 MainWindow::~MainWindow(){
  disconnect(settings_,nullptr,this,nullptr);disconnect(history_,nullptr,this,nullptr);disconnect(navigation_,nullptr,this,nullptr);disconnect(&session_,nullptr,this,nullptr);
+}
+void MainWindow::chooseImageToEdit(){
+ auto folder=QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);if(folder.isEmpty())folder=QDir::homePath();
+ const auto path=QFileDialog::getOpenFileName(this,"Edit an image file",folder,"Images (*.png *.jpg *.jpeg)");
+ if(!path.isEmpty())emit editRequested("file",path);
+}
+QString MainWindow::droppedImage(const QMimeData* data){
+ if(!data||data->urls().size()!=1||!data->urls().first().isLocalFile())return {};
+ const QFileInfo file(data->urls().first().toLocalFile());
+ return file.isFile()&&QStringList{"png","jpg","jpeg"}.contains(file.suffix().toLower())?file.absoluteFilePath():QString{};
+}
+bool MainWindow::eventFilter(QObject* watched,QEvent* event){
+ if(watched!=editButton_)return QMainWindow::eventFilter(watched,event);
+ auto highlight=[this](bool on){editButton_->setProperty("dropTarget",on);editButton_->style()->unpolish(editButton_);editButton_->style()->polish(editButton_);};
+ switch(event->type()){
+ case QEvent::DragEnter:case QEvent::DragMove:{auto* drag=static_cast<QDragMoveEvent*>(event);const bool image=!droppedImage(drag->mimeData()).isEmpty();if(image)drag->acceptProposedAction();else drag->ignore();if(event->type()==QEvent::DragEnter)highlight(image);return true;}
+ case QEvent::DragLeave:highlight(false);return true;
+ case QEvent::Drop:{auto* drop=static_cast<QDropEvent*>(event);highlight(false);const auto path=droppedImage(drop->mimeData());if(path.isEmpty()){drop->ignore();return true;}drop->acceptProposedAction();emit editRequested("file",path);return true;}
+ default:return QMainWindow::eventFilter(watched,event);
+ }
 }
 void MainWindow::navigate(const QString& name){navigation_->setCurrentRow(name=="settings"?2:name=="destinations"?1:0);if(name=="activity"||name=="history")history_->refresh();}
 QJsonObject MainWindow::saveViewState()const{return {{"page",navigation_->currentRow()},{"geometry",QJsonArray{x(),y(),width(),height()}}};}

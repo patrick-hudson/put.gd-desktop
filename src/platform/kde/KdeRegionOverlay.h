@@ -2,6 +2,8 @@
 #include "platform/Geometry.h"
 #include <QObject>
 #include <QWidget>
+#include <QSet>
+class QWindow;
 struct wl_callback;
 namespace putgd {
 class KdeRegionOverlay final:public QObject {
@@ -13,8 +15,9 @@ public:
 signals:
  void selected(const QRectF&);void cancelled(const putgd::Error&);
 private:
- class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();
- QList<CaptureFrame> frames_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false;
+ bool eventFilter(QObject*,QEvent*) override;
+ class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();void dismiss();
+ QList<CaptureFrame> frames_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false,clearing_=false,dismissing_=false;QSet<QWindow*> awaitingFrames_;
  wl_callback* dismissal_=nullptr;
 };
 }

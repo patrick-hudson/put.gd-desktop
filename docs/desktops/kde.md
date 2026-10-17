@@ -2,12 +2,16 @@
 
 Target baseline: Kubuntu 26.04 LTS, Plasma 6.6, native Qt Wayland.
 The adapter uses KWin ScreenShot2, KGlobalAccel v2, and the official
-`ext-data-control-v1` protocol. Native desktop acceptance remains required.
+`ext-data-control-v1` protocol. Compositors without ext, such as KWin 6.3 on
+Debian 13, still offer its wire-identical predecessor
+`wlr-data-control-unstable-v1` (version 2). The adapter binds that only when ext
+is absent; `capabilities` reports the protocol in use. Native desktop acceptance
+remains required.
 
 ## Normal distro dependencies and integration
 
-Build dependencies are `libwayland-dev`, `wayland-protocols` (with staging
-ext-data-control), and Qt DBus. CMake runs the distro `wayland-scanner`
+Build dependencies are `libwayland-dev`, `wayland-protocols` and Qt DBus. Both
+data-control protocol files are vendored unmodified. CMake runs the distro `wayland-scanner`
 `client-header` and `private-code` modes against the unmodified protocol XML
 in `src/platform/kde/protocols/`. Keep generated files in the build tree.
 Region selection also needs the current distro LayerShellQt interface development

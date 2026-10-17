@@ -21,7 +21,10 @@
 #include <QSet>
 #include <wayland-server.h>
 #include "xdg-output-unstable-v1-server-protocol.h"
+#include "ext-data-control-v1-server-protocol.h"
+#include "wlr-data-control-unstable-v1-server-protocol.h"
 #include <sys/stat.h>
+#include <list>
 #include <memory>
 #include <unistd.h>
 using namespace putgd;
@@ -73,6 +76,47 @@ class NativeOutputFixture final:public QObject {
   auto* resource=wl_resource_create(client,&zxdg_output_manager_v1_interface,int(version),id);
   static const struct zxdg_output_manager_v1_interface implementation={destroyRequest,getLogical};wl_resource_set_implementation(resource,&implementation,data,nullptr);
  }
+ // Data control: ext and wlr share one message layout, so one implementation
+ // serves both; only the resources' interface descriptions differ.
+ struct DataControl {NativeOutputFixture* fixture;bool wlr;};
+ struct Source {DataControl* control;QStringList mimes;};
+ std::list<DataControl> dataControls_;QList<wl_resource*> dataDevices_;wl_resource* selectionSource_=nullptr;
+ static const wl_interface* dataInterface(bool wlr,const char* kind){
+  if(!qstrcmp(kind,"manager"))return wlr?&zwlr_data_control_manager_v1_interface:&ext_data_control_manager_v1_interface;
+  if(!qstrcmp(kind,"device"))return wlr?&zwlr_data_control_device_v1_interface:&ext_data_control_device_v1_interface;
+  if(!qstrcmp(kind,"source"))return wlr?&zwlr_data_control_source_v1_interface:&ext_data_control_source_v1_interface;
+  return wlr?&zwlr_data_control_offer_v1_interface:&ext_data_control_offer_v1_interface;
+ }
+ static void sourceDestroyed(wl_resource* resource){auto* source=static_cast<Source*>(wl_resource_get_user_data(resource));auto* self=source->control->fixture;if(self->selectionSource_==resource)self->selectionSource_=nullptr;delete source;}
+ static void deviceDestroyed(wl_resource* resource){auto* control=static_cast<DataControl*>(wl_resource_get_user_data(resource));control->fixture->dataDevices_.removeOne(resource);}
+ static void createSource(wl_client* client,wl_resource* manager,uint32_t id){
+  auto* control=static_cast<DataControl*>(wl_resource_get_user_data(manager));auto* resource=wl_resource_create(client,dataInterface(control->wlr,"source"),wl_resource_get_version(manager),id);
+  static const struct ext_data_control_source_v1_interface implementation={[](wl_client*,wl_resource* resource,const char* mime){static_cast<Source*>(wl_resource_get_user_data(resource))->mimes.append(QString::fromUtf8(mime));},destroyRequest};
+  wl_resource_set_implementation(resource,&implementation,new Source{control,{}},sourceDestroyed);
+ }
+ static void setSelection(wl_client*,wl_resource* device,wl_resource* source){
+  auto* self=static_cast<DataControl*>(wl_resource_get_user_data(device))->fixture;
+  if(self->selectionSource_&&self->selectionSource_!=source)ext_data_control_source_v1_send_cancelled(self->selectionSource_);
+  self->selectionSource_=source;const auto mimes=source?static_cast<Source*>(wl_resource_get_user_data(source))->mimes:QStringList{};
+  for(auto* target:self->dataDevices_){
+   wl_resource* offer=nullptr;
+   if(source){
+    auto* control=static_cast<DataControl*>(wl_resource_get_user_data(target));offer=wl_resource_create(wl_resource_get_client(target),dataInterface(control->wlr,"offer"),wl_resource_get_version(target),0);
+    static const struct ext_data_control_offer_v1_interface implementation={[](wl_client*,wl_resource*,const char*,int32_t fd){close(fd);},destroyRequest};
+    wl_resource_set_implementation(offer,&implementation,nullptr,nullptr);ext_data_control_device_v1_send_data_offer(target,offer);for(const auto& mime:mimes)ext_data_control_offer_v1_send_offer(offer,mime.toUtf8().constData());
+   }
+   ext_data_control_device_v1_send_selection(target,offer);
+  }
+ }
+ static void getDevice(wl_client* client,wl_resource* manager,uint32_t id,wl_resource*){
+  auto* control=static_cast<DataControl*>(wl_resource_get_user_data(manager));auto* resource=wl_resource_create(client,dataInterface(control->wlr,"device"),wl_resource_get_version(manager),id);
+  static const struct ext_data_control_device_v1_interface implementation={setSelection,destroyRequest,[](wl_client*,wl_resource*,wl_resource*){}};
+  wl_resource_set_implementation(resource,&implementation,control,deviceDestroyed);control->fixture->dataDevices_.append(resource);ext_data_control_device_v1_send_selection(resource,nullptr);
+ }
+ static void bindDataControl(wl_client* client,void* data,uint32_t version,uint32_t id){
+  auto* control=static_cast<DataControl*>(data);auto* resource=wl_resource_create(client,dataInterface(control->wlr,"manager"),int(version),id);
+  static const struct ext_data_control_manager_v1_interface implementation={createSource,getDevice,destroyRequest};wl_resource_set_implementation(resource,&implementation,control,nullptr);
+ }
  void flush(){if(display_)wl_display_flush_clients(display_);}
 public:
  explicit NativeOutputFixture(int version=3,bool sendMode=true,int nativeVersion=4,bool keyboard=false,int seatVersion=5):version_(version){
@@ -89,6 +133,10 @@ public:
   connect(notifier_,&QSocketNotifier::activated,this,[this,loop]{wl_event_loop_dispatch(loop,0);flush();});
  }
  ~NativeOutputFixture() override{if(notifier_){notifier_->setEnabled(false);delete notifier_;}if(display_){wl_display_destroy_clients(display_);wl_display_destroy(display_);}}
+ // Advertise wlr (version 2) and/or ext data control; wlr is announced first so
+ // the client's ext preference does not depend on registry order.
+ void dataControl(bool ext,bool wlr){if(wlr){dataControls_.push_back({this,true});wl_global_create(display_,&zwlr_data_control_manager_v1_interface,2,&dataControls_.back(),bindDataControl);}if(ext){dataControls_.push_back({this,false});wl_global_create(display_,&ext_data_control_manager_v1_interface,1,&dataControls_.back(),bindDataControl);}}
+ QStringList selectionMimes()const{return selectionSource_?static_cast<Source*>(wl_resource_get_user_data(selectionSource_))->mimes:QStringList{};}
  int keyboardCount()const{return keyboards_.size();}
  void keyboardCapability(bool present){for(auto* seat:seats_)wl_seat_send_capabilities(seat,present?WL_SEAT_CAPABILITY_KEYBOARD:0);flush();}
  void keyboardLayout(const char* layouts){auto* context=xkb_context_new(XKB_CONTEXT_NO_ENVIRONMENT_NAMES);xkb_rule_names names{};names.layout=layouts;auto* map=xkb_keymap_new_from_names(context,&names,XKB_KEYMAP_COMPILE_NO_FLAGS);if(map){char* text=xkb_keymap_get_as_string(map,XKB_KEYMAP_FORMAT_TEXT_V1);keyboardText_=QByteArray(text);keyboardText_.append(char(0));free(text);xkb_keymap_unref(map);}xkb_context_unref(context);for(auto* keyboard:keyboards_)sendKeymap(keyboard);flush();}
@@ -184,6 +232,26 @@ private slots:
  }
  void cleanupTestCase(){QDBusConnection::disconnectFromBus("putgd-kde-ownership-fixture");}
  void init(){screenshot_.captures=0;screenshot_.windowId=frozenId;info_.queries.clear();info_.info={{"uuid",frozenId},{"resourceClass","external-fixture"},{"desktopFile","external-fixture"}};info_.fail=false;info_.delayMs=0;shortcuts_.inactiveDelay=0;shortcuts_.setterDelay=0;shortcuts_.failInactive=false;shortcuts_.rejectKeys=false;}
+ void dataControlFallsBackToWlrAndPrefersExt_data(){
+  QTest::addColumn<bool>("ext");QTest::addColumn<bool>("wlr");QTest::addColumn<QString>("protocol");QTest::addColumn<int>("version");
+  QTest::newRow("wlr only (KWin 6.3)")<<false<<true<<"wlr-data-control-unstable-v1"<<2;
+  QTest::newRow("ext only")<<true<<false<<"ext-data-control-v1"<<1;
+  QTest::newRow("both")<<true<<true<<"ext-data-control-v1"<<1;
+ }
+ void dataControlFallsBackToWlrAndPrefersExt(){
+  QFETCH(bool,ext);QFETCH(bool,wlr);QFETCH(QString,protocol);QFETCH(int,version);
+  NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));compositor.dataControl(ext,wlr);
+  DataControlClipboard clipboard;QTRY_VERIFY(clipboard.available());
+  QCOMPARE(clipboard.status()["import"].toString(),protocol);QCOMPARE(clipboard.status()["protocol_version"].toInt(),version);
+  bool done=false;Error result{"pending","",{}};clipboard.copy({"text","synthetic result",{},{}},[&](Error error){result=std::move(error);done=true;});
+  QTRY_VERIFY(done);QVERIFY2(!result,qPrintable(result.code+": "+result.message));
+  QVERIFY(compositor.selectionMimes().contains("text/plain;charset=utf-8"));QCOMPARE(clipboard.lastCopyRevision(),std::optional<quint64>(clipboard.revision()));
+ }
+ void noDataControlReportsBothProtocols(){
+  NativeOutputFixture compositor(3,true,4,true);QVERIFY(compositor.ready());DataControlClipboard clipboard;
+  QTRY_VERIFY(clipboard.status()["error"].toString().contains("wlr-data-control"));QVERIFY(!clipboard.available());QCOMPARE(clipboard.status()["import"].toString(),QString("none"));
+  bool done=false;Error result;clipboard.copy({"text","synthetic result",{},{}},[&](Error error){result=std::move(error);done=true;});QVERIFY(done);QCOMPARE(result.code,QString("clipboard_unavailable"));
+ }
  void keyboardMapDiscoveryReplacementAndRemoval(){
   NativeOutputFixture compositor(3,true,4,true);QVERIFY2(compositor.ready(),qPrintable(compositor.error()));DataControlClipboard clipboard;QSignalSpy changed(&clipboard,&DataControlClipboard::keyboardChanged);
   QTRY_VERIFY(clipboard.keyboardMap());QCOMPARE(xkb_keymap_num_layouts(clipboard.keyboardMap()),xkb_layout_index_t(1));

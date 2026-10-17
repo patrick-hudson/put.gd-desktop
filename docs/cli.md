@@ -42,7 +42,12 @@ Methods and parameters:
 
 | Method | Parameters |
 |---|---|
-| `action.invoke` | `action`: region, window, desktop, clipboard |
+| `action.invoke` | `action`: region, window, desktop, clipboard, edit; `edit` also accepts `source` and `path` as `editor.open` |
+| `editor.open` | optional `source` region (default)/window/desktop/clipboard/file, `path` (absolute, file only) |
+| `editor.inspect`, `.submit`, `.cancel`, `.raise` | operation `id` of the open editor |
+| `editor.apply` | `id`, `commands` array (1–100); atomic |
+| `editor.preview` | `id`, optional `maxEdge` 64–1600; base64 sanitized PNG |
+| `editor.saveCopy` | `id`, absolute `.png` `path`, optional `overwrite` |
 | `operation.recent` | empty object; configured recent-activity bound |
 | `operation.inspect`, `.cancel`, `.retry`, `.copy`, `.retryLocalSave` | `id` |
 | `history.list` | optional limit, offset, search, category, mime, profileId, uploadStatus, localStatus, remoteStatus, from, to |
@@ -58,6 +63,10 @@ Methods and parameters:
 | `settings.patch` | recursive `patch`, `expectedRevision`; null is a value |
 | `capabilities`, `diagnostics` | empty object |
 | `ui.quit` | empty object; explicitly exit the resident application |
+
+Editor methods, command shapes and error codes are specified in
+[image-editor.md](image-editor.md). Nothing is uploaded until `editor.submit` or the
+window's Upload; `editor.cancel` and `operation.cancel` store nothing.
 
 `ui.quit` acknowledges with `quitting: true` before scheduling shutdown. It exits
 the resident, closes its UI helper, stops shortcuts and cancels pending work through

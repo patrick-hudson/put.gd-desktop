@@ -10,11 +10,34 @@ Settings, History, Activity and About live in `putgd-ui`. The last window closin
 
 Cinnamon acquisition uses transient `putgd-capture`; KDE region selection uses transient `putgd-kde-region`. The KDE selector returns geometry only, and the resident retains KWin authorization and pixel capture. GNOME retains its Shell bridge. Selection stays transparent over a live desktop. Startup, control frames, selection and shutdown are bounded; accepted results require matching build identity and normal helper exit. A helper that exits without required cleanup proof fails closed.
 
+The graphical fallback resident (X11 sessions other than Cinnamon: Plasma X11,
+GNOME X11, MATE, Xfce) constructs `QApplication` on Qt's built-in generic
+platform theme (`src/ui/ResidentTheme.h`):
+desktop-settings awareness is turned off and `QT_QPA_PLATFORMTHEME=generic`
+is set for construction only. The variable is then restored, so `putgd-ui`
+views and helpers keep the desktop's native theme. The resident's own visible
+surfaces are unaffected:
+
+- The tray menu and notifications are drawn by the desktop over D-Bus.
+- The region overlay is custom-painted.
+- Only a desktop without StatusNotifierItem support would see Qt's fallback
+  menu in the plain Fusion style.
+
+On Plasma X11 the KDE theme plugin otherwise creates an OpenGL context at
+startup, mapping Qt Quick, KF6, Mesa and `libLLVM` into the idle resident. On
+physical Kubuntu 26.04 / Plasma 6.6 X11 (Release `444f0bf`, 300 s, 61 samples)
+the resident dropped from 116.1 to 35.4 MiB RSS, 29.4 to 10.6 MiB PSS and
+23.6 to 8.6 MiB private. Plasma/Wayland (a `QCoreApplication` resident)
+measured 29.0 MiB RSS either way. Evidence:
+`work/verification/2026-10-17-kde-resident-theme/`.
+
 Sleeping a graphical process would retain its address space and stop callbacks the listener needs. Normal helper exit releases its graphical allocations without freezing clipboard, shortcuts or uploads. Retaining a hidden helper to improve reopen timings is outside this design.
 
 ## Load only the decoder the action needs
 
-Text and ordinary file-list clipboard offers do not enumerate image codecs. PNG uses its verified eight-byte signature on the same open device to select the built-in handler. Mislabelled or other image data retains supported format detection. Generic image discovery, normalization and previews run in a temporary graphical worker when necessary, including font-dependent formats. The worker validates private file identities, limits, checksums, build identity and cancellation; the resident accepts output after normal exit.
+Text and ordinary file-list clipboard offers do not enumerate image codecs. PNG uses its verified eight-byte signature on the same open device to select the built-in handler. Mislabelled or other image data retains supported format detection.
+
+Name the format whenever the bytes allow it. A `QImageReader` with no format, and `QImageReader::supportedMimeTypes()`, instantiate every installed image plugin. On Fedora 44 with KDE's kimageformats that is 30 plugins and 12 MiB RSS, against nothing for `QImageReader(&device, "png")` and only the JPEG plugin (2.2 MiB) for `"jpeg"`. Until `cf52883` the GNOME adapter listed image types on every acquisition, including region captures, so the GNOME resident gained about 17 MiB on its first capture. GNOME screen captures now send only `image/png`. Clipboard imports list types once in the transient image job and decode non-PNG data there, as KDE already did. The editor helper names `png` or `jpeg` from the file signature. Image job children always use Qt's offscreen platform, which ships with Qt GUI itself, so codec work never connects to the compositor. Generic image discovery, normalization and previews run in a temporary graphical worker when necessary, including font-dependent formats. The worker validates private file identities, limits, checksums, build identity and cancellation; the resident accepts output after normal exit.
 
 Completed image buffers and preview widgets must drain with their operation or view. A local-only image remains encoded in the native clipboard owner while it is legitimately pasteable. Active incremental transfers may retain their bounded earlier version until completion or deadline. That live ownership is charged to the memory workload; purging it to make RSS smaller would break copy/paste. Uploaded results usually own only URL text.
 
@@ -24,7 +47,7 @@ Complete KDE output frames share storage when composition needs no conversion or
 
 An existing glibc-only quiet gate requests `malloc_trim(0)` once after qualifying work drains. New work stops the gate; live clipboard leases and background jobs prevent reclamation. It does not purge native fonts, widget state or owned payloads.
 
-Native GNOME and KDE glibc residents set `M_MMAP_THRESHOLD` to 128 KiB before application construction. This keeps large transient allocations from changing glibc’s adaptive allocation threshold and retaining freed heap pages. GNOME’s chunked bridge transfers use the same policy: its redesign acceptance workload retained allocation arenas after the ordinary idle cleanup. A matched same-binary diagnostic reduced anonymous retention with the fixed threshold; the diagnostic alone does not establish production acceptance. Other desktop routes and allocators keep their existing policy. The original KDE standalone allocator probe suggested a saving, but its incremental product benefit was not measured. The accepted result is cumulative across the retained boundaries, decoder changes, frame sharing and allocator policy.
+All glibc Linux residents, including Cinnamon/X11, set `M_MMAP_THRESHOLD` to 128 KiB before application construction (`applyResidentAllocatorPolicy`). Native GNOME and KDE residents adopted it first. This keeps large transient allocations from changing glibc’s adaptive allocation threshold and retaining freed heap pages. GNOME’s chunked bridge transfers use the same policy: its redesign acceptance workload retained allocation arenas after the ordinary idle cleanup. A matched same-binary diagnostic reduced anonymous retention with the fixed threshold; the diagnostic alone does not establish production acceptance. Edit & upload (#51) extended it to every route: on Cinnamon the resident otherwise ratcheted from 29 to 140 MiB across file-source edits, because freed 4K rasters and PNG handoffs stayed in per-thread arena tops that `malloc_trim` does not shrink (live heap stayed under 1 MiB). With the fixed threshold a local four-cycle 4K probe stayed at baseline; `edit_operations_integration` checks retained free heap. The editor helper (`putgd-ui --edit-image`) applies the same threshold: on Fedora 44 one 1920x1080 preview otherwise left 36 MiB of freed rasters in its heap until the editor closed. Non-glibc allocators keep their existing policy. The original KDE standalone allocator probe suggested a saving, but its incremental product benefit was not measured. The accepted result is cumulative across the retained boundaries, decoder changes, frame sharing and allocator policy.
 
 ## What passed
 

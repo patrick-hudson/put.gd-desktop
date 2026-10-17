@@ -1,5 +1,6 @@
 #include "fixtures/U2Fixtures.h"
 #include "ui/TrayController.h"
+#include "ui/ResidentTheme.h"
 #include "ui/VisualStyle.h"
 #include <QAction>
 #include <QApplication>
@@ -61,6 +62,27 @@ public:
 class ResidentTray final : public QObject {
  Q_OBJECT
 private slots:
+ void residentThemeScopeRestoresTheEnvironmentForChildren() {
+  // Views and helpers inherit the environment; only the resident's own
+  // QApplication construction may see the generic theme override.
+  const bool aware=QGuiApplication::desktopSettingsAware();
+  qputenv("QT_QPA_PLATFORMTHEME","qt6ct");
+  {GenericResidentTheme theme;QCOMPARE(qgetenv("QT_QPA_PLATFORMTHEME"),QByteArray("generic"));QVERIFY(!QGuiApplication::desktopSettingsAware());}
+  QCOMPARE(qgetenv("QT_QPA_PLATFORMTHEME"),QByteArray("qt6ct"));
+  qunsetenv("QT_QPA_PLATFORMTHEME");
+  {GenericResidentTheme theme;QCOMPARE(qgetenv("QT_QPA_PLATFORMTHEME"),QByteArray("generic"));}
+  QVERIFY(!qEnvironmentVariableIsSet("QT_QPA_PLATFORMTHEME"));
+  QGuiApplication::setDesktopSettingsAware(aware);
+ }
+ void failedOperationsWithoutItemsShowTheirError() {
+  const QJsonObject tooLarge{{"state","failed"},{"copyStatus","no_result"},{"items",QJsonArray{}},{"error",QJsonObject{{"code","edit_input_too_large"},{"message","This image is too large to edit; use a smaller copy"}}}};
+  QCOMPARE(TrayController::completionMessage(tooLarge,false),QString("This image is too large to edit; use a smaller copy"));
+  const QJsonObject partial{{"state","partial"},{"copyStatus","copied"},{"items",QJsonArray{QJsonObject{}}},{"error",QJsonObject{{"code","upload_failed"},{"message","One item failed"}}}};
+  QCOMPARE(TrayController::completionMessage(partial,false),QString("Clipboard: copied. Open recent activity for per-item results."));
+  const QJsonObject done{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{QJsonObject{}}},{"error",QJsonObject{}}};
+  QCOMPARE(TrayController::completionMessage(done,true),QString("Clipboard: copied. Click to open in browser."));
+ }
+
  void fastUploadsDoNotFlashTheIcon() {
   QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->prepareUploads=true;providers.add("opaque",provider);
   SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
@@ -426,6 +448,13 @@ private slots:
    action->trigger();
   }
   QCOMPARE(views, QStringList({"settings", "history", "activity", "about"}));
+  // A single & would be eaten as a mnemonic marker in the menu.
+  QVERIFY(actionNamed(tray, "Capture region && edit"));
+  // Other editor sources sit in one submenu; a file opens the main window's picker.
+  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
+  QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);
+  QCOMPARE(editImage->actions().at(1)->text(), QString("From a file...")); editImage->actions().at(1)->trigger();
+  QCOMPARE(views.last(), QString("editFile"));
   QCOMPARE(QApplication::topLevelWidgets(), windows);
   QCOMPARE(quits, 0);
   controller->activate();

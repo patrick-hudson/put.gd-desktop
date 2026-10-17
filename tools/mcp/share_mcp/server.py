@@ -1,6 +1,8 @@
 """The MCP layer validates arguments and forwards; the resident owns all effects."""
 import argparse
 import asyncio
+import base64
+import binascii
 import json
 import math
 from typing import Any
@@ -8,6 +10,7 @@ from uuid import uuid4
 
 from jsonschema import ValidationError, validate
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.utilities.types import Image
 from mcp.types import ToolAnnotations
 
 
@@ -41,6 +44,18 @@ def safe_patch(value: Any) -> bool:
         return all(safe_patch(child) for child in value)
     return value is None or isinstance(value, (str, bool, int)) or (
         isinstance(value, float) and math.isfinite(value))
+
+
+EDITOR_SOURCES = {'region', 'window', 'desktop', 'clipboard', 'file'}
+EDITOR_OPS = {'add', 'update', 'remove', 'crop', 'resetCrop', 'undo', 'redo'}
+
+
+def safe_commands(commands: Any) -> bool:
+    # Shape semantics and bounds are validated by the editor; this keeps the
+    # forwarded argument a bounded list of plain JSON command objects.
+    return (isinstance(commands, list) and 0 < len(commands) <= 100 and
+            all(isinstance(command, dict) and command.get('op') in EDITOR_OPS and
+                safe_patch(command) for command in commands))
 
 
 class StrictFastMCP(FastMCP):
@@ -120,6 +135,8 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         'Inspect actual capabilities and configuration before acting. Actions use the configured '
         'local-save/public-upload destination and may write the clipboard. Preserve operation IDs. '
         'Deletion requires exact history IDs and acknowledgement of their original destination/effect. '
+        'Capture region & edit (the edit action) opens a visible editor; use edit_image/preview_editor, then submit_editor or cancel_editor. '
+        'Use redact, never blur, for private information. '
         'Supply only non-secret configuration and credential references.'))
     read = ToolAnnotations(readOnlyHint=True, destructiveHint=False, openWorldHint=False)
     effect = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True)
@@ -139,10 +156,76 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=effect)
     async def perform_action(action: str) -> Json:
-        """Acquire region/window/desktop/clipboard, then configured local save or public upload; may copy result."""
-        if action not in {'region', 'window', 'desktop', 'clipboard'}:
+        """Acquire region/window/desktop/clipboard, then configured local save or public upload; may copy result. `edit` opens the editor after a region selection instead; use open_editor for other sources."""
+        if action not in {'region', 'window', 'desktop', 'clipboard', 'edit'}:
             return invalid()
         return await adapter.call('action.invoke', {'action': action})
+
+    @server.tool(annotations=effect)
+    async def open_editor(source: str = 'region', path: str | None = None) -> Json:
+        """Start Capture region & edit (the edit action) from region/window/desktop/clipboard, or an absolute PNG/JPEG file path. Returns the operation ID; the editor window opens and nothing uploads until submit_editor. Region/window selection may need the user."""
+        if source not in EDITOR_SOURCES or (source == 'file') != (path is not None):
+            return invalid()
+        if path is not None and (not identifier(path, 4096) or not path.startswith('/')):
+            return invalid()
+        params: Json = {'source': source}
+        if path is not None:
+            params['path'] = path
+        return await adapter.call('editor.open', params)
+
+    @server.tool(annotations=read)
+    async def get_editor(id: str) -> Json:
+        """Read the open editor: image size, crop [x,y,w,h], shapes with ids/geometry/styles, undo/redo availability and phase (editing/finalizing)."""
+        return await adapter.call('editor.inspect', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def edit_image(id: str, commands: list[Json]) -> Json:
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 and font family name or '' for the default (text). Redact removes covered pixels; blur is only a visual effect."""
+        if not identifier(id) or not safe_commands(commands):
+            return invalid()
+        return await adapter.call('editor.apply', {'id': id, 'commands': commands})
+
+    @server.tool(annotations=read, structured_output=False)
+    async def preview_editor(id: str, max_edge: int = 1024) -> list[Any]:
+        """Render the current sanitized result (the exact pixels Upload would send) scaled to at most max_edge (64-1600) pixels; returns the PNG image plus its metadata envelope."""
+        if not identifier(id) or type(max_edge) is not int or not 64 <= max_edge <= 1600:
+            return [invalid()]
+        reply = await adapter.call('editor.preview', {'id': id, 'maxEdge': max_edge})
+        if not reply['ok']:
+            return [reply]
+        result = dict(reply['result'])
+        try:
+            data = base64.b64decode(result.pop('png'), validate=True)
+        except (KeyError, TypeError, binascii.Error):
+            return [failure('invalid_response', 'Editor preview is not a PNG', reply['requestId'])]
+        if not data.startswith(b'\x89PNG\r\n\x1a\n'):
+            return [failure('invalid_response', 'Editor preview is not a PNG', reply['requestId'])]
+        return [Image(data=data, format='png'), {**reply, 'result': result}]
+
+    @server.tool(annotations=effect)
+    async def save_editor_copy(id: str, path: str, overwrite: bool = False) -> Json:
+        """Write the same sanitized export as Upload to an absolute .png path; refuses an existing file unless overwrite is true. Does not upload."""
+        if not identifier(id) or not identifier(path, 4096) or not path.startswith('/') or type(overwrite) is not bool:
+            return invalid()
+        params: Json = {'id': id, 'path': path}
+        if overwrite:
+            params['overwrite'] = True
+        return await adapter.call('editor.saveCopy', params)
+
+    @server.tool(annotations=effect)
+    async def submit_editor(id: str) -> Json:
+        """Finalize the open edit and send only the sanitized result through the configured destination (may publish a public link and copy it). Inspect the operation afterwards."""
+        return await adapter.call('editor.submit', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, openWorldHint=False))
+    async def cancel_editor(id: str) -> Json:
+        """Discard the open edit without confirmation; nothing is uploaded or archived."""
+        return await adapter.call('editor.cancel', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
+    async def raise_editor(id: str) -> Json:
+        """Bring the open editor window to the front."""
+        return await adapter.call('editor.raise', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=read)
     async def get_operation(id: str, kind: str = 'operation') -> Json:

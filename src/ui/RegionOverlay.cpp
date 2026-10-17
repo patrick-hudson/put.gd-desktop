@@ -6,7 +6,32 @@
 #include <QGuiApplication>
 #include <QScreen>
 #include <QCursor>
+#include <QtGui/qguiapplication_platform.h>
+#include <cstdlib>
+#include <cstring>
+#if QT_CONFIG(xcb)
+#include <xcb/xcb.h>
+#endif
 namespace putgd {
+namespace {
+// KWin/X11 otherwise fades a closed selector out over several hundred
+// milliseconds, and region capture waits for the compositor to stop repainting.
+void skipCloseAnimation(QWidget* surface){
+#if QT_CONFIG(xcb)
+ auto* native=qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+ auto* connection=native?native->connection():nullptr;
+ if(!connection)return;
+ const char name[]="_KDE_NET_WM_SKIP_CLOSE_ANIMATION";
+ auto* atom=xcb_intern_atom_reply(connection,xcb_intern_atom(connection,0,std::strlen(name),name),nullptr);
+ if(!atom)return;
+ const uint32_t skip=1;
+ xcb_change_property(connection,XCB_PROP_MODE_REPLACE,surface->winId(),atom->atom,XCB_ATOM_CARDINAL,32,1,&skip);
+ std::free(atom);
+#else
+ Q_UNUSED(surface);
+#endif
+}
+}
 class RegionOverlay::Surface final:public QWidget {
 public:
  Surface(RegionOverlay& owner,const CaptureFrame& frame):QWidget(nullptr,Qt::Tool|Qt::FramelessWindowHint|Qt::WindowStaysOnTopHint|Qt::X11BypassWindowManagerHint|Qt::WindowDoesNotAcceptFocus),owner_(owner),logicalRect_(frame.logicalRect){setObjectName("putgd-region-overlay");setAttribute(Qt::WA_TranslucentBackground);for(auto* screen:QGuiApplication::screens())if(screen->name()==frame.identity){setScreen(screen);break;}setGeometry(frame.logicalRect.toAlignedRect());setCursor(Qt::CrossCursor);setMouseTracking(true);setFocusPolicy(Qt::StrongFocus);}
@@ -26,7 +51,7 @@ private:
 RegionOverlay::RegionOverlay(QList<CaptureFrame> frames,QObject* parent):RegionSelector(parent),frames_(std::move(frames)){}
 RegionOverlay::~RegionOverlay(){finish();for(auto* s:surfaces_)delete s;}
 void RegionOverlay::start(){
- for(const auto& frame:frames_){auto* surface=new Surface(*this,frame);surfaces_.append(surface);surface->show();surface->raise();}
+ for(const auto& frame:frames_){auto* surface=new Surface(*this,frame);surfaces_.append(surface);skipCloseAnimation(surface);surface->show();surface->raise();}
  Surface* focus=surfaces_.isEmpty()?nullptr:surfaces_.first();for(auto* s:surfaces_)if(s->geometry().contains(QCursor::pos()))focus=s;
  if(focus)focus->grabKeyboard();
  connect(qGuiApp,&QGuiApplication::screenAdded,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});connect(qGuiApp,&QGuiApplication::screenRemoved,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});

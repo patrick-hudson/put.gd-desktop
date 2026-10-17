@@ -9,6 +9,20 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Edit & upload — 2026-10-17
+
+The [issue 51 receipt](evidence/2026-10-17-issue51-edit-and-upload.md) records
+candidate `329d736`:
+
+- Dev suites on Mint, Kubuntu and Debian.
+- Cinnamon-first graphical (21/21), memory and MCP gates, then GNOME/Wayland and
+  KDE/Wayland on KVM.
+- The same gates on the physical Debian Plasma/Wayland and Kubuntu Plasma/X11
+  desktops, including both halves of the issue #54 outline fix and the
+  wlr-data-control clipboard fallback.
+
+Physical Fedora and Windows remain uncovered.
+
 ## Local S3 settings controls — 2026-10-16
 
 The [scoped receipt](evidence/2026-10-16-s3-settings-controls.md) records the

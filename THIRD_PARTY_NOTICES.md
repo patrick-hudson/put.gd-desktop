@@ -17,7 +17,10 @@ these dependencies with their normal CMake builds.
 The vendored `ext-data-control-v1.xml` retains the original copyright and permission
 text for Simon Ser, Ivan Molodetskikh and Neal Gompa. Its generated client bindings
 are built by the distro `wayland-scanner`. The complete protocol and notice are also
-installed as `share/doc/putgd/wayland-ext-data-control-v1.xml`.
+installed as `share/doc/putgd/wayland-ext-data-control-v1.xml`. The vendored
+`wlr-data-control-unstable-v1.xml`, used on compositors that predate ext (for
+example KWin 6.3), likewise retains its Simon Ser and Ivan Molodetskikh notice and
+is installed as `share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml`.
 
 The GNOME integration imports the installed Shell/GJS/Mutter APIs; it does not bundle
 a replacement GNOME runtime. The KDE integration links the distro LayerShellQt

@@ -1,4 +1,5 @@
 #include "ui/VisualStyle.h"
+#include "core/AllocatorPolicy.h"
 #include "core/BuildInfo.h"
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
@@ -6,6 +7,7 @@
 #include "app/LoginStartup.h"
 #include "app/UiProcessController.h"
 #include "app/SetupService.h"
+#include "ui/ResidentTheme.h"
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
 #include <QApplication>
@@ -40,6 +42,12 @@
 namespace {
 // -1 means no connection was made and normal resident startup may proceed.
 // Once connected, a failed UI request must never fall through to a second resident.
+// Launcher results are for the person or script that started put.gd. Qt
+// builds with journald support (Fedora) send qWarning to the journal whenever
+// stderr is not a terminal, so write these lines to stderr directly.
+void launcherError(const QString& line) {
+ const auto bytes=line.toUtf8();std::fwrite(bytes.constData(),1,size_t(bytes.size()),stderr);std::fputc('\n',stderr);std::fflush(stderr);
+}
 int activateResident(const QString& view,bool background) {
  const auto path=putgd::LocalServer::defaultSocketPath();
  if(background)return putgd::activateLocalSession(path,{}).connected?0:-1;
@@ -68,8 +76,8 @@ int activateResident(const QString& view,bool background) {
    code=known.contains(error["code"].toString())?error["code"].toString():QStringLiteral("ui_activation_failed");
   }
  }
- if(code=="ui_incompatible")qWarning("ui_incompatible: The installed UI version does not match the running app. Restart put.gd after pending uploads finish.");
- else qWarning("%s: Could not confirm that the requested window opened. Retry opening the window; check the resident if this continues.",qPrintable(code));
+ if(code=="ui_incompatible")launcherError("ui_incompatible: The installed UI version does not match the running app. Restart put.gd after pending uploads finish.");
+ else launcherError(code+": Could not confirm that the requested window opened. Retry opening the window; check the resident if this continues.");
  return 1;
 }
 putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
@@ -115,16 +123,18 @@ int main(int argc,char* argv[]) {
  kdeCoreResident=putgd::kdeCoreSessionEnvironment()&&putgd::kdeCoreSessionArguments(argc,argv);
 #endif
 #if defined(Q_OS_LINUX) && defined(__GLIBC__)
- // Favor mmap for larger transient native Wayland image/bridge allocations. A fixed threshold
- // prevents adaptation after large transfers; existing free arena chunks may
- // still satisfy allocations. Keep the existing idle cleanup gate active.
- if((gnomeCoreResident||kdeCoreResident)&&mallopt(M_MMAP_THRESHOLD,128*1024)==0)
-  qWarning("Could not apply native Wayland transient allocation threshold");
+ // Every resident handles large transient rasters: captures, bridge transfers
+ // and Edit & upload staging/handoffs. A fixed mmap threshold returns them on
+ // free instead of growing per-thread arenas that malloc_trim cannot shrink.
+ // Keep the existing idle cleanup gate active for small-chunk fragmentation.
+ if(!putgd::applyResidentAllocatorPolicy())
+  qWarning("Could not apply the resident transient allocation threshold");
 #endif
  std::unique_ptr<QCoreApplication> application;
  if(coreResident||gnomeCoreResident||kdeCoreResident)application=std::make_unique<QCoreApplication>(argc,argv);
  else {
-  auto graphical=std::make_unique<QApplication>(argc,argv);
+  std::unique_ptr<QApplication> graphical;
+  {putgd::GenericResidentTheme theme;graphical=std::make_unique<QApplication>(argc,argv);}
   putgd::VisualStyle::apply(*graphical);
   graphical->setDesktopFileName("putgd");
   graphical->setWindowIcon(putgd::VisualStyle::icon("brand"));
@@ -169,7 +179,7 @@ int main(int argc,char* argv[]) {
  putgd::OperationService operations(dataRoot,settings,providers,*source);
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
- const auto listening=server.listen();if(!listening) {qWarning("%s",qPrintable(listening.error.code));if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
+ const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}
 #ifdef PUTGD_NATIVE_X11
  if(coreNative) {
   const auto bind=[&] {coreNative->bindShortcuts(bindings());};
@@ -205,6 +215,9 @@ int main(int argc,char* argv[]) {
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  });
  server.setSetupService(&setup);
+ // After the tray settles, read saved S3 credentials once so uploads work
+ // without a manual Unlock; a locked keyring shows its own prompt here.
+ QTimer::singleShot(3000,&setup,[&setup]{setup.unlockSavedCredentials();});
  const auto helperPath=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-ui");
  bool recordingShortcut=false;
  putgd::UiProcessController ui(server.socketPath(),server.residentEpoch(),helperPath,putgd::validateUiState);

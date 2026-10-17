@@ -21,6 +21,7 @@ Implement its dependencies in order and record blocked acceptance separately fro
 | UI process lifecycle and total memory | `src/app/UiProcessController.*`, `src/ui/UiApplicationController.*`, `UiSession.*`, `ViewState.*` | [protocol](ui-process-protocol.md), [state allowlists](ui-process-state.md), `test_ui_process`, `test_ui_split_services`, `test_gui_application` |
 | Session JSON transport | `src/app/LocalServer.*`, `src/cli/main.cpp` | `test_cli.cpp`, [CLI](cli.md) |
 | Optional stdio MCP | `tools/mcp/` | `tests/integration/test_mcp.py`, [MCP](mcp.md) |
+| Edit & upload editor and agent editing | `src/editor/`, `src/ui/EditorWindow.*`, `src/ui/ImageEditor.*`, `src/core/EditorJob.*`, `src/core/SanitizedPng.*` | `editor_contract`, `gui_editor_window`, `editor_job_integration`, `edit_operations_integration`; [image editor](image-editor.md) |
 | Core listener/native tray and ephemeral capture | `src/platform/NativeSession.h`, `src/ui/NativeTray.*`, `src/platform/x11/Capture*`, `src/capture/` | [boundary and reproducible gates](native-listener.md); Core clipboard, native snapshot and capture lifecycle tests |
 | Resident/post-use memory and capture latency | `tests/performance/`, `src/app/OperationService.*` | [physical replay](testing-memory.md); synthetic lab results are separate from physical budgets |
 | Integer widths / member layout | `tools/diagnostics/layout/` | [read-only probe and replay](../tools/diagnostics/layout/README.md); sizes alone do not prove RSS savings |
@@ -80,11 +81,11 @@ Fedora and Debian; Cinnamon, GNOME and KDE; native X11 and Wayland coverage.
 Choose physical hosts and VMs per gate, prefer builders, provision missing
 profiles, and keep physical-hardware release gates on physical machines.
 
-Prefer the [Fedora and Debian physical servers](remote-builders.md) for builds,
+Prefer the [Fedora, Debian and Kubuntu physical servers](remote-builders.md) for builds,
 VMs and native graphical acceptance directly on their existing GNOME/Plasma
 desktops; use local VMs only when the required remote host/profile
 is unavailable or unsuitable, and record why. Passwordless `sudo -n` setup is
-authorized on those two servers. Preserve their existing projects and desktops;
+authorized on those three servers. Preserve their existing projects and desktops;
 keep the workstation SSH key local. Check KVM, capacity and ports on the actual
 VM host before launch. A physical host's OS/desktop is not a substitute for a
 different version in the declared acceptance matrix. Keep Cinnamon-first ordering.

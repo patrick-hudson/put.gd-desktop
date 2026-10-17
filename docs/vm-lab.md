@@ -15,9 +15,9 @@ Plan host/guest placement with the [Linux acceptance matrix](acceptance-matrix.m
 Cover Mint, Ubuntu, Kubuntu, Fedora and Debian plus GNOME/KDE X11/Wayland;
 provision missing VM profiles while using physical machines for physical release gates.
 
-Use the [preferred Fedora/Debian build servers](remote-builders.md) before local
+Use the [preferred Fedora/Debian/Kubuntu build servers](remote-builders.md) before local
 workstation VMs. Select a host with the required capacity, KVM access and visible
-guest display; record a local fallback reason if neither can run the profile.
+guest display; record a local fallback reason if none can run the profile.
 The runner executes on the actual QEMU host, via pinned SSH for remote hosts;
 it does not currently provide a remote-host switch. Run its storage/process/port
 inventory there, check resolved socket lengths there, and export receipts and
@@ -38,8 +38,11 @@ Linux source-build guests also require the standard cursor development package: 
 
 Provisioned Linux golden disks under `work/lab-images/` are immutable inputs.
 Never boot or modify them directly, or move, overwrite or delete a disk referenced
-by overlays. Tests use independent disks under `work/lab-runs/` created through
-`tools/lab/lab.py`; provision a new golden path for updates. Preserve each run's
+by overlays. Since 2026-10-17 the goldens live on the Fedora and Debian builders
+and in S3, not on the workstation; see
+[golden storage and restore](remote-golden-images.md). Tests use independent
+disks under `work/lab-runs/` created through `tools/lab/lab.py`; provision a new
+golden path for updates. Preserve each run's
 recorded backing path and base identity.
 
 Before provisioning or resuming, inventory existing run/base metadata and the
@@ -55,11 +58,12 @@ The current Linux runner records the golden SHA256 but does not enforce
 Windows-style sealing or verify a sealed manifest before launch. Existing golden
 files may still be writable. These workflow restrictions remain mandatory.
 
-The local provisioned GNOME/KDE goldens are standalone images at
-`work/lab-images/gnome-provisioned-20261016.qcow2` and
-`work/lab-images/kde-provisioned-20261016.qcow2`. Use these for new provisioned
-runs. Their private sidecar manifests record the source chain, image SHA256,
-integrity check and successful guest-visible comparison. The migration receipts
+The provisioned GNOME/KDE goldens are the standalone images
+`gnome-provisioned-20261016` and `kde-provisioned-20261016`. Their host paths
+and hashes are in the [golden inventory](remote-golden-images.md#current-inventory).
+Use these for new provisioned runs. A workstation fallback first restores the
+one it needs to `work/lab-images/<name>.qcow2`. Their private sidecar manifests
+record the source chain, image SHA256, integrity check and successful guest-visible comparison. The migration receipts
 live under `work/housekeeping/standalone-goldens-20261016/`. Historical run
 metadata retains the old paths and hashes; do not rewrite it to name the new
 goldens. Never resume a retired run directory.
@@ -248,8 +252,11 @@ checksums and final notice auditing.
 The guest bootstrap grants the narrowly scoped `/usr/bin/apt-get` rule used by `install`; it never changes host privileges. Package dependency resolution uses distro repositories.
 
 After inventory and clean golden image shutdown, choose a new run path and
-verify that it does not exist. The example consumes the existing verified base;
-it never boots that base directly. Verify the profile's reserved SSH/VNC ports
+verify that it does not exist. On a builder, replace the `--golden` path with
+that host's inventory path. On the workstation,
+[restore `cinnamon-x11`](remote-golden-images.md#restore-to-the-workstation)
+first. The example consumes the existing verified base; it never boots that
+base directly. Verify the profile's reserved SSH/VNC ports
 are free on the actual host before launching:
 
 ```sh
@@ -382,6 +389,67 @@ rules. Do not place evidence manifests or private run files in release exports.
 Retirement removes the old guest filesystem permanently; future tests use a
 fresh run directory cloned from the preserved golden.
 
+
+## Physical-desktop input agent
+
+Physical build-server desktops have no QMP. `tools/lab/host_input.py` creates
+kernel uinput devices, a keyboard and an absolute pointer modelled on QEMU's
+usb-tablet, and accepts the runner's QMP subset (`qmp_capabilities`,
+`input-send-event` with qcode keys, left/right/middle buttons and 0–32767
+absolute axes) on an owner-only Unix socket. Events pass through libinput into
+the compositor or X server like hardware input, so global shortcuts, region
+selectors and editor windows receive real input. It refuses every other command,
+including `screendump`; capture frames from the host's loopback VNC tile.
+
+Start it with authorized `sudo -n` only to open `/dev/uinput`; it drops to the
+desktop user before listening, and no udev rule or persistent permission
+changes. Forward the socket over the pinned SSH host key, then point a private
+run directory's `qmp.sock` at it so `lab.key`, `lab.pointer` and
+`lab.input_events` work unchanged:
+
+```sh
+sudo -n systemd-run --unit=putgd-lab-input --collect \
+  /usr/bin/python3 tools/lab/host_input.py serve \
+  --socket /run/user/1000/putgd-lab-input.sock --user patrick
+ssh -NT ... -o StreamLocalBindUnlink=yes \
+  -L "$run/qmp.sock:/run/user/1000/putgd-lab-input.sock" patrick@HOST
+```
+
+Stop the unit after the campaign; its devices disappear with it. On Kubuntu
+26.04 Plasma/X11 the devices appear in `xinput`, and a runner pointer move to
+(960, 540) on the 1920x1080 desktop read back exactly from `XQueryPointer`.
+Wayland sessions still need their own verification before use as evidence.
+`tests/desktop/test_host_input.py` covers the accepted protocol and rejections.
+
+## Editor acceptance drivers
+
+These drivers run against a run directory that has passed `lab.py run --keep`
+with the region scenario, so the resident and the clipboard fixture are live:
+
+| Driver | Covers |
+| --- | --- |
+| `tools/lab/edit_acceptance.py RUN` | Graphical Edit & upload: hotkey, region-selected source, every tool, undo/redo, crop, save copy, submit, cancel, PNG sanitization and screenshots. |
+| `tools/lab/edit_memory.py RUN [SAMPLER]` | Whole-family RSS+swap (`family_sampler.py` in the guest) for desktop, region and 24 MP file cases. Gate: incremental peak at most 3R + 96 MiB, and the resident returns within 8 MiB of baseline once the fixture takes the clipboard. |
+| `tools/lab/mcp_editor_e2e.py EVIDENCE` | Official MCP client through `putgd-mcp` and the target's production `putgd-cli` (a small wrapper running it over pinned SSH): all editor tools, preview image, save copy, submit and cancel. |
+| `tools/lab/guest_reboot.py RUN` | Reboot through the session manager when a session-loaded integration such as the GNOME extension must reload; verifies the boot time changed. |
+
+`tools/lab/physical.py HOSTCFG.json install DEB|RPM|region|script DRIVER` runs the
+same runner and drivers on a physical desktop. It swaps the runner's shell,
+copy and screenshot helpers for pinned SSH, `scp` and the host's loopback VNC
+tile (`tools/lab/rfb.py`, security type None only), reads input from the
+forwarded agent above, and labels results `graphical-physical`. Keep the host
+config and its run directory under `work/` or the scratchpad; they name only
+key and known-hosts paths, never secrets.
+
+On Fedora, `install` takes the RPM: it removes any installed `putgd` with dnf
+first, because dnf will not reinstall or downgrade a same-version development
+build. Verification extracts the RPM with `rpm2cpio`. A first install of the
+GNOME extension loads only after a fresh login. Physical runs also need:
+
+- Close put.gd windows left by earlier steps with `ui.quit`. On GNOME, a leftover
+  Settings window covered the fixture.
+- Keep the workstation wall's tile for the host view-only. With input enabled,
+  moving the mouse over it injects pointer events into the run.
 
 ## Evidence and gates
 

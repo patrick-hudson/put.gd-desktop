@@ -63,6 +63,8 @@ putgd_install_snapshot("${PROJECT_SOURCE_DIR}/cmake/dependency-lock.json" "${CMA
 putgd_install_snapshot(runtime-notices.txt "${CMAKE_INSTALL_DATADIR}/doc/putgd")
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-data-control-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-data-control-unstable-v1.xml)
 # SDK license must come from the exact source tree provisioned by the build contract.
 set(PUTGD_AWS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/build/dependencies/aws-sdk-cpp" CACHE PATH "Pinned official SDK source")
 if(NOT EXISTS "${PUTGD_AWS_SOURCE_DIR}/LICENSE")

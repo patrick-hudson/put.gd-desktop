@@ -56,7 +56,8 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     required += ["usr/share/putgd/" + name for name in
                  ("build-info.json", "dependency-lock.json", "aws-runtime-manifest.json")]
     required += ["usr/share/doc/putgd/" + name for name in
-                 ("LICENSE", "runtime-notices.txt", "wayland-ext-data-control-v1.xml", *SDK_LICENSES)]
+                 ("LICENSE", "runtime-notices.txt", "wayland-ext-data-control-v1.xml",
+                  "wayland-wlr-data-control-unstable-v1.xml", *SDK_LICENSES)]
     for name in required:
         path = root / name
         if not path.is_file() or path.stat().st_size == 0:

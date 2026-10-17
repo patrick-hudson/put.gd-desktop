@@ -77,14 +77,25 @@ constexpr auto watcherPath = "/StatusNotifierWatcher";
 constexpr auto notificationService = "org.freedesktop.Notifications";
 constexpr auto notificationPath = "/org/freedesktop/Notifications";
 constexpr int callTimeoutMs = 1500;
-struct Entry { const char* label; const char* action; };
+// IDs are 1-based table positions and stay stable; rootOrder sets the display
+// order. An entry with a parent belongs to that entry's submenu.
+struct Entry { const char* label; const char* action; int parent; };
 constexpr Entry entries[] {
- {"Capture region", "region"}, {"Capture window", "window"},
- {"Capture desktop", "desktop"}, {"Upload Clipboard", "clipboard"},
- {"", ""}, {"Settings and setup", "settings"}, {"Upload history", "history"},
- {"Recent activity", "activity"}, {"", ""}, {"About put.gd", "about"}, {"Quit", "quit"}
+ {"Capture region", "region", 0}, {"Capture window", "window", 0},
+ {"Capture desktop", "desktop", 0}, {"Upload Clipboard", "clipboard", 0},
+ {"Capture region & edit", "edit", 0},
+ {"", "", 0}, {"Settings and setup", "settings", 0}, {"Upload history", "history", 0},
+ {"Recent activity", "activity", 0}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
+ {"Edit image", "", 0}, {"From clipboard", "edit-clipboard", 13}, {"From a file...", "edit-file", 13}
 };
+constexpr int rootOrder[] {1, 2, 3, 4, 5, 13, 6, 7, 8, 9, 10, 11, 12};
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
+QList<int> childrenOf(int id) {
+ QList<int> result;
+ if (id == 0) for (int child : rootOrder) result.append(child);
+ else for (int i = 1; i <= entryCount; ++i) if (entries[i-1].parent == id) result.append(i);
+ return result;
+}
 bool knownId(int id) { return id >= 0 && id <= entryCount; }
 bool validNames(const QStringList& names) {
  if (names.size() > 32) return false;
@@ -93,8 +104,8 @@ bool validNames(const QStringList& names) {
 }
 QVariantMap menuProperties(int id, const QStringList& names = {}) {
  QVariantMap props;
- if (id == 0) props.insert("children-display", "submenu");
- else {
+ if (id == 0 || !childrenOf(id).isEmpty()) props.insert("children-display", "submenu");
+ if (id != 0) {
   const auto& e = entries[id-1];
   if (!*e.label) props.insert("type", "separator");
   else props.insert("label", QString::fromLatin1(e.label));
@@ -106,8 +117,9 @@ QVariantMap menuProperties(int id, const QStringList& names = {}) {
 }
 NativeLayout menuLayout(int id, int depth, const QStringList& names) {
  NativeLayout result{id, menuProperties(id, names), {}};
- if (id == 0 && depth != 0) for (int i = 1; i <= entryCount; ++i)
-  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(i, 0, names))));
+ // depth -1 expands every level; 0 returns this item alone.
+ if (depth != 0) for (int child : childrenOf(id))
+  result.children.append(QDBusVariant(QVariant::fromValue(menuLayout(child, depth < 0 ? depth : depth - 1, names))));
  return result;
 }
 NativeImages brandIcon(const QColor& color=QColor("#9bbcff"),int percent=-1) {

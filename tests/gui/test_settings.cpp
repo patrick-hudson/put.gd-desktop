@@ -10,6 +10,11 @@
 #include "fixtures/UiSessionFixture.h"
 #include "storage/s3/S3Provider.h"
 #include "storage/proton/ProtonProvider.h"
+#include <QMimeData>
+#include <QDropEvent>
+#include <QUrl>
+#include <QFile>
+#include <QFileInfo>
 #include <QtTest>
 #include <QCheckBox>
 #include <QComboBox>
@@ -164,8 +169,37 @@ private slots:
  void wheelOverSettingsTabsDoesNotChangePageButKeyboardStillWorks(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"));QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("settings");window.show();auto* tabs=window.findChild<QTabWidget*>("settingsTabs");auto* bar=tabs->tabBar();tabs->setCurrentIndex(1);const QPointF position=bar->tabRect(1).center();for(const auto delta:{120,-120}){QWheelEvent event(position,bar->mapToGlobal(position.toPoint()),QPoint{},QPoint{0,delta},Qt::NoButton,Qt::NoModifier,Qt::NoScrollPhase,false);QApplication::sendEvent(bar,&event);QCOMPARE(tabs->currentIndex(),1);}bar->setFocus();QTest::keyClick(bar,Qt::Key_Right);QCOMPARE(tabs->currentIndex(),2);
  }
+ void editRailButtonOffersOtherSourcesWithoutGrowingTheRail(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
+  QCOMPARE(window.findChildren<QPushButton*>("captureRailButton").size(),Settings::actionNames().size());
+  QPushButton* edit=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="edit")edit=button;
+  // No extra control on the button: the other sources are a right-click or a drop.
+  QVERIFY(edit);QVERIFY(edit->findChildren<QToolButton*>().isEmpty());QCOMPARE(edit->contextMenuPolicy(),Qt::CustomContextMenu);QVERIFY(edit->acceptDrops());
+  QVERIFY(edit->toolTip().contains("Right-click"));
+  auto* menu=window.findChild<QMenu*>("editSourceMenu");QVERIFY(menu);
+  QStringList labels;for(auto* action:menu->actions())labels.append(action->text());
+  QCOMPARE(labels,QStringList({"Edit clipboard image","Edit an image file…"}));
+  QStringList requests;connect(&window,&MainWindow::editRequested,this,[&](const QString& source,const QString& path){requests.append(source+"|"+path);});
+  int actions=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++actions;});
+  window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  emit edit->customContextMenuRequested(QPoint(8,8));QTRY_VERIFY(menu->isVisible());menu->actions().first()->trigger();menu->hide();
+  QCOMPARE(requests,QStringList({"clipboard|"}));QCOMPARE(actions,0);requests.clear();
+  QImage pixel(2,2,QImage::Format_RGB32);pixel.fill(Qt::blue);const auto png=dir.filePath("Dropped.PNG");QVERIFY(pixel.save(png,"PNG"));
+  const auto text=dir.filePath("notes.txt");{QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("x");}
+  auto drop=[&](const QList<QUrl>& urls){
+   QMimeData data;data.setUrls(urls);const QPoint at(20,20);
+   QDragEnterEvent enter(at,Qt::CopyAction,&data,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(edit,&enter);
+   const bool accepted=enter.isAccepted();const bool lit=edit->property("dropTarget").toBool();
+   QDropEvent dropped(QPointF(at),Qt::CopyAction,&data,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(edit,&dropped);
+   return accepted&&lit&&!edit->property("dropTarget").toBool();
+  };
+  QVERIFY(!drop({QUrl::fromLocalFile(text)}));QVERIFY(!edit->property("dropTarget").toBool());QVERIFY(!drop({QUrl::fromLocalFile(png),QUrl::fromLocalFile(png)}));QVERIFY(!drop({QUrl("https://example.invalid/a.png")}));QVERIFY(requests.isEmpty());
+  QVERIFY(drop({QUrl::fromLocalFile(png)}));QCOMPARE(requests,QStringList({"file|"+QFileInfo(png).absoluteFilePath()}));QCOMPARE(actions,0);
+ }
  void captureRailExplainsActionAndCurrentSavedOutputWithoutInvokingIt(){
-  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Import clipboard"}};for(const auto& action:Settings::actionNames()){QPushButton* button=nullptr;for(auto* candidate:window.findChildren<QPushButton*>("captureRailButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(help);help->click();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);int invoked=0;connect(&window,&MainWindow::actionRequested,this,[&](auto){++invoked;});const QHash<QString,QString> labels{{"region","Capture region"},{"window","Capture window"},{"desktop","Capture desktop"},{"clipboard","Import clipboard"},{"edit","Capture region & edit"}};for(const auto& action:Settings::actionNames()){QPushButton* button=nullptr;for(auto* candidate:window.findChildren<QPushButton*>("captureRailButton"))if(candidate->property("captureAction")==action)button=candidate;QVERIFY(button);QCOMPARE(button->accessibleName(),labels.value(action));QVERIFY(button->toolTip().contains("Save locally"));QVERIFY(button->accessibleDescription().contains("clipboard",Qt::CaseInsensitive));}auto* help=window.findChild<QToolButton*>("captureActionsHeadingHelp");QVERIFY(help);help->click();auto* dialog=window.findChild<QMessageBox*>("settingHelpDialog");QVERIFY(dialog);QVERIFY(dialog->informativeText().contains("focused external app window"));dialog->close();
+  {QWidget host;QLineEdit control(&host);auto* row=VisualStyle::settingLabel("Screen region & edit shortcut","help",&control,&host);QLabel* caption=nullptr;for(auto* label:row->findChildren<QLabel*>())if(label->buddy()==&control)caption=label;QVERIFY(caption);QCOMPARE(caption->text(),QString("Screen region && edit shortcut"));QCOMPARE(control.accessibleName(),QString("Screen region & edit shortcut"));}
   auto doc=service.document();auto protonSettings=ProtonProvider::defaults();protonSettings["shareByDefault"]=false;doc["profiles"]=QJsonArray{QJsonObject{{"id","synthetic-proton"},{"label","Synthetic Drive"},{"provider","proton-drive"},{"settings",protonSettings},{"credentials",QJsonObject{{"mode","keychain"},{"reference","putgd/synthetic-drive"}}}}};auto actions=doc["actions"].toObject();auto region=actions["region"].toObject();region["destination"]="upload";region["profileId"]="synthetic-proton";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));QPushButton* capture=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="region")capture=button;QVERIFY(capture);QTRY_VERIFY(capture->accessibleDescription().contains("Upload privately"));QVERIFY(capture->accessibleDescription().contains("clipboard is left unchanged"));region["publicationMode"]="share";actions["region"]=region;doc["actions"]=actions;QVERIFY(service.save(doc,service.revision()));QTRY_VERIFY(capture->accessibleDescription().contains("copy its share link"));QCOMPARE(invoked,0);
  }
  void constructionDoesNotWriteAndHasNoSaveCancelControls(){

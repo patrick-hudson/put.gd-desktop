@@ -276,16 +276,7 @@ def private_settings(path, profile_id, provider, marker):
 
 
 def native_display_prefix():
-    # GNOME creates its Wayland display after compositor startup, so it may be
-    # absent from /proc/gnome-shell/environ. The session manager has the updated
-    # value. Preserve that real socket before changing the private runtime root.
-    return """if [ "${XDG_SESSION_TYPE:-}" = wayland ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
- native_wayland=$(systemctl --user show-environment | sed -n 's/^WAYLAND_DISPLAY=//p')
- [ -n "$native_wayland" ] || exit 70
- export WAYLAND_DISPLAY="$native_wayland"
-fi
-case "${WAYLAND_DISPLAY:-}" in ""|/*) ;; *) export WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY";; esac
-"""
+    return lab.native_display_prefix()
 
 class Replay:
     def __init__(self, args):

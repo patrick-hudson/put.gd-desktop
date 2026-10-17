@@ -60,7 +60,7 @@ add_library(putgd_core STATIC src/core/Settings.cpp src/core/SettingsService.cpp
   src/platform/Geometry.cpp
   src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/LocalArchive.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
-  src/core/Operation.cpp src/core/HistoryStore.cpp)
+  src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp)
 set_target_properties(putgd_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(putgd_core PUBLIC src)
 target_link_libraries(putgd_core PUBLIC putgd_build_options putgd_build_identity Qt6::Core Qt6::Gui Qt6::Sql PRIVATE putgd_ui_control)
@@ -160,10 +160,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   pkg_check_modules(PUTGD_XCB REQUIRED IMPORTED_TARGET xcb xcb-randr xcb-keysyms xcb-xfixes xcb-render)
   add_library(putgd_x11_listeners STATIC src/platform/x11/X11Clipboard.cpp src/platform/x11/X11Shortcuts.cpp)
   target_link_libraries(putgd_x11_listeners PUBLIC putgd_app Qt6::Gui PRIVATE PkgConfig::PUTGD_XCB)
+  pkg_check_modules(PUTGD_XCB_DAMAGE REQUIRED IMPORTED_TARGET xcb-damage)
   add_library(putgd_x11 STATIC src/platform/x11/X11Capture.cpp src/platform/x11/CinnamonRegionCapture.cpp
-    src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
+    src/platform/x11/X11CompositorSettle.cpp src/platform/x11/X11SourceAdapter.cpp src/platform/x11/NativeRegionOverlay.cpp
     src/ui/RegionOverlay.cpp src/ui/RegionSelector.h)
-  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB Qt6::DBus)
+  target_link_libraries(putgd_x11 PUBLIC putgd_app putgd_x11_listeners Qt6::Widgets PRIVATE PkgConfig::PUTGD_XCB PkgConfig::PUTGD_XCB_DAMAGE Qt6::DBus)
   add_library(putgd_capture_control STATIC src/platform/x11/CaptureControl.cpp)
   target_include_directories(putgd_capture_control PUBLIC src)
   target_link_libraries(putgd_capture_control PUBLIC Qt6::Core putgd_build_options)
@@ -191,6 +192,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_custom_command(OUTPUT "${protocol_dir}/ext-data-control-v1-protocol.c"
     COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${data_control_protocol}" "${protocol_dir}/ext-data-control-v1-protocol.c"
     DEPENDS "${data_control_protocol}" VERBATIM)
+  set(wlr_data_control_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml")
+  add_custom_command(OUTPUT "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h"
+    COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${wlr_data_control_protocol}" "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h"
+    DEPENDS "${wlr_data_control_protocol}" VERBATIM)
+  add_custom_command(OUTPUT "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
+    COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${wlr_data_control_protocol}" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
+    DEPENDS "${wlr_data_control_protocol}" VERBATIM)
   pkg_get_variable(PUTGD_WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
   if(NOT PUTGD_WAYLAND_PROTOCOLS_DIR)
     message(FATAL_ERROR "The installed wayland-protocols development package is required")
@@ -210,6 +218,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     src/platform/kde/KdeKeyboardMap.cpp src/platform/kde/DataControlClipboard.cpp
     src/platform/kde/KdeRegionOverlay.cpp src/platform/kde/KdeSourceAdapter.cpp src/platform/kde/KdeOutputs.cpp
     "${protocol_dir}/ext-data-control-v1-client-protocol.h" "${protocol_dir}/ext-data-control-v1-protocol.c"
+    "${protocol_dir}/wlr-data-control-unstable-v1-client-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-protocol.c"
     "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
   target_include_directories(putgd_kde PRIVATE "${protocol_dir}")
   target_link_libraries(putgd_kde PUBLIC putgd_app putgd_kde_region_process Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_XKBCOMMON PRIVATE PkgConfig::PUTGD_WAYLAND Threads::Threads)
@@ -249,6 +258,12 @@ target_link_libraries(putgd_about PUBLIC putgd_visual putgd_build_identity)
 add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/RedesignTheme.cpp src/ui/redesign.qrc src/ui/UiSession.cpp src/ui/SettingsWindow.cpp src/ui/ShortcutEditor.cpp
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual PRIVATE putgd_s3_wire)
+# Editing model and canvas for the on-demand editor helper; no storage or IPC.
+add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp)
+target_include_directories(putgd_editor PUBLIC src)
+target_link_libraries(putgd_editor PUBLIC Qt6::Widgets putgd_build_options)
+add_library(putgd_editor_window STATIC src/ui/EditorWindow.cpp)
+target_link_libraries(putgd_editor_window PUBLIC putgd_editor putgd_ui putgd_visual)
 add_library(putgd_ui_application STATIC src/ui/UiApplicationController.cpp)
 target_link_libraries(putgd_ui_application PUBLIC putgd_ui putgd_about putgd_ui_control)
 add_executable(putgd-cli src/cli/main.cpp)
@@ -284,8 +299,8 @@ if(TARGET putgd_x11_core)
   target_link_libraries(putgd-capture PRIVATE PkgConfig::PUTGD_XCURSOR putgd_x11 putgd_x11_native_snapshot putgd_capture_control putgd_build_identity putgd_ui_control)
   install(TARGETS putgd-capture RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
-add_executable(putgd-ui src/ui/main.cpp src/ui/ImageJob.cpp)
-target_link_libraries(putgd-ui PRIVATE putgd_ui_application putgd_build_identity)
+add_executable(putgd-ui src/ui/main.cpp src/ui/ImageJob.cpp src/ui/ImageEditor.cpp)
+target_link_libraries(putgd-ui PRIVATE putgd_ui_application putgd_editor_window putgd_build_identity)
 install(TARGETS putgd-ui RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 add_subdirectory(packaging/linux)
@@ -354,8 +369,14 @@ if(BUILD_TESTING)
     add_custom_command(OUTPUT "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
       COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${xdg_output_protocol}" "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
       DEPENDS "${xdg_output_protocol}" VERBATIM)
+    foreach(protocol_name ext-data-control-v1 wlr-data-control-unstable-v1)
+      add_custom_command(OUTPUT "${protocol_dir}/${protocol_name}-server-protocol.h"
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" "${protocol_dir}/${protocol_name}-server-protocol.h"
+        DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/${protocol_name}.xml" VERBATIM)
+    endforeach()
     add_executable(test_kde_ownership tests/integration/test_kde_ownership.cpp
-      "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h")
+      "${protocol_dir}/xdg-output-unstable-v1-server-protocol.h"
+      "${protocol_dir}/ext-data-control-v1-server-protocol.h" "${protocol_dir}/wlr-data-control-unstable-v1-server-protocol.h")
     target_include_directories(test_kde_ownership PRIVATE "${protocol_dir}")
     target_link_libraries(test_kde_ownership PRIVATE putgd_kde Qt6::Test PkgConfig::PUTGD_WAYLAND_TEST_SERVER)
     add_test(NAME kde_ownership_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kde_ownership>)
@@ -389,6 +410,27 @@ if(BUILD_TESTING)
     add_dependencies(test_ui_process test_ui_helper_fixture)
     add_test(NAME ui_process_integration COMMAND test_ui_process)
   endif()
+  add_executable(test_editor tests/unit/test_editor.cpp)
+  target_link_libraries(test_editor PRIVATE putgd_editor putgd_core Qt6::Test)
+  add_test(NAME editor_contract COMMAND test_editor)
+  set_tests_properties(editor_contract PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 120)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Both suites run the real product editor helper offscreen through its private protocol.
+    add_executable(test_editor_job tests/integration/test_editor_job.cpp)
+    target_link_libraries(test_editor_job PRIVATE putgd_core putgd_ui_control Qt6::Test)
+    add_executable(test_editor_helper_fixture tests/fixtures/editor_helper_fixture.cpp)
+    target_link_libraries(test_editor_helper_fixture PRIVATE putgd_core putgd_ui_control Qt6::Gui)
+    target_compile_definitions(test_editor_job PRIVATE PUTGD_PRODUCT_UI_PATH="$<TARGET_FILE:putgd-ui>"
+      PUTGD_EDITOR_FIXTURE="$<TARGET_FILE:test_editor_helper_fixture>")
+    add_dependencies(test_editor_job putgd-ui test_editor_helper_fixture)
+    add_test(NAME editor_job_integration COMMAND test_editor_job)
+    add_executable(test_edit_operations tests/integration/test_edit_operations.cpp)
+    target_include_directories(test_edit_operations PRIVATE tests)
+    target_link_libraries(test_edit_operations PRIVATE putgd_app Qt6::Test)
+    add_dependencies(test_edit_operations putgd-ui)
+    add_test(NAME edit_operations_integration COMMAND test_edit_operations)
+    set_tests_properties(editor_job_integration edit_operations_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 180)
+  endif()
   add_executable(test_ui_endpoints tests/integration/test_ui_endpoints.cpp)
   target_include_directories(test_ui_endpoints PRIVATE tests)
   target_link_libraries(test_ui_endpoints PRIVATE putgd_app Qt6::Test Qt6::Network)
@@ -415,7 +457,11 @@ if(BUILD_TESTING)
   set_tests_properties(version_integration PROPERTIES TIMEOUT 30)
   add_executable(putgd-redesign-preview tests/gui/redesign_preview.cpp)
   target_include_directories(putgd-redesign-preview PRIVATE tests src)
-  target_link_libraries(putgd-redesign-preview PRIVATE putgd_ui_application putgd_app putgd_s3 Qt6::Test)
+  target_link_libraries(putgd-redesign-preview PRIVATE putgd_ui_application putgd_editor_window putgd_app putgd_s3 Qt6::Test)
+  add_executable(test_editor_window tests/gui/test_editor_window.cpp)
+  target_link_libraries(test_editor_window PRIVATE putgd_editor_window Qt6::Test)
+  add_test(NAME gui_editor_window COMMAND test_editor_window)
+  set_tests_properties(gui_editor_window PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
   add_executable(test_gui_application tests/gui/test_ui_application.cpp)
   target_include_directories(test_gui_application PRIVATE tests)
   target_link_libraries(test_gui_application PRIVATE putgd_ui_application putgd_app Qt6::Test)

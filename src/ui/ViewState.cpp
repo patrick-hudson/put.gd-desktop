@@ -12,7 +12,13 @@ const QStringList retentionKeys{"failedArtifactDays","recentActivityLimit","prev
 const QStringList filterKeys{"search","category","mime","profileId","uploadStatus","localStatus","remoteStatus","from","to"};
 bool fields(const QJsonValue& value,const QStringList& allowed){if(!value.isObject())return false;const auto object=value.toObject();for(auto it=object.begin();it!=object.end();++it)if(!allowed.contains(it.key()))return false;return true;}
 bool scalars(const QJsonValue& value,const QStringList& allowed,bool strings=false){if(!fields(value,allowed))return false;const auto object=value.toObject();for(auto v:object)if(strings?!v.isString():(v.isArray()||v.isObject()||v.isUndefined()))return false;return true;}
-bool stringArray(const QJsonValue& value,int maximum=1000){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
+bool stringArray(const QJsonValue& value,int maximum=1000);
+// Recent editor colors are the only non-scalar preference: a short string list.
+bool preferencesDraft(const QJsonValue& value){
+ auto object=value.toObject();const auto colors=object.take("editorRecentColors");
+ return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","unlockCredentialsAtStartup"})&&(colors.isUndefined()||stringArray(colors,6));
+}
+bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
 bool geometry(const QJsonValue& v){if(!v.isArray()||v.toArray().size()!=4)return false;for(auto n:v.toArray())if(!n.isDouble()||std::floor(n.toDouble())!=n.toDouble()||std::abs(n.toDouble())>2147483647)return false;return v.toArray()[2].toInt()>0&&v.toArray()[3].toInt()>0;}
 // Raw JSON is deliberately classified independently of syntactic validity. Only
 // a flat object whose named fields are known nonsecret S3 settings can leave the
@@ -37,13 +43,13 @@ bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences","captureDefaults"}))return false;
  const auto d=value.toObject();
  if(d.contains("captureDefaults")&&!scalars(d["captureDefaults"],{"destination","profileId","publicationMode"}))return false;
- if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard"}))return false;
+ if(d["schemaVersion"]!=1||!fields(d["actions"],{"region","window","desktop","clipboard","edit"}))return false;
  for(auto action:d["actions"].toObject())if(!scalars(action,{"destination","profileId","shortcut","publicationMode"}))return false;
  if(!d["profiles"].isArray()||d["profiles"].toArray().size()>32)return false;
  for(auto v:d["profiles"].toArray())if(!safeProfile(v))return false;
  if(!fields(d["archive"],{"root","keepUploads","folders"}))return false;
  const auto archive=d["archive"].toObject();if(!archive["root"].isString()||!archive["keepUploads"].isBool()||!scalars(archive["folders"],{"images","videos","text","other"}))return false;
- return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&scalars(d["preferences"],{"notifications","launchAtLogin","uploadClipboardBehavior"});
+ return scalars(d["naming"],{"mode","collisionPolicy","fileTemplate","captureTemplate","imageTemplate","textTemplate"})&&scalars(d["limits"],limitKeys)&&scalars(d["retention"],retentionKeys)&&preferencesDraft(d["preferences"]);
 }
 bool protonEditor(const QJsonValue& value){
  if(!fields(value,{"accountRootUid","accountEmail","folders","folderIndex","share","expiration","timeout"}))return false;
