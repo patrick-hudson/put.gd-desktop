@@ -161,7 +161,9 @@ QByteArray ImageJob::run(const QString& task,const QByteArray* bytes,const QStri
  if(encoded.size()!=finalOutput.st_size||QString::fromLatin1(QCryptographicHash::hash(encoded,QCryptographicHash::Sha256).toHex())!=reply["sha256"].toString()){error=failure("image_job_io");return {};}
  if(task!="discover"){
   if(imageFormatHint(encoded)!="png"){error=failure("image_job_protocol");return {};}
-  QBuffer buffer(&encoded);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");
+  // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
+  // format unless detection is off; the PNG signature was checked above.
+  QBuffer buffer(&encoded);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
   const auto size=reader.size();if(size.width()!=reply["width"].toInt()||size.height()!=reply["height"].toInt()){error=failure("image_job_protocol");return {};}
  }
  return encoded;
@@ -182,7 +184,7 @@ QByteArray ImageJob::decodePng(const QByteArray& input,const ResourceLimits& lim
 }
 QImage ImageJob::decode(const QByteArray& input,const ResourceLimits& limits,Error& error,Cancel cancelled) const {
  auto encoded=decodePng(input,limits,error,cancelled);if(error)return {};
- QBuffer buffer(&encoded);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");
+ QBuffer buffer(&encoded);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
  const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){error=failure("input_excessive");return {};}
  auto image=reader.read();if(image.isNull()){error=failure("source_unsupported");return {};}
  if(image.sizeInBytes()>limits.imageBytes){error=failure("input_excessive");return {};}

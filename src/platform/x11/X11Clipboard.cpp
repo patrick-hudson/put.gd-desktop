@@ -1,6 +1,9 @@
 #include "X11Clipboard.h"
 #include "X11Reply.h"
+#include "X11ClipboardFormats.h"
 #include "platform/NativeSession.h"
+#include "core/ImageFormat.h"
+#include "core/ImageJob.h"
 #include <QSet>
 #include <QMimeData>
 #include <QBuffer>
@@ -11,6 +14,7 @@
 #include <cstring>
 #include <algorithm>
 #include <limits>
+#include <vector>
 namespace putgd {
 namespace {using x11::reply;PayloadResult failure(const char* code,const char* message){return {{},{QString::fromLatin1(code),QString::fromLatin1(message),{}}};}}
 X11Clipboard::X11Clipboard(QObject* parent):QObject(parent) {
@@ -66,7 +70,7 @@ void X11Clipboard::beginImport(ImportRequest request){
  if(!available()){cb(failure("clipboard_unavailable","X11 clipboard ownership monitoring is unavailable"));return;}
  const auto current=revision();if(request.revision!=current){cb(failure("clipboard_changed","Clipboard changed after invocation; invoke sharing again"));return;}
  if(owner_==XCB_WINDOW_NONE){cb(failure("source_unsupported","Clipboard has no owner"));return;}
- ++generation_;limits_=request.limits;callback_=std::move(cb);acquiredRevision_=current;bytes_.clear();incremental_=false;timeout_.start(5000);convert(targets_);
+ ++generation_;cancelled_=std::make_shared<std::atomic_bool>(false);limits_=request.limits;callback_=std::move(cb);acquiredRevision_=current;bytes_.clear();incremental_=false;timeout_.start(5000);convert(targets_);
 }
 void X11Clipboard::nextTarget(){
  if(offered_.isEmpty()){complete(failure("source_unsupported","Clipboard contains no supported source format"));return;}
@@ -103,13 +107,7 @@ void X11Clipboard::property(bool incremental){
  }
  const int length=xcb_get_property_value_length(r.get());
  if(target_==targets_){if(r->type!=XCB_ATOM_ATOM||r->format!=32||incremental){complete(failure("source_unsupported","Malformed clipboard target list"));return;}
-  const auto* supported=static_cast<xcb_atom_t*>(xcb_get_property_value(r.get()));const int count=length/4;auto has=[&](xcb_atom_t a){for(int i=0;i<count;++i)if(supported[i]==a)return true;return false;};
-  imageFormat_.clear();offered_.clear();imageFormats_.clear();
-  if(has(atom("text/uri-list")))offered_.append(atom("text/uri-list"));
-  auto images=QImageReader::supportedMimeTypes();images.removeAll("image/png");images.prepend("image/png");
-  for(const auto& mime:images){const auto a=atom(mime.constData());if(has(a)){imageFormats_[a]=QString::fromLatin1(mime);offered_.append(a);}}
-  for(const char* name:{"UTF8_STRING","text/plain;charset=utf-8","text/plain"}){const auto a=atom(name);if(has(a))offered_.append(a);}
-  nextTarget();return;
+  chooseTargets(static_cast<const xcb_atom_t*>(xcb_get_property_value(r.get())),length/4);return;
  }
  if(r->format!=8){complete(failure("source_unsupported","Malformed clipboard data format"));return;}
  if(qint64(bytes_.size())+length>bound){complete(failure("input_excessive","Clipboard data exceeds resource limits"));return;}
@@ -118,14 +116,66 @@ void X11Clipboard::property(bool incremental){
  xcb_flush(connection_);
  if(!incremental||length==0)received();
 }
+void X11Clipboard::chooseTargets(const xcb_atom_t* supported,int count){
+ imageFormat_.clear();offered_.clear();imageFormats_.clear();
+ // Names keep the discovery fallback for unrecognized MIME offers. Resolve
+ // them in one pipelined batch; invalid owner atoms match no target.
+ std::vector<xcb_get_atom_name_cookie_t> cookies;cookies.reserve(count);
+ for(int i=0;i<count;++i)cookies.push_back(xcb_get_atom_name(connection_,supported[i]));
+ QList<QByteArray> names;QHash<QByteArray,xcb_atom_t> offered;
+ for(int i=0;i<count;++i){
+  xcb_generic_error_t* error=nullptr;auto name=reply(xcb_get_atom_name_reply(connection_,cookies[i],&error));std::free(error);if(!name)continue;
+  const QByteArray value(xcb_get_atom_name_name(name.get()),xcb_get_atom_name_name_length(name.get()));
+  if(!offered.contains(value)){offered.insert(value,supported[i]);names.append(value);}
+ }
+ bool needsDiscovery=false;
+ const auto targets=x11ClipboardImportTargets(names,[&]()->QList<QByteArray>{if(imageTypes_)return *imageTypes_;needsDiscovery=true;return {};});
+ if(!needsDiscovery){offer(targets,offered);nextTarget();return;}
+ // Listing Qt's readers instantiates every installed image plugin (30 plugins,
+ // 12 MiB with KDE's kimageformats). The transient image job lists them, off
+ // this thread, and the resident keeps only the listed types.
+ timeout_.stop();
+ const auto generation=generation_;const auto cancelled=cancelled_;
+ auto types=std::make_shared<QList<QByteArray>>();auto error=std::make_shared<Error>();
+ auto* worker=QThread::create([types,error,cancelled]{*types=ImageJob().discover(*error,cancelled);});decoders_.append(worker);
+ connect(worker,&QThread::finished,this,[this,worker,types,error,generation,names,offered]{
+  decoders_.removeOne(worker);worker->deleteLater();
+  if(generation!=generation_||!callback_)return;
+  const auto current=revision();
+  // Ownership events drained by revision() may already have settled this import.
+  if(generation!=generation_||!callback_)return;
+  if(current!=acquiredRevision_){complete(failure("clipboard_changed","Clipboard changed during image format discovery"));return;}
+  if(*error){complete({{},*error});return;}
+  imageTypes_=std::move(*types);
+  offer(x11ClipboardImportTargets(names,[this]{return *imageTypes_;}),offered);timeout_.start(5000);nextTarget();
+ });worker->start();
+}
+void X11Clipboard::offer(const QList<QByteArray>& targets,const QHash<QByteArray,xcb_atom_t>& offered){
+ for(const auto& name:targets){
+  const auto target=offered.value(name);offered_.append(target);
+  if(name!="text/uri-list"&&name!="UTF8_STRING"&&name!="text/plain;charset=utf-8"&&name!="text/plain")imageFormats_[target]=QString::fromLatin1(name);
+ }
+}
 void X11Clipboard::received(){
  timeout_.stop();if(revision()!=acquiredRevision_){complete(failure("clipboard_changed","Clipboard changed during acquisition"));return;}
  decoding_=true;const auto generation=generation_;
- const auto data=bytes_;const auto target=target_;const auto limits=limits_;const bool uris=target==atom("text/uri-list"),image=!imageFormat_.isEmpty();auto callback=std::move(callback_);callback_={};incremental_=false;bytes_.clear();
+ const auto data=bytes_;const auto target=target_;const auto limits=limits_;const bool uris=target==atom("text/uri-list"),image=!imageFormat_.isEmpty();const auto cancelled=cancelled_;auto callback=std::move(callback_);callback_={};incremental_=false;bytes_.clear();
  // Parsing/decoding potentially large owner data must not run on the session thread.
- auto result=std::make_shared<PayloadResult>();auto noLocal=std::make_shared<bool>(false);auto* worker=QThread::create([data,limits,uris,image,result,noLocal] {
+ auto result=std::make_shared<PayloadResult>();auto noLocal=std::make_shared<bool>(false);auto* worker=QThread::create([data,limits,uris,image,result,noLocal,cancelled] {
   QMimeData mime;if(uris){QList<QUrl> urls;for(auto line:data.split('\n')){line=line.trimmed();if(!line.isEmpty()&&!line.startsWith('#'))urls.append(QUrl::fromEncoded(line));}mime.setUrls(urls);*noLocal=true;for(const auto& url:urls)if(url.isLocalFile())*noLocal=false;}
-  else if(image){QBuffer buffer;buffer.setData(data);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer);const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()*4>limits.imageBytes){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}mime.setImageData(reader.read());}
+  else if(image){
+   QImage decoded;
+   if(imageFormatHint(data)=="png"){
+    // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a
+    // named format unless detection is off; the signature is already checked.
+    QBuffer buffer;buffer.setData(data);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()*4>limits.imageBytes){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}decoded=reader.read();
+   }else{
+    // Other formats need Qt's image plugins; the transient image job decodes
+    // them so the resident never instantiates those codecs.
+    Error error;decoded=ImageJob().decode(data,limits,error,cancelled);if(error){*result={{},error};return;}
+   }
+   mime.setImageData(decoded);
+  }
   else {if(data.size()>limits.clipboardTextBytes){*result=failure("input_excessive","Clipboard text exceeds resource limits");return;}mime.setText(QString::fromUtf8(data));}
   *result=ClipboardPayload::fromMime(mime,limits);
  });decoders_.append(worker);connect(worker,&QThread::finished,this,[this,worker,result,noLocal,generation,callback=std::move(callback)]() mutable {
@@ -140,9 +190,9 @@ void X11Clipboard::received(){
   callback(std::move(*result));pump();
  });worker->start();
 }
-void X11Clipboard::complete(PayloadResult result){timeout_.stop();incremental_=false;bytes_.clear();if(callback_){auto cb=std::move(callback_);callback_={};cb(std::move(result));}pump();}
+void X11Clipboard::complete(PayloadResult result){timeout_.stop();incremental_=false;bytes_.clear();if(callback_){cancelled_->store(true);auto cb=std::move(callback_);callback_={};cb(std::move(result));}pump();}
 void X11Clipboard::cancel(){
- ++generation_;auto pending=std::move(pending_);pending_.clear();
+ ++generation_;cancelled_->store(true);auto pending=std::move(pending_);pending_.clear();
  if(callback_)complete(failure("cancelled","Clipboard acquisition cancelled"));
  for(auto& request:pending)request.callback(failure("cancelled","Clipboard acquisition cancelled"));
 }

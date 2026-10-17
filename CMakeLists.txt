@@ -344,10 +344,22 @@ if(BUILD_TESTING)
     add_executable(test_x11_core_clipboard tests/integration/test_x11_core_clipboard.cpp)
     target_link_libraries(test_x11_core_clipboard PRIVATE putgd_x11_listeners Qt6::Test PkgConfig::PUTGD_XCB)
     add_test(NAME x11_core_clipboard COMMAND dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_x11_core_clipboard>)
+    # Non-PNG images and image type discovery run in putgd-ui's image job.
+    add_executable(test_x11_clipboard_import tests/integration/test_x11_clipboard_import.cpp)
+    target_link_libraries(test_x11_clipboard_import PRIVATE putgd_x11_listeners Qt6::Test PkgConfig::PUTGD_XCB)
+    add_library(putgd_slow_image_fixture MODULE tests/fixtures/SlowImagePlugin.cpp)
+    target_link_libraries(putgd_slow_image_fixture PRIVATE Qt6::Gui)
+    set_target_properties(putgd_slow_image_fixture PROPERTIES
+      LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/slow-image-fixture/imageformats")
+    target_compile_definitions(test_x11_clipboard_import PRIVATE
+      PUTGD_IMAGE_PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture"
+      PUTGD_SLOW_PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/slow-image-fixture")
+    add_dependencies(test_x11_clipboard_import putgd-ui putgd_gnome_mime_fixture putgd_slow_image_fixture)
+    add_test(NAME x11_clipboard_import COMMAND dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_x11_clipboard_import>)
     add_executable(test_x11_native_snapshot tests/desktop/x11/test_native_snapshot.cpp)
     target_link_libraries(test_x11_native_snapshot PRIVATE putgd_x11_native_snapshot Qt6::Test PkgConfig::PUTGD_XCB)
     add_test(NAME x11_native_snapshot COMMAND xvfb-run -a -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_x11_native_snapshot>)
-    set_tests_properties(x11_core_clipboard x11_native_snapshot PROPERTIES
+    set_tests_properties(x11_core_clipboard x11_clipboard_import x11_native_snapshot PROPERTIES
       ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 90)
   endif()
   add_test(NAME version_contract COMMAND "${CMAKE_COMMAND}"
@@ -499,6 +511,7 @@ if(BUILD_TESTING)
     set_tests_properties(ui_native_lifecycle_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 90)
     add_executable(test_x11 tests/desktop/x11/test_x11.cpp)
     target_link_libraries(test_x11 PRIVATE putgd_x11 Qt6::Test Qt6::DBus PkgConfig::PUTGD_XTEST)
+    add_dependencies(test_x11 putgd-ui)
     add_test(NAME x11_isolated COMMAND dbus-run-session -- ${PUTGD_XVFB_RUN} -a $<TARGET_FILE:test_x11>)
     set_tests_properties(x11_isolated PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 60)
   endif()
