@@ -32,16 +32,19 @@ MainWindow::MainWindow(UiSession& session,QWidget* parent):QMainWindow(parent),s
  for(const auto& action:Settings::actionNames()){
   auto* button=new QPushButton;button->setObjectName("captureRailButton");button->setProperty("captureAction",action);button->setAccessibleName(labels.value(action));button->setMinimumHeight(52);
   auto* box=new QVBoxLayout(button);box->setContentsMargins(10,6,10,6);box->setSpacing(2);auto* line=new QHBoxLayout;line->setContentsMargins(0,0,0,0);line->setSpacing(8);auto* icon=new QLabel;icon->setPixmap(VisualStyle::icon(action).pixmap(19,19));line->addWidget(icon);auto* name=new QLabel(labels.value(action));line->addWidget(name);line->addStretch();
-  // Other editor sources sit behind one small menu so the rail does not grow.
+  box->addLayout(line);auto* shortcut=new QLabel;shortcut->setProperty("visualRole","mono");
   if(action=="edit"){
+   // Other editor sources sit behind one small arrow on the shortcut line, so
+   // the rail does not grow and the title keeps its full width.
+   auto* lower=new QHBoxLayout;lower->setContentsMargins(0,0,0,0);lower->setSpacing(4);lower->addWidget(shortcut);lower->addStretch();
    auto* more=new QToolButton(button);more->setObjectName("editSourceMenu");more->setAutoRaise(true);more->setArrowType(Qt::DownArrow);more->setPopupMode(QToolButton::InstantPopup);
+   more->setFixedSize(22,16);more->setStyleSheet("QToolButton { border: none; background: transparent; padding: 0; } QToolButton:hover { background: #2b303b; border-radius: 4px; } QToolButton::menu-indicator { image: none; width: 0; }");
    more->setToolTip("Edit the clipboard image or an image file");more->setAccessibleName("More ways to edit");
    auto* menu=new QMenu(more);
    connect(menu->addAction(VisualStyle::icon("clipboard"),"Edit clipboard image"),&QAction::triggered,this,[this]{emit editRequested("clipboard",{});});
    connect(menu->addAction(VisualStyle::icon("images"),"Edit an image file…"),&QAction::triggered,this,&MainWindow::chooseImageToEdit);
-   more->setMenu(menu);line->addWidget(more);
-  }
-  box->addLayout(line);auto* shortcut=new QLabel;shortcut->setProperty("visualRole","mono");box->addWidget(shortcut);for(auto* label:{name,icon,shortcut})label->setAttribute(Qt::WA_TransparentForMouseEvents);
+   more->setMenu(menu);lower->addWidget(more);box->addLayout(lower);
+  }else box->addWidget(shortcut);for(auto* label:{name,icon,shortcut})label->setAttribute(Qt::WA_TransparentForMouseEvents);
   auto update=[this,shortcut,button,action,explanations]{
    const auto document=session_.document();const auto saved=Settings::effectiveAction(document,action);const auto key=QKeySequence(saved["shortcut"].toString()).toString(QKeySequence::NativeText);shortcut->setText(key);shortcut->setVisible(!key.isEmpty());QString output;
    const bool local=document["archive"].toObject()["keepUploads"].toBool();
