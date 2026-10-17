@@ -10,6 +10,8 @@
 #include <memory>
 #include <mutex>
 
+class QFile;
+
 namespace putgd {
 // Thread-safe handle to one live editor. The session thread queues agent
 // commands; the editor worker relays them over the helper's private pipes.
@@ -44,9 +46,12 @@ public:
  // Writes `image` to private staging, then releases it before the helper
  // starts. Returns only bytes that pass identity and sanitized-PNG checks.
  EditorResult run(QImage& image,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
+ // Stages a PNG/JPEG file's bytes without decoding them in this process.
+ EditorResult runFile(const QString& path,qint64 maximumInputBytes,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
  // Removes abandoned staging left by an earlier resident. Call before editing.
  static void discardStaging(const QString& stagingRoot);
 private:
+ EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
  QString root_,helperPath_;
  int startupTimeoutMs_,finalizeTimeoutMs_,commandTimeoutMs_;
 };

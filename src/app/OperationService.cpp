@@ -252,18 +252,19 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
   observe(op.publicJson());emit changed(op.id);emit observationsChanged();
   background([=](Error&){
    if(!file.isEmpty()){
-    // Files go through the transient codec worker; the resident decodes no formats.
+    // Only the header is inspected here; the editor helper decodes the file once.
     QFile input(file);
     if(!QFileInfo(file).isFile()||!input.open(QIODevice::ReadOnly)){edited->error={"source_unavailable","Cannot read the image file",{}};return QJsonObject{};}
-    if(input.size()<1||input.size()>std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024)){edited->error={"edit_input_too_large","This image file is too large to edit",{}};return QJsonObject{};}
-    const auto bytes=input.readAll();
-    // Static PNG or JPEG by signature; an animated PNG is refused, not reduced to one frame.
-    const bool png=imageFormatHint(bytes)=="png",jpeg=bytes.startsWith(QByteArray::fromHex("ffd8ff"));
-    const auto frames=bytes.indexOf("acTL"),data=bytes.indexOf("IDAT");
+    const auto maximum=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
+    if(input.size()<1||input.size()>maximum){edited->error={"edit_input_too_large","This image file is too large to edit",{}};return QJsonObject{};}
+    const auto header=input.read(64*1024);input.close();
+    // Static PNG or JPEG by signature; an animated PNG declares acTL before its image data.
+    const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
+    const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","Edit & upload opens static PNG or JPEG files",{}};return QJsonObject{};}
-    ResourceLimits limits;limits.imagePixels=EditorJob::admissionPixels;limits.imageBytes=EditorJob::admissionPixels*8;limits.maxFileBytes=limits.imageBytes+1024*1024;
-    Error decodeError;*image=ImageJob().decode(bytes,limits,decodeError,flag);
-    if(decodeError){edited->error=decodeError.code=="input_excessive"?Error{"edit_input_too_large","This image is too large to edit; use a smaller copy",{}}:decodeError;return QJsonObject{};}
+    *edited=EditorJob(staging,helper).runFile(file,maximum,destination,outputBytes,session);
+    if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","Edit & upload opens static PNG or JPEG files",{}};
+    return QJsonObject{};
    }
    *edited=EditorJob(staging,helper).run(*image,destination,outputBytes,session);
    return QJsonObject{};

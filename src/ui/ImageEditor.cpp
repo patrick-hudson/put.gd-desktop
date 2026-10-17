@@ -39,7 +39,7 @@ bool sameFile(const struct stat& a,const struct stat& b){return a.st_dev==b.st_d
 QJsonObject envelope(const QString& nonce){return {{"role","image-edit"},{"nonce",nonce},{"generation","1"}};}
 bool validEnvelope(const QJsonObject& object,const QString& nonce){return object["role"]=="image-edit"&&object["nonce"]==nonce&&object["generation"]=="1";}
 
-// The parent stages input.png (0400) and an empty output.png (0600) in a new
+// The parent stages input.img (0400, PNG or JPEG) and an empty output.png (0600) in a new
 // owner-only pge-XXXXXX directory. Each identity is pinned through the directory fd.
 class StagedFiles final {
 public:
@@ -48,11 +48,11 @@ public:
   if(!in["path"].isString()||!out["path"].isString())return false;
   directory_=QFileInfo(in["path"].toString()).absolutePath();
   static const QRegularExpression pattern(QStringLiteral("^pge-[A-Za-z0-9]{6}$"));
-  if(!pattern.match(QFileInfo(directory_).fileName()).hasMatch()||in["path"]!=directory_+"/input.png"||out["path"]!=directory_+"/output.png")return false;
+  if(!pattern.match(QFileInfo(directory_).fileName()).hasMatch()||in["path"]!=directory_+"/input.img"||out["path"]!=directory_+"/output.png")return false;
   directoryFd=::open(QFile::encodeName(directory_).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_DIRECTORY);
   if(directoryFd<0||::fstat(directoryFd,&directoryIdentity)||!validDirectory(directoryIdentity))return false;
   inputHash=in["sha256"].toString();
-  if(!hashText(inputHash)||!openFile(input,in,"input.png",0400,inputIdentity)||inputIdentity.st_size<1||inputIdentity.st_size>inputMaximum)return false;
+  if(!hashText(inputHash)||!openFile(input,in,"input.img",0400,inputIdentity)||inputIdentity.st_size<1||inputIdentity.st_size>inputMaximum)return false;
   if(out["sha256"]!=""||!openFile(output,out,"output.png",0600,outputIdentity)||outputIdentity.st_size!=0)return false;
   return intact()&&checkInput();
  }
@@ -60,7 +60,7 @@ public:
   struct stat directoryNow{},inputNow{},inputNamed{},outputNow{},outputNamed{};
   if(::lstat(QFile::encodeName(directory_).constData(),&directoryNow)||!sameFile(directoryIdentity,directoryNow)||!validDirectory(directoryNow))return false;
   if(::fstat(input.handle(),&inputNow)||!sameFile(inputIdentity,inputNow)||!privateFile(inputNow,0400)||inputNow.st_size!=inputIdentity.st_size)return false;
-  if(::fstatat(directoryFd,"input.png",&inputNamed,AT_SYMLINK_NOFOLLOW)||!sameFile(inputIdentity,inputNamed))return false;
+  if(::fstatat(directoryFd,"input.img",&inputNamed,AT_SYMLINK_NOFOLLOW)||!sameFile(inputIdentity,inputNamed))return false;
   return !::fstat(output.handle(),&outputNow)&&sameFile(outputIdentity,outputNow)&&privateFile(outputNow,0600)&&!::fstatat(directoryFd,"output.png",&outputNamed,AT_SYMLINK_NOFOLLOW)&&sameFile(outputIdentity,outputNamed);
  }
  bool checkInput(){
@@ -189,8 +189,10 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(type=="activate"&&!active&&!terminal){
    active=true;
    if(!files.intact()||!files.checkInput()){refuse("image_job_io");return;}
-   QImageReader reader(&files.input,"png");const auto size=reader.size();
-   if(!size.isValid()){refuse("source_unsupported");return;}
+   // Static PNG or JPEG only, decoded once here with the file's orientation applied.
+   QImageReader reader(&files.input);reader.setAutoTransform(true);
+   const auto format=reader.format();const auto size=reader.size();
+   if((format!="png"&&format!="jpeg"&&format!="jpg")||!size.isValid()||reader.supportsAnimation()||reader.imageCount()>1){refuse("source_unsupported");return;}
    const auto pixels=qint64(size.width())*size.height();
    if(pixels>maxPixels){refuse("input_excessive");return;}
    reader.setAllocationLimit(int(std::min<qint64>(pixels*4/(1024*1024)+2,INT_MAX)));

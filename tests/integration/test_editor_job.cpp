@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QImage>
+#include <QImageWriter>
 #include <QJsonArray>
 #include <QRandomGenerator>
 #include <QSemaphore>
@@ -107,6 +108,27 @@ private slots:
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
   QVERIFY(waitPhase(*session,"editing"));QVERIFY(!ask(*session,"submit").error);if(worker.joinable())worker.join();
   QCOMPARE(result.error.code,QString("edit_input_too_large"));QVERIFY(result.png.isEmpty());
+ }
+ void fileSourceIsDecodedOnlyByTheHelper(){
+  // A JPEG carrying an EXIF 90-degree rotation opens upright, decoded in the helper.
+  QTemporaryDir root;const auto jpeg=root.filePath("rotated.jpg");
+  {QImage image(40,20,QImage::Format_RGB32);image.fill(Qt::red);QImageWriter writer(jpeg,"jpeg");writer.setTransformation(QImageIOHandler::TransformationRotate90);QVERIFY(writer.write(image));}
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{result=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).runFile(jpeg,1024*1024,"Upload",1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  const auto state=ask(*session,"inspect");QVERIFY2(!state.error,qPrintable(state.error.code));
+  QCOMPARE(QSize(state.result["width"].toInt(),state.result["height"].toInt()),QSize(20,40));
+  QVERIFY(!ask(*session,"submit").error);if(worker.joinable())worker.join();
+  QVERIFY2(!result.error,qPrintable(result.error.code));QCOMPARE(QSize(result.width,result.height),QSize(20,40));QVERIFY(!inspectSanitizedPng(result.png));
+  // Bytes that are not a static PNG/JPEG are refused by the helper; nothing is returned.
+  const auto text=root.filePath("note.png");QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("synthetic, not an image");file.close();
+  auto second=std::make_shared<EditorSession>();
+  const auto refused=EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).runFile(text,1024*1024,"Upload",1024*1024,second);
+  QCOMPARE(refused.error.code,QString("source_unsupported"));QVERIFY(refused.png.isEmpty());
+  auto third=std::make_shared<EditorSession>();
+  QCOMPARE(EditorJob(root.filePath("editing"),PUTGD_PRODUCT_UI_PATH).runFile(jpeg,16,"Upload",1024*1024,third).error.code,QString("source_unsupported"));
+  QCOMPARE(filesUnder(root.filePath("editing")),0);
  }
  void missingHelperFailsClosed(){
   QTemporaryDir root;auto session=std::make_shared<EditorSession>();auto image=noise({20,20},5);

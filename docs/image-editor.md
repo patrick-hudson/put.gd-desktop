@@ -65,10 +65,12 @@ Inputs larger than **24 megapixels** are rejected before staging with
 
 ## Process and privacy boundaries
 
-The resident never draws or decodes the editor image. It stages the acquired
-raster as a fast-compressed PNG in a new owner-only
-`<data>/editing/pge-XXXXXX/` directory (`input.png` 0400, empty `output.png`
-0600), releases its own copy, then starts `putgd-ui --edit-image`. Data storage is
+The resident never draws or decodes the editor image. It stages the input in a
+new owner-only `<data>/editing/pge-XXXXXX/` directory (`input.img` 0400, empty
+`output.png` 0600) and starts `putgd-ui --edit-image`. A capture is staged as a
+fast-compressed PNG and the resident releases its raster; a file is copied
+verbatim after a signature check, so a PNG or JPEG is decoded exactly once, in
+the helper, after its pixel admission check and with its EXIF orientation applied. Data storage is
 used rather than `/tmp`, which may be RAM-backed. The helper owns pixels and UI
 only: no settings, providers, credentials or history. Closing it frees its image
 regardless of other open put.gd windows. Nothing is preloaded or kept warm.
@@ -78,7 +80,7 @@ and rate limits) with a separate payload role `image-edit`, a UUID nonce and
 generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
 `command` and `commandResult` for this helper only:
 
-1. `bootstrap`: role, nonce, generation, build, input and output descriptors
+1. `bootstrap`: role, nonce, generation, build, input (`input.img`) and output descriptors
    (path, device, inode, bytes, sha256), limits (imagePixels, outputBytes) and a
    destination label. Files are opened through a pinned directory descriptor with
    `O_NOFOLLOW`, identity and digest checks.

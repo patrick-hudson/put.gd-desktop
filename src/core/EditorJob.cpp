@@ -81,26 +81,50 @@ void EditorJob::discardStaging(const QString& root){
 }
 
 EditorResult EditorJob::run(QImage& image,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>& session) const {
+ if(image.isNull()||qint64(image.width())*image.height()>admissionPixels){
+  const bool excessive=!image.isNull();image=QImage();
+  EditorResult result;result.error=failure(excessive?"input_excessive":"source_unsupported");session->setPhase("closed");return result;
+ }
+ // Fast zlib staging keeps the private source handoff short; it is never published.
+ return supervise([&image](QFile& input){
+  QImageWriter writer(&input,"png");writer.setQuality(80);const bool written=writer.write(image);image=QImage();return written;
+ },destination,outputBytes,session);
+}
+
+EditorResult EditorJob::runFile(const QString& path,qint64 maximumInputBytes,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>& session) const {
+ // The resident copies the user's PNG/JPEG bytes verbatim and never decodes them;
+ // the helper applies pixel admission before allocating and decodes once.
+ return supervise([&](QFile& input){
+  QFile source(path);
+  if(!QFileInfo(path).isFile()||!source.open(QIODevice::ReadOnly)||source.size()<1||source.size()>maximumInputBytes)return false;
+  qint64 copied=0;
+  while(!source.atEnd()){
+   if(session->cancelled())return false;
+   const auto chunk=source.read(1024*1024);
+   if(chunk.isEmpty()||copied+chunk.size()>maximumInputBytes||input.write(chunk)!=chunk.size())return false;
+   copied+=chunk.size();
+  }
+  return copied==source.size();
+ },destination,outputBytes,session);
+}
+
+EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>& session) const {
  EditorResult result;
  auto fail=[&](const QString& code){result.error=failure(code);session->setPhase("closed");for(auto& pending:session->take())pending.reply(failure("editor_closed"),{});return result;};
 #ifndef Q_OS_UNIX
- image=QImage();Q_UNUSED(destination);Q_UNUSED(outputBytes);
+ Q_UNUSED(stage);Q_UNUSED(destination);Q_UNUSED(outputBytes);
  return fail("editor_unavailable");
 #else
- if(image.isNull())return fail("source_unsupported");
- if(qint64(image.width())*image.height()>admissionPixels){image=QImage();return fail("input_excessive");}
  if(outputBytes<1)return fail("input_excessive");
- if(session->cancelled()){image=QImage();return fail("cancelled");}
+ if(session->cancelled())return fail("cancelled");
  struct stat rootIdentity{};
- if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)||!ownedDirectory(root_,rootIdentity)){image=QImage();return fail("editor_io");}
+ if(!QDir().mkpath(root_)||!QFile::setPermissions(root_,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)||!ownedDirectory(root_,rootIdentity))return fail("editor_io");
  QTemporaryDir directory(root_+"/pge-XXXXXX");struct stat directoryIdentity{};
- if(!directory.isValid()||!QFile::setPermissions(directory.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)||!ownedDirectory(directory.path(),directoryIdentity)){image=QImage();return fail("editor_io");}
- const auto inputPath=directory.path()+"/input.png",outputPath=directory.path()+"/output.png";
+ if(!directory.isValid()||!QFile::setPermissions(directory.path(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner)||!ownedDirectory(directory.path(),directoryIdentity))return fail("editor_io");
+ const auto inputPath=directory.path()+"/input.img",outputPath=directory.path()+"/output.png";
  QFile input(inputPath),output(outputPath);struct stat inputIdentity{},outputIdentity{};
- // Fast zlib staging keeps the private source handoff short; it is never published.
- if(!input.open(QIODevice::ReadWrite|QIODevice::NewOnly)||!input.setPermissions(QFile::ReadOwner|QFile::WriteOwner)){image=QImage();return fail("editor_io");}
- {QImageWriter writer(&input,"png");writer.setQuality(80);if(!writer.write(image)){image=QImage();return fail("editor_io");}}
- image=QImage();
+ if(!input.open(QIODevice::ReadWrite|QIODevice::NewOnly)||!input.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return fail("editor_io");
+ if(!stage(input))return fail(session->cancelled()?"cancelled":"source_unsupported");
  if(!input.flush()||!input.setPermissions(QFile::ReadOwner)||::fstat(input.handle(),&inputIdentity)||!privateFile(inputIdentity,0400)||inputIdentity.st_size<1)return fail("editor_io");
  const auto inputHash=digest(input,inputIdentity.st_size);if(inputHash.isEmpty())return fail("editor_io");
  if(!output.open(QIODevice::ReadWrite|QIODevice::NewOnly)||!output.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||::fstat(output.handle(),&outputIdentity)||!privateFile(outputIdentity,0600))return fail("editor_io");
@@ -147,7 +171,8 @@ EditorResult EditorJob::run(QImage& image,const QString& destination,qint64 outp
     if(payload["width"].toDouble()!=width||payload["height"].toDouble()!=height||width<1||height<1||width>INT_MAX||height>INT_MAX||width>admissionPixels/height){protocolFailed=true;return;}
    }
    checkpoint=true;reply=payload;session->setPhase("closed");phaseClock.restart();
-   if(control.send("checkpointAccepted",envelope(nonce)).isEmpty())protocolFailed=true;return;
+   if(control.send("checkpointAccepted",envelope(nonce)).isEmpty())protocolFailed=true;
+   return;
   }
   protocolFailed=true;
  });
