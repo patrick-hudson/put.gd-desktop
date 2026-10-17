@@ -78,6 +78,12 @@ does not waive a different version in that matrix. Cinnamon-first ordering and
 the approved KDE memory-experiment exception remain in force. For VM scenarios,
 retain the existing independent QMP, saved-artifact and native-paste witnesses.
 
+## Remote VM operating procedures
+
+Use [remote VM display tunnels](remote-vm-displays.md) to add each builder-hosted
+QEMU guest to the existing wall. Use [golden image discovery and copying](remote-golden-images.md)
+for exact workstation paths, verified transfers and the approved shared guest login.
+
 ## VM preflight and golden-image copies
 
 Before provisioning or launching a guest, inspect the actual remote host's CPU

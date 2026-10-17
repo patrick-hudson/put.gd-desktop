@@ -14,6 +14,11 @@ the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
 host preference does not change Cinnamon-first ordering or required guest versions.
+Find and copy golden images using `docs/remote-golden-images.md`, and expose
+each remote VM on the wall using `docs/remote-vm-displays.md`. Provision new remote
+lab VM goldens with guest login `lab` / `putgd-lab`, verifying login visibly.
+The user explicitly approved documenting this default disposable-guest login
+as the exception to the no-credentials-in-source rule. Preserve immutable sources.
 
 The implementation contract is in GitHub issue #1 and
 `docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md` when present locally.

@@ -71,6 +71,12 @@ or delete a parent merely because its directory is named `lab-runs`.
 
 ## Protected login inputs
 
+New remote lab guests use the approved `lab` / `putgd-lab` default; follow
+[golden discovery, transfer and login provisioning](remote-golden-images.md).
+Historical source goldens retain their existing logins until an independent
+candidate is provisioned, visibly verified and saved at a new golden path.
+The inventory below locates legacy inputs; never edit an immutable source in place.
+
 Agents restore existing locked sessions. First inspect the run's profile and
 bootstrap metadata, then locate the protected local input for that installation.
 The three existing lab installations use these local files:
