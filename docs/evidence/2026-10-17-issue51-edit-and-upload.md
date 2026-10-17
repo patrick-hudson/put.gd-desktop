@@ -208,6 +208,17 @@ Driven with real input on the Cinnamon VM:
   - Dragging `drop-test.png` from Nemo onto the rail button showed the dashed
     drop outline. Releasing it opened the 320×200 file in the editor.
 
+## Follow-up: failures that stored nothing (`fdbd1c3`, `ceac883`)
+
+The 24 MP refusal from the memory run appeared in History as "Upload failed"
+with **Retry upload**. The resident rejects that retry (`artifact_missing`).
+On `ceac883`, on the Cinnamon VM, after the region baseline passed:
+
+- The row read **Edit failed** with its reason and had no primary button.
+- Its **⋯** menu offered only **Inspect files** and **Copy details**.
+- The other entries showed dimmed. The theme previously drew disabled menu
+  items like enabled ones; a rendering test now checks this.
+
 ## Fedora 44 GNOME physical and memory fixes (`cf13456` to `cf52883`)
 
 Host: Fedora 44 Workstation, GNOME Shell 50.0 on Wayland, Qt 6.11.2, kernel
@@ -271,5 +282,5 @@ Packages (SHA-256 prefixes):
   local output.
 
 Private evidence: `work/verification/2026-10-17-editor-{cinnamon,gnome-vm,kde-vm,debian-physical,kubuntu-physical}/gate-329d736/`,
-`work/verification/2026-10-17-editor-cinnamon/mcp-329d736/` and `ui-5e55c2f/`, and
+`work/verification/2026-10-17-editor-cinnamon/mcp-329d736/`, `ui-5e55c2f/` and `ui-ceac883/`, and
 `work/verification/2026-10-17-editor-fedora-physical/gate-{cf13456-attempt1,cf13456,cf52883}/`.
