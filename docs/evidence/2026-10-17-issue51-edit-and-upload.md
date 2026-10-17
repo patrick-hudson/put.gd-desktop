@@ -169,6 +169,19 @@ gates reran with the real GNOME core resident:
 The 23 checks add two real-mouse checks: a drawing tool moves a visible mark,
 and the move undoes.
 
+## Follow-up: clipboard and file entry points (`b4981d3`)
+
+The Cinnamon gate passed on `2ba8bdc`: region capture, 23/23 editor checks and
+5/5 memory cases. On `b4981d3` (the rail arrow fix) the new entry points were
+driven with real input on the Cinnamon VM:
+
+- The tray's **Edit image ▸ From clipboard** opened the editor on the 80×60
+  image a region capture had just copied.
+- The rail button's arrow menu, **Edit an image file…**, opened the desktop's
+  native file chooser (Pictures, images only). The chosen PNG opened in the
+  editor, with the main window left in place.
+- The tray's **From a file…** opened the main window and the same chooser.
+
 ## Not covered
 
 - The physical Fedora 44 GNOME desktop. Its display was being reconfigured
