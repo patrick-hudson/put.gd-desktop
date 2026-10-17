@@ -134,6 +134,8 @@ QMenu, QMessageBox { background: #181B21; }
 QMenu { border: 1px solid #343A45; padding: 5px; }
 QMenu::item { padding: 8px 22px; border: 1px solid transparent; border-radius: 5px; }
 QMenu::item:selected { background: #232838; border-color: #6EA8FE; }
+QMenu::item:disabled { color: #6F7682; }
+QMenu::item:disabled:selected { background: transparent; border-color: transparent; }
 QMenu::separator { background: #2A2F38; height: 1px; margin: 5px 8px; }
 QToolTip { background: #20242C; color: #E7E9EE; border: 1px solid #343A45; padding: 7px; }
 

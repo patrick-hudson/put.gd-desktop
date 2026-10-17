@@ -256,6 +256,11 @@ private slots:
   QCOMPARE(HistoryModel::failureLabel(record),QString("Edit failed"));QVERIFY(row.data(HistoryModel::PrimaryActionRole).toString().isEmpty());
   QVERIFY(!HistoryModel::statusText(record).contains("Upload"));QVERIFY(HistoryModel::statusText(record).contains("PNG or JPEG"));
   selectRow(list,0);QTest::qWait(200);QVERIFY(!window.findChild<QPushButton*>("retryOperation")->isVisible());
+  // Disabled row-menu entries must look disabled in the app theme.
+  RedesignTheme::apply(window);QMenu menu(&window);auto* enabled=menu.addAction("Copy details");auto* disabled=menu.addAction("Retry upload");disabled->setEnabled(false);
+  menu.popup(window.mapToGlobal(QPoint(20,20)));QTRY_VERIFY(menu.isVisible());const auto image=menu.grab().toImage();
+  auto brightest=[&](QAction* action){int best=0;const auto r=menu.actionGeometry(action);for(int y=r.top();y<=r.bottom();++y)for(int x=r.left();x<=r.right();++x)best=std::max(best,qGray(image.pixel(x,y)));return best;};
+  QVERIFY2(brightest(disabled)+40<brightest(enabled),qPrintable(QString("%1 vs %2").arg(brightest(disabled)).arg(brightest(enabled))));menu.close();
  }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
