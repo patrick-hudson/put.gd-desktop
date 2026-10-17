@@ -383,6 +383,37 @@ Retirement removes the old guest filesystem permanently; future tests use a
 fresh run directory cloned from the preserved golden.
 
 
+## Physical-desktop input agent
+
+Physical build-server desktops have no QMP. `tools/lab/host_input.py` creates
+kernel uinput devices, a keyboard and an absolute pointer modelled on QEMU's
+usb-tablet, and accepts the runner's QMP subset (`qmp_capabilities`,
+`input-send-event` with qcode keys, left/right/middle buttons and 0–32767
+absolute axes) on an owner-only Unix socket. Events pass through libinput into
+the compositor or X server like hardware input, so global shortcuts, region
+selectors and editor windows receive real input. It refuses every other command,
+including `screendump`; capture frames from the host's loopback VNC tile.
+
+Start it with authorized `sudo -n` only to open `/dev/uinput`; it drops to the
+desktop user before listening, and no udev rule or persistent permission
+changes. Forward the socket over the pinned SSH host key, then point a private
+run directory's `qmp.sock` at it so `lab.key`, `lab.pointer` and
+`lab.input_events` work unchanged:
+
+```sh
+sudo -n systemd-run --unit=putgd-lab-input --collect \
+  /usr/bin/python3 tools/lab/host_input.py serve \
+  --socket /run/user/1000/putgd-lab-input.sock --user patrick
+ssh -NT ... -o StreamLocalBindUnlink=yes \
+  -L "$run/qmp.sock:/run/user/1000/putgd-lab-input.sock" patrick@HOST
+```
+
+Stop the unit after the campaign; its devices disappear with it. On Kubuntu
+26.04 Plasma/X11 the devices appear in `xinput`, and a runner pointer move to
+(960, 540) on the 1920x1080 desktop read back exactly from `XQueryPointer`.
+Wayland sessions still need their own verification before use as evidence.
+`tests/desktop/test_host_input.py` covers the accepted protocol and rejections.
+
 ## Evidence and gates
 
 Each named run emits `results.json` and JUnit `results.xml`, independent paste JSON,
