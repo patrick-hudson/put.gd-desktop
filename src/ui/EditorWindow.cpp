@@ -1,9 +1,12 @@
 #include "EditorWindow.h"
 #include "RedesignTheme.h"
 #include "VisualStyle.h"
+#include "core/Settings.h"
 #include <QButtonGroup>
 #include <QCloseEvent>
+#include <QColorDialog>
 #include <QComboBox>
+#include <QFontComboBox>
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
@@ -11,10 +14,12 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QScreen>
 #include <QShortcut>
 #include <QSlider>
+#include <QSpinBox>
 #include <QStandardPaths>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -34,6 +39,9 @@ QToolButton[visualRole="tool"]:checked { background: #232838; border-color: #6EA
 QToolButton[visualRole="swatch"] { min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; padding: 0; border-radius: 10px; border: 2px solid #343A45; }
 QToolButton[visualRole="swatch"]:checked { border: 2px solid #E7E9EE; }
 QToolButton[visualRole="swatch"]:focus { border: 2px solid #6EA8FE; padding: 0; }
+QToolButton[visualRole="customSwatch"] { min-width: 18px; max-width: 18px; min-height: 18px; max-height: 18px; padding: 0; border-radius: 10px; border: 2px solid #343A45;
+ background: qconicalgradient(cx:0.5, cy:0.5, angle:0, stop:0 #ef4444, stop:0.17 #f59e0b, stop:0.33 #facc15, stop:0.5 #22c55e, stop:0.67 #3b82f6, stop:0.83 #a855f7, stop:1 #ef4444); }
+QToolButton[visualRole="customSwatch"]:hover, QToolButton[visualRole="customSwatch"]:focus { border: 2px solid #6EA8FE; }
 QFrame[visualRole="toolSeparator"] { background: #2A2F38; border: none; min-width: 1px; max-width: 1px; margin: 4px 6px; }
 QSlider::groove:horizontal { height: 4px; background: #343A45; border-radius: 2px; }
 QSlider::sub-page:horizontal { background: #6EA8FE; border-radius: 2px; }
@@ -76,13 +84,16 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  auto* optionLayout=new QHBoxLayout(options);optionLayout->setContentsMargins(12,6,12,6);optionLayout->setSpacing(14);
  QHBoxLayout* layout=nullptr;
  colorRow_=row(options,layout);auto* colorLabel=new QLabel("Color",colorRow_);VisualStyle::role(colorLabel,"muted");layout->addWidget(colorLabel);
- auto* swatchGroup=new QButtonGroup(this);
+ swatchGroup_=new QButtonGroup(this);
  for(const auto& color:{QColor(220,38,38),QColor(245,158,11),QColor(250,204,21),QColor(34,197,94),QColor(59,130,246),QColor(255,255,255),QColor(17,19,23)}){
-  auto* swatch=new QToolButton(colorRow_);swatch->setCheckable(true);VisualStyle::role(swatch,"swatch");
-  swatch->setStyleSheet(QString("QToolButton { background: %1; }").arg(color.name()));swatch->setProperty("swatchColor",color);swatch->setAccessibleName("Color "+color.name());swatch->setToolTip(color.name());
-  swatchGroup->addButton(swatch);swatches_.append(swatch);layout->addWidget(swatch);
-  connect(swatch,&QToolButton::clicked,this,[this,color]{if(canvas_->tool()==Tool::Highlight||(doc_.find(canvas_->selected())&&doc_.find(canvas_->selected())->kind==editor::Shape::Kind::Highlight))highlightColor_=color;else annotationColor_=color;syncStyle(true);});
+  auto* swatch=makeSwatch(color);swatches_.append(swatch);layout->addWidget(swatch);
  }
+ // Recently picked custom colors sit between the palette and the picker.
+ layout->addWidget(separator(colorRow_));
+ auto* recent=new QWidget(colorRow_);recentLayout_=new QHBoxLayout(recent);recentLayout_->setContentsMargins(0,0,0,0);recentLayout_->setSpacing(6);layout->addWidget(recent);
+ customColor_=new QToolButton(colorRow_);VisualStyle::role(customColor_,"customSwatch");customColor_->setObjectName("customColor");
+ customColor_->setToolTip("Custom color…");customColor_->setAccessibleName("Custom color");layout->addWidget(customColor_);
+ connect(customColor_,&QToolButton::clicked,this,&EditorWindow::pickCustomColor);
  optionLayout->addWidget(colorRow_);
  widthRow_=row(options,layout);auto* widthLabel=new QLabel("Line",widthRow_);VisualStyle::role(widthLabel,"muted");layout->addWidget(widthLabel);
  width_=VisualStyle::choiceBox(widthRow_);width_->addItem("Thin",2);width_->addItem("Medium",4);width_->addItem("Thick",8);width_->setCurrentIndex(1);width_->setAccessibleName("Line width");layout->addWidget(width_);
@@ -90,8 +101,12 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  blurRow_=row(options,layout);auto* blurLabel=new QLabel("Strength",blurRow_);VisualStyle::role(blurLabel,"muted");layout->addWidget(blurLabel);
  strength_=new QSlider(Qt::Horizontal,blurRow_);strength_->setRange(editor::EditDocument::minimumBlur,editor::EditDocument::maximumBlur);strength_->setValue(12);strength_->setFixedWidth(140);strength_->setAccessibleName("Blur strength");layout->addWidget(strength_);
  optionLayout->addWidget(blurRow_);
- textRow_=row(options,layout);auto* sizeLabel=new QLabel("Size",textRow_);VisualStyle::role(sizeLabel,"muted");layout->addWidget(sizeLabel);
- textSize_=VisualStyle::choiceBox(textRow_);textSize_->addItem("Small",18);textSize_->addItem("Medium",28);textSize_->addItem("Large",44);textSize_->setCurrentIndex(1);textSize_->setAccessibleName("Text size");layout->addWidget(textSize_);
+ textRow_=row(options,layout);auto* fontLabel=new QLabel("Font",textRow_);VisualStyle::role(fontLabel,"muted");layout->addWidget(fontLabel);
+ font_=new QFontComboBox(textRow_);font_->setObjectName("textFont");font_->setAccessibleName("Font");font_->setCurrentFont(QFont());font_->setMaximumWidth(220);layout->addWidget(font_);
+ auto* sizeLabel=new QLabel("Size",textRow_);VisualStyle::role(sizeLabel,"muted");layout->addWidget(sizeLabel);
+ // Image pixels; applied when typing finishes (Enter or leaving the field) or on each step.
+ textSize_=new QSpinBox(textRow_);textSize_->setObjectName("textSize");textSize_->setRange(editor::minimumFontPixels,editor::maximumFontPixels);textSize_->setValue(28);textSize_->setSuffix(" px");
+ textSize_->setKeyboardTracking(false);textSize_->setAccessibleName("Text size in image pixels");layout->addWidget(textSize_);
  optionLayout->addWidget(textRow_);
  cropRow_=row(options,layout);
  auto* cropHint=new QLabel("Drag to choose the area to keep.",cropRow_);VisualStyle::role(cropHint,"secondary");layout->addWidget(cropHint);
@@ -126,16 +141,18 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   // A selected annotation shows, and is edited by, its own style controls.
   if(const auto* shape=doc_.find(canvas_->selected())){
    if(shape->kind==editor::Shape::Kind::Highlight)highlightColor_=shape->color;else if(shape->kind!=editor::Shape::Kind::Redact&&shape->kind!=editor::Shape::Kind::Blur)annotationColor_=shape->color;
-   width_->blockSignals(true);textSize_->blockSignals(true);strength_->blockSignals(true);
-   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setCurrentIndex(std::max(0,textSize_->findData(shape->fontPixels)));strength_->setValue(shape->strength);
-   width_->blockSignals(false);textSize_->blockSignals(false);strength_->blockSignals(false);
+   width_->blockSignals(true);textSize_->blockSignals(true);font_->blockSignals(true);strength_->blockSignals(true);
+   width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setValue(shape->fontPixels);strength_->setValue(shape->strength);
+   if(shape->kind==editor::Shape::Kind::Text)font_->setCurrentFont(shape->fontFamily.isEmpty()?QFont():QFont(shape->fontFamily));
+   width_->blockSignals(false);textSize_->blockSignals(false);font_->blockSignals(false);strength_->blockSignals(false);
    syncStyle(false);return;
   }
   refresh();
  });
  // Only a change to a style control edits the selected shape.
  connect(width_,&QComboBox::currentIndexChanged,this,[this]{syncStyle(true);});
- connect(textSize_,&QComboBox::currentIndexChanged,this,[this]{syncStyle(true);});
+ connect(textSize_,&QSpinBox::valueChanged,this,[this]{syncStyle(true);});
+ connect(font_,&QFontComboBox::currentFontChanged,this,[this]{syncStyle(true);});
  connect(strength_,&QSlider::sliderReleased,this,[this]{syncStyle(true);});
  connect(strength_,&QSlider::valueChanged,this,[this]{if(!strength_->isSliderDown())syncStyle(true);});
  connect(applyCrop,&QPushButton::clicked,this,[this]{canvas_->applyCrop();});
@@ -179,16 +196,54 @@ void EditorWindow::selectTool(Tool tool){
  canvas_->setTool(tool);syncStyle(false);refresh();canvas_->setFocus();
 }
 
+QToolButton* EditorWindow::makeSwatch(const QColor& color){
+ auto* swatch=new QToolButton(colorRow_);swatch->setCheckable(true);VisualStyle::role(swatch,"swatch");
+ swatch->setStyleSheet(QString("QToolButton { background: %1; }").arg(color.name()));swatch->setProperty("swatchColor",color);swatch->setAccessibleName("Color "+color.name());swatch->setToolTip(color.name());
+ swatchGroup_->addButton(swatch);connect(swatch,&QToolButton::clicked,this,[this,color]{useColor(color);});return swatch;
+}
+
+void EditorWindow::useColor(const QColor& color){
+ const auto* shape=doc_.find(canvas_->selected());
+ if(canvas_->tool()==Tool::Highlight||(shape&&shape->kind==editor::Shape::Kind::Highlight))highlightColor_=color;else annotationColor_=color;
+ syncStyle(true);
+}
+
+void EditorWindow::pickCustomColor(){
+ const auto* shape=doc_.find(canvas_->selected());
+ const bool highlight=canvas_->tool()==Tool::Highlight||(shape&&shape->kind==editor::Shape::Kind::Highlight);
+ const auto color=QColorDialog::getColor(highlight?highlightColor_:annotationColor_,this,"Custom color");
+ if(!color.isValid())return;
+ // Palette colors are already one click away; only custom colors are remembered.
+ bool palette=false;for(auto* swatch:swatches_)palette=palette||swatch->property("swatchColor").value<QColor>()==color;
+ if(!palette){recentColors_.removeAll(color.name());recentColors_.prepend(color.name());while(recentColors_.size()>Settings::maximumRecentColors)recentColors_.removeLast();rebuildRecentColors();}
+ useColor(color);
+}
+
+void EditorWindow::setRecentColors(const QStringList& colors){
+ static const QRegularExpression hex("^#[0-9a-f]{6}$");
+ recentColors_.clear();
+ for(const auto& color:colors)if(hex.match(color).hasMatch()&&!recentColors_.contains(color)&&recentColors_.size()<Settings::maximumRecentColors)recentColors_.append(color);
+ rebuildRecentColors();syncStyle(false);
+}
+
+void EditorWindow::rebuildRecentColors(){
+ for(auto* swatch:std::exchange(recentSwatches_,{})){swatchGroup_->removeButton(swatch);swatch->deleteLater();}
+ for(const auto& name:recentColors_){auto* swatch=makeSwatch(QColor(name));swatch->setToolTip("Recent: "+name);recentSwatches_.append(swatch);recentLayout_->addWidget(swatch);}
+}
+
 void EditorWindow::documentEdited(){canvas_->documentChanged();refresh();}
 
 void EditorWindow::syncStyle(bool applyToSelection){
  editor::ToolStyle style;
  const auto* shape=doc_.find(canvas_->selected());
  const bool highlight=canvas_->tool()==Tool::Highlight||(shape&&shape->kind==editor::Shape::Kind::Highlight);
- style.color=highlight?highlightColor_:annotationColor_;style.width=width_->currentData().toInt();style.fontPixels=textSize_->currentData().toInt();style.strength=strength_->value();
+ style.color=highlight?highlightColor_:annotationColor_;style.width=width_->currentData().toInt();style.fontPixels=textSize_->value();style.fontFamily=font_->currentFont().family();style.strength=strength_->value();
  if(shape&&shape->kind==editor::Shape::Kind::Redact)style.color=Qt::black;
  canvas_->setStyle(style);if(applyToSelection)canvas_->applyStyleToSelection();
- for(auto* swatch:swatches_){swatch->blockSignals(true);swatch->setChecked(swatch->property("swatchColor").value<QColor>()==style.color);swatch->blockSignals(false);}
+ // An exclusive group cannot uncheck everything, which a color off the palette needs.
+ swatchGroup_->setExclusive(false);
+ for(auto* swatch:swatches_+recentSwatches_){swatch->blockSignals(true);swatch->setChecked(swatch->property("swatchColor").value<QColor>()==style.color);swatch->blockSignals(false);}
+ swatchGroup_->setExclusive(true);
  refresh();
 }
 

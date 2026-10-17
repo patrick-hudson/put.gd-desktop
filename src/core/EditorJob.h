@@ -9,6 +9,8 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <QStringList>
 
 class QFile;
 
@@ -34,7 +36,8 @@ private:
  std::atomic_bool cancelled_{false};
 };
 
-struct EditorResult {QByteArray png;int width=0,height=0;Error error;};
+// recentColors is set whenever the helper reached its checkpoint.
+struct EditorResult {QByteArray png;int width=0,height=0;Error error;std::optional<QStringList> recentColors;};
 
 // Synchronous supervision of `putgd-ui --edit-image`. Run on a background
 // worker. Startup and finalization have deadlines; editing itself does not.
@@ -43,6 +46,8 @@ public:
  static constexpr qint64 admissionPixels=24000000;
  static constexpr int maximumQueuedCommands=16;
  EditorJob(QString stagingRoot,QString helperPath={},int startupTimeoutMs=20000,int finalizeTimeoutMs=120000,int commandTimeoutMs=8000);
+ // Custom colors the editor offers as quick picks; it reports them back.
+ EditorJob& withRecentColors(QStringList colors){recentColors_=std::move(colors);return *this;}
  // Writes `image` to private staging, then releases it before the helper
  // starts. Returns only bytes that pass identity and sanitized-PNG checks.
  EditorResult run(QImage& image,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
@@ -52,7 +57,7 @@ public:
  static void discardStaging(const QString& stagingRoot);
 private:
  EditorResult supervise(const std::function<bool(QFile&)>& stage,const QString& destination,qint64 outputBytes,const std::shared_ptr<EditorSession>&) const;
- QString root_,helperPath_;
+ QString root_,helperPath_;QStringList recentColors_;
  int startupTimeoutMs_,finalizeTimeoutMs_,commandTimeoutMs_;
 };
 }

@@ -180,7 +180,7 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
     async def edit_image(id: str, commands: list[Json]) -> Json:
-        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 (text). Redact removes covered pixels; blur is only a visual effect."""
+        """Apply 1-100 edits atomically in the open editor, shown live in its window. Ops: add {shape}, update {shapeId, shape}, remove {shapeId}, crop {rect}, resetCrop, undo, redo. Shapes use source-image pixels: redact/blur/rectangle/highlight {kind, rect:[x,y,w,h]}, arrow {kind, from:[x,y], to:[x,y]}, text {kind, at:[x,y], text}; optional color '#RRGGBB' (not redact/blur), width 1-64, strength 2-64 (blur), fontPixels 8-200 and font family name or '' for the default (text). Redact removes covered pixels; blur is only a visual effect."""
         if not identifier(id) or not safe_commands(commands):
             return invalid()
         return await adapter.call('editor.apply', {'id': id, 'commands': commands})

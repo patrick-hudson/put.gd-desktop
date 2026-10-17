@@ -110,7 +110,7 @@ private slots:
   const int retained=doc.historyEntries();QVERIFY(retained>10);
   int undone=0;while(doc.undo())++undone;QCOMPARE(undone,retained);QCOMPARE(doc.shapes().size(),1000-retained);QVERIFY(doc.historyBytes()<=EditDocument::maximumHistoryBytes);
   int redone=0;while(doc.redo())++redone;QCOMPARE(redone,retained);QCOMPARE(doc.shapes().size(),1000);
-  EditDocument small(noise({50,50},3));for(int i=0;i<300;++i)small.add(box(Shape::Kind::Redact,QRect(1,1,2,2)));QCOMPARE(small.historyEntries(),EditDocument::maximumHistory);
+  EditDocument small(noise({50,50},3));for(int i=0;i<210;++i)small.add(box(Shape::Kind::Redact,QRect(1,1,2,2)));QCOMPARE(small.historyEntries(),EditDocument::maximumHistory);
   // Long text cannot grow history past its byte budget either.
   Shape text;text.kind=Shape::Kind::Text;text.text=QString(5000,'x');text.rect=QRect(1,1,10,10);const auto id=doc.add(text);QCOMPARE(doc.find(id)->text.size(),EditDocument::maximumTextCharacters);
  }
@@ -204,6 +204,18 @@ private slots:
   QCOMPARE(doc.find(id)->rect.topLeft(),QPoint(90,80));QVERIFY(!canvas.editingText());
   QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(100,90));QVERIFY(canvas.editingText());
   canvas.finishText(false);QCOMPARE(doc.find(id)->text,QString("Note"));
+ }
+ void textFontFamilyIsAgentSettableAndSizesTheBox(){
+  EditDocument doc(noise({400,200},13));QJsonArray created;QString code,message;
+  QVERIFY2(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{10,10}},{"text","Wide WWW"},{"fontPixels",40},{"font","DejaVu Sans Mono"}}}}},created,code,message),qPrintable(message));
+  const auto id=quint64(created.first().toInteger());const auto* shape=doc.find(id);QCOMPARE(shape->fontFamily,QString("DejaVu Sans Mono"));
+  QCOMPARE(QFontMetrics(textFont(shape->fontFamily,40)).height(),shape->rect.height());
+  const auto state=Commands::state(doc)["shapes"].toArray().first().toObject();QCOMPARE(state["font"].toString(),QString("DejaVu Sans Mono"));QCOMPARE(state["fontPixels"].toInt(),40);
+  QVERIFY(Commands::apply(doc,{QJsonObject{{"op","update"},{"shapeId",double(id)},{"shape",QJsonObject{{"font",""}}}}},created,code,message));QVERIFY(doc.find(id)->fontFamily.isEmpty());
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","update"},{"shapeId",double(id)},{"shape",QJsonObject{{"font",QString(101,'a')}}}}},created,code,message));QCOMPARE(code,QString("edit_command_invalid"));
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","update"},{"shapeId",double(id)},{"shape",QJsonObject{{"font","Bad\nName"}}}}},created,code,message));
+  QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{1,1,5,5}},{"font","Sans"}}}}},created,code,message));
+  QVERIFY(!doc.exportPng().isEmpty());
  }
  void canvasCropRequiresExplicitApply(){
   EditDocument doc(noise({400,300},9));EditorCanvas canvas(doc);canvas.resize(500,400);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));

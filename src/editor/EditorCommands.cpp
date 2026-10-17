@@ -30,15 +30,15 @@ bool pointFrom(const QJsonValue& value,QPoint& out){
  out=QPoint(x,y);return true;
 }
 bool only(const QJsonObject& object,const QStringList& allowed){for(auto it=object.begin();it!=object.end();++it)if(!allowed.contains(it.key()))return false;return true;}
-QRect textBox(const QPoint& at,const QString& text,int pixels){
- QFont font;font.setPixelSize(std::max(4,pixels));font.setBold(true);const QFontMetrics metrics(font);
+QRect textBox(const QPoint& at,const QString& text,const QString& family,int pixels){
+ const QFontMetrics metrics(textFont(family,pixels));
  return QRect(at,QSize(metrics.horizontalAdvance(text)+1,metrics.height()));
 }
 struct Failure{QString code,message;};
 // Fields absent from `object` keep the values already in `shape`.
 bool shapeFrom(const QJsonObject& object,Shape& shape,const QRect& image,bool creating,Failure& failure){
  auto bad=[&](const QString& message){failure={"edit_command_invalid",message};return false;};
- if(!only(object,{"kind","rect","from","to","at","color","width","strength","fontPixels","text"}))return bad("Shape has unsupported fields");
+ if(!only(object,{"kind","rect","from","to","at","color","width","strength","fontPixels","font","text"}))return bad("Shape has unsupported fields");
  if(creating){
   if(!kinds().contains(object["kind"].toString()))return bad("Shape kind must be redact, blur, arrow, rectangle, text or highlight");
   shape.kind=kinds().value(object["kind"].toString());
@@ -54,7 +54,14 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const QRect& image,bool cr
  }
  if(object.contains("width")&&!integer(object["width"],1,64,shape.width))return bad("Width must be an integer from 1 to 64");
  if(object.contains("strength")&&!integer(object["strength"],EditDocument::minimumBlur,EditDocument::maximumBlur,shape.strength))return bad("Blur strength must be an integer from 2 to 64");
- if(object.contains("fontPixels")&&!integer(object["fontPixels"],8,200,shape.fontPixels))return bad("Text size must be an integer from 8 to 200 pixels");
+ if(object.contains("fontPixels")&&!integer(object["fontPixels"],minimumFontPixels,maximumFontPixels,shape.fontPixels))return bad("Text size must be an integer from 8 to 200 pixels");
+ if(object.contains("font")){
+  if(!text)return bad("Only text shapes have a font");
+  const auto family=object["font"].toString();bool printable=object["font"].isString()&&family.size()<=maximumFontFamilyCharacters;
+  for(const auto c:family)printable=printable&&c.isPrint();
+  if(!printable)return bad("font must be a family name of at most 100 printable characters; empty means the default");
+  shape.fontFamily=family;
+ }
  if(object.contains("text")){
   if(!text)return bad("Only text shapes have text");
   const auto value=object["text"].toString();
@@ -71,7 +78,7 @@ bool shapeFrom(const QJsonObject& object,Shape& shape,const QRect& image,bool cr
   if(object.contains("rect")||object.contains("from")||object.contains("to"))return bad("Text uses an at point; its box follows the text");
   QPoint at=shape.rect.topLeft();if(object.contains("at")&&!pointFrom(object["at"],at))return bad("at must be [x, y]");
   if(creating&&(!object.contains("at")||!object.contains("text")))return bad("Text needs at and text");
-  shape.rect=textBox(at,shape.text,shape.fontPixels);
+  shape.rect=textBox(at,shape.text,shape.fontFamily,shape.fontPixels);
  }else{
   if(object.contains("from")||object.contains("to")||object.contains("at"))return bad("Box shapes use rect");
   if(object.contains("rect")&&!rectFrom(object["rect"],shape.rect))return bad("rect must be [x, y, width, height] with positive size");
@@ -94,7 +101,7 @@ QJsonObject shapeJson(const Shape& shape){
  if(shape.kind==Shape::Kind::Arrow||shape.kind==Shape::Kind::Rectangle||shape.kind==Shape::Kind::Text||shape.kind==Shape::Kind::Highlight)result["color"]=shape.color.name();
  if(shape.kind==Shape::Kind::Arrow||shape.kind==Shape::Kind::Rectangle)result["width"]=shape.width;
  if(shape.kind==Shape::Kind::Blur)result["strength"]=shape.strength;
- if(shape.kind==Shape::Kind::Text){result["text"]=shape.text;result["fontPixels"]=shape.fontPixels;result["at"]=pointJson(shape.rect.topLeft());}
+ if(shape.kind==Shape::Kind::Text){result["text"]=shape.text;result["fontPixels"]=shape.fontPixels;result["font"]=shape.fontFamily;result["at"]=pointJson(shape.rect.topLeft());}
  return result;
 }
 

@@ -1,6 +1,7 @@
 #include "EditorJob.h"
 #include "BuildInfo.h"
 #include "SanitizedPng.h"
+#include "Settings.h"
 #include "app/UiControl.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
@@ -10,7 +11,9 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QImageWriter>
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QRegularExpression>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QTemporaryDir>
@@ -38,6 +41,14 @@ void EditorSession::setPhase(const QString& phase){std::lock_guard lock(mutex_);
 QList<EditorSession::Pending> EditorSession::take(){std::lock_guard lock(mutex_);return std::exchange(queue_,{});}
 
 namespace {
+// At most six distinct lowercase #rrggbb strings, as the settings validator accepts.
+bool recentColorList(const QJsonValue& value,QStringList& colors){
+ static const QRegularExpression hex("^#[0-9a-f]{6}$");
+ if(!value.isArray()||value.toArray().size()>Settings::maximumRecentColors)return false;
+ colors.clear();
+ for(const auto& color:value.toArray()){if(!color.isString()||!hex.match(color.toString()).hasMatch()||colors.contains(color.toString()))return false;colors.append(color.toString());}
+ return true;
+}
 Error failure(const QString& code){
  if(code=="edit_cancelled"||code=="cancelled")return {"cancelled","Edit discarded; nothing was uploaded",{}};
  if(code=="input_excessive")return {"edit_input_too_large","This image is too large to edit; use a smaller copy",{}};
@@ -135,6 +146,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  request["input"]=descriptor(inputPath,inputIdentity,inputHash);request["output"]=descriptor(outputPath,outputIdentity,{});
  request["limits"]=QJsonObject{{"imagePixels",QString::number(admissionPixels)},{"outputBytes",QString::number(outputBytes)}};
  request["destination"]=destination.left(200).isEmpty()?QStringLiteral("Upload"):destination.left(200);
+ request["recentColors"]=QJsonArray::fromStringList(recentColors_.mid(0,Settings::maximumRecentColors));
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
  bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false;QJsonObject reply;qint64 stderrBytes=0;
@@ -161,16 +173,18 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    return;
   }
   if(type=="checkpoint"&&ready&&!checkpoint&&payload["ok"].isBool()){
+   QStringList colors;
+   if(!recentColorList(payload["recentColors"],colors)){protocolFailed=true;return;}
    if(!payload["ok"].toBool()){
     const auto code=payload["code"].toString();
-    if(payload.size()!=5||!QStringList{"edit_cancelled","source_unsupported","input_excessive","edit_export_failed","image_job_io"}.contains(code)){protocolFailed=true;return;}
+    if(payload.size()!=6||!QStringList{"edit_cancelled","source_unsupported","input_excessive","edit_export_failed","image_job_io"}.contains(code)){protocolFailed=true;return;}
    }else{
     qint64 count=0;const auto hash=payload["sha256"].toString();
-    if(!finalizing||payload.size()!=8||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
+    if(!finalizing||payload.size()!=9||!number(payload["bytes"],count)||count<1||count>outputBytes||hash.size()!=64||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1()||!payload["width"].isDouble()||!payload["height"].isDouble()){protocolFailed=true;return;}
     const auto width=payload["width"].toInteger(),height=payload["height"].toInteger();
     if(payload["width"].toDouble()!=width||payload["height"].toDouble()!=height||width<1||height<1||width>INT_MAX||height>INT_MAX||width>admissionPixels/height){protocolFailed=true;return;}
    }
-   checkpoint=true;reply=payload;session->setPhase("closed");phaseClock.restart();
+   checkpoint=true;reply=payload;result.recentColors=colors;session->setPhase("closed");phaseClock.restart();
    if(control.send("checkpointAccepted",envelope(nonce)).isEmpty())protocolFailed=true;
    return;
   }

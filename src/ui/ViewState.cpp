@@ -16,7 +16,7 @@ bool stringArray(const QJsonValue& value,int maximum=1000);
 // Recent editor colors are the only non-scalar preference: a short string list.
 bool preferencesDraft(const QJsonValue& value){
  auto object=value.toObject();const auto colors=object.take("editorRecentColors");
- return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","unlockCredentialsAtStartup"})&&(colors.isUndefined()||stringArray(colors,8));
+ return value.isObject()&&scalars(object,{"notifications","launchAtLogin","uploadClipboardBehavior","unlockCredentialsAtStartup"})&&(colors.isUndefined()||stringArray(colors,6));
 }
 bool stringArray(const QJsonValue& value,int maximum){if(!value.isArray()||value.toArray().size()>maximum)return false;for(auto v:value.toArray())if(!v.isString())return false;return true;}
 bool geometry(const QJsonValue& v){if(!v.isArray()||v.toArray().size()!=4)return false;for(auto n:v.toArray())if(!n.isDouble()||std::floor(n.toDouble())!=n.toDouble()||std::abs(n.toDouble())>2147483647)return false;return v.toArray()[2].toInt()>0&&v.toArray()[3].toInt()>0;}

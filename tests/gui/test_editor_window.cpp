@@ -6,6 +6,8 @@
 #include <QPushButton>
 #include <QShortcut>
 #include <QToolButton>
+#include <QSpinBox>
+#include <QFontComboBox>
 #include <QSignalSpy>
 #include <QTest>
 using namespace putgd;using namespace putgd::editor;
@@ -50,6 +52,23 @@ private slots:
   const auto shape=*doc.find(id);
   for(auto tool:{Tool::Highlight,Tool::Arrow,Tool::Text,Tool::Blur,Tool::Redact,Tool::Rectangle,Tool::Select}){window.selectTool(tool);QCOMPARE(*doc.find(id),shape);}
   QCOMPARE(canvas.selected(),quint64(0));
+ }
+ void recentColorsAndTextControlsEditTheSelection(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  // Malformed, duplicate and excess entries are dropped; at most six remain.
+  window.setRecentColors({"#123456","#123456","NOTACOLOR","#A1B2C3","#000001","#000002","#000003","#000004","#000005","#000006"});
+  QCOMPARE(window.recentColors(),QStringList({"#123456","#000001","#000002","#000003","#000004","#000005"}));
+  add(doc,{{"kind","text"},{"at",QJsonArray{20,20}},{"text","Label"}});window.documentEdited();
+  auto& canvas=window.canvas();window.selectTool(Tool::Select);
+  const auto id=doc.shapes().first().id;const auto at=doc.shapes().first().rect.center();
+  // Select the label by clicking it (the 400x260 image is centered at 100%).
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-260)/2);QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+at);QCOMPARE(canvas.selected(),id);
+  QToolButton* recent=nullptr;for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName()=="Color #123456")recent=button;
+  QVERIFY(recent);recent->click();QCOMPARE(doc.find(id)->color,QColor("#123456"));QVERIFY(recent->isChecked());
+  auto* size=window.findChild<QSpinBox*>("textSize");QVERIFY(size);size->setValue(64);QCOMPARE(doc.find(id)->fontPixels,64);
+  auto* font=window.findChild<QFontComboBox*>("textFont");QVERIFY(font);QVERIFY(font->count()>0);
+  font->setCurrentIndex(font->count()-1);QCOMPARE(doc.find(id)->fontFamily,font->currentFont().family());
+  QVERIFY(window.findChild<QToolButton*>("customColor"));
  }
  void initialSizeFitsSmallScreens(){
   // Fedora's assertion-enabled libstdc++ trapped an inverted clamp on screens under 1000 px.

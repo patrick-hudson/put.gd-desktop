@@ -34,7 +34,7 @@ private slots:
         const auto chosen=putgd::Settings::fromValidated(doc);QVERIFY(!chosen.unlockCredentialsAtStartup);QCOMPARE(chosen.editorRecentColors,QStringList({"#a1b2c3","#000000"}));
         const QList<QJsonValue> invalid{QJsonArray{"#A1B2C3"},QJsonArray{"red"},QJsonArray{1},QJsonArray{"#1","#2"},QJsonValue("#a1b2c3")};
         for(const auto& colors:invalid){preferences["editorRecentColors"]=colors;doc["preferences"]=preferences;QCOMPARE(putgd::Settings::validate(doc,validator).code,QString("config_invalid"));}
-        QJsonArray nine;for(int i=0;i<9;++i)nine.append(QString("#00000%1").arg(i));preferences["editorRecentColors"]=nine;doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
+        QJsonArray seven;for(int i=0;i<7;++i)seven.append(QString("#00000%1").arg(i));preferences["editorRecentColors"]=seven;doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
         preferences.remove("editorRecentColors");preferences["unlockCredentialsAtStartup"]="yes";doc["preferences"]=preferences;QVERIFY(putgd::Settings::validate(doc,validator));
     }
     void captureDefaultFollowsFutureChangesWithoutChangingExplicitExceptions() {

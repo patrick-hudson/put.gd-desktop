@@ -56,7 +56,7 @@ struct Settings {
     // desktop keyring may show its own unlock prompt. Uploads never unlock.
     bool unlockCredentialsAtStartup = true;
     // Most recent first; custom colors picked in the editor.
-    static constexpr int maximumRecentColors = 8;
+    static constexpr int maximumRecentColors = 6;
     QStringList editorRecentColors;
 
     static QJsonObject defaults();

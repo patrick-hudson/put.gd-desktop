@@ -50,9 +50,13 @@ const Shape* EditDocument::find(quint64 id) const {for(const auto& shape:state_.
 
 QRect EditDocument::clampRect(const QRect& rect,const QRect& bounds){return rect.normalized().intersected(bounds);}
 
+QFont textFont(const QString& family,int pixels){
+ QFont font;if(!family.isEmpty())font.setFamily(family);
+ font.setPixelSize(std::max(4,pixels));font.setBold(true);return font;
+}
 qint64 EditDocument::bytesOf(const State& state){
  qint64 total=qint64(sizeof(State))+qint64(state.shapes.size())*qint64(sizeof(Shape));
- for(const auto& shape:state.shapes)total+=qint64(shape.text.size())*qint64(sizeof(QChar));
+ for(const auto& shape:state.shapes)total+=qint64(shape.text.size()+shape.fontFamily.size())*qint64(sizeof(QChar));
  return total;
 }
 
@@ -150,7 +154,7 @@ void EditDocument::paintAnnotation(QPainter& painter,const Shape& shape){
  }
  case Shape::Kind::Text:{
   if(shape.text.isEmpty())break;
-  QFont font;font.setPixelSize(std::max(4,shape.fontPixels));font.setBold(true);
+  const auto font=textFont(shape.fontFamily,shape.fontPixels);
   QPainterPath path;path.addText(QPointF(shape.rect.left(),shape.rect.top()+QFontMetrics(font).ascent()),font,shape.text);
   painter.setPen(QPen(contrast(shape.color),std::max(2.0,shape.fontPixels/7.0),Qt::SolidLine,Qt::RoundCap,Qt::RoundJoin));painter.setBrush(Qt::NoBrush);painter.drawPath(path);
   painter.setPen(Qt::NoPen);painter.setBrush(shape.color);painter.drawPath(path);break;

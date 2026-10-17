@@ -51,7 +51,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
 | `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and shortcuts never unlock |
-| `preferences.editorRecentColors` | Optional, written by put.gd: up to 8 lowercase `#rrggbb` custom editor colors, most recent first |
+| `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
 
 Local saving and uploading are independent outputs. An upload route with a configured
 profile uploads; `archive.keepUploads: true` also saves a local copy before publication.

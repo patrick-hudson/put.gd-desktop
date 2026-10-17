@@ -83,12 +83,14 @@ private slots:
  }
  void agentCancelDiscardsWithoutOutput(){
   QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;
-  std::thread worker([&]{auto image=noise({64,64},2);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).run(image,"Save to the local archive",1024*1024,session);});
+  // Recent custom colors travel to the helper and back even when nothing is uploaded.
+  std::thread worker([&]{auto image=noise({64,64},2);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withRecentColors({"#123456","#abcdef"}).run(image,"Save to the local archive",1024*1024,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
   QVERIFY(waitPhase(*session,"editing"));
   QVERIFY(!ask(*session,"apply",{{"commands",QJsonArray{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","redact"},{"rect",QJsonArray{1,1,5,5}}}}}}}}).error);
   QVERIFY(!ask(*session,"cancel").error);if(worker.joinable())worker.join();
   QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);
+  QVERIFY(result.recentColors);QCOMPARE(*result.recentColors,QStringList({"#123456","#abcdef"}));
  }
  void residentCancellationTerminatesTheHelper(){
   QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();EditorResult result;

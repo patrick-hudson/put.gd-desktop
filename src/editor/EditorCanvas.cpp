@@ -23,7 +23,6 @@ double distanceToSegment(const QPointF& p,const QPointF& a,const QPointF& b){
  const double t=std::clamp(QPointF::dotProduct(p-a,ab)/length,0.0,1.0);
  return QLineF(p,a+t*ab).length();
 }
-QFont textFont(int pixels){QFont font;font.setPixelSize(std::max(4,pixels));font.setBold(true);return font;}
 Qt::CursorShape resizeCursor(int handle){return handle==0||handle==4?Qt::SizeFDiagCursor:handle==2||handle==6?Qt::SizeBDiagCursor:handle==1||handle==5?Qt::SizeVerCursor:Qt::SizeHorCursor;}
 }
 
@@ -56,8 +55,8 @@ void EditorCanvas::applyStyleToSelection(){
   if(k==Kind::Arrow||k==Kind::Rectangle||k==Kind::Text||k==Kind::Highlight)shape.color=style.color;
   if(k==Kind::Arrow||k==Kind::Rectangle)shape.width=style.width;
   if(k==Kind::Blur)shape.strength=style.strength;
-  if(k==Kind::Text)shape.fontPixels=style.fontPixels;
-  if(shape.kind==Shape::Kind::Text&&!shape.text.isEmpty()){const QFontMetrics metrics(textFont(shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));}
+  if(k==Kind::Text){shape.fontPixels=style.fontPixels;shape.fontFamily=style.fontFamily;}
+  if(shape.kind==Shape::Kind::Text&&!shape.text.isEmpty()){const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));shape.rect.setSize(QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));}
   if(doc_.replace(shape))emit changed();
  }
  update();
@@ -266,7 +265,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
   selected_=hit;emit selectionChanged();original_=*doc_.find(hit);drag_=Drag::Move;doc_.beginGesture();update();return;
  }
  Shape shape;shape.kind=kindFor(tool_);shape.color=shape.kind==Shape::Kind::Redact?QColor(Qt::black):style_.color;
- shape.width=style_.width;shape.strength=style_.strength;shape.fontPixels=style_.fontPixels;
+ shape.width=style_.width;shape.strength=style_.strength;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;
  const QPoint at(int(std::floor(image.x())),int(std::floor(image.y())));
  shape.from=shape.to=at;shape.rect=boxFrom(image,image);
  doc_.beginGesture();selected_=doc_.add(shape);original_=*doc_.find(selected_);drag_=Drag::Create;emit selectionChanged();update();
@@ -367,10 +366,10 @@ void EditorCanvas::cancelCrop(){
 
 void EditorCanvas::beginText(const QPointF& image,const Shape* existing){
  textAnchor_=QPointF(std::floor(image.x()),std::floor(image.y()));textShape_=existing?existing->id:0;
- const int pixels=existing?existing->fontPixels:style_.fontPixels;
+ const int pixels=existing?existing->fontPixels:style_.fontPixels;const auto family=existing?existing->fontFamily:style_.fontFamily;
  auto* editor=new QLineEdit(this);editor->setObjectName("annotationText");editor->setMaxLength(EditDocument::maximumTextCharacters);
  editor->setPlaceholderText("Type, then press Enter");editor->setAccessibleName("Annotation text");
- QFont font=textFont(std::clamp(int(std::lround(pixels*scale_)),12,96));editor->setFont(font);
+ QFont font=textFont(family,std::clamp(int(std::lround(pixels*scale_)),12,96));editor->setFont(font);
  if(existing)editor->setText(existing->text);
  const auto at=toWidget(textAnchor_);editor->move(int(at.x())-4,int(at.y())-4);
  editor->resize(std::max(220,QFontMetrics(font).horizontalAdvance(editor->text())+48),QFontMetrics(font).height()+12);
@@ -386,8 +385,8 @@ void EditorCanvas::finishText(bool commit){
  const auto* existing=doc_.find(textShape_);
  if(commit){
   Shape shape=existing?*existing:Shape{};
-  if(!existing){shape.kind=Shape::Kind::Text;shape.color=style_.color;shape.fontPixels=style_.fontPixels;shape.width=style_.width;}
-  shape.text=text;const QFontMetrics metrics(textFont(shape.fontPixels));
+  if(!existing){shape.kind=Shape::Kind::Text;shape.color=style_.color;shape.fontPixels=style_.fontPixels;shape.fontFamily=style_.fontFamily;shape.width=style_.width;}
+  shape.text=text;const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));
   shape.rect=QRect(QPoint(int(textAnchor_.x()),int(textAnchor_.y())),QSize(metrics.horizontalAdvance(text)+1,metrics.height()));
   if(text.isEmpty()){if(existing&&doc_.remove(existing->id))emit changed();selected_=0;}
   else if(existing){if(doc_.replace(shape))emit changed();}

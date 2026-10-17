@@ -243,6 +243,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  if(!(payload.kind=="image"||(payload.kind=="files"&&payload.files.size()==1))){op.error={"edit_source_unsupported","The editor needs exactly one static PNG or JPEG image",{}};op.state="failed";finish(op);return;}
  op.state="editing";op.phase="editing";
  const auto path=databasePath(),staging=root_+"/editing",helper=editorHelper_,destination=editorDestination(op);
+ const auto recentColors=settings_.snapshot().editorRecentColors;
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  auto image=std::make_shared<QImage>(payload.kind=="image"?std::move(payload.image):QImage());
  const auto file=payload.kind=="files"?payload.files.first():QString();payload={};
@@ -262,14 +263,15 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging,helper).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging,helper).withRecentColors(recentColors).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging,helper).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging,helper).withRecentColors(recentColors).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
+   if(edited->recentColors)rememberEditorColors(*edited->recentColors);
    if(flag->load()||edited->error.code=="cancelled"){op.cancelled=true;op.state="cancelled";op.error=flag->load()?Error{}:edited->error;finish(op);return;}
    if(edited->error){op.error=edited->error;op.state="failed";finish(op);return;}
    ClipboardPayload finalized;finalized.kind="png";finalized.bytes=std::move(edited->png);finalized.mime="image/png";
@@ -277,6 +279,12 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
    enqueue({op,std::move(finalized),true,flag,{}});
   });
  });
+}
+// Custom colors picked in the editor persist as a settings preference. A
+// conflicting concurrent save simply loses this update; colors are a convenience.
+void OperationService::rememberEditorColors(const QStringList& colors) {
+ if(colors==settings_.snapshot().editorRecentColors||!settings_.metadata()["validation"].toObject()["ok"].toBool())return;
+ settings_.patchAsync({{"preferences",QJsonObject{{"editorRecentColors",QJsonArray::fromStringList(colors)}}}},settings_.revision(),[](Result){});
 }
 void OperationService::editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply reply) {
  if(!editor_||editingId_!=id){reply({"editor_unavailable","No open editor has this operation ID",{}},{});return;}

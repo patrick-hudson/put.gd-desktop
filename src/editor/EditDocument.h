@@ -1,5 +1,6 @@
 #pragma once
 #include <QColor>
+#include <QFont>
 #include <QImage>
 #include <QList>
 #include <QPoint>
@@ -19,10 +20,15 @@ struct Shape {
  int width=4;         // outline/arrow pen width in image pixels
  int strength=12;     // Blur radius in image pixels
  int fontPixels=28;   // Text height in image pixels
+ QString fontFamily;  // Empty means the default sans-serif family
  QString text;
  QRect bounds() const;
  bool operator==(const Shape&) const=default;
 };
+
+// Bold text font shared by the canvas, export and agent commands.
+QFont textFont(const QString& family,int pixels);
+constexpr int minimumFontPixels=8,maximumFontPixels=200,maximumFontFamilyCharacters=100;
 
 // Undo history stores geometry snapshots, never pixel copies. The bounded base
 // image is immutable for the session; export renders it once at finalization.

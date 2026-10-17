@@ -7,7 +7,7 @@
 
 namespace putgd::editor {
 enum class Tool {Select,Redact,Blur,Crop,Arrow,Rectangle,Highlight,Text};
-struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;int fontPixels=28;};
+struct ToolStyle {QColor color=QColor(220,38,38);int width=4;int strength=12;int fontPixels=28;QString fontFamily;};
 
 // Interactive view of one EditDocument. The base raster is painted directly
 // from the document; only bounded display-resolution blur tiles are cached.

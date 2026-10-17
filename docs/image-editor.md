@@ -34,7 +34,7 @@ written before this feature inherit the region output route with no shortcut.
 | Arrow | A | Line with a filled head; color and Thin/Medium/Thick width |
 | Rectangle | R | Outline; color and width |
 | Highlight | H | Translucent colored marker, visually distinct from Redact |
-| Text | T | One line of bold outlined text; Small/Medium/Large |
+| Text | T | One line of bold outlined text; choose any installed font family and a size from 8 to 200 image pixels |
 
 You don't need Select to adjust a mark:
 
@@ -46,6 +46,11 @@ You don't need Select to adjust a mark:
   - Redactions, blurs and highlights are grabbed anywhere they cover.
 - Hold Ctrl to draw a new mark on top of an existing one.
 - With Text, dragging a label moves it, and clicking it edits it.
+
+Next to the seven palette colors, the rainbow button opens a color picker for
+any custom color. The last six custom colors you picked appear beside it as
+quick picks, and put.gd keeps them between editing sessions
+(`preferences.editorRecentColors`).
 
 Choosing a different tool deselects the current mark, so its style controls set
 the new tool's style and never restyle an earlier mark.
@@ -98,7 +103,8 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
 
 1. `bootstrap`: role, nonce, generation, build, input (`input.img`) and output descriptors
    (path, device, inode, bytes, sha256), limits (imagePixels, outputBytes) and a
-   destination label that `editor.inspect` reports to agents. Files are opened
+   destination label that `editor.inspect` reports to agents, and `recentColors`
+   (up to six `#rrggbb`) from settings. Files are opened
    through a pinned directory descriptor with `O_NOFOLLOW`, identity and digest
    checks.
 2. `ready` with the matching build, then `activate`; the helper decodes with an
@@ -108,7 +114,8 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
 4. `finalizing` when the user or an agent submits; the helper writes the export
    once, `fsync`s it, and sends `checkpoint` (bytes, sha256, width, height). A
    failure checkpoint carries `edit_cancelled`, `source_unsupported`,
-   `input_excessive`, `edit_export_failed` or `image_job_io`.
+   `input_excessive`, `edit_export_failed` or `image_job_io`. Every checkpoint
+   returns `recentColors`; the resident saves a changed list to settings.
 5. `checkpointAccepted`; the helper exits 0.
 
 Startup is limited to 20 s and finalization to 120 s; editing itself has no
@@ -181,7 +188,7 @@ Commands: `add {shape}`, `update {shapeId, shape}`, `remove {shapeId}`,
 | `arrow` | `from`, `to` `[x, y]` | `color` `#RRGGBB`, `width` 1–64 |
 | `rectangle` | `rect` | `color`, `width` |
 | `highlight` | `rect` | `color` |
-| `text` | `at` `[x, y]`, `text` (one line, ≤500) | `color`, `fontPixels` 8–200 |
+| `text` | `at` `[x, y]`, `text` (one line, ≤500) | `color`, `fontPixels` 8–200, `font` (family name ≤100 printable characters; `""` is the default sans-serif) |
 
 ```sh
 putgd-cli editor.open '{"source":"file","path":"/home/me/Pictures/screen.png"}'

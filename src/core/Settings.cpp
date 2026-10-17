@@ -206,7 +206,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         bool valid = colors.isArray() && colors.toArray().size() <= Settings::maximumRecentColors;
         if (valid) for (const auto& color : colors.toArray())
             valid = valid && color.isString() && QRegularExpression("^#[0-9a-f]{6}$").match(color.toString()).hasMatch();
-        if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 8 lowercase #rrggbb values.");
+        if (!valid) return invalid("/preferences/editorRecentColors", "Recent editor colors are up to 6 lowercase #rrggbb values.");
     }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");

@@ -4,6 +4,8 @@
 #include "core/BuildInfo.h"
 #include "editor/EditDocument.h"
 #include "editor/EditorCommands.h"
+#include "core/Settings.h"
+#include <QJsonArray>
 #include <QBuffer>
 #include <QDir>
 #include <QImageWriter>
@@ -93,13 +95,23 @@ private:
 }
 #endif
 
+namespace {
+// At most six distinct lowercase #rrggbb strings, as the settings validator accepts.
+bool recentColorList(const QJsonValue& value,QStringList& colors){
+ static const QRegularExpression hex("^#[0-9a-f]{6}$");
+ if(!value.isArray()||value.toArray().size()>Settings::maximumRecentColors)return false;
+ colors.clear();
+ for(const auto& color:value.toArray()){if(!color.isString()||!hex.match(color.toString()).hasMatch()||colors.contains(color.toString()))return false;colors.append(color.toString());}
+ return true;
+}
+}
 int runImageEditor(QApplication& app,QIODevice& pipes){
 #ifndef Q_OS_UNIX
  Q_UNUSED(app);Q_UNUSED(pipes);return 2;
 #else
  UiControl control(pipes);StagedFiles files;
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
- QString nonce,destination;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ QString nonce,destination;QStringList recentColors;bool bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  const auto build=QJsonDocument::fromJson(buildManifestJson()).object();
  // Only startup is time limited; a legitimate edit may stay open indefinitely.
  QTimer deadline;deadline.setSingleShot(true);deadline.start(10000);
@@ -107,6 +119,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  const auto finish=[&](QJsonObject result){
   if(terminal)return;
   terminal=true;
+  // Custom colors outlive this editor; the resident saves them to settings.
+  result["recentColors"]=QJsonArray::fromStringList(window?window->recentColors():recentColors);
   if(control.send("checkpoint",result).isEmpty())fail();
  };
  const auto refuse=[&](const QString& code){auto result=envelope(nonce);result["ok"]=false;result["code"]=code;finish(result);};
@@ -177,7 +191,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(type=="bootstrap"&&!bootstrapped){
    nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();
    const QUuid id(nonce);
-   if(object.size()!=8||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   if(!recentColorList(object["recentColors"],recentColors)){fail();return;}
+   if(object.size()!=9||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -199,7 +214,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    const auto image=reader.read();if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
-   window=std::make_unique<EditorWindow>(*document);
+   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);
    QObject::connect(window.get(),&EditorWindow::cancelRequested,&app,[&]{window->setBusy("Discarding…");refuse("edit_cancelled");});
    QObject::connect(window.get(),&EditorWindow::uploadRequested,&app,submit);
    deadline.stop();

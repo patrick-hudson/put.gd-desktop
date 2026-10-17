@@ -170,6 +170,7 @@ private:
  QString root_;
  std::unique_ptr<QLockFile> journalOwner_;
  SettingsService& settings_;
+ void rememberEditorColors(const QStringList&);
  ProviderRegistry& providers_;
  SourceAdapter& source_;
  QList<QThread*> threads_;
