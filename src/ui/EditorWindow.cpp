@@ -81,7 +81,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   auto* swatch=new QToolButton(colorRow_);swatch->setCheckable(true);VisualStyle::role(swatch,"swatch");
   swatch->setStyleSheet(QString("QToolButton { background: %1; }").arg(color.name()));swatch->setProperty("swatchColor",color);swatch->setAccessibleName("Color "+color.name());swatch->setToolTip(color.name());
   swatchGroup->addButton(swatch);swatches_.append(swatch);layout->addWidget(swatch);
-  connect(swatch,&QToolButton::clicked,this,[this,color]{if(canvas_->tool()==Tool::Highlight||(doc_.find(canvas_->selected())&&doc_.find(canvas_->selected())->kind==editor::Shape::Kind::Highlight))highlightColor_=color;else annotationColor_=color;syncStyle();});
+  connect(swatch,&QToolButton::clicked,this,[this,color]{if(canvas_->tool()==Tool::Highlight||(doc_.find(canvas_->selected())&&doc_.find(canvas_->selected())->kind==editor::Shape::Kind::Highlight))highlightColor_=color;else annotationColor_=color;syncStyle(true);});
  }
  optionLayout->addWidget(colorRow_);
  widthRow_=row(options,layout);auto* widthLabel=new QLabel("Line",widthRow_);VisualStyle::role(widthLabel,"muted");layout->addWidget(widthLabel);
@@ -129,14 +129,15 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
    width_->blockSignals(true);textSize_->blockSignals(true);strength_->blockSignals(true);
    width_->setCurrentIndex(std::max(0,width_->findData(shape->width)));textSize_->setCurrentIndex(std::max(0,textSize_->findData(shape->fontPixels)));strength_->setValue(shape->strength);
    width_->blockSignals(false);textSize_->blockSignals(false);strength_->blockSignals(false);
-   syncStyle();return;
+   syncStyle(false);return;
   }
   refresh();
  });
- connect(width_,&QComboBox::currentIndexChanged,this,[this]{syncStyle();});
- connect(textSize_,&QComboBox::currentIndexChanged,this,[this]{syncStyle();});
- connect(strength_,&QSlider::sliderReleased,this,[this]{syncStyle();});
- connect(strength_,&QSlider::valueChanged,this,[this]{if(!strength_->isSliderDown())syncStyle();});
+ // Only a change to a style control edits the selected shape.
+ connect(width_,&QComboBox::currentIndexChanged,this,[this]{syncStyle(true);});
+ connect(textSize_,&QComboBox::currentIndexChanged,this,[this]{syncStyle(true);});
+ connect(strength_,&QSlider::sliderReleased,this,[this]{syncStyle(true);});
+ connect(strength_,&QSlider::valueChanged,this,[this]{if(!strength_->isSliderDown())syncStyle(true);});
  connect(applyCrop,&QPushButton::clicked,this,[this]{canvas_->applyCrop();});
  connect(cancelCrop,&QPushButton::clicked,this,[this]{canvas_->cancelCrop();});
  auto undo=[this]{if(busy_||canvas_->editingText())return;if(doc_.undo()){canvas_->documentChanged();refresh();}};
@@ -175,18 +176,18 @@ QSize EditorWindow::initialSize(const QSize& image,const QSize& available){
 
 void EditorWindow::selectTool(Tool tool){
  if(auto* button=toolButtons_.value(int(tool)))button->setChecked(true);
- canvas_->setTool(tool);syncStyle();refresh();canvas_->setFocus();
+ canvas_->setTool(tool);syncStyle(false);refresh();canvas_->setFocus();
 }
 
 void EditorWindow::documentEdited(){canvas_->documentChanged();refresh();}
 
-void EditorWindow::syncStyle(){
+void EditorWindow::syncStyle(bool applyToSelection){
  editor::ToolStyle style;
  const auto* shape=doc_.find(canvas_->selected());
  const bool highlight=canvas_->tool()==Tool::Highlight||(shape&&shape->kind==editor::Shape::Kind::Highlight);
  style.color=highlight?highlightColor_:annotationColor_;style.width=width_->currentData().toInt();style.fontPixels=textSize_->currentData().toInt();style.strength=strength_->value();
  if(shape&&shape->kind==editor::Shape::Kind::Redact)style.color=Qt::black;
- canvas_->setStyle(style);
+ canvas_->setStyle(style);if(applyToSelection)canvas_->applyStyleToSelection();
  for(auto* swatch:swatches_){swatch->blockSignals(true);swatch->setChecked(swatch->property("swatchColor").value<QColor>()==style.color);swatch->blockSignals(false);}
  refresh();
 }

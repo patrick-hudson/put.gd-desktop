@@ -18,7 +18,10 @@ public:
  explicit EditorCanvas(EditDocument&,QWidget* parent=nullptr);
  void setTool(Tool);
  Tool tool() const {return tool_;}
+ // Sets the style of new shapes only; switching tools never edits a shape.
  void setStyle(const ToolStyle&);
+ // Applies the current style to the selected shape as one undoable step.
+ void applyStyleToSelection();
  const ToolStyle& style() const {return style_;}
  double zoom() const {return scale_;}
  void fit();
@@ -59,6 +62,8 @@ private:
  int handleAt(const QRect&,const QPointF& widgetPoint) const;
  int arrowHandleAt(const Shape&,const QPointF& widgetPoint) const;
  quint64 shapeAt(const QPointF& imagePoint) const;
+ quint64 grabAt(const QPointF& imagePoint) const;
+ void updateHoverCursor(const QPointF& widgetPoint,Qt::KeyboardModifiers);
  QRect resized(QRect,int handle,const QPoint& delta) const;
  void clampOffset();
  void beginText(const QPointF& imagePoint,const Shape* existing);
@@ -70,7 +75,7 @@ private:
  ToolStyle style_;
  double scale_=1;QPointF offset_;
  bool fitted_=true,space_=false;
- Drag drag_=Drag::None;int handle_=-1;
+ Drag drag_=Drag::None;int handle_=-1;bool moved_=false;quint64 editOnClick_=0;
  QPointF press_,last_;Shape original_;
  QRect cropDraft_,cropOriginal_;
  quint64 selected_=0;

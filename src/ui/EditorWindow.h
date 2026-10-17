@@ -29,7 +29,7 @@ protected:
  void showEvent(QShowEvent*) override;
 private:
  void refresh();
- void syncStyle();
+ void syncStyle(bool applyToSelection);
  void saveCopy();
  editor::EditDocument& doc_;
  editor::EditorCanvas* canvas_=nullptr;

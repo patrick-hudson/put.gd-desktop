@@ -36,6 +36,20 @@ written before this feature inherit the region output route with no shortcut.
 | Highlight | H | Translucent colored marker, visually distinct from Redact |
 | Text | T | One line of bold outlined text; Small/Medium/Large |
 
+You don't need Select to adjust a mark:
+
+- Any drawing tool picks up what you can see under the pointer, and the cursor
+  shows a move arrow there. Drag to move the mark, or click it to select it and
+  edit its color, width or strength.
+  - A rectangle is grabbed by its outline, so you can still draw inside it.
+  - An arrow is grabbed by its line.
+  - Redactions, blurs and highlights are grabbed anywhere they cover.
+- Hold Ctrl to draw a new mark on top of an existing one.
+- With Text, dragging a label moves it, and clicking it edits it.
+
+Choosing a different tool deselects the current mark, so its style controls set
+the new tool's style and never restyle an earlier mark.
+
 Undo (Ctrl+Z) and redo (Ctrl+Shift+Z or Ctrl+Y) are bounded. Ctrl+0 fits the
 window, Ctrl+1 shows 100% for checking text and redaction edges, Ctrl+wheel
 zooms, the wheel or Space/middle-drag pans. **Save a copy…** (Ctrl+S) writes the

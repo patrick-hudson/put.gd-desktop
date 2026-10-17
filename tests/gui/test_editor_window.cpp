@@ -5,6 +5,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QShortcut>
+#include <QToolButton>
 #include <QSignalSpy>
 #include <QTest>
 using namespace putgd;using namespace putgd::editor;
@@ -33,6 +34,22 @@ private slots:
   QTest::keyClick(&window,Qt::Key_Z,Qt::ControlModifier|Qt::ShiftModifier);QCOMPARE(doc.shapes().size(),1);
   QTest::keyClick(&window,Qt::Key_Z,Qt::ControlModifier);QTest::keyClick(&window,Qt::Key_Y,Qt::ControlModifier);QCOMPARE(doc.shapes().size(),1);
   QTest::keyClick(&window,Qt::Key_Return,Qt::ControlModifier);QCOMPARE(uploads.size(),1);
+ }
+ void switchingToolsNeverRestylesTheSelection(){
+  // A selected red rectangle turned yellow when the Highlight tool was chosen.
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  auto& canvas=window.canvas();window.selectTool(Tool::Rectangle);
+  const QPoint start=canvas.rect().center()-QPoint(60,30),end=canvas.rect().center()+QPoint(60,30);
+  QTest::mousePress(&canvas,Qt::LeftButton,{},start);
+  QMouseEvent move(QEvent::MouseMove,QPointF(end),canvas.mapToGlobal(QPointF(end)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},end);
+  QCOMPARE(doc.shapes().size(),1);const auto id=doc.shapes().first().id;QCOMPARE(canvas.selected(),id);
+  // A style control edits the selection.
+  QToolButton* green=nullptr;for(auto* button:window.findChildren<QToolButton*>())if(button->accessibleName()=="Color #22c55e")green=button;
+  QVERIFY(green);green->click();QCOMPARE(doc.find(id)->color,QColor("#22c55e"));
+  const auto shape=*doc.find(id);
+  for(auto tool:{Tool::Highlight,Tool::Arrow,Tool::Text,Tool::Blur,Tool::Redact,Tool::Rectangle,Tool::Select}){window.selectTool(tool);QCOMPARE(*doc.find(id),shape);}
+  QCOMPARE(canvas.selected(),quint64(0));
  }
  void initialSizeFitsSmallScreens(){
   // Fedora's assertion-enabled libstdc++ trapped an inverted clamp on screens under 1000 px.

@@ -167,6 +167,44 @@ private slots:
   // A click without a drag creates nothing.
   canvas.documentChanged();QTest::mouseClick(&canvas,Qt::LeftButton,{},QPoint(500,500));QCOMPARE(doc.shapes().size(),1);
  }
+ void drawingToolsPickUpVisibleShapes(){
+  EditDocument doc(noise({400,300},11));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Rectangle);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  // Fitted at 100% and centered: image point p is at widget origin+p.
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  auto drag=[&](QPoint from,QPoint to,Qt::KeyboardModifiers modifiers={}){
+   QTest::mousePress(&canvas,Qt::LeftButton,modifiers,origin+from);
+   QMouseEvent move(QEvent::MouseMove,QPointF(origin+to),canvas.mapToGlobal(QPointF(origin+to)),Qt::NoButton,Qt::LeftButton,modifiers);QApplication::sendEvent(&canvas,&move);
+   QTest::mouseRelease(&canvas,Qt::LeftButton,modifiers,origin+to);
+  };
+  auto frame=box(Shape::Kind::Rectangle,QRect(100,100,120,80));frame.width=4;const auto frameId=doc.add(frame);
+  const auto redactId=doc.add(box(Shape::Kind::Redact,QRect(260,40,60,40)));
+  canvas.documentChanged();
+  // A rectangle's outline picks it up and moves it; no new shape is drawn.
+  drag({101,140},{131,160});QCOMPARE(doc.shapes().size(),2);QCOMPARE(doc.find(frameId)->rect,QRect(130,120,120,80));QCOMPARE(canvas.selected(),frameId);
+  QVERIFY(doc.undo());QCOMPARE(doc.find(frameId)->rect,QRect(100,100,120,80));canvas.documentChanged();
+  // Its interior stays drawable, and Ctrl draws even on the outline.
+  drag({150,130},{190,160});QCOMPARE(doc.shapes().size(),3);
+  drag({101,140},{60,60},Qt::ControlModifier);QCOMPARE(doc.shapes().size(),4);QCOMPARE(doc.find(frameId)->rect,QRect(100,100,120,80));
+  // Filled shapes are picked up anywhere they cover, in any drawing tool.
+  canvas.setTool(Tool::Arrow);QCOMPARE(canvas.selected(),quint64(0));
+  drag({290,60},{300,90});QCOMPARE(doc.shapes().size(),4);QCOMPARE(doc.find(redactId)->rect,QRect(270,70,60,40));
+  // A click selects without nudging or adding an undo step.
+  const auto before=doc.find(redactId)->rect;QVERIFY(doc.undo());QVERIFY(doc.redo());
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(300,90));QCOMPARE(canvas.selected(),redactId);QCOMPARE(doc.find(redactId)->rect,before);QVERIFY(!doc.canRedo());
+ }
+ void textToolDragsLabelsAndClicksToEdit(){
+  EditDocument doc(noise({400,300},12));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Text);canvas.fit();
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  auto label=box(Shape::Kind::Text,QRect(50,50,80,30));label.text="Note";label.fontPixels=28;const auto id=doc.add(label);canvas.documentChanged();
+  QTest::mousePress(&canvas,Qt::LeftButton,{},origin+QPoint(60,60));
+  QMouseEvent move(QEvent::MouseMove,QPointF(origin+QPoint(100,90)),canvas.mapToGlobal(QPointF(origin+QPoint(100,90))),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},origin+QPoint(100,90));
+  QCOMPARE(doc.find(id)->rect.topLeft(),QPoint(90,80));QVERIFY(!canvas.editingText());
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+QPoint(100,90));QVERIFY(canvas.editingText());
+  canvas.finishText(false);QCOMPARE(doc.find(id)->text,QString("Note"));
+ }
  void canvasCropRequiresExplicitApply(){
   EditDocument doc(noise({400,300},9));EditorCanvas canvas(doc);canvas.resize(500,400);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
   canvas.setTool(Tool::Crop);
