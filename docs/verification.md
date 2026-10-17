@@ -966,3 +966,10 @@ Exact package/binary/run identities, raw samples, failures and cleanup receipts
 remain private under `work/i24-fix/`; public summaries bind them by checksum.
 The historical local-only suppressed-copy observation remains unreproduced and
 is not claimed fixed by the startup change.
+
+## Destination controls regression — 2026-10-16
+
+The 2026-10-16 combined S3/Proton controls campaign passed the current-source
+Cinnamon-first three-desktop functional matrix and user-requested 30-second
+post-use memory observations; see [the native receipt](evidence/2026-10-16-destination-controls-native.md).
+Its synthetic S3 and minimal Proton scope does not establish broader U9 or live-cloud gates.

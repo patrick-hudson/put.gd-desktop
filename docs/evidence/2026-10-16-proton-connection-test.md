@@ -1,5 +1,8 @@
 # Proton destination connection test — 2026-10-16
 
+> Historical implementation checkpoint. The subsequent combined native campaign
+> is recorded in [destination-controls-native](2026-10-16-destination-controls-native.md).
+
 ## Problem and cause
 
 Adding Proton hid `testDestination` in both `SettingsWindow` provider visibility

@@ -1,5 +1,8 @@
 # Local S3 settings controls — 2026-10-16
 
+> Historical implementation checkpoint. The subsequent combined native campaign
+> is recorded in [destination-controls-native](2026-10-16-destination-controls-native.md).
+
 The user explicitly approved changing the saved-secret contract: Show may reveal
 an unlocked saved S3 secret access key. The subsequent request adds visible
 connection-test success and actionable errors.

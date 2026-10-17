@@ -46,6 +46,12 @@ Setup jobs outlive an individual connection or UI process. The resident owns sec
 storage, session credentials and the existing destination-test journal callback.
 There is at most one active job per profile/kind and 32 active jobs in total;
 64 completed jobs remain inspectable. Records contain no credential inputs.
+
+`setup.inspect` returns a provider result when the setup action supplies one. Proton tests
+return `result.testScope: "account-folder"`: the saved account and selected folder
+are accessible, with no upload or sharing test. S3 success requires its synthetic
+upload, unauthenticated public GET and confirmed cleanup.
+
 Jobs are process-lifetime status, not another persistent operation journal.
 A restart cannot silently replay a credential write or destination test.
 Existing settings.patch/reload and CLI/MCP response contracts remain unchanged.
