@@ -19,6 +19,12 @@ out.mkdir(exist_ok=True)
 result = {'schemaVersion': 1, 'scenario': 'edit-region-independent-paste', 'ok': False, 'checks': {}, 'witnesses': []}
 started = time.monotonic()
 
+def park_pointer():
+    # Physical VNC frames include the cursor (QMP screendumps do not), so move it
+    # off the fixture and editor before a frame whose pixels are matched.
+    lab.pointer(run, width - 40, 40, width, height); time.sleep(.3)
+
+
 def shot(name):
     witness = lab.screenshot(run, 'edit-' + name)
     result['witnesses'].append(witness)
@@ -63,15 +69,16 @@ try:
     ready = lab.read_json(run / 'ready.json')
     paint = dict(ready['paint'])
     profile = lab.load_profile(lab.state(run)['profile'])
+    screen = ready['display_layout'][0]
+    width, height = screen['width'], screen['height']
     if ready['session'] == 'wayland':
         # Wayland hides client origins: locate the fixture in an independent frame.
+        park_pointer()
         located = lab.locate_fixture_paint(lab.screenshot(run, 'edit-locate-fixture')['path'])
         if not located:
             raise lab.LabError('fixture pattern not uniquely visible before the edit')
         paint.update(x=located['x'], y=located['y'])
     hotkey = ('Ctrl+Shift+F8', ['ctrl', 'shift', 'f8']) if profile['name'].startswith('kde') else ('Ctrl+Shift+5', ['ctrl', 'shift', '5'])
-    screen = ready['display_layout'][0]
-    width, height = screen['width'], screen['height']
     result['display'] = {'session': ready['session'], 'desktop': ready['desktop'], 'qt': ready['qt_version'], 'layout': ready['display_layout']}
     result['runningApp'] = lab.verify_running_app(run)
 
@@ -99,6 +106,7 @@ try:
     check('editorOpenedWithSelection', (state['width'], state['height']) == (paint['width'], paint['height']), [state['width'], state['height']])
     check('operationEditingNoItems', (lambda o: o['action'] == 'edit' and o['state'] == 'editing' and not o['items'])(lab.cli(run, 'operation.inspect', {'id': op_id})))
     time.sleep(1.0)
+    park_pointer()
     open_frame = shot('02-editor-open')
 
     # Locate the image on screen from the independent frame (unique full pattern).
@@ -207,6 +215,12 @@ except BaseException as error:
     result['error'] = str(error)
     try:
         shot('99-failure')
+    except Exception:
+        pass
+    # Leave no editor open: the next run's selection would land inside it.
+    try:
+        if result.get('operationId') and lab.cli(run, 'operation.inspect', {'id': result['operationId']})['state'] == 'editing':
+            lab.cli(run, 'editor.cancel', {'id': result['operationId']})
     except Exception:
         pass
 finally:

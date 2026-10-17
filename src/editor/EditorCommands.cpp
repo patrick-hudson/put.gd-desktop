@@ -12,7 +12,8 @@ const QHash<QString,Shape::Kind>& kinds(){
  return values;
 }
 bool integer(const QJsonValue& value,qint64 minimum,qint64 maximum,int& out){
- if(!value.isDouble())return false;const double number=value.toDouble();
+ if(!value.isDouble())return false;
+ const double number=value.toDouble();
  if(!std::isfinite(number)||std::floor(number)!=number||number<minimum||number>maximum)return false;
  out=int(number);return true;
 }
