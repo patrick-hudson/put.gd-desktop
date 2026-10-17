@@ -138,8 +138,8 @@ void EditorCanvas::updateHoverCursor(const QPointF& position,Qt::KeyboardModifie
  // Ctrl draws a new shape even over existing ones.
  if(drawingTool()&&(modifiers&Qt::ControlModifier)){setCursor(fallback);return;}
  const auto image=toImage(position);
- if(tool_!=Tool::Text)if(const auto* shape=doc_.find(selected_)){
-  const int h=shape->kind==Shape::Kind::Arrow?arrowHandleAt(*shape,position):shape->kind==Shape::Kind::Text?-1:handleAt(shape->rect,position);
+ if(const auto* shape=doc_.find(selected_);shape&&(tool_!=Tool::Text||shape->kind==Shape::Kind::Text)){
+  const int h=selectionHandleAt(*shape,position);
   if(h>=0){setCursor(shape->kind==Shape::Kind::Arrow?Qt::SizeAllCursor:resizeCursor(h));return;}
  }
  quint64 hit=0;
@@ -155,6 +155,28 @@ quint64 EditorCanvas::shapeAt(const QPointF& p) const {
   if(QRectF(it->rect).adjusted(-tolerance,-tolerance,tolerance,tolerance).contains(p))return it->id;
  }
  return 0;
+}
+int EditorCanvas::selectionHandleAt(const Shape& shape,const QPointF& p) const {
+ if(shape.kind==Shape::Kind::Arrow)return arrowHandleAt(shape,p);
+ const int handle=handleAt(shape.rect,p);
+ return shape.kind==Shape::Kind::Text&&handle%2!=0?-1:handle;
+}
+// Dragging a text corner scales the font around the opposite corner, which
+// stays fixed. The scale is the drag projected onto the box's diagonal, so
+// pulling outward along any direction grows the text smoothly.
+Shape EditorCanvas::scaledText(const Shape& original,int handle,const QPointF& now) const {
+ const QRect box=original.rect;const QRectF exact(box);
+ const QPointF corners[4]={exact.topLeft(),exact.topRight(),exact.bottomRight(),exact.bottomLeft()};
+ const QPointF dragged=corners[handle/2],anchor=corners[(handle/2+2)%4],diagonal=dragged-anchor;
+ const double length=QPointF::dotProduct(diagonal,diagonal);
+ const double scale=length>0?std::max(0.0,QPointF::dotProduct(now-anchor,diagonal)/length):1.0;
+ auto shape=original;
+ shape.fontPixels=std::clamp(int(std::lround(original.fontPixels*scale)),minimumFontPixels,maximumFontPixels);
+ const QFontMetrics metrics(textFont(shape.fontFamily,shape.fontPixels));
+ QRect resized(QPoint(),QSize(metrics.horizontalAdvance(shape.text)+1,metrics.height()));
+ if(handle==0)resized.moveBottomRight(box.bottomRight());else if(handle==2)resized.moveBottomLeft(box.bottomLeft());
+ else if(handle==4)resized.moveTopLeft(box.topLeft());else resized.moveTopRight(box.topRight());
+ shape.rect=resized;return shape;
 }
 QRect EditorCanvas::resized(QRect r,int handle,const QPoint& d) const {
  if(handle==0||handle==6||handle==7)r.setLeft(r.left()+d.x());
@@ -219,7 +241,8 @@ void EditorCanvas::paintEvent(QPaintEvent*){
   if(shape->kind==Shape::Kind::Arrow)handles({toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))});
   else{
    const auto r=toWidget(shape->rect);painter.setPen(QPen(accent,1,Qt::DashLine));painter.setBrush(Qt::NoBrush);painter.drawRect(r.adjusted(-2,-2,2,2));
-   if(shape->kind!=Shape::Kind::Text)handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});
+   if(shape->kind==Shape::Kind::Text)handles({r.topLeft(),r.topRight(),r.bottomRight(),r.bottomLeft()});
+   else handles({r.topLeft(),QPointF(r.center().x(),r.top()),r.topRight(),QPointF(r.right(),r.center().y()),r.bottomRight(),QPointF(r.center().x(),r.bottom()),r.bottomLeft(),QPointF(r.left(),r.center().y())});
   }
  }
  if(hasFocus()){painter.setPen(QPen(accent,2));painter.setBrush(Qt::NoBrush);painter.drawRect(QRectF(rect()).adjusted(1,1,-1,-1));}
@@ -239,6 +262,10 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
  }
  moved_=false;editOnClick_=0;
  if(tool_==Tool::Text){
+  if(const auto* current=doc_.find(selected_);current&&current->kind==Shape::Kind::Text){
+   const int handle=selectionHandleAt(*current,press_);
+   if(handle>=0){original_=*current;handle_=handle;drag_=Drag::Resize;doc_.beginGesture();return;}
+  }
   const auto* shape=doc_.find(shapeAt(image));
   // Dragging a text label moves it; a click edits it.
   if(shape&&shape->kind==Shape::Kind::Text){
@@ -250,7 +277,7 @@ void EditorCanvas::mousePressEvent(QMouseEvent* event){
  const bool force=drawingTool()&&(event->modifiers()&Qt::ControlModifier);
  // Handles and the visible body of the current selection edit it in every tool.
  if(!force)if(const auto* shape=doc_.find(selected_)){
-  const int handle=shape->kind==Shape::Kind::Arrow?arrowHandleAt(*shape,press_):shape->kind==Shape::Kind::Text?-1:handleAt(shape->rect,press_);
+  const int handle=selectionHandleAt(*shape,press_);
   if(handle>=0){original_=*shape;handle_=handle;drag_=Drag::Resize;doc_.beginGesture();return;}
   if((tool_==Tool::Select?shapeAt(image):grabAt(image))==selected_){original_=*shape;drag_=Drag::Move;doc_.beginGesture();return;}
  }
@@ -292,9 +319,12 @@ void EditorCanvas::mouseMoveEvent(QMouseEvent* event){
  }else if(drag_==Drag::Move){shape.rect.translate(delta);shape.from+=delta;shape.to+=delta;}
  else if(drag_==Drag::Resize){
   if(shape.kind==Shape::Kind::Arrow){if(handle_==0)shape.from+=delta;else shape.to+=delta;}
+  else if(shape.kind==Shape::Kind::Text)shape=scaledText(original_,handle_,now);
   else shape.rect=resized(shape.rect,handle_,delta);
  }
  doc_.preview(shape);update();
+ // The size control follows a text label while its corner is dragged.
+ if(drag_==Drag::Resize&&shape.kind==Shape::Kind::Text)emit selectionChanged();
 }
 
 void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){

@@ -46,6 +46,8 @@ You don't need Select to adjust a mark:
   - Redactions, blurs and highlights are grabbed anywhere they cover.
 - Hold Ctrl to draw a new mark on top of an existing one.
 - With Text, dragging a label moves it, and clicking it edits it.
+- A selected text label has four corner handles. Dragging one scales the
+  text around the opposite corner, and the Size box follows as you drag.
 
 Next to the seven palette colors, the rainbow button opens a color picker for
 any custom color. The last six custom colors you picked appear beside it as

@@ -70,6 +70,20 @@ private slots:
   font->setCurrentIndex(font->count()-1);QCOMPARE(doc.find(id)->fontFamily,font->currentFont().family());
   QVERIFY(window.findChild<QToolButton*>("customColor"));
  }
+ void textSizeControlFollowsACornerDrag(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1000,700);window.show();QVERIFY(QTest::qWaitForWindowExposed(&window));
+  add(doc,{{"kind","text"},{"at",QJsonArray{40,40}},{"text","Label"},{"fontPixels",30}});window.documentEdited();
+  auto& canvas=window.canvas();window.selectTool(Tool::Select);const auto id=doc.shapes().first().id;const auto box=doc.shapes().first().rect;
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-260)/2);
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+box.center());QCOMPARE(canvas.selected(),id);
+  auto* size=window.findChild<QSpinBox*>("textSize");QVERIFY(size);QCOMPARE(size->value(),30);
+  const QPoint corner(box.x()+box.width(),box.y()+box.height()),target(box.x()+box.width()*3/2,box.y()+box.height()*3/2);
+  QTest::mousePress(&canvas,Qt::LeftButton,{},origin+corner);
+  QMouseEvent move(QEvent::MouseMove,QPointF(origin+target),canvas.mapToGlobal(QPointF(origin+target)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+  // The control shows the new size while the drag is still in progress.
+  QCOMPARE(size->value(),doc.find(id)->fontPixels);QVERIFY(size->value()>40);
+  QTest::mouseRelease(&canvas,Qt::LeftButton,{},origin+target);QCOMPARE(size->value(),doc.find(id)->fontPixels);
+ }
  void initialSizeFitsSmallScreens(){
   // Fedora's assertion-enabled libstdc++ trapped an inverted clamp on screens under 1000 px.
   QCOMPARE(EditorWindow::initialSize({640,320},{800,600}),QSize(720,540));

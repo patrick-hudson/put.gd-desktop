@@ -217,6 +217,32 @@ private slots:
   QVERIFY(!Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{1,1,5,5}},{"font","Sans"}}}}},created,code,message));
   QVERIFY(!doc.exportPng().isEmpty());
  }
+ void textCornersScaleTheFontAroundTheOppositeCorner(){
+  EditDocument doc(noise({400,300},14));EditorCanvas canvas(doc);canvas.resize(832,632);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
+  canvas.setTool(Tool::Select);canvas.fit();QCOMPARE(canvas.zoom(),1.0);
+  const QPoint origin((canvas.width()-400)/2,(canvas.height()-300)/2);
+  QJsonArray created;QString code,message;
+  QVERIFY(Commands::apply(doc,{QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{50,50}},{"text","Note"},{"fontPixels",28}}}}},created,code,message));
+  const auto id=quint64(created.first().toInteger());canvas.documentChanged();const auto before=doc.find(id)->rect;
+  auto drag=[&](QPoint from,QPoint to){
+   QTest::mousePress(&canvas,Qt::LeftButton,{},origin+from);
+   QMouseEvent move(QEvent::MouseMove,QPointF(origin+to),canvas.mapToGlobal(QPointF(origin+to)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(&canvas,&move);
+   QTest::mouseRelease(&canvas,Qt::LeftButton,{},origin+to);
+  };
+  QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+before.center());QCOMPARE(canvas.selected(),id);
+  // Pull the bottom-right corner out along the diagonal to twice the size.
+  const QPoint corner(before.x()+before.width(),before.y()+before.height());
+  drag(corner,QPoint(before.x()+2*before.width(),before.y()+2*before.height()));
+  const auto* grown=doc.find(id);QVERIFY2(qAbs(grown->fontPixels-56)<=1,qPrintable(QString::number(grown->fontPixels)));
+  QCOMPARE(grown->rect.topLeft(),before.topLeft());QCOMPARE(grown->rect.height(),QFontMetrics(textFont({},grown->fontPixels)).height());
+  QCOMPARE(doc.shapes().size(),1);QVERIFY(doc.undo());QCOMPARE(doc.find(id)->fontPixels,28);QVERIFY(doc.redo());canvas.documentChanged();
+  // With the Text tool, the top-left corner shrinks it toward the fixed bottom-right corner.
+  canvas.setTool(Tool::Text);QTest::mouseClick(&canvas,Qt::LeftButton,{},origin+doc.find(id)->rect.center());canvas.finishText(false);QCOMPARE(canvas.selected(),id);
+  const auto big=doc.find(id)->rect;
+  drag(big.topLeft(),big.topLeft()+QPoint(big.width()/2,big.height()/2));
+  const auto* shrunk=doc.find(id);QVERIFY2(qAbs(shrunk->fontPixels-28)<=1,qPrintable(QString::number(shrunk->fontPixels)));
+  QCOMPARE(shrunk->rect.bottomRight(),big.bottomRight());QVERIFY(!canvas.editingText());
+ }
  void canvasCropRequiresExplicitApply(){
   EditDocument doc(noise({400,300},9));EditorCanvas canvas(doc);canvas.resize(500,400);canvas.show();QVERIFY(QTest::qWaitForWindowExposed(&canvas));
   canvas.setTool(Tool::Crop);
