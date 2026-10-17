@@ -19,6 +19,11 @@ public:
  void setShowCancelled(bool);bool showCancelled()const{return showCancelled_;}int hiddenCancelled()const{return hiddenCancelled_;}
  void releaseThumbnails();
  static QString fileSize(qint64);static QString friendlyAction(const QString&);static QString statusText(const QJsonObject&);
+ // A failure that stored no file, such as an image too large to edit. There is
+ // nothing to upload, save or copy again; only a new capture can follow.
+ static bool storedNothing(const QJsonObject&);
+ // Short failure label: what failed, not the error message.
+ static QString failureLabel(const QJsonObject&);
 signals:void loaded();void error(const QString&);
 private:
  void rebuild();void loadThumbnail(const QString&)const;void nextThumbnail()const;

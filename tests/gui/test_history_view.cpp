@@ -242,6 +242,21 @@ private slots:
   // Without the retained file the button explains why instead of opening the editor.
   QVERIFY(QFile::remove(path));list->clearSelection();QTRY_VERIFY(!again->isEnabled());selectRow(list,0);QTest::qWait(300);QVERIFY(!again->isEnabled());QVERIFY(again->toolTip().contains("local copy"));
  }
+ void failureThatStoredNothingOffersNoRetry(){
+  // An edit refused before anything was stored (here, not an image) has no file
+  // to upload again. History names the failure and offers no retry.
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto text=d.filePath("notes.txt");{QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("not an image");}
+  operations.invoke("edit",[](Error,QJsonObject){},{{"source","file"},{"path",text}});QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();
+  auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());QTRY_COMPARE(model->rowCount(),1);
+  const auto row=model->index(0);const auto record=model->record(0);
+  QVERIFY(row.data(HistoryModel::FailedRole).toBool());QVERIFY(HistoryModel::storedNothing(record));
+  QCOMPARE(HistoryModel::failureLabel(record),QString("Edit failed"));QVERIFY(row.data(HistoryModel::PrimaryActionRole).toString().isEmpty());
+  QVERIFY(!HistoryModel::statusText(record).contains("Upload"));QVERIFY(HistoryModel::statusText(record).contains("PNG or JPEG"));
+  selectRow(list,0);QTest::qWait(200);QVERIFY(!window.findChild<QPushButton*>("retryOperation")->isVisible());
+ }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
   {HistoryStore ledger(operations.databasePath());Operation op;op.id="synthetic-operation";op.created="2020-01-01T00:00:00.000Z";op.state="completed";op.settings=settings.snapshot();OperationItem item;item.artifact.id="old-item";item.artifact.name="old-image.png";item.artifact.bytes=2147483649LL;item.artifact.mime="image/png";item.artifact.category="images";item.uploadStatus="uploaded";item.remoteStatus="removed";item.receipt.directUrl="https://example.invalid/original.png";op.items.append(item);QVERIFY(!ledger.saveOperation(op));}
