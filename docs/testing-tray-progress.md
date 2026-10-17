@@ -186,7 +186,8 @@ The scenario uses two deterministic synthetic files per operation and drives:
 1. Two upload operations with one upload worker, requiring active color, a
    queued tooltip row, genuine counters and eventual idle. S3 counters have a
    matching body-byte total/percentage; Proton encrypted SDK bytes have no
-   denominator, remain separate from source size and may decrease on SDK retry.
+   denominator and may decrease on SDK retry. The tray keeps those counters
+   separate and labels its source-file-size fallback as an estimate.
 2. An explicit same-ID result copy pasted into the independent native guest
    fixture. Pasted links must equal original receipts. S3 additionally retrieves
    public bytes and checks exact length/hash; URLs are read in guest memory
@@ -215,7 +216,8 @@ The scenario uses two deterministic synthetic files per operation and drives:
 6. Resident quit/restart, a new matching process identity, exact preserved
    history receipts and the original idle icon hashes/empty tooltip.
 
-CLI and SNI reads are separate, and the product batches observations. Counter
+CLI and SNI reads are independent and ordered within one SSH session, avoiding
+network round trips that can alias the 300 ms blink. The product batches observations. Counter
 assertions use before/after CLI reads plus a two-second recent observation
 window, restricted to the current row’s operation and artifact identity.
 An operation moving up a row keeps its own observations; a previous operation
@@ -224,8 +226,38 @@ without coverage credit and retried for at most two consecutive seconds. A
 persistently idle tray while CLI work remains active fails this same bound.
 Privacy, identity, icon color and malformed accounting failures stop immediately;
 the rejected SNI text is redacted from failure evidence.
+Expected error overlays are scoped to the runner's original local-save failure
+ID or explicit `proton_account_busy` failures on original concurrent/retry IDs.
+Independent terminal CLI items must prove the expected failure before red is
+accepted. Each newly failed ID supplies one monotonic three-second pulse window;
+repeated frames never renew it. A newly failed ID archives the previous window
+and requires a fresh red/blue/red sequence. Red, a subsequent blue off-phase and returning red must all be
+observed and receive native screenshot witnesses. A single red frame followed
+by blue for the rest of the window is insufficient. Blue during that window is
+not idle recovery. Recovery requires the window to expire, no active CLI work,
+and the exact original blue idle icon/empty tooltip. `errorPulses` records the
+failure IDs/times, deadline, red/blue observations and recovery time separately
+from upload activity coverage. Initial bracketed green and green within the
+last 500 ms of the observed deadline can be validated as transition grace;
+they receive no pulse or upload coverage and cannot establish idle recovery.
+Green during the established pulse fails immediately. Missing phases fail the replay and require a new
+preserved run; the harness never invents error coverage from a declaration.
+
 Rounded tooltip bytes must fit real observed byte bounds and their own
-integer percentage. No estimate from elapsed time or source size is accepted.
+integer percentage. A source-size fallback must be labelled `Estimated`, match
+the actual counters/source bytes, and stop at 99% while awaiting finalization or
+receipt. No elapsed-time percentage is accepted. Green activity is revealed after
+200 ms; successful work that finishes before that delay leaves the blue icon
+unchanged. Once revealed, green stays visible for at least 600 ms, including at
+least 200 ms of terminal feedback. A confirmed successful upload displays full
+green before returning to blue. Pending receipt lookup and gaps between storage
+phases retain the last visible frame. Tooltips update during the reveal delay. Partial
+fills include a dim green base, which is still green storage feedback at 0%.
+Destination checks and storage work without a usable transfer denominator use
+that dim green frame rather than appearing complete before transfer begins.
+Concurrent transfer fills are weighted by their acquired source sizes; local
+preparation and queued transfers do not contribute. Error pulses supersede all
+fills and retain their existing timing.
 The SNI phase must have a matching production observation. Source filenames,
 paths and links are prohibited in tray text.
 
@@ -296,3 +328,39 @@ They check the replay's socket, identity, privacy, color, accounting and
 nonsecret-settings assertions. They do not establish a probe build, live S3 or
 Proton success, a desktop functional pass, human rendering inspection or memory
 acceptance. Record those actual executions separately.
+
+## Opening an upload from its notification
+
+The native Linux resident gives a single-item upload notification a browser action
+only when the item has a confirmed, available link. Clicking the toast opens that
+receipt's HTTP(S) URL through the default browser. A batch or local-only result
+keeps its existing Recent Activity guidance. Upload completion itself never opens
+the browser.
+
+The transport uses the notification server's returned ID and the standard
+[`default` action](https://specifications.freedesktop.org/notification/latest-single/).
+Separate toasts retain separate links. Activation or dismissal discards the ID;
+a departing notification service invalidates its IDs and pending replies. The
+first appearance of a service preserves replies for notifications that started
+it. The generic Qt fallback has no per-notification click ID and does not promise
+browser activation.
+
+Browser activation uses `gio open` and the configured HTTP(S) URI handler.
+KDE’s generic `xdg-open` path can choose an image application for a remote PNG
+even when Firefox is the default browser. Keep the native desktop’s data/config
+search paths when launching an isolated test session; a missing browser desktop
+entry is a setup failure. See the [GIO URI launch contract](https://docs.gtk.org/gio/type_func.AppInfo.launch_default_for_uri.html).
+
+The private-bus regressions exercise production result handling and outgoing
+browser arguments with an isolated opener, plus notification-owner appearance:
+
+```sh
+dbus-run-session -- build/dev/test_native_tray   uploadToastOpensItsOwnLink   firstNotificationOwnerAppearancePreservesClickTarget
+```
+
+These contracts are not desktop proof. Native acceptance must use the installed
+candidate, create a synthetic image in an isolated destination, visibly click the
+real toast through the console, and inspect the default browser's exact receipt
+URL and image. Preserve operation/history IDs, package and running-byte identities,
+QMP frames and public-download hashes; clean only the exact test uploads through
+reviewed guarded deletion. Keep the original display wall on port 8765.

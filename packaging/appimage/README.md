@@ -133,6 +133,10 @@ AppRun uses a lightweight shell supervisor to keep the permission entry alive;
 measure this process as part of the resident family on KDE. Neither this wrapper
 nor a successful `--version` invocation establishes the <=40 MiB memory gate.
 
+Notification clicks use the host `gio open` command and its configured HTTP(S)
+URI handler to open the uploaded image in the browser. Install the distro GIO
+command-line tools (`libglib2.0-bin` on Debian/Ubuntu, `glib2` on Fedora).
+
 The GNOME 50 Shell extension lives on the host and must be installed/enabled from
 the same application source. Bundling its files inside the AppImage does not
 install a host Shell extension. Keep that setup visible in release instructions.

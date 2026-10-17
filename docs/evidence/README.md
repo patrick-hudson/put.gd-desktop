@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Lift/duotone identity and upload feedback | [Current native, provider and physical validation](2026-10-16-lift-duotone-validation.md) |
 | Proton experimental integration recovery and resources | [Release gates](../proton-drive-release-gates.md), [P1 recovery](2026-10-15-proton-p1-app-recovery.md), [P2 resources](2026-10-15-proton-p2-resources.md) |
 | Integrated process split and memory strategy | [Memory strategy](../memory-strategy.md) |
 | Later cross-desktop live-S3 fix and memory checkpoint | [Source114 replay, identities and cleanup](live-s3-memory/source114/README.md) |

@@ -4,6 +4,8 @@
 #include <QElapsedTimer>
 #include <QColor>
 #include <QTimer>
+#include <QSet>
+#include <QUrl>
 #include <functional>
 #include <memory>
 
@@ -34,15 +36,23 @@ signals:
 
 private:
  void invokeAction(const QString&, bool fromShortcut = false);
+#ifdef Q_OS_LINUX
+ void openNotificationLink(const QUrl&);
+#endif
  QString lastShortcutError_;
  QElapsedTimer shortcutFeedbackClock_;
- void notifyMessage(const QString&, const QString&, bool warning);
+ void notifyMessage(const QString&, const QString&, bool warning, const QUrl& link = {});
  void refreshActivity();
  void flashError();
- QTimer errorFlashTimer_,errorRecoveryTimer_;
+ QTimer errorFlashTimer_,errorRecoveryTimer_,uploadRevealTimer_,uploadCompleteTimer_;
+ QElapsedTimer uploadVisibleClock_;
+ bool uploadVisible_=false,uploadCompleted_=false;
+ int pendingUploadFinishes_=0;
  bool errorRed_=false;
  QColor iconColor_=QColor("#9bbcff");
+ int iconPercent_=-1;
  QString activityText_;
+ QSet<QString> activeUploads_;
  void showAbout();
  void showView(const QString&);
  OperationService& operations_;

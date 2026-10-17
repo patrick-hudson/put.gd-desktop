@@ -18,6 +18,11 @@ def observation(description, color='#62d69b', title='put.gd — Working'):
                        'opaqueColors': {color: 120}}]}
 
 
+def mock_reads(replay):
+    replay.read_observation = lambda: (replay.cli('operation.recent')['operations'],
+        replay.snapshot(), replay.cli('operation.recent')['operations'])
+
+
 class TrayProgressContracts(unittest.TestCase):
     def test_resolved_socket_byte_limit_includes_guest_runtime_suffix(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -42,17 +47,41 @@ class TrayProgressContracts(unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(text), records, 's3', 42)
 
-    def test_proton_encrypted_counter_never_uses_source_as_denominator(self):
+    def test_proton_counter_keeps_real_bytes_and_labels_source_estimate(self):
         # The SDK may retry and decrease its encrypted byte counter.
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
                     'bytesTransferred': n*1024**2} for n in (8, 6)]
         result = tray.check_tooltip(observation('Uploading: 7 MiB transferred · Source size: 4 MiB'), records, 'proton-drive', 42)
         self.assertTrue(result['counter'])
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 7 MiB transferred · Source size: 4 MiB · Estimated 99%'), records, 'proton-drive', 42)['counter'])
         for text in ('Uploading: 7 MiB of 4 MiB (175%)',
                      'Uploading: 7 MiB transferred · Source size: 7 MiB',
                      'Uploading: 12 MiB transferred · Source size: 4 MiB'):
             with self.subTest(text=text), self.assertRaises(tray.TrayProgressError):
                 tray.check_tooltip(observation(text), records, 'proton-drive', 42)
+
+    def test_source_estimates_are_bounded_and_must_match_observed_counters(self):
+        records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2, 'bytesTransferred': 2*1024**2}]
+        self.assertTrue(tray.check_tooltip(observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%'), records, 'proton-drive', 42)['counter'])
+        for estimate in (25, 75, 100):
+            with self.subTest(estimate=estimate), self.assertRaises(tray.TrayProgressError):
+                tray.check_tooltip(observation(f'Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated {estimate}%'), records, 'proton-drive', 42)
+        # At zero fill the entire Lift silhouette uses the dim green base.
+        dim = observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%', color='#2b5d43')
+        self.assertTrue(tray.check_tooltip(dim, records, 'proton-drive', 42)['storageActive'])
+
+    def test_s3_replay_still_requires_its_real_transfer_total(self):
+        records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2, 'bytesTransferred': 2*1024**2}]
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(observation('Uploading: 2 MiB transferred · Source size: 4 MiB · Estimated 50%'), records, 's3', 42)
+
+    def test_completion_frame_requires_full_bright_green_not_empty_fill(self):
+        self.assertFalse(tray.check_tooltip(observation('Upload complete'), [], 's3', 42)['idle'])
+        for snapshot in (observation('Upload complete', color='#2b5d43'), observation('Upload complete')):
+            if snapshot['icons'][0]['opaqueColors'].get('#62d69b'):
+                snapshot['icons'][0]['opaqueColors']['#2b5d43'] = 60
+            with self.assertRaises(tray.TrayProgressError):
+                tray.check_tooltip(snapshot, [], 's3', 42)
 
     def test_concurrent_rows_cannot_borrow_another_operation_counter(self):
         records = [{'phase': 'uploading', 'sourceBytes': 4*1024**2,
@@ -102,6 +131,7 @@ class TrayProgressContracts(unittest.TestCase):
         for transfer_color in ('#9bbcff', '#62d69b'):
             with self.subTest(transfer_color=transfer_color), tempfile.TemporaryDirectory() as directory:
                 replay = tray.Replay.__new__(tray.Replay)
+                mock_reads(replay)
                 replay.args = SimpleNamespace(provider='proton-drive')
                 replay.pid = 42
                 replay.history, replay.mismatch_since = [], None
@@ -192,6 +222,7 @@ class TrayProgressContracts(unittest.TestCase):
         from types import SimpleNamespace
         from unittest.mock import Mock
         replay = object.__new__(tray.Replay)
+        mock_reads(replay)
         replay.args = SimpleNamespace(provider='s3', profile_id='test')
         replay.result = {}
         replay.save = Mock()
@@ -260,6 +291,7 @@ class TrayProgressContracts(unittest.TestCase):
         from unittest.mock import Mock, patch
         import json
         replay = object.__new__(tray.Replay)
+        mock_reads(replay)
         replay.args = SimpleNamespace(provider='s3')
         replay.pid = 42; replay.history = []; replay.mismatch_since = None
         replay.result = {'coverage': {}}; replay.save = Mock(); replay.witness = Mock()
@@ -276,6 +308,165 @@ class TrayProgressContracts(unittest.TestCase):
             self.assertEqual(len(records), 3)
             self.assertTrue(all(not row['assertions']['matched'] for row in records))
             self.assertFalse(replay.result['coverage'].get('test', {}).get('active', False))
+
+    def error_replay(self, directory, operation=None):
+        from unittest.mock import Mock
+        replay = object.__new__(tray.Replay)
+        mock_reads(replay)
+        replay.args = SimpleNamespace(provider='s3')
+        replay.pid = 42; replay.history = []; replay.mismatch_since = None
+        replay.result = {'coverage': {}}; replay.save = Mock(); replay.witness = Mock()
+        replay.output = Path(directory)
+        replay.error_pulse = {'operationIds': ['failed'], 'kind': 'local-save', 'required': True}
+        operation = operation or {'id': 'failed', 'state': 'failed', 'items': [
+            {'uploadStatus': 'local_only', 'local': {'status': 'failed'}}]}
+        replay.cli = Mock(return_value={'operations': [operation]})
+        return replay
+
+    def test_expected_local_error_requires_red_blue_and_bounded_idle_recovery(self):
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.error_replay(directory)
+            replay.snapshot = Mock(side_effect=[
+                observation('', '#ffb4ab', tray.IDLE), observation('', '#9bbcff', tray.IDLE),
+                observation('', '#ffb4ab', tray.IDLE), observation('', '#9bbcff', tray.IDLE),
+                observation('', '#9bbcff', tray.IDLE)])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.99, 13.01]):
+                red = replay.observe('local-failure')[2]
+                blue = replay.observe('local-failure')[2]
+                self.assertFalse(red['idle']); self.assertFalse(blue['idle'])
+                self.assertEqual(red['errorColor'], '#ffb4ab')
+                self.assertEqual(blue['errorColor'], '#9bbcff')
+                self.assertEqual(replay.observe('local-failure')[2]['errorColor'], '#ffb4ab')
+                self.assertFalse(replay.observe('local-failure')[2]['idle'])
+                self.assertTrue(replay.observe('local-failure')[2]['idle'])
+            pulse = replay.result['errorPulses'][0]
+            self.assertEqual(pulse['operationIds'], ['failed'])
+            self.assertEqual(pulse['failureObservedAt'], 10)
+            self.assertEqual(pulse['deadline'], 13)
+            self.assertEqual(pulse['redObservedAt'], 10)
+            self.assertEqual(pulse['blueAfterRedObservedAt'], 10.31)
+            self.assertEqual(pulse['redAfterBlueObservedAt'], 10.62)
+            self.assertEqual(pulse['recoveredAt'], 13.01)
+            self.assertFalse(replay.result['coverage']['local-failure']['active'])
+            labels = [call.args[0] for call in replay.witness.call_args_list]
+            self.assertIn('local-failure-error-red', labels)
+            self.assertIn('local-failure-error-blue', labels)
+            self.assertIn('local-failure-error-recovered', labels)
+
+    def test_green_cannot_override_an_established_error_pulse(self):
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.error_replay(directory)
+            replay.snapshot = Mock(side_effect=[observation('', '#ffb4ab', tray.IDLE),
+                observation('Upload complete', '#62d69b')])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31]):
+                replay.observe('local-failure')
+                with self.assertRaises(tray.TrayProgressError):
+                    replay.observe('local-failure')
+
+    def test_green_grace_does_not_earn_upload_or_error_coverage(self):
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.error_replay(directory)
+            replay.snapshot = Mock(side_effect=[observation('', '#ffb4ab', tray.IDLE),
+                observation('', '#9bbcff', tray.IDLE), observation('Upload complete', '#62d69b')])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 12.6]):
+                replay.observe('local-failure'); replay.observe('local-failure')
+                checked = replay.observe('local-failure')[2]
+            self.assertFalse(checked['matched'])
+            self.assertFalse(checked['idle'])
+            self.assertFalse(replay.result['coverage']['local-failure']['active'])
+
+    def test_error_recovery_requires_red_to_return_after_blue(self):
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.error_replay(directory)
+            replay.snapshot = Mock(side_effect=[observation('', '#ffb4ab', tray.IDLE),
+                observation('', '#9bbcff', tray.IDLE), observation('', '#9bbcff', tray.IDLE)])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 13.01]):
+                replay.observe('local-failure'); replay.observe('local-failure')
+                with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
+
+    def test_new_failure_cannot_reuse_an_earlier_blink_sequence(self):
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.error_replay(directory)
+            replay.args.provider = 'proton-drive'
+            replay.error_pulse = {'operationIds': ['failed', 'second'], 'kind': 'proton-busy', 'required': False}
+            def operation(oid):
+                return {'id': oid, 'state': 'partial', 'items': [{'uploadStatus': 'failed',
+                    'shareStatus': 'not_requested', 'error': {'code': 'proton_account_busy'}}]}
+            first, second = operation('failed'), operation('second')
+            replay.cli = Mock(side_effect=[{'operations': [first]}]*6 + [{'operations': [first, second]}]*4)
+            replay.snapshot = Mock(side_effect=[observation('', color, tray.IDLE) for color in
+                ('#ffb4ab', '#9bbcff', '#ffb4ab', '#9bbcff', '#9bbcff')])
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 10.31, 10.62, 12.5, 15.51]):
+                for _ in range(4): replay.observe('concurrent')
+                with self.assertRaises(tray.TrayProgressError): replay.observe('concurrent')
+
+    def test_error_pulse_cannot_borrow_failure_identity_or_outlive_fixed_window(self):
+        from unittest.mock import Mock, patch
+        invalid = [
+            {'id': 'other', 'state': 'failed', 'items': [{'uploadStatus': 'local_only', 'local': {'status': 'failed'}}]},
+            {'id': 'failed', 'state': 'running', 'phase': 'saving_local', 'items': []},
+            {'id': 'failed', 'state': 'failed', 'items': [{'uploadStatus': 'failed', 'local': {'status': 'saved'}}]}]
+        for operation in invalid:
+            with self.subTest(operation=operation), tempfile.TemporaryDirectory() as directory:
+                replay = self.error_replay(directory, operation)
+                replay.snapshot = Mock(return_value=observation('', '#ffb4ab', tray.IDLE))
+                with patch.object(tray.time, 'monotonic', return_value=10):
+                    with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
+        with tempfile.TemporaryDirectory() as directory:
+            replay = self.error_replay(directory)
+            replay.snapshot = Mock(return_value=observation('', '#ffb4ab', tray.IDLE))
+            with patch.object(tray.time, 'monotonic', side_effect=[10, 13.01]):
+                replay.observe('local-failure')
+                with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
+
+    def test_error_recovery_rejects_missing_red_or_missing_blue_transition(self):
+        from unittest.mock import Mock, patch
+        for first_color in ('#9bbcff', '#ffb4ab'):
+            with self.subTest(first_color=first_color), tempfile.TemporaryDirectory() as directory:
+                replay = self.error_replay(directory)
+                replay.snapshot = Mock(side_effect=[observation('', first_color, tray.IDLE),
+                                                    observation('', '#9bbcff', tray.IDLE)])
+                with patch.object(tray.time, 'monotonic', side_effect=[10, 13.01]):
+                    replay.observe('local-failure')
+                    with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
+
+    def test_expected_error_keeps_privacy_identity_and_color_guards(self):
+        from unittest.mock import Mock, patch
+        for defect in ({'pid': 7}, {'hostRegistered': False}, {'registered': False},
+                       {'description': 'https://example.invalid/sensitive'},
+                       {'title': 'unexpected'},
+                       {'icons': observation('', '#ffffff', tray.IDLE)['icons']},
+                       {'icons': [observation('', '#ffb4ab', tray.IDLE)['icons'][0],
+                                  observation('', '#9bbcff', tray.IDLE)['icons'][0]]}):
+            with self.subTest(defect=defect), tempfile.TemporaryDirectory() as directory:
+                replay = self.error_replay(directory)
+                replay.snapshot = Mock(return_value={**observation('', '#ffb4ab', tray.IDLE), **defect})
+                with patch.object(tray.time, 'monotonic', return_value=10):
+                    with self.assertRaises(tray.TrayProgressError): replay.observe('local-failure')
+                evidence = (replay.output/'observations.jsonl').read_text()
+                self.assertIn('redacted', evidence); self.assertNotIn('sensitive', evidence)
+        with self.assertRaises(tray.TrayProgressError):
+            tray.check_tooltip(observation('', '#ffb4ab', tray.IDLE), [], 's3', 42)
+
+    def test_only_explicit_original_id_proton_busy_can_authorize_optional_pulse(self):
+        from unittest.mock import Mock, patch
+        for code in ('proton_account_busy', 'proton_permission_denied'):
+            with self.subTest(code=code), tempfile.TemporaryDirectory() as directory:
+                op = {'id': 'failed', 'state': 'partial', 'items': [
+                    {'uploadStatus': 'uploaded', 'shareStatus': 'failed', 'error': {'code': code}}]}
+                replay = self.error_replay(directory, op); replay.args.provider = 'proton-drive'
+                replay.error_pulse = {'operationIds': ['failed'], 'kind': 'proton-busy', 'required': False}
+                replay.snapshot = Mock(return_value=observation('', '#ffb4ab', tray.IDLE))
+                with patch.object(tray.time, 'monotonic', return_value=10):
+                    if code == 'proton_account_busy':
+                        self.assertEqual(replay.observe('concurrent')[2]['errorColor'], '#ffb4ab')
+                    else:
+                        with self.assertRaises(tray.TrayProgressError): replay.observe('concurrent')
 
     def test_concurrency_requires_two_running_nonqueued_rows(self):
         checked = {'idle': False, 'phases': ['uploading', 'queued']}
@@ -294,6 +485,7 @@ class TrayProgressContracts(unittest.TestCase):
         final = copy.deepcopy(initial); final['original']['state'] = 'completed'
         final['original']['items'][0].update(uploadStatus='uploaded', shareStatus='shared', error={})
         replay = object.__new__(tray.Replay); replay.args = SimpleNamespace(provider='proton-drive')
+        mock_reads(replay)
         replay.save = Mock(); replay.patch = Mock(); replay.successful_uploads = Mock()
         replay.cli = Mock(return_value={'operationId': 'original', 'retryAccepted': True})
         replay.settled = Mock(return_value=final)
@@ -313,6 +505,7 @@ class TrayProgressContracts(unittest.TestCase):
         from types import SimpleNamespace
         from unittest.mock import Mock
         replay = object.__new__(tray.Replay); replay.args = SimpleNamespace(provider='s3')
+        mock_reads(replay)
         replay.pid = 42; replay.history = []; replay.mismatch_since = None
         replay.result = {'coverage': {}}; replay.save = Mock(); replay.witness = Mock()
         replay.cli = Mock(return_value={'operations': []})
@@ -340,6 +533,7 @@ class TrayProgressContracts(unittest.TestCase):
         second['original']['items'][0]['receipt'] = {'identity': 'changed'}
         second['original']['items'][1].update(uploadStatus='uploaded', shareStatus='shared', error={})
         replay = object.__new__(tray.Replay); replay.args = SimpleNamespace(provider='proton-drive')
+        mock_reads(replay)
         replay.save = Mock(); replay.patch = Mock()
         replay.cli = Mock(return_value={'operationId': 'original', 'retryAccepted': True})
         replay.settled = Mock(side_effect=[first, second])
