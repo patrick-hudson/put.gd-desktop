@@ -27,6 +27,18 @@ class LabContracts(unittest.TestCase):
         lock_root.start()
         self.addCleanup(lock_root.stop)
 
+    def test_guest_session_recovers_gnome_wayland_display_from_session_manager(self):
+        # gnome-shell's own environment lacks WAYLAND_DISPLAY; without it the
+        # resident falls back to its graphical route instead of the GNOME core.
+        scripts = []
+        with patch.object(lab, 'state', return_value={'guest_user': 'lab', 'profile': 'gnome-wayland'}), \
+             patch.object(lab, 'ssh', side_effect=lambda _run, script, *a, **k: scripts.append(script) or ''):
+            lab.guest_session('run', 'putgd-launcher --background\n')
+        script = scripts[0]
+        self.assertIn(lab.native_display_prefix(), script)
+        self.assertLess(script.index('export XDG_RUNTIME_DIR=/run/user/'), script.index(lab.native_display_prefix()))
+        self.assertLess(script.index(lab.native_display_prefix()), script.index('putgd-launcher --background'))
+
     def test_tablet_ticks_preserve_pixel_targets_for_native_rounding(self):
         # Actual KWin fullscreen probe: old ticks 15372/17421 delivered
         # 600.46875/680.5078125, so Qt selected 81 instead of 80 pixels.

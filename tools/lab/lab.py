@@ -277,6 +277,21 @@ def get(run, remote, local):
     command(arguments + [endpoint + str(remote), local])
 
 
+def native_display_prefix():
+    # GNOME creates its Wayland display after compositor startup, so it may be
+    # absent from /proc/gnome-shell/environ. The session manager has the updated
+    # value. Without it the resident cannot recognize the native GNOME session
+    # and falls back to its graphical route (about twice the idle memory).
+    # Preserve that real socket before any caller changes the runtime root.
+    return """if [ "${XDG_SESSION_TYPE:-}" = wayland ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+ native_wayland=$(systemctl --user show-environment | sed -n 's/^WAYLAND_DISPLAY=//p')
+ [ -n "$native_wayland" ] || exit 70
+ export WAYLAND_DISPLAY="$native_wayland"
+fi
+case "${WAYLAND_DISPLAY:-}" in ""|/*) ;; *) export WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY";; esac
+"""
+
+
 def guest_session(run, body):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
     info = state(run)
@@ -294,7 +309,7 @@ for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CUR
 done
 export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-export XDG_CONFIG_HOME=$HOME/putgd-lab/config
+{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
 {body}
 '''
