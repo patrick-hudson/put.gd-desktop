@@ -19,6 +19,21 @@ If noninteractive sudo fails, report it rather than requesting or recording a
 password. Keep distro Qt dynamically linked and use the project's pinned official
 AWS SDK; see [build instructions](build.md).
 
+## Graphical acceptance on the physical desktops
+
+The build servers themselves are authorized graphical acceptance targets. Build,
+install and run the candidate directly in Fedora's existing GNOME/Wayland session
+or Debian's existing Plasma/Wayland session. Use the corresponding physical-host
+tile on the workstation wall, preserve the user's other windows/projects, and
+save screenshots or recordings of the actual app behavior and failures.
+Record the host OS, compositor/session version, exact source and running build,
+scenario and result. SSH output or an offscreen test alone is insufficient.
+
+These host-desktop checks do not require a VM or `/dev/kvm`. Select direct host
+testing when its actual desktop/version matches the claim being tested; use a
+VM for other required guest profiles. Preserve Cinnamon-first ordering, the
+approved KDE experiment exception and the release matrix's exact versions.
+
 ## Pinned SSH access
 
 Connect from the main workstation on the LAN. Both hosts accept

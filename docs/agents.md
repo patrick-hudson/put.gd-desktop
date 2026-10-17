@@ -76,7 +76,8 @@ Do not teach shared code to decode URLs or provider object keys.
 ## Desktop and release gates
 
 Prefer the [Fedora and Debian physical servers](remote-builders.md) for builds,
-VMs and native checks; use local VMs only when the required remote host/profile
+VMs and native graphical acceptance directly on their existing GNOME/Plasma
+desktops; use local VMs only when the required remote host/profile
 is unavailable or unsuitable, and record why. Passwordless `sudo -n` setup is
 authorized on those two servers. Preserve their existing projects and desktops;
 keep the workstation SSH key local. Check KVM, capacity and ports on the actual

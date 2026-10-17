@@ -7,6 +7,9 @@ when administrator authentication is required. Do not assemble a substitute tool
 
 Prefer Patrick's Fedora 44 (`192.168.68.70`) and Debian 13 (`192.168.68.69`)
 physical build/test servers for builds, VM hosting and graphical acceptance.
+Their existing GNOME and Plasma sessions are graphical acceptance targets too:
+run and verify the app directly on either physical desktop, visible on its host
+wall tile, with saved visuals and exact host/session/source/build identities.
 Use local workstation VMs as a fallback when those hosts cannot run the required
 profile; record the reason. Connection pins, host selection, visual evidence and
 golden-image transfer rules are in `docs/remote-builders.md`. On these two servers,
