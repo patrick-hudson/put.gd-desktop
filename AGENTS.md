@@ -23,6 +23,13 @@ lab VM goldens with guest login `lab` / `putgd-lab`, verifying login visibly.
 The user explicitly approved documenting this default disposable-guest login
 as the exception to the no-credentials-in-source rule. Preserve immutable sources.
 
+Required Linux testing covers Mint, Ubuntu, Kubuntu, Fedora and Debian, with
+Cinnamon plus GNOME/KDE and real X11/Wayland coverage as mapped in
+`docs/acceptance-matrix.md`. Prefer the build servers, using their native desktops
+and new VMs as needed; fall back locally with a recorded reason. Run any release
+gate requiring physical/native hardware on the appropriate physical machine.
+Provision missing profiles; never substitute VM or XWayland evidence for such gates.
+
 The implementation contract is in GitHub issue #1 and
 `docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md` when present locally.
 Preserve its user-approved choices and explicit non-goals. Implement in dependency order.

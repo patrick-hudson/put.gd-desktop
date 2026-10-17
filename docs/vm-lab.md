@@ -11,6 +11,10 @@ Host protocol tests and offscreen fixture checks do not prove desktop acceptance
 
 ## Host selection
 
+Plan host/guest placement with the [Linux acceptance matrix](acceptance-matrix.md).
+Cover Mint, Ubuntu, Kubuntu, Fedora and Debian plus GNOME/KDE X11/Wayland;
+provision missing VM profiles while using physical machines for physical release gates.
+
 Use the [preferred Fedora/Debian build servers](remote-builders.md) before local
 workstation VMs. Select a host with the required capacity, KVM access and visible
 guest display; record a local fallback reason if neither can run the profile.

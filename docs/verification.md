@@ -1,5 +1,14 @@
 # Implementation evidence
 
+## Required Linux coverage
+
+The [acceptance matrix](acceptance-matrix.md) requires Mint, Ubuntu, Kubuntu,
+Fedora and Debian, with Cinnamon plus GNOME/KDE and native X11/Wayland coverage.
+Prefer the build servers for direct desktop tests and VM hosting; provision
+missing profiles, and run physical-hardware release gates on physical machines.
+This requirement is separate from the historical results below; missing new
+rows and current-candidate evidence remain gates.
+
 ## Local S3 settings controls — 2026-10-16
 
 The [scoped receipt](evidence/2026-10-16-s3-settings-controls.md) records the

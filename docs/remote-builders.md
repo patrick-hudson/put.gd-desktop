@@ -19,6 +19,11 @@ If noninteractive sudo fails, report it rather than requesting or recording a
 password. Keep distro Qt dynamically linked and use the project's pinned official
 AWS SDK; see [build instructions](build.md).
 
+The [Linux acceptance matrix](acceptance-matrix.md) covers Mint, Ubuntu, Kubuntu,
+Fedora and Debian, GNOME/KDE, and native X11/Wayland. Combine host desktops and
+builder-hosted VMs as needed; physical-hardware release gates require the
+appropriate physical machine. Provision missing profiles and record local fallbacks.
+
 ## Graphical acceptance on the physical desktops
 
 The build servers themselves are authorized graphical acceptance targets. Build,

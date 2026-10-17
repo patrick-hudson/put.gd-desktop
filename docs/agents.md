@@ -75,6 +75,11 @@ Do not teach shared code to decode URLs or provider object keys.
 
 ## Desktop and release gates
 
+Use the [Linux acceptance matrix](acceptance-matrix.md): Mint, Ubuntu, Kubuntu,
+Fedora and Debian; Cinnamon, GNOME and KDE; native X11 and Wayland coverage.
+Choose physical hosts and VMs per gate, prefer builders, provision missing
+profiles, and keep physical-hardware release gates on physical machines.
+
 Prefer the [Fedora and Debian physical servers](remote-builders.md) for builds,
 VMs and native graphical acceptance directly on their existing GNOME/Plasma
 desktops; use local VMs only when the required remote host/profile
