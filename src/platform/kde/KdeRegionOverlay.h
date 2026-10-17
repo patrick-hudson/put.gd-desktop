@@ -14,7 +14,7 @@ signals:
  void selected(const QRectF&);void cancelled(const putgd::Error&);
 private:
  class Surface;void press(QPointF);void move(QPointF);void release(QPointF);void finish();
- QList<CaptureFrame> frames_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false;
+ QList<CaptureFrame> frames_;QList<Surface*> surfaces_;QRectF selection_;QPointF anchor_;bool dragging_=false,finished_=false,clearing_=false;
  wl_callback* dismissal_=nullptr;
 };
 }

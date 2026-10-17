@@ -29,7 +29,7 @@ public:
 #endif
  }
 protected:
- void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}}
+ void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!owner_.clearing_&&!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
  void mouseMoveEvent(QMouseEvent* e) override{owner_.move(logicalRect_.topLeft()+e->position());}
  void mouseReleaseEvent(QMouseEvent* e) override{if(e->button()==Qt::LeftButton)owner_.release(logicalRect_.topLeft()+e->position());}
@@ -57,20 +57,24 @@ void KdeRegionOverlay::start(){
 }
 void KdeRegionOverlay::press(QPointF p){if(finished_)return;anchor_=QPointF(qRound(p.x()),qRound(p.y()));dragging_=true;selection_=QRectF(anchor_,QSizeF{});}
 void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const QPointF endpoint(qRound(p.x()),qRound(p.y()));selection_=QRectF(anchor_,endpoint).normalized();for(auto* surface:surfaces_)surface->update();}
-void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}finish();
+void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}
 #ifdef PUTGD_NATIVE_REGION
- // Order the capture after KWin has processed Qt's surface unmaps. D-Bus and
- // Wayland are separate transports, so merely hiding the widgets is not enough.
+ // KWin animates closing surfaces on real GPUs, and ScreenShot2 renders that
+ // animation, so an unmap fence alone still captures a fading outline. Commit
+ // fully transparent content first and fence that; the later unmap then fades
+ // nothing visible. D-Bus and Wayland are separate transports, so the fence is
+ // what orders the resident's capture after KWin has applied the commit.
+ finished_=true;clearing_=true;for(auto* surface:surfaces_)surface->repaint();
  auto* native=qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
- if(!native){emit cancelled({"region_unavailable","Qt has no native Wayland connection",{}});return;}
+ if(!native){finish();emit cancelled({"region_unavailable","Qt has no native Wayland connection",{}});return;}
  static const wl_callback_listener listener{[](void* data,wl_callback* callback,uint32_t){
   auto* owner=static_cast<KdeRegionOverlay*>(data);wl_callback_destroy(callback);owner->dismissal_=nullptr;
-  emit owner->selected(owner->selection_);
+  owner->finish();emit owner->selected(owner->selection_);
  }};
  dismissal_=wl_display_sync(native->display());
  wl_callback_add_listener(dismissal_,&listener,this);wl_display_flush(native->display());
 #else
- emit selected(selection_);
+ finish();emit selected(selection_);
 #endif
 }
 void KdeRegionOverlay::finish(){finished_=true;for(auto* surface:surfaces_)surface->hide();}

@@ -137,7 +137,7 @@ int main(int argc,char** argv) {
     const auto code=error.code; QTimer::singleShot(0,&app,[&,code]{fail(code);});
    });
    QObject::connect(selector.get(),&putgd::KdeRegionOverlay::selected,&app,[&](const QRectF& rectangle){
-    // selected is emitted only after the existing native Wayland unmap fence.
+    // selected is emitted only after the transparent-commit Wayland fence.
     // The signal can originate from an overlay callback, so defer destruction.
     QTimer::singleShot(0,&app,[&,rectangle]{
      if(settled || teardownPending || resultSent) return;
