@@ -146,6 +146,21 @@ try:
     check('keyboardUndo', not [s for s in editor('inspect', {'id': op_id})['shapes'] if s['kind'] == 'text'])
     lab.key(run, ['ctrl', 'shift', 'z']); time.sleep(.4)
     check('keyboardRedo', len([s for s in editor('inspect', {'id': op_id})['shapes'] if s['kind'] == 'text']) == 1)
+
+    # Real mouse: a drawing tool picks up the visible redaction and moves it; undo restores it.
+    lab.key(run, ['r']); time.sleep(.3)
+    count = len(editor('inspect', {'id': op_id})['shapes'])
+    mx, my = at(470, 80)
+    lab.pointer(run, mx, my, width, height, True); time.sleep(.15)
+    lab.pointer(run, mx + 15, my + 10, width, height); time.sleep(.1)
+    lab.pointer(run, mx + 30, my + 20, width, height); time.sleep(.15)
+    lab.pointer(run, mx + 30, my + 20, width, height, False); time.sleep(.4)
+    shapes = editor('inspect', {'id': op_id})['shapes']
+    moved = [s['rect'] for s in shapes if s['kind'] == 'redact']
+    check('drawingToolMovedMark', len(shapes) == count and moved == [[rx + 30, ry + 20, rw, rh]], {'count': [count, len(shapes)], 'redact': moved})
+    lab.key(run, ['ctrl', 'z']); time.sleep(.4)
+    restored = [s['rect'] for s in editor('inspect', {'id': op_id})['shapes'] if s['kind'] == 'redact']
+    check('moveUndone', restored == [[rx, ry, rw, rh]], restored)
     shot('03-mouse-and-keyboard-edits')
 
     # Agent commands through the production CLI, shown live in the window.
