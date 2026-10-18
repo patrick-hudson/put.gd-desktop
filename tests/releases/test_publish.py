@@ -18,7 +18,6 @@ sys.path.insert(0, str(ROOT / 'tools/releases'))
 spec = importlib.util.spec_from_file_location('release_publish', ROOT / 'tools/releases/publish.py')
 publish = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publish)
-import github_evidence
 import release_bundle
 
 
@@ -330,22 +329,11 @@ class NightlyPublicationTest(unittest.TestCase):
         self.metadata = None
         self.remote_files = {}
         self.commands = []
-        self.run_reads = {45: 0, 46: 0}
-        self.runs = {}
-        self.jobs = {}
-        for run_id, workflow_id, path, jobs in [
-                (45, 12, github_evidence.BUILD_WORKFLOW, github_evidence.BUILD_JOBS),
-                (46, 13, github_evidence.PACKAGE_WORKFLOW, github_evidence.PACKAGE_JOBS)]:
-            self.runs[run_id] = {'id': run_id, 'workflow_id': workflow_id, 'path': path,
-                'head_sha': 'a' * 40, 'repository': {'full_name': 'fixture/putgd'},
-                'head_repository': {'full_name': 'fixture/putgd'}, 'run_attempt': 1, 'event': 'workflow_dispatch',
-                'status': 'completed' if run_id == 45 else 'in_progress',
-                'conclusion': 'success' if run_id == 45 else None}
-            self.jobs[run_id] = [{'id': i + 100, 'name': name, 'status': 'completed',
-                                  'conclusion': 'success'} for i, name in enumerate(jobs)]
         self.commit = 'a' * 40
         self.after_edit = None
-        self.changed_final_attempt = False
+        self.environment = {'GITHUB_REPOSITORY': 'fixture/putgd', 'GITHUB_RUN_ID': '77',
+                            'GITHUB_RUN_ATTEMPT': '1', 'GITHUB_SERVER_URL': 'https://github.com',
+                            'GITHUB_WORKFLOW_REF': 'fixture/putgd/.github/workflows/nightly.yml@refs/heads/nightly'}
 
     def metadata_for(self, draft, names=None):
         ordered = sorted(self.files)
@@ -360,19 +348,7 @@ class NightlyPublicationTest(unittest.TestCase):
         if path.startswith('releases/assets/'):
             asset = next(a for a in self.metadata['assets'] if a['id'] == int(path.rsplit('/', 1)[1]))
             return self.remote_files[asset['name']]
-        if path.startswith('actions/workflows/'):
-            package = path.endswith('release.yml')
-            value = {'id': 13 if package else 12, 'path': github_evidence.PACKAGE_WORKFLOW if package else github_evidence.BUILD_WORKFLOW, 'state': 'active'}
-        elif path.startswith('actions/runs/'):
-            run_id = int(path.split('/')[2])
-            if '/jobs?' in path:
-                value = [{'jobs': self.jobs[run_id]}]
-            else:
-                self.run_reads[run_id] += 1
-                value = copy.deepcopy(self.runs[run_id])
-                if self.changed_final_attempt and self.run_reads[run_id] > 2:
-                    value['run_attempt'] += 1
-        elif path.startswith('git/'):
+        if path.startswith('git/'):
             value = {'object': {'type': 'commit', 'sha': self.commit}}
         elif path.startswith('releases?'):
             value = [[self.metadata]] if self.metadata else [[]]
@@ -402,10 +378,8 @@ class NightlyPublicationTest(unittest.TestCase):
         return subprocess.CompletedProcess(command, 0)
 
     def invoke(self, *extra):
-        argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory),
-                '--nightly', '--build-run-id', '45', '--build-workflow-id', '12',
-                '--package-run-id', '46', '--coordinator-run-id', '71', *extra]
-        with patch.object(sys, 'argv', argv), patch.dict(os.environ, {'GITHUB_REPOSITORY': 'fixture/putgd'}), \
+        argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory), '--nightly', *extra]
+        with patch.object(sys, 'argv', argv), patch.dict(os.environ, self.environment, clear=True), \
              patch.object(publish, 'verify', return_value=self.release), \
              patch.object(subprocess, 'check_output', side_effect=self.output), \
              patch.object(subprocess, 'run', side_effect=self.command):
@@ -424,47 +398,32 @@ class NightlyPublicationTest(unittest.TestCase):
         receipt = json.loads((self.directory / 'publication.json').read_text())
         self.assertEqual(receipt['channel'], 'nightly')
         self.assertEqual(receipt['gitCommit'], 'a' * 40)
-        self.assertEqual(receipt['buildProducer']['runId'], 45)
-        self.assertEqual(receipt['packageProducer']['runId'], 46)
-        self.assertEqual(receipt['coordinatorRunId'], 71)
+        self.assertEqual(receipt['producer'], {
+            'repository': 'fixture/putgd', 'runId': 77, 'runAttempt': 1,
+            'workflowRef': 'fixture/putgd/.github/workflows/nightly.yml@refs/heads/nightly',
+            'url': 'https://github.com/fixture/putgd/actions/runs/77'})
         self.assertEqual(receipt['verifiedRemoteDraft']['sha256'],
                          {**self.listed, 'SHA256SUMS': hashlib.sha256(self.files['SHA256SUMS']).hexdigest()})
         notes = (self.directory / 'release-notes.md').read_text()
-        for text in ('nightly', 'a' * 40, '45', '46', '71', 'graphical', 'memory', 'S3'):
+        for text in ('nightly', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
             self.assertIn(text, notes)
 
 
-    def test_failed_cancelled_unknown_or_wrong_source_build_blocks_before_mutation(self):
-        for change in ({'conclusion': 'failure'}, {'conclusion': 'cancelled'},
-                       {'status': 'unknown'}, {'head_sha': 'b' * 40},
-                       {'workflow_id': 99}, {'head_repository': {'full_name': 'other/repo'}}):
-            with self.subTest(change=change):
-                original = copy.deepcopy(self.runs[45])
-                self.runs[45].update(change)
-                with self.assertRaises(ValueError):
+    def test_missing_or_invalid_run_identity_blocks_before_mutation(self):
+        for key, value in (('GITHUB_RUN_ID', None), ('GITHUB_RUN_ID', '0'), ('GITHUB_RUN_ATTEMPT', 'x'),
+                           ('GITHUB_WORKFLOW_REF', 'other/repo/.github/workflows/nightly.yml@refs/heads/nightly'),
+                           ('GITHUB_WORKFLOW_REF', None)):
+            with self.subTest(key=key, value=value):
+                original = dict(self.environment)
+                if value is None:
+                    del self.environment[key]
+                else:
+                    self.environment[key] = value
+                with self.assertRaisesRegex(ValueError, 'run identity'):
                     self.invoke()
                 self.assertEqual(self.commands, [])
                 self.assertIsNone(self.metadata)
-                self.runs[45] = original
-
-    def test_missing_failed_or_ambiguous_required_jobs_block_before_mutation(self):
-        for run_id in (45, 46):
-            original = copy.deepcopy(self.jobs[run_id])
-            for jobs in (original[:-1], [dict(job, conclusion='failure') for job in original],
-                         original + [original[0]]):
-                with self.subTest(run_id=run_id, jobs=jobs):
-                    self.jobs[run_id] = jobs
-                    with self.assertRaises(ValueError):
-                        self.invoke()
-                    self.assertEqual(self.commands, [])
-            self.jobs[run_id] = original
-
-    def test_wrong_workflow_and_invalid_producer_ids_block_before_mutation(self):
-        for flag, value in (('--build-workflow-id', '99'), ('--build-run-id', '0'),
-                            ('--package-run-id', '-1'), ('--coordinator-run-id', '0')):
-            with self.subTest(flag=flag), self.assertRaises(ValueError):
-                self.invoke(flag, value)
-            self.assertEqual(self.commands, [])
+                self.environment = original
 
     def test_automated_mode_rejects_stable_and_candidate_before_mutation(self):
         original_tag, original_release = self.tag, self.release
@@ -529,14 +488,6 @@ class NightlyPublicationTest(unittest.TestCase):
             self.invoke()
         self.assertEqual(self.commands, [])
 
-    def test_changed_producer_attempt_during_asset_verification_blocks_publication(self):
-        self.changed_final_attempt = True
-        with self.assertRaisesRegex(ValueError, 'producers changed'):
-            self.invoke()
-        self.assertTrue(self.metadata['draft'])
-        self.assertEqual([command[2] for command in self.commands], ['create', 'upload'])
-        self.assertFalse((self.directory / 'publication.json').exists())
-
     def test_post_mutation_metadata_failure_is_not_acknowledged_as_success(self):
         for change in ({'draft': True}, {'prerelease': False}, {'tag_name': 'other'}):
             with self.subTest(change=change):
@@ -594,6 +545,36 @@ class NightlyPublicationTest(unittest.TestCase):
                 self.assertEqual(error.exception.code, 2)
                 mutate.assert_not_called()
 
+
+    def test_candidate_and_stable_drafts_record_their_run_without_publishing(self):
+        for tag, channel, prerelease in [('v0.1.1-rc.1', 'candidate', True), ('v0.1.1', 'stable', False)]:
+            with self.subTest(tag=tag):
+                self.tag, self.metadata, self.remote_files, self.commands = tag, None, {}, []
+                release = {**self.release, 'tag': tag, 'channel': channel, 'version': tag[1:],
+                           'prerelease': prerelease}
+                for name in publish.public_inventory(tag) - {'SHA256SUMS'}:
+                    (self.directory / name).write_bytes(('synthetic ' + name).encode())
+                (self.directory / 'release-builds.json').write_text(json.dumps({'release': release}))
+                listed = {name: publish.sha256(self.directory / name)
+                          for name in publish.public_inventory(tag) - {'SHA256SUMS'}}
+                (self.directory / 'SHA256SUMS').write_text(''.join(d + '  ' + n + '\n' for n, d in sorted(listed.items())))
+                self.files = {name: (self.directory / name).read_bytes() for name in [*listed, 'SHA256SUMS']}
+                self.environment['GITHUB_WORKFLOW_REF'] = 'fixture/putgd/.github/workflows/release.yml@refs/heads/main'
+                argv = ['publish.py', '--tag', tag, '--directory', str(self.directory)]
+                with patch.object(sys, 'argv', argv), patch.dict(os.environ, self.environment, clear=True), \
+                     patch.object(publish, 'verify', return_value=release), \
+                     patch.object(subprocess, 'check_output', side_effect=self.output), \
+                     patch.object(subprocess, 'run', side_effect=self.command):
+                    publish.main()
+                self.assertEqual([command[2] for command in self.commands], ['create', 'upload'])
+                self.assertEqual('--prerelease' in self.commands[0], prerelease)
+                self.assertTrue(self.metadata['draft'])
+                staged = json.loads((self.directory / 'staging.json').read_text())
+                self.assertEqual((staged['tag'], staged['channel'], staged['draft']), (tag, channel, True))
+                self.assertEqual(staged['producer']['runId'], 77)
+                notes = (self.directory / 'release-notes.md').read_text()
+                self.assertIn('actions/runs/77', notes)
+                self.assertIn('release candidate' if channel == 'candidate' else 'x86_64 release', notes)
 
     def test_nightly_cannot_use_acceptance_mode_to_bypass_producer_verification(self):
         argv = ['publish.py', '--tag', self.tag, '--directory', str(self.directory),

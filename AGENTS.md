@@ -59,6 +59,18 @@ The user grants standing permission to send implementation and planning material
 Anthropic for review. This permission does not select an external implementation engine.
 Keep review material bounded to the code/specification needed, excluding secrets and payloads.
 
+Branch from `nightly` and open pull requests against `nightly`, the default branch
+and integration trunk. Never push to `nightly` or `main` directly; rulesets require
+a pull request and the `CI` check. CI selects jobs from the changed paths, and the
+`CI` summary is the only required check; a cancelled or skipped-by-failure job is
+not a pass. Leave `project(putgd VERSION ...)` alone in feature pull requests.
+Promote to `main` only through `tools/releases/promote.py --open` (a `release: vX.Y.Z`
+pull request from `nightly`, merged with a merge commit); its merge cuts the next
+candidate draft. Stable and candidate publication stay manual after exact-asset
+acceptance. Never create, move or delete `v*` tags by hand. Hotfixes target `main`
+with a patch bump and are merged back into `nightly` by pull request. The release
+runbook is `docs/release.md`; CI coverage is `docs/ci.md`.
+
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
 owned paths, preserving unrelated pre-existing changes. Do not add recording or OCR
 features: future video support currently means finalized video files in the shared pipeline.

@@ -8,7 +8,7 @@ fi
 cmake --preset release -DPUTGD_BUNDLE_PROTON=ON -DBUILD_TESTING=OFF -DPUTGD_LAB_FIXTURE=OFF -DPUTGD_PHYSICAL_BENCHMARKS=OFF \
   -DPUTGD_RELEASE_TAG="$release_tag" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib \
   -DCMAKE_PREFIX_PATH="$PWD/build/appimage-deps;$QT_ROOT_DIR;$PWD/build/sdk"
-cmake --build --preset release
+cmake --build --preset release --parallel "${PUTGD_BUILD_JOBS:-2}"
 stage="$PWD/build/appimage-stage"
 if [ -e "$stage" ]; then echo 'AppImage staging directory must be new' >&2; exit 1; fi
 DESTDIR="$stage" cmake --install build/release
