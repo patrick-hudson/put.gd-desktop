@@ -112,7 +112,7 @@ private slots:
   });
   QProcess client;auto environment=QProcessEnvironment::systemEnvironment();environment.insert("XDG_RUNTIME_DIR",runtime);environment.insert("QT_QPA_PLATFORM","offscreen");environment.insert("XDG_CONFIG_HOME",d.filePath("config"));environment.insert("XDG_DATA_HOME",d.filePath("data"));client.setProcessEnvironment(environment);
   client.start(PUTGD_APP_PATH,{"--history"});QTRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,5000);QCOMPARE(client.exitStatus(),QProcess::NormalExit);QCOMPARE(client.exitCode(),1);QCOMPARE(requests,1);
-  const auto error=client.readAllStandardError();QVERIFY2(error.contains(expectedCode+':'),error.constData());QVERIFY(!error.contains("synthetic-private"));QVERIFY(client.readAllStandardOutput().isEmpty());QVERIFY(!QFileInfo::exists(d.filePath("config/putgd/putgd/config.json")));
+  const auto error=client.readAllStandardError();QVERIFY2(error.contains(expectedCode+':'),error.constData());QVERIFY(!error.contains("synthetic-private"));QVERIFY(client.readAllStandardOutput().isEmpty());QVERIFY(!QFileInfo::exists(d.filePath("config/putgd/config.json")));QVERIFY(!QFileInfo::exists(d.filePath("data/putgd")));
  }
  void secondLauncherWaitsForCompleteDelayedResponse() {
   QTemporaryDir d;const auto runtime=d.filePath("runtime");QVERIFY(QDir().mkpath(runtime+"/putgd"));QVERIFY(QFile::setPermissions(runtime,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));

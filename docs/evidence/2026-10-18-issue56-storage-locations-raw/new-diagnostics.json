@@ -1,0 +1,293 @@
+{
+  "error": {
+    "code": "",
+    "details": {},
+    "message": ""
+  },
+  "ok": true,
+  "requestId": "b1c85829-8fb5-4565-b4ad-8894302d75e0",
+  "result": {
+    "activeOperations": 0,
+    "backend": "Qt",
+    "build": {
+      "baseVersion": "0.1.1",
+      "commitCount": 342,
+      "dirty": false,
+      "gitCommit": "d37a9751a4de65d04a0a4271c7363425ff58d3e0",
+      "gitTree": "2df8c546badf4d477d6dc170618ccc0852197cd9",
+      "packageVersion": "0.1.1~dev.342+gd37a9751a4de",
+      "schemaVersion": 1,
+      "sourceProvenance": "git",
+      "version": "0.1.1-dev.342+gd37a9751a4de"
+    },
+    "capabilities": {
+      "editor": {
+        "admissionPixels": 24000000,
+        "available": true,
+        "commands": [
+          "inspect",
+          "apply",
+          "preview",
+          "saveCopy",
+          "submit",
+          "cancel",
+          "raise"
+        ],
+        "fileFormats": [
+          "png",
+          "jpeg"
+        ],
+        "open": false,
+        "output": "png",
+        "shapes": [
+          "redact",
+          "blur",
+          "arrow",
+          "rectangle",
+          "text",
+          "highlight"
+        ],
+        "sources": [
+          "region",
+          "window",
+          "desktop",
+          "clipboard",
+          "file"
+        ]
+      },
+      "providers": {
+        "proton-drive": {
+          "conditionalCreate": true,
+          "conditionalDelete": false,
+          "conditionalReplace": false,
+          "delete": false,
+          "deletionEffect": "Safe remote deletion is unavailable: Proton does not expose an atomic revision-guarded file deletion. Revoke share links separately.",
+          "maximumNameBytes": 255,
+          "privateUploads": true,
+          "sharing": true,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": false
+        },
+        "s3": {
+          "conditionalCreate": true,
+          "conditionalDelete": true,
+          "conditionalReplace": true,
+          "delete": true,
+          "deletionEffect": "Guarded origin removal; selected versions only; browser/CDN caches may retain bytes",
+          "maximumNameBytes": 1024,
+          "privateUploads": false,
+          "sharing": false,
+          "stat": true,
+          "urls": true,
+          "versionAddressing": true
+        }
+      },
+      "recording": {
+        "active": null,
+        "audio": {
+          "microphone": false,
+          "system": false
+        },
+        "available": false,
+        "codecs": {},
+        "commands": [
+          "prepare",
+          "start",
+          "pause",
+          "resume",
+          "stop",
+          "cancel",
+          "inspect",
+          "raise",
+          "overlay",
+          "edit",
+          "preview",
+          "saveCopy",
+          "upload"
+        ],
+        "editCommands": [
+          "setTrim",
+          "resetTrim",
+          "addMask",
+          "updateMask",
+          "removeMask"
+        ],
+        "formats": [],
+        "limits": {
+          "animationMaxEdge": 1280,
+          "animationMaxUs": 60000000,
+          "maxFileBytes": 2147483648,
+          "maxMasks": 64
+        },
+        "maskKinds": [
+          "blur",
+          "solid"
+        ],
+        "overlayExclusion": {},
+        "reason": "recording_not_probed",
+        "states": [
+          "preparing",
+          "ready",
+          "starting",
+          "recording",
+          "paused",
+          "stopping",
+          "reviewing",
+          "exporting",
+          "submitted",
+          "cancelled",
+          "failed"
+        ],
+        "targets": [],
+        "timeUnit": "microseconds"
+      },
+      "source": {
+        "adapter": "cinnamon-core-x11",
+        "capture": {
+          "desktop": {
+            "available": true,
+            "consent": "none",
+            "helper": {
+              "active": false,
+              "build": {
+                "baseVersion": "0.1.1",
+                "commitCount": 342,
+                "dirty": false,
+                "gitCommit": "d37a9751a4de65d04a0a4271c7363425ff58d3e0",
+                "gitTree": "2df8c546badf4d477d6dc170618ccc0852197cd9",
+                "packageVersion": "0.1.1~dev.342+gd37a9751a4de",
+                "schemaVersion": 1,
+                "sourceProvenance": "git",
+                "version": "0.1.1-dev.342+gd37a9751a4de"
+              },
+              "lastExit": {},
+              "processId": 0
+            },
+            "mode": "visible-pixels"
+          },
+          "region": {
+            "available": true,
+            "consent": "none",
+            "helper": {
+              "active": false,
+              "build": {
+                "baseVersion": "0.1.1",
+                "commitCount": 342,
+                "dirty": false,
+                "gitCommit": "d37a9751a4de65d04a0a4271c7363425ff58d3e0",
+                "gitTree": "2df8c546badf4d477d6dc170618ccc0852197cd9",
+                "packageVersion": "0.1.1~dev.342+gd37a9751a4de",
+                "schemaVersion": 1,
+                "sourceProvenance": "git",
+                "version": "0.1.1-dev.342+gd37a9751a4de"
+              },
+              "lastExit": {},
+              "processId": 0
+            },
+            "mode": "visible-pixels"
+          },
+          "window": {
+            "available": true,
+            "consent": "none",
+            "helper": {
+              "active": false,
+              "build": {
+                "baseVersion": "0.1.1",
+                "commitCount": 342,
+                "dirty": false,
+                "gitCommit": "d37a9751a4de65d04a0a4271c7363425ff58d3e0",
+                "gitTree": "2df8c546badf4d477d6dc170618ccc0852197cd9",
+                "packageVersion": "0.1.1~dev.342+gd37a9751a4de",
+                "schemaVersion": 1,
+                "sourceProvenance": "git",
+                "version": "0.1.1-dev.342+gd37a9751a4de"
+              },
+              "lastExit": {},
+              "processId": 0
+            },
+            "mode": "visible-pixels"
+          }
+        },
+        "clipboard": {
+          "available": true,
+          "import": "asynchronous-x11-selection",
+          "result": "native-x11-ownership",
+          "types": [
+            "files",
+            "image",
+            "text"
+          ]
+        },
+        "shortcuts": {
+          "available": true,
+          "bindings": {
+            "clipboard": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "desktop": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "edit": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "record": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "region": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            },
+            "window": {
+              "bound": false,
+              "error": "disabled",
+              "requested": ""
+            }
+          }
+        }
+      }
+    },
+    "journalReady": true,
+    "locations": {
+      "config": {
+        "path": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/c/putgd",
+        "state": "migrated"
+      },
+      "data": {
+        "path": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/d/putgd",
+        "state": "migrated"
+      },
+      "schemaVersion": 1
+    },
+    "memory": {
+      "allocatorReclamationCount": 0,
+      "allocatorReclamationPending": true,
+      "allocatorReclamationSupported": true,
+      "lastAllocatorReclamationUsec": 0
+    },
+    "qtVersion": "6.4.2",
+    "schemaVersion": 1,
+    "storage": {
+      "proton-drive": {
+        "activeHelpers": 0,
+        "protocolVersion": 1
+      },
+      "s3": {
+        "moduleLiveDrivers": 0,
+        "queuedRequests": 0,
+        "retainedDrivers": 0,
+        "workerStarted": false
+      }
+    }
+  },
+  "schemaVersion": 1
+}

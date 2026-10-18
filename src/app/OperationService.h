@@ -109,6 +109,8 @@ public:
  void shutdown();
  QJsonObject capabilities() const;
  QJsonObject diagnostics() const;
+ // The active configuration/data roots and any retained earlier layout (#56).
+ void setLocations(QJsonObject locations) {locations_=std::move(locations);}
  QString databasePath() const {return root_+"/history.sqlite";}
  ProviderRegistry& providers() {return providers_;}
  // Shared services run SQL, encoding, and file/network work on workers.
@@ -175,6 +177,7 @@ private:
  QSet<QString> clipboardImports_;
  quint64 uploadCopyEpoch_=0;
  QString root_;
+ QJsonObject locations_;
  std::unique_ptr<QLockFile> journalOwner_;
  SettingsService& settings_;
  void rememberEditorColors(const QStringList&);

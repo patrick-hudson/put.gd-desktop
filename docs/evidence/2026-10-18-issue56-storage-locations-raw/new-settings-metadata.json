@@ -1,0 +1,16 @@
+{
+  "acceptedRevision": "5bbab3058365b134ddb9d3ebdcc2c711b5bc84ecbcc4b3c83439ff6b8d45ecb6",
+  "fallbackRescanMs": 2000,
+  "observedRevision": "5bbab3058365b134ddb9d3ebdcc2c711b5bc84ecbcc4b3c83439ff6b8d45ecb6",
+  "path": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/c/putgd/config.json",
+  "schemaVersion": 1,
+  "validation": {
+    "error": {
+      "code": "",
+      "details": {},
+      "message": ""
+    },
+    "ok": true
+  },
+  "watching": true
+}

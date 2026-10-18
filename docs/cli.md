@@ -99,7 +99,9 @@ remains the last accepted document. `settings.reload` returns `config_invalid` w
 the failing JSON path in `error.details.path`. Correct that field in the complete
 file using the atomic-save/locking convention in [configuration.md](configuration.md),
 reload, then verify validation and both revisions. `diagnostics` reports backend,
-Qt version, journal readiness, active operation count, and capabilities; inspect
+Qt version, journal readiness, active operation count, capabilities, and the
+configuration and data folders in use with any earlier layout left behind
+(`locations`, see [configuration.md](configuration.md#locations)); inspect
 configuration separately to diagnose a settings error.
 
 `diagnostics.result.memory` contains `allocatorReclamationSupported`,

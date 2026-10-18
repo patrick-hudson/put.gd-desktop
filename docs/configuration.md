@@ -1,10 +1,53 @@
 # Configuration
 
-The resident app owns one `config.json` under Qt's `AppConfigLocation`. GUI and CLI
+The resident app owns one `config.json` in its configuration folder. GUI and CLI
 report the exact path. No separate YAML file or preferences database exists.
 The schema is [config.schema.json](../schemas/config.schema.json). The shared
 `SettingsService` is the authoritative validator, including registered provider rules,
 absolute paths, shortcut syntax, and cross-profile references.
+
+## Locations
+
+| Folder | Linux | Windows |
+| --- | --- | --- |
+| Configuration: `config.json` and its `config.json.lock` | `$XDG_CONFIG_HOME/putgd`, normally `~/.config/putgd` | `%LOCALAPPDATA%\putgd` |
+| Data: `history.sqlite`, `artifacts/`, `previews/`, `destination-tests/`, editor and recording staging, `resident.lock` | `$XDG_DATA_HOME/putgd`, normally `~/.local/share/putgd` | `%LOCALAPPDATA%\putgd` |
+
+These are Qt's `GenericConfigLocation` and `GenericDataLocation` plus `putgd`, so they
+do not depend on Qt's organization or application name. The screen-recording helper
+keeps its portal restore token in `putgd-record/` inside the data folder
+([recording](recording.md)). The resident makes both folders owner-only.
+
+Releases up to 0.1.1 and earlier nightlies used Qt's app-scoped locations with the
+organization and application both named `putgd`, which doubled the name:
+`~/.config/putgd/putgd/config.json` and `~/.local/share/putgd/putgd/`. The resident
+moves that layout at startup, after a second launch has handed off to a running
+resident and before settings or the journal open. Each folder is decided on its own:
+
+- If the new folder is not yet in use (configuration: no `config.json`; data: no
+  `history.sqlite`), the earlier folder is renamed to `.putgd-migration` inside the new
+  folder, each entry is renamed into place, and the emptied staging folder is removed.
+  Every step is a rename on one filesystem; nothing is copied or replaced. If put.gd
+  stops part way, the next start finishes the move before opening anything.
+- If the new folder is already in use, neither folder changes. put.gd uses the new
+  one and reports the earlier folder as `legacyPath`.
+- An earlier folder that is a symbolic link, or that cannot be renamed, stays in use
+  (`legacy_active`). Move its contents yourself while put.gd is stopped.
+- A staged entry whose name already exists in the new folder stays staged
+  (`conflict`, with `stagingPath` and `conflicts`); nothing is replaced.
+- While an earlier resident still holds its journal lock, startup stops with
+  `storage_busy` and nothing moves. A stale lock from a crashed resident is released.
+
+Journal records store absolute artifact and preview paths. When the journal has moved
+with its folder, it reads them under the folder it is in now, so retained artifacts,
+previews and queued uploads keep working.
+
+`diagnostics.locations` reports `config` and `data`, each with `path` (the folder in
+use) and `state`: `current`, `migrated`, `legacy_retained`, `legacy_active` or
+`conflict`, plus `legacyPath`, `stagingPath`, `conflicts` or `reason` when they apply.
+The Settings window shows the same diagnostics and the configuration file path.
+
+## Settings document
 
 The resident JSON CLI and Settings window use this service. Native acceptance must
 verify live edits in an installed desktop session; headless checks alone do not

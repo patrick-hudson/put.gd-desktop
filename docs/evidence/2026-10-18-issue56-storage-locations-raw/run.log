@@ -1,0 +1,44 @@
+2026-10-18T16:47:24 phase A start
+2026-10-18T16:47:24 old build {'schemaVersion': 1, 'version': '0.1.1-dev.336+g625b7ff38bb0', 'baseVersion': '0.1.1', 'packageVersion': '0.1.1~dev.336+g625b7ff38bb0', 'gitCommit': '625b7ff38bb088861ebe4ec5a1dc241081cae830', 'gitTree': '343ea24db6d6b6d867b339494bc305732c822ab6', 'commitCount': 336, 'dirty': False, 'sourceProvenance': 'git'}
+2026-10-18T16:47:24 fixture /home/patrick/work/put.gd/build/dev/packaging/linux/putgd-desktop-fixture sha256 e1ef38b161a6545d65afb1b8aa6629485909aa13d3a7a6802b8e52c7969c03e1
+2026-10-18T16:47:24 Xvfb :157 pid 1725068
+2026-10-18T16:47:24 socket check /run/user/1000/pg56a.sntcb1k9/putgd/session.sock rc 0 {"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/run/user/1000/pg56a.sntcb1k9/putgd/session.sock", "utf8Bytes": 48, "passed": true}]} 
+2026-10-18T16:47:24 old resident pid 1725072
+2026-10-18T16:47:25 settings.patch ok True {'code': '', 'details': {}, 'message': ''}
+2026-10-18T16:47:27 invoke t True {'code': '', 'details': {}, 'message': ''}
+2026-10-18T16:47:27 operation 5929a893-3b15-403a-bf7f-c9ac6f323aaa completed ['saved']
+2026-10-18T16:47:28 invoke i True {'code': '', 'details': {}, 'message': ''}
+2026-10-18T16:47:29 operation 231116d1-de68-4170-a028-1ac44c77ccb4 completed ['saved']
+2026-10-18T16:47:29 old history total 2 ['/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/d/putgd/putgd/artifacts/../previews/3e0b9b06-8b1c-4bfe-bb3b-c005f137e5d8.png', '']
+2026-10-18T16:47:29 old ui.quit True
+2026-10-18T16:47:29 old resident exit 0
+2026-10-18T16:47:29 Xvfb stopped 0
+2026-10-18T16:47:29 layout ['c/putgd/putgd', 'c/putgd/putgd/config.json', 'd/putgd/putgd', 'd/putgd/putgd/artifacts', 'd/putgd/putgd/history.sqlite', 'd/putgd/putgd/previews']
+2026-10-18T16:47:29 phase A done
+2026-10-18T16:47:29 phase B start
+2026-10-18T16:47:29 new build {'schemaVersion': 1, 'version': '0.1.1-dev.342+gd37a9751a4de', 'baseVersion': '0.1.1', 'packageVersion': '0.1.1~dev.342+gd37a9751a4de', 'gitCommit': 'd37a9751a4de65d04a0a4271c7363425ff58d3e0', 'gitTree': '2df8c546badf4d477d6dc170618ccc0852197cd9', 'commitCount': 342, 'dirty': False, 'sourceProvenance': 'git'}
+2026-10-18T16:47:29 session {'DISPLAY': ':0', 'XDG_CURRENT_DESKTOP': 'X-Cinnamon', 'XDG_SESSION_TYPE': 'x11', 'DESKTOP_SESSION': 'cinnamon', 'WAYLAND_DISPLAY': None}
+2026-10-18T16:47:29 socket check /run/user/1000/pg56b.uqoik767/putgd/session.sock rc 0 {"schemaVersion": 1, "passed": true, "limitBytesExcludingNul": 107, "paths": [{"path": "/run/user/1000/pg56b.uqoik767/putgd/session.sock", "utf8Bytes": 48, "passed": true}]} 
+2026-10-18T16:47:29 new resident pid 1725218
+2026-10-18T16:47:29 locations {"config": {"path": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/c/putgd", "state": "migrated"}, "data": {"path": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/d/putgd", "state": "migrated"}, "schemaVersion": 1}
+2026-10-18T16:47:29 settings path /tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/c/putgd/config.json revision 5bbab3058365b134ddb9d3ebdcc2c711b5bc84ecbcc4b3c83439ff6b8d45ecb6
+2026-10-18T16:47:29 history total 2 [('Image-2026-10-18-16-47-28.png', '/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/d/putgd/artifacts/../previews/3e0b9b06-8b1c-4bfe-bb3b-c005f137e5d8.png', True), ('Text-2026-10-18-16-47-27.txt', '', False)]
+2026-10-18T16:47:29 filesystem {'configMatches': True, 'dataMatches': True, 'legacyConfigGone': True, 'legacyDataGone': True, 'stagingGone': True, 'configMode': '0o700', 'dataMode': '0o700'}
+2026-10-18T16:47:30 ui.show settings True {'code': '', 'details': {}, 'message': ''}
+2026-10-18T16:47:30 putgd-ui pid 1725243
+2026-10-18T16:47:30 settings window 0xa000006 put.gd
+2026-10-18T16:47:31 captured settings-general.png 1320 x 880 sha256 85c9945ebb394e1112e0b1332e5bbc3ba76ce8643391b06ce4510d87d954b6d7
+2026-10-18T16:47:33 captured settings-advanced.png 1320 x 880 sha256 6e1a7b314e914c08d06998402efac30b42e8341d75175c66355809759801b0b2
+2026-10-18T16:47:34 captured settings-advanced-page-01.png 1320 x 880 sha256 5791c31cc79b6f6c759b2d1eed2c444fc44ee5054f7259ffd1877b80633b15ab
+2026-10-18T16:47:34 captured settings-advanced-page-02.png 1320 x 880 sha256 5643e4a2f4a27769bb8e60e14f612ec2d021605b161d4975d82b75c841b2b980
+2026-10-18T16:47:35 captured settings-advanced-page-03.png 1320 x 880 sha256 d5b1124e30c26e6967904ab7e38fdcda82179009ee00d8645ca3235134d6a744
+2026-10-18T16:47:36 captured settings-advanced-page-04.png 1320 x 880 sha256 17d2c262991bd2b0d964298d6827bb819429a0f5b034ebacd577407be2fcb3b4
+2026-10-18T16:47:37 captured settings-advanced-page-05.png 1320 x 880 sha256 5588592e90c8672cff43008883b3b81a108359b30fdd21bff347051b8e53afec
+2026-10-18T16:47:37 captured settings-advanced-page-06.png 1320 x 880 sha256 d9ddfa8889c11855eca706e43fb053fe0b52cd9415e8c44f03a81678554df3a9
+2026-10-18T16:47:38 captured settings-advanced-page-07.png 1320 x 880 sha256 025129804cfbf468bed626355c5dd928e0ca379529e5d3999d2e72b13656a81b
+2026-10-18T16:47:39 captured settings-advanced-page-08.png 1320 x 880 sha256 f0029eba2e9a7b88d963fd1a166162c53f1032f72d3d672ef06a6b77fcfd9049
+2026-10-18T16:47:39 ui.show history True {'code': '', 'details': {}, 'message': ''}
+2026-10-18T16:47:41 captured history.png 1320 x 880 sha256 9142872c42a3c73c3b96d245e62d6df77157aa1e4e6dd9f4846243bfa9f077cc
+2026-10-18T16:47:41 ui.quit True
+2026-10-18T16:47:41 new resident exit 0
+2026-10-18T16:47:41 phase B done

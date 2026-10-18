@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Single-name configuration and data folders (issue #56) | [Suites, interrupted-move coverage and Cinnamon upgrade check](2026-10-18-issue56-storage-locations.md) |
 | Inherited capture output in Settings (issue #58) | [Suites and Cinnamon check](2026-10-18-issue58-inherited-capture-output.md) |
 | Screen recording on Linux (issue #50) | [Suites, X11 and Wayland desktop acceptance](2026-10-18-issue50-screen-recording.md) |
 | Resident PNG readers; libpng writer measured and dropped | [Decision, tests and Cinnamon/Debian A/B](2026-10-17-resident-png-codecs.md) |

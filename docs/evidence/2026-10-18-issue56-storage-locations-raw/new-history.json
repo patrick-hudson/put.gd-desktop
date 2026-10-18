@@ -1,0 +1,41 @@
+{
+  "records": [
+    {
+      "bytes": 234,
+      "created": "2026-10-18T21:47:28.815Z",
+      "id": "3e0b9b06-8b1c-4bfe-bb3b-c005f137e5d8",
+      "local": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "path": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/archive/images/Image-2026-10-18-16-47-28.png",
+        "status": "saved"
+      },
+      "mime": "image/png",
+      "name": "Image-2026-10-18-16-47-28.png",
+      "operationId": "231116d1-de68-4170-a028-1ac44c77ccb4",
+      "previewPath": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/d/putgd/artifacts/../previews/3e0b9b06-8b1c-4bfe-bb3b-c005f137e5d8.png"
+    },
+    {
+      "bytes": 30,
+      "created": "2026-10-18T21:47:27.394Z",
+      "id": "a8f1ae50-170e-4652-9cc8-e1e2f2a12bb6",
+      "local": {
+        "error": {
+          "code": "",
+          "details": {},
+          "message": ""
+        },
+        "path": "/tmp/claude-1000/-home-patrick-work-put-gd--claude-worktrees-wonderful-swirles-fb7184/9a727e1f-cdc4-4978-bb2b-941d69cb3c27/scratchpad/native56-attempt4/profile/archive/text/Text-2026-10-18-16-47-27.txt",
+        "status": "saved"
+      },
+      "mime": "text/plain",
+      "name": "Text-2026-10-18-16-47-27.txt",
+      "operationId": "5929a893-3b15-403a-bf7f-c9ac6f323aaa",
+      "previewPath": ""
+    }
+  ],
+  "total": 2
+}

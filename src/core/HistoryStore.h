@@ -34,6 +34,11 @@ public:
 private:
  Error initialize();
  Error persistOperation(const Operation&,const ProviderRegistry*,const QSet<QString>* changedItems);
+ // Stored artifact and preview paths are absolute. A journal moved with its
+ // data folder (#56) reads them under the folder it is in now.
+ void relocate(Operation&) const;
+ QJsonObject relocate(QJsonObject record) const;
+ QString root_;
  QString connection_;
  QSqlDatabase db_;
  Error error_;
