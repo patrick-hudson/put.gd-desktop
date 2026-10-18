@@ -299,10 +299,9 @@ class ReleaseCollection(unittest.TestCase):
     def nightly_inputs(self):
         # U1 covers exact Git-tag verification; this fixture starts at its verified
         # identity boundary and tests the real collector/archive byte pipeline.
-        utc = datetime.fromtimestamp(int(self.git_show_commit_time()), timezone.utc).strftime('%Y%m%d%H%M%S')
-        tag = f"v0.1.1-dev.{self.release['commitCount']}.{utc}+g{self.release['gitCommit'][:12]}"
+        tag = f"v0.1.1-nightly.{self.release['commitCount']}"
         version = tag[1:]
-        self.release.update(tag=tag, version=version, packageVersion=version.replace('-dev.', '~dev.'), channel='nightly')
+        self.release.update(tag=tag, version=version, packageVersion=version.replace('-nightly.', '~nightly.'), channel='nightly')
         for receipt_path in self.inputs.glob('*/native-audit.json'):
             receipt = json.loads(receipt_path.read_text())
             receipt['manifest'].update(version=version, packageVersion=self.release['packageVersion'])

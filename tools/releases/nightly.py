@@ -41,12 +41,17 @@ def prepare(root):
     sha = full_sha(git(root, 'rev-parse', 'HEAD'))
     base = project_base(root)
     count = int(git(root, 'rev-list', '--count', 'HEAD'))
-    utc = datetime.datetime.fromtimestamp(int(git(root, 'show', '-s', '--format=%ct', 'HEAD')),
-                                         datetime.timezone.utc).strftime('%Y%m%d%H%M%S')
-    tag = f'v{base}-dev.{count}.{utc}+g{sha[:12]}'
+    tag = f'v{base}-nightly.{count}'
     parse_tag(tag)
-    return {'schemaVersion': 2, 'tag': tag, 'sourceSha': sha, 'baseVersion': base,
-            'gitTree': git(root, 'rev-parse', 'HEAD^{tree}'), 'commitCount': count, 'committerUtc': utc}
+    return {'schemaVersion': 3, 'tag': tag, 'sourceSha': sha, 'baseVersion': base,
+            'gitTree': git(root, 'rev-parse', 'HEAD^{tree}'), 'commitCount': count,
+            'committerDate': committer_date(root, 'HEAD')}
+
+
+def committer_date(root, revision):
+    """UTC calendar date of a source commit, for release titles and summaries."""
+    return datetime.datetime.fromtimestamp(int(git(root, 'show', '-s', '--format=%ct', revision)),
+                                           datetime.timezone.utc).strftime('%Y-%m-%d')
 
 
 def ensure_tag(api, root, tag, source_sha):
@@ -159,7 +164,8 @@ def write_outputs(result):
             if result['skip']:
                 stream.write(f"Nightly unchanged: `{result['tag']}` is already published. Nothing to build.\n")
             else:
-                stream.write(f"Building nightly `{result['tag']}` from `{result['sourceSha']}`.\n")
+                stream.write(f"Building nightly `{result['tag']}` from `{result['sourceSha'][:12]}`, "
+                             f"committed {result['committerDate']}.\n")
 
 
 def main():

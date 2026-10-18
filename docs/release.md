@@ -16,15 +16,16 @@ directly, and published tags are never moved or deleted.
 
 | Channel | Tag | Cut by | Publication |
 | --- | --- | --- | --- |
-| Nightly | `vBASE-dev.COUNT.UTC+gSHORT` | daily schedule on changed `nightly` | automated, build-tested prerelease |
+| Nightly | `vBASE-nightly.N` | daily schedule on changed `nightly` | automated, build-tested prerelease |
 | Candidate | `vBASE-rc.N` | every push to `main` | draft; published after exact-asset acceptance |
 | Stable | `vBASE` | manual Release run on a candidate commit | draft; published after exact-asset acceptance |
 
 `BASE` is `project(putgd VERSION ...)`. On `nightly` it is always the version
-being prepared, because packages order `BASE~dev` and `BASE~rc` before `BASE`.
-`UTC` is the source commit's 14-digit UTC committer time, not the runner clock.
-`COUNT` is its full-history commit count; `SHORT` is its first 12 lowercase hash
-characters. The tag, base, full commit, tree and count must match the clean source.
+being prepared, because packages order `BASE~nightly` and `BASE~rc` before `BASE`.
+A nightly's `N` is the tagged commit's full-history commit count, so it increases
+with every commit on `nightly`; for example `v0.1.1-nightly.312`, titled
+"put.gd 0.1.1 nightly 312". The tag, base, full commit, tree and count must match
+the clean source. Nightlies before 2026-10-18 used `vBASE-dev.COUNT.UTC+gSHORT`.
 Nightlies never replace GitHub's Latest stable release. Every channel publishes
 all twelve individual downloads listed below, including both raw DEBs, the RPM
 and the exact compiled curated source archive.
@@ -49,6 +50,9 @@ compilation, package audits and the extracted-source production build. They are
 development releases, not new graphical, memory or live-S3 certification.
 
 ### Candidate and stable
+
+Agents releasing a version follow [the release runbook](release-runbook.md),
+which adds the version checks, acceptance recording and confirmation points.
 
 1. Run `python3 tools/releases/promote.py` to preview, then `--open` to create
    the pull request from `nightly` into `main` titled `release: vBASE`. Merge it

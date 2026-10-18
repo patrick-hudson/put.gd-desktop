@@ -9,6 +9,7 @@ instruction file. Use the existing documentation below; this file is an index.
 | Implementation contract and dependency order | [Implementation plan](docs/plans/2026-10-07-1926-feat-qt-linux-share-plan.md), [GitHub issue #1](https://github.com/patrick-hudson/put.gd-desktop/issues/1) |
 | Build, dependencies and packaging | [docs/build.md](docs/build.md) |
 | Branches, CI jobs, nightly and release process | [docs/ci.md](docs/ci.md), [docs/release.md](docs/release.md) |
+| Releasing a version (agent runbook) | [docs/release-runbook.md](docs/release-runbook.md) |
 | Linux distro/session matrix and physical/VM placement | [docs/acceptance-matrix.md](docs/acceptance-matrix.md) |
 | Required verification and recorded acceptance | [docs/verification.md](docs/verification.md) |
 | Remote builders, physical-desktop acceptance, VM displays and golden transfers | [docs/remote-builders.md](docs/remote-builders.md) |

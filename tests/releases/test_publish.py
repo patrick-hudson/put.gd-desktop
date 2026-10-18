@@ -174,7 +174,7 @@ class RemoteDraftTest(unittest.TestCase):
                 self.assertEqual([c.args[0][2] for c in commands.call_args_list], ['create', 'upload'])
 
     def test_delayed_nightly_draft_still_requires_prerelease_and_staging_recheck(self):
-        tag = 'v0.1.1-dev.2.20261011153045+g' + 'a' * 12
+        tag = 'v0.1.1-nightly.2'
         release = {'gitCommit': 'a' * 40, 'version': tag[1:], 'prerelease': True, 'channel': 'nightly'}
         for prerelease in (True, False):
             draft = {**self.metadata, 'tag_name': tag, 'assets': [], 'prerelease': prerelease}
@@ -314,9 +314,9 @@ class NightlyPublicationTest(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix='pg-nightly-publish-')
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
-        self.tag = 'v0.1.1-dev.42.20261012184001+gaaaaaaaaaaaa'
+        self.tag = 'v0.1.1-nightly.42'
         self.release = {'schemaVersion': 1, 'tag': self.tag, 'version': self.tag[1:],
-                        'baseVersion': '0.1.1', 'packageVersion': self.tag[1:].replace('-dev.', '~dev.'),
+                        'baseVersion': '0.1.1', 'packageVersion': self.tag[1:].replace('-nightly.', '~nightly.'),
                         'channel': 'nightly', 'prerelease': True, 'gitCommit': 'a' * 40,
                         'gitTree': 'b' * 40, 'commitCount': 42}
         names = sorted(publish.public_inventory(self.tag) - {'SHA256SUMS'})
@@ -405,7 +405,9 @@ class NightlyPublicationTest(unittest.TestCase):
         self.assertEqual(receipt['verifiedRemoteDraft']['sha256'],
                          {**self.listed, 'SHA256SUMS': hashlib.sha256(self.files['SHA256SUMS']).hexdigest()})
         notes = (self.directory / 'release-notes.md').read_text()
-        for text in ('nightly', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
+        self.assertIn('--title', self.commands[0])
+        self.assertEqual(self.commands[0][self.commands[0].index('--title') + 1], 'put.gd 0.1.1 nightly 42')
+        for text in ('Nightly 42 of 0.1.1', 'a' * 40, 'actions/runs/77', 'graphical', 'memory', 'S3'):
             self.assertIn(text, notes)
 
 

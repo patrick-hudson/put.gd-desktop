@@ -133,6 +133,42 @@ collection also verifies the corresponding-source transport. The Linux x86-64
 lock is not used by the Windows compile. Hosted contracts do not replace
 authenticated packaged desktop and resource acceptance.
 
+## Rollout measurements (October 2026)
+
+Hosted runs from the first day of the redesigned pipeline. "Cold" means the
+cache keys had just changed; "warm" restored the caches the `nightly` push run
+saved. Wall time runs from the trigger to the last job.
+
+| Run | Event | Caches | Wall |
+| --- | --- | --- | ---: |
+| [39091022143](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39091022143) | PR #61, every path class | cold | 16:15 |
+| [39092148362](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39092148362) | push to `nightly` | cold | 14:16 |
+| [39093024865](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39093024865) | promotion PR #63 | warm | 8:21 |
+| [39093014897](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39093014897) | manual nightly, published `v0.1.1-dev.309` | warm | 15:49 |
+| [39093989128](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39093989128) | manual nightly, unchanged source | none needed | 0:20 |
+| [39093626492](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39093626492) | push to `main`, cut `v0.1.1-rc.1` | warm | 13:43 to draft |
+
+Warm Linux test jobs took about eight minutes. Of that, 1:17 to 2:03 is
+package installation, under 30 seconds is the ccache build, and about five
+minutes is CTest. CTest is now the critical path; issue
+[#62](https://github.com/patrick-hudson/put.gd-desktop/issues/62) tracks it.
+
+| Linux 24.04 step | Cold | Warm |
+| --- | ---: | ---: |
+| Build (Debug, Proton bundled) | 4:41 | 0:24 |
+| CTest (67 tests) | 5:06 | 5:02 |
+| SDK provisioning | 2:48 | skipped |
+
+Windows dropped from 7:42 cold to 3:21 warm. The published nightly spent 2:20
+collecting and 3:13 publishing after its builds. The unchanged-source nightly
+ran only `plan` and skipped every other job.
+
+The first nightly also showed the Fedora package builder rebuilding the SDK on
+a cache it should have hit: `rpm -qa` lists packages in database order, so the
+key changed between runs with identical packages. Pull request
+[#64](https://github.com/patrick-hudson/put.gd-desktop/pull/64) sorts the
+inventory before hashing.
+
 ## Previous pipeline measurements
 
 These describe the pipeline before October 2026's redesign: `build.yml` on every

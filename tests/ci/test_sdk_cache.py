@@ -2,7 +2,9 @@
 import importlib.util
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('sdk_cache', Path(__file__).resolve().parents[2] / 'tools/ci/sdk_cache.py')
 cache = importlib.util.module_from_spec(spec)
@@ -37,6 +39,26 @@ class CacheContract(unittest.TestCase):
             (prefix / 'unexpected.h').write_text('unexpected')
             with self.assertRaisesRegex(ValueError, 'integrity'):
                 cache.verify(prefix, manifest, 'same-environment')
+
+
+    def test_package_inventory_order_does_not_change_the_key(self):
+        def key(root, listing):
+            def run(command, **kwargs):
+                output = listing if command[0] == 'rpm' else command[0] + ' fixture\n'
+                return subprocess.CompletedProcess(command, 0, output, '')
+            with patch.object(cache.platform, 'system', return_value='Linux'), \
+                 patch.object(cache.shutil, 'which', return_value=None), \
+                 patch.object(cache.subprocess, 'run', side_effect=run):
+                return cache.fingerprint(root)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ('cmake/dependency-lock.json', 'tools/ci/sdk_cache.py', 'tools/ci/sdk-source.sh',
+                         'tools/releases/provision-sdk.sh'):
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(name)
+            installed = key(root, 'a-1.fc44.x86_64\nb-2.fc44.x86_64\nc-3.fc44.x86_64\n')
+            self.assertEqual(key(root, 'c-3.fc44.x86_64\na-1.fc44.x86_64\nb-2.fc44.x86_64\n'), installed)
+            self.assertNotEqual(key(root, 'a-1.fc44.x86_64\nb-2.fc44.x86_64\nc-4.fc44.x86_64\n'), installed)
 
 
 if __name__ == '__main__':

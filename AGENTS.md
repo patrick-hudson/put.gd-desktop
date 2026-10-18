@@ -68,8 +68,9 @@ Promote to `main` only through `tools/releases/promote.py --open` (a `release: v
 pull request from `nightly`, merged with a merge commit); its merge cuts the next
 candidate draft. Stable and candidate publication stay manual after exact-asset
 acceptance. Never create, move or delete `v*` tags by hand. Hotfixes target `main`
-with a patch bump and are merged back into `nightly` by pull request. The release
-runbook is `docs/release.md`; CI coverage is `docs/ci.md`.
+with a patch bump and are merged back into `nightly` by pull request. When the user
+asks for a release of a version, follow `docs/release-runbook.md` step by step.
+Channels and assets are in `docs/release.md`; CI coverage is in `docs/ci.md`.
 
 Record what was actually built/tested and any blocked acceptance gates. Commit explicit
 owned paths, preserving unrelated pre-existing changes. Do not add OCR features.
