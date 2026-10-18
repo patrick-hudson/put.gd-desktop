@@ -15,8 +15,8 @@ public:
  QJsonObject capabilities() const override {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
  void setEventSink(Event e) override {sink=std::move(e);}
  void prepare(const QString&,const RecordingTarget& target,const RecordingConfig& config,const QString& dir,Reply reply) override {log<<"prepare";staging=dir;lastConfig=config;reply({},{{"canvas",QJsonArray{1280,720}},{"rect",target.rect.isEmpty()?QJsonArray{300,250,1280,720}:QJsonArray{target.rect.x(),target.rect.y(),target.rect.width(),target.rect.height()}},{"overlayExcluded",true}});}
- void control(const QString&,const QString& command,const QJsonObject&,Reply reply) override {
-  log<<command;
+ void control(const QString&,const QString& command,const QJsonObject& params,Reply reply) override {
+  log<<command;lastControlParams=params;
   if(command=="cancel"){++cancels;reply({},{});return;}
   if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
   if(command=="stop"){reply({},{{"durationUs",double(durationUs)},{"canvas",QJsonArray{1280,720}}});return;}
@@ -34,6 +34,7 @@ public:
  }
  void discard(const QString&) override {++discards;}
  int editsPushed=0;RecordingEdit pushedEdit;
- void setEdit(const QString&,const RecordingEdit& edit,const RecordingConfig&) override {++editsPushed;pushedEdit=edit;}
+ QJsonObject pushedLimits,lastControlParams;RecordingConfig pushedConfig;
+ void setEdit(const QString&,const RecordingEdit& edit,const RecordingConfig& config,const QJsonObject& limits) override {++editsPushed;pushedEdit=edit;pushedConfig=config;pushedLimits=limits;}
 };
 }

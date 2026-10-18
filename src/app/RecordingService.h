@@ -66,6 +66,7 @@ private:
     QJsonObject publicJson(const Session&) const;
     // The phase defaults to the state; Upload's export reports as `encoding`.
     void transition(Session&, const QString& state, const QString& phase = {});
+    QJsonObject limitsJson(const Session&) const;
     void fail(Error);
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);

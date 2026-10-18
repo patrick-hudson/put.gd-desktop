@@ -67,6 +67,10 @@ public:
     void setConfig(const RecordingConfig&);
     void setExporting(bool exporting, const QString& label);
     void showError(const QString& message);
+    // Upload closes the window; a refused export brings it back with the reason.
+    void reopen(const QString& error);
+    // The resident's animation limits, for a warning before an export is refused.
+    void setLimits(qint64 animationMaxUs, int animationMaxEdge);
 signals:
     void editProposed(quint64 revision, const QJsonArray& commands);
     void configChanged(const RecordingConfig&);
@@ -105,6 +109,8 @@ private:
     QString selectedMask_;
     QTimer frameTimer_;
     bool exporting_ = false, closing_ = false;
+    qint64 animationMaxUs_ = 0;
+    int animationMaxEdge_ = 0;
 public:
     ~ReviewWindow() override;
 };

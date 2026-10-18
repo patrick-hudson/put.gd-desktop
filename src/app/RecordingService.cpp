@@ -39,6 +39,10 @@ void RecordingService::setBackend(std::unique_ptr<RecordingBackend> backend) {
         QMetaObject::invokeMethod(guard, [guard, event] { if (guard && !guard->stopping_) guard->handleEvent(event); }, Qt::QueuedConnection);
     });
 }
+QJsonObject RecordingService::limitsJson(const Session& s) const {
+    const auto limit = limits(s.op.settings);
+    return {{"animationSeconds", double(limit.animationMaxUs / 1000000)}, {"animationEdge", limit.animationMaxEdge}};
+}
 RecordingLimits RecordingService::limits(const Settings& settings) {
     return {settings.limits.recordingAnimationSeconds * 1000000LL, settings.limits.recordingAnimationEdge};
 }
@@ -155,7 +159,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         if (!integer(event["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); return; }
         s.duration = duration;
         s.edit = {};
-        if (event["canvas"].isArray() && event["canvas"].toArray().size() == 2) s.canvas = QSize(event["canvas"].toArray()[0].toInt(), event["canvas"].toArray()[1].toInt());
+        if (event["canvas"].isArray() && event["canvas"].toArray().size() == 2) s.canvas = QSize(event["canvas"].toArray()[0].toInt(), event["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
         transition(s, "reviewing");
     } else if (kind == "failed") {
         auto error = event["error"].toObject();
@@ -181,7 +185,10 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         if (!recording::parseConfig(json, config)) {
             config.budgetBytes = s.config.budgetBytes;
             if (s.state == "reviewing") config.fps = s.config.fps;
+            // Choosing GIF or WebP is a format choice: fit the output to the animation limit.
+            const bool clamped = recording::clampAnimationSize(config, s.canvas, limits(s.op.settings));
             s.config = config;
+            if (clamped && s.state == "reviewing") backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
             host_.observe(s.op);
             emit changed(s.op.id);
         }
@@ -191,14 +198,17 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         qint64 revision = 0;
         if (integer(event["revision"], 1, 1LL << 52, &revision) && quint64(revision) == s.edit.revision && event["commands"].isArray())
             if (!recording::applyEditCommands(s.edit, event["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { host_.observe(s.op); emit changed(s.op.id); }
-        backend_->setEdit(s.op.id, s.edit, s.config);
+        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
     } else if ((kind == "uploadRequested" || kind == "saveCopyRequested") && s.state == "reviewing") {
         QJsonObject params{{"id", s.op.id}, {"revision", event["revision"]}};
         if (kind == "saveCopyRequested") { params["path"] = event["path"]; params["overwrite"] = true; }
         exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, [this](Error error, QJsonObject) {
             // The helper learns the outcome from its own export command; a refused
-            // request (stale revision, budget) is pushed back as the current edit.
-            if (error && session_) backend_->setEdit(session_->op.id, session_->edit, session_->config);
+            // request (stale revision, budget) is pushed back as the current edit and
+            // the review window, closed by Upload, is reopened with the reason.
+            if (!error || !session_) return;
+            backend_->setEdit(session_->op.id, session_->edit, session_->config, limitsJson(*session_));
+            backend_->control(session_->op.id, "raise", {{"error", error.message}}, [](Error, QJsonObject) {});
         });
     }
 }
@@ -256,7 +266,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
                 auto& s = *guard->session_;
                 if (s.state != "preparing") return;
                 if (error) { guard->fail(error); return; }
-                if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt());
+                if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
                 // A dragged region reports its bounds; the overlay says whether it stayed outside them.
                 if (s.target.kind == "region" && result["rect"].isArray() && result["rect"].toArray().size() == 4) { const auto r = result["rect"].toArray(); s.target.rect = QRect(r[0].toInt(), r[1].toInt(), r[2].toInt(), r[3].toInt()); }
                 if (result["overlayExcluded"].isBool()) s.overlayExcluded = result["overlayExcluded"].toBool();
@@ -304,7 +314,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 if (!integer(result["durationUs"], 1, recording::maximumClipUs, &duration)) { fail({"recording_failed", "The recording ended without a usable clip", {}}); reply({"recording_failed", "The recording ended without a usable clip", {}}, {}); return; }
                 s.duration = duration;
                 s.edit = {};
-                if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt());
+                if (result["canvas"].isArray() && result["canvas"].toArray().size() == 2) s.canvas = QSize(result["canvas"].toArray()[0].toInt(), result["canvas"].toArray()[1].toInt()); recording::clampAnimationSize(s.config, s.canvas, limits(s.op.settings));
                 transition(s, "reviewing");
             }
             reply({}, publicJson(s));
@@ -316,7 +326,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
         if (!integer(params["revision"], 1, 1LL << 52, &revision) || !params["commands"].isArray()) { reply(invalid("edit takes the current revision and 1 to 100 commands"), {}); return; }
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edit revision moved; inspect and retry", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
         if (auto error = recording::applyEditCommands(s.edit, params["commands"].toArray(), s.duration, s.canvas, s.config.fps)) { reply(error, {}); return; }
-        backend_->setEdit(s.op.id, s.edit, s.config);
+        backend_->setEdit(s.op.id, s.edit, s.config, limitsJson(s));
         host_.observe(s.op);
         emit changed(s.op.id);
         reply({}, publicJson(s));

@@ -83,6 +83,9 @@ Error applyEditCommands(RecordingEdit&, const QJsonArray& commands, qint64 durat
 qint64 alignToFrame(qint64 us, int fps);
 // Animation exports must fit the configured duration and dimension budget.
 Error checkExportBudget(const RecordingConfig&, const RecordingEdit&, qint64 durationUs, const QSize& canvas, const RecordingLimits&);
+// GIF/WebP outputs larger than the animation edge limit get maxEdge set to it
+// (the user chose the format, not the pixel count). True when changed.
+bool clampAnimationSize(RecordingConfig&, const QSize& canvas, const RecordingLimits&);
 QSize outputSize(const QSize& canvas, const std::optional<int>& maxEdge);
 }
 }

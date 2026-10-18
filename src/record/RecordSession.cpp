@@ -106,11 +106,20 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
         for (const auto* key : {"mime", "budgetBytes"}) configJson.remove(key);
         RecordingConfig config;
         if (!configJson.isEmpty() && !recording::parseConfig(configJson, config)) { config.budgetBytes = config_.budgetBytes; config_ = config; if (review_) review_->setConfig(config_); }
-        if (review_) review_->setEdit(edit);
+        if (review_) {
+            const auto limits = params["limits"].toObject();
+            if (!limits.isEmpty()) review_->setLimits(qint64(limits["animationSeconds"].toDouble()) * 1000000, limits["animationEdge"].toInt());
+            review_->setEdit(edit);
+        }
         reply({}, {});
         return;
     }
-    if (command == "raise") { if (bar_) { bar_->show(); bar_->raise(); } reply({}, {}); return; }
+    if (command == "raise") {
+        if (bar_) { bar_->show(); bar_->raise(); }
+        if (review_) review_->reopen(params["error"].toString());
+        reply({}, {});
+        return;
+    }
     if (command == "overlay") { if (bar_) bar_->setVisible(params["visible"].toBool(true)); reply({}, {{"visible", bar_ ? bar_->isVisible() : false}}); return; }
     if (command == "preview") { preview(params, std::move(reply)); return; }
     if (command == "export") { exportClip(params, std::move(reply)); return; }

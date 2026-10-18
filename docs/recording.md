@@ -217,7 +217,17 @@ background; the operation reports like any other upload (tray, history,
 `operation.inspect`), and the resident shuts the helper down when the export
 has been handed over. Save copy keeps the window open with the controls
 disabled and the status showing progress, so the user can still upload
-afterwards.
+afterwards. A refused export after Upload (a stale revision, or an animation
+over its limits) reopens the window with the resident's reason, so the
+session never sits silently in `reviewing`.
+
+Choosing GIF or WebP is a format choice, not a pixel count: when the output
+would exceed `limits.recordingAnimationEdge`, the resident sets `maxEdge` to
+the limit at prepare and whenever the format changes, and pushes the result
+to the review. The duration limit still needs a trim; the review's status
+line says so ("GIF is limited to 60 s: trim the clip") as soon as the
+retained interval exceeds it, using the limits the resident sends with every
+`setEdit`.
 
 ### Tray feedback
 

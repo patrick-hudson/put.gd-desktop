@@ -230,12 +230,19 @@ Error checkExportBudget(const RecordingConfig& config, const RecordingEdit& edit
     if (retained <= 0) return invalid("The retained interval is empty", "trim");
     if (!config.animation()) return {};
     if (retained > limits.animationMaxUs)
-        return {"recording_animation_too_long", "Trim the clip: animated exports are limited in duration", {{"retainedUs", double(retained)}, {"limitUs", double(limits.animationMaxUs)}}};
+        return {"recording_animation_too_long", QStringLiteral("%1 exports are limited to %2 s; trim the clip to %2 s or less").arg(config.format.toUpper()).arg(limits.animationMaxUs / 1000000), {{"retainedUs", double(retained)}, {"limitUs", double(limits.animationMaxUs)}}};
     const auto size = outputSize(canvas, config.maxEdge);
     const int edge = std::max(size.width(), size.height());
     if (edge > limits.animationMaxEdge)
-        return {"recording_animation_too_large", "Set maxEdge: animated exports are limited in size", {{"edge", edge}, {"limitEdge", limits.animationMaxEdge}}};
+        return {"recording_animation_too_large", QStringLiteral("%1 exports are limited to %2 px; set maxEdge to %2 or less").arg(config.format.toUpper()).arg(limits.animationMaxEdge), {{"edge", edge}, {"limitEdge", limits.animationMaxEdge}}};
     return {};
+}
+bool clampAnimationSize(RecordingConfig& config, const QSize& canvas, const RecordingLimits& limits) {
+    if (!config.animation() || canvas.isEmpty()) return false;
+    const auto size = outputSize(canvas, config.maxEdge);
+    if (std::max(size.width(), size.height()) <= limits.animationMaxEdge) return false;
+    config.maxEdge = limits.animationMaxEdge;
+    return true;
 }
 }
 }

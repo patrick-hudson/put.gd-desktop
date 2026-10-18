@@ -29,7 +29,8 @@ public:
     // Writes the final file to outputPath: {bytes, durationUs}.
     virtual void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) = 0;
     // Pushes the authoritative edit (and config) to the helper's review window.
-    virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&) {}
+    // limits: {animationSeconds, animationEdge} so the review can warn before an export is refused.
+    virtual void setEdit(const QString&, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) { Q_UNUSED(limits); }
     // Releases helper/staging ownership for the id without an upload.
     virtual void discard(const QString& id) = 0;
 };

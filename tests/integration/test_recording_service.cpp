@@ -244,6 +244,28 @@ private slots:
   QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("raise"));QCOMPARE(h.state(id),QString("reviewing"));
   QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
  }
+ // Choosing GIF on a canvas wider than the animation limit sets maxEdge to the
+ // limit; a refused Upload from the (closed) review window reopens it with the
+ // reason instead of leaving the session silently in reviewing.
+ void animationLimitsClampSizeAndRefusedUploadReopensTheReview(){
+  Harness h;QTRY_VERIFY(h.operations->ready());
+  {auto g=call(*h.server,"settings.get",{});auto doc=g.result["document"].toObject();auto limits=doc["limits"].toObject();limits["recordingAnimationEdge"]=640;limits["recordingAnimationSeconds"]=5;doc["limits"]=limits;
+   const auto saved=call(*h.server,"settings.save",{{"document",doc},{"expectedRevision",g.result["metadata"].toObject()["observedRevision"]}});QVERIFY2(!saved.error,qPrintable(saved.error.message));}
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  // The fake backend's canvas is 1280x720; the review picks GIF.
+  h.backend->sink({{"id",id},{"event","configChanged"},{"config",QJsonObject{{"format","gif"},{"fps",30},{"audio",QJsonObject{{"system",false}}}}}});QTest::qWait(50);
+  auto inspected=h.rec("inspect",{{"id",id}}).result;QCOMPARE(inspected["config"].toObject()["format"].toString(),QString("gif"));QCOMPARE(inspected["config"].toObject()["maxEdge"].toInt(),640);QCOMPARE(inspected["outputSize"].toArray()[0].toInt(),640);
+  QCOMPARE(h.backend->pushedConfig.maxEdge.value_or(0),640);QCOMPARE(h.backend->pushedLimits["animationEdge"].toInt(),640);QCOMPARE(h.backend->pushedLimits["animationSeconds"].toDouble(),5.0);
+  // 12 s retained exceeds the 5 s limit: Upload from the review is refused and the review is raised with the reason.
+  const int raises=h.backend->log.count("raise");
+  h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",double(inspected["edit"].toObject()["revision"].toDouble())}});QTest::qWait(100);
+  QCOMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.backend->exports,0);QCOMPARE(h.backend->log.count("raise"),raises+1);
+  QVERIFY2(h.backend->lastControlParams["error"].toString().contains("limited to 5 s"),qPrintable(h.backend->lastControlParams["error"].toString()));
+  // Trimmed to the limit, the upload goes through.
+  const qint64 revision=qint64(h.rec("inspect",{{"id",id}}).result["edit"].toObject()["revision"].toDouble());
+  const auto edited=h.rec("edit",{{"id",id},{"revision",double(revision)},{"commands",QJsonArray{QJsonObject{{"op","setTrim"},{"start",0},{"end",4000000}}}}});QVERIFY2(!edited.error,qPrintable(edited.error.message));
+  const auto uploaded=h.rec("upload",{{"id",id},{"revision",double(revision+1)}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));QCOMPARE(uploaded.result["mime"].toString(),QString("image/gif"));
+ }
 };
 QTEST_GUILESS_MAIN(RecordingServiceContract)
 #include "test_recording_service.moc"

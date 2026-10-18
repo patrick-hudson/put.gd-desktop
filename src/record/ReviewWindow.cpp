@@ -320,6 +320,18 @@ void ReviewWindow::setExporting(bool exporting, const QString& label) {
     status_->setText(label);
 }
 void ReviewWindow::showError(const QString& message) { status_->setText(message); }
+void ReviewWindow::reopen(const QString& error) {
+    closing_ = false;
+    show();
+    raise();
+    activateWindow();
+    if (!error.isEmpty()) showError(error);
+}
+void ReviewWindow::setLimits(qint64 animationMaxUs, int animationMaxEdge) {
+    animationMaxUs_ = animationMaxUs;
+    animationMaxEdge_ = animationMaxEdge;
+    refreshLabels();
+}
 void ReviewWindow::refreshMaskList() {
     masks_->blockSignals(true);
     masks_->clear();
@@ -345,7 +357,12 @@ void ReviewWindow::refreshLabels() {
     strength_->setEnabled(mask && mask->kind == "blur");
     if (mask) { strength_->blockSignals(true); strength_->setValue(mask->strength); strength_->blockSignals(false); maskTimes_->setText(QStringLiteral("%1 – %2").arg(timeText(mask->start), timeText(mask->end))); }
     else maskTimes_->setText("Select a mask to set its times");
-    if (!exporting_) status_->setText((config_.silent() ? QStringLiteral("%1 is silent; the export has no audio").arg(config_.format.toUpper()) : options_.audioRecorded ? QStringLiteral("System audio recorded") : QStringLiteral("No audio")) + (config_.format == "mp4" && config_.codec == "h265" ? QStringLiteral(" · H.265 does not play in Firefox or Chrome on Linux") : QString{}));
+    if (!exporting_) {
+        auto status = (config_.silent() ? QStringLiteral("%1 is silent; the export has no audio").arg(config_.format.toUpper()) : options_.audioRecorded ? QStringLiteral("System audio recorded") : QStringLiteral("No audio")) + (config_.format == "mp4" && config_.codec == "h265" ? QStringLiteral(" · H.265 does not play in Firefox or Chrome on Linux") : QString{});
+        if (config_.animation() && animationMaxUs_ > 0 && end - edit_.trimStart > animationMaxUs_) status += QStringLiteral(" · %1 is limited to %2 s: trim the clip").arg(config_.format.toUpper()).arg(animationMaxUs_ / 1000000);
+        if (config_.animation() && animationMaxEdge_ > 0 && !options_.canvas.isEmpty()) { const auto size = recording::outputSize(options_.canvas, config_.maxEdge); if (std::max(size.width(), size.height()) > animationMaxEdge_) status += QStringLiteral(" · larger than %1 px; the export will be refused").arg(animationMaxEdge_); }
+        status_->setText(status);
+    }
 }
 void ReviewWindow::refreshFrame() {
     QImage image;

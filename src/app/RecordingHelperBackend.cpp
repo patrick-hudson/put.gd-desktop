@@ -229,9 +229,9 @@ void RecordingHelperBackend::exportClip(const QString& id, const RecordingEdit& 
     if (!child_ || child_->id != id) { reply(helperError("recording_helper_closed", "No recording helper owns this session"), {}); return; }
     send("export", {{"edit", edit.toJson()}, {"config", config.toJson()}, {"output", outputPath}}, exportMs_, std::move(reply));
 }
-void RecordingHelperBackend::setEdit(const QString& id, const RecordingEdit& edit, const RecordingConfig& config) {
+void RecordingHelperBackend::setEdit(const QString& id, const RecordingEdit& edit, const RecordingConfig& config, const QJsonObject& limits) {
     if (!child_ || child_->id != id || !child_->ready || child_->shuttingDown) return;
-    send("setEdit", {{"edit", edit.toJson()}, {"config", config.toJson()}}, commandMs_, [](Error, QJsonObject) {});
+    send("setEdit", {{"edit", edit.toJson()}, {"config", config.toJson()}, {"limits", limits}}, commandMs_, [](Error, QJsonObject) {});
 }
 void RecordingHelperBackend::discard(const QString& id) {
     if (!child_ || child_->id != id || child_->shuttingDown) return;

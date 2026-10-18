@@ -28,7 +28,7 @@ public:
     void control(const QString& id, const QString& command, const QJsonObject& params, Reply) override;
     void preview(const QString& id, const RecordingEdit&, const RecordingConfig&, qint64 timeUs, int maxEdge, Reply) override;
     void exportClip(const QString& id, const RecordingEdit&, const RecordingConfig&, const QString& outputPath, Reply) override;
-    void setEdit(const QString& id, const RecordingEdit&, const RecordingConfig&) override;
+    void setEdit(const QString& id, const RecordingEdit&, const RecordingConfig&, const QJsonObject& limits) override;
     void discard(const QString& id) override;
     QJsonObject diagnostics() const;
 private:
