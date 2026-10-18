@@ -9,6 +9,16 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Inherited capture output in Settings — 2026-10-18
+
+The [issue 58 receipt](evidence/2026-10-18-issue58-inherited-capture-output.md)
+records candidate `48c2b57`: `ctest --preset dev` 72/72, the MCP suite 3/3, and a
+native check on the workstation's Cinnamon X11 session with an isolated instance
+and synthetic destinations. Inherited per-action cards stayed visible with their
+controls disabled, followed Default capture output live, and unchecking saved an
+explicit exception; `ui.viewState` and MCP `get_view_state` reported the same
+state. GNOME, KDE, Wayland and memory were not tested.
+
 ## Screen recording — 2026-10-18
 
 The [issue 50 receipt](evidence/2026-10-18-issue50-screen-recording.md) records
