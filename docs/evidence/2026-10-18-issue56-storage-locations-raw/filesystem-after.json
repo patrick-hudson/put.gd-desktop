@@ -1,0 +1,9 @@
+{
+  "configMatches": true,
+  "configMode": "0o700",
+  "dataMatches": true,
+  "dataMode": "0o700",
+  "legacyConfigGone": true,
+  "legacyDataGone": true,
+  "stagingGone": true
+}
