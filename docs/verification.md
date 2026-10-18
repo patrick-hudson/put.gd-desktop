@@ -9,6 +9,25 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Screen recording — 2026-10-18
+
+The [issue 50 receipt](evidence/2026-10-18-issue50-screen-recording.md) records
+candidates `8252f03` (X11 capture, review, export, tray) and `625b7ff` (Wayland
+acquisition) on pull request #68:
+
+- Full suites on the Kubuntu, Fedora and Debian builders and the workstation
+  (70–73 tests each, all green), plus pull request CI on the head.
+- Capture scenarios on the Cinnamon guest, the GNOME and KDE Wayland guests and
+  the physical Kubuntu, Fedora and Debian desktops; the recording flow with a
+  moving pattern on the Cinnamon guest, the workstation and the physical
+  Kubuntu desktop (motion 0.48–0.63 against a 0.012 static control).
+- Wayland: the portal with one picker click, then restore tokens and the
+  KWin/Mutter native streams reaching `ready` with no input on the physical
+  Debian Plasma and Fedora GNOME desktops, clips carrying the pattern.
+
+Windows, microphone capture, the Wayland guests on the final commit and AMD
+GPU export remain uncovered.
+
 ## Resident PNG readers — 2026-10-17
 
 The [resident PNG receipt](evidence/2026-10-17-resident-png-codecs.md) records the
