@@ -2,19 +2,21 @@
 
 Usage (workstation, repo root):
   python3 tools/lab/physical.py HOSTCFG.json install DEB|RPM
-  python3 tools/lab/physical.py HOSTCFG.json region
+  python3 tools/lab/physical.py HOSTCFG.json SCENARIO   (region, window, desktop, ...: lab.SCENARIOS)
   python3 tools/lab/physical.py HOSTCFG.json script tools/lab/edit_acceptance.py
 
 HOSTCFG.json: name, host, user, identity (workstation key path), known_hosts (pinned), vnc_port (workstation
 loopback tunnel), run (private directory whose qmp.sock is the forwarded
 tools/lab/host_input.py socket) and profile (name, desktop, session,
-qt_platform, session_process, fixture_hotkeys).
+qt_platform, session_process, fixture_hotkeys). Optional fixture_bin names a
+host directory prepended to PATH, for a lab-built putgd-desktop-fixture when
+the installed package was built without PUTGD_LAB_FIXTURE.
 
 The runner's helpers are redirected: shell -> pinned SSH into the real desktop
 session's environment, files -> scp, input -> forwarded uinput agent socket
 (qmp.sock), screenshots -> the host's loopback VNC tile. Evidence is labelled
 graphical-physical. put.gd runs with the runner's isolated XDG directories."""
-import argparse, hashlib, json, runpy, subprocess, sys, time
+import argparse, hashlib, json, runpy, shlex, subprocess, sys, time
 from pathlib import Path
 sys.path.insert(0, 'tools/lab'); import lab
 sys.path.insert(0, str(Path(__file__).parent)); import rfb
@@ -56,6 +58,10 @@ def physical_readiness(profile, actual, acceleration):
     return result
 lab.validate_readiness = physical_readiness
 lab.ssh, lab.put, lab.get, lab.screenshot = host_ssh, host_put, host_get, host_screenshot
+if cfg.get('fixture_bin'):
+    original_session = lab.guest_session
+    lab.guest_session = lambda _run, body: original_session(
+        _run, 'export PATH=' + shlex.quote(cfg['fixture_bin']) + ':"$PATH"\n' + body)
 
 action = sys.argv[2]
 if action == 'install':
@@ -71,8 +77,12 @@ if action == 'install':
     installed = lab.verify_installed_binaries(run, deb)
     lab.write_json(run / 'package.json', {'sha256': lab.hash_file(deb), 'filename': deb.name, 'installedBinarySha256': installed})
     print(json.dumps({'status': 'installed', 'host': cfg['host']}))
-elif action == 'region':
-    args = argparse.Namespace(run=str(run), scenario='region', keep=True, timeout=60, settings=None, history=False, clipboard_client='qt')
+elif action in lab.SCENARIOS:
+    # VNC witnesses include the pointer. Park it at the right edge so an
+    # earlier run's click cannot hide the fixture paint the runner locates.
+    lab.pointer(run, 1279, 400, 1280, 800)
+    time.sleep(.3)
+    args = argparse.Namespace(run=str(run), scenario=action, keep=True, timeout=60, settings=None, history=False, clipboard_client='qt')
     print(json.dumps(lab.fixture_run(args)))
 elif action == 'script':
     sys.argv = [sys.argv[3], str(run)] + sys.argv[4:]
