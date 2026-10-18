@@ -23,7 +23,9 @@ PayloadResult image(const QByteArray& bytes,const ResourceLimits& limits){
  if(bytes.size()>limits.imageBytes)return fail("input_excessive","GNOME image bytes exceed resource limits");
  PayloadResult result;result.payload.kind="image";result.payload.mime="image/png";
  if(imageFormatHint(bytes)=="png"){
-  QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");const auto size=reader.size();
+  // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
+  // format unless detection is off; the PNG signature was checked above.
+  QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);const auto size=reader.size();
   if(!size.isValid())return fail("source_unsupported","GNOME image is not decodable");
   const qint64 pixels=qint64(size.width())*size.height();
   if(pixels>limits.imagePixels||pixels>limits.imageBytes/4)return fail("input_excessive","GNOME image dimensions exceed resource limits");

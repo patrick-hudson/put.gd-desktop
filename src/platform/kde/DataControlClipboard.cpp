@@ -174,7 +174,9 @@ struct DataControlClipboard::Impl:QObject {
    else if(mime.startsWith("image/")){
     QImage image;
     if(imageFormatHint(bytes)=="png"){
-     QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");
+     // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a
+     // named format unless detection is off; the signature was checked above.
+     QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
      const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}
      image=reader.read();if(image.isNull()){*result=failure("source_unsupported","Clipboard image could not be decoded");return;}
     }else{

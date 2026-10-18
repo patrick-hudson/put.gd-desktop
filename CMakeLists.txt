@@ -356,10 +356,18 @@ if(BUILD_TESTING)
       PUTGD_SLOW_PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/slow-image-fixture")
     add_dependencies(test_x11_clipboard_import putgd-ui putgd_gnome_mime_fixture putgd_slow_image_fixture)
     add_test(NAME x11_clipboard_import COMMAND dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_x11_clipboard_import>)
+    # Verified PNG captures decode in the resident without image plugins.
+    add_executable(test_x11_capture_decode tests/integration/test_x11_capture_decode.cpp)
+    target_link_libraries(test_x11_capture_decode PRIVATE putgd_x11_core putgd_x11 Qt6::Test Qt6::DBus)
+    target_compile_definitions(test_x11_capture_decode PRIVATE
+      PUTGD_CAPTURE_FIXTURE="$<TARGET_FILE:test_capture_helper_fixture>"
+      PUTGD_IMAGE_PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture")
+    add_dependencies(test_x11_capture_decode test_capture_helper_fixture putgd_gnome_mime_fixture)
+    add_test(NAME x11_capture_decode COMMAND dbus-run-session -- xvfb-run -a -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_x11_capture_decode>)
     add_executable(test_x11_native_snapshot tests/desktop/x11/test_native_snapshot.cpp)
     target_link_libraries(test_x11_native_snapshot PRIVATE putgd_x11_native_snapshot Qt6::Test PkgConfig::PUTGD_XCB)
     add_test(NAME x11_native_snapshot COMMAND xvfb-run -a -s "-screen 0 1280x800x24 -noreset" $<TARGET_FILE:test_x11_native_snapshot>)
-    set_tests_properties(x11_core_clipboard x11_clipboard_import x11_native_snapshot PROPERTIES
+    set_tests_properties(x11_core_clipboard x11_clipboard_import x11_capture_decode x11_native_snapshot PROPERTIES
       ENVIRONMENT "QT_QPA_PLATFORM=xcb;XDG_SESSION_TYPE=x11;WAYLAND_DISPLAY=" TIMEOUT 90)
   endif()
   add_test(NAME version_contract COMMAND "${CMAKE_COMMAND}"
@@ -393,6 +401,19 @@ if(BUILD_TESTING)
     target_link_libraries(test_kde_ownership PRIVATE putgd_kde Qt6::Test PkgConfig::PUTGD_WAYLAND_TEST_SERVER)
     add_test(NAME kde_ownership_integration COMMAND dbus-run-session -- $<TARGET_FILE:test_kde_ownership>)
     set_tests_properties(kde_ownership_integration PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    add_custom_command(OUTPUT "${protocol_dir}/ext-data-control-v1-server-protocol.h"
+      COMMAND "${PUTGD_WAYLAND_SCANNER}" server-header "${data_control_protocol}" "${protocol_dir}/ext-data-control-v1-server-protocol.h"
+      DEPENDS "${data_control_protocol}" VERBATIM)
+    # PNG offers decode in the Core resident without image plugins.
+    add_executable(test_kde_clipboard_import tests/integration/test_kde_clipboard_import.cpp
+      "${protocol_dir}/ext-data-control-v1-server-protocol.h")
+    target_include_directories(test_kde_clipboard_import PRIVATE "${protocol_dir}")
+    target_link_libraries(test_kde_clipboard_import PRIVATE putgd_kde Qt6::Test PkgConfig::PUTGD_WAYLAND_TEST_SERVER)
+    target_compile_definitions(test_kde_clipboard_import PRIVATE
+      PUTGD_IMAGE_PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture")
+    add_dependencies(test_kde_clipboard_import putgd-ui putgd_gnome_mime_fixture)
+    add_test(NAME kde_clipboard_import COMMAND test_kde_clipboard_import)
+    set_tests_properties(kde_clipboard_import PROPERTIES TIMEOUT 60)
   endif()
   if(UNIX)
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -638,7 +659,15 @@ if(BUILD_TESTING)
       LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture/imageformats")
     target_compile_definitions(test_gnome_bridge PRIVATE
       PUTGD_GNOME_MIME_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture")
-    add_dependencies(test_gnome_bridge putgd_gnome_mime_fixture)
+    add_dependencies(test_gnome_bridge putgd-ui putgd_gnome_mime_fixture)
+    # GNOME transfers decode PNG in the Core resident without image plugins.
+    add_executable(test_gnome_image_decode tests/integration/test_gnome_image_decode.cpp)
+    target_link_libraries(test_gnome_image_decode PRIVATE putgd_gnome Qt6::Test)
+    target_compile_definitions(test_gnome_image_decode PRIVATE
+      PUTGD_IMAGE_PLUGIN_FIXTURE_DIR="${CMAKE_CURRENT_BINARY_DIR}/gnome-mime-fixture")
+    add_dependencies(test_gnome_image_decode putgd-ui putgd_gnome_mime_fixture)
+    add_test(NAME gnome_image_decode COMMAND test_gnome_image_decode)
+    set_tests_properties(gnome_image_decode PROPERTIES TIMEOUT 60)
     add_test(NAME gnome_bridge_contract COMMAND test_gnome_bridge)
     find_program(PUTGD_DBUS_RUN_SESSION NAMES dbus-run-session REQUIRED)
     add_test(NAME gnome_core_transport_integration COMMAND "${PUTGD_DBUS_RUN_SESSION}" -- $<TARGET_FILE:test_gnome_bridge> --core-adapter-transport)

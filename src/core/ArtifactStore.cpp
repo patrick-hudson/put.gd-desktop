@@ -48,7 +48,11 @@ QString ArtifactStore::preview(const Artifact& artifact,qint64 budget,qint64 max
  const bool useWorker=false;
 #endif
  if(!useWorker){
-  QImageReader reader(&input,imageFormatHint(input.peek(8)));const auto size=reader.size();
+  const auto hint=imageFormatHint(input.peek(8));QImageReader reader(&input,hint);
+  // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
+  // format unless detection is off. Only a signature-proven PNG is named.
+  if(!hint.isEmpty())reader.setAutoDetectImageFormat(false);
+  const auto size=reader.size();
   if(!size.isValid()||qint64(size.width())*size.height()>maxPixels)return {};
   reader.setScaledSize(size.scaled(256,256,Qt::KeepAspectRatio));auto image=reader.read();if(image.isNull())return {};
   image=image.scaled(256,256,Qt::KeepAspectRatio,Qt::SmoothTransformation);QBuffer buffer(&png);buffer.open(QIODevice::WriteOnly);if(!image.save(&buffer,"PNG")||png.size()>budget)return {};
