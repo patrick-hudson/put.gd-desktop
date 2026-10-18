@@ -6,7 +6,7 @@ This protocol tests closed-view residency after real uploads. It does not promis
 
 Freeze the candidate first: save the clean source commit/tree, generated version, full build manifest, installed executable/module/SDK hashes, package hash and runtime PID/start ticks. Build with the standard CMake presets/Ninja and official pinned SDK. A partial target rebuild can mix identities; build all targets consistently before acceptance.
 
-Use one Cinnamon build first. Keep its desktop visible through VNC, verify the unlocked session, and run the unchanged functional suite. Memory acceptance requires both a complete live workload and a fresh-profile repeat. Only expand to current-version GNOME/KDE after Cinnamon passes the required memory and functional gates.
+Run the Cinnamon, GNOME and KDE builds in parallel. Keep each desktop visible through VNC, verify the unlocked session, and run the unchanged functional suite. Memory acceptance on each desktop requires both a complete live workload and a fresh-profile repeat.
 
 ## Fixed workload
 

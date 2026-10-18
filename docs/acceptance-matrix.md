@@ -57,9 +57,8 @@ payloads, settings and test destinations.
 
 ## Ordering, evidence and status
 
-Keep the existing Cinnamon-first functional/memory gate for a new candidate and
-the explicit KDE resident-memory experiment exception in [AGENTS.md](../AGENTS.md).
-Expand to the other rows after the required first gate passes. A scoped user
+Run a new candidate's rows in parallel, each with its functional and memory gates
+(see [AGENTS.md](../AGENTS.md)). A scoped user
 waiver applies only to its named task/gate and does not certify the full matrix.
 
 Use the same exact accepted source/build candidate across the declared matrix.

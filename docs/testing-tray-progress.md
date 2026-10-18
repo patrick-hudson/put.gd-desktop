@@ -17,12 +17,8 @@ cannot replace this inspection.
 
 ## Candidate and guest preparation
 
-Start with Cinnamon/X11 functional **and memory** checks on one candidate. If
-either required gate fails, fix or reject it before building/testing its GNOME
-or KDE siblings. After Cinnamon passes, independent native GNOME/Wayland and
-KDE/Wayland checks may run in parallel on the same source. The approved KDE-first
-resident-memory experiment exception in `AGENTS.md` does not change this tray
-candidate's normal Cinnamon-first path. Use [VM memory evidence](testing-vm-memory-audit.md)
+Run Cinnamon/X11, GNOME/Wayland and KDE/Wayland functional **and memory** checks
+in parallel on one candidate. Use [VM memory evidence](testing-vm-memory-audit.md)
 and [the frozen memory protocols](testing-memory.md); this functional runner
 does not invent a replacement memory budget. Wait for build/GUI work to stop
 before quiet memory sampling.

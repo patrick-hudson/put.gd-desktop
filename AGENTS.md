@@ -17,7 +17,7 @@ golden-image transfer rules are in `docs/remote-builders.md`. On these three ser
 the user authorizes dependency/tool setup and testing with passwordless
 `sudo -n`; preserve existing projects and desktop work. Keep the SSH private key
 on the workstation. Verify host capacity, KVM and display access before VM runs;
-host preference does not change Cinnamon-first ordering or required guest versions.
+host preference does not change the required guest versions.
 Linux goldens and Windows bases are not kept on the workstation. They live on the
 Fedora and Debian builders and in a private S3 bucket. Find, copy and restore
 them using `docs/remote-golden-images.md`, and expose
@@ -43,17 +43,11 @@ See `docs/build.md` for SDK provisioning and sanitizer builds. Keep AWS headers 
 Offscreen tests prove widget/core behavior only. Real desktop support requires graphical
 acceptance evidence for each declared compositor. Never report a mock as desktop proof.
 
-Test a new candidate on one Cinnamon build first, including its functional and
-memory checks. If either fails its required gate,
-stop expansion and fix or reject it before building/testing GNOME or KDE.
-After Cinnamon passes, independent cross-desktop checks may run in parallel;
-all declared desktops still require current-version evidence before acceptance.
-
-For the user-approved KDE resident-memory experiment, iterate on KDE first.
-Defer Cinnamon and GNOME functional/memory regression runs until KDE has a
-satisfactory candidate, then require both on that exact candidate before keeping
-it. Preserve their checkpointed implementations. This exception avoids repeating
-the full desktop matrix for each small KDE iteration.
+Run a new candidate's Cinnamon, GNOME and KDE checks in parallel on the build
+machines, each with its own functional and memory gates. Every declared desktop
+still requires current-version evidence on that exact candidate before acceptance.
+A failure on any desktop blocks acceptance until it is fixed or shown to predate
+the candidate; retest a fix on every desktop.
 
 Use synthetic payloads and an isolated test destination. Never commit `credentials.txt`, including with force-add. It is user-provided local
 test input only; never include its contents in logs, diagnostics, or review packets.

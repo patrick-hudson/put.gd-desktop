@@ -38,8 +38,7 @@ scenario and result. SSH output or an offscreen test alone is insufficient.
 
 These host-desktop checks do not require a VM or `/dev/kvm`. Select direct host
 testing when its actual desktop/version matches the claim being tested; use a
-VM for other required guest profiles. Preserve Cinnamon-first ordering, the
-approved KDE experiment exception and the release matrix's exact versions.
+VM for other required guest profiles. Preserve the release matrix's exact versions.
 
 ## Pinned SSH access
 
@@ -102,8 +101,7 @@ visually; a listed tile or an RFB handshake alone does not establish visibility.
 SSH builds/logs and offscreen tests do not establish graphical acceptance. Test
 the actual GNOME or Plasma session for physical-host claims. Required release
 profiles retain their exact OS/desktop versions; Fedora GNOME or Debian Plasma
-does not waive a different version in that matrix. Cinnamon-first ordering and
-the approved KDE memory-experiment exception remain in force. For VM scenarios,
+does not waive a different version in that matrix. For VM scenarios,
 retain the existing independent QMP, saved-artifact and native-paste witnesses.
 
 ## Remote VM operating procedures

@@ -88,7 +88,7 @@ is unavailable or unsuitable, and record why. Passwordless `sudo -n` setup is
 authorized on those three servers. Preserve their existing projects and desktops;
 keep the workstation SSH key local. Check KVM, capacity and ports on the actual
 VM host before launch. A physical host's OS/desktop is not a substitute for a
-different version in the declared acceptance matrix. Keep Cinnamon-first ordering.
+different version in the declared acceptance matrix.
 
 Every graphical run must stay visible at the workstation's display wall and
 produce saved screenshots or recordings, including failure evidence, tied to its
@@ -124,11 +124,10 @@ the existing protected input is missing or rejected. Cloud `credentials.txt` is
 never a source for desktop logins.
 
 The lab interface is `python3 tools/lab/lab.py`; use [testing](testing.md) and [VM lab](vm-lab.md) for exact package/provisioning/snapshot commands. A real desktop scenario remains unverified until its saved artifact, independent paste and QMP witness pass. U10's full release lifecycle is still pending.
-For memory work, start with one current-version Cinnamon build, including its
-functional and memory checks. Fix or reject a failed gate before building/testing
-its GNOME or KDE counterparts. Acceptance still requires current-source native
-functional evidence on Cinnamon/X11, GNOME/Wayland and KDE/Wayland. After Cinnamon passes, those independent profiles
-may run in parallel. Wait for build/GUI activity to finish before
+For memory work, build and test the current-version Cinnamon, GNOME and KDE
+profiles in parallel, each with its functional and memory checks. Acceptance
+requires current-source native functional evidence on Cinnamon/X11, GNOME/Wayland
+and KDE/Wayland. Wait for build/GUI activity to finish before
 quiet memory samples. Use one frozen source revision/archive across distro-native
 builds, and retain package, app, CLI, S3 module and helper hashes. The lab rejects
 missing install receipts and running app bytes that differ from the installed
@@ -194,7 +193,7 @@ command on current product entrypoints; inspect an older binary's capabilities
 before assuming it supports the new option.
 
 Packaging artifacts and source114 replay are not current desktop proof. Keep
-Cinnamon-first gates, immutable VM bases, visible consoles, bounded socket paths
+immutable VM bases, visible consoles, bounded socket paths
 and exact source/package identities. A release tag must match a clean checkout;
 never relabel a prior binary with the current HEAD or source114 results. Stable
 and candidate publication follows exact-asset acceptance. Nightlies use a separate

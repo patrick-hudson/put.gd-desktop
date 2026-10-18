@@ -28,8 +28,8 @@ The existing Fedora GNOME and Debian Plasma display-wall tiles show physical
 desktops. Add a distinct loopback-only SSH tunnel and tile for each remote guest
 before graphical acceptance. Save screenshots or recordings of actions, results
 and failures as well as the existing independent QMP/paste/artifact witnesses.
-Host selection leaves Cinnamon-first ordering and the required guest OS/desktop
-versions unchanged. Follow the remote-host runbook when copying goldens; never
+Host selection leaves the required guest OS/desktop versions
+unchanged. Follow the remote-host runbook when copying goldens; never
 boot or alter the source golden or reuse another run's writable overlay.
 
 Linux source-build guests also require the standard cursor development package: `libxcursor-dev` on Ubuntu/Mint or `libXcursor-devel` on Fedora. Install it in disposable development guests using their normal package manager. The desktop profile files describe runtime sessions; they do not contain development package lists. Provision a new golden disk for persistent package updates, preserving sealed bases and active overlays.
