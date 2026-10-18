@@ -94,7 +94,9 @@ void CinnamonRegionCapture::decode(int index,const QString& path){
   // Cairo's RGB/ARGB32 path writes depth 8. Reject wider samples before the
   // decoder can allocate more than the accepted four-byte pixel budget.
   if(static_cast<unsigned char>(header[24])!=8){decoded->error={"capture_failed","Cinnamon returned an unsupported PNG sample depth",{}};return;}
-  file.seek(0);QImageReader reader(&file,"PNG");
+  // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
+  // format unless detection is off; the PNG signature was checked above.
+  file.seek(0);QImageReader reader(&file,"PNG");reader.setAutoDetectImageFormat(false);
   if(reader.size()!=expected){decoded->error={"capture_geometry","Cinnamon frame dimensions disagree with frozen monitor geometry",{}};return;}
   decoded->image=reader.read();decoded->image.setDevicePixelRatio(1);
   if(decoded->image.isNull()){decoded->error={"capture_failed","Cannot decode Cinnamon desktop capture",{}};return;}

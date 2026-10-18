@@ -7,6 +7,8 @@
 #include <QKeyEvent>
 #include <QCloseEvent>
 #include <QtMath>
+#include <QWindow>
+#include <QTimer>
 #if defined(PUTGD_HAVE_LAYER_SHELL) && QT_VERSION >= QT_VERSION_CHECK(6,5,0)
 #include <LayerShellQt/Window>
 #include <wayland-client.h>
@@ -29,7 +31,7 @@ public:
 #endif
  }
 protected:
- void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}}
+ void paintEvent(QPaintEvent*) override{QPainter p(this);p.setCompositionMode(QPainter::CompositionMode_Source);p.fillRect(rect(),Qt::transparent);p.setCompositionMode(QPainter::CompositionMode_SourceOver);const auto clipped=owner_.selection_.intersected(logicalRect_);if(!owner_.clearing_&&!clipped.isEmpty()){const auto local=clipped.translated(-logicalRect_.topLeft());paintSelectionOutline(p,local);}}
  void mousePressEvent(QMouseEvent* e) override{if(e->button()==Qt::RightButton)owner_.cancel();else if(e->button()==Qt::LeftButton)owner_.press(logicalRect_.topLeft()+e->position());}
  void mouseMoveEvent(QMouseEvent* e) override{owner_.move(logicalRect_.topLeft()+e->position());}
  void mouseReleaseEvent(QMouseEvent* e) override{if(e->button()==Qt::LeftButton)owner_.release(logicalRect_.topLeft()+e->position());}
@@ -57,10 +59,31 @@ void KdeRegionOverlay::start(){
 }
 void KdeRegionOverlay::press(QPointF p){if(finished_)return;anchor_=QPointF(qRound(p.x()),qRound(p.y()));dragging_=true;selection_=QRectF(anchor_,QSizeF{});}
 void KdeRegionOverlay::move(QPointF p){if(!dragging_||finished_)return;const QPointF endpoint(qRound(p.x()),qRound(p.y()));selection_=QRectF(anchor_,endpoint).normalized();for(auto* surface:surfaces_)surface->update();}
-void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}finish();
+void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p);if(selection_.width()<1||selection_.height()<1){cancel();return;}
 #ifdef PUTGD_NATIVE_REGION
- // Order the capture after KWin has processed Qt's surface unmaps. D-Bus and
- // Wayland are separate transports, so merely hiding the widgets is not enough.
+ // KWin animates closing surfaces on real GPUs, starting from the last frame it
+ // rendered for them, and ScreenShot2 renders that animation. So first commit
+ // fully transparent content and wait until KWin has rendered it: Qt Wayland
+ // requests a frame callback with each committed buffer and withholds
+ // requestUpdate() until it fires. Only then unmap, so the close animation has
+ // nothing visible to fade. The bound covers a compositor that never renders.
+ finished_=true;clearing_=true;
+ for(auto* surface:surfaces_){surface->repaint();if(auto* window=surface->windowHandle()){awaitingFrames_.insert(window);window->installEventFilter(this);window->requestUpdate();}}
+ QTimer::singleShot(250,this,[this]{if(!awaitingFrames_.isEmpty()){awaitingFrames_.clear();dismiss();}});
+ if(awaitingFrames_.isEmpty())dismiss();
+#else
+ finish();emit selected(selection_);
+#endif
+}
+bool KdeRegionOverlay::eventFilter(QObject* watched,QEvent* event){
+ if(event->type()==QEvent::UpdateRequest&&awaitingFrames_.remove(static_cast<QWindow*>(watched))&&awaitingFrames_.isEmpty())QTimer::singleShot(0,this,[this]{dismiss();});
+ return QObject::eventFilter(watched,event);
+}
+void KdeRegionOverlay::dismiss(){
+#ifdef PUTGD_NATIVE_REGION
+ if(dismissing_)return;dismissing_=true;finish();
+ // Order the capture after KWin has processed the unmaps. D-Bus and Wayland are
+ // separate transports, so merely hiding the widgets is not enough.
  auto* native=qGuiApp->nativeInterface<QNativeInterface::QWaylandApplication>();
  if(!native){emit cancelled({"region_unavailable","Qt has no native Wayland connection",{}});return;}
  static const wl_callback_listener listener{[](void* data,wl_callback* callback,uint32_t){
@@ -69,16 +92,15 @@ void KdeRegionOverlay::release(QPointF p){if(!dragging_||finished_)return;move(p
  }};
  dismissal_=wl_display_sync(native->display());
  wl_callback_add_listener(dismissal_,&listener,this);wl_display_flush(native->display());
-#else
- emit selected(selection_);
 #endif
 }
 void KdeRegionOverlay::finish(){finished_=true;for(auto* surface:surfaces_)surface->hide();}
 void KdeRegionOverlay::cancel(Error error){
  if(finished_){
 #ifdef PUTGD_NATIVE_REGION
-  if(!dismissal_)return;
-  wl_callback_destroy(dismissal_);dismissal_=nullptr;
+  if(!dismissal_&&(dismissing_||!clearing_))return;
+  awaitingFrames_.clear();dismissing_=true;finish();
+  if(dismissal_){wl_callback_destroy(dismissal_);dismissal_=nullptr;}
 #else
   return;
 #endif

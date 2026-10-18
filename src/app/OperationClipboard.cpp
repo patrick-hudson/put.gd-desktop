@@ -34,7 +34,7 @@ quint64 OperationService::invalidateCopyEligibility() {
  source_.invalidateCopyEligibility();
  return ++invocation_;
 }
-void OperationService::beginUploadCopies(const Operation& op,bool acquiring) {
+void OperationService::beginUploadCopies(const Operation& op,bool importing) {
  auto state=std::make_shared<UploadCopy>();
  state->operation=op;state->epoch=uploadCopyEpoch_;state->revision=op.clipboardRevision;
  state->cancellation=active_.value(op.id);
@@ -47,7 +47,7 @@ void OperationService::beginUploadCopies(const Operation& op,bool acquiring) {
   state->group=collectingUploadGroup_;state->waitingForGroup=true;
   ++state->group->pending;state->group->members.insert(op.invocation,state);
  }
- if(acquiring&&op.action=="clipboard") {
+ if(importing) {
   clipboardImports_.insert(op.id);
   // An unsent native result may already be awaiting acknowledgement. Pause it
   // before freezing an import, then retry only a confirmed unsent suppression.

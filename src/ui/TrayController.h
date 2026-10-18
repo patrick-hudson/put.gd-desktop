@@ -29,13 +29,16 @@ public:
  void showHistory();
  void showActivity();
  void notifyFailure(const Error&);
+ // Completion toast text: the operation's own error when it failed outright,
+ // otherwise the clipboard outcome.
+ static QString completionMessage(const QJsonObject& operation,bool hasLink);
  void invokeShortcut(const QString&);
 
 signals:
  void availabilityResolved();
 
 private:
- void invokeAction(const QString&, bool fromShortcut = false);
+ void invokeAction(const QString&, bool fromShortcut = false, const QJsonObject& options = {});
 #ifdef Q_OS_LINUX
  void openNotificationLink(const QUrl&);
 #endif

@@ -2,6 +2,7 @@
 #include "app/OperationService.h"
 #include <QDBusConnection>
 #include <QDBusServiceWatcher>
+#include <QJsonArray>
 #include <QPointer>
 #include <QTimer>
 namespace putgd {
@@ -36,7 +37,8 @@ private:
  void invalidateShortcutBindings();
  void call(const QString& method,const QVariantList&,Reply,int timeout=5000);
  QJsonObject sync(const QString& method,const QVariantList&,Error&,int timeout=1000);
- void start(const QString&,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void start(const QString& id,const QString& action,const ResourceLimits&,std::function<void(PayloadResult)>);
+ void requestTransfer(const std::shared_ptr<Transfer>&,const QJsonArray& imageMimes);
  void read(const std::shared_ptr<Transfer>&);
  void decode(const std::shared_ptr<Transfer>&);
  void release(const QString&);
@@ -55,6 +57,8 @@ private:
  QStringList prepared_;
  QList<QThread*> workers_;
  std::optional<quint64> lastCopyRevision_;
+ // Image types the transient image job can decode, listed once for clipboard imports.
+ std::optional<QJsonArray> clipboardImageMimes_;
  quint64 revision_=0,generation_=0,helperRevision_=0,copyGeneration_=0;
  QHash<quint64,Reply> pending_;quint64 callSerial_=0;
  bool recording_=false;quint64 bindingGeneration_=0;

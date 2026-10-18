@@ -1,6 +1,8 @@
 #include "ui/HistoryModel.h"
 #include "ui/HistoryWindow.h"
+#include "ui/RedesignTheme.h"
 #include "fixtures/UiSessionFixture.h"
+#include <QLayout>
 #include <QListView>
 #include <QComboBox>
 #include <QMenu>
@@ -219,6 +221,46 @@ private slots:
  }
  void originalImageCopyUsesResidentOriginalNotPreview(){
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;source.payload.kind="image";source.payload.image=QImage(91,57,QImage::Format_RGB32);source.payload.image.fill(Qt::magenta);OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(source.reads,1);QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();auto* list=window.findChild<QListView*>("historyList");QTRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);auto* copy=window.findChild<QPushButton*>("copyHistoryImage");QTRY_VERIFY(copy->isEnabled());QTRY_VERIFY(window.findChild<QLabel*>("historySummary")->text().contains("91×57"));QTRY_COMPARE(source.copies,1);QApplication::clipboard()->setText("helper clipboard sentinel");copy->click();QTRY_COMPARE(source.copies,2);QCOMPARE(source.copied.kind,QString("image"));const auto original=QImage::fromData(source.copied.encodedImage,"PNG");QCOMPARE(original.size(),QSize(91,57));QCOMPARE(original.pixelColor(0,0),QColor(Qt::magenta));QCOMPARE(QApplication::clipboard()->text(),QString("helper clipboard sentinel"));window.close();QCOMPARE(source.copied.encodedImage.isEmpty(),false);QCOMPARE(source.reads,1);
+ }
+ void editAgainOpensTheRetainedLocalImageAndHeaderMenuOffersOtherSources(){
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;source.payload.kind="image";source.payload.image=QImage(40,30,QImage::Format_RGB32);source.payload.image.fill(Qt::cyan);
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  operations.invoke("clipboard",[](Error e,QJsonObject){QVERIFY(!e);});QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();
+  QStringList requests;connect(&window,&HistoryWindow::editRequested,this,[&](const QString& from,const QString& path){requests.append(from+"|"+path);});int chooser=0;connect(&window,&HistoryWindow::chooseImageRequested,this,[&]{++chooser;});
+  auto* header=window.findChild<QPushButton*>("historyEditImage");QVERIFY(header);QVERIFY(header->menu());QStringList labels;for(auto* action:header->menu()->actions())labels.append(action->text());
+  QCOMPARE(labels,QStringList({"Edit clipboard image","Edit an image file…"}));
+  // The label fits in any font: the button sizes from its child row in the current font and theme.
+  RedesignTheme::apply(window);auto* text=header->findChild<QLabel*>("historyEditText");auto* chevron=header->findChild<QLabel*>("historyEditChevron");QVERIFY(text&&chevron);QCOMPARE(text->text(),QString("Edit image"));
+  for(const int extra:{0,6}){QFont font=header->font();if(font.pixelSize()>0)font.setPixelSize(font.pixelSize()+extra);else font.setPointSizeF(font.pointSizeF()+extra);header->setFont(font);header->adjustSize();header->layout()->activate();
+   QVERIFY2(text->width()>=text->fontMetrics().horizontalAdvance(text->text()),qPrintable(QString("%1 < %2").arg(text->width()).arg(text->fontMetrics().horizontalAdvance(text->text()))));
+   QVERIFY(chevron->geometry().left()>=text->geometry().right());QVERIFY(chevron->geometry().right()<header->width());}
+  header->menu()->actions()[0]->trigger();header->menu()->actions()[1]->trigger();QCOMPARE(requests,QStringList({"clipboard|"}));QCOMPARE(chooser,1);requests.clear();
+  auto* list=window.findChild<QListView*>("historyList");QTRY_COMPARE(list->model()->rowCount(),1);selectRow(list,0);auto* again=window.findChild<QPushButton*>("editHistoryImage");QVERIFY(again);QTRY_VERIFY(again->isEnabled());
+  again->click();QCOMPARE(requests.size(),1);QVERIFY(requests.first().startsWith("file|"));const auto path=requests.first().section('|',1);QVERIFY(QFileInfo(path).isAbsolute());
+  const QImage retained(path);QCOMPARE(retained.size(),QSize(40,30));QCOMPARE(retained.pixelColor(0,0),QColor(Qt::cyan));
+  // Without the retained file the button explains why instead of opening the editor.
+  QVERIFY(QFile::remove(path));list->clearSelection();QTRY_VERIFY(!again->isEnabled());selectRow(list,0);QTest::qWait(300);QVERIFY(!again->isEnabled());QVERIFY(again->toolTip().contains("local copy"));
+ }
+ void failureThatStoredNothingOffersNoRetry(){
+  // An edit refused before anything was stored (here, not an image) has no file
+  // to upload again. History names the failure and offers no retry.
+  QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;
+  OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());
+  const auto text=d.filePath("notes.txt");{QFile file(text);QVERIFY(file.open(QIODevice::WriteOnly));file.write("not an image");}
+  operations.invoke("edit",[](Error,QJsonObject){},{{"source","file"},{"path",text}});QTRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  HistoryService history(operations);UiSessionFixture fixture(settings,operations,history);HistoryWindow window(fixture.session);window.show();
+  auto* list=window.findChild<QListView*>("historyList");auto* model=qobject_cast<HistoryModel*>(list->model());QTRY_COMPARE(model->rowCount(),1);
+  const auto row=model->index(0);const auto record=model->record(0);
+  QVERIFY(row.data(HistoryModel::FailedRole).toBool());QVERIFY(HistoryModel::storedNothing(record));
+  QCOMPARE(HistoryModel::failureLabel(record),QString("Edit failed"));QVERIFY(row.data(HistoryModel::PrimaryActionRole).toString().isEmpty());
+  QVERIFY(!HistoryModel::statusText(record).contains("Upload"));QVERIFY(HistoryModel::statusText(record).contains("PNG or JPEG"));
+  selectRow(list,0);QTest::qWait(200);QVERIFY(!window.findChild<QPushButton*>("retryOperation")->isVisible());
+  // Disabled row-menu entries must look disabled in the app theme.
+  RedesignTheme::apply(window);QMenu menu(&window);auto* enabled=menu.addAction("Copy details");auto* disabled=menu.addAction("Retry upload");disabled->setEnabled(false);
+  menu.popup(window.mapToGlobal(QPoint(20,20)));QTRY_VERIFY(menu.isVisible());const auto image=menu.grab().toImage();
+  auto brightest=[&](QAction* action){int best=0;const auto r=menu.actionGeometry(action);for(int y=r.top();y<=r.bottom();++y)for(int x=r.left();x<=r.right();++x)best=std::max(best,qGray(image.pixel(x,y)));return best;};
+  QVERIFY2(brightest(disabled)+40<brightest(enabled),qPrintable(QString("%1 vs %2").arg(brightest(disabled)).arg(brightest(enabled))));menu.close();
  }
  void offlineSearchUsesOriginalReceiptsAndRemovedLinksAreDisabled() {
   QTemporaryDir d;SettingsService settings(d.filePath("config.json"));QVERIFY(settings.save(configuration(d.path(),true),{}));ProviderRegistry registry;Source source;OperationService operations(d.filePath("data"),settings,registry,source);QTRY_VERIFY(operations.ready());

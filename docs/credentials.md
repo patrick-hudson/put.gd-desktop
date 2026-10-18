@@ -8,14 +8,19 @@ entry again after the resident exits.
 
 S3 never uses the environment/profile/IMDS credential chain. Each effective request
 uses an explicit cached access key, secret key and optional session token. Credentials
-are resolved by an explicit setup action; uploads and hotkeys cannot trigger unlock.
+are resolved by a setup action; uploads and hotkeys cannot trigger unlock. Unless
+`preferences.unlockCredentialsAtStartup` is `false`, the resident starts one
+`unlockCredentials` job for each saved S3 keychain profile about three seconds after
+it starts. A locked desktop keyring may show its own unlock prompt for that read. A
+dismissed prompt leaves the cache empty until the user chooses Unlock.
 Missing credentials return `credential_setup_required` for the original destination.
 
 `CredentialStore::unlock` reads a referenced OS secret with QtKeychain.
 `CredentialStore::save` writes it and caches it only after backend success.
 Both jobs explicitly disable insecure fallback. Locked, unavailable or denied stores
 return stable setup errors; backend diagnostic strings and secret data are excluded.
-QtKeychain may display the OS unlock prompt during that explicit setup call.
+QtKeychain may display the OS unlock prompt during that setup call, including the
+startup read.
 `setSession`/session-mode `save` retain credentials only in process memory. Restart
 requires explicit entry again. `forget` revokes future cache access. Already-sent
 requests drain using their original client/credential generation.

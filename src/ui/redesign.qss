@@ -78,6 +78,8 @@ QPushButton[visualRole="link"]:focus, QToolButton[visualRole="link"]:focus { bor
 QPushButton#captureRailButton { background: #181B21; text-align: left; padding: 8px 10px; min-height: 24px; }
 QPushButton#captureRailButton:hover { background: #20242C; }
 QPushButton#captureRailButton:focus { border: 2px solid #6EA8FE; padding: 7px 9px; }
+QPushButton#captureRailButton[dropTarget="true"] { background: #232838; border: 2px dashed #6EA8FE; padding: 7px 9px; }
+QPushButton#historyEditImage::menu-indicator { image: none; width: 0; }
 QToolButton[visualRole="info"] { background: transparent; border: 1px solid transparent; padding: 0; min-height: 0; }
 QToolButton[visualRole="info"]:focus { border: 2px solid #6EA8FE; }
 QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit, QTextEdit {
@@ -132,6 +134,8 @@ QMenu, QMessageBox { background: #181B21; }
 QMenu { border: 1px solid #343A45; padding: 5px; }
 QMenu::item { padding: 8px 22px; border: 1px solid transparent; border-radius: 5px; }
 QMenu::item:selected { background: #232838; border-color: #6EA8FE; }
+QMenu::item:disabled { color: #6F7682; }
+QMenu::item:disabled:selected { background: transparent; border-color: transparent; }
 QMenu::separator { background: #2A2F38; height: 1px; margin: 5px 8px; }
 QToolTip { background: #20242C; color: #E7E9EE; border: 1px solid #343A45; padding: 7px; }
 

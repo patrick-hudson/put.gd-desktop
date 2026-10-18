@@ -19,7 +19,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Field | Meaning and default |
 | --- | --- |
 | `schemaVersion` | `1` |
-| `actions` | Exactly `region`, `window`, `desktop`, `clipboard` |
+| `actions` | Exactly `region`, `window`, `desktop`, `clipboard`, plus optional `edit` (Capture region & edit). An absent `edit` inherits the region route with no shortcut; saved documents include it |
 | Each action's `destination` | `upload` by default; `local` disables uploads; `default` inherits `captureDefaults` |
 | Each action's `profileId` | A configured profile ID, or `null` until destination setup |
 | Each action's `shortcut` | One Qt PortableText combination; empty means unbound; independent of output inheritance |
@@ -50,6 +50,8 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `retention.historyRetentionDays` | `null` means no automatic record expiry |
 | `preferences.uploadClipboardBehavior` | `each_link` (default, including when absent in older configurations) copies every successful upload link individually; `list` copies an ordered list once overlapping uploads settle |
 | `preferences.notifications`, `launchAtLogin` | `true`, `false` |
+| `preferences.unlockCredentialsAtStartup` | Optional, default `true`: read saved keychain S3 credentials once when put.gd starts. A locked keyring shows its own unlock prompt then; uploads and shortcuts never unlock |
+| `preferences.editorRecentColors` | Optional, written by put.gd: up to 6 lowercase `#rrggbb` custom editor colors, most recent first |
 
 Local saving and uploading are independent outputs. An upload route with a configured
 profile uploads; `archive.keepUploads: true` also saves a local copy before publication.

@@ -9,7 +9,7 @@ Use the pinned hosts in [remote builders](remote-builders.md).
    listens on remote loopback. `--vnc-display 20` means TCP `5920`; use the actual
    run's port. Check existing processes/ports on the builder and workstation.
 2. Pick a distinct free workstation port and service name per VM/run. Keep
-   physical desktop ports `5970` and `5979` reserved. This Fedora example maps
+   physical desktop ports `5970`, `5979` and `5972` reserved. This Fedora example maps
    workstation `5981` to remote `5920`; replace `RUN_ID` and ports before use:
 
    ```sh
@@ -23,12 +23,13 @@ Use the pinned hosts in [remote builders](remote-builders.md).
    systemctl --user status putgd-vm-fedora-RUN_ID.service
    ```
 
-   For Debian substitute `.69`, the `d69/known_hosts` pin, and a different
-   unit/port. Local bind success does not establish remote VM readiness.
+   For Debian substitute `.69` and the `d69/known_hosts` pin; for Kubuntu use
+   `.72` and `k72/known_hosts`. Allocate a different unit/port for each guest.
+   Local bind success does not establish remote VM readiness.
 3. Inspect the running wall service's `Environment` and `ExecStart` for its
    actual configuration. The current workstation default is
    `/home/patrick/work/put.gd/tools/qemu-grid/remote-displays.json`. Back it up
-   privately and append this object to its JSON array, preserving both host
+   privately and append this object to its JSON array, preserving all host
    desktops and other VM tiles:
 
    ```json
@@ -55,7 +56,7 @@ Use the pinned hosts in [remote builders](remote-builders.md).
 ## Routing verification, 2026-10-16
 
 A real diskless QEMU 10.2.2 process on Fedora displayed its firmware console on
-remote `5930`, forwarded to workstation `5980`. The tile is **Fedora remote QEMU -
+remote `5930`, forwarded to workstation `5980`. The tile was **Fedora remote QEMU -
 firmware routing check**. Both physical desktops remained visible. Saved screenshot
 and exact process/tunnel receipts are in the private
 `work/verification/2026-10-16-remote-vm-wall/` directory.
@@ -63,6 +64,8 @@ and exact process/tunnel receipts are in the private
 This proves remote QEMU display routing only. It is not an OS desktop or app
 acceptance result. The run is diskless and uses TCG; neither server exposed
 `/dev/kvm` or CPU virtualization flags at this check. VM acceptance still needs
-its required acceleration/profile preflight. The demo tunnel is
-`putgd-vm-display-53.service`; stop the demo after the user's inspection using
-its recorded QMP/process identity and remove only its matching tile.
+its required acceleration/profile preflight.
+
+The demo was retired at the owner's request on 2026-10-17: its recorded process
+and QMP socket were already absent, its `putgd-vm-display-53.service` tunnel was
+stopped, and only its matching tile was removed. Historical evidence is retained.

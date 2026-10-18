@@ -6,6 +6,8 @@
 #include "ui/SettingsWindow.h"
 #include "ui/RedesignTheme.h"
 #include "ui/VisualStyle.h"
+#include "ui/EditorWindow.h"
+#include "editor/EditorCommands.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QCheckBox>
@@ -49,6 +51,12 @@ QImage iconSpecimen(){
  }
  return image;
 }
+QImage editorIcons(){
+ QImage image(1060,120,QImage::Format_RGB32);image.fill(QColor("#101216"));QPainter p(&image);p.setPen(QColor("#e7e9ef"));
+ const QStringList names{"edit","select","redact","blur","crop","annotate-arrow","rectangle","highlight","text","undo","redo","zoom-fit","zoom-actual","save"};
+ for(int i=0;i<names.size();++i){const int x=20+i*74;VisualStyle::icon(names[i]).paint(&p,QRect(x+13,18,40,40));p.drawText(QRect(x-6,68,86,24),Qt::AlignCenter,names[i]);}
+ return image;
+}
 QImage syntheticCapture(int index){
  using namespace RedesignTheme;QImage image(960,600,QImage::Format_RGB32);image.fill(bg());QPainter p(&image);p.setRenderHint(QPainter::Antialiasing);p.setPen(Qt::NoPen);p.setBrush(surface());p.drawRoundedRect(QRect(24,20,912,560),16,16);p.setBrush(border());p.drawRoundedRect(QRect(24,20,912,45),16,16);for(int i=0;i<3;++i){p.setBrush(i==0?danger():i==1?warning():success());p.drawEllipse(QPoint(47+20*i,43),5,5);}QFont f(RedesignTheme::uiFontFamily());f.setPixelSize(24);f.setBold(true);p.setFont(f);p.setPen(text());const QStringList titles{"Design review","Build summary","Project notes","Release checklist","Weekly highlights","Product research","Interface library","Upload overview"};p.drawText(QRect(61,91,830,44),titles.value(index%titles.size()));f.setBold(false);f.setPixelSize(14);p.setFont(f);p.setPen(textMuted());p.drawText(QRect(61,140,830,25),"Synthetic sample content for the put.gd redesign experiment");
  for(int col=0;col<3;++col){const QRect card(61+col*276,194,256,130);p.setPen(QPen(borderStrong()));p.setBrush(surfaceRaised());p.drawRoundedRect(card,10,10);p.setPen(textMuted());p.drawText(card.adjusted(18,16,-18,-80),QStringList{"CAPTURES","UPLOADED","SAVED LOCALLY"}.at(col));f.setPixelSize(31);f.setBold(true);p.setFont(f);p.setPen(col==1?success():accent());p.drawText(card.adjusted(18,53,-18,-16),QString::number((index+1)*7+col*3));f.setPixelSize(14);f.setBold(false);p.setFont(f);}
@@ -82,5 +90,27 @@ int main(int argc,char** argv){
  window.resize(1060,680);window.navigate("history");if(!save("10-history-compact")||window.width()!=1060||window.height()!=680)return 2;window.navigate("settings");tabs->setCurrentIndex(3);if(!save("11-advanced-compact"))return 2;window.navigate("destinations");destinations->setCurrentRow(0);destinationScroll->verticalScrollBar()->setValue(0);if(!save("12-proton-compact"))return 2;
  window.navigate("settings");tabs->setCurrentIndex(1);if(!save("13-capture-compact"))return 2;window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(true);if(!save("14-capture-exceptions-compact"))return 2;
  window.findChild<QToolButton*>("captureExceptionsToggle")->setChecked(false);auto* destination=window.findChild<QComboBox*>("defaultCaptureDestination");destination->setCurrentIndex(destination->findData(QString{}));window.findChild<QCheckBox*>("keepUploadCopies")->setChecked(false);if(!waitUntil([&]{return !settings.snapshot().archive.keepUploads&&settings.snapshot().actions["region"].destination=="local";}))return 2;if(!save("15-capture-no-output"))return 2;
+ // Editor: the same widgets the --edit-image helper shows, over a synthetic capture.
+ if(!editorIcons().save(QDir(output).filePath("00-editor-icons.png")))return 2;
+ {
+  editor::EditDocument doc(syntheticCapture(1));QJsonArray created;QString code,message;
+  const QJsonArray edits{
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","redact"},{"rect",QJsonArray{61,194,256,40}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","blur"},{"rect",QJsonArray{337,194,256,130}},{"strength",18}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","arrow"},{"from",QJsonArray{820,520}},{"to",QJsonArray{700,330}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","rectangle"},{"rect",QJsonArray{605,186,272,146}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","highlight"},{"rect",QJsonArray{61,348,180,28}}}}},
+   QJsonObject{{"op","add"},{"shape",QJsonObject{{"kind","text"},{"at",QJsonArray{620,530}},{"text","New total"}}}}};
+  if(!editor::Commands::apply(doc,edits,created,code,message)){qCritical("%s",qPrintable(message));return 2;}
+  EditorWindow editor(doc);editor.resize(1180,820);editor.show();
+  auto grab=[&](const QString& name){QTest::qWait(450);app.processEvents();const auto image=editor.grab();const auto path=QDir(output).filePath(name+".png");if(!image.save(path))return false;captures.append(QJsonObject{{"file",name+".png"},{"width",image.width()},{"height",image.height()}});return true;};
+  editor.selectTool(editor::Tool::Redact);if(!grab("20-editor-redact"))return 2;
+  editor.selectTool(editor::Tool::Blur);if(!grab("21-editor-blur-warning"))return 2;
+  editor.selectTool(editor::Tool::Arrow);if(!grab("22-editor-arrow-style"))return 2;
+  editor.selectTool(editor::Tool::Crop);if(!grab("23-editor-crop"))return 2;
+  editor.canvas().cancelCrop();editor.resize(900,620);if(!grab("24-editor-compact"))return 2;
+  editor.setBusy("Preparing the edited image…");if(!grab("25-editor-finalizing"))return 2;
+  editor.allowClose();editor.close();
+ }
  QSaveFile manifest(QDir(output).filePath("manifest.json"));if(!manifest.open(QIODevice::WriteOnly))return 2;manifest.write(QJsonDocument(QJsonObject{{"kind","synthetic-ui-preview"},{"desktopAcceptance",false},{"platform",QGuiApplication::platformName()},{"networkActions",0},{"credentialFixture","synthetic session only"},{"sourceReads",source.reads},{"captures",captures}}).toJson(QJsonDocument::Indented));if(!manifest.commit())return 2;return source.reads==0?0:2;
 }

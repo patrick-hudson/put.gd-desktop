@@ -29,7 +29,7 @@ UiProcessController::~UiProcessController(){
 }
 void UiProcessController::activate(const QString& view,Reply reply){
  if(stopping_){if(reply)reply(unavailable("ui_stopping"));return;}
- if(view!="settings"&&view!="history"&&view!="activity"&&view!="about"){
+ if(!QStringList{"settings","history","activity","about","editFile"}.contains(view)){
   if(reply)reply(unavailable("ui_view"));
   return;
  }

@@ -19,6 +19,72 @@ an independent copy under `work/windows/runs/`, created with
 identity and manifest together. Updates require provisioning and sealing a new
 base directory; prior overlays remain linked to their original base.
 
+## Base storage and restore
+
+Since 2026-10-17 the sealed `windows11` and `windows10` bundles are no longer on
+the workstation. Patrick approved the offload, and each bundle was copied whole
+and verified file by file (mode, size and SHA-256):
+
+| Bundle | `disk.qcow2` SHA-256 | Fedora `f44` and Debian `d69` | S3 `putgd-lab-images-<account-id>` |
+| --- | --- | --- | --- |
+| `windows11` | `6fa2300d516bcd541f94ce3c7add78b7d168fe5637c53eac5b866ce5dbe23830` | `~/work/put.gd/work/windows/bases/windows11/` | `windows/windows11/` |
+| `windows10` | `5858acd66c4013503a9c700b68ffbfe42e7bb80f10c35542fdaa3e1b7854e2d3` | `~/work/put.gd/work/windows/bases/windows10/` | `windows/windows10/` |
+
+The host bundles sit at the same path `clone` expects, so run Windows tests on
+either host as usual. Each S3 prefix holds `disk.qcow2.zst` (zstd, Glacier
+Instant Retrieval; its `sha256` metadata is the uncompressed disk hash), `bundle-without-disk.tar` (every other bundle file, with modes) and
+`files.txt` (`mode size sha256 path` for every bundle file). Receipts are in the
+workstation's `work/verification/windows-base-transfer-<id>/` and
+`work/housekeeping/golden-offload-20261017/`. The
+[golden-image storage rules](remote-golden-images.md) apply: never delete a copy
+without Patrick's approval and two other verified copies.
+
+For a workstation fallback, restore the whole bundle into a fresh staging
+directory, verify it, then rename it into place. Never restore part of a bundle.
+From Fedora (Debian: `.69` and `d69/known_hosts`):
+
+```sh
+set -euo pipefail
+name=windows11
+dest=/home/patrick/work/put.gd/work/windows/bases/$name
+test ! -e "$dest"
+mkdir -p "$(dirname "$dest")"
+stage=$(mktemp -d /home/patrick/work/put.gd/work/windows/.restore-XXXXXX)
+rsync -aS --protect-args \
+  -e 'ssh -i /home/patrick/.ssh/awskey_110724 -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/home/patrick/work/put.gd/work/remote-builders/f44/known_hosts' \
+  "patrick@192.168.68.70:/home/patrick/work/put.gd/work/windows/bases/$name" "$stage/"
+# Expected listing: the bundle's transfer receipt (or S3 windows/$name/files.txt)
+cp "/home/patrick/work/put.gd/work/verification/windows-base-transfer-ac7e257b9e53/source-files.txt" "$stage/files.txt"
+```
+
+The receipt above is for `windows11`; for `windows10` use
+`windows-base-transfer-393a21c5c089`.
+
+Without either host, fetch the bundle from S3 instead of running `rsync`:
+
+```sh
+bucket=putgd-lab-images-$(aws sts get-caller-identity --query Account --output text)
+mkdir -m 700 "$stage/$name"
+aws s3 cp "s3://$bucket/windows/$name/files.txt" "$stage/files.txt"
+aws s3 cp "s3://$bucket/windows/$name/bundle-without-disk.tar" "$stage/bundle.tar"
+aws s3 cp "s3://$bucket/windows/$name/disk.qcow2.zst" - | zstd -dc > "$stage/$name/disk.qcow2"
+tar -C "$stage/$name" -xpf "$stage/bundle.tar" && rm "$stage/bundle.tar"
+chmod "$(awk '$4=="./disk.qcow2"{print $1}' "$stage/files.txt")" "$stage/$name/disk.qcow2"
+```
+
+Then verify every file and promote:
+
+```sh
+(cd "$stage/$name" && find . -type f -printf '%m %s %p\n' | sort -k3 |
+  while read -r m s p; do printf '%s %s %s %s\n' "$m" "$s" "$(sha256sum "$p" | cut -d ' ' -f 1)" "$p"; done) |
+  cmp - "$stage/files.txt"
+test ! -e "$dest" && mv -T "$stage/$name" "$dest"
+rm "$stage/files.txt" && rmdir "$stage"
+```
+
+`clone` verifies the sealed manifest again. Remove the restored workstation
+bundle after its runs are retired.
+
 Before provisioning, inventory existing base/run metadata, actual host-visible
 QEMU/TPM processes and reserved VNC ports. Sandbox process absence is insufficient.
 The provisioning examples below apply only to fresh, absent directories, before

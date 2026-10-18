@@ -23,6 +23,7 @@ class NativeInventoryTests(unittest.TestCase):
             self.write("usr/share/doc/putgd/" + license_name, "license")
         self.write("usr/share/doc/putgd/runtime-notices.txt", "notice")
         self.write("usr/share/doc/putgd/wayland-ext-data-control-v1.xml", "protocol")
+        self.write("usr/share/doc/putgd/wayland-wlr-data-control-unstable-v1.xml", "protocol")
         for asset in audit.DESKTOP_ASSETS:
             self.write("usr/" + asset, "asset")
         for name in audit.PROGRAMS:

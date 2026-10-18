@@ -8,6 +8,7 @@
 #include "platform/NativeSession.h"
 #include <QCoreApplication>
 #include "ext-data-control-v1-client-protocol.h"
+#include "wlr-data-control-unstable-v1-client-protocol.h"
 #include <wayland-client.h>
 #include <QGuiApplication>
 #include <QSocketNotifier>
@@ -46,7 +47,11 @@ public:
 }
 struct DataControlClipboard::Impl:QObject {
  DataControlClipboard& q;wl_display* display=nullptr;wl_callback* initialSync=nullptr;wl_registry* registry=nullptr;wl_seat* seat=nullptr;wl_keyboard* keyboard=nullptr;xkb_keymap* keyboardMap=nullptr;ext_data_control_manager_v1* manager=nullptr;ext_data_control_device_v1* device=nullptr;
- uint32_t managerName=0,seatName=0;QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect,copyTimer;bool closing=false,dispatching=false,lossPending=false,selectionReady=false;quint64 revision=0,generation=0;
+ // ext-data-control-v1 is wlr-data-control-unstable-v1 version 2 standardized
+ // with identical requests, events and argument layouts; only the global's
+ // interface name differs. Compositors without ext (KWin before 6.4) still
+ // offer wlr, so it is bound under its own name and driven through the ext API.
+ uint32_t managerName=0,seatName=0,wlrName=0,wlrVersion=0;const char* protocol=nullptr;QSocketNotifier* readNotifier=nullptr;QSocketNotifier* writeNotifier=nullptr;QTimer reconnect,copyTimer;bool closing=false,dispatching=false,lossPending=false,selectionReady=false;quint64 revision=0,generation=0;
  QString error="Native Wayland data control has not connected";QHash<ext_data_control_offer_v1*,QStringList> offers;ext_data_control_offer_v1* selection=nullptr;
  struct Source {Impl* owner;ext_data_control_source_v1* native;QHash<QString,QByteArray> data;QString token;};QHash<ext_data_control_source_v1*,Source*> sources;
  std::optional<quint64> lastCopyRevision;
@@ -60,7 +65,7 @@ struct DataControlClipboard::Impl:QObject {
  void open(){if(closing||display)return;display=wl_display_connect(nullptr);if(!display){error="Cannot connect to the Wayland compositor";return;}registry=wl_display_get_registry(display);
   static const wl_registry_listener listener={global,removed};wl_registry_add_listener(registry,&listener,this);
   const auto fd=wl_display_get_fd(display);readNotifier=new QSocketNotifier(fd,QSocketNotifier::Read,this);writeNotifier=new QSocketNotifier(fd,QSocketNotifier::Write,this);writeNotifier->setEnabled(false);connect(readNotifier,&QSocketNotifier::activated,this,[this]{events();});connect(writeNotifier,&QSocketNotifier::activated,this,[this]{flush();});
-  initialSync=wl_display_sync(display);static const wl_callback_listener synced={[](void* data,wl_callback* callback,uint32_t){auto* self=static_cast<Impl*>(data);wl_callback_destroy(callback);self->initialSync=nullptr;if(!self->manager||!self->seat)self->error="Compositor lacks ext-data-control-v1 or a usable seat";else if(!self->selectionReady)self->error="Waiting for compositor clipboard ownership discovery";self->notify();}};wl_callback_add_listener(initialSync,&synced,this);flush();
+  initialSync=wl_display_sync(display);static const wl_callback_listener synced={[](void* data,wl_callback* callback,uint32_t){auto* self=static_cast<Impl*>(data);wl_callback_destroy(callback);self->initialSync=nullptr;self->bindWlr();if(!self->manager||!self->seat)self->error="Compositor lacks ext-data-control-v1, wlr-data-control or a usable seat";else if(!self->selectionReady)self->error="Waiting for compositor clipboard ownership discovery";self->notify();}};wl_callback_add_listener(initialSync,&synced,this);flush();
  }
  void events(){if(!display||dispatching)return;dispatching=true;
   // This is a private connection. No Qt-owned Wayland queue is ever dispatched.
@@ -74,9 +79,12 @@ struct DataControlClipboard::Impl:QObject {
  void reset(){
   if(readNotifier){readNotifier->setEnabled(false);delete readNotifier;readNotifier=nullptr;}if(writeNotifier){writeNotifier->setEnabled(false);delete writeNotifier;writeNotifier=nullptr;}
   selectionReady=false;selection=nullptr;for(auto* offer:offers.keys())ext_data_control_offer_v1_destroy(offer);offers.clear();for(auto* source:sources){ext_data_control_source_v1_destroy(source->native);delete source;}sources.clear();
-  if(initialSync){wl_callback_destroy(initialSync);initialSync=nullptr;}if(device){ext_data_control_device_v1_destroy(device);device=nullptr;}if(manager){ext_data_control_manager_v1_destroy(manager);manager=nullptr;}clearKeyboard();if(seat){if(wl_seat_get_version(seat)>=WL_SEAT_RELEASE_SINCE_VERSION)wl_seat_release(seat);else wl_seat_destroy(seat);seat=nullptr;}if(registry){wl_registry_destroy(registry);registry=nullptr;}if(display){wl_display_disconnect(display);display=nullptr;}managerName=seatName=0;
+  if(initialSync){wl_callback_destroy(initialSync);initialSync=nullptr;}if(device){ext_data_control_device_v1_destroy(device);device=nullptr;}if(manager){ext_data_control_manager_v1_destroy(manager);manager=nullptr;}clearKeyboard();if(seat){if(wl_seat_get_version(seat)>=WL_SEAT_RELEASE_SINCE_VERSION)wl_seat_release(seat);else wl_seat_destroy(seat);seat=nullptr;}if(registry){wl_registry_destroy(registry);registry=nullptr;}if(display){wl_display_disconnect(display);display=nullptr;}managerName=seatName=wlrName=wlrVersion=0;protocol=nullptr;
  }
  void lost(){if(dispatching){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}selectionReady=false;error="Wayland data-control connection closed; restart the app if the Qt session also disconnected";++revision;cancel();finishCopy({"clipboard_unavailable",error,{}});reset();notify();}
+ void bindWlr(){if(manager||!wlrName||!registry)return;
+  manager=static_cast<ext_data_control_manager_v1*>(wl_registry_bind(registry,wlrName,&zwlr_data_control_manager_v1_interface,std::min(uint32_t(2),wlrVersion)));managerName=wlrName;protocol="wlr-data-control-unstable-v1";makeDevice();
+ }
  void makeDevice(){if(device||!manager||!seat)return;device=ext_data_control_manager_v1_get_data_device(manager,seat);
   static const ext_data_control_device_v1_listener listener={offer,selected,finished,primary};ext_data_control_device_v1_add_listener(device,&listener,this);error.clear();notify();flush();
  }
@@ -110,13 +118,15 @@ struct DataControlClipboard::Impl:QObject {
   };
   wl_keyboard_add_listener(self->keyboard,&listener,self);self->flush();
  }
- static void global(void* data,wl_registry* r,uint32_t name,const char* iface,uint32_t version){auto* s=static_cast<Impl*>(data);if(QByteArray(iface)==ext_data_control_manager_v1_interface.name&&!s->manager){s->manager=static_cast<ext_data_control_manager_v1*>(wl_registry_bind(r,name,&ext_data_control_manager_v1_interface,1));s->managerName=name;}
+ static void global(void* data,wl_registry* r,uint32_t name,const char* iface,uint32_t version){auto* s=static_cast<Impl*>(data);if(QByteArray(iface)==ext_data_control_manager_v1_interface.name&&!s->manager){s->manager=static_cast<ext_data_control_manager_v1*>(wl_registry_bind(r,name,&ext_data_control_manager_v1_interface,1));s->managerName=name;s->protocol="ext-data-control-v1";}
+  // Prefer ext: wlr is bound only after the initial registry burst lacks ext.
+  else if(QByteArray(iface)==zwlr_data_control_manager_v1_interface.name&&!s->wlrName){s->wlrName=name;s->wlrVersion=version;if(!s->initialSync)s->bindWlr();}
   else if(QByteArray(iface)==wl_seat_interface.name&&!s->seat){s->seat=static_cast<wl_seat*>(wl_registry_bind(r,name,&wl_seat_interface,std::min(uint32_t(5),version)));s->seatName=name;static const wl_seat_listener seatListener={seatCapabilities,[](void*,wl_seat*,const char*){}};wl_seat_add_listener(s->seat,&seatListener,s);}
   s->makeDevice();
  }
- static void removed(void* data,wl_registry*,uint32_t name){auto* s=static_cast<Impl*>(data);if(name!=s->managerName&&name!=s->seatName)return;s->selectionReady=false;s->error="Data-control manager or seat was removed";++s->revision;s->cancel();s->finishCopy({"clipboard_unavailable",s->error,{}});
+ static void removed(void* data,wl_registry*,uint32_t name){auto* s=static_cast<Impl*>(data);if(name==s->wlrName&&name!=s->managerName){s->wlrName=s->wlrVersion=0;return;}if(name!=s->managerName&&name!=s->seatName)return;s->selectionReady=false;s->error="Data-control manager or seat was removed";++s->revision;s->cancel();s->finishCopy({"clipboard_unavailable",s->error,{}});
   if(s->device){ext_data_control_device_v1_destroy(s->device);s->device=nullptr;}s->selection=nullptr;for(auto* offer:s->offers.keys())ext_data_control_offer_v1_destroy(offer);s->offers.clear();
-  if(name==s->managerName){ext_data_control_manager_v1_destroy(s->manager);s->manager=nullptr;s->managerName=0;}if(name==s->seatName){s->clearKeyboard();if(wl_seat_get_version(s->seat)>=WL_SEAT_RELEASE_SINCE_VERSION)wl_seat_release(s->seat);else wl_seat_destroy(s->seat);s->seat=nullptr;s->seatName=0;}s->notify();
+  if(name==s->managerName){ext_data_control_manager_v1_destroy(s->manager);s->manager=nullptr;if(name==s->wlrName)s->wlrName=s->wlrVersion=0;s->managerName=0;s->protocol=nullptr;}if(name==s->seatName){s->clearKeyboard();if(wl_seat_get_version(s->seat)>=WL_SEAT_RELEASE_SINCE_VERSION)wl_seat_release(s->seat);else wl_seat_destroy(s->seat);s->seat=nullptr;s->seatName=0;}s->notify();
  }
  static void offer(void* data,ext_data_control_device_v1*,ext_data_control_offer_v1* o){auto* s=static_cast<Impl*>(data);s->offers.insert(o,{});static const ext_data_control_offer_v1_listener listener={[](void* data,ext_data_control_offer_v1* offer,const char* mime){auto* s=static_cast<Impl*>(data);auto& types=s->offers[offer];if(types.size()<1024&&qstrlen(mime)<4096)types.append(QString::fromUtf8(mime));}};ext_data_control_offer_v1_add_listener(o,&listener,s);}
  static void selected(void* data,ext_data_control_device_v1*,ext_data_control_offer_v1* o){auto* s=static_cast<Impl*>(data);auto* prior=s->selection;const bool initial=!s->selectionReady;s->selectionReady=true;s->selection=o;s->error.clear();++s->revision;if(initial)s->notify();if(prior&&prior!=o){s->offers.remove(prior);ext_data_control_offer_v1_destroy(prior);}
@@ -125,7 +135,7 @@ struct DataControlClipboard::Impl:QObject {
  }
  static void primary(void* data,ext_data_control_device_v1*,ext_data_control_offer_v1* o){auto* s=static_cast<Impl*>(data);if(o&&o!=s->selection){s->offers.remove(o);ext_data_control_offer_v1_destroy(o);}}
  static void finished(void* data,ext_data_control_device_v1* device){auto* s=static_cast<Impl*>(data);ext_data_control_device_v1_destroy(device);s->device=nullptr;s->selectionReady=false;s->error="The compositor finished the data-control session";++s->revision;s->cancel();s->finishCopy({"clipboard_unavailable",s->error,{}});s->notify();QTimer::singleShot(0,s,[s]{s->makeDevice();});}
- void acquire(const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 expected){events();if(!available()){cb(failure("clipboard_unavailable","Native ext-data-control-v1 clipboard import is unavailable"));return;}
+ void acquire(const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 expected){events();if(!available()){cb(failure("clipboard_unavailable","Native Wayland data-control clipboard import is unavailable"));return;}
   if(pending.size()+(active||!workers.isEmpty()?1:0)>=qint64(limits.pendingOperations)+limits.concurrentUploads){cb(failure("queue_full","Clipboard acquisition queue reached resource limits"));return;}
   auto request=std::make_shared<Import>();request->limits=limits;request->reply=std::move(cb);request->revision=expected;pending.enqueue(request);pump();
  }
@@ -164,7 +174,9 @@ struct DataControlClipboard::Impl:QObject {
    else if(mime.startsWith("image/")){
     QImage image;
     if(imageFormatHint(bytes)=="png"){
-     QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");
+     // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a
+     // named format unless detection is off; the signature was checked above.
+     QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
      const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}
      image=reader.read();if(image.isNull()){*result=failure("source_unsupported","Clipboard image could not be decoded");return;}
     }else{
@@ -192,7 +204,7 @@ struct DataControlClipboard::Impl:QObject {
  }
  static void send(void* data,ext_data_control_source_v1*,const char* mime,int fd){auto* source=static_cast<Source*>(data);new FdWriter(fd,source->data.value(QString::fromUtf8(mime)),source->owner);}
  static void sourceCancelled(void* data,ext_data_control_source_v1* native){auto* source=static_cast<Source*>(data);auto* owner=source->owner;if(owner->copyToken==source->token)owner->finishCopy({"clipboard_copy_failed","The compositor cancelled result ownership",{}});owner->sources.remove(native);ext_data_control_source_v1_destroy(native);delete source;}
- void copy(const CopyPayload& payload,std::function<void(Error)> cb){events();if(!available()){cb({"clipboard_unavailable","Native ext-data-control-v1 result copying is unavailable",{}});return;}if(copyReply){cb({"clipboard_copy_failed","Another result copy is awaiting ownership acknowledgement",{}});return;}
+ void copy(const CopyPayload& payload,std::function<void(Error)> cb){events();if(!available()){cb({"clipboard_unavailable","Native Wayland data-control result copying is unavailable",{}});return;}if(copyReply){cb({"clipboard_copy_failed","Another result copy is awaiting ownership acknowledgement",{}});return;}
   QHash<QString,QByteArray> data;if(payload.kind=="image"&&!payload.encodedImage.isEmpty())data["image/png"]=payload.encodedImage;
   else if(payload.kind=="files"&&!payload.files.isEmpty()){QByteArray uris;for(const auto& file:payload.files){uris.append(QUrl::fromLocalFile(file).toEncoded());uris.append("\r\n");}data["text/uri-list"]=uris;}
   else if(payload.kind=="text"){const auto bytes=payload.text.toUtf8();data["text/plain;charset=utf-8"]=bytes;data["text/plain"]=bytes;data["UTF8_STRING"]=bytes;}
@@ -209,7 +221,7 @@ xkb_keymap* DataControlClipboard::keyboardMap()const{return d_->keyboardMap;}
 bool DataControlClipboard::available()const{return d_->available();}
 quint64 DataControlClipboard::revision()const{d_->events();return d_->revision;}
 std::optional<quint64> DataControlClipboard::lastCopyRevision()const{return d_->lastCopyRevision;}
-QJsonObject DataControlClipboard::status()const{return {{"available",available()},{"types",QJsonArray{"files","image","text"}},{"import","ext-data-control-v1"},{"result","ext-data-control-v1-clipboard-only"},{"protocol_version",d_->manager?1:0},{"error",d_->error}};}
+QJsonObject DataControlClipboard::status()const{const QString protocol=d_->protocol?d_->protocol:"none";return {{"available",available()},{"types",QJsonArray{"files","image","text"}},{"import",protocol},{"result",protocol+"-clipboard-only"},{"protocol_version",d_->manager?int(wl_proxy_get_version(reinterpret_cast<wl_proxy*>(d_->manager))):0},{"error",d_->error}};}
 void DataControlClipboard::acquire(const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 expected){d_->acquire(limits,std::move(cb),expected);}
 void DataControlClipboard::copy(const CopyPayload& payload,std::function<void(Error)> cb){d_->copy(payload,std::move(cb));}
 void DataControlClipboard::cancel(){d_->cancel();}

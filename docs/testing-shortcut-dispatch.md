@@ -51,7 +51,7 @@ ordinary tray suite cannot inject input on an inherited physical desktop.
 
 Use an isolated local-only destination and cancel selections before capturing.
 Verify the GUI autosave/rebind path, new-chord activation, old-chord removal and
-unchanged actions on Cinnamon first. Include foreground applications and lock
+unchanged actions on each desktop. Include foreground applications and lock
 states. Also verify disabling both outputs produces visible feedback without an
 operation, then enable a destination or local saving and retry. Preserve failure
 attempts separately from corrected test-driver runs. Record build manifests,

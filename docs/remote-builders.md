@@ -1,7 +1,7 @@
 # Preferred build and graphical test servers
 
-Patrick's two physical Linux servers are the preferred project build, VM and
-acceptance hosts. Choose between them by required tools/profile and available
+Patrick's three physical Linux servers are the preferred project build, VM and
+acceptance hosts. Choose a host by required tools/profile and available
 capacity; use workstation-local VMs when the servers are unavailable or cannot
 run the required profile. Record the reason for each fallback. Work under
 `~/work/<project>` and preserve existing checkouts, builds, desktops and user work.
@@ -10,8 +10,9 @@ run the required profile. Record the reason for each fallback. Work under
 | --- | --- | --- | --- | --- |
 | Fedora 44 Workstation | `patrick@192.168.68.70` | GNOME on Wayland | `127.0.0.1:5970` | `putgd-fedora-vnc.service` |
 | Debian 13 | `patrick@192.168.68.69` | KDE Plasma on Wayland | `127.0.0.1:5979` | `putgd-debian-vnc.service` |
+| Kubuntu 26.04.1 LTS | `patrick@192.168.68.72` | KDE Plasma 6.6.6 on X11 | `127.0.0.1:5972` | `putgd-kubuntu-vnc.service` |
 
-The user authorizes full root access on these two machines through passwordless
+The user authorizes full root access on these three machines through passwordless
 sudo: install normal distro dependencies, configure build tools, compile and run
 tests using `sudo -n COMMAND` (or `sudo -n -i`). `sudo -n id -u` must report `0`.
 Do not apply this remote authorization to the workstation or unrelated machines.
@@ -27,21 +28,21 @@ appropriate physical machine. Provision missing profiles and record local fallba
 ## Graphical acceptance on the physical desktops
 
 The build servers themselves are authorized graphical acceptance targets. Build,
-install and run the candidate directly in Fedora's existing GNOME/Wayland session
-or Debian's existing Plasma/Wayland session. Use the corresponding physical-host
-tile on the workstation wall, preserve the user's other windows/projects, and
-save screenshots or recordings of the actual app behavior and failures.
+install and run the candidate directly in Fedora's existing GNOME/Wayland session,
+Debian's Plasma/Wayland session or Kubuntu's Plasma/X11 session. Use the
+corresponding physical-host tile on the workstation wall, preserve the user's
+other windows/projects, and save screenshots or recordings of the actual app
+behavior and failures.
 Record the host OS, compositor/session version, exact source and running build,
 scenario and result. SSH output or an offscreen test alone is insufficient.
 
 These host-desktop checks do not require a VM or `/dev/kvm`. Select direct host
 testing when its actual desktop/version matches the claim being tested; use a
-VM for other required guest profiles. Preserve Cinnamon-first ordering, the
-approved KDE experiment exception and the release matrix's exact versions.
+VM for other required guest profiles. Preserve the release matrix's exact versions.
 
 ## Pinned SSH access
 
-Connect from the main workstation on the LAN. Both hosts accept
+Connect from the main workstation on the LAN. All three hosts accept
 `/home/patrick/.ssh/awskey_110724`. Keep that private key on the workstation:
 never copy it into a server, VM, source export, image or evidence packet. Use
 the existing host pins; do not replace them or disable host-key verification.
@@ -58,16 +59,22 @@ ssh -i /home/patrick/.ssh/awskey_110724 -o IdentitiesOnly=yes \
   -o StrictHostKeyChecking=yes \
   -o UserKnownHostsFile=/home/patrick/work/put.gd/work/remote-builders/d69/known_hosts \
   patrick@192.168.68.69
+
+# Kubuntu
+ssh -i /home/patrick/.ssh/awskey_110724 -o IdentitiesOnly=yes \
+  -o StrictHostKeyChecking=yes \
+  -o UserKnownHostsFile=/home/patrick/work/put.gd/work/remote-builders/k72/known_hosts \
+  patrick@192.168.68.72
 ```
 
 For unattended commands, also use `-o BatchMode=yes` and a bounded connection
 timeout. A missing pin or mismatch requires verified identity recovery, not
 trust-on-first-use. Local bootstrap notes and tunnel units live privately under
-`work/remote-builders/f44/` and `work/remote-builders/d69/`.
+`work/remote-builders/f44/`, `work/remote-builders/d69/` and `work/remote-builders/k72/`.
 
 ## Visual results are required
 
-Both physical desktops appear at [the display wall](http://127.0.0.1:8765/).
+All three physical desktops appear at [the display wall](http://127.0.0.1:8765/).
 Tiles start view-only; select **Enable KB + Mouse** to interact, then return to
 view-only when finished. VNC has no password and must remain restricted to
 loopback, reached through authenticated SSH tunnels. Never expose it to the LAN.
@@ -85,7 +92,7 @@ Follow [evidence retention](evidence-retention.md).
 A host tile does not automatically display its VMs. Before remote VM acceptance,
 bind the guest's VNC listener to remote loopback, allocate a distinct free
 workstation port and forward it over pinned SSH. Register a separate guest tile
-in the existing wall configuration, preserving both host tiles. The current wall
+in the existing wall configuration, preserving all host tiles. The current wall
 reads its `QEMU_GRID_REMOTES` JSON file, or
 `tools/qemu-grid/remote-displays.json` by default: entries have exactly `name` and
 `port`, with the port naming a workstation-loopback tunnel. Verify the live guest
@@ -94,15 +101,14 @@ visually; a listed tile or an RFB handshake alone does not establish visibility.
 SSH builds/logs and offscreen tests do not establish graphical acceptance. Test
 the actual GNOME or Plasma session for physical-host claims. Required release
 profiles retain their exact OS/desktop versions; Fedora GNOME or Debian Plasma
-does not waive a different version in that matrix. Cinnamon-first ordering and
-the approved KDE memory-experiment exception remain in force. For VM scenarios,
+does not waive a different version in that matrix. For VM scenarios,
 retain the existing independent QMP, saved-artifact and native-paste witnesses.
 
 ## Remote VM operating procedures
 
 Use [remote VM display tunnels](remote-vm-displays.md) to add each builder-hosted
 QEMU guest to the existing wall. Use [golden image discovery and copying](remote-golden-images.md)
-for exact workstation paths, verified transfers and the approved shared guest login.
+for current golden locations, restores, verified transfers and the approved shared guest login.
 
 ## VM preflight and golden-image copies
 
@@ -114,13 +120,16 @@ with the authorized noninteractive sudo. Do not count TCG as KVM acceptance or
 start a hidden guest because display setup is incomplete. If the host cannot
 meet the profile, record the blocked gate and use a suitable local VM fallback.
 
-Golden-image copying is authorized; it is not a request to move or retire the
-originals. For each transfer:
+Golden-image copying is authorized. The workstation originals were retired on
+2026-10-17, after Patrick approved moving them to verified Fedora, Debian and S3
+copies. Those copies are now the immutable sources. Copying one is not a request
+to move or retire it. For each transfer:
 
 1. Inventory the source and its complete backing chain. Never copy a running
    guest's writable disk as a golden. Prefer the existing standalone provisioned
-   goldens documented in [VM lab](vm-lab.md). If flattening is needed, produce a
-   new standalone image and verify it; never rebase or alter the original chain.
+   goldens in the [golden inventory](remote-golden-images.md#current-inventory).
+   If flattening is needed, produce a new standalone image and verify it; never
+   rebase or alter the original chain.
 2. Record the source image SHA-256, virtual size and sidecar/provisioning identity.
    Check remote capacity for the copy, staging and future overlays before transfer.
 3. Copy to a fresh private directory under
@@ -158,3 +167,23 @@ present in either check. VM-host readiness therefore still requires preflight
 and setup; these checks do not establish guest or graphical app acceptance.
 Recheck capabilities and versions for every campaign rather than treating this
 inventory as a permanent readiness receipt.
+
+## Kubuntu host preflight, 2026-10-17
+
+Pinned SSH and `sudo -n id -u` passed on `.72`. The machine has an Intel i5-6500T
+(four logical CPUs), 15 GiB usable RAM and approximately 141 GiB free at preflight.
+`/dev/kvm` is readable/writable by patrick; KVM API version 12 and VM creation
+passed. This establishes KVM access, not guest boot or acceptance readiness.
+
+The existing Plasma 6.6.6 X11 session renders at 1920x1080. Its forced HDMI-A-1
+EDID arguments are active in the current boot, firmware is present in initramfs,
+and GRUB/hook syntax checks passed. Existing automatic X11 login and the VNC
+sleep/idle inhibitor were preserved. TigerVNC now listens only on loopback;
+direct LAN VNC is refused. Its `.72` wall tile passed mouse/keyboard checks and
+was returned to view-only. No sharing-portal approval is needed for this X11 session.
+
+Native build bootstrap uses the committed `909f8ee` source archive, standard
+distro packages and the verified official AWS SDK 1.11.907 dependency lock.
+Exact source/tool versions, build outcome and access/display evidence are retained
+privately in `work/remote-builders/k72/`. This setup did not perform a fresh reboot,
+guest boot, graphical put.gd acceptance or a memory campaign.

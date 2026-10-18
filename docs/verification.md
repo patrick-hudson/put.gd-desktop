@@ -9,6 +9,52 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Resident PNG readers — 2026-10-17
+
+The [resident PNG receipt](evidence/2026-10-17-resident-png-codecs.md) records the
+kept reader change `e9a4dac` and the dropped libpng writer. The writer prototype
+passed the Mint dev suite 69/69 and 18/18 scenarios each on a Mint Cinnamon VM and
+the physical Debian Plasma desktop. It saved only the 220-436 KiB of plugin files
+there, so it was removed. The reader-only change passes its three plugin tests and
+the affected capture, clipboard, GNOME, KDE and editor suites.
+
+## KDE window frame check — 2026-10-17
+
+The [KDE window frame receipt](evidence/2026-10-17-kde-window-frame.md) records
+the decision to keep frame-inclusive window capture on Plasma/Wayland, and the
+lab fix. The runner now asks KWin for the frame on any observed KDE Wayland
+session, not only a profile named `kde-wayland`. Window runs pass 2/2 on
+physical Debian Plasma 6.3 (642×449) and 2/2 on the Kubuntu Plasma 6.6 VM
+(640×448), each matching KWin's own frame geometry.
+
+## X11 clipboard image plugins — 2026-10-17
+
+The [X11 clipboard receipt](evidence/2026-10-17-x11-clipboard-plugins.md) records
+candidate `d11940f` on `feat/edit-and-upload`:
+
+- Dev suite 64/64 on Mint.
+- In parallel: Cinnamon VM, physical Kubuntu Plasma/X11, physical Debian
+  Plasma/Wayland and physical Fedora GNOME/Wayland, each with native cases, views,
+  restart and two 300-second memory windows (25.9–37.6 MiB peak).
+- Plasma/X11 resident 10.2 MiB smaller after its first clipboard import, with no
+  image plugin mapped. The one Debian window failure was a lab expectation tied
+  to the physical profile name, fixed in the
+  [window frame receipt](evidence/2026-10-17-kde-window-frame.md).
+
+## Edit & upload — 2026-10-17
+
+The [issue 51 receipt](evidence/2026-10-17-issue51-edit-and-upload.md) records
+candidate `329d736`:
+
+- Dev suites on Mint, Kubuntu and Debian.
+- Cinnamon-first graphical (21/21), memory and MCP gates, then GNOME/Wayland and
+  KDE/Wayland on KVM.
+- The same gates on the physical Debian Plasma/Wayland and Kubuntu Plasma/X11
+  desktops, including both halves of the issue #54 outline fix and the
+  wlr-data-control clipboard fallback.
+
+Physical Fedora and Windows remain uncovered.
+
 ## Local S3 settings controls — 2026-10-16
 
 The [scoped receipt](evidence/2026-10-16-s3-settings-controls.md) records the

@@ -8,6 +8,7 @@
 #include <QSet>
 namespace putgd {
 class CinnamonRegionCapture;
+class X11CompositorSettle;
 // Selection carries geometry only; desktop pixels require a separate acquisition.
 struct RegionSelectionResult {
  QRectF rectangle;
@@ -49,6 +50,7 @@ private:
  quint32 residentRegionCursor_=0;
  QList<QThread*> workers_;
  QSet<CinnamonRegionCapture*> regionCaptures_;
+ QSet<X11CompositorSettle*> settles_;
  quint64 generation_=0;
  quint64 selectedGeneration_=0;
  X11Target selectedTarget_;

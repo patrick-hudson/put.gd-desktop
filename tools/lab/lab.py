@@ -19,6 +19,8 @@ import time
 import uuid
 
 HERE = Path(__file__).resolve().parent
+SCENARIOS = ('region', 'window', 'desktop', 'clipboard-text', 'clipboard-image', 'clipboard-files',
+             'region-cancel-escape', 'region-cancel-right-click', 'region-cancel-zero-area')
 sys.path.insert(0, str(HERE))
 import overlay_cleanup
 
@@ -201,6 +203,13 @@ def fixture_oracle(rectangle, paint):
         for index, color in enumerate(colors)]}
 
 
+def kwin_wayland_session(ready):
+    # KWin draws server-side window frames that native Qt Wayland frameMargins
+    # omit. Decide from the observed session, never the profile name: VM and
+    # physical Plasma hosts use differently named profiles.
+    return ready['session'] == 'wayland' and 'KDE' in ready.get('desktop', '').split(':')
+
+
 def locate_fixture_paint(path):
     # Wayland deliberately does not expose a client's global window origin.
     # Locate the independent four-colour fixture in the pre-action QMP frame,
@@ -277,6 +286,21 @@ def get(run, remote, local):
     command(arguments + [endpoint + str(remote), local])
 
 
+def native_display_prefix():
+    # GNOME creates its Wayland display after compositor startup, so it may be
+    # absent from /proc/gnome-shell/environ. The session manager has the updated
+    # value. Without it the resident cannot recognize the native GNOME session
+    # and falls back to its graphical route (about twice the idle memory).
+    # Preserve that real socket before any caller changes the runtime root.
+    return """if [ "${XDG_SESSION_TYPE:-}" = wayland ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+ native_wayland=$(systemctl --user show-environment | sed -n 's/^WAYLAND_DISPLAY=//p')
+ [ -n "$native_wayland" ] || exit 70
+ export WAYLAND_DISPLAY="$native_wayland"
+fi
+case "${WAYLAND_DISPLAY:-}" in ""|/*) ;; *) export WAYLAND_DISPLAY="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY";; esac
+"""
+
+
 def guest_session(run, body):
     # Discover the real desktop session's environment, not SSH's empty DISPLAY.
     info = state(run)
@@ -294,7 +318,7 @@ for name in DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_SESSION_TYPE XDG_CUR
 done
 export QT_QPA_PLATFORM={shlex.quote(profile["qt_platform"])}
 export XDG_RUNTIME_DIR=/run/user/$(id -u)
-export XDG_CONFIG_HOME=$HOME/putgd-lab/config
+{native_display_prefix()}export XDG_CONFIG_HOME=$HOME/putgd-lab/config
 export XDG_DATA_HOME=$HOME/putgd-lab/data
 {body}
 '''
@@ -679,8 +703,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         pointer(run, x, y, width, height, True)
         pointer(run, x, y, width, height, False)
         time.sleep(.2)
-        if args.scenario == 'window' and state(run)['profile'] == 'kde-wayland':
-            # Server decorations are absent from native Qt Wayland frameMargins.
+        if args.scenario == 'window' and kwin_wayland_session(ready):
             # Ask the compositor's independent, visible picker before capture.
             guest_session(run, 'rm -f ~/putgd-lab/window-oracle.json\n'
                 'nohup busctl --user --json=short call org.kde.KWin /KWin org.kde.KWin queryWindowInfo '
@@ -971,7 +994,14 @@ def verify_installed_binaries(run, deb):
     # than recording only the requested archive's hash.
     import tempfile
     with tempfile.TemporaryDirectory(prefix='putgd-package-') as directory:
-        command(['dpkg-deb', '--extract', str(Path(deb).resolve()), directory])
+        if str(deb).endswith('.rpm'):
+            archive = subprocess.Popen(['rpm2cpio', str(Path(deb).resolve())], stdout=subprocess.PIPE)
+            unpacked = subprocess.run(['cpio', '-idm', '--quiet'], stdin=archive.stdout, cwd=directory)
+            archive.stdout.close()
+            if archive.wait() or unpacked.returncode:
+                raise LabError('Could not extract the requested RPM')
+        else:
+            command(['dpkg-deb', '--extract', str(Path(deb).resolve()), directory])
         expected = {}
         for path in (Path(directory) / 'usr/bin').iterdir():
             if path.is_file() and path.name.startswith('putgd'):
@@ -1019,7 +1049,7 @@ def main():
         if name == 'run':
             child.add_argument('--timeout', type=int, default=45)
             child.add_argument('--keep', action='store_true')
-            child.add_argument('--scenario', choices=['region', 'window', 'desktop', 'clipboard-text', 'clipboard-image', 'clipboard-files', 'region-cancel-escape', 'region-cancel-right-click', 'region-cancel-zero-area'], default='region')
+            child.add_argument('--scenario', choices=SCENARIOS, default='region')
             child.add_argument('--settings', help='Non-secret synthetic destination patch; keychain references only')
             child.add_argument('--history', action='store_true', help='Restart and verify newly uploaded history/link paste; prepare exact deletion effects')
             child.add_argument('--clipboard-client', choices=['qt', 'gtk'], default='qt', help='Independent native clipboard owner/paste client; GTK requires distro Python GI/GTK4/Cairo')

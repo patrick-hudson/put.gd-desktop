@@ -171,7 +171,9 @@ void CaptureProcessController::decode(QJsonObject descriptor){
   QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);reject("capture_io");return;}
   QCryptographicHash hash(QCryptographicHash::Sha256);if(!hash.addData(&file)||QString::fromLatin1(hash.result().toHex())!=descriptor["sha256"].toString()){reject("capture_failed");return;}file.seek(0);const auto header=file.read(33);file.seek(expectedBytes-12);const auto ending=file.read(12);
   if(header.left(8)!=QByteArray::fromHex("89504e470d0a1a0a")||header.mid(8,8)!=QByteArray::fromHex("0000000d49484452")||ending!=QByteArray::fromHex("0000000049454e44ae426082")||header.size()!=33||quint8(header[24])!=8){reject("capture_failed");return;}
-  file.seek(0);QImageReader reader(&file,"PNG");
+  // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
+  // format unless detection is off; the PNG signature was checked above.
+  file.seek(0);QImageReader reader(&file,"PNG");reader.setAutoDetectImageFormat(false);
   if(reader.size()!=QSize(int(width),int(height))){reject("capture_geometry");return;}
   const auto format=reader.imageFormat();
   if(format!=QImage::Format_RGB32&&format!=QImage::Format_ARGB32){reject("capture_failed");return;}

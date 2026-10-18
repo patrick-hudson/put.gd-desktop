@@ -7,7 +7,9 @@
 #include <QQueue>
 #include <QHash>
 #include <xcb/xcb.h>
+#include <atomic>
 #include <memory>
+#include <optional>
 #include <QDeadlineTimer>
 namespace putgd {
 class X11Clipboard final:public QObject {
@@ -30,6 +32,8 @@ private:
  void convert(xcb_atom_t);
  void nextTarget();
  void property(bool incremental);
+ void chooseTargets(const xcb_atom_t*,int count);
+ void offer(const QList<QByteArray>& targets,const QHash<QByteArray,xcb_atom_t>& offered);
  void received();
  void complete(PayloadResult);
  struct OwnedContent {
@@ -78,6 +82,10 @@ private:
  QString imageFormat_;
  QList<xcb_atom_t> offered_;
  QHash<xcb_atom_t,QString> imageFormats_;
+ // Image types the transient image job can decode, listed once for imports.
+ std::optional<QList<QByteArray>> imageTypes_;
+ // Stops the active import's image job; replaced for each import.
+ std::shared_ptr<std::atomic_bool> cancelled_=std::make_shared<std::atomic_bool>(false);
  std::function<void(PayloadResult)> callback_;
  QList<QThread*> decoders_;
  QQueue<ImportRequest> pending_;
