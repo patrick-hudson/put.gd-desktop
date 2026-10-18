@@ -1,12 +1,14 @@
-"""Strict release grammar shared by tag verification and public asset inventories."""
+"""Strict release grammar shared by tag verification and public asset inventories.
+
+Stable `vX.Y.Z`, candidate `vX.Y.Z-rc.N` and nightly `vX.Y.Z-nightly.N`, where a
+nightly's N is the full-history commit count of the tagged source.
+"""
 from dataclasses import dataclass
-import datetime
 import re
 
 _BASE = r'(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)'
-_VERSION = re.compile(r'(?P<base>' + _BASE + r')(?:(?:-rc\.(?P<candidate>[1-9][0-9]*))|'
-                      r'(?:-dev\.(?P<count>[1-9][0-9]*)\.(?P<utc>[0-9]{14})'
-                      r'\+g(?P<short>[0-9a-f]{12})))?')
+_VERSION = re.compile(r'(?P<base>' + _BASE + r')(?:-rc\.(?P<candidate>[1-9][0-9]*)'
+                      r'|-nightly\.(?P<count>[1-9][0-9]*))?')
 
 
 @dataclass(frozen=True)
@@ -16,8 +18,6 @@ class ReleaseIdentity:
     package_version: str
     channel: str
     count: int | None = None
-    utc: str | None = None
-    short_commit: str | None = None
 
     @property
     def prerelease(self):
@@ -27,15 +27,11 @@ class ReleaseIdentity:
 def parse_version(version):
     match = _VERSION.fullmatch(version) if isinstance(version, str) else None
     if not match:
-        raise ValueError('Exact stable, release candidate or immutable nightly version required')
-    base, candidate, count, utc, short = match.group('base', 'candidate', 'count', 'utc', 'short')
+        raise ValueError('Exact stable, release candidate or nightly version required')
+    base, candidate, count = match.group('base', 'candidate', 'count')
     if count:
-        try:
-            datetime.datetime.strptime(utc, '%Y%m%d%H%M%S')
-        except ValueError as error:
-            raise ValueError('Nightly timestamp must be a valid UTC date and time') from error
-        return ReleaseIdentity(version, base, f'{base}~dev.{count}.{utc}+g{short}',
-                               'nightly', int(count), utc, short)
+        # Packages order ~nightly before ~rc and both before the stable base.
+        return ReleaseIdentity(version, base, f'{base}~nightly.{count}', 'nightly', int(count))
     if candidate:
         return ReleaseIdentity(version, base, base + '~rc.' + candidate, 'candidate')
     return ReleaseIdentity(version, base, base, 'stable')

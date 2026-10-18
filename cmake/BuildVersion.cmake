@@ -1,6 +1,6 @@
 # Refresh on every normal build; configure_file writes only when identity changes.
 # This handles commits, index changes and working-tree edits without a reconfigure.
-set(PUTGD_RELEASE_TAG "" CACHE STRING "Exact clean Git release tag: v<base>, v<base>-rc.N or v<base>-dev.COUNT.UTC+gSHORT")
+set(PUTGD_RELEASE_TAG "" CACHE STRING "Exact clean Git release tag: v<base>, v<base>-rc.N or v<base>-nightly.COUNT")
 set(PUTGD_SOURCE_COMMIT "" CACHE STRING "Full commit for an exported source archive")
 set(PUTGD_SOURCE_TREE "" CACHE STRING "Full committed tree for an exported source archive")
 set(PUTGD_SOURCE_COMMIT_COUNT "" CACHE STRING "Commit count for an exported source archive")

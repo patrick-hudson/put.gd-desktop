@@ -18,7 +18,7 @@ from collect import sha256
 from verify_tag import verify
 from github_api import GitHub
 from nightly import published_nightly, public_inventory
-from release_identity import parse_tag
+from release_identity import parse_tag, parse_version
 
 
 
@@ -98,6 +98,14 @@ def verify_remote_draft(tag, directory, listed, commit, *, nightly=False):
     return {'releaseId': before['id'], 'assets': assets, 'sha256': expected}
 
 
+def release_title(release):
+    """Name the GitHub release; nightlies say so in words rather than in a suffix."""
+    identity = parse_version(release['version'])
+    if identity.channel == 'nightly':
+        return f'put.gd {identity.base_version} nightly {identity.count}'
+    return 'put.gd ' + release['version']
+
+
 def stage_draft(tag, directory, listed, release, notes):
     """Resume only a matching draft; never replace unverified existing assets."""
     if remote_tag_commit(tag) != release['gitCommit']:
@@ -107,7 +115,7 @@ def stage_draft(tag, directory, listed, release, notes):
         raise ValueError('Staging requires a unique draft; published releases are immutable here')
     if not matches:
         command = ['gh', 'release', 'create', tag, '--verify-tag', '--draft',
-                   '--title', 'put.gd ' + release['version'], '--notes-file', str(notes)]
+                   '--title', release_title(release), '--notes-file', str(notes)]
         if release['prerelease']:
             command.append('--prerelease')
         if release.get('channel') == 'nightly':
@@ -179,7 +187,9 @@ def publish_nightly(args, release, listed):
         receipt.update(published=True, unchanged=True, verifiedPublishedNightly=public)
     else:
         notes = args.directory / 'release-notes.md'
-        notes.write_text('Build-tested nightly development release.\n\n'
+        identity = parse_tag(args.tag)
+        notes.write_text(f'Nightly {identity.count} of {identity.base_version}: a build-tested development '
+            f'release of commit {release["gitCommit"]}.\n\n'
             'Automated coverage: Linux test suites, Windows/macOS portable compilation, '
             'Ubuntu 24.04/26.04 DEB and Fedora 44 RPM audits, AppImage packaging, '
             'and production compilation of the exact curated source tarball. '
