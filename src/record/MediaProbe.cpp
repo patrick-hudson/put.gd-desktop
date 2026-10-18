@@ -73,7 +73,7 @@ QJsonObject probeMedia() {
 
     QJsonObject ff{{"avcodec", avVersion(avcodec_version())}, {"avformat", avVersion(avformat_version())}, {"avfilter", avVersion(avfilter_version())}, {"avutil", avVersion(avutil_version())}};
     QJsonObject encoders;
-    for (const char* name : {"libx264", "h264_vaapi", "libopenh264", "libx265", "hevc_vaapi", "libvpx-vp9", "vp9_vaapi", "gif", "libwebp_anim", "aac", "libopus", "libvorbis"})
+    for (const char* name : {"h264_nvenc", "libx264", "h264_vaapi", "libopenh264", "hevc_nvenc", "libx265", "hevc_vaapi", "libvpx-vp9", "vp9_vaapi", "gif", "libwebp_anim", "aac", "libopus", "libvorbis"})
         encoders[name] = avcodec_find_encoder_by_name(name) != nullptr;
     ff["encoders"] = encoders;
     QJsonObject muxers;
@@ -88,12 +88,12 @@ QJsonObject probeMedia() {
     auto any = [&](std::initializer_list<const char*> names) { for (const char* n : names) if (encoders[n].toBool()) return true; return false; };
     auto filtersOk = [&](std::initializer_list<const char*> names) { for (const char* n : names) if (!filters[n].toBool()) return false; return true; };
     auto list = [&](std::initializer_list<const char*> names) { QJsonArray a; for (const char* n : names) if (encoders[n].toBool()) a.append(n); return a; };
-    result["exportEncoders"] = QJsonObject{{"h264", list({"libx264", "h264_vaapi", "libopenh264"})}, {"h265", list({"libx265", "hevc_vaapi"})}, {"vp9", list({"libvpx-vp9"})}};
+    result["exportEncoders"] = QJsonObject{{"h264", list({"h264_nvenc", "libx264", "h264_vaapi", "libopenh264"})}, {"h265", list({"hevc_nvenc", "libx265", "hevc_vaapi"})}, {"vp9", list({"libvpx-vp9"})}};
 
     const bool baseFilters = filtersOk({"trim", "setpts", "boxblur", "drawbox", "crop", "scale", "fps", "format"});
     QJsonArray formats;
     QJsonObject codecs;
-    if (baseFilters && muxers["mp4"].toBool() && any({"libx264", "h264_vaapi", "libopenh264"})) {
+    if (baseFilters && muxers["mp4"].toBool() && any({"h264_nvenc", "libx264", "h264_vaapi", "libopenh264"})) {
         formats.append("mp4");
         QJsonArray mp4{"h264"};
         if (any({"libx265", "hevc_vaapi"})) mp4.append("h265");
