@@ -29,7 +29,8 @@ candidate `d11940f` on `feat/edit-and-upload`:
   restart and two 300-second memory windows (25.9–37.6 MiB peak).
 - Plasma/X11 resident 10.2 MiB smaller after its first clipboard import, with no
   image plugin mapped. The one Debian window failure was a lab expectation tied
-  to the physical profile name; the frame-inclusive capture is correct.
+  to the physical profile name, fixed in the
+  [window frame receipt](evidence/2026-10-17-kde-window-frame.md).
 
 ## Edit & upload — 2026-10-17
 
