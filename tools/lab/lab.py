@@ -19,6 +19,8 @@ import time
 import uuid
 
 HERE = Path(__file__).resolve().parent
+SCENARIOS = ('region', 'window', 'desktop', 'clipboard-text', 'clipboard-image', 'clipboard-files',
+             'region-cancel-escape', 'region-cancel-right-click', 'region-cancel-zero-area')
 sys.path.insert(0, str(HERE))
 import overlay_cleanup
 
@@ -199,6 +201,13 @@ def fixture_oracle(rectangle, paint):
          'y': paint['y'] - rectangle['y'] + (index // 2) * 160,
          'width': 320, 'height': 160, 'rgb': color}
         for index, color in enumerate(colors)]}
+
+
+def kwin_wayland_session(ready):
+    # KWin draws server-side window frames that native Qt Wayland frameMargins
+    # omit. Decide from the observed session, never the profile name: VM and
+    # physical Plasma hosts use differently named profiles.
+    return ready['session'] == 'wayland' and 'KDE' in ready.get('desktop', '').split(':')
 
 
 def locate_fixture_paint(path):
@@ -694,8 +703,7 @@ nohup python3 ~/putgd-lab/gtk_clipboard_fixture.py --output "$HOME/putgd-lab/fix
         pointer(run, x, y, width, height, True)
         pointer(run, x, y, width, height, False)
         time.sleep(.2)
-        if args.scenario == 'window' and state(run)['profile'] == 'kde-wayland':
-            # Server decorations are absent from native Qt Wayland frameMargins.
+        if args.scenario == 'window' and kwin_wayland_session(ready):
             # Ask the compositor's independent, visible picker before capture.
             guest_session(run, 'rm -f ~/putgd-lab/window-oracle.json\n'
                 'nohup busctl --user --json=short call org.kde.KWin /KWin org.kde.KWin queryWindowInfo '
@@ -1041,7 +1049,7 @@ def main():
         if name == 'run':
             child.add_argument('--timeout', type=int, default=45)
             child.add_argument('--keep', action='store_true')
-            child.add_argument('--scenario', choices=['region', 'window', 'desktop', 'clipboard-text', 'clipboard-image', 'clipboard-files', 'region-cancel-escape', 'region-cancel-right-click', 'region-cancel-zero-area'], default='region')
+            child.add_argument('--scenario', choices=SCENARIOS, default='region')
             child.add_argument('--settings', help='Non-secret synthetic destination patch; keychain references only')
             child.add_argument('--history', action='store_true', help='Restart and verify newly uploaded history/link paste; prepare exact deletion effects')
             child.add_argument('--clipboard-client', choices=['qt', 'gtk'], default='qt', help='Independent native clipboard owner/paste client; GTK requires distro Python GI/GTK4/Cairo')

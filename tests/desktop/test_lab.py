@@ -545,6 +545,119 @@ class LabContracts(unittest.TestCase):
             path.write_bytes(header + pixels)
             self.assertIsNone(lab.locate_fixture_paint(path))
 
+    def test_window_frame_oracle_follows_observed_kwin_session_not_profile_name(self):
+        # Physical Debian 13 Plasma 6.3 (profile kde-wayland-physical) captured
+        # a 642x449 server-decorated frame with paint at (1,28). Native Qt
+        # Wayland frameMargins were zero, so a name-gated oracle expected the
+        # bare 640x420 client area and rejected correct frame-inclusive pixels.
+        kde = lab.load_profile('kde-wayland')
+        physical = dict(kde, name='kde-wayland-physical', guest_user='patrick')
+        original_profile = lab.load_profile
+        original_compare = lab.compare_ppm
+        paint = {'x': 640, 'y': 321, 'width': 640, 'height': 320}
+        colors = ([220, 30, 40], [20, 180, 70], [35, 70, 220], [235, 190, 20])
+        for profile, desktop, margins, kwin_frame in (
+                ('kde-wayland', 'KDE', {'left': 0, 'top': 0, 'right': 0, 'bottom': 0},
+                 {'x': 640.0, 'y': 293.0, 'width': 640.0, 'height': 448.0}),
+                ('kde-wayland-physical', 'KDE', {'left': 0, 'top': 0, 'right': 0, 'bottom': 0},
+                 {'x': 639.0, 'y': 293.0, 'width': 642.0, 'height': 449.0}),
+                ('gnome-wayland', 'ubuntu:GNOME', {'left': 11, 'top': 48, 'right': 11, 'bottom': 12}, None)):
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory() as directory:
+                run = Path(directory)
+                lab.write_json(run / 'state.json', {'schemaVersion': 1, 'profile': profile,
+                    'acceleration': 'physical', 'guest_user': 'fixture', 'id': 'synthetic'})
+                ready = {'session': 'wayland', 'qt_platform': 'wayland', 'desktop': desktop,
+                    'qt_version': '6.8.2', 'decorationMargins': margins,
+                    'display_layout': [{'x': 0, 'y': 0, 'width': 1920, 'height': 1080}],
+                    'paint': {'x': 0, 'y': 0, 'width': 640, 'height': 320},
+                    'frame': {'x': 0, 'y': 0, 'width': 640, 'height': 420}}
+                frame = {key: round(value) for key, value in kwin_frame.items()} if kwin_frame else {
+                    'x': paint['x'] - margins['left'], 'y': paint['y'] - margins['top'],
+                    'width': 640 + margins['left'] + margins['right'],
+                    'height': 420 + margins['top'] + margins['bottom']}
+                # Decoration grey, white client area, fixture paint at its real offset.
+                pixels = bytearray(bytes([200, 200, 200]) * frame['width'] * frame['height'])
+                left, top = paint['x'] - frame['x'], paint['y'] - frame['y']
+                for row in range(420):
+                    offset = ((top + row) * frame['width'] + left) * 3
+                    line = bytes([255, 255, 255]) * 640
+                    if row < 320:
+                        quadrants = colors[:2] if row < 160 else colors[2:]
+                        line = bytes(quadrants[0]) * 320 + bytes(quadrants[1]) * 320
+                    pixels[offset:offset + 640 * 3] = line
+                capture = f'P6\n{frame["width"]} {frame["height"]}\n255\n'.encode() + pixels
+                saved = b'synthetic saved window artifact'
+                operation = {'id': 'window-gesture', 'state': 'completed', 'copyStatus': 'copied', 'items': [
+                    {'local': {'status': 'saved', 'path': '/synthetic/window.png'},
+                     'artifact': {'id': 'window-gesture', 'sha256': hashlib.sha256(saved).hexdigest(),
+                                  'bytes': len(saved)}, 'uploadStatus': 'local_only'}]}
+                recent_calls = 0
+                scripts = []
+                def fake_cli(_run, method, _params=None):
+                    nonlocal recent_calls
+                    if method == 'settings.get':
+                        return {'metadata': {'acceptedRevision': 1}}
+                    if method == 'diagnostics':
+                        return {'journalReady': True}
+                    if method == 'capabilities':
+                        return {'source': {'shortcuts': {'bindings': {
+                            action: {'bound': True} for action in ('region', 'window', 'desktop', 'clipboard')}}}}
+                    if method == 'operation.recent':
+                        recent_calls += 1
+                        return {'operations': [] if recent_calls == 1 else [operation]}
+                    if method == 'operation.inspect':
+                        return operation
+                    return {}
+                def fake_get(_run, remote, target):
+                    target = Path(target)
+                    if target.name == 'ready.json':
+                        lab.write_json(target, ready)
+                    elif remote == '/synthetic/window.png':
+                        target.write_bytes(saved)
+                    elif target.suffix == '.ppm':
+                        target.write_bytes(capture)
+                    else:
+                        lab.write_json(target, {})
+                def fake_session(_run, body):
+                    scripts.append(body)
+                    if 'cat ~/putgd-lab/window-oracle.json' not in body:
+                        return ''
+                    values = {'caption': 'put.gd independent synthetic paint / paste fixture', **kwin_frame}
+                    return json.dumps({'type': 'a{sv}', 'data': [
+                        {key: {'type': 's' if key == 'caption' else 'd', 'data': value}
+                         for key, value in values.items()}]})
+                def fake_screenshot(_run, name='witness', head=0):
+                    path = run / f'{name}-head{head}.ppm'
+                    path.write_bytes(b'synthetic witness')
+                    return {'path': str(path), 'sha256': lab.hash_file(path)}
+                def compare(path, expected):
+                    if Path(path).name in ('artifact.ppm', 'paste.ppm'):
+                        return original_compare(path, expected)
+                    return {'ok': True}
+                args = SimpleNamespace(run=str(run), scenario='window', clipboard_client='qt',
+                    settings=None, history=False, timeout=3, keep=True)
+                with contextlib.ExitStack() as stack:
+                    for name, replacement in (
+                            ('cli', fake_cli), ('get', fake_get), ('screenshot', fake_screenshot),
+                            ('guest_session', fake_session), ('verify_running_app', lambda *_args: {'pid': 42}),
+                            ('compare_ppm', compare), ('locate_fixture_paint', lambda _path: dict(paint)),
+                            ('load_profile', lambda name: physical if name == physical['name'] else original_profile(name)),
+                            ('pointer', lambda *_args: None), ('key', lambda *_args: None),
+                            ('collect', lambda *_args: None)):
+                        stack.enter_context(patch.object(lab, name, side_effect=replacement))
+                    stack.enter_context(patch.object(lab.time, 'sleep'))
+                    result = lab.fixture_run(args)
+                self.assertTrue(result['ok'], result)
+                parameters = lab.read_json(run / 'parameters.json')
+                self.assertEqual((parameters['expectedArtifact']['width'], parameters['expectedArtifact']['height']),
+                                 (frame['width'], frame['height']))
+                self.assertEqual(parameters['expectedArtifact']['areas'][0]['x'], left)
+                self.assertEqual(parameters['expectedArtifact']['areas'][0]['y'], top)
+                asked_kwin = any('queryWindowInfo' in script for script in scripts)
+                self.assertEqual(asked_kwin, kwin_frame is not None)
+                if kwin_frame:
+                    self.assertEqual(result['independentWindowFrame']['oracle'], 'pre-action KWin queryWindowInfo')
+
     def test_public_bytes_and_independent_link_paste_must_match_receipt(self):
         with tempfile.TemporaryDirectory() as directory:
             artifact = Path(directory) / 'artifact'
