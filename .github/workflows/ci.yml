@@ -171,7 +171,7 @@ jobs:
           test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
           python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci
           chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
-          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --parallel 12 --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --parallel 8 --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml"
       - name: Save test durations
         # Failed runs save too: CTest records failures and starts them first next time.
         if: always() && hashFiles('build/dev/Testing/Temporary/CTestCostData.txt') != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
