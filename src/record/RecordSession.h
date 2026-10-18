@@ -1,6 +1,7 @@
 #pragma once
 #include "ClipExporter.h"
 #include "Overlays.h"
+#include "PortalScreenCast.h"
 #include "RecordingPipeline.h"
 #include "ReviewWindow.h"
 #include "X11Targets.h"
@@ -33,6 +34,8 @@ signals:
 private:
     void prepare(const QJsonObject& params, Reply);
     void finishPrepare(Reply);
+    // Wayland: share through the portal picker, then continue like X11 with the stream as the target.
+    void preparePortal(Reply);
     void start(Reply);
     void stop(Reply);
     void cancelLocal();
@@ -52,6 +55,11 @@ private:
     qint64 durationUs_ = 0;
     bool prepared_ = false, recorded_ = false, overlayExcluded_ = true;
     RecordingPipeline pipeline_;
+    PortalScreenCast portal_;
+    int portalFd_ = -1;
+    quint32 portalNode_ = 0;
+    QRect portalCrop_;
+    bool portalTarget_ = false;
     QTimer progress_, barTimer_;
     SelectionOverlay* selection_ = nullptr;
     BoundsOverlay bounds_;

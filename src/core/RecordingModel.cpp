@@ -115,7 +115,8 @@ Error parseTarget(const QJsonValue& value, RecordingTarget& out) {
         // the bounds in the ready state.
         if (object.contains("rect") && !rect(object["rect"], target.rect)) return invalid("A region rect is [x, y, width, height] with positive size", "target.rect");
     } else if (object.contains("rect")) return invalid("Only region targets take a rect", "target.rect");
-    if ((target.kind == "monitor" || target.kind == "window") && target.identity.isEmpty()) return invalid("Monitor and window targets need an identity", "target.identity");
+    // Monitor and window identities are optional: without one the helper takes
+    // the primary monitor on X11, or lets the compositor's picker choose on Wayland.
     if ((target.kind == "desktop" || target.kind == "region") && !target.identity.isEmpty()) return invalid("Desktop and region targets take no identity", "target.identity");
     out = target;
     return {};

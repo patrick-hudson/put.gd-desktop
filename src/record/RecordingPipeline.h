@@ -11,7 +11,8 @@
 #include <gst/gst.h>
 
 namespace putgd::record {
-// One live GStreamer capture: ximagesrc (root rectangle or window) → H.264
+// One live GStreamer capture: ximagesrc (root rectangle or window) or
+// pipewiresrc (a portal ScreenCast stream, optionally cropped) → H.264
 // (first encoder that negotiates) [+ pulsesrc monitor → AAC] → Matroska
 // working clip. Pause drops buffers and rebases timestamps on the encoder
 // queues, so the clip timeline excludes paused time; the retained duration
@@ -20,8 +21,11 @@ class RecordingPipeline final : public QObject {
     Q_OBJECT
 public:
     struct Options {
-        QRect rect;                  // root coordinates; ignored when window != 0
+        QRect rect;                  // root coordinates; ignored when window != 0; for PipeWire the stream size
         unsigned long window = 0;
+        int pipewireFd = -1;         // portal ScreenCast: PipeWire remote fd and node; replaces ximagesrc
+        quint32 pipewireNode = 0;
+        QRect crop;                  // optional stream-relative crop for region recording
         int fps = 30;
         bool audio = false;
         QString audioDevice;         // PulseAudio/PipeWire source name (sink monitor)

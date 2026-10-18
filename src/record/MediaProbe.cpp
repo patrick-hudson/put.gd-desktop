@@ -1,5 +1,6 @@
 #include "MediaProbe.h"
 #include "core/RecordingModel.h"
+#include "PortalScreenCast.h"
 #include <QJsonArray>
 #include <QProcessEnvironment>
 #include <gst/gst.h>
@@ -109,19 +110,29 @@ QJsonObject probeMedia() {
     const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && gst["liveSources"].toArray().contains("pipewiresrc")));
     const bool liveEncoder = gst["available"].toBool() && !gst["liveH264Encoders"].toArray().isEmpty();
     result["liveCapture"] = QJsonObject{{"source", liveSource}, {"encoder", liveEncoder}, {"audio", gst["available"].toBool() && !gst["audioSources"].toArray().isEmpty() && !gst["liveAacEncoders"].toArray().isEmpty()}};
-    // Targets the session type can address with the X11 pipeline.
-    result["targets"] = liveSource ? QJsonArray{"monitor", "desktop", "region", "window"} : QJsonArray{};
+    // X11 reads the root with ximagesrc; Wayland shares a monitor or window
+    // through the ScreenCast portal (the compositor's picker) into pipewiresrc.
+    QJsonObject portal;
+    QString portalReason;
+    const bool portalOk = session == "wayland" && PortalScreenCast::available(portal, &portalReason);
+    if (session == "wayland") { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
+    result["acquisition"] = session == "x11" ? "x11" : session == "wayland" ? "portal" : "none";
+    const int sourceTypes = portal["sourceTypes"].toInt();
+    QJsonArray targets;
+    if (session == "x11" && liveSource) targets = QJsonArray{"monitor", "desktop", "region", "window"};
+    else if (portalOk && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (sourceTypes & int(PortalScreenCast::Window)) targets.append("window"); }
+    result["targets"] = targets;
     result["audio"] = QJsonObject{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", false}};
     result["overlayExclusion"] = QJsonObject{};
-    // X11 capture is implemented; Wayland acquisition (portal + pipewiresrc) is not yet.
-    const bool implemented = session == "x11";
+    const bool implemented = session == "x11" || portalOk;
     result["available"] = gst["available"].toBool() && liveSource && liveEncoder && !formats.isEmpty() && implemented;
     if (!result["available"].toBool())
         result["reason"] = !gst["available"].toBool() ? QStringLiteral("gstreamer_unavailable")
             : !liveSource ? (session == "none" ? QStringLiteral("no_display_session") : QStringLiteral("live_source_missing"))
             : !liveEncoder ? QStringLiteral("live_encoder_missing")
             : formats.isEmpty() ? QStringLiteral("export_encoder_missing")
-            : QStringLiteral("wayland_not_implemented");
+            : session == "wayland" ? (portalReason.isEmpty() ? QStringLiteral("portal_unavailable") : portalReason)
+            : QStringLiteral("session_unsupported");
     return result;
 }
 }

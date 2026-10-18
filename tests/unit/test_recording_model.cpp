@@ -40,12 +40,14 @@ private slots:
         QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "region"}, {"rect", QJsonArray{-100, 20, 300, 200}}}, target));
         QCOMPARE(target.rect, QRect(-100, 20, 300, 200));
         QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "monitor"}, {"identity", "DP-3"}}, target));
+        QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "monitor"}}, target));QVERIFY(target.identity.isEmpty());
+        QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "window"}}, target));
         QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "desktop"}}, target));
         QVERIFY(target.toJson()["kind"] == "desktop" && !target.toJson().contains("rect"));
         // A region without a rect means the user drags it; release keeps the bounds.
         QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "region"}}, target));
         QVERIFY(target.rect.isEmpty() && !target.toJson().contains("rect"));
-        QVERIFY(recording::parseTarget(QJsonObject{{"kind", "monitor"}}, target));
+        QVERIFY(!recording::parseTarget(QJsonObject{{"kind", "monitor"}}, target));  // identity optional: primary monitor or the compositor's picker
         QVERIFY(recording::parseTarget(QJsonObject{{"kind", "region"}, {"rect", QJsonArray{0, 0, 0, 10}}}, target));
         QVERIFY(recording::parseTarget(QJsonObject{{"kind", "region"}, {"rect", QJsonArray{0, 0, 10}}}, target));
         QVERIFY(recording::parseTarget(QJsonObject{{"kind", "desktop"}, {"identity", "x"}}, target));

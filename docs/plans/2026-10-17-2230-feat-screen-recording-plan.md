@@ -4,7 +4,7 @@ type: feat
 date: 2026-10-17
 issue: https://github.com/patrick-hudson/put.gd-desktop/issues/50
 execution: code
-status: design approved 2026-10-17; slices 1-3.3 implemented (contract, helper, X11 capture/export, overlays, review window); Cinnamon desktop verified; tray entry, dashboard button, global shortcut toggle, tray feedback, review playback and NVENC-first export added 2026-10-18; Wayland pending
+status: design approved 2026-10-17; slices 1-3.3 implemented (contract, helper, X11 capture/export, overlays, review window); Cinnamon desktop verified; tray entry, dashboard button, global shortcut toggle, tray feedback, review playback, NVENC-first export and portal (Wayland) acquisition added 2026-10-18
 ---
 
 # Screen recording

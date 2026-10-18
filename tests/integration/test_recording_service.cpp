@@ -210,7 +210,7 @@ private slots:
   QVERIFY(h.backend->log.isEmpty());
   QJsonArray many;for(int i=0;i<101;++i)many.append(QJsonObject{{"op","resetTrim"}});
   QCOMPARE(call(*h.server,"recording.edit",{{"id","x"},{"revision",1},{"commands",many}}).error.code,QString("invalid_request"));
-  QCOMPARE(h.rec("prepare",{{"target",QJsonObject{{"kind","monitor"}}},{"format","mp4"}}).error.code,QString("invalid_request"));
+  QCOMPARE(h.rec("prepare",{{"target",QJsonObject{{"kind","monitor"},{"identity",""}}},{"format","mp4"}}).error.code,QString("invalid_request"));
   QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"},{"codec","vp9"}}).error.code,QString("invalid_request"));
   QCOMPARE(h.operations->diagnostics()["activeOperations"].toInt(),0);
  }

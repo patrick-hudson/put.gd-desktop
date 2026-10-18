@@ -10,9 +10,9 @@ and MCP) is complete, and the drag selection, ready bounds, outside dimming
 and floating control bar are in place, and every Stop opens the private review
 window. The tray's **Capture Screen Recording** entry, the dashboard's **Record
 screen** button and the `record` global shortcut start one (see "Tray and
-shortcut" below). Wayland acquisition (portal + `pipewiresrc`) is not
-implemented, so Wayland installations report `available: false` with reason
-`wayland_not_implemented`. Desktop acceptance evidence is recorded
+shortcut" below). On Wayland the helper shares a monitor or window through the
+ScreenCast portal (the compositor's own picker) into `pipewiresrc`; see
+"Wayland acquisition (portal)". Desktop acceptance evidence is recorded
 separately in `docs/verification.md` when it exists; nothing here claims it.
 
 ## Workflow
@@ -258,6 +258,36 @@ backend.
 | `uploadRequested {revision}`, `saveCopyRequested {path, revision}` | the review's Upload / Save copy |
 | `failed {error}` | the pipeline or helper failed; the operation ends `failed` without an upload |
 
+## Wayland acquisition (portal)
+
+On a Wayland session the probe reports `acquisition: "portal"` and
+`available: true` when `pipewiresrc` is installed and
+`org.freedesktop.portal.ScreenCast` (version 2 or later) answers on the
+session bus; `portal {portalVersion, sourceTypes, cursorModes}` carries the
+portal's facts and `targets` lists `window` only when the portal offers it.
+Reasons for an unavailable Wayland session are `live_source_missing`
+(no `pipewiresrc`), `portal_unavailable`, `portal_too_old` or
+`session_bus_unavailable`.
+
+`prepare` opens a portal session (`CreateSession`, `SelectSources` with the
+monitor or window type, `cursor_mode` embedded when offered, `Start`): the
+compositor shows its picker and the user chooses what to share, which is
+why the `prepare` deadline is long. Monitor and window identities are
+optional everywhere now (on X11 an empty monitor identity means the first
+connected monitor; the picker decides on Wayland, and `desktop` is a monitor
+pick). A `region` with a rectangle records the chosen monitor cropped to the
+rectangle (`videocrop`, stream-relative); a `region` without one records the
+whole chosen monitor, since drag overlays cannot be placed on Wayland. The
+stream's node and PipeWire connection feed `pipewiresrc fd= path=` through
+`videorate` at the configured rate into the same encoder, pause and budget
+logic as X11. There is no ready ring or dimming on Wayland; the control bar
+floats where the compositor puts it and `overlayExcluded` is `false`.
+Cancelling the picker ends the operation as `cancelled`; Cancel, Stop and
+discard close the portal session (`Session.Close`), which ends the share.
+The share is not persisted between recordings (every recording shows the
+picker). `tests/unit` covers the stream demarshalling; the picker itself is
+exercised on the Fedora GNOME and Debian KDE desktops.
+
 ## Capture and export engine (X11)
 
 `putgd-record` resolves the target against the current RandR layout
@@ -277,7 +307,9 @@ pixel per frame, bounded to 1.5–20 Mbit/s; the legacy `vaapih264enc` runs
 at constant QP 24 because Intel's iHD driver refuses CBR and VBR for it
 (that refusal, surfacing as "Internal data stream error", was why it used
 to fail on Mint 22.3 and Ubuntu 26.04); on the workstation it captures 720p
-at half the CPU of `x264enc veryfast`. Pause drops buffers at the encoder queues and folds
+at half the CPU of `x264enc veryfast`. Pause drops raw frames and samples on the
+encoders' sink pads (never encoded buffers, which would leave P-frames with
+missing references that strict decoders such as OpenH264 refuse) and folds
 the gap into a timestamp offset, so the working clip's timeline excludes
 paused time for video and audio alike; the retained duration is measured from
 the first retained frame because some encoders carry a constant timestamp

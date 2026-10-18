@@ -65,14 +65,24 @@ GstPadProbeReturn RecordingPipeline::probe(GstPad*, GstPadProbeInfo* info, gpoin
 }
 
 bool RecordingPipeline::launch(const Options& options, const QString& encoder, const QString& audioEncoder, QString& failure) {
-    const int kbps = bitrateKbps(options.rect.size(), options.fps);
+    const QSize encoded = options.crop.isValid() ? options.crop.size() : options.rect.size();
+    const int kbps = bitrateKbps(encoded, options.fps);
     QString description;
-    if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true").arg(options.window);
-    else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1);
-    description += QStringLiteral(" ! video/x-raw,framerate=%1/1 ! videoconvert n-threads=2 ! video/x-raw,format=%2 ! %3 ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%4")
-        .arg(options.fps).arg(encoderFormat(encoder), encoderDescription(encoder, kbps, options.fps), shellQuote(options.output));
+    if (options.pipewireFd >= 0) {
+        // The portal stream arrives at the compositor's pace; videorate holds
+        // the configured frame rate, and a region is cropped out of the shared
+        // monitor (crop values are stream-relative).
+        description = QStringLiteral("pipewiresrc name=src fd=%1 path=%2 do-timestamp=true keepalive-time=1000 resend-last=true ! videorate ! video/x-raw,framerate=%3/1 ! videoconvert n-threads=2").arg(options.pipewireFd).arg(options.pipewireNode).arg(options.fps);
+        if (options.crop.isValid()) description += QStringLiteral(" ! videocrop left=%1 top=%2 right=%3 bottom=%4").arg(options.crop.x()).arg(options.crop.y()).arg(std::max(0, options.rect.width() - options.crop.x() - options.crop.width())).arg(std::max(0, options.rect.height() - options.crop.y() - options.crop.height()));
+    } else if (options.window) description = QStringLiteral("ximagesrc name=src xid=%1 use-damage=false show-pointer=true ! video/x-raw,framerate=%2/1 ! videoconvert n-threads=2").arg(options.window).arg(options.fps);
+    else description = QStringLiteral("ximagesrc name=src use-damage=false show-pointer=true startx=%1 starty=%2 endx=%3 endy=%4 ! video/x-raw,framerate=%5/1 ! videoconvert n-threads=2").arg(options.rect.x()).arg(options.rect.y()).arg(options.rect.x() + options.rect.width() - 1).arg(options.rect.y() + options.rect.height() - 1).arg(options.fps);
+    // The pause probes sit on the encoders' sink pads (raw frames and samples):
+    // dropping encoded buffers would leave P-frames whose references are gone,
+    // which strict decoders (OpenH264 on Fedora) refuse while FFmpeg's conceals.
+    description += QStringLiteral(" ! video/x-raw,format=%1 ! %2 name=venc ! h264parse ! queue name=vq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! matroskamux name=mux ! filesink name=sink location=%3")
+        .arg(encoderFormat(encoder), encoderDescription(encoder, kbps, options.fps), shellQuote(options.output));
     if (options.audio && !audioEncoder.isEmpty())
-        description += QStringLiteral(" pulsesrc name=asrc device=%1 ! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=2 ! %2 ! aacparse ! queue name=aq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! mux.")
+        description += QStringLiteral(" pulsesrc name=asrc device=%1 ! audioconvert ! audioresample ! audio/x-raw,rate=48000,channels=2 ! %2 name=aenc ! aacparse ! queue name=aq max-size-buffers=0 max-size-bytes=0 max-size-time=2000000000 ! mux.")
             .arg(shellQuote(options.audioDevice), audioDescription(audioEncoder));
     GError* error = nullptr;
     GstElement* pipeline = gst_parse_launch(description.toUtf8().constData(), &error);
@@ -90,7 +100,7 @@ bool RecordingPipeline::launch(const Options& options, const QString& encoder, c
         gst_object_unref(queue);
         return true;
     };
-    if (!attach("vq", video_) || (options.audio && !audioEncoder.isEmpty() && !attach("aq", audio_))) { failure = "probe attach failed"; gst_object_unref(pipeline); return false; }
+    if (!attach("venc", video_) || (options.audio && !audioEncoder.isEmpty() && !attach("aenc", audio_))) { failure = "probe attach failed"; gst_object_unref(pipeline); return false; }
     const auto change = gst_element_set_state(pipeline, GST_STATE_PLAYING);
     if (change == GST_STATE_CHANGE_FAILURE) {
         failure = QStringLiteral("%1 refused to start").arg(encoder);

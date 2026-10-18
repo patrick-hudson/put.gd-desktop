@@ -47,7 +47,7 @@ Error resolveX11Target(const RecordingTarget& target, ResolvedTarget& out) {
     else if (target.kind == "monitor") {
         for (const auto& value : layout["outputs"].toArray()) {
             const auto output = value.toObject();
-            if (output["identity"].toString() == target.identity) resolved.rect = rectangle(output["native"].toArray());
+            if (output["identity"].toString() == target.identity || (target.identity.isEmpty() && (output["primary"].toBool() || resolved.rect.isEmpty()))) resolved.rect = rectangle(output["native"].toArray());
         }
         if (resolved.rect.isEmpty()) return {"recording_target", "No connected monitor has this identity", {{"identity", target.identity}}};
     } else if (target.kind == "region") {
@@ -55,6 +55,7 @@ Error resolveX11Target(const RecordingTarget& target, ResolvedTarget& out) {
         if (!root.contains(resolved.rect)) return {"recording_target", "The region must lie inside the X11 root window", {{"root", QJsonArray{root.x(), root.y(), root.width(), root.height()}}}};
     } else if (target.kind == "window") {
         bool ok = false;
+        if (target.identity.isEmpty()) return {"recording_target", "Window targets need an X window id on X11", {}};
         const auto id = target.identity.startsWith("0x") ? target.identity.mid(2).toULong(&ok, 16) : target.identity.toULong(&ok, 10);
         if (!ok || id == 0) return {"recording_target", "Window identity must be a decimal or 0x-prefixed X window id", {{"identity", target.identity}}};
         if (auto e = windowRect(id, resolved.rect)) return e;

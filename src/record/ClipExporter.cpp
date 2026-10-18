@@ -84,6 +84,7 @@ struct Input {
         if (videoIndex < 0 || !decoder) return fail("recording_export_failed", "The working clip has no video");
         video = avcodec_alloc_context3(decoder);
         if (!video || avcodec_parameters_to_context(video, format->streams[videoIndex]->codecpar) < 0) return fail("recording_export_failed", "Cannot decode the working clip");
+        debugLog(QStringLiteral("decoder: %1 (%2) threads auto").arg(decoder->name, decoder->long_name));
         // libavcodec decodes on one thread unless told otherwise; a 3 MP H.264
         // clip then feeds even a GPU encoder at well under real time.
         video->thread_count = 0;
@@ -356,14 +357,14 @@ Error driveVideo(const QString& path, Graph& graph, qint64 fromUs, qint64 untilU
             const bool past = packet->pts != AV_NOPTS_VALUE && packet->pts > untilPts + av_rescale_q(2000000, microseconds, timeBase);
             rc = avcodec_send_packet(input.video, packet.get());
             av_packet_unref(packet.get());
-            if (rc < 0 && rc != AVERROR(EAGAIN)) return fail("recording_export_failed", "Decoding failed", rc);
+            if (rc < 0 && rc != AVERROR(EAGAIN)) return fail("recording_export_failed", QStringLiteral("Decoding failed (%1, code %2)").arg(QString::fromUtf8(input.video->codec->name)).arg(rc), rc);
             if (past) { avcodec_send_packet(input.video, nullptr); inputDone = true; }
         }
         for (;;) {
             rc = avcodec_receive_frame(input.video, frame.get());
             if (rc == AVERROR(EAGAIN)) break;
             if (rc == AVERROR_EOF) { av_buffersrc_add_frame_flags(graph.source, nullptr, 0); if (auto e = drain()) return e; return {}; }
-            if (rc < 0) return fail("recording_export_failed", "Decoding failed", rc);
+            if (rc < 0) return fail("recording_export_failed", QStringLiteral("Decoding failed (%1, code %2)").arg(QString::fromUtf8(input.video->codec->name)).arg(rc), rc);
             frame->pts = frame->best_effort_timestamp;
             rc = av_buffersrc_add_frame_flags(graph.source, frame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
             av_frame_unref(frame.get());
@@ -600,12 +601,12 @@ Error previewFrame(const QString& path, const RecordingEdit& edit, const Recordi
         if (rc == AVERROR_EOF) { avcodec_send_packet(input.video, nullptr); done = true; }
         else if (rc < 0) return fail("recording_export_failed", "Reading the working clip failed", rc);
         else if (packet->stream_index != input.videoIndex) { av_packet_unref(packet.get()); continue; }
-        else { rc = avcodec_send_packet(input.video, packet.get()); av_packet_unref(packet.get()); if (rc < 0 && rc != AVERROR(EAGAIN)) return fail("recording_export_failed", "Decoding failed", rc); }
+        else { rc = avcodec_send_packet(input.video, packet.get()); av_packet_unref(packet.get()); if (rc < 0 && rc != AVERROR(EAGAIN)) return fail("recording_export_failed", QStringLiteral("Decoding failed (%1, code %2)").arg(QString::fromUtf8(input.video->codec->name)).arg(rc), rc); }
         for (;;) {
             rc = avcodec_receive_frame(input.video, frame.get());
             if (rc == AVERROR(EAGAIN)) break;
             if (rc == AVERROR_EOF) { done = true; break; }
-            if (rc < 0) return fail("recording_export_failed", "Decoding failed", rc);
+            if (rc < 0) return fail("recording_export_failed", QStringLiteral("Decoding failed (%1, code %2)").arg(QString::fromUtf8(input.video->codec->name)).arg(rc), rc);
             const auto pts = frame->best_effort_timestamp;
             chosen.reset(av_frame_clone(frame.get()));
             av_frame_unref(frame.get());

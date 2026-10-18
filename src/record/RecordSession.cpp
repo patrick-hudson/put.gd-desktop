@@ -11,6 +11,7 @@
 #include <QScreen>
 #include <QTimer>
 #include <cmath>
+#include <unistd.h>
 
 namespace putgd::record {
 namespace {
@@ -131,6 +132,8 @@ void RecordSession::cancelLocal() {
     barTimer_.stop();
     if (selection_) { selection_->disconnect(this); selection_->cancel(); selection_->deleteLater(); selection_ = nullptr; }
     pipeline_.cancel();
+    portal_.close();
+    if (portalFd_ >= 0) { ::close(portalFd_); portalFd_ = -1; }
     bounds_.hideAll();
     if (bar_) bar_->hide();
     if (review_) review_->hide();
@@ -155,6 +158,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     staging_ = staging;
     workingClip_ = staging + "/working.mkv";
     capabilities_ = probeMedia();
+    if (capabilities_["acquisition"].toString() == "portal") { preparePortal(std::move(reply)); return; }
     if (target_.kind == "region" && target_.rect.isEmpty()) {
         // Drag release keeps the bounds and shows the controls; nothing records yet.
         selection_ = new SelectionOverlay(this);
@@ -177,12 +181,47 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     }
     finishPrepare(std::move(reply));
 }
+void RecordSession::preparePortal(Reply reply) {
+    // The compositor's picker chooses the monitor or window; a region needs an
+    // explicit rectangle on the shared monitor (overlays cannot be placed on Wayland).
+    const quint32 types = target_.kind == "window" ? PortalScreenCast::Window : PortalScreenCast::Monitor;
+    const int offered = capabilities_["portal"].toObject()["sourceTypes"].toInt();
+    if (!(offered & int(types))) { reply({"recording_unsupported", "The portal does not offer this kind of screen cast", {{"kind", target_.kind}}}, {}); return; }
+    QPointer<RecordSession> guard(this);
+    portal_.start(types, {}, [guard, reply](Error error, PortalScreenCast::Result result) {
+        if (!guard) return;
+        if (error) { reply(error, {}); return; }
+        const auto& stream = result.streams.first();
+        guard->portalFd_ = result.fd;
+        guard->portalNode_ = stream.node;
+        guard->portalTarget_ = true;
+        QRect shared(stream.position, stream.size);
+        if (shared.isEmpty()) shared = QRect(QPoint(0, 0), QSize(1280, 720));  // size arrives with the stream for some compositors; the probe below is informational
+        ResolvedTarget resolved;
+        resolved.rect = shared;
+        if (guard->target_.kind == "region" && !guard->target_.rect.isEmpty()) {
+            const QRect inside = guard->target_.rect.intersected(shared);
+            if (inside.width() < 2 || inside.height() < 2) { guard->portal_.close(); reply({"recording_target", "The region is not on the shared monitor", {{"shared", rectJson(shared)}}}, {}); return; }
+            guard->portalCrop_ = inside.translated(-shared.topLeft());
+            guard->portalCrop_.setWidth(guard->portalCrop_.width() & ~1);
+            guard->portalCrop_.setHeight(guard->portalCrop_.height() & ~1);
+            resolved.rect = guard->portalCrop_.translated(shared.topLeft());
+        }
+        resolved.canvas = QSize(resolved.rect.width() & ~1, resolved.rect.height() & ~1);
+        resolved.layout = QJsonObject{{"portal", true}, {"node", double(stream.node)}, {"sourceType", double(stream.sourceType)}, {"shared", rectJson(shared)}};
+        guard->resolved_ = resolved;
+        guard->prepared_ = true;
+        guard->finishPrepare(reply);
+    });
+}
 void RecordSession::finishPrepare(Reply reply) {
-    ResolvedTarget resolved;
-    if (auto e = resolveX11Target(target_, resolved)) { reply(e, {}); return; }
-    resolved_ = resolved;
-    prepared_ = true;
-    if (target_.kind != "desktop") bounds_.showBounds(resolved_.rect);
+    if (!portalTarget_) {
+        ResolvedTarget resolved;
+        if (auto e = resolveX11Target(target_, resolved)) { reply(e, {}); return; }
+        resolved_ = resolved;
+        prepared_ = true;
+    }
+    if (target_.kind != "desktop" && !portalTarget_) bounds_.showBounds(resolved_.rect);
     ControlBar::Options options;
     options.targetLabel = targetLabel();
     for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());
@@ -220,8 +259,8 @@ void RecordSession::finishPrepare(Reply reply) {
         });
     });
     connect(bar_, &ControlBar::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
-    overlayExcluded_ = bar_->placeAround(target_.kind == "desktop" ? QRect() : resolved_.rect, desktopRoot());
-    if (target_.kind == "desktop" || target_.kind == "monitor") overlayExcluded_ = false;
+    overlayExcluded_ = bar_->placeAround(target_.kind == "desktop" || portalTarget_ ? QRect() : resolved_.rect, desktopRoot());
+    if (target_.kind == "desktop" || target_.kind == "monitor" || portalTarget_) overlayExcluded_ = false;
     showBar("ready");
     reply({}, {{"canvas", sizeJson(resolved_.canvas)}, {"rect", rectJson(resolved_.rect)}, {"window", double(resolved_.window)}, {"overlayExcluded", overlayExcluded_}});
 }
@@ -230,6 +269,7 @@ void RecordSession::start(Reply reply) {
     RecordingPipeline::Options options;
     options.rect = resolved_.rect;
     options.window = resolved_.window;
+    if (portalTarget_) { options.rect = resolved_.layout["shared"].isArray() ? QRect(resolved_.layout["shared"].toArray()[0].toInt(), resolved_.layout["shared"].toArray()[1].toInt(), resolved_.layout["shared"].toArray()[2].toInt(), resolved_.layout["shared"].toArray()[3].toInt()) : resolved_.rect; options.pipewireFd = portalFd_; options.pipewireNode = portalNode_; options.crop = portalCrop_; }
     options.fps = config_.fps;
     options.audio = config_.audio.system && !config_.silent();
     options.audioDevice = "@DEFAULT_MONITOR@";
