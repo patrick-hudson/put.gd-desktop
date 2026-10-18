@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-label="Press the hotkey, drag a region, upload, link on your clipboard">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#9bbcff"/>
+    </marker>
+    <clipPath id="fillclip"><rect x="0" y="23" width="24" height="0">
+      <animate attributeName="y" values="23;23;2;2;23;23" keyTimes="0;0.40;0.60;0.68;0.70;1" dur="9s" repeatCount="indefinite"/>
+      <animate attributeName="height" values="0;0;21;21;0;0" keyTimes="0;0.40;0.60;0.68;0.70;1" dur="9s" repeatCount="indefinite"/>
+    </rect></clipPath>
+    <style>
+      .t{font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif}
+      .m{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace}
+      .title{font-size:17px;font-weight:700;fill:#eef2fa}
+      .cap{font-size:12.5px;fill:#8d99b2}
+      .num{font-size:13px;font-weight:800;fill:#0b0e14}
+      .key{font-size:14px;font-weight:700;fill:#dfe6f5}
+      .status{font-size:14px;font-weight:600;fill:#c9d3e6}
+    </style>
+  </defs>
+
+  <!-- connectors -->
+  <g stroke="#3b4a66" stroke-width="2.5" fill="none" stroke-dasharray="7 5" marker-end="url(#arrow)">
+    <path d="M284 160H318"><animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite"/><animate attributeName="stroke" values="#3b4a66;#3b4a66;#9bbcff;#9bbcff;#3b4a66;#3b4a66" keyTimes="0;0.10;0.11;0.15;0.16;1" dur="9s" repeatCount="indefinite"/></path>
+    <path d="M579 160H613"><animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite"/><animate attributeName="stroke" values="#3b4a66;#3b4a66;#9bbcff;#9bbcff;#3b4a66;#3b4a66" keyTimes="0;0.34;0.35;0.39;0.40;1" dur="9s" repeatCount="indefinite"/></path>
+    <path d="M874 160H908"><animate attributeName="stroke-dashoffset" from="0" to="-24" dur="1s" repeatCount="indefinite"/><animate attributeName="stroke" values="#3b4a66;#3b4a66;#9bbcff;#9bbcff;#3b4a66;#3b4a66" keyTimes="0;0.66;0.67;0.71;0.72;1" dur="9s" repeatCount="indefinite"/></path>
+  </g>
+
+  <!-- 1: hotkey -->
+  <g transform="translate(30 40)">
+    <rect width="250" height="240" rx="18" fill="#0f131b" stroke="#263042" stroke-width="1.5">
+      <animate attributeName="stroke" values="#9bbcff;#9bbcff;#263042;#263042" keyTimes="0;0.11;0.13;1" dur="9s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="26" cy="28" r="13" fill="#9bbcff"/><text class="t num" x="26" y="32.5" text-anchor="middle">1</text>
+    <text class="t title" x="48" y="33">Press the hotkey</text>
+    <g transform="translate(22 92)">
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0 0;0 0;0 4;0 4;0 0;0 0" keyTimes="0;0.03;0.045;0.08;0.095;1" dur="9s" repeatCount="indefinite" additive="sum"/>
+        <rect x="0" y="4" width="64" height="46" rx="8" fill="#0b0e14"/><rect x="0" y="0" width="64" height="46" rx="8" fill="#1d2432" stroke="#36405a"><animate attributeName="fill" values="#1d2432;#1d2432;#2b4a86;#2b4a86;#1d2432;#1d2432" keyTimes="0;0.03;0.045;0.08;0.095;1" dur="9s" repeatCount="indefinite"/></rect><text class="t key" x="32" y="29" text-anchor="middle">Ctrl</text>
+        <rect x="76" y="4" width="68" height="46" rx="8" fill="#0b0e14"/><rect x="76" y="0" width="68" height="46" rx="8" fill="#1d2432" stroke="#36405a"><animate attributeName="fill" values="#1d2432;#1d2432;#2b4a86;#2b4a86;#1d2432;#1d2432" keyTimes="0;0.03;0.045;0.08;0.095;1" dur="9s" repeatCount="indefinite"/></rect><text class="t key" x="110" y="29" text-anchor="middle">Shift</text>
+        <rect x="156" y="4" width="50" height="46" rx="8" fill="#0b0e14"/><rect x="156" y="0" width="50" height="46" rx="8" fill="#1d2432" stroke="#36405a"><animate attributeName="fill" values="#1d2432;#1d2432;#2b4a86;#2b4a86;#1d2432;#1d2432" keyTimes="0;0.03;0.045;0.08;0.095;1" dur="9s" repeatCount="indefinite"/></rect><text class="t key" x="181" y="29" text-anchor="middle">1</text>
+      </g>
+      <text class="t" x="70" y="30" text-anchor="middle" font-size="16" fill="#526386">+</text>
+      <text class="t" x="150" y="30" text-anchor="middle" font-size="16" fill="#526386">+</text>
+    </g>
+    <text class="t cap" x="125" y="188" text-anchor="middle">Region · window · desktop · clipboard</text>
+    <text class="t cap" x="125" y="206" text-anchor="middle">Edit first, or record the screen</text>
+    <text class="t cap" x="125" y="224" text-anchor="middle">Global on X11, GNOME and Plasma</text>
+  </g>
+
+  <!-- 2: drag a region -->
+  <g transform="translate(325 40)">
+    <rect width="250" height="240" rx="18" fill="#0f131b" stroke="#263042" stroke-width="1.5">
+      <animate attributeName="stroke" values="#263042;#263042;#9bbcff;#9bbcff;#263042;#263042" keyTimes="0;0.12;0.13;0.35;0.37;1" dur="9s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="26" cy="28" r="13" fill="#9bbcff"/><text class="t num" x="26" y="32.5" text-anchor="middle">2</text>
+    <text class="t title" x="48" y="33">Drag a region</text>
+    <g transform="translate(40 58)">
+      <rect width="170" height="118" rx="8" fill="#161b26" stroke="#2a3140"/>
+      <rect x="12" y="14" width="80" height="54" rx="4" fill="#1f2635"/>
+      <rect x="12" y="14" width="80" height="10" rx="4" fill="#2a3346"/>
+      <rect x="100" y="30" width="58" height="70" rx="4" fill="#1f2635"/>
+      <rect x="100" y="30" width="58" height="10" rx="4" fill="#2a3346"/>
+      <rect x="30" y="27" width="0" height="0" fill="#9bbcff" fill-opacity="0.18" stroke="#9bbcff" stroke-width="1.5" stroke-dasharray="5 3">
+        <animate attributeName="width" values="0;0;118;118;0;0" keyTimes="0;0.15;0.30;0.355;0.36;1" dur="9s" repeatCount="indefinite"/>
+        <animate attributeName="height" values="0;0;72;72;0;0" keyTimes="0;0.15;0.30;0.355;0.36;1" dur="9s" repeatCount="indefinite"/>
+        <animate attributeName="stroke-dashoffset" from="0" to="-16" dur="0.8s" repeatCount="indefinite"/>
+      </rect>
+      <g stroke="#ffffff" stroke-width="1.5" stroke-linecap="round">
+        <animateTransform attributeName="transform" type="translate" values="30 27;30 27;148 99;148 99;30 27;30 27" keyTimes="0;0.15;0.30;0.355;0.36;1" dur="9s" repeatCount="indefinite"/>
+        <path d="M-7 0H7M0 -7V7"/>
+      </g>
+    </g>
+    <text class="t cap" x="125" y="206" text-anchor="middle">Live desktop underneath, Escape cancels</text>
+    <text class="t cap" x="125" y="224" text-anchor="middle">Redact, blur, crop and annotate before sending</text>
+  </g>
+
+  <!-- 3: upload -->
+  <g transform="translate(620 40)">
+    <rect width="250" height="240" rx="18" fill="#0f131b" stroke="#263042" stroke-width="1.5">
+      <animate attributeName="stroke" values="#263042;#263042;#9bbcff;#9bbcff;#263042;#263042" keyTimes="0;0.36;0.37;0.67;0.69;1" dur="9s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="26" cy="28" r="13" fill="#9bbcff"/><text class="t num" x="26" y="32.5" text-anchor="middle">3</text>
+    <text class="t title" x="48" y="33">Upload</text>
+    <g transform="translate(85 50) scale(3.4)">
+      <path fill="#2a3140" d="M2 13H6V18Q6 19 7 19H17Q18 19 18 18V13H22V18Q22 23 17 23H7Q2 23 2 18ZM12 2L20 10H15V16H9V10H4Z" fill-rule="evenodd"/>
+      <g clip-path="url(#fillclip)">
+        <path d="M2 13H6V18Q6 19 7 19H17Q18 19 18 18V13H22V18Q22 23 17 23H7Q2 23 2 18ZM12 2L20 10H15V16H9V10H4Z" fill-rule="evenodd" fill="#9bbcff">
+          <animate attributeName="fill" values="#9bbcff;#9bbcff;#62d69b;#62d69b;#9bbcff;#9bbcff" keyTimes="0;0.44;0.45;0.69;0.70;1" dur="9s" repeatCount="indefinite"/>
+        </path>
+      </g>
+      <path d="M2 13H6V18Q6 19 7 19H17Q18 19 18 18V13H22V18Q22 23 17 23H7Q2 23 2 18ZM12 2L20 10H15V16H9V10H4Z" fill="none" stroke="#0b0e14" stroke-width="0.5" stroke-linejoin="round"/>
+    </g>
+    <rect x="40" y="140" width="170" height="8" rx="4" fill="#1d2432"/>
+    <rect x="40" y="140" width="0" height="8" rx="4" fill="#9bbcff">
+      <animate attributeName="width" values="0;0;170;170;0;0" keyTimes="0;0.40;0.60;0.69;0.70;1" dur="9s" repeatCount="indefinite"/>
+      <animate attributeName="fill" values="#9bbcff;#9bbcff;#62d69b;#62d69b;#9bbcff;#9bbcff" keyTimes="0;0.44;0.45;0.69;0.70;1" dur="9s" repeatCount="indefinite"/>
+    </rect>
+    <text class="t status" x="125" y="172" text-anchor="middle" opacity="0">Preparing…<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.36;0.37;0.44;0.45;1" dur="9s" repeatCount="indefinite"/></text>
+    <text class="t status" x="125" y="172" text-anchor="middle" opacity="0" fill="#9bbcff">Uploading…<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.44;0.45;0.60;0.61;1" dur="9s" repeatCount="indefinite"/></text>
+    <text class="t status" x="125" y="172" text-anchor="middle" opacity="0" fill="#62d69b">Published<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.60;0.61;0.69;0.70;1" dur="9s" repeatCount="indefinite"/></text>
+    <text class="t cap" x="125" y="206" text-anchor="middle">S3-compatible bucket or Proton Drive</text>
+    <text class="t cap" x="125" y="224" text-anchor="middle">Local copy optional · tray shows progress</text>
+  </g>
+
+  <!-- 4: link copied -->
+  <g transform="translate(915 40)">
+    <rect width="250" height="240" rx="18" fill="#0f131b" stroke="#263042" stroke-width="1.5">
+      <animate attributeName="stroke" values="#263042;#263042;#9bbcff;#9bbcff;#263042;#263042" keyTimes="0;0.68;0.69;0.95;0.97;1" dur="9s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="26" cy="28" r="13" fill="#9bbcff"/><text class="t num" x="26" y="32.5" text-anchor="middle">4</text>
+    <text class="t title" x="48" y="33">Link on your clipboard</text>
+    <g transform="translate(30 66)">
+      <rect width="190" height="92" rx="10" fill="#151a24" stroke="#2f3747"/>
+      <g transform="translate(14 16)" fill="none" stroke="#9bbcff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 10a4 4 0 0 1 0-6l2-2a4 4 0 0 1 6 6l-1 1"/><path d="M9 6a4 4 0 0 1 0 6l-2 2a4 4 0 0 1-6-6l1-1"/>
+      </g>
+      <text class="m" x="36" y="30" font-size="11.5" fill="#dfe6f5">https://i.example.com/</text>
+      <text class="m" x="36" y="47" font-size="11.5" fill="#dfe6f5">Capture-2026-10-18.png</text>
+      <rect x="14" y="62" width="162" height="16" rx="5" fill="#0f131b"/>
+      <text class="t" x="95" y="74" font-size="11" fill="#8d99b2" text-anchor="middle">kept in History · delete remotely later</text>
+    </g>
+    <g transform="translate(220 66)">
+      <g>
+        <animateTransform attributeName="transform" type="scale" values="0;0;1.2;1;1;0;0" keyTimes="0;0.70;0.735;0.76;0.95;0.97;1" dur="9s" repeatCount="indefinite"/>
+        <circle r="17" fill="#62d69b" stroke="#0f131b" stroke-width="3"/>
+        <path d="M-7 0.5L-2.5 5L7 -5" fill="none" stroke="#0b0e14" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </g>
+    <text class="t status" x="125" y="184" text-anchor="middle" fill="#62d69b" opacity="0">Copied<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.72;0.74;0.95;0.97;1" dur="9s" repeatCount="indefinite"/></text>
+    <text class="t cap" x="125" y="206" text-anchor="middle">Paste it anywhere, right away</text>
+    <text class="t cap" x="125" y="224" text-anchor="middle">Private uploads leave the clipboard alone</text>
+  </g>
+</svg>
