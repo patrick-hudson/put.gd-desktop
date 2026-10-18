@@ -8,6 +8,7 @@
 #include "app/UiProcessController.h"
 #include "app/RecordingHelperBackend.h"
 #include "app/SetupService.h"
+#include "app/StorageLocations.h"
 #include "ui/ResidentTheme.h"
 #include "ui/ViewState.h"
 #include "ui/TrayController.h"
@@ -148,11 +149,18 @@ int main(int argc,char* argv[]) {
  const auto backgroundOnly=parser.isSet("background")&&!parser.isSet("history")&&!parser.isSet("activity");
  const auto view=parser.isSet("history")?QStringLiteral("history"):parser.isSet("activity")?QStringLiteral("activity"):QStringLiteral("settings");
  const int activation=activateResident(view,backgroundOnly);if(activation>=0)return activation;
+ // Resolve the private roots, moving an earlier putgd/putgd layout into place,
+ // before settings or the journal open anything.
+ const auto locations=putgd::StorageLocations::prepare();
+ if(locations.error) {
+  QStringList paths;for(const auto& value:locations.error.details)paths.append(value.toString());
+  launcherError(locations.error.code+": "+locations.error.message+(paths.isEmpty()?QString():" ("+paths.join(" -> ")+")"));return 1;
+ }
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
  auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
- putgd::SettingsService settings(QDir(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation)).filePath("config.json"),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);});
+ putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;
  const auto bindings=[&settings]{QHash<QString,QString> result;const auto snapshot=settings.snapshot();for(auto i=snapshot.actions.cbegin();i!=snapshot.actions.cend();++i)result.insert(i.key(),i.value().shortcut);return result;};
@@ -176,8 +184,9 @@ int main(int argc,char* argv[]) {
  if(wayland&&desktop.contains("KDE",Qt::CaseInsensitive)){auto adapter=std::make_unique<putgd::KdeSourceAdapter>();kde=adapter.get();source=std::move(adapter);bindSource=[kde,bindings,&settings]{kde->setResourceLimits(settings.snapshot().limits);kde->bindShortcuts(bindings());};}
 #endif
  if(!source)source=std::make_unique<putgd::UnavailableSource>();
- const auto dataRoot=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+ const auto dataRoot=locations.dataRoot;
  putgd::OperationService operations(dataRoot,settings,providers,*source);
+ operations.setLocations(locations.report);
  // The recording helper is probed lazily; a missing binary reports recording_helper_missing.
  operations.setRecordingBackend(std::make_unique<putgd::RecordingHelperBackend>());
  putgd::HistoryService history(operations);

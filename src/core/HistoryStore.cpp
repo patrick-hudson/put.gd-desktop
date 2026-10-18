@@ -23,6 +23,13 @@ QJsonObject publicRecord(QJsonObject data) {
  data["linkAvailable"]=OperationItem::fromJson(data).linkAvailable();
  return data;
 }
+// The journal's own layout: <root>/artifacts/<operation>/<item> and
+// <root>/artifacts/../previews/<item>.png. Any other path is left as stored.
+QString relocated(const QString& path,const QString& expected,const QString& tail) {
+ return !path.endsWith(tail)||QDir::cleanPath(path)==QDir::cleanPath(expected)?path:expected;
+}
+QString artifactPath(const QString& root,const QString& operation,const QString& item) {return root+"/artifacts/"+operation+"/"+item;}
+QString previewPath(const QString& root,const QString& item) {return root+"/artifacts/../previews/"+item+".png";}
 QJsonObject remoteFields(const QJsonObject& data) {
  QJsonObject remote;
  for(const auto& key:QStringList{"remoteStatus","remoteError","deleteOperationId","deleteProgress","supersededBy","shareStatus","shareIntent","shareIntentOptions","shareReceipt","shareOperationId","shareProgress"})
@@ -63,7 +70,7 @@ bool persistRemote(QSqlDatabase db,const QString& id,const QJsonObject& remote) 
 QString createHistory(const QString& table) {return "CREATE TABLE "+table+"(id TEXT PRIMARY KEY, operation_id TEXT NOT NULL,item_id TEXT NOT NULL,created TEXT NOT NULL,name TEXT NOT NULL,mime TEXT NOT NULL,category TEXT NOT NULL,profile_id TEXT NOT NULL,upload_status TEXT NOT NULL,local_status TEXT NOT NULL,remote_status TEXT NOT NULL,data BLOB NOT NULL,UNIQUE(operation_id,item_id))";}
 }
 QJsonObject HistoryPage::toJson() const {return {{"records",records},{"total",double(total)}};}
-HistoryStore::HistoryStore(QString path) {
+HistoryStore::HistoryStore(QString path):root_(QFileInfo(path).absolutePath()) {
  QDir().mkpath(QFileInfo(path).absolutePath()); QFile::setPermissions(QFileInfo(path).absolutePath(),QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  connection_=QUuid::createUuid().toString();db_=QSqlDatabase::addDatabase("QSQLITE",connection_);db_.setDatabaseName(path);db_.setConnectOptions("QSQLITE_BUSY_TIMEOUT=10000");
  if(!db_.open()) {error_=sqlError();return;} QFile::setPermissions(path,QFile::ReadOwner|QFile::WriteOwner);error_=initialize();
@@ -104,6 +111,18 @@ Error HistoryStore::initialize() {
   &&exec("CREATE INDEX IF NOT EXISTS sharing_history ON sharing_operations(history_id)")&&exec("CREATE INDEX IF NOT EXISTS sharing_state ON sharing_operations(json_extract(data,'$.state'))")&&exec("PRAGMA user_version=7");
  if(!ok||!db_.commit()) {db_.rollback();return {"history_migration","History migration failed; original records preserved",{}};}
  return {};
+}
+void HistoryStore::relocate(Operation& op) const {
+ for(auto& item:op.items) {
+  auto& artifact=item.artifact;
+  artifact.path=relocated(artifact.path,artifactPath(root_,op.id,artifact.id),"/artifacts/"+op.id+"/"+artifact.id);
+  artifact.previewPath=relocated(artifact.previewPath,previewPath(root_,artifact.id),"/previews/"+artifact.id+".png");
+ }
+}
+QJsonObject HistoryStore::relocate(QJsonObject record) const {
+ const auto item=record["id"].toString();
+ if(record["previewPath"].isString())record["previewPath"]=relocated(record["previewPath"].toString(),previewPath(root_,item),"/previews/"+item+".png");
+ return record;
 }
 Error HistoryStore::saveOperation(const Operation& op,const ProviderRegistry* providers) {
  return persistOperation(op,providers,nullptr);
@@ -168,7 +187,7 @@ Operation HistoryStore::operation(const QString& id,Error* error) const {
  if(error_) {if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM operations WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}
  if(!q.next()) {if(error)*error={"operation_not_found","Operation not found",{}};return {};}
- auto op=Operation::fromJson(decode(q.value(0)));
+ auto op=Operation::fromJson(decode(q.value(0)));relocate(op);
  QHash<QString,QJsonObject> statuses;if(auto e=readRemoteStates(db_,{id},statuses)){if(error)*error=e;return {};}
  hydrateRemote(op,statuses);
 
@@ -177,7 +196,7 @@ Operation HistoryStore::operation(const QString& id,Error* error) const {
 QList<Operation> HistoryStore::recover(Error* error) {
  QList<Operation> result;if(error_) {if(error)*error=error_;return result;}
  QSqlQuery q(db_);if(!q.exec("SELECT data FROM operations")) {if(error)*error=sqlError();return result;}
- while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));bool changed=false;
+ while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));relocate(op);bool changed=false;
   if(op.state=="accepted"||op.state=="acquiring") {op.state="interrupted";op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};changed=true;}
   // An unsubmitted edit is never resumed or uploaded; its private source is discarded.
   else if(op.state=="editing") {op.state="interrupted";op.error={"edit_interrupted","Editing was interrupted before upload; nothing was uploaded",{}};changed=true;}
@@ -212,15 +231,15 @@ HistoryPage HistoryStore::list(const HistoryQuery& query) const {
  QSqlQuery q(db_);q.prepare("SELECT count(*) FROM history"+where);for(const auto& v:values) q.addBindValue(v);
  if(!q.exec()||!q.next()) {r.error=sqlError();return r;}r.total=q.value(0).toLongLong();
  q.prepare("SELECT data FROM history"+where+" ORDER BY created DESC,id LIMIT ? OFFSET ?");for(const auto& v:values) q.addBindValue(v);q.addBindValue(query.limit);q.addBindValue(query.offset);
- if(!q.exec()) {r.error=sqlError();return r;}while(q.next()) r.records.append(publicRecord(decode(q.value(0))));return r;
+ if(!q.exec()) {r.error=sqlError();return r;}while(q.next()) r.records.append(relocate(publicRecord(decode(q.value(0)))));return r;
 }
 QJsonObject HistoryStore::detail(const QString& id,Error* error) const {if(error_) {if(error)*error=error_;return {};}
- QSqlQuery q(db_);q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"history_not_found","History record not found",{}};return {};}return publicRecord(decode(q.value(0)));}
+ QSqlQuery q(db_);q.prepare("SELECT data FROM history WHERE id=?");q.addBindValue(id);if(!q.exec()) {if(error)*error=sqlError();return {};}if(!q.next()) {if(error)*error={"history_not_found","History record not found",{}};return {};}return relocate(publicRecord(decode(q.value(0))));}
 QJsonArray HistoryStore::recent(int limit,Error* error) const {
  QJsonArray result;if(error_) {if(error)*error=error_;return result;}
  if(limit<1||limit>10000) {if(error)*error={"invalid_query","Invalid recent activity limit",{}};return result;}
  QSqlQuery q(db_);q.prepare("SELECT data FROM operations ORDER BY json_extract(data,'$.created') DESC,id LIMIT ?");q.addBindValue(limit);if(!q.exec()){if(error)*error=sqlError();return result;}
- QList<Operation> operations;QStringList ids;while(q.next()){auto op=Operation::fromJson(decode(q.value(0)));ids.append(op.id);operations.append(std::move(op));}q.finish();
+ QList<Operation> operations;QStringList ids;while(q.next()){auto op=Operation::fromJson(decode(q.value(0)));relocate(op);ids.append(op.id);operations.append(std::move(op));}q.finish();
  QHash<QString,QJsonObject> statuses;if(auto e=readRemoteStates(db_,ids,statuses)){if(error)*error=e;return {};}
  for(auto& op:operations){hydrateRemote(op,statuses);result.append(op.publicJson());}return result;
 }

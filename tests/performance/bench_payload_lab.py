@@ -164,10 +164,10 @@ save('source-build-identity.json', identity)
 (EVIDENCE / 'controller.py').write_bytes(Path(__file__).read_bytes())
 started = False
 try:
-    lab.ssh(RUN, 'mkdir -p ' + GUEST + '/bin ' + GUEST + '/config/putgd/putgd ' + GUEST + '/fixture ' + GUEST + '/archive\n')
+    lab.ssh(RUN, 'mkdir -p ' + GUEST + '/bin ' + GUEST + '/config/putgd ' + GUEST + '/fixture ' + GUEST + '/archive\n')
     for source, name in [(APP,'putgd'),(CLI,'putgd-cli'),(FIXTURE,'putgd-desktop-fixture')]:
         lab.put(RUN, source, GUEST + '/bin/' + name)
-    lab.put(RUN, EVIDENCE/'isolated-config.json', GUEST+'/config/putgd/putgd/config.json')
+    lab.put(RUN, EVIDENCE/'isolated-config.json', GUEST+'/config/putgd/config.json')
     launch = '''set -eu
 pkill -u lab -x putgd || true
 for attempt in $(seq 1 100); do if ! pgrep -u lab -x putgd >/dev/null; then break; fi; sleep 0.05; done

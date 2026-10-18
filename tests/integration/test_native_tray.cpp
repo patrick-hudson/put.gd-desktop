@@ -171,7 +171,7 @@ private slots:
   environment.insert("WAYLAND_DISPLAY", "");
   QVERIFY(QDir().mkpath(runtime));
   QVERIFY(QFile::setPermissions(runtime, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
-  const auto configPath = directory.filePath("c/putgd/putgd/config.json");
+  const auto configPath = directory.filePath("c/putgd/config.json");
   if (configuration != "missing") {
    SettingsService settings(configPath);
    QVERIFY(settings.save(Settings::defaults(), {}));
@@ -267,7 +267,7 @@ private slots:
   environment.insert("WAYLAND_DISPLAY", "");
   QDir().mkpath(runtime);
   QFile::setPermissions(runtime, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner);
-  SettingsService settings(directory.filePath("c/putgd/putgd/config.json"));
+  SettingsService settings(directory.filePath("c/putgd/config.json"));
   auto document = Settings::defaults();
   auto actions = document["actions"].toObject();
   auto region = actions["region"].toObject(); region["shortcut"] = "Ctrl+1";

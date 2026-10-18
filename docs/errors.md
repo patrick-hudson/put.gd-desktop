@@ -26,6 +26,9 @@ filenames, history URLs, authorization values or credential references.
 | `config_busy`, `config_conflict`, `config_unwritable` | Reload/rebase or fix filesystem access; prior bytes remain intact |
 | `invalid_json`, `invalid_request`, `unsupported_version`, `wrong_session`, `request_too_large` | Correct the versioned session request; no operation was accepted |
 | `session_unavailable` | Start the resident app in the same user session |
+| `storage_busy` | Quit the other or earlier put.gd process that holds the data folder, then start put.gd again; nothing was moved |
+| `storage_migration_failed` | Fix access to the reported folders and start put.gd again; the move resumes from its staging folder and nothing was removed |
+| `storage_unavailable` | Make the user configuration and data folders resolvable and writable |
 
 Unknown publication/deletion, failed local save and successful remote upload are
 independent states. Cancelling a job cannot promise rollback after a network mutation
