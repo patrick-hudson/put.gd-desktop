@@ -51,7 +51,7 @@
 <td width="50%" valign="top">
 
 ### 🎯 Capture anything
-Region, active window, whole desktop, or whatever is on the clipboard: files, an image, text. Region selection runs over the live desktop with Escape to cancel. Three global hotkeys out of the box, every action rebindable, and each row in Settings tells you whether the desktop actually granted the key.
+Region, active window or whole desktop, or upload whatever is on the clipboard: an image, text, or any files of any type, a hundred at a time. It all goes through one pipeline, and both storage backends take all of it. Region selection runs over the live desktop with Escape to cancel. Three global hotkeys out of the box, every action rebindable, and each row in Settings tells you whether the desktop actually granted the key.
 
 </td>
 <td width="50%" valign="top">
