@@ -9,6 +9,15 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## KDE window frame check — 2026-10-17
+
+The [KDE window frame receipt](evidence/2026-10-17-kde-window-frame.md) records
+the decision to keep frame-inclusive window capture on Plasma/Wayland, and the
+lab fix. The runner now asks KWin for the frame on any observed KDE Wayland
+session, not only a profile named `kde-wayland`. Window runs pass 2/2 on
+physical Debian Plasma 6.3 (642×449) and 2/2 on the Kubuntu Plasma 6.6 VM
+(640×448), each matching KWin's own frame geometry.
+
 ## X11 clipboard image plugins — 2026-10-17
 
 The [X11 clipboard receipt](evidence/2026-10-17-x11-clipboard-plugins.md) records
