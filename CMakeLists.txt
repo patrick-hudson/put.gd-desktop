@@ -837,3 +837,13 @@ endif()
 
 
 include(cmake/Proton.cmake)
+
+# CPU-bound tests share the runner's cores. With a resource spec such as
+# tools/ci/ctest-resources.json, CTest runs only that many of them at once
+# while mostly idle tests keep the remaining slots.
+foreach(test collision_policy_integration edit_operations_integration editor_contract
+    history_contract s3_delete_integration s3_integration version_contract)
+  if(TEST ${test})
+    set_tests_properties(${test} PROPERTIES RESOURCE_GROUPS "cpu:1")
+  endif()
+endforeach()

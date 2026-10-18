@@ -1,4 +1,5 @@
 """Hosted workflow boundaries. actionlint in the contracts job parses the syntax."""
+import json
 from pathlib import Path
 import re
 import unittest
@@ -89,8 +90,16 @@ class Workflows(unittest.TestCase):
             self.assertIn(key, step)
         self.assertIn('restore-keys: ctest-cost-linux-${{ matrix.distribution }}-', restore)
         self.assertIn('ctest --preset dev', test)
+        self.assertIn('--resource-spec-file "$3"', test)
+        self.assertIn('"$PWD/tools/ci/ctest-resources.json"', test)
         self.assertIn('if: always()', save)
         self.assertIn('github.event.pull_request.head.repo.full_name == github.repository', save)
+
+    def test_cpu_bound_tests_share_a_bounded_cpu_pool(self):
+        spec = json.loads((ROOT / 'tools/ci/ctest-resources.json').read_text())
+        self.assertEqual(spec['version'], {'major': 1, 'minor': 0})
+        self.assertEqual(spec['local'], [{'cpu': [{'id': 'runner', 'slots': 3}]}])
+        self.assertIn('RESOURCE_GROUPS "cpu:1"', (ROOT / 'CMakeLists.txt').read_text())
 
     def test_portable_compiles_windows_only(self):
         portable = job(workflow('ci.yml'), 'portable')
