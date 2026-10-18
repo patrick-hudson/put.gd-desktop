@@ -9,6 +9,15 @@ missing profiles, and run physical-hardware release gates on physical machines.
 This requirement is separate from the historical results below; missing new
 rows and current-candidate evidence remain gates.
 
+## Resident PNG readers — 2026-10-17
+
+The [resident PNG receipt](evidence/2026-10-17-resident-png-codecs.md) records the
+kept reader change `e9a4dac` and the dropped libpng writer. The writer prototype
+passed the Mint dev suite 69/69 and 18/18 scenarios each on a Mint Cinnamon VM and
+the physical Debian Plasma desktop. It saved only the 220-436 KiB of plugin files
+there, so it was removed. The reader-only change passes its three plugin tests and
+the affected capture, clipboard, GNOME, KDE and editor suites.
+
 ## KDE window frame check — 2026-10-17
 
 The [KDE window frame receipt](evidence/2026-10-17-kde-window-frame.md) records
