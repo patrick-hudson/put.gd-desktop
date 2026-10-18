@@ -18,6 +18,7 @@ public:
  void invalidate();
  void shutdown(std::function<void()> finished={});
  QJsonObject status()const;
+ QJsonObject viewState()const;
 signals:
  void failure(putgd::Error error);
  void helperPidChanged(qint64 pid);

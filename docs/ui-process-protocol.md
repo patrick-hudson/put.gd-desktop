@@ -28,6 +28,7 @@ Transient Qt strings/JSON are released normally; this is not a cryptographic wip
 | `ui.show` | `view`: settings/history/activity/about | `shown` only after helper acknowledgement |
 | `ui.quit` | `{}` | `quitting:true`, then explicit resident shutdown |
 | `ui.snapshot` | `{}` | build manifest, resident epoch, readiness, settings document/metadata and diagnostics |
+| `ui.viewState` | `{}` | helper `state`; with a Settings checkpoint, `settings.section` and the derived `settings.captureRouting` only (see [state](ui-process-state.md)) |
 | `settings.save` | `document`, `expectedRevision` | authoritative document and metadata |
 | `setup.storeCredentials` | `profileId`, `expectedRevision`, `credentials` | `setupId` |
 | `setup.unlockCredentials` | `profileId`, `expectedRevision` | `setupId` |

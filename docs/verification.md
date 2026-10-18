@@ -28,6 +28,16 @@ candidate `d37a975`:
 GNOME, KDE, build-server and package-upgrade runs were not part of this change;
 package upgrade acceptance stays with issue #44.
 
+## Inherited capture output in Settings — 2026-10-18
+
+The [issue 58 receipt](evidence/2026-10-18-issue58-inherited-capture-output.md)
+records candidate `48c2b57`: `ctest --preset dev` 72/72, the MCP suite 3/3, and a
+native check on the workstation's Cinnamon X11 session with an isolated instance
+and synthetic destinations. Inherited per-action cards stayed visible with their
+controls disabled, followed Default capture output live, and unchecking saved an
+explicit exception; `ui.viewState` and MCP `get_view_state` reported the same
+state. GNOME, KDE, Wayland and memory were not tested.
+
 ## Screen recording — 2026-10-18
 
 The [issue 50 receipt](evidence/2026-10-18-issue50-screen-recording.md) records

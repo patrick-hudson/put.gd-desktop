@@ -279,6 +279,7 @@ int main(int argc,char* argv[]) {
  server.setUiQuit(quitApplication);
  QObject::connect(&ui,&putgd::UiProcessController::failure,&tray,&putgd::TrayController::notifyFailure);
  server.setUiActivation([&](const QString& requested,std::function<void(putgd::Error)> reply){startupRecovery.stop();ui.activate(requested,std::move(reply));});
+ server.setUiViewState([&]{return ui.viewState();});
  server.setUiDiagnostics([&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();return diagnostics;});
  QObject::connect(&settings,&putgd::SettingsService::statusChanged,&ui,&putgd::UiProcessController::invalidate);
  QObject::connect(&operations,&putgd::OperationService::initialized,&ui,&putgd::UiProcessController::invalidate);

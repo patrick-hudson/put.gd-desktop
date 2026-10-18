@@ -81,9 +81,25 @@ bool profileEditor(const QJsonValue& value,bool includeProviders=true){
  return true;
 }
 
+// Derived, read-only presentation of Settings → Capture for CLI/MCP readers;
+// restoring a view recomputes it from the draft.
+bool captureRouting(const QJsonValue& value){
+ if(!fields(value,{"default","region","window","desktop","clipboard","edit"})||!value.toObject().contains("default"))return false;
+ const auto routes=value.toObject();
+ for(auto it=routes.begin();it!=routes.end();++it){
+  const bool action=it.key()!="default";const QStringList text{"profileId","destination","publicationMode","sharing","effectivePublicationMode","status"};QStringList flags{"destinationEnabled","sharingEnabled"};if(action)flags.append("inherited");
+  if(!fields(it.value(),text+flags))return false;
+  const auto route=it.value().toObject();
+  for(const auto& key:text)if(!route[key].isString())return false;
+  for(const auto& key:flags)if(!route[key].isBool())return false;
+  if(!QStringList{"default","share","private"}.contains(route["publicationMode"].toString())||!QStringList{"","share","private"}.contains(route["effectivePublicationMode"].toString()))return false;
+ }
+ return true;
+}
 bool settingsState(const QJsonObject& s){
  if(s.contains("autosaveBlocked")&&!s["autosaveBlocked"].isBool())return false;
- if(!fields(s,{"autosaveBlocked","draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","geometry","setupJobs","provisionalProfile"}))return false;
+ if(!fields(s,{"autosaveBlocked","draft","numbers","profileEditors","baseRevision","observedRevision","dirty","conflict","initialProfile","profileIndex","section","advanced","geometry","setupJobs","provisionalProfile","captureRouting"}))return false;
+ if(s.contains("captureRouting")&&!captureRouting(s["captureRouting"]))return false;
  if(!safeDocument(s["draft"])||!scalars(s["numbers"],limitKeys+retentionKeys,true)||!geometry(s["geometry"]))return false;
  for(const auto& key:QStringList{"dirty","conflict","initialProfile","advanced"})if(!s[key].isBool())return false;
  for(const auto& key:QStringList{"baseRevision","observedRevision"})if(!s[key].isString())return false;

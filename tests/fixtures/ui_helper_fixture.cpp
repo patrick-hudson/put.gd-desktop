@@ -21,7 +21,7 @@ int main(int argc,char**argv){
    if(mode=="stall")return;
    if(mode=="flood"){fcntl(STDOUT_FILENO,F_SETFL,fcntl(STDOUT_FILENO,F_GETFL)&~O_NONBLOCK);const QByteArray block(16384,'x');for(int i=0;i<8192;++i)std::fwrite(block.constData(),1,block.size(),stdout);std::fflush(stdout);return;}
    control.send("shown",{{"replyTo",seq},{"view",payload["view"]}});
-   if(mode=="close"||mode=="crash-after-close"||(mode=="cancel"&&payload["view"]=="settings"))control.send("closeRequested",{{"state",QJsonObject{{"schemaVersion",1},{"settings",QJsonObject{{"draft","retained"}}}}}});
+   if(mode=="close"||mode=="crash-after-close"||(mode=="cancel"&&payload["view"]=="settings"))control.send("closeRequested",{{"state",QJsonObject{{"schemaVersion",1},{"settings",QJsonObject{{"draft","retained"},{"section",1},{"captureRouting",QJsonObject{{"default",QJsonObject{{"profileId","synthetic"}}}}}}}}}});
    if(mode.startsWith("recording-")){
     control.send("shortcutRecording",{{"active",true}});
     if(mode=="recording-crash-pending")QTimer::singleShot(100,&app,[&]{app.exit(77);});
