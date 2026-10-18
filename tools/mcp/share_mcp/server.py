@@ -181,6 +181,11 @@ def create_server(adapter: CliAdapter) -> FastMCP:
         return {'schemaVersion': 1, 'requestId': responses['configuration']['requestId'],
                 'ok': True, 'result': responses, 'error': {'code': '', 'message': '', 'details': {}}}
 
+    @server.tool(annotations=read)
+    async def get_view_state() -> Json:
+        """Read the Settings window's last checkpointed capture routing: for the default output and each action, the destination and sharing it shows, the resolved sharing mode, whether it inherits the default and whether each control is enabled. Without an open or retained Settings view only the interface state is returned."""
+        return await adapter.call('ui.viewState', {})
+
     @server.tool(annotations=effect)
     async def perform_action(action: str) -> Json:
         """Acquire region/window/desktop/clipboard, then configured local save or public upload; may copy result. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""

@@ -37,6 +37,7 @@ private:
  template<class T>T findControl(const QString& name)const{auto value=findChild<T>(name);return value?value:destinationPage_->findChild<T>(name);}
  static qint64 displayUnit(const QString&);
  void queueCaptureEdit(QWidget*);void updateCaptureInheritance();
+ QString destinationDefaultSharing(const QString& profileId)const;QJsonObject captureRoutingState()const;
  QComboBox *captureProfile_=nullptr,*captureSharing_=nullptr;
  QToolButton* captureExceptions_=nullptr;QHash<QString,QCheckBox*> useCaptureDefault_;QHash<QString,QWidget*> captureEditors_;
  bool captureDefaultsEnabled_=false,captureRoutingEdited_=false;
