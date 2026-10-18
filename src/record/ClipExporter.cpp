@@ -16,6 +16,7 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/hwcontext.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
 #include <libswscale/swscale.h>
@@ -184,8 +185,35 @@ struct Encoder {
     AVCodecContext* context = nullptr;
     AVStream* stream = nullptr;
     QString name;
-    ~Encoder() { if (context) avcodec_free_context(&context); }
+    // Set for VA-API: frames are uploaded into this pool before encoding.
+    AVBufferRef* device = nullptr;
+    AVBufferRef* frames = nullptr;
+    bool hardware() const { return frames != nullptr; }
+    ~Encoder() { if (context) avcodec_free_context(&context); if (frames) av_buffer_unref(&frames); if (device) av_buffer_unref(&device); }
 };
+// A VA-API device and frame pool for `size`: the default render node first,
+// then the others, since the display GPU may have no VA driver (an NVIDIA card
+// beside an Intel or AMD GPU). Returns the first device whose pool initialises.
+bool openVaapiFrames(const QSize& size, AVBufferRef*& device, AVBufferRef*& frames) {
+    QStringList nodes{QString()};
+    for (int i = 128; i < 136; ++i) { const auto node = QStringLiteral("/dev/dri/renderD%1").arg(i); if (QFile::exists(node)) nodes.append(node); }
+    for (const auto& node : nodes) {
+        if (av_hwdevice_ctx_create(&device, AV_HWDEVICE_TYPE_VAAPI, node.isEmpty() ? nullptr : node.toUtf8().constData(), nullptr, 0) < 0) { device = nullptr; continue; }
+        frames = av_hwframe_ctx_alloc(device);
+        if (frames) {
+            auto* pool = reinterpret_cast<AVHWFramesContext*>(frames->data);
+            pool->format = AV_PIX_FMT_VAAPI;
+            pool->sw_format = AV_PIX_FMT_NV12;
+            pool->width = size.width();
+            pool->height = size.height();
+            pool->initial_pool_size = 16;
+            if (av_hwframe_ctx_init(frames) == 0) return true;
+            av_buffer_unref(&frames);
+        }
+        av_buffer_unref(&device);
+    }
+    return false;
+}
 // Encoder candidates in preference order. NVENC runs on an NVIDIA GPU and
 // takes system-memory frames, so it is tried first where libavcodec knows it;
 // opening fails without the driver and the next candidate is used. The lab
@@ -193,8 +221,8 @@ struct Encoder {
 QStringList videoEncoderCandidates(const RecordingConfig& config) {
     const auto override = qEnvironmentVariable("PUTGD_RECORD_EXPORT_ENCODERS");
     if (!override.isEmpty()) return override.split(',', Qt::SkipEmptyParts);
-    if (config.format == "mp4" && config.codec == "h264") return {"h264_nvenc", "libx264", "libopenh264"};
-    if (config.format == "mp4" && config.codec == "h265") return {"hevc_nvenc", "libx265"};
+    if (config.format == "mp4" && config.codec == "h264") return {"h264_nvenc", "h264_vaapi", "libx264", "libopenh264"};
+    if (config.format == "mp4" && config.codec == "h265") return {"hevc_nvenc", "hevc_vaapi", "libx265"};
     if (config.format == "webm") return {"libvpx-vp9"};
     if (config.format == "gif") return {"gif"};
     return {"libwebp_anim"};
@@ -205,10 +233,15 @@ Error openVideoEncoder(AVFormatContext* output, const RecordingConfig& config, c
         const AVCodec* codec = avcodec_find_encoder_by_name(name.toUtf8().constData());
         if (!codec) continue;
         if (out.context) avcodec_free_context(&out.context);
+        if (out.frames) av_buffer_unref(&out.frames);
+        if (out.device) av_buffer_unref(&out.device);
+        const bool vaapi = name.endsWith("_vaapi");
+        if (vaapi && !openVaapiFrames(size, out.device, out.frames)) { lastError = {"recording_export_failed", "No VA-API device accepts " + name, {}}; continue; }
         out.name = name;
         out.context = avcodec_alloc_context3(codec);
         auto* c = out.context;
         c->width = size.width(); c->height = size.height(); c->pix_fmt = format; c->time_base = timeBase; c->framerate = {fps, 1};
+        if (vaapi) { c->pix_fmt = AV_PIX_FMT_VAAPI; c->hw_device_ctx = av_buffer_ref(out.device); c->hw_frames_ctx = av_buffer_ref(out.frames); }
         c->gop_size = std::max(1, fps * 2); c->max_b_frames = 0;
         if (output->oformat->flags & AVFMT_GLOBALHEADER) c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
         // Apple players need the hvc1 sample entry for HEVC in MP4.
@@ -216,6 +249,8 @@ Error openVideoEncoder(AVFormatContext* output, const RecordingConfig& config, c
         if (name == "libx264") { av_opt_set(c->priv_data, "preset", "veryfast", 0); av_opt_set(c->priv_data, "crf", "23", 0); av_opt_set(c->priv_data, "profile", "high", 0); }
         else if (name == "libopenh264") { c->bit_rate = qint64(std::clamp(double(size.width()) * size.height() * fps * 0.1, 1500000.0, 20000000.0)); av_opt_set(c->priv_data, "profile", "constrained_baseline", 0); }
         else if (name == "libx265") { av_opt_set(c->priv_data, "preset", "faster", 0); av_opt_set(c->priv_data, "crf", "26", 0); av_opt_set(c->priv_data, "x265-params", "log-level=none", 0); }
+        // Constant QP is the rate control every VA driver (Intel iHD, AMD radeonsi) offers.
+        else if (vaapi) { c->bit_rate = 0; av_opt_set(c->priv_data, "rc_mode", "CQP", 0); c->global_quality = name == "h264_vaapi" ? 24 : 26; }
         else if (name == "h264_nvenc" || name == "hevc_nvenc") { c->bit_rate = 0; av_opt_set(c->priv_data, "preset", "p4", 0); av_opt_set(c->priv_data, "tune", "hq", 0); av_opt_set(c->priv_data, "rc", "vbr", 0); av_opt_set(c->priv_data, "cq", name == "h264_nvenc" ? "26" : "28", 0); av_opt_set(c->priv_data, "b_ref_mode", "disabled", 0); }
         else if (name == "libvpx-vp9") { c->bit_rate = 0; av_opt_set(c->priv_data, "crf", "32", 0); av_opt_set(c->priv_data, "row-mt", "1", 0); av_opt_set(c->priv_data, "cpu-used", "5", 0); av_opt_set(c->priv_data, "deadline", "realtime", 0); c->thread_count = 0; }
         else if (name == "libwebp_anim") { av_opt_set(c->priv_data, "quality", "70", 0); av_opt_set(c->priv_data, "lossless", "0", 0); }
@@ -223,6 +258,8 @@ Error openVideoEncoder(AVFormatContext* output, const RecordingConfig& config, c
         if (rc == 0) break;
         lastError = fail("recording_export_failed", "Cannot open the video encoder " + name, rc);
         avcodec_free_context(&out.context);
+        if (out.frames) av_buffer_unref(&out.frames);
+        if (out.device) av_buffer_unref(&out.device);
         out.name.clear();
     }
     if (!out.context) return lastError;
@@ -254,7 +291,17 @@ Error openAudioEncoder(AVFormatContext* output, const RecordingConfig& config, E
     return {};
 }
 Error encodeFrame(AVFormatContext* output, Encoder& encoder, AVFrame* frame, AVPacket* packet) {
+    // VA-API encodes from its own surfaces: upload the NV12 frame first.
+    AVFrame* uploaded = nullptr;
+    if (frame && encoder.hardware()) {
+        uploaded = av_frame_alloc();
+        if (!uploaded || av_hwframe_get_buffer(encoder.frames, uploaded, 0) < 0 || av_hwframe_transfer_data(uploaded, frame, 0) < 0) { av_frame_free(&uploaded); return fail("recording_export_failed", "Cannot upload a frame to the GPU"); }
+        uploaded->pts = frame->pts;
+        uploaded->pict_type = frame->pict_type;
+        frame = uploaded;
+    }
     int rc = avcodec_send_frame(encoder.context, frame);
+    av_frame_free(&uploaded);
     if (rc < 0) return fail("recording_export_failed", "Encoding failed", rc);
     for (;;) {
         rc = avcodec_receive_packet(encoder.context, packet);
@@ -347,7 +394,6 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     const bool animation = request.config.animation();
     const int fps = animation ? std::min(request.config.fps, 15) : request.config.fps;
     const AVPixelFormat encodeFormat = request.config.format == "gif" ? AV_PIX_FMT_PAL8 : AV_PIX_FMT_YUV420P;
-    const QString tail = request.config.format == "gif" ? QString() : QStringLiteral(",format=yuv420p");
 
     AVFormatContext* output = nullptr;
     const char* muxer = request.config.format == "webp" ? "webp" : request.config.format == "gif" ? "gif" : request.config.format == "webm" ? "webm" : "mp4";
@@ -356,6 +402,8 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     std::unique_ptr<AVFormatContext, void (*)(AVFormatContext*)> outputGuard(output, [](AVFormatContext* f) { if (f && !(f->oformat->flags & AVFMT_NOFILE) && f->pb) avio_closep(&f->pb); avformat_free_context(f); });
     Encoder video, audio;
     if (auto e = openVideoEncoder(output, request.config, outputSize, fps, encodeFormat, {1, fps}, video)) return e;
+    // VA-API uploads NV12; the software encoders take planar 4:2:0.
+    const QString tail = request.config.format == "gif" ? QString() : video.hardware() ? QStringLiteral(",format=nv12") : QStringLiteral(",format=yuv420p");
     if (wantAudio && input.audioIndex >= 0) { if (auto e = openAudioEncoder(output, request.config, audio)) return e; }
     AVDictionary* muxOptions = nullptr;
     if (request.config.format == "mp4") av_dict_set(&muxOptions, "movflags", "+faststart", 0);

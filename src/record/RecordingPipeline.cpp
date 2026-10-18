@@ -18,7 +18,8 @@ int bitrateKbps(const QSize& size, int fps) {
 QString encoderDescription(const QString& name, int kbps, int fps) {
     const int keyint = std::max(1, fps * 2);
     if (name == "vah264lpenc" || name == "vah264enc") return QStringLiteral("%1 bitrate=%2 key-int-max=%3").arg(name).arg(kbps).arg(keyint);
-    if (name == "vaapih264enc") return QStringLiteral("vaapih264enc rate-control=cbr bitrate=%1 keyframe-period=%2").arg(kbps).arg(keyint);
+    // Intel's iHD driver refuses CBR and VBR for this element; constant QP is the one mode every VA driver has.
+    if (name == "vaapih264enc") return QStringLiteral("vaapih264enc rate-control=cqp init-qp=24 keyframe-period=%1").arg(keyint);
     if (name == "x264enc") return QStringLiteral("x264enc tune=zerolatency speed-preset=veryfast bitrate=%1 key-int-max=%2 bframes=0 threads=2").arg(kbps).arg(keyint);
     if (name == "openh264enc") return QStringLiteral("openh264enc bitrate=%1 gop-size=%2 complexity=low").arg(qint64(kbps) * 1000).arg(keyint);
     return name;
