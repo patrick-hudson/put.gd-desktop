@@ -44,19 +44,19 @@
 
 <br>
 
-## ✨ What you get
+## <img src="docs/readme/icons/features.svg" width="28" height="28" align="absmiddle" alt=""> What you get
 
 <table>
 <tr>
 <td width="50%" valign="top">
 
-### 🎯 Capture anything
+### <img src="docs/readme/icons/capture.svg" width="32" height="32" align="absmiddle" alt=""> Capture anything
 Region, active window or whole desktop, or upload whatever is on the clipboard: an image, text, or any files of any type, a hundred at a time. It all goes through one pipeline, and both storage backends take all of it. Region selection runs over the live desktop with Escape to cancel. Three global hotkeys out of the box, every action rebindable, and each row in Settings tells you whether the desktop actually granted the key.
 
 </td>
 <td width="50%" valign="top">
 
-### ✏️ Edit before it leaves
+### <img src="docs/readme/icons/edit.svg" width="32" height="32" align="absmiddle" alt=""> Edit before it leaves
 **Capture region & edit** opens a small editor first. **Redact** strips the pixels from the upload, not just a blur. Crop, arrow, rectangle, highlight and text, with undo and a 100% zoom to check edges. Nothing uploads until you press Upload, and Cancel stores nothing.
 
 </td>
@@ -64,13 +64,13 @@ Region, active window or whole desktop, or upload whatever is on the clipboard: 
 <tr>
 <td width="50%" valign="top">
 
-### 🎬 Record the screen
+### <img src="docs/readme/icons/record.svg" width="32" height="32" align="absmiddle" alt=""> Record the screen
 MP4 (H.264/H.265), WebM (VP9), GIF and animated WebP. Pause and resume on one timeline, then trim and add timed blur or solid masks in a private review window. X11 and Wayland, with VA-API and NVENC export where the GPU allows. Stop always reviews; only Upload publishes.
 
 </td>
 <td width="50%" valign="top">
 
-### ☁️ Your storage, your links
+### <img src="docs/readme/icons/storage.svg" width="32" height="32" align="absmiddle" alt=""> Your storage, your links
 Any S3-compatible bucket with your own link domain, or Proton Drive through the official SDK. Public-read or private, chosen per destination and per action. Collision policy, naming templates and a Test connection that uploads, verifies the public link and cleans up after itself.
 
 </td>
@@ -78,13 +78,13 @@ Any S3-compatible bucket with your own link domain, or Proton Drive through the 
 <tr>
 <td width="50%" valign="top">
 
-### 🧾 History that works offline
+### <img src="docs/readme/icons/history.svg" width="32" height="32" align="absmiddle" alt=""> History that works offline
 Every capture, link and outcome in a searchable, filterable ledger with thumbnails, in list or gallery view. Copy the link again, open it, re-edit a local copy, or delete the remote object after reviewing exactly what will be removed. Nothing is listed or fetched from the cloud to show it.
 
 </td>
 <td width="50%" valign="top">
 
-### 🤖 Scriptable to the bone
+### <img src="docs/readme/icons/scriptable.svg" width="32" height="32" align="absmiddle" alt=""> Scriptable to the bone
 A resident JSON CLI over a private Unix socket, and an optional MCP helper so an agent can capture, edit, record, upload and inspect history with the same contracts as the GUI. Every interactive feature has a session method; operation IDs tell you what actually happened.
 
 </td>
@@ -92,20 +92,20 @@ A resident JSON CLI over a private Unix socket, and an optional MCP helper so an
 <tr>
 <td width="50%" valign="top">
 
-### 🐧 Native on three desktops
+### <img src="docs/readme/icons/desktops.svg" width="32" height="32" align="absmiddle" alt=""> Native on three desktops
 Cinnamon/X11 through the compositor's own screenshot service, GNOME 50 Wayland through a Shell extension, KDE Plasma Wayland through KWin ScreenShot2 and layer-shell overlays. No portal picker for region capture, no permission bypasses, no XWayland tricks.
 
 </td>
 <td width="50%" valign="top">
 
-### 🪶 Quiet and small
+### <img src="docs/readme/icons/quiet.svg" width="32" height="32" align="absmiddle" alt=""> Quiet and small
 One resident process; windows, capture helpers, the recorder and the AWS SDK worker start on demand and go away when done. The idle resident family stays under 40 MiB in the measured workflows on all three desktops, and nothing phones home.
 
 </td>
 </tr>
 </table>
 
-## 📸 Screenshots
+## <img src="docs/readme/icons/screenshots.svg" width="28" height="28" align="absmiddle" alt=""> Screenshots
 
 Every image below is the current nightly build (`0.1.1-dev.343+gac92b2158535`) on a real desktop: Linux Mint Cinnamon, Fedora 44 GNOME 50 on Wayland and Debian 13 Plasma 6 on Wayland, all from the acceptance lab.
 
@@ -154,7 +154,7 @@ Every image below is the current nightly build (`0.1.1-dev.343+gac92b2158535`) o
 </table>
 </details>
 
-## 📦 Download
+## <img src="docs/readme/icons/download.svg" width="28" height="28" align="absmiddle" alt=""> Download
 
 <p align="center">
   <a href="https://github.com/patrick-hudson/put.gd-desktop/releases"><img alt="Ubuntu 24.04 DEB" src="https://img.shields.io/badge/Ubuntu_24.04-.deb-E95420?style=for-the-badge&logo=ubuntu&logoColor=white"></a>&nbsp;
@@ -201,7 +201,7 @@ gnome-extensions enable putgd@put.gd
 
 > **Nightlies are build-tested, not desktop-certified.** Each one passed the full Linux test suites, the Windows compile, package audits and a production build of its own source tarball. Graphical, memory and live-S3 acceptance are recorded separately per candidate in [verification.md](docs/verification.md). Candidates and stable releases land on the same page once their exact packages pass acceptance on real desktops; a published stable becomes GitHub's *Latest*.
 
-## 🚀 Quickstart
+## <img src="docs/readme/icons/quickstart.svg" width="28" height="28" align="absmiddle" alt=""> Quickstart
 
 1. **Install** a package above and start `putgd`. It lives in the tray; the window opens on demand.
 2. **Add a destination.** `Destinations → Add destination`: bucket + region for S3, then **Store credentials** (keychain or this session only) and **Test connection**. Or **Connect account…** for Proton Drive and pick a folder.
@@ -244,7 +244,7 @@ uv sync --project tools/mcp --locked
 
 Details, every method and error code: [CLI](docs/cli.md) · [MCP](docs/mcp.md) · [image editor](docs/image-editor.md) · [recording](docs/recording.md).
 
-## 🖥️ Desktop support
+## <img src="docs/readme/icons/desktop.svg" width="28" height="28" align="absmiddle" alt=""> Desktop support
 
 | Desktop | Session | Capture path | Hotkeys | Clipboard |
 | --- | --- | --- | --- | --- |
@@ -257,7 +257,7 @@ Screen recording uses GStreamer `ximagesrc` on X11. On Wayland it takes a PipeWi
 
 Windows compiles in CI as future-platform evidence; macOS is not built. Flatpak needs a host capture companion and is tracked in [#14](https://github.com/patrick-hudson/put.gd-desktop/issues/14). The required lab matrix is Mint, Ubuntu, Kubuntu, Fedora and Debian across Cinnamon, GNOME and KDE on real X11 and Wayland sessions, on physical machines where the gate demands it: [acceptance matrix](docs/acceptance-matrix.md).
 
-## 🏗️ Build from source
+## <img src="docs/readme/icons/build.svg" width="28" height="28" align="absmiddle" alt=""> Build from source
 
 Baseline: GCC 13, CMake 3.24+, Ninja, Qt 6.4.2+, QtKeychain 0.14.2+. The exact `apt-get` and `dnf` package lists are in [build.md](docs/build.md). CMake never downloads anything; the pinned AWS SDK is built once with its own official project.
 
@@ -297,7 +297,7 @@ $ ./build/dev/putgd-cli --version-json | jq .gitCommit
 
 Development builds are `BASE-dev.COUNT+gSHORT` (`.dirty` if the tree is), packages order as `BASE~nightly.N` < `BASE~rc.N` < `BASE`, and installation refuses to mix executables from different commits. [versioning.md](docs/versioning.md) has the whole contract.
 
-## 🚢 Release channels
+## <img src="docs/readme/icons/releases.svg" width="28" height="28" align="absmiddle" alt=""> Release channels
 
 `nightly` is the trunk and the default branch; `main` only moves by promotion. Nothing is pushed directly to either, tags are never moved, and every channel publishes the same verified asset set.
 
@@ -339,7 +339,7 @@ gitGraph
 It does **not** certify compositor behaviour, memory on a real desktop or a live bucket. Those are separate, recorded gates.
 </details>
 
-## 🧩 How it fits together
+## <img src="docs/readme/icons/architecture.svg" width="28" height="28" align="absmiddle" alt=""> How it fits together
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#151a24','primaryTextColor':'#e8edf7','primaryBorderColor':'#2f3747','lineColor':'#526386','secondaryColor':'#1b1e25','tertiaryColor':'#0f131b','clusterBkg':'#0f131b','clusterBorder':'#263042','edgeLabelBackground':'#0f131b'}}}%%
@@ -362,7 +362,7 @@ flowchart LR
 
 One resident owns the journal, settings, history, hotkeys and the tray. Windows, capture helpers, the recorder and the storage workers are separate processes that start when needed and exit when done, so an idle put.gd is one small process. Acceptance, acquisition, naming, archive, publication, retry and clipboard copy are one shared pipeline for every source, including finalized recordings. The [architecture](docs/architecture.md), [UI process protocol](docs/ui-process-protocol.md) and [storage provider contract](docs/storage-providers.md) have the details, and adding a provider is a matter of implementing one interface.
 
-## 🛡️ Things it refuses to do
+## <img src="docs/readme/icons/shield.svg" width="28" height="28" align="absmiddle" alt=""> Things it refuses to do
 
 - **Keep a secret in a file.** S3 keys go in the system keychain or die with the session; `config.json` holds references. The CLI rejects credentials on the command line outright.
 - **Guess.** An interrupted upload becomes *unknown*, never a made-up URL. Retry reconciles against the saved publication identity before it does anything.
@@ -370,7 +370,7 @@ One resident owns the journal, settings, history, hotkeys and the tray. Windows,
 - **Upload behind your back.** The editor and the recorder stage everything privately; only Upload publishes. Private uploads make no link and leave the clipboard alone.
 - **Ship a mystery binary.** Every executable embeds its commit, tree and dirty state; packages reject mixed builds; release assets ship with checksums and receipts tied to the workflow run that made them.
 
-## 📚 Documentation
+## <img src="docs/readme/icons/docs.svg" width="28" height="28" align="absmiddle" alt=""> Documentation
 
 | Area | Start here |
 | --- | --- |
@@ -381,11 +381,11 @@ One resident owns the journal, settings, history, hotkeys and the tray. Windows,
 | Building and shipping | [Build](docs/build.md) · [Versioning](docs/versioning.md) · [CI](docs/ci.md) · [Releases](docs/release.md) · [Verification](docs/verification.md) |
 | Internals | [Architecture](docs/architecture.md) · [Memory strategy](docs/memory-strategy.md) · [Design](docs/design.md) · [UI process protocol](docs/ui-process-protocol.md) |
 
-## 🤝 Contributing
+## <img src="docs/readme/icons/contributing.svg" width="28" height="28" align="absmiddle" alt=""> Contributing
 
 Branch from `nightly`, open the pull request against `nightly`, and let the `CI` check decide; it only runs the jobs your changed paths can affect. Leave the version in `CMakeLists.txt` alone in feature PRs. [AGENTS.md](AGENTS.md) is the authoritative working agreement, including for AI agents, and [docs/agents.md](docs/agents.md) maps the source tree. Bugs and ideas go in [issues](https://github.com/patrick-hudson/put.gd-desktop/issues).
 
-## 📄 License
+## <img src="docs/readme/icons/license.svg" width="28" height="28" align="absmiddle" alt=""> License
 
 [MIT](LICENSE) © 2026 Patrick Hudson. Bundled dependencies keep their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The Proton Drive integration is a third-party integration and is not endorsed by Proton.
 
