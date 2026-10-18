@@ -120,8 +120,9 @@ void HistoryStore::relocate(Operation& op) const {
  }
 }
 QJsonObject HistoryStore::relocate(QJsonObject record) const {
- const auto item=record["id"].toString();
- if(record["previewPath"].isString())record["previewPath"]=relocated(record["previewPath"].toString(),previewPath(root_,item),"/previews/"+item+".png");
+ // Read through value(): operator[] would add the key to records that lack it.
+ const auto item=record.value("id").toString(),preview=record.value("previewPath").toString();
+ if(!preview.isEmpty())record["previewPath"]=relocated(preview,previewPath(root_,item),"/previews/"+item+".png");
  return record;
 }
 Error HistoryStore::saveOperation(const Operation& op,const ProviderRegistry* providers) {
