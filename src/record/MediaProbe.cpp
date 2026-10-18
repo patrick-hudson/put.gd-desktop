@@ -109,17 +109,19 @@ QJsonObject probeMedia() {
     const bool liveSource = gst["available"].toBool() && ((session == "x11" && gst["liveSources"].toArray().contains("ximagesrc")) || (session == "wayland" && gst["liveSources"].toArray().contains("pipewiresrc")));
     const bool liveEncoder = gst["available"].toBool() && !gst["liveH264Encoders"].toArray().isEmpty();
     result["liveCapture"] = QJsonObject{{"source", liveSource}, {"encoder", liveEncoder}, {"audio", gst["available"].toBool() && !gst["audioSources"].toArray().isEmpty() && !gst["liveAacEncoders"].toArray().isEmpty()}};
-    // Targets are what the session type can address once capture lands; the
-    // pipeline itself is not implemented in this build, so nothing is available.
+    // Targets the session type can address with the X11 pipeline.
     result["targets"] = liveSource ? QJsonArray{"monitor", "desktop", "region", "window"} : QJsonArray{};
     result["audio"] = QJsonObject{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", false}};
     result["overlayExclusion"] = QJsonObject{};
-    result["available"] = false;
-    result["reason"] = !gst["available"].toBool() ? QStringLiteral("gstreamer_unavailable")
-        : !liveSource ? (session == "none" ? QStringLiteral("no_display_session") : QStringLiteral("live_source_missing"))
-        : !liveEncoder ? QStringLiteral("live_encoder_missing")
-        : formats.isEmpty() ? QStringLiteral("export_encoder_missing")
-        : QStringLiteral("capture_not_implemented");
+    // X11 capture is implemented; Wayland acquisition (portal + pipewiresrc) is not yet.
+    const bool implemented = session == "x11";
+    result["available"] = gst["available"].toBool() && liveSource && liveEncoder && !formats.isEmpty() && implemented;
+    if (!result["available"].toBool())
+        result["reason"] = !gst["available"].toBool() ? QStringLiteral("gstreamer_unavailable")
+            : !liveSource ? (session == "none" ? QStringLiteral("no_display_session") : QStringLiteral("live_source_missing"))
+            : !liveEncoder ? QStringLiteral("live_encoder_missing")
+            : formats.isEmpty() ? QStringLiteral("export_encoder_missing")
+            : QStringLiteral("wayland_not_implemented");
     return result;
 }
 }

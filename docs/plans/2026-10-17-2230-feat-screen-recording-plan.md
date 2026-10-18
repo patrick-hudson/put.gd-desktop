@@ -4,7 +4,7 @@ type: feat
 date: 2026-10-17
 issue: https://github.com/patrick-hudson/put.gd-desktop/issues/50
 execution: code
-status: design approved 2026-10-17; slices 1-2 implemented (contract, model, helper skeleton), no capture yet
+status: design approved 2026-10-17; slices 1-3.1 implemented (contract, helper, X11 capture/export via CLI); overlays and review UI pending
 ---
 
 # Screen recording
@@ -270,4 +270,6 @@ builder, local build only as fallback.
    `--capabilities` probe, UiControl handshake and command/event framing) and
    `RecordingHelperBackend` in the resident; capture commands are refused as
    `capture_not_implemented`. AppImage builds without the helper for now.
-3. X11 slice: not started.
+3. X11 slice: 3.1 (capture, pause/resume, preview, export, upload through the
+   CLI) implemented and exercised on the Kubuntu Plasma X11 desktop for all
+   four formats; 3.2 overlays and 3.3 review window pending.

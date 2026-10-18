@@ -1,0 +1,514 @@
+#include "ClipExporter.h"
+#include "DebugLog.h"
+#include <QFile>
+#include <QFileInfo>
+#include <QPainter>
+#include <QStringList>
+#include <algorithm>
+#include <memory>
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavfilter/avfilter.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
+#include <libavformat/avformat.h>
+#include <libavutil/channel_layout.h>
+#include <libavutil/imgutils.h>
+#include <libavutil/opt.h>
+#include <libavutil/pixdesc.h>
+#include <libswscale/swscale.h>
+}
+
+namespace putgd::record {
+namespace {
+QString avError(int code) { char text[AV_ERROR_MAX_STRING_SIZE] = {}; av_strerror(code, text, sizeof text); return QString::fromUtf8(text); }
+Error fail(const QString& code, const QString& message, int av = 0) { return {code, av ? message + ": " + avError(av) : message, {}}; }
+constexpr AVRational microseconds{1, 1000000};
+QString seconds(qint64 us) { return QString::number(us / 1000000.0, 'f', 6); }
+QString enable(qint64 startUs, qint64 endUs) { return QStringLiteral("enable='gte(t\\,%1)*lt(t\\,%2)'").arg(seconds(startUs), seconds(endUs)); }
+
+struct Input {
+    AVFormatContext* format = nullptr;
+    AVCodecContext* video = nullptr;
+    AVCodecContext* audio = nullptr;
+    AVPacket* pending = nullptr;  // first packet after a verified seek
+    int videoIndex = -1, audioIndex = -1;
+    ~Input() { if (pending) av_packet_free(&pending); if (video) avcodec_free_context(&video); if (audio) avcodec_free_context(&audio); if (format) avformat_close_input(&format); }
+    // Reads the next packet, serving a pending one first.
+    int read(AVPacket* packet) {
+        if (pending) { av_packet_move_ref(packet, pending); av_packet_free(&pending); return 0; }
+        return av_read_frame(format, packet);
+    }
+    // Seeks backward to the target video time and verifies the first video
+    // packet precedes it; a Matroska clip whose first cluster has no cue point
+    // otherwise lands on the next keyframe, so that case reads from the start.
+    void seekTo(qint64 targetUs, const QString& path, bool wantAudio) {
+        const auto timeBase = format->streams[videoIndex]->time_base;
+        const auto origin = format->streams[videoIndex]->start_time == AV_NOPTS_VALUE ? 0 : format->streams[videoIndex]->start_time;
+        const auto target = origin + av_rescale_q(targetUs, {1, 1000000}, timeBase);
+        // A failed seek can still leave the demuxer parked elsewhere, and a
+        // successful one may land on a cluster that starts mid-GOP, so the first
+        // packet is checked whatever av_seek_frame reported.
+        const int sought = av_seek_frame(format, videoIndex, target, AVSEEK_FLAG_BACKWARD);
+        avcodec_flush_buffers(video);
+        if (audio) avcodec_flush_buffers(audio);
+        AVPacket* packet = av_packet_alloc();
+        bool restart = sought < 0;
+        while (!restart && av_read_frame(format, packet) >= 0) {
+            if (packet->stream_index != videoIndex) { av_packet_unref(packet); continue; }
+            // Decoding must start on a keyframe at or before the target; a cluster
+            // boundary inside a GOP would make the decoder drop frames until the next one.
+            if (packet->pts != AV_NOPTS_VALUE && packet->pts <= target && (packet->flags & AV_PKT_FLAG_KEY)) { pending = packet; debugLog(QStringLiteral("seek ok: first key pts %1 target %2").arg(packet->pts).arg(target)); return; }
+            debugLog(QStringLiteral("seek unusable: first pts %1 key %2 target %3").arg(packet->pts).arg(bool(packet->flags & AV_PKT_FLAG_KEY)).arg(target));
+            restart = true;
+        }
+        av_packet_free(&packet);
+        // Overshot or unseekable: start over from the beginning of the file.
+        avformat_close_input(&format);
+        if (video) avcodec_free_context(&video);
+        if (audio) avcodec_free_context(&audio);
+        videoIndex = audioIndex = -1;
+        pending = nullptr;
+        open(path, wantAudio);
+        debugLog(QStringLiteral("seek restart from start (sought=%1)").arg(sought));
+    }
+    Error open(const QString& path, bool wantAudio) {
+        int rc = avformat_open_input(&format, QFile::encodeName(path).constData(), nullptr, nullptr);
+        if (rc < 0) return fail("recording_export_failed", "Cannot open the working clip", rc);
+        if ((rc = avformat_find_stream_info(format, nullptr)) < 0) return fail("recording_export_failed", "Cannot read the working clip", rc);
+        const AVCodec* decoder = nullptr;
+        videoIndex = av_find_best_stream(format, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
+        if (videoIndex < 0 || !decoder) return fail("recording_export_failed", "The working clip has no video");
+        video = avcodec_alloc_context3(decoder);
+        if (!video || avcodec_parameters_to_context(video, format->streams[videoIndex]->codecpar) < 0 || avcodec_open2(video, decoder, nullptr) < 0) return fail("recording_export_failed", "Cannot decode the working clip");
+        if (wantAudio) {
+            const AVCodec* audioDecoder = nullptr;
+            audioIndex = av_find_best_stream(format, AVMEDIA_TYPE_AUDIO, -1, -1, &audioDecoder, 0);
+            if (audioIndex >= 0 && audioDecoder) {
+                audio = avcodec_alloc_context3(audioDecoder);
+                if (!audio || avcodec_parameters_to_context(audio, format->streams[audioIndex]->codecpar) < 0 || avcodec_open2(audio, audioDecoder, nullptr) < 0) return fail("recording_export_failed", "Cannot decode the clip audio");
+            } else audioIndex = -1;
+        }
+        return {};
+    }
+};
+struct Graph {
+    AVFilterGraph* graph = nullptr;
+    AVFilterContext* source = nullptr;
+    AVFilterContext* palette = nullptr;
+    AVFilterContext* sink = nullptr;
+    ~Graph() { if (graph) avfilter_graph_free(&graph); }
+    Error build(const QString& description, const AVCodecContext* decoder, AVRational timeBase, bool withPalette, const AVFrame* paletteFrame = nullptr) {
+        graph = avfilter_graph_alloc();
+        if (!graph) return fail("recording_export_failed", "Cannot allocate a filter graph");
+        const auto args = QStringLiteral("video_size=%1x%2:pix_fmt=%3:time_base=%4/%5:pixel_aspect=1/1").arg(decoder->width).arg(decoder->height).arg(int(decoder->pix_fmt)).arg(timeBase.num).arg(timeBase.den);
+        int rc = avfilter_graph_create_filter(&source, avfilter_get_by_name("buffer"), "in", args.toUtf8().constData(), nullptr, graph);
+        if (rc < 0) return fail("recording_export_failed", "Cannot create the video source", rc);
+        if (withPalette) {
+            const auto pal = QStringLiteral("video_size=%1x%2:pix_fmt=%3:time_base=1/1:pixel_aspect=1/1").arg(paletteFrame->width).arg(paletteFrame->height).arg(int(paletteFrame->format));
+            if ((rc = avfilter_graph_create_filter(&palette, avfilter_get_by_name("buffer"), "pal", pal.toUtf8().constData(), nullptr, graph)) < 0) return fail("recording_export_failed", "Cannot create the palette source", rc);
+        }
+        if ((rc = avfilter_graph_create_filter(&sink, avfilter_get_by_name("buffersink"), "out", nullptr, nullptr, graph)) < 0) return fail("recording_export_failed", "Cannot create the video sink", rc);
+        AVFilterInOut* outputs = avfilter_inout_alloc();
+        AVFilterInOut* inputs = avfilter_inout_alloc();
+        outputs->name = av_strdup("in"); outputs->filter_ctx = source; outputs->pad_idx = 0; outputs->next = nullptr;
+        if (withPalette) { AVFilterInOut* second = avfilter_inout_alloc(); second->name = av_strdup("pal"); second->filter_ctx = palette; second->pad_idx = 0; second->next = nullptr; outputs->next = second; }
+        inputs->name = av_strdup("out"); inputs->filter_ctx = sink; inputs->pad_idx = 0; inputs->next = nullptr;
+        rc = avfilter_graph_parse_ptr(graph, description.toUtf8().constData(), &inputs, &outputs, nullptr);
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
+        if (rc < 0) return fail("recording_export_failed", "Invalid video filter graph", rc);
+        if ((rc = avfilter_graph_config(graph, nullptr)) < 0) return fail("recording_export_failed", "Cannot configure the video filter graph", rc);
+        return {};
+    }
+};
+struct AudioGraph {
+    AVFilterGraph* graph = nullptr;
+    AVFilterContext* source = nullptr;
+    AVFilterContext* sink = nullptr;
+    ~AudioGraph() { if (graph) avfilter_graph_free(&graph); }
+    Error build(const QString& description, const AVCodecContext* decoder, AVRational timeBase, int frameSize) {
+        graph = avfilter_graph_alloc();
+        char layout[64] = {};
+        av_channel_layout_describe(&decoder->ch_layout, layout, sizeof layout);
+        const auto args = QStringLiteral("time_base=%1/%2:sample_rate=%3:sample_fmt=%4:channel_layout=%5").arg(timeBase.num).arg(timeBase.den).arg(decoder->sample_rate).arg(av_get_sample_fmt_name(decoder->sample_fmt)).arg(QString::fromUtf8(layout));
+        int rc = avfilter_graph_create_filter(&source, avfilter_get_by_name("abuffer"), "in", args.toUtf8().constData(), nullptr, graph);
+        if (rc < 0) return fail("recording_export_failed", "Cannot create the audio source", rc);
+        if ((rc = avfilter_graph_create_filter(&sink, avfilter_get_by_name("abuffersink"), "out", nullptr, nullptr, graph)) < 0) return fail("recording_export_failed", "Cannot create the audio sink", rc);
+        AVFilterInOut* outputs = avfilter_inout_alloc();
+        AVFilterInOut* inputs = avfilter_inout_alloc();
+        outputs->name = av_strdup("in"); outputs->filter_ctx = source; outputs->pad_idx = 0; outputs->next = nullptr;
+        inputs->name = av_strdup("out"); inputs->filter_ctx = sink; inputs->pad_idx = 0; inputs->next = nullptr;
+        rc = avfilter_graph_parse_ptr(graph, description.toUtf8().constData(), &inputs, &outputs, nullptr);
+        avfilter_inout_free(&inputs);
+        avfilter_inout_free(&outputs);
+        if (rc < 0) return fail("recording_export_failed", "Invalid audio filter graph", rc);
+        if ((rc = avfilter_graph_config(graph, nullptr)) < 0) return fail("recording_export_failed", "Cannot configure the audio filter graph", rc);
+        if (frameSize > 0) av_buffersink_set_frame_size(sink, unsigned(frameSize));
+        return {};
+    }
+};
+// trim → rebase → RGB → masks → scale → rate; the same chain feeds every format.
+qint64 streamOrigin(const AVStream* stream) { return stream->start_time == AV_NOPTS_VALUE ? 0 : stream->start_time; }
+QString baseVideoGraph(const ExportRequest& request, AVRational timeBase, qint64 origin, const QSize& outputSize, int outputFps) {
+    const auto start = origin + av_rescale_q(request.edit.trimStart, microseconds, timeBase), end = origin + av_rescale_q(request.edit.exportEnd(request.durationUs), microseconds, timeBase);
+    QStringList chain{QStringLiteral("trim=start_pts=%1:end_pts=%2").arg(start).arg(end), "setpts=PTS-STARTPTS", "format=rgb24"};
+    QString graph = "[in]" + chain.join(',');
+    int label = 0;
+    const auto trimEnd = request.edit.exportEnd(request.durationUs);
+    for (const auto& mask : request.edit.masks) {
+        const auto interval = RecordingEdit::exportInterval(mask, request.edit.trimStart, trimEnd);
+        if (!interval) continue;
+        const auto r = mask.rect.intersected(QRect(QPoint(0, 0), request.canvas));
+        if (r.width() < 2 || r.height() < 2) continue;
+        const auto when = enable(interval->first, interval->second);
+        if (mask.kind == "solid") graph += QStringLiteral(",drawbox=x=%1:y=%2:w=%3:h=%4:color=black@1:t=fill:%5").arg(r.x()).arg(r.y()).arg(r.width()).arg(r.height()).arg(when);
+        else {
+            const int radius = std::clamp(mask.strength, 2, std::max(2, std::min(r.width(), r.height()) / 2 - 1));
+            graph += QStringLiteral("[v%1];[v%1]split[v%1a][v%1b];[v%1b]crop=w=%2:h=%3:x=%4:y=%5,boxblur=luma_radius=%6:luma_power=2:chroma_radius=%6:chroma_power=2[m%1];[v%1a][m%1]overlay=x=%4:y=%5:%7").arg(label).arg(r.width()).arg(r.height()).arg(r.x()).arg(r.y()).arg(radius).arg(when);
+            ++label;
+        }
+    }
+    if (outputSize != request.canvas) graph += QStringLiteral(",scale=w=%1:h=%2:flags=lanczos").arg(outputSize.width()).arg(outputSize.height());
+    if (outputFps > 0) graph += QStringLiteral(",fps=%1").arg(outputFps);
+    return graph;
+}
+struct Encoder {
+    AVCodecContext* context = nullptr;
+    AVStream* stream = nullptr;
+    QString name;
+    ~Encoder() { if (context) avcodec_free_context(&context); }
+};
+Error openVideoEncoder(AVFormatContext* output, const RecordingConfig& config, const QSize& size, int fps, AVPixelFormat format, AVRational timeBase, Encoder& out) {
+    QStringList candidates;
+    if (config.format == "mp4" && config.codec == "h264") candidates = {"libx264", "libopenh264"};
+    else if (config.format == "mp4" && config.codec == "h265") candidates = {"libx265"};
+    else if (config.format == "webm") candidates = {"libvpx-vp9"};
+    else if (config.format == "gif") candidates = {"gif"};
+    else candidates = {"libwebp_anim"};
+    const AVCodec* codec = nullptr;
+    for (const auto& name : candidates) if ((codec = avcodec_find_encoder_by_name(name.toUtf8().constData()))) { out.name = name; break; }
+    if (!codec) return {"recording_unsupported", "No encoder is available for this format", {{"format", config.format}, {"codec", config.codec}}};
+    out.context = avcodec_alloc_context3(codec);
+    auto* c = out.context;
+    c->width = size.width(); c->height = size.height(); c->pix_fmt = format; c->time_base = timeBase; c->framerate = {fps, 1};
+    c->gop_size = std::max(1, fps * 2); c->max_b_frames = 0;
+    if (output->oformat->flags & AVFMT_GLOBALHEADER) c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    if (out.name == "libx264") { av_opt_set(c->priv_data, "preset", "fast", 0); av_opt_set(c->priv_data, "crf", "23", 0); av_opt_set(c->priv_data, "profile", "high", 0); }
+    else if (out.name == "libopenh264") { c->bit_rate = qint64(std::clamp(double(size.width()) * size.height() * fps * 0.1, 1500000.0, 20000000.0)); av_opt_set(c->priv_data, "profile", "constrained_baseline", 0); }
+    else if (out.name == "libx265") { av_opt_set(c->priv_data, "preset", "fast", 0); av_opt_set(c->priv_data, "crf", "26", 0); av_opt_set(c->priv_data, "x265-params", "log-level=none", 0); }
+    else if (out.name == "libvpx-vp9") { c->bit_rate = 0; av_opt_set(c->priv_data, "crf", "32", 0); av_opt_set(c->priv_data, "row-mt", "1", 0); av_opt_set(c->priv_data, "cpu-used", "4", 0); av_opt_set(c->priv_data, "deadline", "good", 0); c->thread_count = 0; }
+    else if (out.name == "libwebp_anim") { av_opt_set(c->priv_data, "quality", "70", 0); av_opt_set(c->priv_data, "lossless", "0", 0); }
+    const int rc = avcodec_open2(c, codec, nullptr);
+    if (rc < 0) return fail("recording_export_failed", "Cannot open the video encoder " + out.name, rc);
+    out.stream = avformat_new_stream(output, nullptr);
+    if (!out.stream || avcodec_parameters_from_context(out.stream->codecpar, c) < 0) return fail("recording_export_failed", "Cannot create the video stream");
+    out.stream->time_base = c->time_base;
+    out.stream->avg_frame_rate = c->framerate;
+    return {};
+}
+Error openAudioEncoder(AVFormatContext* output, const RecordingConfig& config, Encoder& out) {
+    const char* name = config.format == "webm" ? "libopus" : "aac";
+    const AVCodec* codec = avcodec_find_encoder_by_name(name);
+    if (!codec) return {"recording_unsupported", "No audio encoder is available for this format", {{"format", config.format}}};
+    out.name = name;
+    out.context = avcodec_alloc_context3(codec);
+    auto* c = out.context;
+    c->sample_rate = 48000;
+    av_channel_layout_default(&c->ch_layout, 2);
+    c->sample_fmt = config.format == "webm" ? AV_SAMPLE_FMT_FLT : AV_SAMPLE_FMT_FLTP;
+    c->bit_rate = 128000;
+    c->time_base = {1, 48000};
+    if (output->oformat->flags & AVFMT_GLOBALHEADER) c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    const int rc = avcodec_open2(c, codec, nullptr);
+    if (rc < 0) return fail("recording_export_failed", "Cannot open the audio encoder", rc);
+    out.stream = avformat_new_stream(output, nullptr);
+    if (!out.stream || avcodec_parameters_from_context(out.stream->codecpar, c) < 0) return fail("recording_export_failed", "Cannot create the audio stream");
+    out.stream->time_base = c->time_base;
+    return {};
+}
+Error encodeFrame(AVFormatContext* output, Encoder& encoder, AVFrame* frame, AVPacket* packet) {
+    int rc = avcodec_send_frame(encoder.context, frame);
+    if (rc < 0) return fail("recording_export_failed", "Encoding failed", rc);
+    for (;;) {
+        rc = avcodec_receive_packet(encoder.context, packet);
+        if (rc == AVERROR(EAGAIN) || rc == AVERROR_EOF) return {};
+        if (rc < 0) return fail("recording_export_failed", "Encoding failed", rc);
+        av_packet_rescale_ts(packet, encoder.context->time_base, encoder.stream->time_base);
+        packet->stream_index = encoder.stream->index;
+        rc = av_interleaved_write_frame(output, packet);
+        av_packet_unref(packet);
+        if (rc < 0) return fail("recording_export_failed", "Writing the output failed", rc);
+    }
+}
+struct FrameDeleter { void operator()(AVFrame* f) const { av_frame_free(&f); } };
+struct PacketDeleter { void operator()(AVPacket* p) const { av_packet_free(&p); } };
+using FramePtr = std::unique_ptr<AVFrame, FrameDeleter>;
+using PacketPtr = std::unique_ptr<AVPacket, PacketDeleter>;
+
+// Decodes the retained interval once through `graph`, handing every filtered
+// frame to `consume`. Seeks to the keyframe before the trim start.
+Error driveVideo(const QString& path, Graph& graph, qint64 fromUs, qint64 untilUs, const std::atomic_bool& cancelled, const std::function<Error(AVFrame*)>& consume) {
+    // A fresh demuxer per pass: seeking a Matroska file back after EOF lands on a later keyframe.
+    Input input;
+    if (auto e = input.open(path, false)) return e;
+    input.seekTo(fromUs, path, false);
+    if (!input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
+    const auto timeBase = input.format->streams[input.videoIndex]->time_base;
+    const auto origin = streamOrigin(input.format->streams[input.videoIndex]);
+    PacketPtr packet(av_packet_alloc());
+    FramePtr frame(av_frame_alloc()), filtered(av_frame_alloc());
+    bool inputDone = false;
+    int pushed = 0, pulled = 0, lastRc = 0;
+    const auto untilPts = origin + av_rescale_q(untilUs, microseconds, timeBase);
+    auto drain = [&]() -> Error {
+        for (;;) {
+            const int rc = av_buffersink_get_frame(graph.sink, filtered.get());
+            lastRc = rc;
+            if (rc == AVERROR(EAGAIN) || rc == AVERROR_EOF) return {};
+            ++pulled;
+            if (rc < 0) return fail("recording_export_failed", "Filtering failed", rc);
+            const auto error = consume(filtered.get());
+            av_frame_unref(filtered.get());
+            if (error) return error;
+        }
+    };
+    while (!inputDone) {
+        if (cancelled.load()) return {"cancelled", "Export cancelled", {}};
+        int rc = input.read(packet.get());
+        if (rc == AVERROR_EOF) { avcodec_send_packet(input.video, nullptr); inputDone = true; }
+        else if (rc < 0) return fail("recording_export_failed", "Reading the working clip failed", rc);
+        else if (packet->stream_index != input.videoIndex) { av_packet_unref(packet.get()); continue; }
+        else {
+            const bool past = packet->pts != AV_NOPTS_VALUE && packet->pts > untilPts + av_rescale_q(2000000, microseconds, timeBase);
+            rc = avcodec_send_packet(input.video, packet.get());
+            av_packet_unref(packet.get());
+            if (rc < 0 && rc != AVERROR(EAGAIN)) return fail("recording_export_failed", "Decoding failed", rc);
+            if (past) { avcodec_send_packet(input.video, nullptr); inputDone = true; }
+        }
+        for (;;) {
+            rc = avcodec_receive_frame(input.video, frame.get());
+            if (rc == AVERROR(EAGAIN)) break;
+            if (rc == AVERROR_EOF) { av_buffersrc_add_frame_flags(graph.source, nullptr, 0); if (auto e = drain()) return e; return {}; }
+            if (rc < 0) return fail("recording_export_failed", "Decoding failed", rc);
+            frame->pts = frame->best_effort_timestamp;
+            rc = av_buffersrc_add_frame_flags(graph.source, frame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
+            av_frame_unref(frame.get());
+            ++pushed;
+            // Once trim has passed its end the graph reports EOF upstream: we are done.
+            if (rc == AVERROR_EOF) { auto e = drain(); debugLog(QStringLiteral("drive: source EOF after pushed=%1 pulled=%2 lastRc=%3").arg(pushed).arg(pulled).arg(lastRc)); return e; }
+            if (rc < 0) return fail("recording_export_failed", "Filtering failed", rc);
+            if (auto e = drain()) return e;
+        }
+    }
+    av_buffersrc_add_frame_flags(graph.source, nullptr, 0);
+    auto e = drain();
+    debugLog(QStringLiteral("drive: input EOF after pushed=%1 pulled=%2 lastRc=%3").arg(pushed).arg(pulled).arg(lastRc));
+    return e;
+}
+}
+
+Error exportClip(const ExportRequest& request, ExportResult& result, const std::atomic_bool& cancelled, const std::function<void(double)>& progress) {
+    const bool wantAudio = request.config.audio.system && !request.config.silent();
+    Input input;
+    if (auto e = input.open(request.input, wantAudio)) return e;
+    debugLog(QStringLiteral("export %1 wantAudio=%2 audioIndex=%3 streams=%4").arg(request.config.format).arg(wantAudio).arg(input.audioIndex).arg(input.format->nb_streams));
+    const auto videoTimeBase = input.format->streams[input.videoIndex]->time_base;
+    const auto outputSize = recording::outputSize(request.canvas, request.config.maxEdge);
+    const auto trimEnd = request.edit.exportEnd(request.durationUs);
+    const auto retainedUs = trimEnd - request.edit.trimStart;
+    if (retainedUs <= 0) return {"invalid_request", "The retained interval is empty", {}};
+    const bool animation = request.config.animation();
+    const int fps = animation ? std::min(request.config.fps, 15) : request.config.fps;
+    const AVPixelFormat encodeFormat = request.config.format == "gif" ? AV_PIX_FMT_PAL8 : AV_PIX_FMT_YUV420P;
+    const QString tail = request.config.format == "gif" ? QString() : QStringLiteral(",format=yuv420p");
+
+    AVFormatContext* output = nullptr;
+    const char* muxer = request.config.format == "webp" ? "webp" : request.config.format == "gif" ? "gif" : request.config.format == "webm" ? "webm" : "mp4";
+    int rc = avformat_alloc_output_context2(&output, nullptr, muxer, QFile::encodeName(request.output).constData());
+    if (rc < 0 || !output) return fail("recording_export_failed", "Cannot create the output container", rc);
+    std::unique_ptr<AVFormatContext, void (*)(AVFormatContext*)> outputGuard(output, [](AVFormatContext* f) { if (f && !(f->oformat->flags & AVFMT_NOFILE) && f->pb) avio_closep(&f->pb); avformat_free_context(f); });
+    Encoder video, audio;
+    if (auto e = openVideoEncoder(output, request.config, outputSize, fps, encodeFormat, {1, fps}, video)) return e;
+    if (wantAudio && input.audioIndex >= 0) { if (auto e = openAudioEncoder(output, request.config, audio)) return e; }
+    AVDictionary* muxOptions = nullptr;
+    if (request.config.format == "mp4") av_dict_set(&muxOptions, "movflags", "+faststart", 0);
+    if (animation) av_dict_set(&muxOptions, "loop", "0", 0);
+    if (!(output->oformat->flags & AVFMT_NOFILE) && (rc = avio_open(&output->pb, QFile::encodeName(request.output).constData(), AVIO_FLAG_WRITE)) < 0) { av_dict_free(&muxOptions); return fail("recording_export_failed", "Cannot write the output file", rc); }
+    rc = avformat_write_header(output, &muxOptions);
+    av_dict_free(&muxOptions);
+    if (rc < 0) return fail("recording_export_failed", "Cannot write the output header", rc);
+
+    PacketPtr packet(av_packet_alloc());
+    const auto base = baseVideoGraph(request, videoTimeBase, streamOrigin(input.format->streams[input.videoIndex]), outputSize, fps);
+    FramePtr paletteFrame;
+    if (request.config.format == "gif") {
+        // Pass one builds the palette from the exact frames pass two encodes.
+        Graph paletteGraph;
+        if (auto e = paletteGraph.build(base + ",palettegen=stats_mode=diff:max_colors=256[out]", input.video, videoTimeBase, false)) return e;
+        if (auto e = driveVideo(request.input, paletteGraph, request.edit.trimStart, trimEnd, cancelled, [&](AVFrame* frame) -> Error { paletteFrame.reset(av_frame_clone(frame)); return {}; })) return e;
+        if (!paletteFrame) return {"recording_export_failed", "The retained interval produced no frames", {}};
+    }
+    Graph graph;
+    const auto description = request.config.format == "gif" ? base + "[pv];[pv][pal]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle[out]" : base + tail + "[out]";
+    if (auto e = graph.build(description, input.video, videoTimeBase, request.config.format == "gif", paletteFrame.get())) return e;
+    if (graph.palette) { av_buffersrc_add_frame_flags(graph.palette, paletteFrame.get(), AV_BUFFERSRC_FLAG_KEEP_REF); av_buffersrc_add_frame_flags(graph.palette, nullptr, 0); }
+    int frames = 0;
+    qint64 lastPts = 0;
+    const auto sinkTimeBase = av_buffersink_get_time_base(graph.sink);
+    auto consume = [&](AVFrame* frame) -> Error {
+        frame->pts = av_rescale_q(frame->pts, sinkTimeBase, video.context->time_base);
+        frame->pict_type = AV_PICTURE_TYPE_NONE;
+        lastPts = frame->pts;
+        ++frames;
+        if (progress) progress(std::clamp(double(av_rescale_q(frame->pts, video.context->time_base, microseconds)) / double(retainedUs), 0.0, 1.0));
+        return encodeFrame(output, video, frame, packet.get());
+    };
+    if (auto e = driveVideo(request.input, graph, request.edit.trimStart, trimEnd, cancelled, consume)) return e;
+    if (auto e = encodeFrame(output, video, nullptr, packet.get())) return e;
+    if (frames < 1) return {"recording_export_failed", "The retained interval produced no frames", {}};
+
+    if (audio.context) {
+        // A fresh demuxer for the audio pass: the video pass consumed the file.
+        Input audioInput;
+        if (auto e = audioInput.open(request.input, true)) return e;
+        if (audioInput.audioIndex < 0) return {"recording_export_failed", "The clip audio disappeared", {}};
+        Input& input = audioInput;
+        const auto audioTimeBase = input.format->streams[input.audioIndex]->time_base;
+        const auto audioOrigin = streamOrigin(input.format->streams[input.audioIndex]);
+        // atrim's *_pts options count samples; seconds (microsecond precision) match the video trim.
+        const auto originUs = av_rescale_q(audioOrigin, audioTimeBase, microseconds);
+        const auto end = audioOrigin + av_rescale_q(trimEnd, microseconds, audioTimeBase);
+        const auto description = QStringLiteral("[in]atrim=start=%1:end=%2,asetpts=PTS-STARTPTS,aformat=sample_fmts=%3:sample_rates=48000:channel_layouts=stereo[out]").arg(seconds(originUs + request.edit.trimStart), seconds(originUs + trimEnd)).arg(av_get_sample_fmt_name(audio.context->sample_fmt));
+        AudioGraph audioGraph;
+        if (auto e = audioGraph.build(description, input.audio, audioTimeBase, (audio.context->codec->capabilities & AV_CODEC_CAP_VARIABLE_FRAME_SIZE) ? 0 : audio.context->frame_size)) return e;
+        avcodec_flush_buffers(input.audio);
+        FramePtr frame(av_frame_alloc()), filtered(av_frame_alloc());
+        qint64 samples = 0;
+        auto drain = [&]() -> Error {
+            for (;;) {
+                const int r = av_buffersink_get_frame(audioGraph.sink, filtered.get());
+                if (r == AVERROR(EAGAIN) || r == AVERROR_EOF) return {};
+                if (r < 0) return fail("recording_export_failed", "Audio filtering failed", r);
+                filtered->pts = samples;
+                samples += filtered->nb_samples;
+                const auto e = encodeFrame(output, audio, filtered.get(), packet.get());
+                av_frame_unref(filtered.get());
+                if (e) return e;
+            }
+        };
+        bool done = false;
+        const auto untilPts = end + av_rescale_q(2000000, microseconds, audioTimeBase);
+        while (!done) {
+            if (cancelled.load()) return {"cancelled", "Export cancelled", {}};
+            int r = input.read(packet.get());
+            if (r == AVERROR_EOF) { avcodec_send_packet(input.audio, nullptr); done = true; }
+            else if (r < 0) return fail("recording_export_failed", "Reading the clip audio failed", r);
+            else if (packet->stream_index != input.audioIndex) { av_packet_unref(packet.get()); continue; }
+            else { const bool past = packet->pts != AV_NOPTS_VALUE && packet->pts > untilPts; r = avcodec_send_packet(input.audio, packet.get()); av_packet_unref(packet.get()); if (r < 0 && r != AVERROR(EAGAIN)) return fail("recording_export_failed", "Audio decoding failed", r); if (past) { avcodec_send_packet(input.audio, nullptr); done = true; } }
+            for (;;) {
+                r = avcodec_receive_frame(input.audio, frame.get());
+                if (r == AVERROR(EAGAIN)) break;
+                if (r == AVERROR_EOF) { av_buffersrc_add_frame_flags(audioGraph.source, nullptr, 0); if (auto e = drain()) return e; break; }
+                if (r < 0) return fail("recording_export_failed", "Audio decoding failed", r);
+                frame->pts = frame->best_effort_timestamp;
+                r = av_buffersrc_add_frame_flags(audioGraph.source, frame.get(), AV_BUFFERSRC_FLAG_KEEP_REF);
+                av_frame_unref(frame.get());
+                if (r == AVERROR_EOF) { done = true; if (auto e = drain()) return e; break; }
+                if (r < 0) return fail("recording_export_failed", "Audio filtering failed", r);
+                if (auto e = drain()) return e;
+            }
+        }
+        if (auto e = encodeFrame(output, audio, nullptr, packet.get())) return e;
+        debugLog(QStringLiteral("export audio samples=%1").arg(samples));
+        result.audioEncoder = audio.name;
+    }
+    if ((rc = av_write_trailer(output)) < 0) return fail("recording_export_failed", "Cannot finish the output file", rc);
+    outputGuard.reset();
+    result.bytes = QFileInfo(request.output).size();
+    result.frames = frames;
+    result.durationUs = av_rescale_q(lastPts + 1, video.context->time_base, microseconds);
+    result.videoEncoder = video.name;
+    result.size = outputSize;
+    if (result.bytes < 1) return {"recording_export_failed", "The export produced no file", {}};
+    return {};
+}
+
+namespace {
+void boxBlur(QImage& image, const QRect& rect, int radius) {
+    // Two passes of a separable box filter inside rect, close to boxblur power=2.
+    for (int pass = 0; pass < 2; ++pass) {
+        QImage copy = image;
+        for (int y = rect.top(); y <= rect.bottom(); ++y) {
+            const auto* src = reinterpret_cast<const QRgb*>(copy.constScanLine(y));
+            auto* dst = reinterpret_cast<QRgb*>(image.scanLine(y));
+            for (int x = rect.left(); x <= rect.right(); ++x) {
+                int r = 0, g = 0, b = 0, n = 0;
+                for (int k = std::max(rect.left(), x - radius); k <= std::min(rect.right(), x + radius); ++k) { r += qRed(src[k]); g += qGreen(src[k]); b += qBlue(src[k]); ++n; }
+                dst[x] = qRgb(r / n, g / n, b / n);
+            }
+        }
+        copy = image;
+        for (int x = rect.left(); x <= rect.right(); ++x) {
+            for (int y = rect.top(); y <= rect.bottom(); ++y) {
+                int r = 0, g = 0, b = 0, n = 0;
+                for (int k = std::max(rect.top(), y - radius); k <= std::min(rect.bottom(), y + radius); ++k) { const QRgb p = reinterpret_cast<const QRgb*>(copy.constScanLine(k))[x]; r += qRed(p); g += qGreen(p); b += qBlue(p); ++n; }
+                reinterpret_cast<QRgb*>(image.scanLine(y))[x] = qRgb(r / n, g / n, b / n);
+            }
+        }
+    }
+}
+}
+Error previewFrame(const QString& path, const RecordingEdit& edit, const RecordingConfig& config, qint64 timeUs, int maxEdge, const QSize& canvas, QImage& out, qint64* actualTimeUs) {
+    Input input;
+    if (auto e = input.open(path, false)) return e;
+    input.seekTo(timeUs, path, false);
+    if (!input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
+    const auto timeBase = input.format->streams[input.videoIndex]->time_base;
+    const auto origin = streamOrigin(input.format->streams[input.videoIndex]);
+    const auto target = origin + av_rescale_q(timeUs, microseconds, timeBase);
+    PacketPtr packet(av_packet_alloc());
+    FramePtr frame(av_frame_alloc()), chosen;
+    bool done = false;
+    while (!done) {
+        int rc = input.read(packet.get());
+        if (rc == AVERROR_EOF) { avcodec_send_packet(input.video, nullptr); done = true; }
+        else if (rc < 0) return fail("recording_export_failed", "Reading the working clip failed", rc);
+        else if (packet->stream_index != input.videoIndex) { av_packet_unref(packet.get()); continue; }
+        else { rc = avcodec_send_packet(input.video, packet.get()); av_packet_unref(packet.get()); if (rc < 0 && rc != AVERROR(EAGAIN)) return fail("recording_export_failed", "Decoding failed", rc); }
+        for (;;) {
+            rc = avcodec_receive_frame(input.video, frame.get());
+            if (rc == AVERROR(EAGAIN)) break;
+            if (rc == AVERROR_EOF) { done = true; break; }
+            if (rc < 0) return fail("recording_export_failed", "Decoding failed", rc);
+            const auto pts = frame->best_effort_timestamp;
+            chosen.reset(av_frame_clone(frame.get()));
+            av_frame_unref(frame.get());
+            if (pts >= target) { done = true; break; }
+        }
+    }
+    if (!chosen) return {"recording_export_failed", "No frame could be decoded at this time", {}};
+    const int width = chosen->width, height = chosen->height;
+    QImage image(width, height, QImage::Format_RGB32);
+    SwsContext* scaler = sws_getContext(width, height, AVPixelFormat(chosen->format), width, height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+    if (!scaler) return {"recording_export_failed", "Cannot convert the frame", {}};
+    uint8_t* planes[1] = {image.bits()};
+    int strides[1] = {int(image.bytesPerLine())};
+    sws_scale(scaler, chosen->data, chosen->linesize, 0, height, planes, strides);
+    sws_freeContext(scaler);
+    const auto frameUs = av_rescale_q(chosen->best_effort_timestamp - origin, timeBase, microseconds);
+    if (actualTimeUs) *actualTimeUs = frameUs;
+    const QRect bounds(QPoint(0, 0), canvas.isEmpty() ? image.size() : canvas);
+    for (const auto& mask : edit.masks) {
+        if (!(mask.start <= frameUs && frameUs < mask.end)) continue;
+        const auto r = mask.rect.intersected(bounds).intersected(image.rect());
+        if (r.width() < 2 || r.height() < 2) continue;
+        if (mask.kind == "solid") { QPainter painter(&image); painter.fillRect(r, Qt::black); }
+        else boxBlur(image, r, std::clamp(mask.strength, 2, std::max(2, std::min(r.width(), r.height()) / 2 - 1)));
+    }
+    const auto size = recording::outputSize(image.size(), maxEdge);
+    out = size == image.size() ? image : image.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    Q_UNUSED(config);
+    return {};
+}
+}

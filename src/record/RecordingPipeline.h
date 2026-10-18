@@ -1,0 +1,67 @@
+#pragma once
+#include "core/Error.h"
+#include <QJsonObject>
+#include <QObject>
+#include <QRect>
+#include <QString>
+#include <QStringList>
+#include <QTimer>
+#include <atomic>
+#include <functional>
+#include <gst/gst.h>
+
+namespace putgd::record {
+// One live GStreamer capture: ximagesrc (root rectangle or window) → H.264
+// (first encoder that negotiates) [+ pulsesrc monitor → AAC] → Matroska
+// working clip. Pause drops buffers and rebases timestamps on the encoder
+// queues, so the clip timeline excludes paused time; the retained duration
+// is the last rebased video timestamp plus one frame.
+class RecordingPipeline final : public QObject {
+    Q_OBJECT
+public:
+    struct Options {
+        QRect rect;                  // root coordinates; ignored when window != 0
+        unsigned long window = 0;
+        int fps = 30;
+        bool audio = false;
+        QString audioDevice;         // PulseAudio/PipeWire source name (sink monitor)
+        QString output;              // working clip path (.mkv)
+        qint64 budgetBytes = 0;      // stop automatically near this file size; 0 = none
+        QStringList encoders;        // preference order of GStreamer H.264 encoders
+        QStringList audioEncoders;   // preference order of AAC encoders
+    };
+    explicit RecordingPipeline(QObject* parent = nullptr);
+    ~RecordingPipeline() override;
+    Error start(const Options&);
+    Error pause();
+    Error resume();
+    // Drains with EOS and finalizes the file; the callback reports the retained duration.
+    void stop(std::function<void(Error, qint64 durationUs)>);
+    void cancel();
+    bool running() const { return pipeline_ != nullptr; }
+    bool paused() const { return paused_.load(); }
+    qint64 retainedUs() const;
+    qint64 fileBytes() const;
+    QString encoder() const { return encoder_; }
+    QString audioEncoder() const { return audioEncoder_; }
+    QJsonObject status() const;
+signals:
+    void failed(putgd::Error);
+    void budgetReached();
+private:
+    struct Rebase { std::atomic<gint64> offset{0}; std::atomic<gint64> firstPassed{-1}; std::atomic<gint64> lastPassed{-1}; std::atomic<gint64> step{0}; std::atomic_bool dropped{false}; };
+    static GstPadProbeReturn probe(GstPad*, GstPadProbeInfo*, gpointer);
+    bool launch(const Options&, const QString& encoder, const QString& audioEncoder, QString& failure);
+    void poll();
+    void tearDown();
+    GstElement* pipeline_ = nullptr;
+    QTimer bus_, progress_;
+    std::atomic_bool paused_{false};
+    Rebase video_, audio_;
+    gint64 frameDurationNs_ = 0;
+    QString encoder_, audioEncoder_, output_;
+    qint64 budget_ = 0;
+    bool stopping_ = false, budgetSignalled_ = false;
+    std::function<void(Error, qint64)> stopCallback_;
+};
+}

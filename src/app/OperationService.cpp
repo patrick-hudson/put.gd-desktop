@@ -586,8 +586,9 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
   if(error)op.error=error;
   record(op);
  };
- // File batches always copy URIs. Detached text/image acquisitions copy their MIME.
- if(urls.isEmpty()&&op.items.size()==1&&!op.items[0].artifact.originalFile&&(localKind=="images"||localKind=="text")) {
+ // File batches always copy URIs. Detached text/image acquisitions copy their MIME;
+ // a recording (video, or an animated GIF/WebP) is a file, never a still PNG.
+ if(urls.isEmpty()&&op.items.size()==1&&!op.items[0].artifact.originalFile&&op.action!=Settings::recordingActionName()&&(localKind=="images"||localKind=="text")) {
 #ifdef __GLIBC__
   heapReclamationPending_=true;
 #endif

@@ -111,17 +111,22 @@ private slots:
  void productHelperAnswersTheHandshakeAndRefusesCaptureTruthfully(){
   Harness h(PUTGD_RECORD_HELPER);QTRY_VERIFY(h.operations->ready());h.backend->setTimeouts(10000,5000,10000,5000);
   const auto caps=h.rec("capabilities");QVERIFY2(!caps.error,qPrintable(caps.error.message));
-  QCOMPARE(caps.result["schemaVersion"].toInt(),1);QVERIFY(!caps.result["available"].toBool());QVERIFY(caps.result["reason"].isString());
+  QCOMPARE(caps.result["schemaVersion"].toInt(),1);QVERIFY(caps.result["available"].isBool());QVERIFY(caps.result["available"].toBool()||caps.result["reason"].isString());
   QVERIFY(caps.result["gstreamer"].isObject());QVERIFY(caps.result["ffmpeg"].isObject());QVERIFY(caps.result["formats"].isArray());QVERIFY(caps.result["liveCapture"].isObject());
   qInfo().noquote()<<QJsonDocument(QJsonObject{{"reason",caps.result["reason"]},{"session",caps.result["session"]},{"formats",caps.result["formats"]},{"liveCapture",caps.result["liveCapture"]}}).toJson(QJsonDocument::Compact);
-  // The service refuses to prepare on an unavailable backend; the helper itself
-  // still completes the identity handshake and refuses capture explicitly.
-  QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("recording_unavailable"));
+  // Without a display the service refuses to prepare; the helper itself still
+  // completes the identity handshake either way.
+  if(!caps.result["available"].toBool())QCOMPARE(h.rec("prepare",{{"target",region()},{"format","mp4"}}).error.code,QString("recording_unavailable"));
   RecordingTarget target;QVERIFY(!recording::parseTarget(region(),target));RecordingConfig config;QVERIFY(!recording::parseConfig({{"format","mp4"}},config));
   QJsonObject failure;Error error;bool replied=false;
   h.backend->setEventSink([&](QJsonObject event){failure=event;});
   h.backend->prepare("direct-id",target,config,h.dir.path(),[&](Error e,QJsonObject){error=e;replied=true;});
-  QTRY_VERIFY_WITH_TIMEOUT(replied,15000);QCOMPARE(error.code,QString("recording_unsupported"));QCOMPARE(error.details["reason"].toString(),QString("capture_not_implemented"));
+  QTRY_VERIFY_WITH_TIMEOUT(replied,15000);
+  // Headless runners have no X11 display: the helper refuses the target truthfully.
+  // On a real X11 session it resolves the region instead; either way it exits normally.
+  const QStringList acceptedCodes{"capture_unavailable","recording_target"};
+  if(error)QVERIFY2(acceptedCodes.contains(error.code),qPrintable(error.code+": "+error.message));
+  qInfo().noquote()<<"direct prepare:"<<(error?error.code:QString("ok"));
   h.backend->discard("direct-id");
   QTRY_VERIFY(!h.backend->diagnostics()["active"].toBool());
   const auto exit=h.backend->diagnostics()["lastExit"].toObject();QCOMPARE(exit["status"].toString(),QString("normal"));QCOMPARE(exit["code"].toInt(),0);QVERIFY(failure.isEmpty());

@@ -70,6 +70,9 @@ private slots:
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"codec", "vp9"}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "webm"}, {"codec", "h264"}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "gif"}, {"codec", "h264"}}, config).code, QString("invalid_request"));
+        // Serialized configs round-trip through the helper with an empty codec for animations.
+        QVERIFY(!recording::parseConfig({{"format", "webp"}, {"codec", ""}}, config));
+        QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"codec", ""}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "avi"}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"fps", 0}}, config).code, QString("invalid_request"));
         QCOMPARE(recording::parseConfig({{"format", "mp4"}, {"fps", 61}}, config).code, QString("invalid_request"));

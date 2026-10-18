@@ -51,6 +51,7 @@ QJsonObject RecordingConfig::toJson() const {
     QJsonObject o{{"format", format}, {"codec", codec}, {"fps", fps},
         {"audio", QJsonObject{{"system", audio.system}, {"microphone", audio.microphone}}}, {"mime", mime()}};
     if (maxEdge) o["maxEdge"] = *maxEdge;
+    if (budgetBytes > 0) o["budgetBytes"] = double(budgetBytes);
     return o;
 }
 QJsonObject RecordingMask::toJson() const {
@@ -123,7 +124,8 @@ Error parseConfig(const QJsonObject& params, RecordingConfig& out) {
     config.format = params["format"].toString();
     if (!formats().contains(config.format)) return invalid("Format must be mp4, webm, gif or webp", "format");
     const auto available = codecs(config.format);
-    if (params.contains("codec")) {
+    // A serialized config round-trips an empty codec for GIF/WebP.
+    if (params.contains("codec") && !(params["codec"].isString() && params["codec"].toString().isEmpty() && available.isEmpty())) {
         if (!params["codec"].isString() || !available.contains(params["codec"].toString())) return invalid("Codec is not valid for this format", "codec");
         config.codec = params["codec"].toString();
     } else config.codec = available.isEmpty() ? QString{} : available.first();

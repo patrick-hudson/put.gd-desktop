@@ -1,13 +1,16 @@
 # Screen recording
 
-Status: **slices 1 and 2 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**.
-The contract below is implemented and tested against a fake backend and
-against the real helper handshake. The transient `putgd-record` helper exists
-with its identity handshake, command/event framing and a truthful media probe,
-but no capture, review or export pipeline yet, so every installation still
-reports `recording.capabilities` with `available: false` (reason
-`capture_not_implemented`, or a more specific gap) and `recording.prepare`
-returns `recording_unavailable`. Nothing here is desktop acceptance evidence.
+Status: **slices 1 to 3.1 of the [recording plan](plans/2026-10-17-2230-feat-screen-recording-plan.md)**.
+The contract below is implemented and tested against a fake backend and the
+real helper. On **X11 sessions** the `putgd-record` helper records monitors, the
+desktop, regions and windows through `ximagesrc`, pauses and resumes on one
+clip timeline, previews frames with masks, and exports MP4 (H.264, H.265), WebM
+(VP9), GIF and animated WebP with trim and timed masks; the agent path (CLI
+and MCP) is complete. The ready-bounds/dimming/control overlay and the review
+window are the next slices, and Wayland acquisition (portal + `pipewiresrc`)
+is not implemented, so Wayland installations report `available: false` with
+reason `wayland_not_implemented`. Desktop acceptance evidence is recorded
+separately in `docs/verification.md` when it exists; nothing here claims it.
 
 ## Workflow
 
@@ -137,6 +140,46 @@ report the one actually used. CMake builds the helper only when
 `gstreamer-1.0 >= 1.24` and FFmpeg libraries `>= 6.1` are found
 (`PUTGD_RECORDING`, default on; off for the AppImage); a resident without the
 sibling binary reports `recording_helper_missing`.
+
+## Capture and export engine (X11)
+
+`putgd-record` resolves the target against the current RandR layout
+(`X11Targets`): monitors by output name, the desktop as the root window, a
+region as root coordinates inside the root, a window by decimal or `0x` XID
+(captured through `ximagesrc xid=`, so it keeps its identity when moved).
+Dimensions shrink to even values rather than growing into unselected pixels.
+
+The live pipeline is `ximagesrc → videoconvert → H.264 encoder → h264parse →
+matroskamux` with `pulsesrc device=@DEFAULT_MONITOR@ → AAC` when system audio
+is requested. Encoders are tried in order `vah264lpenc, vah264enc,
+vaapih264enc, x264enc, openh264enc` (AAC: `avenc_aac, fdkaacenc, voaacenc`)
+by actually starting the pipeline, and the chosen names are reported in
+`recording.inspect` progress. Bitrate is about 0.1 bit per pixel per frame,
+bounded to 1.5–20 Mbit/s. Pause drops buffers at the encoder queues and folds
+the gap into a timestamp offset, so the working clip's timeline excludes
+paused time for video and audio alike; the retained duration is measured from
+the first retained frame because some encoders carry a constant timestamp
+offset. The helper stops on its own and reports `stopped` with reason
+`budget` when the working clip nears `limits.maxFileBytes` minus a reserve.
+Progress events carry `durationUs`, `bytes`, `paused` and the encoder names.
+
+Export runs in the helper with the FFmpeg libraries on the working clip:
+`trim` in stream ticks, `setpts` rebase, RGB conversion, per-mask
+`crop→boxblur→overlay` or `drawbox` enabled on `gte(t,a)*lt(t,b)` in output
+time, optional `scale` to `maxEdge`, `fps` (at most 15 for animations), then
+`libx264` (`libopenh264` fallback) for MP4/H.264, `libx265` for H.265,
+`libvpx-vp9` for WebM, a two-pass `palettegen`/`paletteuse` GIF, or
+`libwebp_anim`. Audio is trimmed with `atrim` in seconds and encoded as AAC
+(MP4) or Opus (WebM). MP4 output is written with `faststart`. Each decode pass
+opens its own demuxer and verifies that a backward seek did not overshoot the
+trim start (Matroska clips whose first cluster has no cue point otherwise
+start at the next keyframe). Preview decodes the frame at or after the
+requested time and applies the masks active at that source time with a box
+blur or a solid fill, so preview and export agree on timing and placement.
+
+Lab diagnostics: `PUTGD_RECORD_DEBUG_LOG=<file>` appends pipeline and command
+traces, `PUTGD_RECORD_KEEP_WORKING=<dir>` keeps a copy of each working clip.
+Neither is read by the resident and neither carries frames.
 
 ## Agent and MCP control
 

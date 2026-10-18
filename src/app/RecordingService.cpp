@@ -173,6 +173,8 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         if (!s.config.codec.isEmpty() && !caps["codecs"].toObject()[s.config.format].toArray().contains(s.config.codec)) { reply({"recording_unsupported", "This codec is not supported here", {{"codec", s.config.codec}}}, {}); return; }
         if (s.config.audio.system && !caps["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio capture is not supported here", {{"field", "audio.system"}}}, {}); return; }
         if (auto error = host_.accept(s.op)) { reply(error, {}); return; }
+        // Stop before the admitted file limit, leaving room for finalization.
+        s.config.budgetBytes = std::max<qint64>(1024 * 1024, s.op.settings.limits.maxFileBytes - std::max<qint64>(s.op.settings.limits.maxFileBytes / 10, 64LL * 1024 * 1024));
         s.op.state = "recording";
         s.op.phase = "preparing";
         s.staging = stagingRoot_ + "/" + s.op.id;
@@ -234,6 +236,7 @@ void RecordingService::commandSession(const QString& command, const QJsonObject&
                 reply(error, {});
                 return;
             }
+            for (auto it = result.begin(); it != result.end(); ++it) s.progress[it.key()] = it.value();
             if (command == "start") transition(s, "recording");
             else if (command == "pause") transition(s, "paused");
             else if (command == "resume") transition(s, "recording");

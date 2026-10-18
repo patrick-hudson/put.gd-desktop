@@ -1,14 +1,18 @@
 // putgd-record: the transient screen-recording helper. The resident launches
 // one per recording session and speaks UiControl frames over private pipes;
-// `--capabilities` prints the media inventory and exits. This build carries the
-// identity handshake, command/event framing and the probe; capture, review and
-// export arrive with the next slices and until then every session command is
-// refused as recording_unsupported.
+// `--capabilities` prints the media inventory and exits. The helper owns the
+// live GStreamer capture, the private working clip, frame previews and the
+// FFmpeg export; only control metadata crosses the pipes.
 #include "MediaProbe.h"
+#include "DebugLog.h"
+#include "RecordSession.h"
 #include "app/UiControl.h"
 #include "core/BuildInfo.h"
 #include "ui/StdioDevice.h"
+#include <QApplication>
 #include <QCoreApplication>
+#include <QGuiApplication>
+#include <gst/gst.h>
 #include <QJsonDocument>
 #include <QTimer>
 #include <cstdio>
@@ -16,9 +20,6 @@
 #include <sys/resource.h>
 
 using namespace putgd;
-namespace {
-const QStringList sessionCommands{"prepare", "start", "pause", "resume", "stop", "cancel", "raise", "overlay", "preview", "export"};
-}
 
 int main(int argc, char** argv) {
     if (argc == 2 && std::strcmp(argv[1], "--version-json") == 0) { std::printf("%s\n", buildManifestJson()); return 0; }
@@ -35,16 +36,25 @@ int main(int argc, char** argv) {
     if (argc != 1) return 2;
     UiControlPipes handles;
     if (!handles.valid()) return 2;
-    QCoreApplication app(argc, argv);
+    // Raster overlays and frame previews only: no desktop theme plugins.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") && qEnvironmentVariableIsEmpty("DISPLAY") && qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY")) qputenv("QT_QPA_PLATFORM", "offscreen");
+    QGuiApplication::setDesktopSettingsAware(false);
+    qunsetenv("QT_QPA_PLATFORMTHEME");
+    qunsetenv("QT_STYLE_OVERRIDE");
+    QApplication app(argc, argv);
+    app.setQuitOnLastWindowClosed(false);
     QCoreApplication::setOrganizationName("putgd");
     QCoreApplication::setApplicationName("putgd-record");
     QCoreApplication::setApplicationVersion(buildVersion());
+    GError* gstError = nullptr;
+    if (!gst_init_check(nullptr, nullptr, &gstError)) { if (gstError) g_error_free(gstError); return 6; }
     StdioDevice pipes(handles.input(), handles.output());
     if (!pipes.isOpen()) return 2;
     UiControl control(pipes);
     const auto build = QJsonDocument::fromJson(buildManifestJson()).object();
     QJsonObject envelope;
     bool ready = false;
+    record::RecordSession session;
     QObject::connect(&pipes, &QIODevice::readChannelFinished, &app, [&] { app.exit(5); });
     QObject::connect(&control, &UiControl::failed, &app, [&] { app.exit(3); });
     auto result = [&](const QString& requestId, const QJsonObject& value) {
@@ -54,15 +64,21 @@ int main(int argc, char** argv) {
         frame["result"] = value;
         control.send("commandResult", frame);
     };
-    auto failure = [&](const QString& requestId, const QString& code, const QString& message, const QJsonObject& details = {}) {
+    auto failure = [&](const QString& requestId, const Error& error) {
         auto frame = envelope;
         frame["requestId"] = requestId;
         frame["ok"] = false;
-        frame["code"] = code;
-        frame["message"] = message;
-        frame["details"] = details;
+        frame["code"] = error.code;
+        frame["message"] = error.message;
+        frame["details"] = error.details;
         control.send("commandResult", frame);
     };
+    QObject::connect(&session, &record::RecordSession::event, &app, [&](const QJsonObject& payload) {
+        if (!ready) return;
+        auto frame = envelope;
+        for (auto it = payload.begin(); it != payload.end(); ++it) frame[it.key()] = it.value();
+        control.send("event", frame);
+    });
     QObject::connect(&control, &UiControl::frame, &app, [&](const QString& type, const QString&, const QJsonObject& payload) {
         if (type == "bootstrap") {
             if (ready || payload["role"].toString() != "record" || !payload["nonce"].isString() || !payload["generation"].isString() || !payload["build"].isObject()) { app.exit(3); return; }
@@ -78,8 +94,8 @@ int main(int argc, char** argv) {
         if (type != "command" || !payload["requestId"].isString() || !payload["command"].isString() || !payload["params"].isObject()) { app.exit(3); return; }
         const auto requestId = payload["requestId"].toString(), command = payload["command"].toString();
         if (command == "capabilities") { result(requestId, record::probeMedia()); return; }
-        if (sessionCommands.contains(command)) { failure(requestId, "recording_unsupported", "Screen capture is not implemented in this build", {{"reason", "capture_not_implemented"}}); return; }
-        failure(requestId, "unknown_method", "Unknown recording helper command");
+        record::debugLog("command " + command);
+        session.command(command, payload["params"].toObject(), [requestId, command, &result, &failure](Error error, QJsonObject value) { record::debugLog("result " + command + (error ? " error " + error.code + " " + error.message : QString(" ok"))); if (error) failure(requestId, error); else result(requestId, value); });
     });
     return app.exec();
 }

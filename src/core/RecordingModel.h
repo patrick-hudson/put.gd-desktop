@@ -31,6 +31,7 @@ struct RecordingConfig {
     int fps = 30;            // 1..60 capture rate; animations may export at a lower rate
     RecordingAudio audio;
     std::optional<int> maxEdge;  // explicit user downscale of the output's long edge
+    qint64 budgetBytes = 0;      // set by the resident: stop before the admitted file limit
     QString mime() const;
     QString extension() const;
     bool animation() const { return format == "gif" || format == "webp"; }
