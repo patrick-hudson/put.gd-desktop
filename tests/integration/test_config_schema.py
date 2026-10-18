@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 import unittest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 
 class ConfigurationSchema(unittest.TestCase):
@@ -58,6 +58,44 @@ class ConfigurationSchema(unittest.TestCase):
         for name in (None, 42, '', 'x' * 256, '\x00', 'Synthetic folder\n', 'Synthetic\nfolder'):
             with self.subTest(name=name):
                 self.assertFalse(validator.is_valid(settings | {'folderName': name}))
+
+    def test_optional_recording_route_template_and_limits(self):
+        root = Path(__file__).resolve().parents[2]
+        schema = json.loads((root / 'schemas/config.schema.json').read_text())
+        validator = Draft202012Validator(schema)
+        document = json.loads((root / 'config/development.example.json').read_text())
+        validator.validate(document)
+        # Absent record action, template and limits stay valid (older documents).
+        recorded = copy.deepcopy(document)
+        recorded['actions']['record'] = {'destination': 'local', 'profileId': None, 'shortcut': 'Ctrl+Shift+9'}
+        recorded['naming']['recordingTemplate'] = 'Rec-{yyyy}-{uuid}.{ext}'
+        recorded['limits']['recordingAnimationSeconds'] = 15
+        recorded['limits']['recordingAnimationEdge'] = 640
+        validator.validate(recorded)
+        inherited = copy.deepcopy(recorded)
+        inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
+        inherited['actions']['record'] = {'destination': 'default', 'profileId': None, 'shortcut': ''}
+        validator.validate(inherited)
+        # A shortcut-only record entry keeps following the region route; a route needs both fields.
+        keyed = copy.deepcopy(document)
+        keyed['actions']['record'] = {'shortcut': 'Ctrl+Shift+9'}
+        validator.validate(keyed)
+        unpaired = copy.deepcopy(document)
+        unpaired['actions']['record'] = {'destination': 'local', 'shortcut': ''}
+        with self.assertRaises(ValidationError):
+            validator.validate(unpaired)
+        inherited.pop('captureDefaults')
+        self.assertFalse(validator.is_valid(inherited))
+        for field, value in (('recordingAnimationSeconds', 0), ('recordingAnimationEdge', 8), ('recordingAnimationSeconds', 'long')):
+            invalid = copy.deepcopy(recorded)
+            invalid['limits'][field] = value
+            self.assertFalse(validator.is_valid(invalid), field)
+        invalid = copy.deepcopy(recorded)
+        invalid['naming']['recordingTemplate'] = '{bogus}'
+        self.assertFalse(validator.is_valid(invalid))
+        invalid = copy.deepcopy(recorded)
+        invalid['actions']['record'] = {'destination': 'upload', 'profileId': None}
+        self.assertFalse(validator.is_valid(invalid))
 
     def test_production_defaults_templates_and_legacy_fields(self):
         app = os.environ.get('PUTGD_APP')

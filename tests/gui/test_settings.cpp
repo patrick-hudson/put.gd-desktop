@@ -172,7 +172,8 @@ private slots:
  void editRailButtonOffersOtherSourcesWithoutGrowingTheRail(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(configuration(dir.path(),true),{}));
   CredentialStore secrets;UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);
-  QCOMPARE(window.findChildren<QPushButton*>("captureRailButton").size(),Settings::actionNames().size());
+  QCOMPARE(window.findChildren<QPushButton*>("captureRailButton").size(),Settings::invocableActionNames().size());
+  QPushButton* record=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="record")record=button;QVERIFY(record);
   QPushButton* edit=nullptr;for(auto* button:window.findChildren<QPushButton*>("captureRailButton"))if(button->property("captureAction")=="edit")edit=button;
   // No extra control on the button: the other sources are a right-click or a drop.
   QVERIFY(edit);QVERIFY(edit->findChildren<QToolButton*>().isEmpty());QCOMPARE(edit->contextMenuPolicy(),Qt::CustomContextMenu);QVERIFY(edit->acceptDrops());
@@ -410,8 +411,8 @@ private slots:
  }
  void shortcutRecordingNormalizesEveryActionAndIgnoresRepeat(){
   ShortcutEditor editor;editor.setRecordingControl([](bool,auto reply){reply({});});editor.setActions(Settings::defaults()["actions"].toObject());editor.show();
-  for(const auto& action:Settings::actionNames()){
-   const auto title=action.left(1).toUpper()+action.mid(1);auto* input=editor.editors().value(action);const auto old=input->text();
+  for(const auto& action:Settings::invocableActionNames()){
+   const auto title=action.left(1).toUpper()+action.mid(1);auto* input=editor.editors().value(action);QVERIFY2(input,qPrintable(action));const auto old=input->text();
    editor.findChild<QPushButton*>("record"+title+"Shortcut")->click();
    QTest::keyPress(input,Qt::Key_Control);QTest::keyRelease(input,Qt::Key_Control);QCOMPARE(input->text(),old);
    QTest::keyPress(input,Qt::Key_Control);QTest::keyPress(input,Qt::Key_Shift,Qt::ControlModifier);QTest::keyPress(input,Qt::Key_F8,Qt::ControlModifier|Qt::ShiftModifier);

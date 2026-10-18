@@ -1,6 +1,6 @@
 #include "Operation.h"
 namespace putgd {
-bool Operation::activeState(const QString& state) {return state=="accepted"||state=="acquiring"||state=="editing"||state=="stored"||state=="running";}
+bool Operation::activeState(const QString& state) {return state=="accepted"||state=="acquiring"||state=="editing"||state=="recording"||state=="stored"||state=="running";}
 bool OperationItem::linkAvailable() const {return uploadStatus=="uploaded"&&!receipt.directUrl.isEmpty()&&!QStringList{"pending","unknown","revoked","private","failed","changed"}.contains(shareStatus)&&!QStringList{"removed","already_missing","changed","hidden_version_retained"}.contains(remoteStatus);}
 namespace {Error errorFrom(const QJsonObject& o) {return {o["code"].toString(),o["message"].toString(),o["details"].toObject()};}}
 QJsonObject OperationItem::toJson() const {return {{"artifact",artifact.toJson()},{"uploadStatus",uploadStatus},{"candidate",candidate},{"condition",condition},{"concurrencyToken",concurrencyToken},{"publicationId",publicationId},{"objectReference",objectReference},{"receipt",receipt.toJson()},{"local",local.toJson()},{"remoteStatus",remoteStatus},{"shareStatus",shareStatus},{"shareIntent",shareIntent},{"shareIntentOptions",shareIntentOptions},{"error",error.toJson()},{"phase",phase},{"uploadProgress",uploadProgress?QJsonValue(uploadProgress->toJson()):QJsonValue(QJsonValue::Null)}};}

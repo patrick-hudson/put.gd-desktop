@@ -1,6 +1,7 @@
 #pragma once
 #include "core/HistoryStore.h"
 #include "core/EditorJob.h"
+#include "RecordingService.h"
 #include "core/SettingsService.h"
 #include <QObject>
 #include <QQueue>
@@ -83,6 +84,12 @@ public:
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
  QString editingOperation() const {return editingId_;}
+ // Relays one recording.* command to the shared recording service.
+ void recordingCommand(const QString& command,const QJsonObject& params,JsonReply);
+ QString recordingActiveId() const;
+ // Tests inject a fake backend; production installs the helper supervisor.
+ void setRecordingBackend(std::unique_ptr<RecordingBackend> backend) {recording_->setBackend(std::move(backend));}
+ RecordingService& recording() {return *recording_;}
  // Tests may run a fixture helper; production always uses the sibling putgd-ui.
  void setEditorHelper(QString path) {editorHelper_=std::move(path);}
  void inspect(const QString& id,JsonReply);
@@ -189,6 +196,8 @@ private:
  QString selectingId_;
  // At most one editor session exists; it holds no pixels on the session thread.
  QString editingId_,editorHelper_;std::shared_ptr<EditorSession> editor_;
+ Error acceptRecording(Operation&);
+ std::unique_ptr<RecordingService> recording_;
  QSet<QString> preparedOwners_,finishedPrepared_;
  std::mutex acquisitionMutex_;
  bool ready_=false,stopping_=false,cleanupInProgress_=false;

@@ -31,6 +31,9 @@ struct ResourceLimits {
     qint64 clipboardTextBytes = 16777216LL;
     qint64 imagePixels = 100000000LL;
     qint64 imageBytes = 536870912LL;
+    // Animated GIF/WebP exports: retained duration and output long edge.
+    qint64 recordingAnimationSeconds = 60;
+    int recordingAnimationEdge = 1280;
 };
 // Value type: an accepted operation receives its own immutable copy.
 struct Settings {
@@ -45,6 +48,7 @@ struct Settings {
     QString captureTemplate = "Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
     QString imageTemplate = "Image-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
     QString textTemplate = "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
+    QString recordingTemplate = "Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}";
     int failedArtifactDays = 7;
     int recentActivityLimit = 100;
     qint64 previewCacheBytes = 268435456LL;
@@ -64,11 +68,16 @@ struct Settings {
     static Error validate(const QJsonObject&, const ProfileValidator& = {}, const CredentialValidator& = {});
     static QJsonObject effectiveAction(const QJsonObject&, const QString&);
     static Settings fromValidated(const QJsonObject&);
-    // Every invocable action, including the later optional "edit" action.
+    // Every output-routed sharing action, including the later optional "edit" action.
     static QStringList actionNames();
+    // Everything the tray, the dashboard rail and a global shortcut can start:
+    // the sharing actions plus the screen-recording action.
+    static QStringList invocableActionNames();
     // Actions a schema-1 document must define; "edit" may be absent.
     static QStringList requiredActionNames();
-    // Adds an absent edit action inheriting the region route without a shortcut.
+    // The optional recording route; absent documents inherit the region route.
+    static QString recordingActionName();
+    // Adds absent edit and record actions inheriting the region route without a shortcut.
     static QJsonObject normalized(const QJsonObject&);
 };
 }

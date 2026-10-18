@@ -340,6 +340,72 @@
             }
           ],
           "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
+        },
+        "record": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "shortcut"
+          ],
+          "dependentRequired": {
+            "destination": ["profileId"],
+            "profileId": ["destination"]
+          },
+          "properties": {
+            "destination": {
+              "enum": [
+                "upload",
+                "local",
+                "default"
+              ]
+            },
+            "profileId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "shortcut": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "publicationMode": {
+              "type": "string",
+              "enum": [
+                "default",
+                "share",
+                "private"
+              ],
+              "default": "default"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "profileId": {
+                    "type": "null"
+                  },
+                  "publicationMode": {
+                    "const": "default"
+                  }
+                }
+              }
+            }
+          ],
+          "description": "Edit & upload: native region selection, then the on-demand editor. Optional; when absent it inherits the region output route with no shortcut."
         }
       }
     },
@@ -629,6 +695,20 @@
           },
           "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
           "default": "Text-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
+        },
+        "recordingTemplate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096,
+          "pattern": "^(?:[^{}\\\\/\\u0000-\\u001f\\u007f-\\u009f]|\\{(?:name|ext|yyyy|MM|dd|HH|mm|ss|uuid)\\})+(?![\\s\\S])",
+          "not": {
+            "enum": [
+              ".",
+              ".."
+            ]
+          },
+          "description": "Literal text and filename tokens only; SettingsService also validates each rendered filename. Time tokens use local action time.",
+          "default": "Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}"
         }
       }
     },
@@ -698,6 +778,20 @@
           "maximum": 1099511627776,
           "default": 67108864,
           "description": "Total decoded image bytes admitted for queued/encoding jobs; released after persistence or cancellation. Does not bound total RSS."
+        },
+        "recordingAnimationSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "default": 60,
+          "description": "Retained duration allowed for animated GIF/WebP recording exports."
+        },
+        "recordingAnimationEdge": {
+          "type": "integer",
+          "minimum": 16,
+          "maximum": 16384,
+          "default": 1280,
+          "description": "Output long edge allowed for animated GIF/WebP recording exports; set maxEdge on the recording to downscale explicitly."
         }
       }
     },
@@ -1067,7 +1161,38 @@
                   }
                 }
               }
-            }
+            },
+            "required": [
+              "edit"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "captureDefaults"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "properties": {
+              "record": {
+                "required": [
+                  "destination"
+                ],
+                "properties": {
+                  "destination": {
+                    "const": "default"
+                  }
+                }
+              }
+            },
+            "required": [
+              "record"
+            ]
           }
         }
       },

@@ -93,17 +93,20 @@ Acquisition ArtifactStore::acquire(const QString& op,const ClipboardPayload& p,c
  if(!QDir().mkpath(staging)) {result.error={"artifact_io","Cannot create private artifact storage",{}}; return result;}
  QFile::setPermissions(staging,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
  auto fail=[&](QString code,QString message,int index) {result.error={code,message,{{"itemIndex",index}}}; result.artifacts.clear(); QDir(staging).removeRecursively();};
- int count=p.kind=="files"?p.files.size():1;
+ int count=p.kind=="files"||p.kind=="recording"?p.files.size():1;
  if(count<1 || count>limits.maxFiles) {fail("input_excessive","Invalid batch size",0); return result;}
  qint64 total=0,existing=bytes();
  const auto acquiredAt=actionTime.isValid()?actionTime.toLocalTime():QDateTime::currentDateTime();
  for(int i=0;i<count;++i) {
   Artifact a; a.id=QUuid::createUuid().toString(QUuid::WithoutBraces); a.path=staging+"/"+a.id;
   QFile input; QByteArray encoded;
-  if(p.kind=="files") {
+  if(p.kind=="files"||p.kind=="recording") {
    QFileInfo fi(p.files[i]); if(!fi.isFile()) {fail("source_unavailable","Source is not an accessible regular file",i); return result;}
    input.setFileName(fi.absoluteFilePath()); if(!input.open(QIODevice::ReadOnly)) {fail("source_unavailable","Cannot read source file",i); return result;}
-   a.originalFile=true; a.name=fi.fileName();
+   // A finalized recording export is streamed exactly as validated, with its declared
+   // type; it is a generated artifact, never an imported original.
+   if(p.kind=="recording") {if(p.mime.isEmpty()||!(p.mime.startsWith("video/")||p.mime=="image/gif"||p.mime=="image/webp")) {fail("source_unsupported","Unsupported recording type",i); return result;} a.mime=p.mime; a.name="recording."+fi.suffix();}
+   else {a.originalFile=true; a.name=fi.fileName();}
   } else if(p.kind=="text") { encoded=p.bytes; a.mime="text/plain"; a.name="text.txt"; if(encoded.isEmpty()||encoded.size()>limits.clipboardTextBytes) {fail("input_excessive","Invalid text size",i); return result;} }
   else if(p.kind=="image") {
    if(p.image.isNull()||qint64(p.image.width())*p.image.height()>limits.imagePixels||p.image.sizeInBytes()>limits.imageBytes) {fail("input_excessive","Invalid image size",i); return result;}

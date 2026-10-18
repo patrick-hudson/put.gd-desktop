@@ -34,6 +34,10 @@ resident binary and includes:
 X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2;
 ```
 
+The screen-recording helper has its own entry, `putgd-record.desktop`, whose
+`Exec` names the helper binary and whose `X-KDE-Wayland-Interfaces` lists
+`zkde_screencast_unstable_v1`; KWin advertises its screencast protocol only to
+executables matched that way (see `docs/recording.md`, "Wayland acquisition").
 A desktop entry naming a different build executable does not grant permission.
 Restart the resident application after installing/updating its entry. Do not
 set `KWIN_SCREENSHOT_NO_PERMISSION_CHECKS` or other permission bypasses.

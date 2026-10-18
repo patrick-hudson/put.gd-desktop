@@ -52,7 +52,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | Tool | Inputs / forwarded service | Effect |
 | --- | --- | --- |
 | `inspect` | capabilities, diagnostics, settings.get | Local metadata only; accepted non-secret config/path/revisions/status and redacted backend diagnostics |
-| `perform_action` | action region/window/desktop/clipboard → action.invoke | Acquires source; configured local save or public upload; may write clipboard result |
+| `perform_action` | action region/window/desktop/clipboard/edit/record → action.invoke | Acquires source; configured local save or public upload; may write clipboard result. `record` prepares a dragged-region recording (or raises the active one); drive it with the recording tools |
 | `get_operation` | id; kind operation/delete | operation.inspect or delete.inspect; local state |
 | `retry_operation` | id; stage upload/local_save/delete | operation.retry, operation.retryLocalSave, delete.retry; explicit stage effects |
 | `copy_result` | id → operation.copy | Copies retained result/receipt; no upload |
@@ -70,6 +70,14 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | `save_editor_copy` | id, path, optional overwrite → editor.saveCopy | Writes the sanitized PNG to a file; no upload |
 | `submit_editor` | id → editor.submit | Sends only the sanitized result through the configured output |
 | `cancel_editor` / `raise_editor` | id → editor.cancel / editor.raise | Discard without upload / bring the window forward |
+| `get_recording_capabilities` | recording.capabilities | Recording support, formats/codecs, audio, limits, active ID; no capture or prompt |
+| `prepare_recording` | target, format, codec?, fps?, system_audio, max_edge? → recording.prepare | Durable intent, ready bounds/overlay and any OS consent; captures nothing yet |
+| `control_recording` | id, command start/pause/resume/stop/cancel/raise → recording.<command> | Acknowledged state changes; stop always opens private review, cancel uploads nothing |
+| `get_recording` / `set_recording_overlay` | id → recording.inspect / id, visible → recording.overlay | State, edit revision, progress / overlay visibility |
+| `edit_recording` | id, revision, commands → recording.edit | Atomic trim and timed blur/solid masks in microseconds and canvas pixels |
+| `preview_recording` | id, time_us, max_edge → recording.preview | One frame with trim/masks applied as an MCP image plus metadata |
+| `save_recording_copy` | id, path, overwrite → recording.saveCopy | Exports the reviewed result to a file; no upload |
+| `upload_recording` | id, revision → recording.upload | The only publishing action; sends the validated export through the configured output |
 
 Upload retry delegates to the shared operation service: completed uploads are not repeated,
 unknown publication reconciles its original identity, and terminal uploads can instead copy

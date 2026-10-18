@@ -98,7 +98,9 @@ FilenameResult UploadNaming::acquiredName(const Artifact& artifact, const Settin
    return {artifact.name, {}};
   }
   format = settings.fileTemplate;
- } else if (artifact.mime == "image/png")
+ } else if (action == "record")
+  format = settings.recordingTemplate;
+ else if (artifact.mime == "image/png")
   format = action == "clipboard" ? settings.imageTemplate : settings.captureTemplate;
  else format = settings.textTemplate;
  auto result = renderTemplate(format, artifact, acquired, artifact.id);

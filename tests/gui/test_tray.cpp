@@ -1,4 +1,5 @@
 #include "fixtures/U2Fixtures.h"
+#include "fixtures/FakeRecordingBackend.h"
 #include "ui/TrayController.h"
 #include "ui/ResidentTheme.h"
 #include "ui/VisualStyle.h"
@@ -449,11 +450,14 @@ private slots:
   }
   QCOMPARE(views, QStringList({"settings", "history", "activity", "about"}));
   // A single & would be eaten as a mnemonic marker in the menu.
-  QVERIFY(actionNamed(tray, "Capture region && edit"));
+  QVERIFY(actionNamed(tray, "Capture Region && Edit"));
+  // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
+  QStringList texts; for (auto* action : menu->actions()) { if (action->isSeparator()) break; texts.append(action->text()); }
+  QCOMPARE(texts, QStringList({"Capture Region", "Capture Region && Edit", "Capture Window", "Capture Desktop", "Capture Screen Recording", "Edit Image", "Upload Clipboard"}));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
-  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
+  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit Image") editImage = action->menu();
   QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);
-  QCOMPARE(editImage->actions().at(1)->text(), QString("From a file...")); editImage->actions().at(1)->trigger();
+  QCOMPARE(editImage->actions().at(1)->text(), QString("From file…")); editImage->actions().at(1)->trigger();
   QCOMPARE(views.last(), QString("editFile"));
   QCOMPARE(QApplication::topLevelWidgets(), windows);
   QCOMPARE(quits, 0);
@@ -495,7 +499,7 @@ private slots:
    });
   });
   for (const auto& name : QStringList{"region", "window", "desktop", "clipboard"}) {
-   auto* action = actionNamed(tray, name == "clipboard" ? QString("Upload Clipboard") : "Capture " + name);
+   auto* action = actionNamed(tray, name == "clipboard" ? QString("Upload Clipboard") : "Capture " + name.left(1).toUpper() + name.mid(1));
    QVERIFY(action);
    action->trigger();
    QTRY_VERIFY(source.actions.contains(name));
@@ -571,7 +575,7 @@ private slots:
    controller.reset();
   }, [] {});
   auto* tray = controller->findChild<QSystemTrayIcon*>();
-  QPointer<QAction> action = actionNamed(tray, "Capture region");
+  QPointer<QAction> action = actionNamed(tray, "Capture Region");
   QVERIFY(action);
   action->trigger();
   QCOMPARE(opened, QString("activity"));
@@ -590,11 +594,69 @@ private slots:
   QStringList views;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [] {});
   auto* tray = controller.findChild<QSystemTrayIcon*>();
-  auto* action = actionNamed(tray, "Capture region");
+  auto* action = actionNamed(tray, "Capture Region");
   QVERIFY(action);
   action->trigger();
   QTRY_COMPARE(views, QStringList({"activity"}));
   QVERIFY(source.actions.isEmpty());
+ }
+ // The tray entry opens a recording (a dragged region) and raises it while one is
+ // active; the global shortcut toggles it: prepare, start, stop.
+ void recordingTrayEntryOpensAndRaisesWhileTheShortcutToggles() {
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
+  QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  auto fake=std::make_unique<FakeRecordingBackend>();auto* backend=fake.get();operations.setRecordingBackend(std::move(fake));
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  auto state=[&]{QString s;bool done=false;operations.recordingCommand("inspect",{{"id",operations.recordingActiveId()}},[&](Error,QJsonObject r){s=r["state"].toString();done=true;});for(int i=0;i<500&&!done;++i)QTest::qWait(10);return s;};
+  auto* entry=actionNamed(tray,"Capture Screen Recording");QVERIFY(entry);
+  entry->trigger();QTRY_VERIFY(backend->log.contains("prepare"));QTRY_COMPARE(state(),QString("ready"));
+  QCOMPARE(backend->lastConfig.format,QString("mp4"));
+  entry->trigger();QTRY_VERIFY(backend->log.contains("raise"));QCOMPARE(state(),QString("ready"));
+  controller.invokeShortcut("record");QTRY_COMPARE(state(),QString("recording"));
+  controller.invokeShortcut("record");QTRY_COMPARE(state(),QString("reviewing"));
+  const int raises=backend->log.count("raise");controller.invokeShortcut("record");QTRY_COMPARE(backend->log.count("raise"),raises+1);QCOMPARE(state(),QString("reviewing"));
+ }
+
+ // A recording keeps the idle icon through capture, review and Save copy; Upload
+ // turns it amber while the clip is encoded and saved, then the ordinary upload
+ // feedback takes over: dark green filling up, bright green on completion.
+ void recordingKeepsIdleColorUntilUploadThenAmberThenGreen() {
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();provider->deferUploads=true;provider->dispatcher=this;providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
+  QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  auto fake=std::make_unique<FakeRecordingBackend>();auto* backend=fake.get();backend->deferExports=true;backend->exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4*1024*1024,'r');operations.setRecordingBackend(std::move(fake));
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  const auto idle=tray->icon().pixmap(24,24).toImage();
+  const auto amber=VisualStyle::icon("tray",QColor("#f3c66f")).pixmap(24,24).toImage();
+  const auto green=VisualStyle::icon("tray",QColor("#62d69b"),0).pixmap(24,24).toImage();
+  QVERIFY(amber!=idle&&green!=idle);
+  auto command=[&](const QString& name,const QJsonObject& params){QJsonObject out;bool done=false;operations.recordingCommand(name,params,[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(name+": "+e.message));out=r;done=true;});for(int i=0;i<500&&!done;++i)QTest::qWait(10);return out;};
+  const auto id=command("prepare",{{"target",QJsonObject{{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}}},{"format","mp4"}})["recordingId"].toString();QVERIFY(!id.isEmpty());
+  QTRY_VERIFY(tray->toolTip().contains("Ready to record"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+  command("start",{{"id",id}});QTRY_VERIFY(tray->toolTip().contains("Recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+  command("pause",{{"id",id}});QTRY_VERIFY(tray->toolTip().contains("Recording paused"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+  command("resume",{{"id",id}});command("stop",{{"id",id}});QTRY_VERIFY(tray->toolTip().contains("Reviewing the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+  bool saved=false;operations.recordingCommand("saveCopy",{{"id",id},{"path",directory.filePath("copy.mp4")}},[&](Error e,QJsonObject){QVERIFY(!e);saved=true;});
+  QTRY_VERIFY(tray->toolTip().contains("Saving a copy of the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+  QTRY_COMPARE(backend->pendingExports.size(),1);backend->pendingExports.takeFirst()();QTRY_VERIFY(saved);
+  QTRY_VERIFY(tray->toolTip().contains("Reviewing the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),idle);
+  bool uploaded=false;operations.recordingCommand("upload",{{"id",id},{"revision",1}},[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));uploaded=true;});
+  QTRY_VERIFY(tray->toolTip().contains("Encoding the recording"));QCOMPARE(tray->icon().pixmap(24,24).toImage(),amber);
+  QTRY_COMPARE(backend->pendingExports.size(),1);backend->pendingExports.takeFirst()();QTRY_VERIFY(uploaded);
+  struct Drain {std::shared_ptr<OpaqueProvider> provider;~Drain(){for(auto complete:std::exchange(provider->completions,{}))complete();}} drain{provider};
+  QTRY_COMPARE(provider->requests.size(),1);
+  QTRY_COMPARE(tray->icon().pixmap(24,24).toImage(),green);
+  provider->requests.first().progress({"uploading",2*1024*1024,4*1024*1024});
+  QTRY_VERIFY(tray->toolTip().contains("(50%)"));
+  const auto half=tray->icon().pixmap(24,24).toImage();QVERIFY(half.pixelColor(12,5)!=QColor("#62d69b"));QCOMPARE(half.pixelColor(12,20),QColor("#62d69b"));
+  provider->requests.first().progress({"finalizing",4*1024*1024,4*1024*1024});
+  std::exchange(provider->completions,{}).first()();
+  const auto success=VisualStyle::icon("tray",QColor("#62d69b")).pixmap(24,24).toImage();
+  QTRY_VERIFY(tray->icon().pixmap(24,24).toImage()==success&&tray->toolTip().contains("Upload complete"));
+  QTRY_COMPARE(tray->icon().pixmap(24,24).toImage(),idle);
  }
 };
 

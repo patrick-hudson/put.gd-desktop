@@ -6,6 +6,7 @@ for local bulk artifacts and [verification](../verification.md) for limitations.
 
 | Topic | Starting point |
 | --- | --- |
+| Screen recording on Linux (issue #50) | [Suites, X11 and Wayland desktop acceptance](2026-10-18-issue50-screen-recording.md) |
 | Resident PNG readers; libpng writer measured and dropped | [Decision, tests and Cinnamon/Debian A/B](2026-10-17-resident-png-codecs.md) |
 | X11 region capture compositor settle (issue #54) | [Diagnosis, Cinnamon and physical KDE/X11 acceptance](2026-10-17-x11-compositor-settle.md) |
 | Lift/duotone identity and upload feedback | [Current native, provider and physical validation](2026-10-16-lift-duotone-validation.md) |

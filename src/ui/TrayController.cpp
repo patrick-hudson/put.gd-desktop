@@ -44,7 +44,24 @@ int uploadPercent(const QJsonArray& observations) {
  }
  return total>0?int(weighted/total):0;
 }
-QString phaseLabel(const QString& phase) {
+// A recording operation is handed over once Upload is clicked: the helper's
+// `encoding` export and every upload-pipeline state after it. Before that
+// (capture, pause, review, Save copy) the icon keeps its idle colour.
+bool recordingHandedOver(const QJsonObject& operation) {
+ return operation["action"]=="record"&&(operation["phase"]=="encoding"||operation["state"]!="recording");
+}
+QString phaseLabel(const QJsonObject& operation) {
+ const auto phase=operation["phase"].toString(operation["state"].toString());
+ if(operation["action"]=="record"&&operation["state"]=="recording") {
+  if(phase=="preparing")return "Setting up the recording";
+  if(phase=="ready")return "Ready to record";
+  if(phase=="recording")return "Recording";
+  if(phase=="paused")return "Recording paused";
+  if(phase=="stopping")return "Stopping the recording";
+  if(phase=="reviewing")return "Reviewing the recording";
+  if(phase=="exporting")return "Saving a copy of the recording";
+  if(phase=="encoding")return "Encoding the recording";
+ }
  if(phase=="preflight")return "Checking destination";
  if(phase=="saving_local")return "Saving local copy";
  if(phase=="sharing")return "Creating share link";
@@ -54,7 +71,7 @@ QString phaseLabel(const QString& phase) {
 }
 QString activityLine(const QJsonObject& operation) {
  const auto phase=operation["phase"].toString(operation["state"].toString());
- auto text=phaseLabel(phase);const auto items=operation["items"].toArray();
+ auto text=phaseLabel(operation);const auto items=operation["items"].toArray();
  if(phase=="uploading"||phase=="finalizing"||phase=="preparing") {
   for(qsizetype index=0;index<items.size();++index) {
    const auto item=items[index].toObject();if(item["uploadStatus"]!="uploading")continue;
@@ -102,7 +119,7 @@ TrayController::TrayController(OperationService& operations,
   connect(native_.get(), &NativeTray::notificationActivated,this,&TrayController::openNotificationLink);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
-   if (Settings::actionNames().contains(action)) invokeAction(action);
+   if (Settings::invocableActionNames().contains(action)) invokeAction(action);
    else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
    else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
@@ -117,17 +134,21 @@ TrayController::TrayController(OperationService& operations,
  tray_ = new QSystemTrayIcon(VisualStyle::icon("tray"), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
- for (const auto& action : Settings::actionNames()) {
-  // QAction text treats a single & as a mnemonic marker; && shows one &.
-  auto* item = menu_->addAction(VisualStyle::icon(action), action == "clipboard" ? QString("Upload Clipboard") : action == "edit" ? QString("Capture region && edit") : "Capture " + action);
-  connect(item, &QAction::triggered, this, [this, action] {
-   invokeAction(action);
-  });
- }
+ // Capture entries first, in the order people reach for them; QAction text
+ // treats a single & as a mnemonic marker, so && shows one &.
+ const auto capture = [this](const QString& action, const QString& label) {
+  connect(menu_->addAction(VisualStyle::icon(action), label), &QAction::triggered, this, [this, action] { invokeAction(action); });
+ };
+ capture("region", "Capture Region");
+ capture("edit", "Capture Region && Edit");
+ capture("window", "Capture Window");
+ capture("desktop", "Capture Desktop");
+ capture("record", "Capture Screen Recording");
  // Other editor sources stay one level down so the menu does not grow.
- auto* editImage = menu_->addMenu(VisualStyle::icon("edit"), "Edit image");
+ auto* editImage = menu_->addMenu(VisualStyle::icon("edit"), "Edit Image");
  connect(editImage->addAction("From clipboard"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
- connect(editImage->addAction("From a file..."), &QAction::triggered, this, [this] { showView("editFile"); });
+ connect(editImage->addAction("From file…"), &QAction::triggered, this, [this] { showView("editFile"); });
+ capture("clipboard", "Upload Clipboard");
  menu_->addSeparator();
  connect(menu_->addAction(VisualStyle::icon("preferences"), "Settings and setup"),
          &QAction::triggered, this, &TrayController::showSettings);
@@ -224,10 +245,11 @@ bool TrayController::availabilityKnown() const { return true; }
 #endif
 void TrayController::refreshActivity() {
  const auto observations=operations_.activeObservations();
- QSet<QString> activeIds;
+ QSet<QString> activeIds;bool encoding=false;
  for(const auto& value:observations) {
   const auto op=value.toObject();
   activeIds.insert(op["id"].toString());
+  encoding=encoding||recordingHandedOver(op);
   if(!op["destination"].toObject()["providerId"].toString().isEmpty())activeUploads_.insert(op["id"].toString());
  }
  auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
@@ -257,8 +279,9 @@ void TrayController::refreshActivity() {
   uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
  const auto text=uploadCompleted_?QString("Upload complete"):
                  uploadVisible_&&!working?QString("Finishing upload"):activityText(observations);
+ // Amber covers encoding and saving after Upload until storage traffic reveals the green fill.
  const auto color=errorFlashTimer_.isActive()?QColor(errorRed_?"#ffb4ab":"#9bbcff"):
-                  QColor(uploadVisible_?"#62d69b":"#9bbcff");
+                  QColor(uploadVisible_?"#62d69b":encoding?"#f3c66f":"#9bbcff");
  int percent=-1;
  if(uploadVisible_&&!errorFlashTimer_.isActive()) {
   if(uploadCompleted_)percent=100;
@@ -291,6 +314,8 @@ void TrayController::showView(const QString& view) {
 }
 void TrayController::invokeShortcut(const QString& action) { invokeAction(action, true); }
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
+ // The tray opens or raises a recording; its shortcut toggles it.
+ const auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
@@ -305,7 +330,7 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
    if (!fromShortcut) guard->showActivity();
    if (guard) guard->notifyFailure(error);
   }
- }, options);
+ }, effective);
 }
 #ifdef Q_OS_LINUX
 void TrayController::openNotificationLink(const QUrl& link) {

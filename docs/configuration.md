@@ -37,6 +37,9 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | `naming.captureTemplate` | Optional screenshot pattern, default `Screen-Capture-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
 | `naming.imageTemplate` / `naming.textTemplate` | Optional clipboard patterns, default timestamped `Image-…` / `Text-…` names |
 | `limits.pendingImageBytes` | Optional aggregate retained decoded-image budget, default 67,108,864 bytes (64 MiB); released after persistence/cancellation |
+| `naming.recordingTemplate` | Optional screen-recording pattern, default `Screen-Recording-{yyyy}-{MM}-{dd}-{HH}-{mm}-{ss}.{ext}` |
+| `limits.recordingAnimationSeconds` / `recordingAnimationEdge` | Optional animated GIF/WebP export budget: retained seconds (default 60) and output long edge (default 1280); see [recording](recording.md) |
+| `actions.record` | The screen-recording action. Saved documents carry it as a shortcut-only entry `{shortcut}` that keeps following the region route; a full entry (`destination`, `profileId`, `shortcut`, optional `publicationMode`) routes recordings separately. Absent entries read as shortcut-only with no key |
 | `naming.collisionPolicy` | `rename` by default; `skip` or explicit `overwrite` |
 | `limits.maxFiles` | 100; maximum clipboard batch file count |
 | `limits.pendingOperations` | 8 |
@@ -84,7 +87,9 @@ default. This extension remains schema version 1; older strict readers that do n
 it reject the new field, so use matching application/CLI/MCP versions.
 
 The first three shortcuts default to `Ctrl+Shift+1`, `Ctrl+Shift+2`, and `Ctrl+Shift+3`.
-Clipboard sharing starts unbound, allowing explicit setup on GNOME. Availability and
+Clipboard sharing, Capture region & edit and screen recording start unbound, allowing
+explicit setup on GNOME. The recording key toggles a recording (start a ready one, stop
+a running one) so the keyboard can end a capture without reaching for the bar. Availability and
 actual shortcut bindings must be reported by the native adapter; configuration validation
 does not claim a successful grab or resolve conflicts by taking another app's binding.
 

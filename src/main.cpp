@@ -6,6 +6,7 @@
 #include "app/LocalServer.h"
 #include "app/LoginStartup.h"
 #include "app/UiProcessController.h"
+#include "app/RecordingHelperBackend.h"
 #include "app/SetupService.h"
 #include "ui/ResidentTheme.h"
 #include "ui/ViewState.h"
@@ -177,6 +178,8 @@ int main(int argc,char* argv[]) {
  if(!source)source=std::make_unique<putgd::UnavailableSource>();
  const auto dataRoot=QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
  putgd::OperationService operations(dataRoot,settings,providers,*source);
+ // The recording helper is probed lazily; a missing binary reports recording_helper_missing.
+ operations.setRecordingBackend(std::make_unique<putgd::RecordingHelperBackend>());
  putgd::HistoryService history(operations);
  putgd::LocalServer server(settings,operations,history);
  const auto listening=server.listen();if(!listening) {launcherError(listening.error.code);if(listening.error.code=="session_running"){const int retry=activateResident(view,backgroundOnly);return retry>=0?retry:1;}return 1;}

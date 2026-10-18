@@ -36,7 +36,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
             ('patch_configuration', {'patch': {'captureDefaults': {'accessKey': 'synthetic'}}, 'expected_revision': 'r'}),
             ('list_history', {'limit': 201}),
-            ('perform_action', {'action': 'record'}),
+            ('perform_action', {'action': 'recording'}),
             ('open_editor', {'source': 'shell'}),
             ('open_editor', {'source': 'file'}),
             ('open_editor', {'source': 'file', 'path': 'relative.png'}),
@@ -90,6 +90,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
         if method == 'settings.get':
             result = {'document': {'actions': {'clipboard': {'destination': 'upload'}}},
                       'metadata': {'path': '/synthetic/config.json', 'acceptedRevision': 'synthetic-revision', 'observedRevision': 'synthetic-revision'}}
+        if method == 'recording.preview':
+            result = {'operationId': 'synthetic-operation', 'timeUs': request['params']['time'], 'retained': True, 'outputTimeUs': 0, 'revision': 1,
+                      'png': base64.b64encode(synthetic_png()).decode()}
         if method == 'editor.preview':
             result = {'operationId': 'synthetic-operation', 'mime': 'image/png', 'width': 2, 'height': 1,
                       'sourceWidth': 2, 'sourceHeight': 1, 'png': base64.b64encode(synthetic_png()).decode()}
@@ -118,7 +121,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                             'copy_history_link', 'delete_history_uploads', 'reload_configuration',
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
                             'preview_editor', 'save_editor_copy', 'submit_editor', 'cancel_editor',
-                            'raise_editor'}
+                            'raise_editor', 'get_recording_capabilities', 'prepare_recording', 'control_recording',
+                            'get_recording', 'set_recording_overlay', 'edit_recording', 'preview_recording',
+                            'save_recording_copy', 'upload_recording'}
                 self.assertEqual({tool.name for tool in discovered}, expected)
                 for tool in discovered:
                     self.assertEqual(tool.inputSchema['type'], 'object')
@@ -184,6 +189,32 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('submit_editor', {'id': 'synthetic-operation'}, 'editor.submit', {'id': 'synthetic-operation'}),
                     ('cancel_editor', {'id': 'synthetic-operation'}, 'editor.cancel', {'id': 'synthetic-operation'}),
                     ('raise_editor', {'id': 'synthetic-operation'}, 'editor.raise', {'id': 'synthetic-operation'}),
+                    ('get_recording_capabilities', {}, 'recording.capabilities', {}),
+                    ('prepare_recording', {'target': {'kind': 'region', 'rect': [100, 100, 1280, 720]}, 'format': 'mp4', 'system_audio': True, 'fps': 24},
+                     'recording.prepare', {'target': {'kind': 'region', 'rect': [100, 100, 1280, 720]}, 'format': 'mp4', 'audio': {'system': True}, 'fps': 24}),
+                    ('prepare_recording', {'target': {'kind': 'monitor', 'identity': 'DP-3'}, 'format': 'gif', 'max_edge': 640},
+                     'recording.prepare', {'target': {'kind': 'monitor', 'identity': 'DP-3'}, 'format': 'gif', 'maxEdge': 640}),
+                    ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'webm', 'codec': 'vp9'},
+                     'recording.prepare', {'target': {'kind': 'desktop'}, 'format': 'webm', 'codec': 'vp9'}),
+                    ('control_recording', {'id': 'synthetic-operation', 'command': 'start'}, 'recording.start', {'id': 'synthetic-operation'}),
+                    ('control_recording', {'id': 'synthetic-operation', 'command': 'pause'}, 'recording.pause', {'id': 'synthetic-operation'}),
+                    ('control_recording', {'id': 'synthetic-operation', 'command': 'resume'}, 'recording.resume', {'id': 'synthetic-operation'}),
+                    ('control_recording', {'id': 'synthetic-operation', 'command': 'stop'}, 'recording.stop', {'id': 'synthetic-operation'}),
+                    ('control_recording', {'id': 'synthetic-operation', 'command': 'cancel'}, 'recording.cancel', {'id': 'synthetic-operation'}),
+                    ('control_recording', {'id': 'synthetic-operation', 'command': 'raise'}, 'recording.raise', {'id': 'synthetic-operation'}),
+                    ('get_recording', {'id': 'synthetic-operation'}, 'recording.inspect', {'id': 'synthetic-operation'}),
+                    ('set_recording_overlay', {'id': 'synthetic-operation', 'visible': False}, 'recording.overlay', {'id': 'synthetic-operation', 'visible': False}),
+                    ('edit_recording', {'id': 'synthetic-operation', 'revision': 1, 'commands': [
+                        {'op': 'setTrim', 'start': 10000000, 'end': 30000000},
+                        {'op': 'addMask', 'mask': {'kind': 'blur', 'rect': [100, 100, 200, 50], 'start': 12000000, 'end': 15000000}},
+                        {'op': 'removeMask', 'maskId': 'synthetic-mask'}]},
+                     'recording.edit', {'id': 'synthetic-operation', 'revision': 1, 'commands': [
+                        {'op': 'setTrim', 'start': 10000000, 'end': 30000000},
+                        {'op': 'addMask', 'mask': {'kind': 'blur', 'rect': [100, 100, 200, 50], 'start': 12000000, 'end': 15000000}},
+                        {'op': 'removeMask', 'maskId': 'synthetic-mask'}]}),
+                    ('save_recording_copy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4'}, 'recording.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4'}),
+                    ('save_recording_copy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4', 'overwrite': True}, 'recording.saveCopy', {'id': 'synthetic-operation', 'path': '/synthetic/clip.mp4', 'overwrite': True}),
+                    ('upload_recording', {'id': 'synthetic-operation', 'revision': 2}, 'recording.upload', {'id': 'synthetic-operation', 'revision': 2}),
                 ]
                 for name, args, method, params in cases:
                     await call(name, args)
@@ -201,6 +232,28 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(metadata['ok'])
                 self.assertNotIn('png', metadata['result'])
                 self.assertEqual(metadata['result']['sourceWidth'], 2)
+                clip = await session.call_tool('preview_recording', {'id': 'synthetic-operation', 'time_us': 4000000, 'max_edge': 640})
+                self.assertFalse(clip.isError, clip)
+                self.assertEqual(self.calls[-1]['method'], 'recording.preview')
+                self.assertEqual(self.calls[-1]['params'], {'id': 'synthetic-operation', 'time': 4000000, 'maxEdge': 640})
+                frame, clip_envelope = clip.content
+                self.assertEqual(frame.mimeType, 'image/png')
+                self.assertEqual(base64.b64decode(frame.data), synthetic_png())
+                clip_metadata = json.loads(clip_envelope.text)
+                self.assertNotIn('png', clip_metadata['result'])
+                self.assertEqual(clip_metadata['result']['timeUs'], 4000000)
+                for name, args in [('prepare_recording', {'target': {'kind': 'screen'}, 'format': 'mp4'}),
+                                   ('prepare_recording', {'target': {'kind': 'region', 'rect': [1, 2, 3]}, 'format': 'mp4'}),
+                                   ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mkv'}),
+                                   ('prepare_recording', {'target': {'kind': 'desktop'}, 'format': 'mp4', 'fps': 0}),
+                                   ('control_recording', {'id': 'synthetic-operation', 'command': 'explode'}),
+                                   ('edit_recording', {'id': 'synthetic-operation', 'revision': 0, 'commands': [{'op': 'resetTrim'}]}),
+                                   ('edit_recording', {'id': 'synthetic-operation', 'revision': 1, 'commands': [{'op': 'crop'}]}),
+                                   ('save_recording_copy', {'id': 'synthetic-operation', 'path': 'relative.mp4'}),
+                                   ('upload_recording', {'id': 'synthetic-operation', 'revision': 0})]:
+                    before = len(self.calls)
+                    self.assertEqual((await call(name, args))['error']['code'], 'invalid_request', name)
+                    self.assertEqual(len(self.calls), before, 'Invalid recording arguments must issue no IPC')
                 conflict = await call('patch_configuration', {'patch': {'preferences': {'notifications': False}}, 'expected_revision': 'stale'})
                 self.assertEqual(conflict['error']['code'], 'config_conflict')
                 self.assertTrue(all(r['schemaVersion'] == 1 and r['session'] == self.socket for r in self.calls))

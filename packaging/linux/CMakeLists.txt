@@ -9,6 +9,12 @@ option(PUTGD_LAB_FIXTURE "Package independent synthetic desktop fixture (develop
 configure_file(app.desktop.in putgd.desktop @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
   DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+if(TARGET putgd-record)
+  # KWin grants its screencast protocol to the executable named by this entry's Exec.
+  configure_file(record.desktop.in putgd-record.desktop @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd-record.desktop"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+endif()
 foreach(gnome_asset extension.js metadata.json)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/integrations/gnome/${gnome_asset}"
     "${CMAKE_INSTALL_DATADIR}/gnome-shell/extensions/putgd@put.gd")
@@ -65,6 +71,8 @@ putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-dat
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-data-control-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-zkde-screencast-unstable-v1.xml)
 # SDK license must come from the exact source tree provisioned by the build contract.
 set(PUTGD_AWS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/build/dependencies/aws-sdk-cpp" CACHE PATH "Pinned official SDK source")
 if(NOT EXISTS "${PUTGD_AWS_SOURCE_DIR}/LICENSE")
@@ -108,6 +116,13 @@ set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 # RPM's default stripping also changes bytes after our runtime digest is written.
 set(CPACK_RPM_SPEC_MORE_DEFINE
   "%global __provides_exclude_from ^${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n)[.]so.*$\n%define __spec_install_post /bin/true")
+if(TARGET putgd-record)
+  # The helper links the distro GStreamer/FFmpeg libraries (shlibdeps/RPM find
+  # those); element plugins are separate packages that must be present.
+  string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-pipewire")
+  set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "gstreamer1.0-plugins-ugly, gstreamer1.0-libav, gstreamer1.0-vaapi")
+  string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", gstreamer1-plugins-base, gstreamer1-plugins-good, gstreamer1-plugins-bad-free, pipewire-gstreamer")
+endif()
 if(PUTGD_BUNDLE_PROTON)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", xdg-utils, libsecret-1-0")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", xdg-utils, libsecret")

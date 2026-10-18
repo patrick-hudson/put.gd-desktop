@@ -35,6 +35,7 @@ set(PUTGD_PACKAGE_UI "$<TARGET_FILE:putgd-ui>")
 # The KDE selector is required only on builds that declare its target.
 set(PUTGD_PACKAGE_CAPTURE "$<$<TARGET_EXISTS:putgd-capture>:$<TARGET_FILE:putgd-capture>>")
 set(PUTGD_PACKAGE_KDE_REGION "$<$<TARGET_EXISTS:putgd-kde-region>:$<TARGET_FILE:putgd-kde-region>>")
+set(PUTGD_PACKAGE_RECORD "$<$<TARGET_EXISTS:putgd-record>:$<TARGET_FILE:putgd-record>>")
 configure_file("${CMAKE_CURRENT_LIST_DIR}/CheckBuildIdentity.cmake.in"
   "${PUTGD_BUILD_IDENTITY_DIR}/check-build-identity.in" @ONLY)
 file(GENERATE OUTPUT "${PUTGD_BUILD_IDENTITY_DIR}/check-build-identity.cmake"

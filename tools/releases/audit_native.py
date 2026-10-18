@@ -51,6 +51,8 @@ def validate_inventory(root: Path, expected_manifest: dict | None = None, *, req
     programs = list(PROGRAMS)
     if require_kde or (root / "usr/bin/putgd-kde-region").exists():
         programs.append("putgd-kde-region")
+    if (root / "usr/bin/putgd-record").exists():
+        programs.append("putgd-record")  # optional screen-recording helper (docs/recording.md)
     required = ["usr/bin/" + name for name in programs]
     required += ["usr/" + name for name in DESKTOP_ASSETS]
     required += ["usr/share/putgd/" + name for name in
