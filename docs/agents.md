@@ -206,7 +206,8 @@ from `nightly` and target it with every pull request. Promotion to `main` is a
 `release: vX.Y.Z` pull request from `nightly`, opened with
 `tools/releases/promote.py --open`; its merge cuts the next candidate. Stable is a
 manual Release run on a candidate commit, followed by a pull request into `nightly`
-that starts the next version. Read the release runbook before branch or tag work.
+that starts the next version. When asked for a release, follow
+[the release runbook](release-runbook.md) step by step; read it before any branch or tag work.
 Never force-push either branch or move a published tag. Nightly, release and CI
 jobs run in one workflow run each; publication waits on `needs:` rather than on
 evidence from another workflow. Inspect existing runs and drafts before rerunning,
