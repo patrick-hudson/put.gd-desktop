@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Validate a release label against the actual clean Git checkout and project base."""
 import argparse
-import datetime
 import json
 from pathlib import Path
 import re
@@ -26,11 +25,8 @@ def verify(root, tag):
     if identity.channel == 'nightly':
         if git('rev-parse', '--is-shallow-repository') != 'false':
             raise ValueError('Nightly identity requires full Git history')
-        utc = datetime.datetime.fromtimestamp(int(git('show', '-s', '--format=%ct', 'HEAD')),
-                                              datetime.timezone.utc).strftime('%Y%m%d%H%M%S')
-        if (identity.count != count or identity.short_commit != commit[:12]
-                or identity.utc != utc):
-            raise ValueError('Nightly tag count, UTC timestamp and short hash must match source HEAD')
+        if identity.count != count:
+            raise ValueError('Nightly tag number must equal the source HEAD commit count')
     return {'schemaVersion': 1, 'tag': tag, 'version': identity.version,
             'baseVersion': identity.base_version, 'packageVersion': identity.package_version,
             'channel': identity.channel, 'prerelease': identity.prerelease,

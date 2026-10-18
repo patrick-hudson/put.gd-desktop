@@ -116,7 +116,7 @@ class Fixture(unittest.TestCase):
 
 class NightlyPlan(Fixture):
     def tag(self):
-        return 'v0.1.1-dev.1.20261012030405+g' + self.sha[:12]
+        return 'v0.1.1-nightly.1'
 
     def test_preparation_names_immutable_head_identity(self):
         prepared = nightly.prepare(self.root)
@@ -198,7 +198,8 @@ class CandidateAndStable(Fixture):
 
     def test_next_candidate_number_follows_the_highest_existing(self):
         self.api.tags.update({'v0.1.1-rc.1': 'b' * 40, 'v0.1.1-rc.9': 'c' * 40,
-                              'v0.1.10-rc.20': 'd' * 40, 'v0.1.1-dev.5.20261012030405+gbbbbbbbbbbbb': 'e' * 40})
+                              'v0.1.10-rc.20': 'd' * 40, 'v0.1.1-nightly.5': 'e' * 40,
+                              'v0.1.1-dev.4.20261012030405+gbbbbbbbbbbbb': 'f' * 40})
         self.assertEqual(release_tag.choose('candidate', '0.1.1', self.sha,
                                             release_tag.release_tags(self.api, '0.1.1')), ('v0.1.1-rc.10', True))
 
@@ -233,7 +234,7 @@ class CandidateAndStable(Fixture):
 class PublicNightly(unittest.TestCase):
     def setUp(self):
         self.api = API()
-        self.tag = 'v0.1.1-dev.2.20261012030405+g' + SHA[:12]
+        self.tag = 'v0.1.1-nightly.2'
         self.release = {'tag': self.tag, 'version': self.tag[1:], 'channel': 'nightly', 'gitCommit': SHA}
         files = {name: name.encode() for name in nightly.public_inventory(self.tag) if name != 'SHA256SUMS'}
         files['release-builds.json'] = json.dumps({'release': self.release}).encode()

@@ -33,7 +33,7 @@ class ReleaseIdentity(unittest.TestCase):
         self.head = self.git('rev-parse', 'HEAD')
         self.short = self.head[:12]
         self.tree = self.git('rev-parse', 'HEAD^{tree}')
-        self.nightly = f'v{BASE}-dev.2.{UTC}+g{self.short}'
+        self.nightly = f'v{BASE}-nightly.2'
 
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.source), *args], text=True,
@@ -81,7 +81,7 @@ class ReleaseIdentity(unittest.TestCase):
 
     def test_qt_installer_logging_keeps_tagged_source_clean(self):
         self.git('tag', self.nightly)
-        self.both(self.nightly, True, f'{BASE}~dev.2.{UTC}+g{self.short}')
+        self.both(self.nightly, True, f'{BASE}~nightly.2')
         runner = self.directory / 'runner'
         runner.mkdir()
         config = REPO / 'tools/ci/aqt-logging.ini'
@@ -94,7 +94,7 @@ class ReleaseIdentity(unittest.TestCase):
         self.assertIn('synthetic installer diagnostic', (runner / 'aqtinstall.log').read_text())
         self.assertFalse((self.source / 'aqtinstall.log').exists())
         self.assertEqual(self.git('status', '--porcelain', '--untracked-files=normal'), '')
-        self.both(self.nightly, True, f'{BASE}~dev.2.{UTC}+g{self.short}')
+        self.both(self.nightly, True, f'{BASE}~nightly.2')
         # The logging override must not hide actual source changes.
         (self.source / 'CMakeLists.txt').write_text('project(putgd VERSION 0.1.1)\n# mutation\n')
         self.both(self.nightly, False)
@@ -140,21 +140,17 @@ class ReleaseIdentity(unittest.TestCase):
                     verify_tag.verify(archive, tag)
 
     def test_nightly_cross_language_case_table(self):
-        wrong_hash = ('0' if self.short[0] != '0' else '1') + self.short[1:]
         cases = [
-            ('exact source UTC', self.nightly, 'head', True),
-            ('wrong base', f'v0.1.2-dev.2.{UTC}+g{self.short}', 'head', False),
-            ('wrong count', f'v{BASE}-dev.3.{UTC}+g{self.short}', 'head', False),
-            ('wrong short hash', f'v{BASE}-dev.2.{UTC}+g{wrong_hash}', 'head', False),
-            ('wrong source date', f'v{BASE}-dev.2.20261010153045+g{self.short}', 'head', False),
-            ('invalid UTC calendar', f'v{BASE}-dev.2.20260230153045+g{self.short}', 'head', False),
-            ('invalid UTC clock', f'v{BASE}-dev.2.20261011243045+g{self.short}', 'head', False),
-            ('leading zero count', f'v{BASE}-dev.02.{UTC}+g{self.short}', 'head', False),
-            ('zero count', f'v{BASE}-dev.0.{UTC}+g{self.short}', 'head', False),
-            ('leading zero base', f'v00.1.1-dev.2.{UTC}+g{self.short}', 'head', False),
-            ('uppercase hash', f'v{BASE}-dev.2.{UTC}+g{self.short.upper()}', 'head', False),
-            ('short hash length', f'v{BASE}-dev.2.{UTC}+g{self.short[:-1]}', 'head', False),
-            ('timestamp length', f'v{BASE}-dev.2.{UTC[:-1]}+g{self.short}', 'head', False),
+            ('exact source count', self.nightly, 'head', True),
+            ('wrong base', 'v0.1.2-nightly.2', 'head', False),
+            ('wrong count', f'v{BASE}-nightly.3', 'head', False),
+            ('leading zero count', f'v{BASE}-nightly.02', 'head', False),
+            ('zero count', f'v{BASE}-nightly.0', 'head', False),
+            ('missing number', f'v{BASE}-nightly', 'head', False),
+            ('leading zero base', 'v00.1.1-nightly.2', 'head', False),
+            ('uppercase label', f'v{BASE}-Nightly.2', 'head', False),
+            ('build metadata', f'v{BASE}-nightly.2+g{self.short}', 'head', False),
+            ('previous dev format', f'v{BASE}-dev.2.{UTC}+g{self.short}', 'head', False),
             ('missing tag', self.nightly, 'missing', False),
             ('wrong tag HEAD', self.nightly, 'previous', False),
             ('dirty source', self.nightly, 'dirty', False),
@@ -164,7 +160,7 @@ class ReleaseIdentity(unittest.TestCase):
                 self.git('tag', '-f', tag, 'HEAD~1' if state == 'previous' else 'HEAD')
                 if state == 'missing': self.git('tag', '-d', tag)
                 if state == 'dirty': (self.source / 'untracked').write_text('synthetic dirty file')
-                receipt = self.both(tag, accepted, f'{BASE}~dev.2.{UTC}+g{self.short}' if accepted else None)
+                receipt = self.both(tag, accepted, f'{BASE}~nightly.2' if accepted else None)
                 if accepted and receipt is not None:
                     self.assertEqual(receipt['channel'], 'nightly')
                     self.assertTrue(receipt['prerelease'])
@@ -173,18 +169,18 @@ class ReleaseIdentity(unittest.TestCase):
     def test_shallow_source_cannot_assert_full_history_count(self):
         shallow = self.directory / 'shallow'
         subprocess.run(['git', 'clone', '-q', '--depth=1', self.source.as_uri(), str(shallow)], check=True)
-        short = self.head[:12]
-        tag = f'v{BASE}-dev.1.{UTC}+g{short}'
+        tag = f'v{BASE}-nightly.1'
         subprocess.run(['git', '-C', str(shallow), 'tag', tag], check=True)
         result, _ = self.cmake(tag, shallow)
         self.assertNotEqual(result.returncode, 0)
         with self.assertRaises((ValueError, subprocess.CalledProcessError)):
             verify_tag.verify(shallow, tag)
 
+    # Untagged builds, then nightlies in the previous published format, then the
+    # current nightly format, candidates and stable: upgrades follow this order.
     PACKAGE_VERSIONS = ['0.1.1~dev.2+g0123456789ab',
-                        '0.1.1~dev.2.20261010153045+g0123456789ab',
-                        '0.1.1~dev.3.20261011153045+g0123456789ab',
-                        '0.1.1~dev.10.20261012153045+g0123456789ab',
+                        '0.1.1~dev.309.20261018030128+gcb26dc713228',
+                        '0.1.1~nightly.2', '0.1.1~nightly.3', '0.1.1~nightly.10',
                         '0.1.1~rc.2', '0.1.1~rc.10', '0.1.1']
 
     @unittest.skipUnless(shutil.which('dpkg'), 'requires actual Debian dpkg comparison tool')
