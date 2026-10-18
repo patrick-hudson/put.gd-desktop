@@ -1,8 +1,9 @@
 # Software versions
 
-Every build carries a release base, Git commit and working-tree state. The current
-base is `0.1.1`. Development builds look like
-`0.1.1-dev.123+g0123456789ab`; an uncommitted checkout adds `.dirty`.
+Every build carries a release base, Git commit and working-tree state. The base
+is `project(putgd VERSION ...)` in `CMakeLists.txt`, for example `0.1.1`.
+Development builds look like `0.1.1-dev.123+g0123456789ab`; an uncommitted
+checkout adds `.dirty`.
 Each commit has a different Git suffix, including documentation-only and merge
 commits. Run the ordinary build after committing: it refreshes identity even when
 no C++ file changed. It does not require clearing the cache or configuring again.
@@ -12,6 +13,13 @@ patch for a compatible bug-fix release, minor for compatible functionality and
 major for incompatible changes. Do not bump it merely to allocate a commit ID;
 the generated commit identity does that. A build remains a development version
 unless the builder explicitly selects a verified release tag.
+
+On `nightly` the base is always the next release, because package versions order
+`BASE~dev` and `BASE~rc` before `BASE`. Feature pull requests leave it alone.
+After a stable `vBASE` is tagged, a pull request into `nightly` raises it, normally
+to the next patch; nightly publication refuses to run until that change merges.
+A deliberate minor or major bump is its own one-line pull request into `nightly`.
+A hotfix pull request into `main` raises the patch itself. See [releases](release.md).
 
 Inspect the compiled build through:
 
