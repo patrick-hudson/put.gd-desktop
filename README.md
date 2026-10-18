@@ -8,7 +8,7 @@
 
 <br>
 
-**A native Linux sharing app.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording, and the public link is on your clipboard before you let go of the keys. Qt 6 and C++20, talking straight to your own S3 bucket or Proton Drive. No middleman, no telemetry, no updater.
+**A native Linux sharing app.** Hit a hotkey, grab a region, window, desktop, clipboard or screen recording. It uploads, and the public link lands on your clipboard the moment it finishes. Qt 6 and C++20, talking straight to your own S3 bucket or Proton Drive. No middleman, no telemetry, no updater.
 
 <br>
 
