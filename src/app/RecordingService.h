@@ -60,7 +60,8 @@ private:
         quint64 generation = 0;
     };
     QJsonObject publicJson(const Session&) const;
-    void transition(Session&, const QString& state);
+    // The phase defaults to the state; Upload's export reports as `encoding`.
+    void transition(Session&, const QString& state, const QString& phase = {});
     void fail(Error);
     void cancelActive(JsonReply);
     void handleEvent(const QJsonObject&);

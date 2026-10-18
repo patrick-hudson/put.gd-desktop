@@ -76,10 +76,10 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     return o;
 }
-void RecordingService::transition(Session& s, const QString& state) {
+void RecordingService::transition(Session& s, const QString& state, const QString& phase) {
     s.state = state;
     s.pending.clear();
-    s.op.phase = state;
+    s.op.phase = phase.isEmpty() ? state : phase;
     host_.observe(s.op);
     emit changed(s.op.id);
 }
@@ -349,7 +349,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     const auto output = s.staging + QStringLiteral("/export-%1.%2").arg(++s.exports).arg(s.config.extension());
     const auto edit = s.edit;
     const auto config = s.config;
-    transition(s, "exporting");
+    transition(s, "exporting", command == "upload" ? QStringLiteral("encoding") : QString());
     s.pending = command;
     backend_->exportClip(s.op.id, edit, config, output, marshal(s.generation, [this, command, destination, overwrite, output, edit, config, reply](Error error, QJsonObject result) {
         auto& s = *session_;

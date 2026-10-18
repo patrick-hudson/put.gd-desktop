@@ -193,6 +193,20 @@ has been handed over. Save copy keeps the window open with the controls
 disabled and the status showing progress, so the user can still upload
 afterwards.
 
+### Tray feedback
+
+The tray follows the operation's observations. Through capture, pause,
+review and Save copy the icon keeps its idle colour and only the tooltip
+changes ("Ready to record", "Recording", "Recording paused", "Reviewing the
+recording", "Saving a copy of the recording"). Upload is the hand-over: the
+helper's export then reports the `encoding` phase and the icon turns amber
+(`#f3c66f`, solid) for "Encoding the recording" and stays amber while the
+clip is stored and the local copy saved. Once storage traffic starts the
+ordinary upload feedback takes over: dark green filling with the transferred
+fraction, bright green with "Upload complete", then idle. Failures flash red as
+for any operation. `tests/gui/test_tray.cpp` walks this chain with the fake
+backend.
+
 ### Helper events
 
 | Event | Meaning |

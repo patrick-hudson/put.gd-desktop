@@ -1,39 +1,12 @@
 #include "fixtures/U2Fixtures.h"
 #include "app/LocalServer.h"
-#include "app/RecordingBackend.h"
+#include "fixtures/FakeRecordingBackend.h"
 #include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
 using namespace putgd;using namespace putgd::test;
 
 namespace {
-// A synchronous stand-in for the recording helper supervisor: it never touches
-// media, writes a synthetic export file and records every command it saw.
-class FakeBackend final:public RecordingBackend {
-public:
- Event sink;QStringList log;QString staging;bool failStart=false,failExport=false,available=true;int exports=0,previews=0,discards=0,cancels=0;qint64 durationUs=12000000;
- QByteArray exportBytes=QByteArray("\0\0\0\x18" "ftypisom",12)+QByteArray(4096,'r');RecordingEdit lastEdit;RecordingConfig lastConfig;qint64 lastPreviewTime=-1;
- QJsonObject capabilities() const override {return {{"available",available},{"reason",available?QString():QString("fake_off")},{"targets",QJsonArray{"monitor","desktop","region","window"}},{"formats",QJsonArray{"mp4","webm","gif","webp"}},{"codecs",QJsonObject{{"mp4",QJsonArray{"h264","h265"}},{"webm",QJsonArray{"vp9"}}}},{"audio",QJsonObject{{"system",true},{"microphone",false}}},{"overlayExclusion",QJsonObject{{"region",true}}}};}
- void setEventSink(Event e) override {sink=std::move(e);}
- void prepare(const QString&,const RecordingTarget& target,const RecordingConfig& config,const QString& dir,Reply reply) override {log<<"prepare";staging=dir;lastConfig=config;reply({},{{"canvas",QJsonArray{1280,720}},{"rect",target.rect.isEmpty()?QJsonArray{300,250,1280,720}:QJsonArray{target.rect.x(),target.rect.y(),target.rect.width(),target.rect.height()}},{"overlayExcluded",true}});}
- void control(const QString&,const QString& command,const QJsonObject&,Reply reply) override {
-  log<<command;
-  if(command=="cancel"){++cancels;reply({},{});return;}
-  if(command=="start"&&failStart){reply({"recording_start_failed","Synthetic source refused",{}},{});return;}
-  if(command=="stop"){reply({},{{"durationUs",double(durationUs)},{"canvas",QJsonArray{1280,720}}});return;}
-  reply({},{});
- }
- void preview(const QString&,const RecordingEdit& edit,const RecordingConfig&,qint64 time,int,Reply reply) override {++previews;lastEdit=edit;lastPreviewTime=time;reply({},{{"png",QString::fromLatin1(QByteArray("\x89PNG\r\n\x1a\n",8).toBase64())}});}
- void exportClip(const QString&,const RecordingEdit& edit,const RecordingConfig& config,const QString& output,Reply reply) override {
-  ++exports;lastEdit=edit;lastConfig=config;log<<"export";
-  if(failExport){reply({"recording_export_failed","Synthetic export failure",{}},{});return;}
-  QFile file(output);if(!file.open(QIODevice::WriteOnly)){reply({"recording_io","cannot write",{}},{});return;}file.write(exportBytes);file.close();
-  reply({},{{"bytes",double(exportBytes.size())},{"durationUs",double(edit.exportDuration(durationUs))}});
- }
- void discard(const QString&) override {++discards;}
- int editsPushed=0;RecordingEdit pushedEdit;
- void setEdit(const QString&,const RecordingEdit& edit,const RecordingConfig&) override {++editsPushed;pushedEdit=edit;}
-};
 struct Call {Error error;QJsonObject result;bool done=false;};
 Call call(LocalServer& server,const QString& method,const QJsonObject& params){
  Call outcome;server.dispatch({{"schemaVersion",1},{"requestId",method},{"session",server.socketPath()},{"method",method},{"params",params}},[&](Error e,QJsonObject r){outcome={e,r,true};});
@@ -42,14 +15,14 @@ Call call(LocalServer& server,const QString& method,const QJsonObject& params){
 }
 QJsonObject region(){return {{"kind","region"},{"rect",QJsonArray{100,100,1280,720}}};}
 struct Harness {
- QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();SettingsService settings;Source source;std::unique_ptr<OperationService> operations;std::unique_ptr<HistoryService> history;std::unique_ptr<LocalServer> server;FakeBackend* backend=nullptr;
+ QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<OpaqueProvider> provider=std::make_shared<OpaqueProvider>();SettingsService settings;Source source;std::unique_ptr<OperationService> operations;std::unique_ptr<HistoryService> history;std::unique_ptr<LocalServer> server;FakeRecordingBackend* backend=nullptr;
  explicit Harness(bool local=true):settings(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);}){
   registry.add("opaque",provider);
   auto doc=configuration(dir.path(),local);if(!local){auto archive=doc["archive"].toObject();archive["keepUploads"]=true;doc["archive"]=archive;}
   if(!settings.save(doc,{}))qFatal("configuration rejected");
   open();
  }
- void open(){operations=std::make_unique<OperationService>(dir.filePath("data"),settings,registry,source);auto fake=std::make_unique<FakeBackend>();backend=fake.get();operations->setRecordingBackend(std::move(fake));history=std::make_unique<HistoryService>(*operations);server=std::make_unique<LocalServer>(settings,*operations,*history);}
+ void open(){operations=std::make_unique<OperationService>(dir.filePath("data"),settings,registry,source);auto fake=std::make_unique<FakeRecordingBackend>();backend=fake.get();operations->setRecordingBackend(std::move(fake));history=std::make_unique<HistoryService>(*operations);server=std::make_unique<LocalServer>(settings,*operations,*history);}
  void close(){server.reset();history.reset();operations.reset();backend=nullptr;}
  Call rec(const QString& command,const QJsonObject& params={}){return call(*server,"recording."+command,params);}
  QString state(const QString& id){return rec("inspect",{{"id",id}}).result["state"].toString();}

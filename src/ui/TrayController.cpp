@@ -44,7 +44,24 @@ int uploadPercent(const QJsonArray& observations) {
  }
  return total>0?int(weighted/total):0;
 }
-QString phaseLabel(const QString& phase) {
+// A recording operation is handed over once Upload is clicked: the helper's
+// `encoding` export and every upload-pipeline state after it. Before that
+// (capture, pause, review, Save copy) the icon keeps its idle colour.
+bool recordingHandedOver(const QJsonObject& operation) {
+ return operation["action"]=="record"&&(operation["phase"]=="encoding"||operation["state"]!="recording");
+}
+QString phaseLabel(const QJsonObject& operation) {
+ const auto phase=operation["phase"].toString(operation["state"].toString());
+ if(operation["action"]=="record"&&operation["state"]=="recording") {
+  if(phase=="preparing")return "Setting up the recording";
+  if(phase=="ready")return "Ready to record";
+  if(phase=="recording")return "Recording";
+  if(phase=="paused")return "Recording paused";
+  if(phase=="stopping")return "Stopping the recording";
+  if(phase=="reviewing")return "Reviewing the recording";
+  if(phase=="exporting")return "Saving a copy of the recording";
+  if(phase=="encoding")return "Encoding the recording";
+ }
  if(phase=="preflight")return "Checking destination";
  if(phase=="saving_local")return "Saving local copy";
  if(phase=="sharing")return "Creating share link";
@@ -54,7 +71,7 @@ QString phaseLabel(const QString& phase) {
 }
 QString activityLine(const QJsonObject& operation) {
  const auto phase=operation["phase"].toString(operation["state"].toString());
- auto text=phaseLabel(phase);const auto items=operation["items"].toArray();
+ auto text=phaseLabel(operation);const auto items=operation["items"].toArray();
  if(phase=="uploading"||phase=="finalizing"||phase=="preparing") {
   for(qsizetype index=0;index<items.size();++index) {
    const auto item=items[index].toObject();if(item["uploadStatus"]!="uploading")continue;
@@ -224,10 +241,11 @@ bool TrayController::availabilityKnown() const { return true; }
 #endif
 void TrayController::refreshActivity() {
  const auto observations=operations_.activeObservations();
- QSet<QString> activeIds;
+ QSet<QString> activeIds;bool encoding=false;
  for(const auto& value:observations) {
   const auto op=value.toObject();
   activeIds.insert(op["id"].toString());
+  encoding=encoding||recordingHandedOver(op);
   if(!op["destination"].toObject()["providerId"].toString().isEmpty())activeUploads_.insert(op["id"].toString());
  }
  auto finished=activeUploads_;finished.subtract(activeIds);activeUploads_.intersect(activeIds);
@@ -257,8 +275,9 @@ void TrayController::refreshActivity() {
   uploadCompleteTimer_.start(int(qMax(qint64(200),600-uploadVisibleClock_.elapsed())));
  const auto text=uploadCompleted_?QString("Upload complete"):
                  uploadVisible_&&!working?QString("Finishing upload"):activityText(observations);
+ // Amber covers encoding and saving after Upload until storage traffic reveals the green fill.
  const auto color=errorFlashTimer_.isActive()?QColor(errorRed_?"#ffb4ab":"#9bbcff"):
-                  QColor(uploadVisible_?"#62d69b":"#9bbcff");
+                  QColor(uploadVisible_?"#62d69b":encoding?"#f3c66f":"#9bbcff");
  int percent=-1;
  if(uploadVisible_&&!errorFlashTimer_.isActive()) {
   if(uploadCompleted_)percent=100;
