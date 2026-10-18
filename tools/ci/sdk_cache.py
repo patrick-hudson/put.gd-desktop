@@ -15,6 +15,9 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+INVENTORIES = frozenset({'dpkg-query', 'rpm', 'brew'})
+
+
 def fingerprint(root, contracts=()):
     commands = [['cmake', '--version']]
     if platform.system() == 'Windows':
@@ -35,7 +38,11 @@ def fingerprint(root, contracts=()):
         result = subprocess.run(command, text=True, capture_output=True, check=False)
         if result.returncode and command != ['cl']:
             raise RuntimeError('Cannot fingerprint build dependencies: ' + command[0])
-        observations.append({'command': command, 'output': result.stdout + result.stderr})
+        output = result.stdout + result.stderr
+        if command[0] in INVENTORIES:
+            # Package databases list in install order, which varies between runs.
+            output = ''.join(line + '\n' for line in sorted(output.splitlines()))
+        observations.append({'command': command, 'output': output})
     # Recipes, not workflow files: editing a workflow must not rebuild the SDK.
     inputs = ['cmake/dependency-lock.json', 'tools/ci/sdk_cache.py', 'tools/ci/sdk-source.sh',
               'tools/releases/provision-sdk.sh']
