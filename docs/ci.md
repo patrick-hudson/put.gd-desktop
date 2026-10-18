@@ -193,7 +193,8 @@ CTest wall time ("Total Test time (real)") in seconds, all 72 tests unless noted
 
 | Run | Commit | Slots | Durations | 24.04 | 26.04 |
 | --- | --- | ---: | --- | ---: | ---: |
-| [39161438843](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39161438843), push to `nightly` (before) | `5cf4e03` | 2 | none | 295.59 | 310.14 |
+| [39165764037](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39165764037), push to `nightly` (before, with #69) | `70722c3` | 2 | none | 311.90 | 308.66 |
+| [39174290324](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39174290324), push to `nightly` (before, 73 tests) | `4d3b6d5` | 2 | none | 313.69 | 308.37 |
 | [39167182473](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39167182473), PR #70 | `65caac1` | 8 | none | 99.96 | 105.24 |
 | [39168198731](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39168198731), own Xvfb displays | `4142fae` | 8 | restored | 87.59 | 76.32 |
 | [39169471820](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39169471820), trial | `1ae2fc5` | 12 | restored | 71.15, 1 failed | 70.69 |
@@ -203,7 +204,7 @@ CTest wall time ("Total Test time (real)") in seconds, all 72 tests unless noted
 | [39175234634](https://github.com/patrick-hudson/put.gd-desktop/actions/runs/39175234634) attempts 1–4, CPU pool, 73 tests | `54a0a95` | 8 | restored | 77.61–85.43, 4 passed | 77.84–85.45, 4 passed |
 
 Every hosted run from `68aa356` on passed: 16 job runs on the two distros.
-The Test step fell from 296 s and 311 s to 78–86 s, and warm Linux jobs took
+The Test step fell from 296–314 s at two slots to 78–86 s, and warm Linux jobs took
 3:51 to 6:14 instead of about eight minutes; package installation accounts for
 most of the spread. At eight slots the CPU pool left the wall time unchanged
 (77.6–85.5 s against 77.8–84.3 s without it), because the long idle tests still
