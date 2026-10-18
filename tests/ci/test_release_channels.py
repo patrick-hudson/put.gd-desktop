@@ -68,7 +68,7 @@ class Workflows(unittest.TestCase):
     def test_linux_tests_keep_their_isolation_and_skip_the_duplicate_release_compile(self):
         linux = job(workflow('ci.yml'), 'linux')
         for text in ("distribution: ['24.04', '26.04']", 'cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON',
-                     'ctest --preset dev --parallel 8', 'runuser -u putgd-ci',
+                     'ctest --preset dev --parallel 12', 'runuser -u putgd-ci',
                      'python3 tools/ci/ctest_preflight.py', '-DCMAKE_CXX_COMPILER_LAUNCHER=ccache',
                      'aws-sdk-source-licenses', 'python3 tools/proton/provision_runtime.py'):
             self.assertIn(text, linux)
