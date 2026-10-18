@@ -345,10 +345,12 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "destination",
-            "profileId",
             "shortcut"
           ],
+          "dependentRequired": {
+            "destination": ["profileId"],
+            "profileId": ["destination"]
+          },
           "properties": {
             "destination": {
               "enum": [
@@ -1178,6 +1180,9 @@
           "actions": {
             "properties": {
               "record": {
+                "required": [
+                  "destination"
+                ],
                 "properties": {
                   "destination": {
                     "const": "default"

@@ -36,7 +36,7 @@ class AdapterTests(unittest.IsolatedAsyncioTestCase):
             ('patch_configuration', {'patch': {'accessKey': 'synthetic'}, 'expected_revision': 'r'}),
             ('patch_configuration', {'patch': {'captureDefaults': {'accessKey': 'synthetic'}}, 'expected_revision': 'r'}),
             ('list_history', {'limit': 201}),
-            ('perform_action', {'action': 'record'}),
+            ('perform_action', {'action': 'recording'}),
             ('open_editor', {'source': 'shell'}),
             ('open_editor', {'source': 'file'}),
             ('open_editor', {'source': 'file', 'path': 'relative.png'}),

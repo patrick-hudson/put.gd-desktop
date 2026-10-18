@@ -186,7 +186,7 @@ void UiApplicationController::clearPendingAction(bool restore){
  if(restore)for(auto window:windows)if(window){openViews_.insert(window);window->show();window->raise();window->activateWindow();}
 }
 void UiApplicationController::requestAction(const QString& action){
- if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||!Settings::actionNames().contains(action))return;
+ if(exiting_||quitting_||closing_||!pendingAction_.isEmpty()||!Settings::invocableActionNames().contains(action))return;
  pendingAction_=action;pendingOptions_={};prepareAction();
 }
 void UiApplicationController::requestEdit(const QString& source,const QString& path){

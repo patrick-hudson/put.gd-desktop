@@ -183,8 +183,8 @@ def create_server(adapter: CliAdapter) -> FastMCP:
 
     @server.tool(annotations=effect)
     async def perform_action(action: str) -> Json:
-        """Acquire region/window/desktop/clipboard, then configured local save or public upload; may copy result. `edit` opens the editor after a region selection instead; use open_editor for other sources."""
-        if action not in {'region', 'window', 'desktop', 'clipboard', 'edit'}:
+        """Acquire region/window/desktop/clipboard, then configured local save or public upload; may copy result. `edit` opens the editor after a region selection instead; use open_editor for other sources. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools."""
+        if action not in {'region', 'window', 'desktop', 'clipboard', 'edit', 'record'}:
             return invalid()
         return await adapter.call('action.invoke', {'action': action})
 

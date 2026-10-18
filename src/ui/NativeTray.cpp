@@ -81,14 +81,15 @@ constexpr int callTimeoutMs = 1500;
 // order. An entry with a parent belongs to that entry's submenu.
 struct Entry { const char* label; const char* action; int parent; };
 constexpr Entry entries[] {
- {"Capture region", "region", 0}, {"Capture window", "window", 0},
- {"Capture desktop", "desktop", 0}, {"Upload Clipboard", "clipboard", 0},
- {"Capture region & edit", "edit", 0},
+ {"Capture Region", "region", 0}, {"Capture Window", "window", 0},
+ {"Capture Desktop", "desktop", 0}, {"Upload Clipboard", "clipboard", 0},
+ {"Capture Region & Edit", "edit", 0},
  {"", "", 0}, {"Settings and setup", "settings", 0}, {"Upload history", "history", 0},
  {"Recent activity", "activity", 0}, {"", "", 0}, {"About put.gd", "about", 0}, {"Quit", "quit", 0},
- {"Edit image", "", 0}, {"From clipboard", "edit-clipboard", 13}, {"From a file...", "edit-file", 13}
+ {"Edit Image", "", 0}, {"From clipboard", "edit-clipboard", 13}, {"From file…", "edit-file", 13},
+ {"Capture Screen Recording", "record", 0}
 };
-constexpr int rootOrder[] {1, 2, 3, 4, 5, 13, 6, 7, 8, 9, 10, 11, 12};
+constexpr int rootOrder[] {1, 5, 2, 3, 16, 13, 4, 6, 7, 8, 9, 10, 11, 12};
 constexpr int entryCount = sizeof(entries) / sizeof(entries[0]);
 QList<int> childrenOf(int id) {
  QList<int> result;
@@ -108,7 +109,7 @@ QVariantMap menuProperties(int id, const QStringList& names = {}) {
  if (id != 0) {
   const auto& e = entries[id-1];
   if (!*e.label) props.insert("type", "separator");
-  else props.insert("label", QString::fromLatin1(e.label));
+  else props.insert("label", QString::fromUtf8(e.label));
  }
  if (!names.isEmpty()) for (auto it = props.begin(); it != props.end();) {
   if (!names.contains(it.key())) it = props.erase(it); else ++it;

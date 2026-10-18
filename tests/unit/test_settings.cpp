@@ -278,6 +278,39 @@ private slots:
         QCOMPARE(unchanged, bytes);
     }
 #endif
+    void absentRecordActionInheritsTheRegionRouteWithoutAShortcut() {
+        auto document = putgd::Settings::defaults();
+        auto actions = document["actions"].toObject();
+        auto region = actions["region"].toObject();
+        region["destination"] = "local";
+        actions["region"] = region;
+        actions.remove("edit");
+        actions.remove("record");
+        document["actions"] = actions;
+        QVERIFY(!putgd::Settings::validate(document));
+        const auto normalized = putgd::Settings::normalized(document);
+        const auto edit = normalized["actions"].toObject()["edit"].toObject();
+        QCOMPARE(edit["destination"].toString(), QStringLiteral("local"));
+        QVERIFY(edit["shortcut"].toString().isEmpty());
+        // Record stays a shortcut-only entry so it keeps following the region route.
+        const auto record = normalized["actions"].toObject()["record"].toObject();
+        QCOMPARE(record.keys(), QStringList{"shortcut"});
+        QVERIFY(!putgd::Settings::validate(normalized));
+        const auto settings = putgd::Settings::fromValidated(document);
+        QCOMPARE(settings.actions.value("record").destination, QStringLiteral("local"));
+        QVERIFY(settings.actions.value("record").shortcut.isEmpty());
+        QCOMPARE(putgd::Settings::invocableActionNames().last(), QStringLiteral("record"));
+        // A document that binds the recording key keeps it; it never inherits the region key.
+        auto bound = normalized;
+        auto boundActions = bound["actions"].toObject();
+        auto keyed = boundActions["record"].toObject();
+        keyed["shortcut"] = "Ctrl+Shift+9";
+        boundActions["record"] = keyed;
+        bound["actions"] = boundActions;
+        QVERIFY(!putgd::Settings::validate(bound));
+        QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("record").shortcut, QStringLiteral("Ctrl+Shift+9"));
+        QCOMPARE(putgd::Settings::fromValidated(bound).actions.value("region").shortcut, QStringLiteral("Ctrl+Shift+1"));
+    }
 };
 QTEST_GUILESS_MAIN(SettingsContract)
 #include "test_settings.moc"

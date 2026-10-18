@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 import unittest
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
 
 class ConfigurationSchema(unittest.TestCase):
@@ -76,6 +76,14 @@ class ConfigurationSchema(unittest.TestCase):
         inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
         inherited['actions']['record'] = {'destination': 'default', 'profileId': None, 'shortcut': ''}
         validator.validate(inherited)
+        # A shortcut-only record entry keeps following the region route; a route needs both fields.
+        keyed = copy.deepcopy(document)
+        keyed['actions']['record'] = {'shortcut': 'Ctrl+Shift+9'}
+        validator.validate(keyed)
+        unpaired = copy.deepcopy(document)
+        unpaired['actions']['record'] = {'destination': 'local', 'shortcut': ''}
+        with self.assertRaises(ValidationError):
+            validator.validate(unpaired)
         inherited.pop('captureDefaults')
         self.assertFalse(validator.is_valid(inherited))
         for field, value in (('recordingAnimationSeconds', 0), ('recordingAnimationEdge', 8), ('recordingAnimationSeconds', 'long')):

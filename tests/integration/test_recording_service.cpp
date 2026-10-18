@@ -228,6 +228,22 @@ private slots:
   QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
   QCOMPARE(h.provider->uploads.load(),0);
  }
+ void recordActionOpensRaisesAndTogglesTheSession(){
+  Harness h;QTRY_VERIFY(h.operations->ready());
+  auto invoke=[&](const QJsonObject& options){Call c;h.operations->invoke("record",[&](Error e,QJsonObject r){c={e,r,true};},options);for(int i=0;i<500&&!c.done;++i)QTest::qWait(10);return c;};
+  QCOMPARE(invoke({{"mode","shell"}}).error.code,QString("invalid_request"));
+  QCOMPARE(invoke({{"source","clipboard"}}).error.code,QString("invalid_request"));
+  auto opened=invoke({});QVERIFY2(!opened.error,qPrintable(opened.error.message));QCOMPARE(opened.result["step"].toString(),QString("prepare"));
+  const auto id=opened.result["recordingId"].toString();QVERIFY(!id.isEmpty());QTRY_COMPARE(h.state(id),QString("ready"));
+  QCOMPARE(h.backend->lastConfig.format,QString("mp4"));
+  // Open again raises the active session instead of starting a second one.
+  QCOMPARE(invoke({{"mode","open"}}).result["step"].toString(),QString("raise"));QVERIFY(h.backend->log.contains("raise"));QCOMPARE(h.state(id),QString("ready"));
+  QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("start"));QCOMPARE(h.state(id),QString("recording"));
+  QVERIFY(!h.rec("pause",{{"id",id}}).error);
+  QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("stop"));QCOMPARE(h.state(id),QString("reviewing"));
+  QCOMPARE(invoke({{"mode","toggle"}}).result["step"].toString(),QString("raise"));QCOMPARE(h.state(id),QString("reviewing"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));
+ }
 };
 QTEST_GUILESS_MAIN(RecordingServiceContract)
 #include "test_recording_service.moc"

@@ -68,13 +68,16 @@ struct Settings {
     static Error validate(const QJsonObject&, const ProfileValidator& = {}, const CredentialValidator& = {});
     static QJsonObject effectiveAction(const QJsonObject&, const QString&);
     static Settings fromValidated(const QJsonObject&);
-    // Every invocable action, including the later optional "edit" action.
+    // Every output-routed sharing action, including the later optional "edit" action.
     static QStringList actionNames();
+    // Everything the tray, the dashboard rail and a global shortcut can start:
+    // the sharing actions plus the screen-recording action.
+    static QStringList invocableActionNames();
     // Actions a schema-1 document must define; "edit" may be absent.
     static QStringList requiredActionNames();
     // The optional recording route; absent documents inherit the region route.
     static QString recordingActionName();
-    // Adds an absent edit action inheriting the region route without a shortcut.
+    // Adds absent edit and record actions inheriting the region route without a shortcut.
     static QJsonObject normalized(const QJsonObject&);
 };
 }

@@ -38,6 +38,10 @@ public:
     // capabilities | prepare | start | pause | resume | stop | cancel | inspect |
     // raise | overlay | edit | preview | saveCopy | upload
     void command(const QString& command, const QJsonObject& params, JsonReply);
+    // The tray and shortcut entry: with no session, prepare a dragged region with
+    // the default configuration; otherwise "open" raises the session's window and
+    // "toggle" starts a ready session or stops a recording (paused) one.
+    void invoke(const QString& mode, JsonReply);
     void shutdown();
     // Abandoned exports never survive their resident.
     static void discardStaging(const QString& root);

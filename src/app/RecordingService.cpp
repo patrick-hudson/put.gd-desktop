@@ -76,6 +76,17 @@ QJsonObject RecordingService::publicJson(const Session& s) const {
     if (s.overlayExcluded) o["overlayExcluded"] = *s.overlayExcluded;
     return o;
 }
+void RecordingService::invoke(const QString& mode, JsonReply reply) {
+    QString step = "raise";
+    if (!session_) step = "prepare";
+    else if (mode == "toggle" && session_->state == "ready") step = "start";
+    else if (mode == "toggle" && (session_->state == "recording" || session_->state == "paused")) step = "stop";
+    const auto params = step == "prepare" ? QJsonObject{{"target", QJsonObject{{"kind", "region"}}}, {"format", "mp4"}} : QJsonObject{{"id", session_->op.id}};
+    command(step, params, [step, reply](Error error, QJsonObject result) {
+        result["step"] = step;
+        reply(error, result);
+    });
+}
 void RecordingService::transition(Session& s, const QString& state, const QString& phase) {
     s.state = state;
     s.pending.clear();

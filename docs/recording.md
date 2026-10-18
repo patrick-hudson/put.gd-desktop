@@ -8,9 +8,11 @@ clip timeline, previews frames with masks, and exports MP4 (H.264, H.265), WebM
 (VP9), GIF and animated WebP with trim and timed masks; the agent path (CLI
 and MCP) is complete, and the drag selection, ready bounds, outside dimming
 and floating control bar are in place, and every Stop opens the private review
-window. A tray/hotkey entry point and Wayland acquisition (portal + `pipewiresrc`)
-is not implemented, so Wayland installations report `available: false` with
-reason `wayland_not_implemented`. Desktop acceptance evidence is recorded
+window. The tray's **Capture Screen Recording** entry, the dashboard's **Record
+screen** button and the `record` global shortcut start one (see "Tray and
+shortcut" below). Wayland acquisition (portal + `pipewiresrc`) is not
+implemented, so Wayland installations report `available: false` with reason
+`wayland_not_implemented`. Desktop acceptance evidence is recorded
 separately in `docs/verification.md` when it exists; nothing here claims it.
 
 ## Workflow
@@ -163,7 +165,23 @@ to the resident as events (`started`, `paused`, `resumed`, `stopped` with
 reason `user`, `cancelled`, `configChanged`), which the service applies to the
 same state machine the CLI drives; `recording.overlay` hides or shows the bar
 and `recording.raise` brings it forward. Stop and Cancel from the bar are
-mouse actions; a keyboard or tray stop route is not provided yet.
+mouse actions; the recording global shortcut is the keyboard stop route (see
+"Tray and shortcut").
+
+### Tray and shortcut
+
+`action.invoke {action: "record", mode?}` is the entry point behind the tray,
+the dashboard rail and the global shortcut (`actions.record.shortcut`, unbound
+by default; recorded in Settings → Shortcuts like the others). With no active
+recording it runs `recording.prepare` for a dragged region with the default
+configuration (MP4, no audio; the bar changes both before Record). With one
+active, mode `open` (the tray and the rail) raises the bar or review window,
+and mode `toggle` (the shortcut) starts a `ready` session, stops a `recording`
+or `paused` one, and otherwise raises. The reply carries the step taken
+(`prepare`, `start`, `stop`, `raise`) beside the command's own result. The MCP
+`perform_action` tool accepts `record` and the CLI passes `mode` through. An
+open image edit refuses the action with `editor_active`, as a recording refuses
+edits.
 
 ## Review window
 

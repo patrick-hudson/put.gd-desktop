@@ -52,7 +52,7 @@ such as `session_unavailable` and `config_conflict` retain their original envelo
 | Tool | Inputs / forwarded service | Effect |
 | --- | --- | --- |
 | `inspect` | capabilities, diagnostics, settings.get | Local metadata only; accepted non-secret config/path/revisions/status and redacted backend diagnostics |
-| `perform_action` | action region/window/desktop/clipboard → action.invoke | Acquires source; configured local save or public upload; may write clipboard result |
+| `perform_action` | action region/window/desktop/clipboard/edit/record → action.invoke | Acquires source; configured local save or public upload; may write clipboard result. `record` prepares a dragged-region recording (or raises the active one); drive it with the recording tools |
 | `get_operation` | id; kind operation/delete | operation.inspect or delete.inspect; local state |
 | `retry_operation` | id; stage upload/local_save/delete | operation.retry, operation.retryLocalSave, delete.retry; explicit stage effects |
 | `copy_result` | id → operation.copy | Copies retained result/receipt; no upload |

@@ -133,6 +133,7 @@ void OperationService::observe(const QJsonObject& document){
  {std::lock_guard lock(observationsMutex_);const auto existing=observations_.constFind(id);if(existing!=observations_.cend()&&*existing==document)return;observations_[id]=document;observationsDirty_.insert(id);if(!observationScheduled_){observationScheduled_=true;schedule=true;}}
  if(schedule){QPointer<OperationService> owner(this);QMetaObject::invokeMethod(this,[owner]{if(owner&&!owner->stopping_)owner->observationTimer_.start();},Qt::QueuedConnection);}
 }
+QString OperationService::recordingActiveId() const {return recording_->activeId();}
 QJsonArray OperationService::activeObservations() const {
  QJsonArray result;std::lock_guard lock(observationsMutex_);
  for(const auto& document:observations_)if(Operation::activeState(document["state"].toString()))result.append(document);
@@ -149,6 +150,14 @@ QJsonObject OperationService::currentObservation(QJsonObject document)const{
 }
 void OperationService::invoke(const QString& action,JsonReply reply,const QJsonObject& options) {
  if(!ready_) {reply(startupError_?startupError_:Error{"initializing","Journal recovery is in progress",{}},{});return;}
+ // Screen recording is its own session: the tray opens or raises it, a global
+ // shortcut toggles it (prepare, start, stop) so the keyboard can end a recording.
+ if(action==Settings::recordingActionName()) {
+  const auto mode=options["mode"].toString("open");
+  if((!options.isEmpty()&&!(options.size()==1&&options.contains("mode")))||(mode!="open"&&mode!="toggle")){reply({"invalid_request","The record action takes mode open or toggle",{}},{});return;}
+  if(editor_){reply({"editor_active","An edit is open; finish or cancel it before recording",{{"operationId",editingId_}}},{});return;}
+  recording_->invoke(mode,reply);return;
+ }
  if(!Settings::actionNames().contains(action)) {reply({"invalid_action","Unknown sharing action",{}},{});return;}
  // Edit & upload acquires from a chosen source, by default the native region
  // selector; every other action is its own source and takes no options.

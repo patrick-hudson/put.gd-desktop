@@ -99,6 +99,9 @@ QImage symbol(const QString& name,const QColor& color,int scale) {
   corners.moveTo(3,16);corners.lineTo(3,21);corners.lineTo(8,21);
   corners.moveTo(16,3);corners.lineTo(21,3);corners.lineTo(21,8);p.drawPath(corners);
   fill(color);QPainterPath pencil;pencil.moveTo(19,10);pencil.lineTo(22,13);pencil.lineTo(13,22);pencil.lineTo(9,23);pencil.lineTo(10,19);pencil.closeSubpath();p.drawPath(pencil);
+ } else if(name=="record") {
+  line(secondary,2.2);p.drawEllipse(QRectF(3.5,3.5,17,17));
+  fill(color);p.drawEllipse(QPointF(12,12),5,5);
  } else if(name=="select") {
   fill(color);QPainterPath pointer;pointer.moveTo(5,2);pointer.lineTo(19,13);pointer.lineTo(12.5,14);pointer.lineTo(16,21);pointer.lineTo(13,22.5);pointer.lineTo(9.5,15.5);pointer.lineTo(5,20);pointer.closeSubpath();p.drawPath(pointer);
  } else if(name=="redact") {

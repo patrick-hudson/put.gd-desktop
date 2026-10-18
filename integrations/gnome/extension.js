@@ -23,7 +23,7 @@ const CHUNK = 65536;
 // Capture sources the Shell can prepare; Edit & upload binds its own key and
 // prepares a native region selection.
 const SOURCES = ['region', 'window', 'desktop', 'clipboard'];
-const ACTIONS = [...SOURCES, 'edit'];
+const ACTIONS = [...SOURCES, 'edit', 'record'];
 const XML = `<node><interface name="${IFACE}">
 <method name="Hello"><arg type="s" direction="out"/></method>
 <method name="SetUiProcess"><arg type="u" direction="in"/><arg type="s" direction="out"/></method>
@@ -639,6 +639,12 @@ export default class PutgdExtension extends Extension {
             const sender = Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
                 'org.freedesktop.DBus', 'GetNameOwner', new GLib.Variant('(s)', [CLIENT]),
                 new GLib.VariantType('(s)'), Gio.DBusCallFlags.NONE, 1000, null).deep_unpack()[0];
+            // Recording selects its own region later; only the key press is relayed.
+            if (action === 'record') {
+                if (this._enabled)
+                    this._dbus.emit_signal('Action', new GLib.Variant('(ss)', [action, id]));
+                return;
+            }
             try {
                 await this._prepare(id, action === 'edit' ? 'region' : action, sender);
             } catch (error) {

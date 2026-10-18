@@ -58,9 +58,9 @@ ShortcutEditor::ShortcutEditor(QWidget* parent):QWidget(parent) {
  status_=new QLabel(this);status_->setObjectName("shortcutStatus");status_->setWordWrap(true);VisualStyle::role(status_,"muted");layout->addWidget(status_);
  recordingStatus_=new QLabel(this);recordingStatus_->setObjectName("shortcutRecordingStatus");recordingStatus_->setAccessibleName("Shortcut recording status");recordingStatus_->setWordWrap(true);VisualStyle::role(recordingStatus_,"status");layout->addWidget(recordingStatus_);recordingStatus_->hide();
  auto* form=new QFormLayout;VisualStyle::styleForm(form);layout->addLayout(form);
- const QHash<QString,QString> labels{{"region","Screen region"},{"window","Active window"},{"desktop","Full desktop"},{"clipboard","Clipboard"},{"edit","Screen region & edit"}};
+ const QHash<QString,QString> labels{{"region","Screen region"},{"window","Active window"},{"desktop","Full desktop"},{"clipboard","Clipboard"},{"edit","Screen region & edit"},{"record","Screen recording"}};
  const auto defaultActions=Settings::defaults()["actions"].toObject();
- for(const auto& action:Settings::actionNames()) {
+ for(const auto& action:Settings::invocableActionNames()) {
   auto* field=new QWidget(this);auto* fieldLayout=new QVBoxLayout(field);fieldLayout->setContentsMargins(0,0,0,0);fieldLayout->setSpacing(6);
   auto* row=new QHBoxLayout;fieldLayout->addLayout(row);
   auto* input=new QLineEdit(field);input->setObjectName("shortcut"+title(action));input->setAccessibleName(action+" shortcut");input->setReadOnly(true);input->setPlaceholderText("Disabled");input->setAccessibleDescription("Choose Record shortcut, press one key with modifiers, then release all keys. Escape cancels. Changes save automatically.");editors_[action]=input;row->addWidget(input,1);
@@ -147,7 +147,7 @@ void ShortcutEditor::setStatus(const QJsonObject& status) {
  else if(!status["available"].toBool())status_->setText("Global shortcuts are unavailable on this desktop. Check desktop support to restore shortcut bindings.");
  else status_->setText("Changes save automatically. Choose a shortcut to record a new combination.");
  const auto bindings=status["bindings"].toObject();
- for(const auto& action:Settings::actionNames()) {
+ for(const auto& action:Settings::invocableActionNames()) {
   auto* label=bindingStates_[action];const auto presentation=bindingPresentation(status,bindings[action].toObject());label->setText(presentation.text);label->setProperty("bindingTone",presentation.tone);VisualStyle::role(label,"binding");const auto entry=bindings[action].toObject();label->setVisible(!(entry["bound"].toBool()&&actualBinding(entry["actual"])==editors_[action]->text()&&entry["error"].toString().isEmpty()));
  }
  details_->setPlainText(QString::fromUtf8(QJsonDocument(status).toJson(QJsonDocument::Indented)));

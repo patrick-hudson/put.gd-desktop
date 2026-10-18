@@ -119,7 +119,7 @@ TrayController::TrayController(OperationService& operations,
   connect(native_.get(), &NativeTray::notificationActivated,this,&TrayController::openNotificationLink);
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action) {
-   if (Settings::actionNames().contains(action)) invokeAction(action);
+   if (Settings::invocableActionNames().contains(action)) invokeAction(action);
    else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
    else if (action == "edit-file") showView("editFile");
    else if (action == "settings") showSettings();
@@ -134,17 +134,21 @@ TrayController::TrayController(OperationService& operations,
  tray_ = new QSystemTrayIcon(VisualStyle::icon("tray"), this);
  menu_ = std::make_unique<QMenu>();
  tray_->setToolTip(idleTooltip);
- for (const auto& action : Settings::actionNames()) {
-  // QAction text treats a single & as a mnemonic marker; && shows one &.
-  auto* item = menu_->addAction(VisualStyle::icon(action), action == "clipboard" ? QString("Upload Clipboard") : action == "edit" ? QString("Capture region && edit") : "Capture " + action);
-  connect(item, &QAction::triggered, this, [this, action] {
-   invokeAction(action);
-  });
- }
+ // Capture entries first, in the order people reach for them; QAction text
+ // treats a single & as a mnemonic marker, so && shows one &.
+ const auto capture = [this](const QString& action, const QString& label) {
+  connect(menu_->addAction(VisualStyle::icon(action), label), &QAction::triggered, this, [this, action] { invokeAction(action); });
+ };
+ capture("region", "Capture Region");
+ capture("edit", "Capture Region && Edit");
+ capture("window", "Capture Window");
+ capture("desktop", "Capture Desktop");
+ capture("record", "Capture Screen Recording");
  // Other editor sources stay one level down so the menu does not grow.
- auto* editImage = menu_->addMenu(VisualStyle::icon("edit"), "Edit image");
+ auto* editImage = menu_->addMenu(VisualStyle::icon("edit"), "Edit Image");
  connect(editImage->addAction("From clipboard"), &QAction::triggered, this, [this] { invokeAction("edit", false, {{"source", "clipboard"}}); });
- connect(editImage->addAction("From a file..."), &QAction::triggered, this, [this] { showView("editFile"); });
+ connect(editImage->addAction("From file…"), &QAction::triggered, this, [this] { showView("editFile"); });
+ capture("clipboard", "Upload Clipboard");
  menu_->addSeparator();
  connect(menu_->addAction(VisualStyle::icon("preferences"), "Settings and setup"),
          &QAction::triggered, this, &TrayController::showSettings);
@@ -310,6 +314,8 @@ void TrayController::showView(const QString& view) {
 }
 void TrayController::invokeShortcut(const QString& action) { invokeAction(action, true); }
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
+ // The tray opens or raises a recording; its shortcut toggles it.
+ const auto effective = action == Settings::recordingActionName() && options.isEmpty() ? QJsonObject{{"mode", fromShortcut ? "toggle" : "open"}} : options;
  operations_.invoke(action, [guard = QPointer<TrayController>(this), fromShortcut](Error error, QJsonObject) {
   if (guard && error) {
    qWarning("Action rejected: %s", qPrintable(error.code));
@@ -324,7 +330,7 @@ void TrayController::invokeAction(const QString& action, bool fromShortcut, cons
    if (!fromShortcut) guard->showActivity();
    if (guard) guard->notifyFailure(error);
   }
- }, options);
+ }, effective);
 }
 #ifdef Q_OS_LINUX
 void TrayController::openNotificationLink(const QUrl& link) {

@@ -86,6 +86,7 @@ public:
  QString editingOperation() const {return editingId_;}
  // Relays one recording.* command to the shared recording service.
  void recordingCommand(const QString& command,const QJsonObject& params,JsonReply);
+ QString recordingActiveId() const;
  // Tests inject a fake backend; production installs the helper supervisor.
  void setRecordingBackend(std::unique_ptr<RecordingBackend> backend) {recording_->setBackend(std::move(backend));}
  RecordingService& recording() {return *recording_;}

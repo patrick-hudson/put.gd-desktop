@@ -42,15 +42,27 @@ bool folder(const QJsonValue& value, bool nullable) {
 QStringList Settings::actionNames() { return {"region", "window", "desktop", "clipboard", "edit"}; }
 QStringList Settings::requiredActionNames() { return {"region", "window", "desktop", "clipboard"}; }
 QString Settings::recordingActionName() { return QStringLiteral("record"); }
+QStringList Settings::invocableActionNames() { return actionNames() << recordingActionName(); }
 
 QJsonObject Settings::normalized(const QJsonObject& doc) {
     auto actions = doc["actions"].toObject();
-    if (!doc["actions"].isObject() || actions.contains("edit") || !actions["region"].isObject()) return doc;
-    // Edit & upload was added after schema 1 shipped. Older documents inherit the
-    // region output route with no shortcut; the user assigns a key explicitly.
-    auto edit = actions["region"].toObject();
-    edit["shortcut"] = QString{};
-    actions["edit"] = edit;
+    if (!doc["actions"].isObject() || !actions["region"].isObject()) return doc;
+    // Edit & upload and screen recording were added after schema 1 shipped.
+    // Older documents inherit the region output route with no shortcut; the
+    // user assigns a key explicitly. Edit copies the route; record keeps
+    // following it (a shortcut-only entry) until a document routes it itself.
+    bool changed = false;
+    if (!actions.contains("edit")) {
+        auto inherited = actions["region"].toObject();
+        inherited["shortcut"] = QString{};
+        actions["edit"] = inherited;
+        changed = true;
+    }
+    if (!actions.contains(recordingActionName())) {
+        actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
+        changed = true;
+    }
+    if (!changed) return doc;
     auto result = doc;
     result["actions"] = actions;
     return result;
@@ -65,6 +77,8 @@ QJsonObject Settings::defaults() {
             {"shortcut", action == "clipboard" || action == "edit" ? QString{} : QStringLiteral("Ctrl+Shift+%1").arg(shortcut)}};
         ++shortcut;
     }
+    // Recording keeps following the region route; only its key is its own.
+    actions[recordingActionName()] = QJsonObject{{"shortcut", QString{}}};
     auto documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     if (documents.isEmpty()) documents = QDir::homePath();
     return {{"schemaVersion", 1}, {"actions", actions}, {"profiles", QJsonArray{}},
@@ -142,11 +156,15 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     for (const auto& name : validatedActions) {
         const auto value = doc["actions"].toObject()[name];
         const auto action = value.toObject();
-        if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
+        // A shortcut-only record entry follows the region route.
+        const bool inheritedRecord = name == recordingActionName() && value.isObject() && keys(action, {"shortcut"});
+        if (inheritedRecord) {
+            if (!text(action["shortcut"], 0, 128)) return invalid("/actions/" + name, "Action fields or profile references are invalid.");
+        } else if (!value.isObject() || !(keys(action, {"destination", "profileId", "shortcut"}) || keys(action, {"destination", "profileId", "shortcut", "publicationMode"})) ||
             !choice(action["destination"], {"upload", "local", "default"}) || !text(action["shortcut"], 0, 128) ||
             !(action["profileId"].isNull() || (identifier(action["profileId"]) && profileIds.contains(action["profileId"].toString()))))
             return invalid("/actions/" + name, "Action fields or profile references are invalid.");
-        if(action["destination"]=="default"&&(!doc.contains("captureDefaults")||!action["profileId"].isNull()||action["publicationMode"].toString("default")!="default"))
+        if(!inheritedRecord&&action["destination"]=="default"&&(!doc.contains("captureDefaults")||!action["profileId"].isNull()||action["publicationMode"].toString("default")!="default"))
             return invalid("/actions/"+name,"Inherited actions need capture defaults and no separate output values.");
         if(action.contains("publicationMode") && !choice(action["publicationMode"],{"default","share","private"}))
             return invalid("/actions/"+name+"/publicationMode","Choose default, share or private publication.");
@@ -231,6 +249,12 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
 QJsonObject Settings::effectiveAction(const QJsonObject& original,const QString& name) {
     const auto doc=normalized(original);
     auto action=doc["actions"].toObject()[name].toObject();
+    if(name==recordingActionName()&&!action.contains("destination")) {
+        // A shortcut-only record entry follows the region route with its own key.
+        auto inherited=effectiveAction(doc,"region");
+        inherited["shortcut"]=action["shortcut"];
+        return inherited;
+    }
     if(action["destination"]=="default") {
         const auto output=doc["captureDefaults"].toObject();
         for(const auto& key:QStringList{"destination","profileId","publicationMode"})action[key]=output[key];
@@ -246,9 +270,9 @@ Settings Settings::fromValidated(const QJsonObject& original) {
         const auto action = effectiveAction(doc,name);
         settings.actions.insert(name, {action["destination"].toString(), action["profileId"].toString(), action["shortcut"].toString(),action["publicationMode"].toString("default")});
     }
-    // Recording inherits the region route unless the document defines its own.
-    const auto record = doc["actions"].toObject().contains(recordingActionName()) ? effectiveAction(doc, recordingActionName()) : effectiveAction(doc, "region");
-    settings.actions.insert(recordingActionName(), {record["destination"].toString(), record["profileId"].toString(), doc["actions"].toObject().contains(recordingActionName()) ? record["shortcut"].toString() : QString{}, record["publicationMode"].toString("default")});
+    // Recording follows the region route unless the document routes it itself (effectiveAction).
+    const auto record = effectiveAction(doc, recordingActionName());
+    settings.actions.insert(recordingActionName(), {record["destination"].toString(), record["profileId"].toString(), record["shortcut"].toString(), record["publicationMode"].toString("default")});
     for (const auto& entry : doc["profiles"].toArray()) settings.profiles.insert(entry.toObject()["id"].toString(), entry.toObject());
     const auto archive = doc["archive"].toObject();
     settings.archive.keepUploads = archive["keepUploads"].toBool();

@@ -97,14 +97,16 @@ void GnomeAdapter::helperChanged(){
  ready_=false;invalidateShortcutBindings();owner_.clear();helper_={};++revision_;cancelAll("helper_unavailable","GNOME helper disabled or Shell restarted");emit capabilitiesChanged();discover();
 }
 void GnomeAdapter::invalidateShortcutBindings(){
- bindings_={};for(const auto& action:Settings::actionNames()){
+ bindings_={};for(const auto& action:Settings::invocableActionNames()){
   const auto text=requested_.value(action);
   bindings_[action]=QJsonObject{{"requested",text},{"bound",false},{"error",text.isEmpty()?"disabled":"helper_unavailable"}};
  }
 }
 void GnomeAdapter::helperAction(const QString& action,const QString& ticket){
- if(!ready_||!Settings::actionNames().contains(action)||ticket.size()!=36)return;
+ if(!ready_||!Settings::invocableActionNames().contains(action)||ticket.size()!=36)return;
  if(recording_){release(ticket);return;}
+ // Recording prepares its own region later; the ticket carries no frozen source.
+ if(action==Settings::recordingActionName()){emit actionRequested(action);return;}
  hotkeyPrepared_[action].append(ticket);emit actionRequested(action);
  // Rejected actions do not leave unused frozen targets behind.
  if(hotkeyPrepared_[action].removeOne(ticket))release(ticket);
@@ -204,7 +206,7 @@ void GnomeAdapter::setShortcutRecording(bool active,std::function<void(Error)> r
 }
 void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
  const auto generation=++bindingGeneration_;QJsonObject entries;bindings_={};
- for(const auto& action:Settings::actionNames()){
+ for(const auto& action:Settings::invocableActionNames()){
   const auto saved=requested_.value(action);const auto text=recording_?QString{}:saved;
   const auto gtk=text.isEmpty()?QString{}:accelerator(text);QJsonObject entry{{"requested",saved},{"bound",false}};
   if(recording_)entry["state"]="recording";
@@ -216,13 +218,13 @@ void GnomeAdapter::applyShortcutBindings(std::function<void(Error)> reply){
   if(generation!=bindingGeneration_){if(reply)reply({"shortcut_recording_interrupted","Global shortcut configuration changed. Try recording again.",{}});return;}
   if(!ready_)invalidateShortcutBindings();else if(!error){
    bindings_=result["bindings"].toObject();
-   for(const auto& action:Settings::actionNames()){
+   for(const auto& action:Settings::invocableActionNames()){
     auto entry=bindings_[action].toObject();entry["requested"]=requested_.value(action);
     if(recording_){entry["state"]="recording";if(!entry["bound"].isBool()||entry["bound"].toBool())error={"shortcut_recording_failed","GNOME did not release all global shortcuts.",{}};}
     if(!recording_&&reply&&!requested_.value(action).isEmpty()&&!entry["bound"].toBool())error={"shortcut_restore_failed","A saved global shortcut could not be restored.",{}};
     bindings_[action]=entry;
    }
-  }else for(const auto& action:Settings::actionNames()){auto entry=bindings_[action].toObject();if(!entry.contains("error"))entry["error"]=error.code;bindings_[action]=entry;}
+  }else for(const auto& action:Settings::invocableActionNames()){auto entry=bindings_[action].toObject();if(!entry.contains("error"))entry["error"]=error.code;bindings_[action]=entry;}
   emit capabilitiesChanged();if(reply)reply(error);
  });
 }

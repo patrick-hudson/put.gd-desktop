@@ -450,11 +450,14 @@ private slots:
   }
   QCOMPARE(views, QStringList({"settings", "history", "activity", "about"}));
   // A single & would be eaten as a mnemonic marker in the menu.
-  QVERIFY(actionNamed(tray, "Capture region && edit"));
+  QVERIFY(actionNamed(tray, "Capture Region && Edit"));
+  // Capture entries come first in a fixed order, then the editor sources and the clipboard upload.
+  QStringList texts; for (auto* action : menu->actions()) { if (action->isSeparator()) break; texts.append(action->text()); }
+  QCOMPARE(texts, QStringList({"Capture Region", "Capture Region && Edit", "Capture Window", "Capture Desktop", "Capture Screen Recording", "Edit Image", "Upload Clipboard"}));
   // Other editor sources sit in one submenu; a file opens the main window's picker.
-  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit image") editImage = action->menu();
+  QMenu* editImage = nullptr; for (auto* action : menu->actions()) if (action->menu() && action->text() == "Edit Image") editImage = action->menu();
   QVERIFY(editImage); QCOMPARE(editImage->actions().size(), 2);
-  QCOMPARE(editImage->actions().at(1)->text(), QString("From a file...")); editImage->actions().at(1)->trigger();
+  QCOMPARE(editImage->actions().at(1)->text(), QString("From file…")); editImage->actions().at(1)->trigger();
   QCOMPARE(views.last(), QString("editFile"));
   QCOMPARE(QApplication::topLevelWidgets(), windows);
   QCOMPARE(quits, 0);
@@ -496,7 +499,7 @@ private slots:
    });
   });
   for (const auto& name : QStringList{"region", "window", "desktop", "clipboard"}) {
-   auto* action = actionNamed(tray, name == "clipboard" ? QString("Upload Clipboard") : "Capture " + name);
+   auto* action = actionNamed(tray, name == "clipboard" ? QString("Upload Clipboard") : "Capture " + name.left(1).toUpper() + name.mid(1));
    QVERIFY(action);
    action->trigger();
    QTRY_VERIFY(source.actions.contains(name));
@@ -572,7 +575,7 @@ private slots:
    controller.reset();
   }, [] {});
   auto* tray = controller->findChild<QSystemTrayIcon*>();
-  QPointer<QAction> action = actionNamed(tray, "Capture region");
+  QPointer<QAction> action = actionNamed(tray, "Capture Region");
   QVERIFY(action);
   action->trigger();
   QCOMPARE(opened, QString("activity"));
@@ -591,12 +594,31 @@ private slots:
   QStringList views;
   TrayController controller(operations, [&](const QString& view) { views.append(view); }, [] {});
   auto* tray = controller.findChild<QSystemTrayIcon*>();
-  auto* action = actionNamed(tray, "Capture region");
+  auto* action = actionNamed(tray, "Capture Region");
   QVERIFY(action);
   action->trigger();
   QTRY_COMPARE(views, QStringList({"activity"}));
   QVERIFY(source.actions.isEmpty());
  }
+ // The tray entry opens a recording (a dragged region) and raises it while one is
+ // active; the global shortcut toggles it: prepare, start, stop.
+ void recordingTrayEntryOpensAndRaisesWhileTheShortcutToggles() {
+  QTemporaryDir directory;ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});
+  QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;OperationService operations(directory.filePath("data"),settings,providers,source);QTRY_VERIFY(operations.ready());
+  auto fake=std::make_unique<FakeRecordingBackend>();auto* backend=fake.get();operations.setRecordingBackend(std::move(fake));
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  auto state=[&]{QString s;bool done=false;operations.recordingCommand("inspect",{{"id",operations.recordingActiveId()}},[&](Error,QJsonObject r){s=r["state"].toString();done=true;});for(int i=0;i<500&&!done;++i)QTest::qWait(10);return s;};
+  auto* entry=actionNamed(tray,"Capture Screen Recording");QVERIFY(entry);
+  entry->trigger();QTRY_VERIFY(backend->log.contains("prepare"));QTRY_COMPARE(state(),QString("ready"));
+  QCOMPARE(backend->lastConfig.format,QString("mp4"));
+  entry->trigger();QTRY_VERIFY(backend->log.contains("raise"));QCOMPARE(state(),QString("ready"));
+  controller.invokeShortcut("record");QTRY_COMPARE(state(),QString("recording"));
+  controller.invokeShortcut("record");QTRY_COMPARE(state(),QString("reviewing"));
+  const int raises=backend->log.count("raise");controller.invokeShortcut("record");QTRY_COMPARE(backend->log.count("raise"),raises+1);QCOMPARE(state(),QString("reviewing"));
+ }
+
  // A recording keeps the idle icon through capture, review and Save copy; Upload
  // turns it amber while the clip is encoded and saved, then the ordinary upload
  // feedback takes over: dark green filling up, bright green on completion.
