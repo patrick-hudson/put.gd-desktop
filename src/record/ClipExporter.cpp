@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QStringList>
 #include <algorithm>
+#include <vector>
 #include <cstring>
 #include <memory>
 extern "C" {
@@ -438,26 +439,69 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
 namespace {
 void boxBlur(QImage& image, const QRect& rect, int radius) {
     // Two passes of a separable box filter inside rect, close to boxblur power=2.
-    for (int pass = 0; pass < 2; ++pass) {
-        QImage copy = image;
-        for (int y = rect.top(); y <= rect.bottom(); ++y) {
-            const auto* src = reinterpret_cast<const QRgb*>(copy.constScanLine(y));
-            auto* dst = reinterpret_cast<QRgb*>(image.scanLine(y));
-            for (int x = rect.left(); x <= rect.right(); ++x) {
-                int r = 0, g = 0, b = 0, n = 0;
-                for (int k = std::max(rect.left(), x - radius); k <= std::min(rect.right(), x + radius); ++k) { r += qRed(src[k]); g += qGreen(src[k]); b += qBlue(src[k]); ++n; }
-                dst[x] = qRgb(r / n, g / n, b / n);
-            }
+    // Prefix sums make each output pixel one subtraction per channel, so the
+    // cost no longer grows with the radius; only the rect is copied.
+    const int w = rect.width(), h = rect.height();
+    if (w < 1 || h < 1) return;
+    std::vector<int> sumR(size_t(std::max(w, h)) + 1), sumG(sumR.size()), sumB(sumR.size());
+    auto average = [&](int count, int lo, int hi, QRgb* out) {
+        // [lo, hi] clamped to the line, like the clamped window of the direct filter.
+        for (int i = 0; i < count; ++i) {
+            const int a = std::max(0, i - radius), b = std::min(count - 1, i + radius), n = b - a + 1;
+            out[i] = qRgb((sumR[b + 1] - sumR[a]) / n, (sumG[b + 1] - sumG[a]) / n, (sumB[b + 1] - sumB[a]) / n);
         }
-        copy = image;
+        Q_UNUSED(lo); Q_UNUSED(hi);
+    };
+    std::vector<QRgb> line(size_t(std::max(w, h)));
+    for (int pass = 0; pass < 2; ++pass) {
+        for (int y = rect.top(); y <= rect.bottom(); ++y) {
+            auto* row = reinterpret_cast<QRgb*>(image.scanLine(y)) + rect.left();
+            sumR[0] = sumG[0] = sumB[0] = 0;
+            for (int x = 0; x < w; ++x) { sumR[x + 1] = sumR[x] + qRed(row[x]); sumG[x + 1] = sumG[x] + qGreen(row[x]); sumB[x + 1] = sumB[x] + qBlue(row[x]); }
+            average(w, 0, w - 1, row);
+        }
         for (int x = rect.left(); x <= rect.right(); ++x) {
-            for (int y = rect.top(); y <= rect.bottom(); ++y) {
-                int r = 0, g = 0, b = 0, n = 0;
-                for (int k = std::max(rect.top(), y - radius); k <= std::min(rect.bottom(), y + radius); ++k) { const QRgb p = reinterpret_cast<const QRgb*>(copy.constScanLine(k))[x]; r += qRed(p); g += qGreen(p); b += qBlue(p); ++n; }
-                reinterpret_cast<QRgb*>(image.scanLine(y))[x] = qRgb(r / n, g / n, b / n);
-            }
+            sumR[0] = sumG[0] = sumB[0] = 0;
+            for (int y = 0; y < h; ++y) { const QRgb p = reinterpret_cast<const QRgb*>(image.constScanLine(rect.top() + y))[x]; sumR[y + 1] = sumR[y] + qRed(p); sumG[y + 1] = sumG[y] + qGreen(p); sumB[y + 1] = sumB[y] + qBlue(p); }
+            average(h, 0, h - 1, line.data());
+            for (int y = 0; y < h; ++y) reinterpret_cast<QRgb*>(image.scanLine(rect.top() + y))[x] = line[size_t(y)];
         }
     }
+}
+}
+namespace {
+// Convert into a frame FFmpeg allocates with its own alignment and padding:
+// libswscale's SIMD paths write whole vectors, so a row that is not a
+// multiple of 16 pixels overruns a tightly sized buffer on its last row.
+Error frameToImage(const AVFrame* chosen, QImage& image) {
+    const int width = chosen->width, height = chosen->height;
+    FramePtr rgb(av_frame_alloc());
+    rgb->format = AV_PIX_FMT_BGRA;
+    rgb->width = width;
+    rgb->height = height;
+    if (av_frame_get_buffer(rgb.get(), 64) < 0) return {"recording_export_failed", "Cannot allocate the frame", {}};
+    SwsContext* scaler = sws_getContext(width, height, AVPixelFormat(chosen->format), width, height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
+    if (!scaler) return {"recording_export_failed", "Cannot convert the frame", {}};
+    sws_scale(scaler, chosen->data, chosen->linesize, 0, height, rgb->data, rgb->linesize);
+    sws_freeContext(scaler);
+    image = QImage(width, height, QImage::Format_RGB32);
+    for (int y = 0; y < height; ++y) std::memcpy(image.scanLine(y), rgb->data[0] + qint64(y) * rgb->linesize[0], size_t(width) * 4);
+    return {};
+}
+// The masks active at frameUs, drawn the way the export renders them.
+void applyMasks(QImage& image, const RecordingEdit& edit, qint64 frameUs, const QSize& canvas) {
+    const QRect bounds(QPoint(0, 0), canvas.isEmpty() ? image.size() : canvas);
+    for (const auto& mask : edit.masks) {
+        if (!(mask.start <= frameUs && frameUs < mask.end)) continue;
+        const auto r = mask.rect.intersected(bounds).intersected(image.rect());
+        if (r.width() < 2 || r.height() < 2) continue;
+        if (mask.kind == "solid") { QPainter painter(&image); painter.fillRect(r, Qt::black); }
+        else boxBlur(image, r, std::clamp(mask.strength, 2, std::max(2, std::min(r.width(), r.height()) / 2 - 1)));
+    }
+}
+QImage fitPreview(const QImage& image, int maxEdge) {
+    const auto size = recording::outputSize(image.size(), maxEdge);
+    return size == image.size() ? image : image.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
 }
 Error previewFrame(const QString& path, const RecordingEdit& edit, const RecordingConfig& config, qint64 timeUs, int maxEdge, const QSize& canvas, QImage& out, qint64* actualTimeUs) {
@@ -489,34 +533,69 @@ Error previewFrame(const QString& path, const RecordingEdit& edit, const Recordi
         }
     }
     if (!chosen) return {"recording_export_failed", "No frame could be decoded at this time", {}};
-    const int width = chosen->width, height = chosen->height;
-    // Convert into a frame FFmpeg allocates with its own alignment and padding:
-    // libswscale's SIMD paths write whole vectors, so a row that is not a
-    // multiple of 16 pixels overruns a tightly sized buffer on its last row.
-    FramePtr rgb(av_frame_alloc());
-    rgb->format = AV_PIX_FMT_BGRA;
-    rgb->width = width;
-    rgb->height = height;
-    if (av_frame_get_buffer(rgb.get(), 64) < 0) return {"recording_export_failed", "Cannot allocate the frame", {}};
-    SwsContext* scaler = sws_getContext(width, height, AVPixelFormat(chosen->format), width, height, AV_PIX_FMT_BGRA, SWS_BILINEAR, nullptr, nullptr, nullptr);
-    if (!scaler) return {"recording_export_failed", "Cannot convert the frame", {}};
-    sws_scale(scaler, chosen->data, chosen->linesize, 0, height, rgb->data, rgb->linesize);
-    sws_freeContext(scaler);
-    QImage image(width, height, QImage::Format_RGB32);
-    for (int y = 0; y < height; ++y) std::memcpy(image.scanLine(y), rgb->data[0] + qint64(y) * rgb->linesize[0], size_t(width) * 4);
+    QImage image;
+    if (auto e = frameToImage(chosen.get(), image)) return e;
     const auto frameUs = av_rescale_q(chosen->best_effort_timestamp - origin, timeBase, microseconds);
     if (actualTimeUs) *actualTimeUs = frameUs;
-    const QRect bounds(QPoint(0, 0), canvas.isEmpty() ? image.size() : canvas);
-    for (const auto& mask : edit.masks) {
-        if (!(mask.start <= frameUs && frameUs < mask.end)) continue;
-        const auto r = mask.rect.intersected(bounds).intersected(image.rect());
-        if (r.width() < 2 || r.height() < 2) continue;
-        if (mask.kind == "solid") { QPainter painter(&image); painter.fillRect(r, Qt::black); }
-        else boxBlur(image, r, std::clamp(mask.strength, 2, std::max(2, std::min(r.width(), r.height()) / 2 - 1)));
-    }
-    const auto size = recording::outputSize(image.size(), maxEdge);
-    out = size == image.size() ? image : image.scaled(size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    applyMasks(image, edit, frameUs, canvas);
+    out = fitPreview(image, maxEdge);
     Q_UNUSED(config);
     return {};
+}
+
+struct FrameSequence::Private {
+    Input input;
+    PacketPtr packet{av_packet_alloc()};
+    FramePtr frame{av_frame_alloc()};
+    AVRational timeBase{1, 1};
+    qint64 origin = 0, startTarget = 0;
+    bool ended = false, flushed = false;
+};
+FrameSequence::FrameSequence() : d_(std::make_unique<Private>()) {}
+FrameSequence::~FrameSequence() = default;
+Error FrameSequence::open(const QString& path, qint64 startUs) {
+    d_ = std::make_unique<Private>();
+    if (auto e = d_->input.open(path, false)) return e;
+    d_->input.seekTo(startUs, path, false);
+    if (!d_->input.format) return fail("recording_export_failed", "Cannot reopen the working clip");
+    const auto* stream = d_->input.format->streams[d_->input.videoIndex];
+    d_->timeBase = stream->time_base;
+    d_->origin = streamOrigin(stream);
+    d_->startTarget = d_->origin + av_rescale_q(startUs, microseconds, d_->timeBase);
+    return {};
+}
+bool FrameSequence::next(const RecordingEdit& edit, int maxEdge, const QSize& canvas, QImage& out, qint64& frameUs, Error* error, const std::function<bool(qint64)>& wanted) {
+    auto& d = *d_;
+    auto report = [&](const Error& e) { if (error) *error = e; d.ended = true; return false; };
+    while (!d.ended) {
+        int rc = avcodec_receive_frame(d.input.video, d.frame.get());
+        if (rc == AVERROR(EAGAIN)) {
+            if (d.flushed) { d.ended = true; break; }
+            rc = d.input.read(d.packet.get());
+            if (rc == AVERROR_EOF) { avcodec_send_packet(d.input.video, nullptr); d.flushed = true; continue; }
+            if (rc < 0) return report(fail("recording_export_failed", "Reading the working clip failed", rc));
+            if (d.packet->stream_index != d.input.videoIndex) { av_packet_unref(d.packet.get()); continue; }
+            rc = avcodec_send_packet(d.input.video, d.packet.get());
+            av_packet_unref(d.packet.get());
+            if (rc < 0 && rc != AVERROR(EAGAIN)) return report(fail("recording_export_failed", "Decoding failed", rc));
+            continue;
+        }
+        if (rc == AVERROR_EOF) { d.ended = true; break; }
+        if (rc < 0) return report(fail("recording_export_failed", "Decoding failed", rc));
+        const auto pts = d.frame->best_effort_timestamp;
+        // A backward seek decodes from the keyframe before the start; skip up to it.
+        if (pts < d.startTarget) { av_frame_unref(d.frame.get()); continue; }
+        const auto at = av_rescale_q(pts - d.origin, d.timeBase, microseconds);
+        if (wanted && !wanted(at)) { av_frame_unref(d.frame.get()); continue; }
+        QImage image;
+        const auto converted = frameToImage(d.frame.get(), image);
+        av_frame_unref(d.frame.get());
+        if (converted) return report(converted);
+        frameUs = av_rescale_q(pts - d.origin, d.timeBase, microseconds);
+        applyMasks(image, edit, frameUs, canvas);
+        out = fitPreview(image, maxEdge);
+        return true;
+    }
+    return false;
 }
 }

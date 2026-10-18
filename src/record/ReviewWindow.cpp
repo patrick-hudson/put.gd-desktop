@@ -11,9 +11,12 @@
 #include <QListWidget>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPointer>
 #include <QPushButton>
 #include <QSlider>
 #include <QSpinBox>
+#include <QThread>
+#include <QElapsedTimer>
 #include <QVBoxLayout>
 #include <algorithm>
 
@@ -82,12 +85,19 @@ void FrameView::paintEvent(QPaintEvent*) {
         painter.drawText(r.adjusted(4, 2, -4, -2), Qt::AlignTop | Qt::AlignLeft, mask.kind == "solid" ? QStringLiteral("solid") : QStringLiteral("blur"));
         if (mask.id == selected_) { painter.setBrush(QColor("#9bbcff")); painter.setPen(Qt::NoPen); painter.drawRect(QRectF(r.right() - handleSize, r.bottom() - handleSize, handleSize, handleSize)); }
     }
+    if (drag_ == Drag::Create) {
+        // The area being dragged, clipped to the frame like the mask it becomes.
+        const auto pending = QRectF(anchor_, current_).normalized().intersected(target);
+        painter.setPen(QPen(QColor("#9bbcff"), 1.5, Qt::DashLine));
+        painter.setBrush(armed_ == "solid" ? QBrush(QColor(0, 0, 0, 120)) : QBrush(QColor(155, 188, 255, 70)));
+        painter.drawRect(pending);
+    }
     if (!armed_.isEmpty()) { painter.setPen(Qt::white); painter.drawText(rect().adjusted(8, 8, -8, -8), Qt::AlignTop | Qt::AlignLeft, QStringLiteral("Drag on the frame to place the %1 area").arg(armed_)); }
 }
 void FrameView::mousePressEvent(QMouseEvent* e) {
     if (e->button() != Qt::LeftButton) return;
     const auto p = e->position();
-    if (!armed_.isEmpty()) { drag_ = Drag::Create; anchor_ = p; return; }
+    if (!armed_.isEmpty()) { drag_ = Drag::Create; anchor_ = p; current_ = p; update(); return; }
     for (auto it = masks_.rbegin(); it != masks_.rend(); ++it) {
         const auto r = toView(it->rect);
         if (it->id == selected_ && QRectF(r.right() - handleSize - 2, r.bottom() - handleSize - 2, handleSize + 4, handleSize + 4).contains(p)) { drag_ = Drag::Resize; anchor_ = p; original_ = it->rect; return; }
@@ -100,7 +110,7 @@ void FrameView::mousePressEvent(QMouseEvent* e) {
 void FrameView::mouseMoveEvent(QMouseEvent* e) {
     if (drag_ == Drag::None) return;
     const auto p = e->position();
-    if (drag_ == Drag::Create) { update(); return; }
+    if (drag_ == Drag::Create) { current_ = p; update(); return; }
     const QPointF delta = toCanvas(p) - toCanvas(anchor_);
     auto mask = std::find_if(masks_.begin(), masks_.end(), [&](const RecordingMask& m) { return m.id == selected_; });
     if (mask == masks_.end()) return;
@@ -139,9 +149,20 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     view_->setCanvas(options.canvas);
     root->addWidget(view_, 1);
     auto* scrub = new QHBoxLayout;
+    play_ = new QPushButton("Play", this);
+    play_->setObjectName("play");
+    play_->setToolTip("Play the retained part silently (Space)");
+    play_->setShortcut(Qt::Key_Space);
     time_ = new QLabel("0:00.00", this);
     scrubber_ = new QSlider(Qt::Horizontal, this);
     scrubber_->setRange(0, int(std::max<qint64>(1, options.durationUs / 1000) - 1));
+    speed_ = new QComboBox(this);
+    speed_->setObjectName("speed");
+    speed_->setToolTip("Playback speed of the preview");
+    for (const auto& [label, factor] : std::initializer_list<std::pair<const char*, double>>{{"0.5×", 0.5}, {"1×", 1.0}, {"2×", 2.0}, {"4×", 4.0}}) speed_->addItem(QString::fromUtf8(label), factor);
+    speed_->setCurrentIndex(1);
+    scrub->addWidget(play_);
+    scrub->addWidget(speed_);
     scrub->addWidget(time_);
     scrub->addWidget(scrubber_, 1);
     root->addLayout(scrub);
@@ -202,6 +223,10 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     frameTimer_.setInterval(qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") > 0 ? qEnvironmentVariableIntValue("PUTGD_RECORD_REVIEW_DELAY_MS") : 60);
     connect(&frameTimer_, &QTimer::timeout, this, &ReviewWindow::refreshFrame);
     connect(scrubber_, &QSlider::valueChanged, this, [this] { refreshLabels(); frameTimer_.start(); });
+    connect(scrubber_, &QSlider::sliderPressed, this, &ReviewWindow::stopPlayback);
+    connect(play_, &QPushButton::clicked, this, [this] { if (playing_) stopPlayback(); else startPlayback(); });
+    connect(speed_, &QComboBox::currentIndexChanged, this, [this] { if (playing_) { stopPlayback(); startPlayback(); } });
+    for (auto* button : {trimStart_, trimEnd_, resetTrim_, addBlur_, addSolid_, removeMask_, maskStart_, maskEnd_, upload_, save_, cancel_}) connect(button, &QPushButton::clicked, this, &ReviewWindow::stopPlayback);
     connect(trimStart_, &QPushButton::clicked, this, [this] { const qint64 at = qint64(scrubber_->value()) * 1000; const auto end = edit_.exportEnd(options_.durationUs); if (at >= end) { showError("Trim start must be before the trim end"); return; } propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(at)}, {"end", edit_.trimEnd ? QJsonValue(double(*edit_.trimEnd)) : QJsonValue(QJsonValue::Null)}}}); });
     connect(trimEnd_, &QPushButton::clicked, this, [this] { const qint64 at = qint64(scrubber_->value()) * 1000; if (at <= edit_.trimStart) { showError("Trim end must be after the trim start"); return; } propose(QJsonArray{QJsonObject{{"op", "setTrim"}, {"start", double(edit_.trimStart)}, {"end", double(at)}}}); });
     connect(resetTrim_, &QPushButton::clicked, this, [this] { propose(QJsonArray{QJsonObject{{"op", "resetTrim"}}}); });
@@ -289,8 +314,9 @@ void ReviewWindow::setConfig(const RecordingConfig& config) {
     refreshLabels();
 }
 void ReviewWindow::setExporting(bool exporting, const QString& label) {
+    stopPlayback();
     exporting_ = exporting;
-    for (auto* w : std::initializer_list<QWidget*>{upload_, save_, cancel_, trimStart_, trimEnd_, resetTrim_, addBlur_, addSolid_, removeMask_, maskStart_, maskEnd_, strength_, format_}) w->setEnabled(!exporting);
+    for (auto* w : std::initializer_list<QWidget*>{upload_, save_, cancel_, trimStart_, trimEnd_, resetTrim_, addBlur_, addSolid_, removeMask_, maskStart_, maskEnd_, strength_, format_, play_, speed_}) w->setEnabled(!exporting);
     status_->setText(label);
 }
 void ReviewWindow::showError(const QString& message) { status_->setText(message); }
@@ -329,6 +355,73 @@ void ReviewWindow::refreshFrame() {
     if (auto e = previewFrame(options_.workingClip, edit_, config_, at, 1280, options_.canvas, image, &actual)) { debugLog("review: preview failed " + e.message); return; }
     view_->setFrame(image, at);
     debugLog(QStringLiteral("review: frame %1x%2").arg(image.width()).arg(image.height()));
+}
+void ReviewWindow::startPlayback() {
+    if (exporting_ || playing_) return;
+    const qint64 end = edit_.exportEnd(options_.durationUs);
+    qint64 start = qint64(scrubber_->value()) * 1000;
+    // At or past the retained end, play the retained part again from its start.
+    if (start >= end - 1 || start < edit_.trimStart) start = edit_.trimStart;
+    playing_ = true;
+    play_->setText("Pause");
+    status_->setText("Playing the retained part (silent preview; the export keeps the audio)");
+    auto stop = std::make_shared<std::atomic_bool>(false);
+    playStop_ = stop;
+    QPointer<ReviewWindow> guard(this);
+    const QString clip = options_.workingClip;
+    const QSize canvas = options_.canvas;
+    const auto edit = edit_;
+    const double speed = std::max(0.1, speed_->currentData().toDouble());
+    auto* thread = QThread::create([guard, stop, clip, canvas, edit, start, end, speed] {
+        FrameSequence frames;
+        bool reachedEnd = false;
+        if (!frames.open(clip, start)) {
+            QElapsedTimer clock;
+            clock.start();
+            QImage image;
+            qint64 frameUs = 0, shownAt = -1;
+            // Clip time the wall clock has reached at this speed.
+            const auto due = [&] { return start + qint64(clock.elapsed() * 1000 * speed); };
+            // Frames already more than a frame behind the clock are decoded but not
+            // drawn, unless nothing has been drawn for a quarter second, so a slow
+            // machine or a large clip plays at speed with dropped frames.
+            const auto wanted = [&](qint64 at) { return at >= end || at + 40000 >= due() || shownAt < 0 || at - shownAt >= 250000; };
+            while (!stop->load() && frames.next(edit, 1280, canvas, image, frameUs, nullptr, wanted)) {
+                if (frameUs >= end) { reachedEnd = true; break; }
+                while (!stop->load() && due() < frameUs) QThread::msleep(4);
+                if (stop->load()) break;
+                shownAt = frameUs;
+                QMetaObject::invokeMethod(guard, [guard, image, frameUs] {
+                    if (!guard || !guard->playing_) return;
+                    guard->view_->setFrame(image, frameUs);
+                    guard->scrubber_->blockSignals(true);
+                    guard->scrubber_->setValue(int(frameUs / 1000));
+                    guard->scrubber_->blockSignals(false);
+                    guard->refreshLabels();
+                }, Qt::QueuedConnection);
+            }
+            if (!stop->load() && !reachedEnd) reachedEnd = true;
+        }
+        QMetaObject::invokeMethod(guard, [guard, stop, reachedEnd, end] {
+            if (!guard || guard->playStop_ != stop) return;
+            guard->stopPlayback();
+            if (reachedEnd) guard->scrubber_->setValue(int(std::max<qint64>(0, end - 1) / 1000));
+        }, Qt::QueuedConnection);
+    });
+    playThread_ = thread;
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    thread->start();
+}
+void ReviewWindow::stopPlayback() {
+    if (playStop_) playStop_->store(true);
+    if (!playing_) return;
+    playing_ = false;
+    play_->setText("Play");
+    refreshLabels();
+}
+ReviewWindow::~ReviewWindow() {
+    if (playStop_) playStop_->store(true);
+    if (playThread_) playThread_->wait();
 }
 void ReviewWindow::closeEvent(QCloseEvent* e) {
     // Closing the window is a discard; nothing was uploaded.

@@ -158,6 +158,7 @@ manager and stay on top, so the desktop inside and outside stays usable and
 the capture never sees them.
 
 The control bar shows a state dot (green ready, red recording, amber paused),
+a green Record button before capture and a red Stop button during it,
 the retained time, the target, a system-audio checkbox and a format/codec
 choice (editable only before Record; GIF/WebP disable audio), and Record,
 Pause/Resume, Stop and Cancel. Its actions run in the helper and are reported
@@ -193,7 +194,14 @@ solid cover" (then drag on the frame), "Remove", "Mask starts here" / "Mask
 ends here" and the blur strength, an output format choice (GIF/WebP drop
 audio; the capture rate cannot change), and Save copy… / Discard / Upload.
 Previews are rendered in the helper by the same `previewFrame` the CLI and
-MCP preview use, so timing and placement agree with the export.
+MCP preview use, so timing and placement agree with the export. While a mask
+is being dragged the pending area is drawn as a dashed rubber band. Play /
+Pause (Space) plays the retained interval silently from the scrubber at the
+chosen speed (0.5×, 1×, 2×, 4×): frames are decoded in order on a worker by
+`FrameSequence`, masks applied as the export renders them, and shown at their
+clip time; frames that fall behind the clock are decoded but not drawn, so a
+large clip keeps pace with dropped frames. Scrubbing or any edit control
+pauses playback; the audio track is not previewed (the export keeps it).
 
 The window never owns the edit: each change is proposed to the resident as an
 `edit {revision, commands}` event, the resident applies it to the authoritative

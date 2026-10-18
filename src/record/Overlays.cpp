@@ -55,8 +55,10 @@ QComboBox::drop-down { border: none; width: 18px; }
 QComboBox QAbstractItemView { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; selection-background-color: #3a4150; selection-color: #ffffff; outline: none; }
 QPushButton { background: #2a2f3a; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 4px 12px; }
 QPushButton:hover { background: #343a47; }
-QPushButton#record { background: #c62828; color: white; border-color: #e53935; }
-QPushButton#stop { background: #3a4150; }
+QPushButton#record { background: #2e7d32; color: white; border-color: #43a047; }
+QPushButton#record:hover { background: #388e3c; }
+QPushButton#stop { background: #c62828; color: white; border-color: #e53935; }
+QPushButton#stop:hover { background: #d32f2f; }
 QPushButton:disabled { color: #6f7685; background: #1c1f26; }
 )QSS";
 }

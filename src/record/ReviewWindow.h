@@ -6,7 +6,9 @@
 #include <QRect>
 #include <QTimer>
 #include <QWidget>
+#include <atomic>
 #include <functional>
+#include <memory>
 
 class QComboBox;
 class QLabel;
@@ -14,6 +16,7 @@ class QListWidget;
 class QPushButton;
 class QSlider;
 class QSpinBox;
+class QThread;
 
 namespace putgd::record {
 // Paints the preview frame scaled to fit and lets the user create, select,
@@ -46,7 +49,7 @@ private:
     QList<RecordingMask> masks_;
     QString selected_, armed_;
     enum class Drag { None, Create, Move, Resize } drag_ = Drag::None;
-    QPointF anchor_;
+    QPointF anchor_, current_;
     QRect original_;
 };
 
@@ -74,6 +77,11 @@ protected:
     void closeEvent(QCloseEvent*) override;
 private:
     void refreshFrame();
+    // Silent playback of the retained interval from the scrubber: frames are
+    // decoded in order on a worker and shown at their clip time; any scrub or
+    // edit control pauses it. The export preview has no audio path.
+    void startPlayback();
+    void stopPlayback();
     void refreshMaskList();
     void refreshLabels();
     void propose(const QJsonArray& commands);
@@ -85,6 +93,11 @@ private:
     FrameView* view_ = nullptr;
     QSlider* scrubber_ = nullptr;
     QLabel *time_ = nullptr, *retained_ = nullptr, *status_ = nullptr, *maskTimes_ = nullptr;
+    QPushButton* play_ = nullptr;
+    QComboBox* speed_ = nullptr;
+    QThread* playThread_ = nullptr;
+    std::shared_ptr<std::atomic_bool> playStop_;
+    bool playing_ = false;
     QPushButton *trimStart_ = nullptr, *trimEnd_ = nullptr, *resetTrim_ = nullptr, *addBlur_ = nullptr, *addSolid_ = nullptr, *removeMask_ = nullptr, *maskStart_ = nullptr, *maskEnd_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     QSpinBox* strength_ = nullptr;
     QComboBox* format_ = nullptr;
@@ -92,5 +105,7 @@ private:
     QString selectedMask_;
     QTimer frameTimer_;
     bool exporting_ = false, closing_ = false;
+public:
+    ~ReviewWindow() override;
 };
 }
