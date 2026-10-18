@@ -201,17 +201,16 @@ automated build/package class and do not establish current desktop certification
 Retain curated logs/parameters without credentials or private login/payload data.
 Flatpak is deferred to issue #14.
 
-`main` is stable source and `nightly` the development integration branch. Read the
-release runbook before branch/tag operations. Main pushes automatically fast-forward
-nightly; schedule/manual coordination also catches it up. Never force divergent
-history into alignment: reconcile it through a reviewed merge. Inspect existing runs and immutable
-source identities before dispatching; a scheduled controller can have a main head
-different from its pinned nightly source. Build and package producer evidence must
-match the actual source. Preserve the first preparation and original package
-handoffs on retries. Missing evidence or byte conflicts remain failures; never
-retag unchanged source, replace public assets or treat a draft as successful.
-Use the shared CI implementation for both branches, preserving all valuable
-checks when removing duplicate compilation. Future update-channel UI is separate work.
+`nightly` is the default branch and trunk; `main` is the release branch. Branch
+from `nightly` and target it with every pull request. Promotion to `main` is a
+`release: vX.Y.Z` pull request from `nightly`, opened with
+`tools/releases/promote.py --open`; its merge cuts the next candidate. Stable is a
+manual Release run on a candidate commit, followed by a pull request into `nightly`
+that starts the next version. Read the release runbook before branch or tag work.
+Never force-push either branch or move a published tag. Nightly, release and CI
+jobs run in one workflow run each; publication waits on `needs:` rather than on
+evidence from another workflow. Inspect existing runs and drafts before rerunning,
+and never retag unchanged source, replace public assets or treat a draft as published.
 
 When only publication fails, inspect the failed job and existing draft before
 retrying. Reuse the verified package artifacts with a failed-job rerun when their

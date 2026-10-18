@@ -1,96 +1,150 @@
-"""Hosted workflow boundaries; actionlint separately parses the workflow syntax."""
+"""Hosted workflow boundaries. actionlint in the contracts job parses the syntax."""
 from pathlib import Path
+import re
 import unittest
-import os
-import subprocess
-import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
+WORKFLOWS = ROOT / '.github/workflows'
 
 
-class ReleaseChannels(unittest.TestCase):
-    def test_appimage_installer_uses_external_logging_configuration(self):
-        release = (ROOT / '.github/workflows/release.yml').read_text()
-        appimage = release.split('  appimage:\n', 1)[1].split('  publish:\n', 1)[0]
-        install = appimage.split('      - uses: jurplel/install-qt-action@', 1)[1]
-        install = install.split('      - name:', 1)[0]
-        self.assertIn('LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini', install)
+def workflow(name):
+    return (WORKFLOWS / name).read_text()
 
-    def test_existing_build_and_package_proofs_remain(self):
-        build = (ROOT / '.github/workflows/build.yml').read_text()
-        release = (ROOT / '.github/workflows/release.yml').read_text()
-        for text in ('cmake --preset dev', 'ctest --preset dev --parallel 2',
-                     "distribution: ['24.04', '26.04']", 'os: [windows-2022, macos-14]',
-                     'cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH='):
-            self.assertIn(text, build)
+
+def job(text, name):
+    """Return one top-level job's block, from its key to the next job key."""
+    match = re.search(r'^  ' + re.escape(name) + r':\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)', text, re.S | re.M)
+    if not match:
+        raise AssertionError('missing job ' + name)
+    return match[1]
+
+
+class Workflows(unittest.TestCase):
+    def test_exactly_four_workflows_and_no_tag_or_cross_workflow_triggers(self):
+        self.assertEqual(sorted(path.name for path in WORKFLOWS.glob('*.yml')),
+                         ['ci.yml', 'nightly.yml', 'package.yml', 'release.yml'])
+        for path in WORKFLOWS.glob('*.yml'):
+            text = path.read_text()
+            with self.subTest(workflow=path.name):
+                self.assertNotIn('tags:', text)
+                self.assertNotIn('/dispatches', text)
+                self.assertNotIn('gh workflow run', text)
+
+    def test_every_action_is_pinned_to_a_full_commit(self):
+        for path in WORKFLOWS.glob('*.yml'):
+            for line in path.read_text().splitlines():
+                use = re.match(r'\s+(?:- )?uses: (\S+)', line)
+                if use and not use[1].startswith('./'):
+                    with self.subTest(workflow=path.name, action=use[1]):
+                        self.assertRegex(use[1], r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@[0-9a-f]{40}$')
+
+    def test_ci_runs_on_pull_requests_and_nightly_pushes_with_one_required_summary(self):
+        ci = workflow('ci.yml')
+        self.assertIn('  pull_request:\n', ci)
+        self.assertIn('  push:\n    branches: [nightly]\n', ci)
+        self.assertRegex(ci, r'workflow_call:\n    inputs:\n      release_tag:\n(?:        .*\n)*?        required: true')
+        summary = job(ci, 'ci')
+        self.assertIn('name: CI', summary)
+        self.assertIn('if: always()', summary)
+        self.assertIn('needs: [changes, contracts, linux, portable, packages]', summary)
+        self.assertIn("'packages': 'success' if selected.get('packages') == 'true' else 'skipped'", summary)
+
+    def test_path_selection_gates_only_the_heavy_jobs(self):
+        ci = workflow('ci.yml')
+        self.assertIn('python3 tools/ci/changes.py', job(ci, 'changes'))
+        self.assertNotIn('needs:', job(ci, 'contracts'))
+        for name in ('linux', 'portable'):
+            self.assertIn("if: needs.changes.outputs.build == 'true'", job(ci, name))
+        self.assertIn("if: needs.changes.outputs.packages == 'true'", job(ci, 'packages'))
+
+    def test_contracts_run_every_group_and_lint_workflows(self):
+        contracts = job(workflow('ci.yml'), 'contracts')
+        for group in ('release', 'proton', 'lab', 'observer', 'evidence'):
+            self.assertIn('python3 tools/ci/contracts.py ' + group, contracts)
+        self.assertEqual(contracts.count('if: always()'), 7)
+        self.assertIn('sha256sum --check --strict', contracts)
+        self.assertIn('qemu-utils', contracts)
+
+    def test_linux_tests_keep_their_isolation_and_skip_the_duplicate_release_compile(self):
+        linux = job(workflow('ci.yml'), 'linux')
+        for text in ("distribution: ['24.04', '26.04']", 'cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON',
+                     'ctest --preset dev --parallel 2', 'runuser -u putgd-ci',
+                     'python3 tools/ci/ctest_preflight.py', '-DCMAKE_CXX_COMPILER_LAUNCHER=ccache',
+                     'aws-sdk-source-licenses', 'python3 tools/proton/provision_runtime.py'):
+            self.assertIn(text, linux)
+        self.assertNotIn('--preset release', linux)
+        self.assertNotIn('sdk-source.sh', linux)
+        self.assertIn("github.event_name != 'pull_request'", linux.split('Save compiler cache', 1)[1])
+
+    def test_portable_compiles_windows_only(self):
+        portable = job(workflow('ci.yml'), 'portable')
+        self.assertIn('os: [windows-2022]', portable)
+        self.assertNotIn('macos', portable)
+        self.assertIn('cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH=', portable)
+        self.assertIn('--contract tools/ci/provision-portable-deps.sh', portable)
+
+    def test_packages_build_every_format_and_collect_only_tagged_runs(self):
+        packages = workflow('package.yml')
+        self.assertIn('  workflow_call:\n', packages)
         for text in ('name: ubuntu24.04', 'name: ubuntu26.04', 'name: fedora44',
                      'python3 tools/releases/native.py', 'bash tools/releases/build-appimage.sh',
                      'python3 tools/releases/check_source_build.py', "if: matrix.name == 'ubuntu24.04'"):
-            self.assertIn(text, release)
-        self.assertIn('cancel-in-progress: true', build)
-        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", release)
+            self.assertIn(text, packages)
+        for name in ('native', 'appimage'):
+            self.assertIn("if: inputs.release_tag != ''\n        run: python3 tools/releases/verify_tag.py",
+                          job(packages, name))
+            self.assertIn('bash tools/ci/sdk-source.sh', job(packages, name))
+        collect = job(packages, 'collect')
+        self.assertIn("if: inputs.release_tag != ''", collect)
+        self.assertIn('needs: [native, appimage]', collect)
+        self.assertIn('python3 tools/releases/collect.py', collect)
+        self.assertIn('name: release-assets', collect)
 
-    def test_coordinated_build_omits_only_duplicate_linux_production_compile(self):
-        build = (ROOT / '.github/workflows/build.yml').read_text()
-        self.assertIn('branches: [main, nightly]', build)
-        self.assertIn('package_tag:', build)
-        self.assertIn('if: steps.package-gate.outputs.coordinated != \'true\'', build)
-        self.assertIn('python3 tools/releases/nightly.py build-mode', build)
+    def test_appimage_installer_uses_external_logging_configuration(self):
+        appimage = job(workflow('package.yml'), 'appimage')
+        install = appimage.split('      - uses: jurplel/install-qt-action@', 1)[1].split('      - name:', 1)[0]
+        self.assertIn('LOG_CFG: ${{ github.workspace }}/tools/ci/aqt-logging.ini', install)
 
-    def test_dispatcher_retains_preparation_before_exact_tag_fanout(self):
-        nightly = (ROOT / '.github/workflows/nightly.yml').read_text()
-        self.assertIn('branches: [main, nightly]', nightly)
-        self.assertIn('schedule:', nightly)
-        self.assertIn('cancel-in-progress: false', nightly)
-        self.assertIn('nightly-preparation-${{ github.run_id }}', nightly)
-        self.assertLess(nightly.index('actions/upload-artifact@'), nightly.index('nightly.py execute'))
-        self.assertIn('ref: ${{ steps.pin.outputs.source_sha }}', nightly)
-        self.assertIn('actions: write', nightly)
-        self.assertIn('contents: write', nightly)
+    def test_nightly_is_scheduled_skips_unchanged_source_and_gates_publication_on_ci(self):
+        nightly = workflow('nightly.yml')
+        self.assertIn("schedule:\n    - cron: '23 5 * * *'", nightly)
+        self.assertIn('  workflow_dispatch:\n', nightly)
+        self.assertNotIn('  push:', nightly)
+        self.assertIn('group: nightly-publication\n  cancel-in-progress: false', nightly)
+        self.assertIn('python3 tools/releases/nightly.py plan', job(nightly, 'plan'))
+        ci = job(nightly, 'ci')
+        self.assertIn("if: needs.plan.outputs.skip == 'false'", ci)
+        self.assertIn('uses: ./.github/workflows/ci.yml', ci)
+        publish = job(nightly, 'publish')
+        self.assertIn('needs: [plan, ci]', publish)
+        self.assertIn("if: needs.plan.outputs.skip == 'false'", publish)
+        self.assertIn('publish.py --tag "$TAG" --directory build/publish --nightly', publish)
+        self.assertIn('contents: write', job(nightly, 'plan'))
+        self.assertIn('contents: read', ci)
 
-    def test_failed_dispatch_remains_failed_while_its_log_is_retained(self):
-        lines = (ROOT / '.github/workflows/nightly.yml').read_text().splitlines()
-        start = next(i for i, line in enumerate(lines) if 'name: Verify public no-op' in line)
-        end = next(i for i in range(start + 1, len(lines)) if lines[i].startswith('      - '))
-        step = lines[start:end]
-        run = next(line.split('run: ', 1)[1] for line in step if 'run: ' in line)
-        explicit_bash = any(line.strip() == 'shell: bash' for line in step)
-        # Execute the actual workflow pipeline with a synthetic failing dispatcher.
-        # These are GitHub's documented default/explicit Bash invocation options.
-        shell = ['/bin/bash', '--noprofile', '--norc', '-e']
-        if explicit_bash:
-            shell += ['-o', 'pipefail']
-        with tempfile.TemporaryDirectory(prefix='pgsh-') as temporary:
-            directory = Path(temporary)
-            dispatcher = directory / 'python3'
-            dispatcher.write_text('#!/bin/sh\nprintf "synthetic dispatch failure\\n" >&2\nexit 17\n')
-            dispatcher.chmod(0o755)
-            result = subprocess.run([*shell, '-c', run], capture_output=True, text=True,
-                env={**os.environ, 'PATH': temporary + os.pathsep + os.environ['PATH'],
-                     'RUNNER_TEMP': temporary})
-            self.assertEqual(result.returncode, 17, result.stdout + result.stderr)
-            self.assertEqual((directory / 'nightly-execution.log').read_text(),
-                             'synthetic dispatch failure\n')
+    def test_main_pushes_cut_candidates_and_stable_is_manual(self):
+        release = workflow('release.yml')
+        self.assertIn('  push:\n    branches: [main]\n', release)
+        self.assertIn('options: [candidate, stable]', release)
+        self.assertIn('group: release-main\n  cancel-in-progress: false', release)
+        self.assertIn("CHANNEL: ${{ inputs.channel || 'candidate' }}", job(release, 'tag'))
+        self.assertIn('python3 tools/releases/release_tag.py --channel "$CHANNEL"', job(release, 'tag'))
+        self.assertIn('needs: [tag, ci]', job(release, 'draft'))
+        self.assertIn('publish.py --tag "$TAG" --directory build/publish\n', job(release, 'draft'))
 
-    def test_final_publication_receipt_and_owned_mode_are_retained(self):
-        release = (ROOT / '.github/workflows/release.yml').read_text()
-        self.assertIn("inputs.nightly && inputs.publish && inputs.coordinator_run_id && 'Nightly'", release)
-        step = release.split('      - name: Retain final publication evidence', 1)[1]
-        for text in ('if: always()', 'publication-${{ github.run_id }}-${{ github.run_attempt }}',
-                     'build/publish/publication.json', 'if-no-files-found: warn', 'retention-days: 90'):
-            self.assertIn(text, step)
+    def test_no_workflow_publishes_a_stable_or_candidate_release(self):
+        # Comments and step-summary text may describe the manual command; nothing may run it.
+        for path in WORKFLOWS.glob('*.yml'):
+            commands = [line for line in path.read_text().splitlines()
+                        if not line.lstrip().startswith(('#', 'echo '))]
+            with self.subTest(workflow=path.name):
+                self.assertFalse([line for line in commands if '--publish' in line or '--draft=false' in line])
 
-    def test_package_recipe_and_nightly_publisher_inputs_are_bound(self):
-        release = (ROOT / '.github/workflows/release.yml').read_text()
-        for text in ('nightly:', 'build_run_id:', 'build_workflow_id:', 'source_sha:',
-                     'coordinator_run_id:', '--nightly', '--package-run-id', '--build-run-id',
-                     'python3 tests/releases/test_verify_tag.py', 'nightly.py release-ci'):
-            self.assertIn(text, release)
-        self.assertIn("if: github.event_name != 'pull_request'", release)
-        self.assertIn('actions: write', release)
-        self.assertIn('needs: [ci, native, appimage]', release)
-        self.assertNotIn('needs: [ci]\n', release)
-        self.assertIn('test "$GITHUB_REF" = "refs/tags/$RELEASE_TAG"', release)
+    def test_sdk_cache_keys_follow_recipes_not_workflow_files(self):
+        sdk_cache = (ROOT / 'tools/ci/sdk_cache.py').read_text()
+        self.assertNotIn('.github/workflows', sdk_cache)
+        for recipe in ('tools/releases/provision-sdk.sh', 'tools/ci/sdk-source.sh', 'cmake/dependency-lock.json'):
+            self.assertIn(recipe, sdk_cache)
 
 
 if __name__ == '__main__':

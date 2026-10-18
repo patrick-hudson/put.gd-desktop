@@ -36,11 +36,12 @@ def fingerprint(root, contracts=()):
         if result.returncode and command != ['cl']:
             raise RuntimeError('Cannot fingerprint build dependencies: ' + command[0])
         observations.append({'command': command, 'output': result.stdout + result.stderr})
-    inputs = ['cmake/dependency-lock.json', '.github/workflows/build.yml',
-              'tools/ci/sdk_cache.py']
+    # Recipes, not workflow files: editing a workflow must not rebuild the SDK.
+    inputs = ['cmake/dependency-lock.json', 'tools/ci/sdk_cache.py', 'tools/ci/sdk-source.sh',
+              'tools/releases/provision-sdk.sh']
     inputs.extend(contracts)
     value = {
-        'schemaVersion': 1, 'system': platform.system(), 'machine': platform.machine(),
+        'schemaVersion': 2, 'system': platform.system(), 'machine': platform.machine(),
         'workspace': str(root.resolve()),
         'image': {key: os.environ.get(key, '') for key in
                   ('ImageOS', 'ImageVersion', 'VCToolsVersion', 'WindowsSDKVersion', 'QT_ROOT_DIR')},

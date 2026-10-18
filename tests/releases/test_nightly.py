@@ -8,301 +8,80 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import patch
+from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/releases'))
 import nightly
-import github_evidence as evidence
+import github_api
+import release_tag
 
 SHA = 'a' * 40
 REPO = 'fixture/putgd'
 
 
 class API:
+    """Remote tags, refs and releases as one synthetic repository."""
     repository = REPO
     def __init__(self):
-        self.dispatched = []
         self.downloaded = []
-        self.package_runs = []
         self.after_release = None
-        self.workflow_value = {'id': 12, 'path': '.github/workflows/build.yml', 'state': 'active'}
-        self.run = {'id': 45, 'workflow_id': 12, 'path': '.github/workflows/build.yml',
-                    'head_sha': SHA, 'repository': {'full_name': REPO},
-                    'head_repository': {'full_name': REPO}, 'status': 'completed',
-                    'conclusion': 'success', 'run_attempt': 1, 'event': 'push'}
-        self.runs = [self.run]
-        self.jobs = [{'id': i + 1, 'name': name, 'status': 'completed', 'conclusion': 'success'}
-                     for i, name in enumerate(evidence.BUILD_JOBS)]
         self.release_list = []
         self.assets = {}
         self.commit = SHA
-    def workflow(self, path):
-        value = dict(self.workflow_value)
-        if path.endswith('release.yml'):
-            value.update(id=13, path=path)
-        return value
+        self.tags = {}
+        self.created = []
     def json(self, path, **kwargs):
-        if path.startswith('git/ref/'):
-            return {'object': {'sha': self.commit, 'type': 'commit'}}
-        if path.endswith('/jobs?filter=latest&per_page=100'):
-            return [{'jobs': self.jobs}]
-        if path.startswith('actions/runs/'):
-            return self.run
-        if path.startswith('actions/workflows/') and '/runs?' in path:
-            return [{'workflow_runs': self.package_runs if '/13/' in path else self.runs}]
+        if path.startswith('git/matching-refs/tags/'):
+            prefix = unquote(path[len('git/matching-refs/tags/'):])
+            return [[{'ref': 'refs/tags/' + name, 'object': {'type': 'commit', 'sha': sha}}
+                     for name, sha in sorted(self.tags.items()) if name.startswith(prefix)]]
+        if path.startswith('git/ref/tags/'):
+            name = unquote(path[len('git/ref/tags/'):])
+            if self.tags and name not in self.tags:
+                raise subprocess.CalledProcessError(1, ['gh', 'api', path])
+            return {'object': {'sha': self.tags.get(name, self.commit), 'type': 'commit'}}
+        if path == 'git/refs' and kwargs.get('method') == 'POST':
+            name = kwargs['data']['ref'][len('refs/tags/'):]
+            self.tags[name] = kwargs['data']['sha']
+            self.created.append(name)
+            return {'ref': kwargs['data']['ref']}
         if path.startswith('releases/'):
             return self.after_release or self.release_list[0]
         if path.startswith('releases?'):
             return [self.release_list]
         raise AssertionError(path)
-    def dispatch(self, path, tag, inputs):
-        self.dispatched.append((path, tag, inputs))
-        if path.endswith('release.yml'):
-            run = dict(self.run, id=46, workflow_id=13, path=path, head_branch=tag, event='workflow_dispatch',
-                       display_title='Nightly release ' + tag + ' coordinator ' + inputs['coordinator_run_id'],
-                       status='in_progress', conclusion=None)
-            self.package_runs = [run]
-        else:
-            self.runs = [self.run]
     def asset_bytes(self, asset_id):
         self.downloaded.append(asset_id)
         return self.assets[asset_id]
 
 
 class GitHubProtocol(unittest.TestCase):
-    def test_calls_are_repository_scoped_and_dispatch_uses_workflow_id_and_tag(self):
-        api = evidence.GitHub(REPO)
-        with patch.object(subprocess, 'check_output', side_effect=[
-                json.dumps({'id': 12, 'path': evidence.BUILD_WORKFLOW, 'state': 'active'}), '']) as command:
-            api.dispatch(evidence.BUILD_WORKFLOW, 'v0.1.1', {'package_tag': 'v0.1.1'})
-        arguments = command.call_args_list
-        self.assertEqual(arguments[0].args[0], ['gh', 'api', 'repos/' + REPO + '/actions/workflows/build.yml'])
-        self.assertEqual(arguments[1].args[0], ['gh', 'api', 'repos/' + REPO + '/actions/workflows/12/dispatches',
-                                               '--method', 'POST', '--input', '-'])
-        self.assertEqual(arguments[0].kwargs['timeout'], 60)
-        self.assertEqual(arguments[1].kwargs['timeout'], 60)
-        self.assertEqual(json.loads(arguments[1].kwargs['input']),
-                         {'ref': 'v0.1.1', 'inputs': {'package_tag': 'v0.1.1'}})
+    def test_calls_are_repository_scoped_with_bounded_time(self):
+        api = github_api.GitHub(REPO)
+        with patch.object(subprocess, 'check_output', return_value=json.dumps({'ok': True})) as command:
+            api.json('git/refs', method='POST', data={'ref': 'refs/tags/v0.1.1', 'sha': SHA})
+        self.assertEqual(command.call_args.args[0], ['gh', 'api', 'repos/' + REPO + '/git/refs',
+                                                     '--method', 'POST', '--input', '-'])
+        self.assertEqual(command.call_args.kwargs['timeout'], 60)
+        self.assertEqual(json.loads(command.call_args.kwargs['input']), {'ref': 'refs/tags/v0.1.1', 'sha': SHA})
         with self.assertRaises(ValueError):
-            evidence.GitHub('../other/repo')
+            github_api.GitHub('../other/repo')
 
-    def test_wrong_workflow_path_or_disabled_workflow_rejects_dispatch(self):
-        for value in ({'id': 12, 'path': evidence.PACKAGE_WORKFLOW, 'state': 'active'},
-                      {'id': 12, 'path': evidence.BUILD_WORKFLOW, 'state': 'disabled_manually'}):
-            with patch.object(subprocess, 'check_output', return_value=json.dumps(value)) as command:
-                with self.assertRaises(ValueError):
-                    evidence.GitHub(REPO).dispatch(evidence.BUILD_WORKFLOW, 'v0.1.1', {})
-                self.assertEqual(command.call_count, 1)
-
-
-class BuildEvidence(unittest.TestCase):
-    def test_success_verifies_producer_source_and_all_jobs(self):
+    def test_tag_lookup_is_exact_and_rejects_unexpected_refs(self):
         api = API()
-        receipt = evidence.verify_ci(api, 45, SHA, '.github/workflows/build.yml', evidence.BUILD_JOBS)
-        self.assertEqual(receipt['runId'], 45)
-        self.assertEqual(receipt['workflowId'], 12)
-        self.assertEqual(receipt['sourceSha'], SHA)
-        self.assertEqual(set(receipt['jobs']), set(evidence.BUILD_JOBS))
-
-    def test_wrong_identity_or_required_result_is_rejected(self):
-        for field, value in [('head_sha', 'b' * 40), ('workflow_id', 99),
-                             ('repository', {'full_name': 'other/repo'}),
-                             ('head_repository', {'full_name': 'fork/repo'}),
-                             ('path', '.github/workflows/other.yml'), ('status', 'unknown'),
-                             ('conclusion', 'failure'), ('conclusion', 'cancelled')]:
-            with self.subTest(field=field, value=value):
-                api = API()
-                api.run[field] = value
-                with self.assertRaises(ValueError):
-                    evidence.verify_ci(api, 45, SHA, '.github/workflows/build.yml', evidence.BUILD_JOBS)
-        for mode in ('missing', 'duplicate', 'failed', 'cancelled', 'unknown'):
-            with self.subTest(mode=mode):
-                api = API()
-                if mode == 'missing':
-                    api.jobs.pop()
-                elif mode == 'duplicate':
-                    api.jobs.append(dict(api.jobs[0]))
-                else:
-                    api.jobs[0]['conclusion'] = mode
-                with self.assertRaises(ValueError):
-                    evidence.verify_ci(api, 45, SHA, '.github/workflows/build.yml', evidence.BUILD_JOBS)
-
-    def test_build_reuses_success_without_dispatch(self):
-        api = API()
-        receipt = evidence.coordinate_build(api, SHA, 'v0.1.1', timeout=0)
-        self.assertEqual(receipt['runId'], 45)
-        self.assertEqual(api.dispatched, [])
-
-    def test_pull_request_merge_build_is_not_exact_source_evidence(self):
-        api = API()
-        api.run['event'] = 'pull_request'
-        with self.assertRaises(ValueError):
-            evidence.verify_ci(api, 45, SHA, evidence.BUILD_WORKFLOW, evidence.BUILD_JOBS)
-
-    def test_only_pr_build_dispatches_exact_tag_instead_of_reusing_merge(self):
-        api = API()
-        api.runs = [dict(api.run, id=44, event='pull_request')]
-        receipt = evidence.coordinate_build(api, SHA, 'v0.1.1', timeout=1)
-        self.assertEqual(receipt['runId'], 45)
-        self.assertEqual(len(api.dispatched), 1)
-
-    def test_absent_build_dispatches_only_on_immutable_tag(self):
-        api = API()
-        api.runs = []
-        receipt = evidence.coordinate_build(api, SHA, 'v0.1.1', timeout=1)
-        self.assertEqual(receipt['runId'], 45)
-        self.assertEqual(api.dispatched, [('.github/workflows/build.yml', 'v0.1.1', {'package_tag': 'v0.1.1'})])
-
-    def test_pending_build_is_observed_and_timeout_does_not_dispatch(self):
-        api = API()
-        api.run['status'] = 'in_progress'
-        api.run['conclusion'] = None
-        with self.assertRaises(TimeoutError):
-            evidence.coordinate_build(api, SHA, 'v0.1.1', timeout=0)
-        self.assertEqual(api.dispatched, [])
-
-    def test_failed_existing_build_is_not_hidden_by_new_dispatch(self):
-        api = API()
-        api.run['conclusion'] = 'failure'
-        with self.assertRaises(ValueError):
-            evidence.coordinate_build(api, SHA, 'v0.1.1', timeout=0)
-        self.assertEqual(api.dispatched, [])
-
-    def test_package_gate_uses_all_four_exact_named_producers(self):
-        api = API()
-        api.run.update(workflow_id=13, path=evidence.PACKAGE_WORKFLOW)
-        api.jobs = [{'id': i + 1, 'name': name, 'status': 'completed', 'conclusion': 'success'}
-                    for i, name in enumerate(evidence.PACKAGE_JOBS)]
-        receipt = evidence.verify_ci(api, 45, SHA, evidence.PACKAGE_WORKFLOW, evidence.PACKAGE_JOBS)
-        self.assertEqual(set(receipt['jobs']), set(evidence.PACKAGE_JOBS))
-        api.jobs[0]['name'] += ' unrelated image'
-        with self.assertRaises(ValueError):
-            evidence.verify_ci(api, 45, SHA, evidence.PACKAGE_WORKFLOW, evidence.PACKAGE_JOBS)
-
-    def test_current_package_jobs_verify_while_publisher_runs_without_weakening_build_gate(self):
-        api = API()
-        api.run.update(workflow_id=13, path=evidence.PACKAGE_WORKFLOW,
-                       status='in_progress', conclusion=None)
-        api.jobs = [{'id': i + 1, 'name': name, 'status': 'completed', 'conclusion': 'success'}
-                    for i, name in enumerate(evidence.PACKAGE_JOBS)]
-        self.assertEqual(set(evidence.verify_package_jobs(api, 45, SHA)['jobs']), set(evidence.PACKAGE_JOBS))
-        with self.assertRaises(ValueError):
-            evidence.verify_ci(api, 45, SHA, evidence.PACKAGE_WORKFLOW, evidence.PACKAGE_JOBS)
-        api.jobs[0]['conclusion'] = 'failure'
-        with self.assertRaises(ValueError):
-            evidence.verify_package_jobs(api, 45, SHA)
-        api.jobs[0]['conclusion'] = 'success'
-        api.run.update(status='completed', conclusion='failure')
-        with self.assertRaises(ValueError):
-            evidence.verify_package_jobs(api, 45, SHA)
-
-    def test_manual_package_only_run_does_not_absorb_nightly_dispatch(self):
-        for title in ('Linux release v0.1.1 coordinator manual',
-                      'Linux release v0.1.1 coordinator 70',
-                      'Nightly release v0.1.1 coordinator 0', ''):
-            with self.subTest(title=title):
-                api = API()
-                api.package_runs = [dict(api.run, id=44, workflow_id=13,
-                    path=evidence.PACKAGE_WORKFLOW, head_branch='v0.1.1',
-                    event='workflow_dispatch', display_title=title)]
-                receipt = evidence.coordinate_packages(api, SHA, 'v0.1.1', 71, {}, timeout=0)
-                self.assertEqual(receipt['runId'], 46)
-                self.assertEqual(len(api.dispatched), 1)
-
-    def test_packages_dispatch_exact_tag_once_and_reuse_original_run(self):
-        api = API()
-        build = {'runId': 45, 'workflowId': 12}
-        receipt = evidence.coordinate_packages(api, SHA, 'v0.1.1', 71, build, timeout=0)
-        self.assertEqual(receipt['runId'], 46)
-        self.assertEqual(api.dispatched[0][1], 'v0.1.1')
-        self.assertEqual(api.dispatched[0][2]['source_sha'], SHA)
-        retry = evidence.coordinate_packages(api, SHA, 'v0.1.1', 72, build, timeout=0)
-        self.assertTrue(retry['reused'])
-        self.assertEqual(retry['runId'], receipt['runId'])
-        self.assertEqual(retry['coordinatorRunId'], 71)
-        self.assertEqual(len(api.dispatched), 1)
-        api.package_runs[0].update(status='completed', conclusion='failure')
-        with self.assertRaisesRegex(ValueError, 'recovery: 46'):
-            evidence.coordinate_packages(api, SHA, 'v0.1.1', 72, build, timeout=0)
-        self.assertEqual(len(api.dispatched), 1)
+        api.tags = {'v0.1.1-rc.1': SHA, 'v0.1.10': 'b' * 40}
+        self.assertFalse(github_api.tag_exists(api, 'v0.1.1'))
+        self.assertTrue(github_api.tag_exists(api, 'v0.1.1-rc.1'))
+        self.assertEqual(github_api.matching_tags(api, 'v0.1.1'), ['v0.1.1-rc.1', 'v0.1.10'])
+        with patch.object(api, 'json', return_value=[[{'ref': 'refs/heads/v0.1.1'}]]):
+            with self.assertRaises(ValueError):
+                github_api.matching_tags(api, 'v0.1.1')
 
 
-class MainSynchronization(unittest.TestCase):
-    def api(self, status='ahead'):
-        api = Mock(repository=REPO)
-        api.json.side_effect = [
-            {'object': {'type': 'commit', 'sha': SHA}},
-            {'object': {'type': 'commit', 'sha': 'b' * 40}},
-            {'status': status},
-            {'object': {'type': 'commit', 'sha': SHA}},
-        ]
-        return api
-
-    def test_first_run_advances_nightly_without_force_and_pins_updated_source(self):
-        api = self.api()
-        receipt = nightly.pin(api, 71, 1, Path('/unused'))
-        self.assertEqual(receipt['sourceSha'], SHA)
-        self.assertEqual(api.json.call_args_list[-1].args, ('git/refs/heads/nightly',))
-        self.assertEqual(api.json.call_args_list[-1].kwargs,
-                         {'method': 'PATCH', 'data': {'sha': SHA, 'force': False}})
-        self.assertEqual(api.json.call_args_list[2].args, ('compare/' + 'b' * 40 + '...' + SHA + '?per_page=1',))
-
-    def test_all_first_run_triggers_synchronize_before_pinning(self):
-        # A surviving nightly push must catch up main even if Actions replaced
-        # the pending main-push run. Manual nightly dispatch has no push `after`.
-        for trigger in ('push', 'schedule', 'workflow_dispatch'):
-            with self.subTest(trigger=trigger):
-                api = self.api()
-                with tempfile.TemporaryDirectory(prefix='pgpin-') as temporary:
-                    receipt = Path(temporary) / 'receipt.json'
-                    with patch.dict(os.environ, {'GITHUB_REPOSITORY': REPO,
-                            'GITHUB_EVENT_NAME': trigger, 'GITHUB_REF': 'refs/heads/nightly',
-                            'GITHUB_RUN_ID': '71', 'GITHUB_RUN_ATTEMPT': '1',
-                            'GITHUB_OUTPUT': '', 'GITHUB_EVENT_PATH': '/unused'}), \
-                         patch.object(sys, 'argv', ['nightly.py', 'pin', '--receipt', str(receipt)]), \
-                         patch.object(nightly, 'GitHub', return_value=api), patch('builtins.print'):
-                        nightly.main()
-                    self.assertEqual(json.loads(receipt.read_text())['sourceSha'], SHA)
-                    self.assertEqual(api.json.call_count, 4)
-
-    def test_already_ahead_nightly_is_never_rewound(self):
-        api = self.api('behind')
-        self.assertEqual(nightly.pin(api, 71, 1, Path('/unused'))['sourceSha'], 'b' * 40)
-        self.assertEqual(api.json.call_count, 3)
-
-    def test_identical_branches_need_no_mutation(self):
-        api = self.api()
-        api.json.side_effect = [{'object': {'type': 'commit', 'sha': SHA}}] * 2
-        self.assertEqual(nightly.pin(api, 71, 1, Path('/unused'))['sourceSha'], SHA)
-        self.assertEqual(api.json.call_count, 2)
-
-    def test_divergent_or_unknown_comparison_fails_without_mutation(self):
-        for status in ('diverged', 'unknown'):
-            api = self.api(status)
-            with self.assertRaisesRegex(ValueError, 'fast-forward'):
-                nightly.pin(api, 71, 1, Path('/unused'))
-            self.assertEqual(api.json.call_count, 3)
-
-    def test_concurrent_update_rejection_is_not_hidden_or_forced(self):
-        api = self.api()
-        replies = list(api.json.side_effect)
-        replies[-1] = subprocess.CalledProcessError(1, ['gh', 'api'])
-        api.json.side_effect = replies
-        with self.assertRaises(subprocess.CalledProcessError):
-            nightly.pin(api, 71, 1, Path('/unused'))
-        self.assertEqual(api.json.call_count, 4)
-
-    def test_unexpected_update_response_blocks_publication(self):
-        api = self.api()
-        replies = list(api.json.side_effect)
-        replies[-1] = {'object': {'type': 'commit', 'sha': 'c' * 40}}
-        api.json.side_effect = replies
-        with self.assertRaisesRegex(ValueError, 'updated nightly'):
-            nightly.pin(api, 71, 1, Path('/unused'))
-
-
-class PinnedSource(unittest.TestCase):
+class Fixture(unittest.TestCase):
+    """One clean full-history Git checkout whose HEAD is the candidate source."""
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='pgnightly-')
         self.addCleanup(self.temporary.cleanup)
@@ -317,118 +96,138 @@ class PinnedSource(unittest.TestCase):
                        env=dict(os.environ, GIT_AUTHOR_DATE='2026-10-12T03:04:05Z',
                                 GIT_COMMITTER_DATE='2026-10-12T03:04:05Z'))
         self.sha = self.git('rev-parse', 'HEAD')
-        self.path = Path(self.temporary.name) / 'nightly-preparation.json'
+        self.api = API()
+        self.api.commit = self.sha
+        self.api.tags = {'unrelated': 'c' * 40}
+        # The synthetic remote is local: fetching a created tag creates it here.
+        fetch = subprocess.run
+        def run(command, **kwargs):
+            if command[:4] == ['git', '-C', str(self.root), 'fetch']:
+                name = command[-1].split(':', 1)[1][len('refs/tags/'):]
+                self.git('tag', '-f', name, self.api.tags[name])
+                return subprocess.CompletedProcess(command, 0)
+            return fetch(command, **kwargs)
+        patcher = patch.object(subprocess, 'run', side_effect=run)
+        patcher.start()
+        self.addCleanup(patcher.stop)
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.root), *args], text=True).strip()
-    def test_preparation_pins_current_synchronized_source(self):
-        api = API()
-        api.commit = self.sha
-        pinned = nightly.pin(api, 71, 1, self.path)
-        self.assertEqual(pinned['sourceSha'], self.sha)
-        receipt = nightly.prepare(self.root, pinned)
-        self.assertEqual(receipt['tag'], 'v0.1.1-dev.1.20261012030405+g' + self.sha[:12])
-        self.assertEqual(receipt['sourceSha'], self.sha)
-    def test_retry_preserves_original_after_branch_advance(self):
-        api = API()
-        api.commit = self.sha
-        receipt = nightly.prepare(self.root, nightly.pin(api, 71, 1, self.path))
-        self.path.write_text(json.dumps(receipt))
-        api.commit = 'b' * 40
-        with patch.object(api, 'json', side_effect=AssertionError('Retry must not synchronize branches')):
-            retry = nightly.pin(api, 71, 2, self.path)
-        self.assertEqual(nightly.prepare(self.root, retry), receipt)
-    def test_missing_or_contradictory_retry_fails(self):
-        with self.assertRaises(ValueError):
-            nightly.pin(API(), 71, 2, self.path)
-        receipt = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
-                                            'runId': 71, 'sourceSha': self.sha})
-        for key, value in [('runId', 99), ('sourceSha', 'b' * 40), ('tag', 'v0.1.1')]:
-            modified = dict(receipt, **{key: value})
-            self.path.write_text(json.dumps(modified))
-            with self.assertRaises(ValueError):
-                retry = nightly.pin(API(), 71, 2, self.path)
-                nightly.prepare(self.root, retry)
-    def test_tag_conflict_never_mutates(self):
-        api = API()
-        api.commit = 'b' * 40
-        with self.assertRaises(ValueError):
-            nightly.ensure_tag(api, self.root, 'v0.1.1', self.sha)
-        self.assertEqual(api.dispatched, [])
-    def test_uncoordinated_main_and_pr_keep_production_compile(self):
-        self.assertFalse(nightly.build_mode(self.root, 'push', 'refs/heads/main', ''))
-        self.assertFalse(nightly.build_mode(self.root, 'pull_request', 'refs/pull/1/merge', ''))
-        self.assertTrue(nightly.build_mode(self.root, 'push', 'refs/heads/nightly', ''))
-        with self.assertRaises(ValueError):
-            nightly.build_mode(self.root, 'workflow_dispatch', 'refs/heads/main', 'v0.1.1')
-        self.git('tag', 'v0.1.1')
-        self.assertTrue(nightly.build_mode(self.root, 'workflow_dispatch', 'refs/tags/v0.1.1', 'v0.1.1'))
 
-    def test_package_dispatch_does_not_wait_for_build(self):
-        api = API()
-        prepared = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
-                                              'runId': 71, 'sourceSha': self.sha})
-        api.run['head_sha'] = self.sha
-        release = {'tag': prepared['tag'], 'channel': 'nightly', 'gitCommit': self.sha}
-        with patch.object(nightly, 'ensure_tag', return_value=release), \
-             patch.object(nightly, 'published_nightly', return_value=None), \
-             patch.object(nightly, 'coordinate_build') as build:
-            result = nightly.execute(api, self.root, prepared)
-        build.assert_not_called()
-        self.assertEqual(result['packageDispatch']['runId'], 46)
-        self.assertEqual(api.dispatched[0][1], prepared['tag'])
-        self.assertEqual(api.dispatched[0][2]['source_sha'], self.sha)
-        self.assertEqual(api.dispatched[0][2]['build_run_id'], '')
-        self.assertEqual(api.dispatched[0][2]['build_workflow_id'], '')
 
-    def test_completed_handoff_without_public_nightly_reports_original_run(self):
-        api = API()
-        prepared = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
-                                              'runId': 72, 'sourceSha': self.sha})
-        release = {'tag': prepared['tag'], 'channel': 'nightly', 'gitCommit': self.sha}
-        api.package_runs = [dict(api.run, id=46, workflow_id=13,
-            path=evidence.PACKAGE_WORKFLOW, head_sha=self.sha, head_branch=prepared['tag'],
-            event='workflow_dispatch',
-            display_title='Nightly release ' + prepared['tag'] + ' coordinator 71')]
-        with patch.object(nightly, 'ensure_tag', return_value=release), \
-             patch.object(nightly, 'published_nightly', return_value=None):
-            with self.assertRaisesRegex(ValueError, 'without verified public nightly: 46'):
-                nightly.execute(api, self.root, prepared)
-        self.assertEqual(api.dispatched, [])
+class NightlyPlan(Fixture):
+    def tag(self):
+        return 'v0.1.1-dev.1.20261012030405+g' + self.sha[:12]
 
-    def test_completed_handoff_rechecks_publication_race(self):
-        api = API()
-        prepared = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
-                                              'runId': 72, 'sourceSha': self.sha})
-        release = {'tag': prepared['tag'], 'channel': 'nightly', 'gitCommit': self.sha}
-        handoff = {'runId': 46, 'status': 'completed', 'coordinatorRunId': 71}
-        public = {'releaseId': 66}
-        with patch.object(nightly, 'ensure_tag', return_value=release), \
-             patch.object(nightly, 'published_nightly', side_effect=[None, public]), \
-             patch.object(nightly, 'coordinate_packages', return_value=handoff):
-            result = nightly.execute(api, self.root, prepared)
-        self.assertEqual(result['publishedNightly'], public)
-        self.assertEqual(result['packageDispatch'], handoff)
+    def test_preparation_names_immutable_head_identity(self):
+        prepared = nightly.prepare(self.root)
+        self.assertEqual(prepared['tag'], self.tag())
+        self.assertEqual(prepared['sourceSha'], self.sha)
+        self.assertEqual(prepared['commitCount'], 1)
+        self.assertEqual(prepared['baseVersion'], '0.1.1')
 
-    def test_release_ci_accepts_pinned_source_without_prewaited_build(self):
-        self.git('tag', 'v0.1.1')
-        with patch.object(nightly, 'coordinate_build', return_value={'runId': 45}) as build:
-            result = nightly.release_ci(API(), self.root, 'v0.1.1', 'refs/tags/v0.1.1', self.sha)
-        self.assertEqual(result['runId'], 45)
-        self.assertEqual(build.call_args.args[1:], (self.sha, 'v0.1.1'))
+    def test_dirty_or_shallow_source_is_rejected(self):
+        (self.root / 'untracked.txt').write_text('dirty\n')
+        with self.assertRaisesRegex(ValueError, 'clean source'):
+            nightly.prepare(self.root)
 
-    def test_verified_public_noop_stops_before_all_builder_dispatches(self):
-        api = API()
-        prepared = nightly.prepare(self.root, {'schemaVersion': 1, 'repository': REPO,
-                                              'runId': 71, 'sourceSha': self.sha})
-        release = {'tag': prepared['tag'], 'channel': 'nightly', 'gitCommit': self.sha}
-        with patch.object(nightly, 'ensure_tag', return_value=release), \
-             patch.object(nightly, 'published_nightly', return_value={'releaseId': 66}), \
-             patch.object(nightly, 'coordinate_build') as build, \
-             patch.object(nightly, 'coordinate_packages') as packages:
-            result = nightly.execute(api, self.root, prepared)
-        self.assertTrue(result['skipped'])
-        build.assert_not_called()
-        packages.assert_not_called()
+    def test_changed_source_creates_one_tag_and_builds(self):
+        result = nightly.plan(self.api, self.root, 'refs/heads/nightly')
+        self.assertFalse(result['skip'])
+        self.assertEqual(self.api.created, [self.tag()])
+        self.assertEqual(self.api.tags[self.tag()], self.sha)
+
+    def test_published_unchanged_source_skips_without_creating_tags(self):
+        self.api.tags[self.tag()] = self.sha
+        with patch.object(nightly, 'published_nightly', return_value={'releaseId': 66}) as public:
+            result = nightly.plan(self.api, self.root, 'refs/heads/nightly')
+        self.assertTrue(result['skip'])
+        self.assertEqual(result['publishedNightly'], {'releaseId': 66})
+        self.assertEqual(public.call_args.args[1], self.tag())
+        self.assertEqual(self.api.created, [])
+
+    def test_unpublished_existing_tag_is_rebuilt_without_moving_it(self):
+        self.api.tags[self.tag()] = self.sha
+        with patch.object(nightly, 'published_nightly', return_value=None):
+            result = nightly.plan(self.api, self.root, 'refs/heads/nightly')
+        self.assertFalse(result['skip'])
+        self.assertEqual(self.api.created, [])
+
+    def test_existing_tag_on_another_source_never_mutates(self):
+        self.api.tags[self.tag()] = 'b' * 40
+        with self.assertRaisesRegex(ValueError, 'another source'):
+            nightly.plan(self.api, self.root, 'refs/heads/nightly')
+        self.assertEqual(self.api.created, [])
+
+    def test_released_base_requires_the_next_version_before_new_nightlies(self):
+        self.api.tags['v0.1.1'] = 'b' * 40
+        with self.assertRaisesRegex(ValueError, 'next version'):
+            nightly.plan(self.api, self.root, 'refs/heads/nightly')
+        self.assertEqual(self.api.created, [])
+        self.api.tags[self.tag()] = self.sha
+        with patch.object(nightly, 'published_nightly', return_value={'releaseId': 66}):
+            self.assertTrue(nightly.plan(self.api, self.root, 'refs/heads/nightly')['skip'])
+
+    def test_only_the_nightly_branch_publishes_nightlies(self):
+        for ref in ('refs/heads/main', 'refs/heads/feature', 'refs/tags/v0.1.1'):
+            with self.subTest(ref=ref), self.assertRaisesRegex(ValueError, 'nightly branch'):
+                nightly.plan(self.api, self.root, ref)
+        self.assertEqual(self.api.created, [])
+
+    def test_cli_writes_outputs_and_summary(self):
+        with tempfile.TemporaryDirectory(prefix='pgout-') as directory:
+            outputs, summary = Path(directory) / 'out', Path(directory) / 'summary'
+            with patch.dict(os.environ, {'GITHUB_REPOSITORY': REPO, 'GITHUB_REF': 'refs/heads/nightly',
+                                         'GITHUB_OUTPUT': str(outputs), 'GITHUB_STEP_SUMMARY': str(summary)}), \
+                 patch.object(sys, 'argv', ['nightly.py', 'plan', '--root', str(self.root)]), \
+                 patch.object(nightly, 'GitHub', return_value=self.api), patch('builtins.print'):
+                nightly.main()
+            self.assertEqual(outputs.read_text(), f'tag={self.tag()}\nsource_sha={self.sha}\nskip=false\n')
+            self.assertIn(self.tag(), summary.read_text())
+
+
+class CandidateAndStable(Fixture):
+    def cut(self, channel):
+        return release_tag.cut(self.api, self.root, 'refs/heads/main', channel)
+
+    def test_first_candidate_then_reuse_on_rerun(self):
+        self.assertEqual(self.cut('candidate')['tag'], 'v0.1.1-rc.1')
+        self.assertEqual(self.api.created, ['v0.1.1-rc.1'])
+        rerun = self.cut('candidate')
+        self.assertEqual((rerun['tag'], rerun['created']), ('v0.1.1-rc.1', False))
+        self.assertEqual(self.api.created, ['v0.1.1-rc.1'])
+
+    def test_next_candidate_number_follows_the_highest_existing(self):
+        self.api.tags.update({'v0.1.1-rc.1': 'b' * 40, 'v0.1.1-rc.9': 'c' * 40,
+                              'v0.1.10-rc.20': 'd' * 40, 'v0.1.1-dev.5.20261012030405+gbbbbbbbbbbbb': 'e' * 40})
+        self.assertEqual(release_tag.choose('candidate', '0.1.1', self.sha,
+                                            release_tag.release_tags(self.api, '0.1.1')), ('v0.1.1-rc.10', True))
+
+    def test_released_base_rejects_candidates(self):
+        self.api.tags['v0.1.1'] = 'b' * 40
+        with self.assertRaisesRegex(ValueError, 'already released'):
+            self.cut('candidate')
+        self.assertEqual(self.api.created, [])
+
+    def test_stable_requires_a_candidate_on_the_same_commit(self):
+        self.api.tags['v0.1.1-rc.1'] = 'b' * 40
+        with self.assertRaisesRegex(ValueError, 'candidate commit'):
+            self.cut('stable')
+        self.assertEqual(self.api.created, [])
+        self.api.tags['v0.1.1-rc.2'] = self.sha
+        result = self.cut('stable')
+        self.assertEqual((result['tag'], result['created'], result['release']['channel']), ('v0.1.1', True, 'stable'))
+        self.assertEqual(self.cut('stable')['created'], False)
+
+    def test_stable_tag_on_another_commit_is_never_moved(self):
+        self.api.tags.update({'v0.1.1-rc.1': self.sha, 'v0.1.1': 'b' * 40})
+        with self.assertRaisesRegex(ValueError, 'already identifies'):
+            self.cut('stable')
+
+    def test_only_main_cuts_candidates_and_stable(self):
+        for ref in ('refs/heads/nightly', 'refs/pull/1/merge'):
+            with self.subTest(ref=ref), self.assertRaisesRegex(ValueError, 'main only'):
+                release_tag.cut(self.api, self.root, ref, 'candidate')
+        self.assertEqual(self.api.created, [])
 
 
 class PublicNightly(unittest.TestCase):

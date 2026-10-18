@@ -1,0 +1,299 @@
+name: CI
+# Pull requests run the jobs their changed paths can affect. Pushes to nightly,
+# manual runs and release callers run everything. The `CI` job is the single
+# required check: it fails when any selected job did not succeed.
+on:
+  pull_request:
+  push:
+    branches: [nightly]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: Existing exact release tag to test, package and collect
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ inputs.release_tag || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !inputs.release_tag }}
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.select.outputs.build }}
+      packages: ${{ steps.select.outputs.packages }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 2
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Select jobs from changed paths
+        id: select
+        run: python3 tools/ci/changes.py
+
+  contracts:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Install QEMU disk utilities for lab contracts
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends qemu-utils
+      - name: Release, packaging and CI tool contracts
+        if: always()
+        run: python3 tools/ci/contracts.py release
+      - name: Proton helper source contracts
+        if: always()
+        run: python3 tools/ci/contracts.py proton
+      - name: Lab identity and storage safety contracts
+        if: always()
+        run: python3 tools/ci/contracts.py lab
+      - name: Cold-family observer contracts
+        if: always()
+        run: python3 tools/ci/contracts.py observer
+      - name: Replay saved live-S3 numeric evidence
+        if: always()
+        run: python3 tools/ci/contracts.py evidence
+      - name: Lint workflows
+        if: always()
+        run: |
+          archive="$RUNNER_TEMP/actionlint.tar.gz"
+          curl --fail --silent --show-error --location --output "$archive" \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $archive" | sha256sum --check --strict
+          tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color -shellcheck= -pyflakes=
+      - name: Preserve contract reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: contracts
+          path: build/contracts/
+          if-no-files-found: warn
+          retention-days: 30
+
+  linux:
+    name: linux (${{ matrix.distribution }})
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    container: ubuntu:${{ matrix.distribution }}
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    strategy:
+      fail-fast: false
+      matrix:
+        distribution: ['24.04', '26.04']
+    steps:
+      - name: Install distro dependencies
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ccache git ca-certificates passwd util-linux qemu-utils python3 nodejs npm cmake ninja-build pkg-config qt6-base-dev qt6-base-dev-tools libqt6sql6-sqlite qt6-wayland-dev qtkeychain-qt6-dev libxcb1-dev libxcb-keysyms1-dev libxcb-util-dev libxcb-image0-dev libxcb-randr0-dev libxcb-xfixes0-dev libxcb-damage0-dev libxcb-shape0-dev libxcb-xtest0-dev xvfb xauth dbus-daemon libxcursor-dev libxkbcommon-dev libxkbcommon-x11-dev libcurl4-openssl-dev libssl-dev zlib1g-dev libwayland-dev wayland-protocols
+          if [ '${{ matrix.distribution }}' = '26.04' ]; then
+            apt-get install -y liblayershellqtinterface-dev
+          fi
+          useradd --create-home --shell /bin/bash putgd-ci
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Trust container checkout for build identity
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+      - name: Identify exact dependency cache environment
+        id: sdk-key
+        run: python3 tools/ci/sdk_cache.py key --contract tools/ci/provision-linux-sdk.sh
+      - name: Restore verified dependency prefix
+        id: sdk-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Verify restored dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        run: python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Provision pinned AWS SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          PUTGD_SDK_JOBS="$(nproc)" bash tools/ci/provision-linux-sdk.sh
+          python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Save verified dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Provision pinned Proton helper
+        run: python3 tools/proton/provision_runtime.py
+      - name: Restore compiler cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/ccache
+          key: ccache-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: ccache-linux-${{ matrix.distribution }}-
+      - name: Build
+        id: build
+        run: |
+          ccache --zero-stats
+          cmake --preset dev -DPUTGD_BUNDLE_PROTON=ON \
+            -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build --preset dev --parallel "$(nproc)"
+          ccache --show-stats
+      - name: Save compiler cache
+        # Pull requests restore the nightly branch cache; only branch runs save one.
+        if: always() && steps.build.outcome == 'success' && github.event_name != 'pull_request'
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: build/ccache
+          key: ccache-linux-${{ matrix.distribution }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Test
+        run: |
+          test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
+          python3 tools/ci/ctest_preflight.py --build build/dev --tmp "$test_tmp" --user putgd-ci
+          chown -R putgd-ci:putgd-ci build/dev "$test_tmp"
+          runuser -u putgd-ci -- sh -ec 'id -u > build/dev/ctest-observed-uid; exec env TMPDIR="$1" ctest --preset dev --parallel 2 --output-junit "$2"' _ "$test_tmp" "$PWD/build/dev/ctest-results.xml"
+      - name: Preserve structured test reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ctest-linux-${{ matrix.distribution }}
+          path: |
+            build/dev/ctest-results.xml
+            build/dev/registered-tests.json
+            build/dev/socket-preflight.json
+            build/dev/ci-test-context.json
+            build/dev/ctest-observed-uid
+            build/dev/Testing/Temporary/LastTest.log
+            build/dev/Testing/Temporary/LastTestsFailed.log
+            build/dev/build-identity/build-info.json
+            build/ci-sdk-environment.json
+            build/sdk-cache.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  portable:
+    name: portable (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.release_tag || github.sha }}
+      - name: Enable long Git paths for Windows dependencies
+        if: runner.os == 'Windows'
+        shell: bash
+        run: git config --global core.longpaths true
+      - if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1
+      - uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: '6.8.3'
+          cache: true
+      - name: Verify dependency cache contracts on this platform
+        shell: bash
+        run: python tests/ci/test_sdk_cache.py
+      - name: Identify exact dependency cache environment
+        id: sdk-key
+        shell: bash
+        run: python tools/ci/sdk_cache.py key --contract tools/ci/provision-portable-deps.sh
+      - name: Restore verified dependency prefix
+        id: sdk-cache
+        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Verify restored dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: python tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Build QtKeychain and AWS SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          PYTHON=python PUTGD_SDK_JOBS="$(nproc 2>/dev/null || echo 2)" bash tools/ci/provision-portable-deps.sh
+          python tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+      - name: Save verified dependency prefix
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/cache/save@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            build/sdk
+            build/sdk-cache.json
+          key: ${{ steps.sdk-key.outputs.key }}
+      - name: Compile shared application
+        shell: bash
+        run: |
+          sdk_prefix="$PWD/build/sdk"
+          qt_prefix="$QT_ROOT_DIR"
+          if [ "$RUNNER_OS" = 'Windows' ]; then
+            sdk_prefix="$(cygpath -m "$sdk_prefix")"
+            qt_prefix="$(cygpath -m "$qt_prefix")"
+            export MSYS2_ARG_CONV_EXCL='-DCMAKE_PREFIX_PATH='
+          fi
+          cmake --preset release -DBUILD_TESTING=OFF -DCMAKE_PREFIX_PATH="$sdk_prefix;$qt_prefix"
+          cmake --build --preset release --parallel "$(nproc 2>/dev/null || echo 2)"
+      - name: Preserve compiled build identity
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-identity-${{ matrix.os }}
+          path: |
+            build/release/build-identity/build-info.json
+            build/ci-sdk-environment.json
+            build/sdk-cache.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  packages:
+    needs: changes
+    if: needs.changes.outputs.packages == 'true'
+    uses: ./.github/workflows/package.yml
+    with:
+      release_tag: ${{ inputs.release_tag || '' }}
+
+  ci:
+    name: CI
+    if: always()
+    needs: [changes, contracts, linux, portable, packages]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every selected job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ['NEEDS'])
+          selected = needs['changes'].get('outputs', {})
+          expected = {'changes': 'success', 'contracts': 'success',
+                      'linux': 'success' if selected.get('build') == 'true' else 'skipped',
+                      'portable': 'success' if selected.get('build') == 'true' else 'skipped',
+                      'packages': 'success' if selected.get('packages') == 'true' else 'skipped'}
+          failed = False
+          for job, want in expected.items():
+              got = needs[job]['result']
+              print(f'{job:10} {got:10} (required: {want})')
+              failed |= got != want
+          sys.exit(1 if failed else 0)
+          PY

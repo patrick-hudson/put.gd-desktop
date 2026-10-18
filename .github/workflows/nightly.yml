@@ -1,7 +1,8 @@
-name: Nightly coordinator
+name: Nightly
+# Daily at 05:23 UTC on the default branch (nightly), or on demand. `plan` tags
+# nightly HEAD; when that exact source is already a verified public nightly it
+# skips, and nothing else runs. GitHub can delay scheduled runs.
 on:
-  push:
-    branches: [main, nightly]
   schedule:
     - cron: '23 5 * * *'
   workflow_dispatch:
@@ -10,47 +11,71 @@ permissions:
 concurrency:
   group: nightly-publication
   cancel-in-progress: false
+
 jobs:
-  coordinate:
+  plan:
     runs-on: ubuntu-24.04
     permissions:
-      contents: write
-      actions: write
-    env:
-      GH_TOKEN: ${{ github.token }}
+      contents: write  # create the immutable nightly tag
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      skip: ${{ steps.plan.outputs.skip }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - name: Synchronize main and pin source or recover original preparation
-        id: pin
-        run: python3 tools/releases/nightly.py pin --receipt "$RUNNER_TEMP/nightly-preparation.json"
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          fetch-depth: 0
-          ref: ${{ steps.pin.outputs.source_sha }}
-      - name: Prepare immutable source identity using pinned tooling
-        run: python3 tools/releases/nightly.py prepare --receipt "$RUNNER_TEMP/nightly-preparation.json"
-      - name: Retain first preparation before fan-out
-        if: github.run_attempt == 1
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: nightly-preparation-${{ github.run_id }}
-          path: ${{ runner.temp }}/nightly-preparation.json
-          if-no-files-found: error
-          retention-days: 90
-      # GITHUB_TOKEN branch updates do not trigger another push workflow.
-      # Continue in this run and explicitly dispatch the immutable package tag.
-      - name: Verify public no-op or coordinate exact-tag recipes
-        shell: bash
-        run: python3 tools/releases/nightly.py execute --receipt "$RUNNER_TEMP/nightly-preparation.json" --output "$RUNNER_TEMP/nightly-orchestration.json" 2>&1 | tee "$RUNNER_TEMP/nightly-execution.log"
-      - name: Preserve orchestration identities and failure log
+          ref: ${{ github.sha }}
+      - name: Skip unchanged source or tag nightly HEAD
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/releases/nightly.py plan --output "$RUNNER_TEMP/nightly-plan.json"
+      - name: Retain the plan
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: nightly-orchestration-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/nightly-orchestration.json
-            ${{ runner.temp }}/nightly-execution.log
+          name: nightly-plan
+          path: ${{ runner.temp }}/nightly-plan.json
+          if-no-files-found: warn
+          retention-days: 90
+
+  ci:
+    needs: plan
+    if: needs.plan.outputs.skip == 'false'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      release_tag: ${{ needs.plan.outputs.tag }}
+
+  publish:
+    needs: [plan, ci]
+    if: needs.plan.outputs.skip == 'false'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write  # stage and publish the prerelease
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.plan.outputs.tag }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-assets
+          path: build/publish
+      - name: Publish verified nightly prerelease
+        run: python3 tools/releases/publish.py --tag "$TAG" --directory build/publish --nightly
+      - name: Summarize
+        run: |
+          echo "Published nightly [\`$TAG\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG)." >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain final publication evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publication-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/publish/publication.json
           if-no-files-found: warn
           retention-days: 90
