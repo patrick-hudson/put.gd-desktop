@@ -73,8 +73,12 @@ private slots:
  void closeRetainsDraftAndActivationDuringExitStartsFresh(){
   qputenv("PUTGD_TEST_UI_MODE","close");UiProcessController controller("/unused/test.sock","epoch",helper(),valid);int launches=0,shown=0;Error error;
   connect(&controller,&UiProcessController::helperPidChanged,this,[&](qint64 pid){if(pid)++launches;});
+  QVERIFY(!controller.viewState().contains("settings"));
   controller.activate("settings",[&](Error e){error=e;++shown;});QTRY_COMPARE(controller.status()["state"].toString(),QString("closing"));
-  QVERIFY(controller.status()["checkpointBytes"].toInteger()>0);qputenv("PUTGD_TEST_UI_MODE","expect-state");
+  QVERIFY(controller.status()["checkpointBytes"].toInteger()>0);
+  // Only the derived capture routing is readable; the retained draft stays private.
+  const auto view=controller.viewState();QCOMPARE(view["state"].toString(),QString("closing"));QCOMPARE(view["settings"].toObject(),(QJsonObject{{"section",1},{"captureRouting",QJsonObject{{"default",QJsonObject{{"profileId","synthetic"}}}}}}));QVERIFY(!QJsonDocument(view).toJson().contains("retained"));
+  qputenv("PUTGD_TEST_UI_MODE","expect-state");
   controller.activate("about",[&](Error e){error=e;++shown;});QTRY_COMPARE(shown,2);QVERIFY2(!error,qPrintable(error.code));QCOMPARE(launches,2);
   bool stopped=false;controller.shutdown([&]{stopped=true;});QTRY_VERIFY(stopped);
  }

@@ -258,4 +258,12 @@ QJsonObject UiProcessController::status()const{
  switch(phase_){case Phase::Stopped:break;case Phase::Starting:state="starting";break;case Phase::Ready:state="ready";break;case Phase::Closing:state="closing";break;case Phase::Stopping:state="stopping";break;case Phase::Failed:state="failed";break;}
  return {{"state",state},{"pid",process_?process_->processId():0},{"checkpointBytes",stateBytes_},{"lastExit",lastExit_}};
 }
+QJsonObject UiProcessController::viewState()const{
+ // Only the derived capture-routing presentation leaves the last accepted
+ // checkpoint; drafts and destination editors stay with the helper.
+ QJsonObject result{{"state",status()["state"]}};
+ const auto settings=state_["settings"].toObject();
+ if(settings.contains("captureRouting"))result["settings"]=QJsonObject{{"section",settings["section"]},{"captureRouting",settings["captureRouting"]}};
+ return result;
+}
 }

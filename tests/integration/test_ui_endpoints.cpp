@@ -181,6 +181,14 @@ private slots:
   QVERIFY(!error);QCOMPARE(result["residentEpoch"].toString(),epoch);QCOMPARE(result["diagnostics"].toObject(),diagnostics);
   request(f.server,"ui.snapshot",{{"unexpected",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
  }
+ void viewStateForwardsTheInterfaceProjection() {
+  Fixture f;Error error;QJsonObject result;
+  request(f.server,"ui.viewState",{},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("ui_unavailable"));
+  const QJsonObject view{{"state","ready"},{"settings",QJsonObject{{"section",1},{"captureRouting",QJsonObject{{"default",QJsonObject{{"profileId","synthetic"}}}}}}}};
+  f.server.setUiViewState([view]{return view;});
+  request(f.server,"ui.viewState",{},[&](Error e,QJsonObject value){error=e;result=value;});QVERIFY(!error);QCOMPARE(result,view);
+  request(f.server,"ui.viewState",{{"unexpected",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
+ }
  void wireSetupJobsSurviveClientDepartureAndUseSavedProfile() {
   Fixture f;QVERIFY(f.saveProfiles());QVERIFY(f.server.listen(f.root.filePath("runtime")));CredentialStore credentials;
   std::function<void(Error)> finish;QJsonObject tested;

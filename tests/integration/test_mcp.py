@@ -116,7 +116,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 discovered = (await session.list_tools()).tools
-                expected = {'inspect', 'perform_action', 'get_operation', 'retry_operation',
+                expected = {'inspect', 'get_view_state', 'perform_action', 'get_operation', 'retry_operation',
                             'copy_result', 'cancel_operation', 'list_history', 'get_history_entry',
                             'copy_history_link', 'delete_history_uploads', 'reload_configuration',
                             'patch_configuration', 'open_editor', 'get_editor', 'edit_image',
@@ -172,6 +172,7 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}, 'delete.confirm', {'ids': ['synthetic-entry'], 'acknowledgement': 'synthetic-effect'}),
                     ('patch_configuration', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expected_revision': 'synthetic-revision'}, 'settings.patch', {'patch': {'captureDefaults': {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}, 'actions': {'clipboard': {'destination': 'default', 'profileId': None}}}, 'expectedRevision': 'synthetic-revision'}),
                     ('reload_configuration', {}, 'settings.reload', {}),
+                    ('get_view_state', {}, 'ui.viewState', {}),
                     ('perform_action', {'action': 'edit'}, 'action.invoke', {'action': 'edit'}),
                     ('open_editor', {}, 'editor.open', {'source': 'region'}),
                     ('open_editor', {'source': 'file', 'path': '/synthetic dir/image.png'}, 'editor.open', {'source': 'file', 'path': '/synthetic dir/image.png'}),

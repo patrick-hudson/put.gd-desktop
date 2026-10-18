@@ -15,6 +15,7 @@ public:
  void setSetupService(SetupService* service) {setup_=service;}
  void setUiDiagnostics(std::function<QJsonObject()> callback) {uiDiagnostics_=std::move(callback);}
  void setUiQuit(std::function<void()> callback) {uiQuit_=std::move(callback);}
+ void setUiViewState(std::function<QJsonObject()> callback) {uiViewState_=std::move(callback);}
  static QString defaultRuntimeDirectory();
  static QString defaultSocketPath();
  static QJsonObject response(const QString& requestId,const Error&,const QJsonObject&);
@@ -23,7 +24,7 @@ public:
 private:
  void accept();
  std::function<void(const QString&,std::function<void(Error)>)> uiActivation_;
- std::function<QJsonObject()> uiDiagnostics_;
+ std::function<QJsonObject()> uiDiagnostics_,uiViewState_;
  std::function<void()> uiQuit_;
  QPointer<SetupService> setup_;
  const QString residentEpoch_;
