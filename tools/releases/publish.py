@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Stage verified releases; publish accepted packages or exact-source nightlies."""
+"""Stage verified release drafts; publish accepted packages or automated nightlies.
+
+Drafts and nightlies are staged by the workflow run that built and tested the
+exact tag, after every required job in that run passed. The run identity is
+recorded in the publication receipt and release notes.
+"""
 import argparse
 import json
 import os
@@ -11,7 +16,7 @@ import time
 
 from collect import sha256
 from verify_tag import verify
-from github_evidence import GitHub, BUILD_WORKFLOW, BUILD_JOBS, verify_ci, verify_package_jobs
+from github_api import GitHub
 from nightly import published_nightly, public_inventory
 from release_identity import parse_tag
 
@@ -143,32 +148,33 @@ def stage_draft(tag, directory, listed, release, notes):
     # missing files are added. Incomplete/conflicting assets require inspection.
 
 
+def run_provenance():
+    """Identify the workflow run whose required jobs built, tested and collected these assets."""
+    try:
+        run_id, attempt = int(os.environ['GITHUB_RUN_ID']), int(os.environ['GITHUB_RUN_ATTEMPT'])
+        repository, workflow = os.environ['GITHUB_REPOSITORY'], os.environ['GITHUB_WORKFLOW_REF']
+    except (KeyError, ValueError) as error:
+        raise ValueError('Automated publication requires the GitHub Actions run identity') from error
+    if run_id <= 0 or attempt <= 0 or not workflow.startswith(repository + '/.github/workflows/'):
+        raise ValueError('Automated publication run identity is invalid')
+    server = os.environ.get('GITHUB_SERVER_URL', 'https://github.com')
+    return {'repository': repository, 'workflowRef': workflow, 'runId': run_id, 'runAttempt': attempt,
+            'url': f'{server}/{repository}/actions/runs/{run_id}'}
+
+
 def publish_nightly(args, release, listed):
-    """Publish one automated nightly, retaining exact producer and byte evidence."""
+    """Publish one automated nightly, retaining exact run and byte evidence."""
     if set(listed) | {'SHA256SUMS'} != public_inventory(args.tag):
         raise ValueError('Collected nightly inventory must contain all twelve public assets')
-    identifiers = (args.build_run_id, args.build_workflow_id, args.package_run_id, args.coordinator_run_id)
-    if any(type(value) is not int or value <= 0 for value in identifiers):
-        raise ValueError('Nightly publication requires positive producer and coordinator IDs')
-    api = GitHub(os.environ['GITHUB_REPOSITORY'])
-
-    def producers():
-        build = verify_ci(api, args.build_run_id, release['gitCommit'], BUILD_WORKFLOW, BUILD_JOBS)
-        if build['workflowId'] != args.build_workflow_id:
-            raise ValueError('Build workflow ID differs from supplied producer')
-        packages = verify_package_jobs(api, args.package_run_id, release['gitCommit'])
-        return build, packages
-
-    build, packages = producers()
+    producer = run_provenance()
+    api = GitHub(producer['repository'])
     expected = {**listed, 'SHA256SUMS': sha256(args.directory / 'SHA256SUMS')}
     public = published_nightly(api, args.tag, release)
     if public and public['assetSha256'] != expected:
         raise ValueError('Public nightly bytes conflict with original collected inventory')
     receipt = {'schemaVersion': 1, 'tag': args.tag, 'channel': 'nightly',
                'gitCommit': release['gitCommit'], 'source': release,
-               'verificationClass': 'automated-build-and-package',
-               'buildProducer': build, 'packageProducer': packages,
-               'coordinatorRunId': args.coordinator_run_id}
+               'verificationClass': 'automated-build-and-package', 'producer': producer}
     if public:
         receipt.update(published=True, unchanged=True, verifiedPublishedNightly=public)
     else:
@@ -186,14 +192,11 @@ def publish_nightly(args, release, listed):
             'proton-source-catalog.json. Verify SHA256SUMS, concatenate part1 then part2, '
             'and unpack the resulting tar.gz. The combined ZIP includes the catalog; '
             'download the two source parts separately.\n\n'
+            + 'Built, tested and packaged by ' + producer['url'] + '\n\n'
             + 'Channel/source and automated producer evidence:\n\n```json\n'
             + json.dumps(receipt, indent=2) + '\n```\n')
         stage_draft(args.tag, args.directory, listed, release, notes)
         verified = verify_remote_draft(args.tag, args.directory, listed, release['gitCommit'], nightly=True)
-        # Bytes can take time to download. Recheck both latest producer attempts
-        # immediately before making the release public.
-        if producers() != (build, packages):
-            raise ValueError('Nightly producers changed before publication')
         final = matching_releases(args.tag)
         if (len(final) != 1 or final[0].get('id') != verified['releaseId']
                 or final[0].get('draft') is not True or final[0].get('prerelease') is not True
@@ -217,10 +220,6 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--publish', action='store_true', help='Publish the existing draft after acceptance')
     mode.add_argument('--nightly', action='store_true', help='Publish a strict nightly after automated verification')
-    parser.add_argument('--build-run-id', type=int)
-    parser.add_argument('--build-workflow-id', type=int)
-    parser.add_argument('--package-run-id', type=int)
-    parser.add_argument('--coordinator-run-id', type=int)
     parser.add_argument('--acceptance', type=Path, help='Current package acceptance receipt')
     args = parser.parse_args()
     release = verify(Path.cwd(), args.tag)
@@ -229,7 +228,7 @@ def main():
     if args.nightly and args.acceptance:
         parser.error('--nightly uses automated evidence, not package acceptance')
     if args.publish and release.get('channel') == 'nightly':
-        parser.error('Nightly publication requires --nightly and verified producer IDs')
+        parser.error('Nightly publication requires --nightly from the run that built it')
     bundle = json.loads((args.directory / 'release-builds.json').read_text())
     if bundle['release'] != release:
         raise ValueError('Collected release source identity changed')
@@ -260,20 +259,23 @@ def main():
             'schemaVersion': 1, 'tag': args.tag, 'gitCommit': release['gitCommit'],
             'verifiedRemoteDraft': verified, 'published': True}, indent=2) + '\n')
         return
-    # A source tag alone does not replace current cross-platform compilation CI.
-    runs = json.loads(subprocess.check_output(['gh', 'run', 'list', '--workflow', 'Build', '--commit', release['gitCommit'], '--limit', '100', '--json', 'headSha,status,conclusion'], text=True))
-    if not any(run['headSha'] == release['gitCommit'] and run['status'] == 'completed' and run['conclusion'] == 'success' for run in runs):
-        raise ValueError('No passing Build workflow for this exact release commit')
+    # Staging runs only after CI, packaging and collection passed in this same run.
+    producer = run_provenance()
+    kind = 'release candidate' if release['channel'] == 'candidate' else 'release'
     notes = args.directory / 'release-notes.md'
-    notes.write_text('Linux x86_64 prerelease with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
+    notes.write_text('Linux x86_64 ' + kind + ' with individual Ubuntu DEBs, a Fedora RPM, an AppImage, a buildable source tarball and a combined ZIP.\n\n'
                      'DEB/RPM use distro Qt. AppImage dynamically bundles Qt 6.8.3 and requires glibc 2.39 or newer. '
                      'GNOME 50 requires the included host extension. Flatpak is tracked in issue #14.\n\n'
                      'Proton corresponding source accompanies the packages in two transport parts and proton-source-catalog.json. '
                      'Verify SHA256SUMS, concatenate part1 then part2, and unpack the resulting tar.gz. '
                      'The combined ZIP includes the catalog; download the two source parts separately.\n\n'
                      'Compiled source identities, dependency inventories, licenses and SHA256 checksums accompany the builds. '
-                     'Full release certification remains separate from this prerelease; package-specific acceptance is recorded before publication.\n')
+                     'Package-specific acceptance is recorded before this draft is published.\n\n'
+                     'Built, tested and packaged by ' + producer['url'] + '\n')
     stage_draft(args.tag, args.directory, listed, release, notes)
+    (args.directory / 'staging.json').write_text(json.dumps({
+        'schemaVersion': 1, 'tag': args.tag, 'channel': release['channel'],
+        'gitCommit': release['gitCommit'], 'producer': producer, 'draft': True}, indent=2) + '\n')
 
 
 if __name__ == '__main__':
