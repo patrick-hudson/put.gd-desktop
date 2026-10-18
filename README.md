@@ -107,41 +107,49 @@ One resident process; windows, capture helpers, the recorder and the AWS SDK wor
 
 ## 📸 Screenshots
 
+Every image below is the current nightly build (`0.1.1-dev.343+gac92b2158535`) on a real desktop: Linux Mint Cinnamon, Fedora 44 GNOME 50 on Wayland and Debian 13 Plasma 6 on Wayland, all from the acceptance lab.
+
+<p align="center">
+  <img src="docs/readme/tray-trio.png" alt="The put.gd tray menu on Cinnamon, GNOME and KDE Plasma: capture region, region & edit, window, desktop, screen recording, edit image, upload clipboard" width="720">
+  <br>
+  <sub>The tray is the app. Cinnamon, GNOME and Plasma, same menu: capture, capture &amp; edit, record, edit an image, upload the clipboard.</sub>
+</p>
+
 <p align="center">
   <img src="docs/readme/desktops-strip.png" alt="The same put.gd window on Cinnamon, GNOME and KDE Plasma" width="100%">
-  <sub>One UI, three desktops: Linux Mint Cinnamon, Ubuntu GNOME 50, Kubuntu Plasma 6 — all screenshots from the acceptance lab</sub>
+  <sub>One window, three desktops. The rail shows every action with its live shortcut.</sub>
 </p>
 
 <table>
 <tr>
-<td width="50%"><img src="docs/readme/destinations-cinnamon.png" alt="Destinations: an S3 bucket with region, endpoint, link domain and access policy"></td>
-<td width="50%"><img src="docs/readme/history-cinnamon.png" alt="History in gallery view with a selected capture and its stored link"></td>
+<td width="50%"><img src="docs/readme/history-plasma.png" alt="History in gallery view with captures, an edited image and a screen recording"></td>
+<td width="50%"><img src="docs/readme/editor-gnome.png" alt="Edit & upload: a NASA photo of Earth with a rectangle, highlight, redaction, arrow and text"></td>
 </tr>
 <tr>
-<td align="center"><sub><b>Destinations</b> — S3 basics up front, endpoints, addressing, storage class and timeouts under Advanced. Test connection uploads a synthetic object, verifies the public link, then cleans up.</sub></td>
-<td align="center"><sub><b>History</b> — offline ledger with search, filters, thumbnails and the exact receipt. Copy, open, re-edit, or prepare a guarded remote deletion.</sub></td>
+<td align="center"><sub><b>History</b> — offline ledger in gallery or list view: region and desktop captures, an edited upload, a screen recording. Copy the link again, re-edit, or prepare a guarded remote deletion.</sub></td>
+<td align="center"><sub><b>Edit &amp; upload</b> — rectangle, highlight, redaction, arrow and text on a photo. Redact removes the pixels from the upload; nothing is sent until Upload.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/readme/editor-gnome.png" alt="Edit & upload editor with redaction, arrow, rectangle and text annotations"></td>
-<td width="50%"><img src="docs/readme/settings-cinnamon.png" alt="Settings: General tab with startup, notifications, clipboard behaviour and local copies"></td>
+<td width="50%"><img src="docs/readme/review-plasma.png" alt="Review recording window with playback, trim, blur and solid masks, and output format"></td>
+<td width="50%"><img src="docs/readme/destinations-plasma.png" alt="Destinations: an S3 bucket with region, endpoint, link domain and access policy"></td>
 </tr>
 <tr>
-<td align="center"><sub><b>Edit &amp; upload</b> — redact, blur, crop, annotate. Redact removes the pixels from the uploaded image; nothing is sent until Upload.</sub></td>
-<td align="center"><sub><b>Settings</b> — autosave, per-action destinations and sharing, local copy folders, naming templates, shortcuts with live binding status.</sub></td>
+<td align="center"><sub><b>Screen recording</b> — Stop always opens this private review: scrub, trim, add timed blur or solid masks, pick the output, then Upload or Discard.</sub></td>
+<td align="center"><sub><b>Destinations</b> — S3 basics up front, endpoints, addressing, storage class and timeouts under Advanced. Test connection uploads a synthetic object, checks the public link, then cleans up.</sub></td>
 </tr>
 </table>
 
 <details>
-<summary><b>More</b> — tray menu and the editor on KDE</summary>
+<summary><b>More</b> — capture output, shortcuts</summary>
 <br>
 <table>
 <tr>
-<td width="25%" valign="top"><img src="docs/readme/tray-menu-cinnamon.png" alt="Tray menu on Cinnamon"></td>
-<td width="75%" valign="top"><img src="docs/readme/editor-kde.png" alt="Edit & upload on Kubuntu Plasma"></td>
+<td width="50%"><img src="docs/readme/capture-plasma.png" alt="Settings › Capture: default destination, sharing, per-action exceptions and file name templates"></td>
+<td width="50%"><img src="docs/readme/shortcuts-plasma.png" alt="Settings › Shortcuts: six global shortcuts with their live binding status"></td>
 </tr>
 <tr>
-<td align="center"><sub>The tray is the app: capture, record, settings, history, activity. It turns blue while preparing, green while uploading, amber while encoding, and flashes red on a real error.</sub></td>
-<td align="center"><sub>The editor is a separate on-demand process with the same theme. Blur is cosmetic and says so; Redact is the one that actually removes data.</sub></td>
+<td align="center"><sub><b>Capture</b> — one default output, per-action exceptions, and naming templates for captures, clipboard images and text.</sub></td>
+<td align="center"><sub><b>Shortcuts</b> — record a chord per action; each row reports whether the desktop actually granted it.</sub></td>
 </tr>
 </table>
 </details>

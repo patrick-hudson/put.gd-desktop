@@ -13,39 +13,40 @@ here is packaged, exported in the curated source archive or used by a test.
 
 ## Screenshots
 
-All screenshots are crops of retained acceptance evidence. The evidence files
-are the originals; do not edit them. Re-crop from the source when a window
-changes.
+All screenshots were taken on 2026-10-18 from the nightly build
+`0.1.1-dev.343+gac92b2158535` (nightly commit `ac92b21`), running on
+sanitised desktops with nothing but put.gd open:
 
-| File | Source evidence | Crop box (left, top, right, bottom) |
+| Desktop | Where | How the build got there |
 | --- | --- | --- |
-| `settings-cinnamon.png` | `docs/evidence/issue40-redesign/cinnamon-general.png` | 0, 0, 1280, 760 |
-| `destinations-cinnamon.png` | `docs/evidence/issue40-redesign/cinnamon-destination.png` | 0, 0, 1280, 760 |
-| `history-cinnamon.png` | `docs/evidence/issue40-redesign/cinnamon-history.png` | 0, 0, 1280, 760 |
-| `settings-gnome.png` | `docs/evidence/issue40-redesign/gnome-settings.png` | 67, 32, 1280, 800 |
-| `settings-kde.png` | `docs/evidence/issue40-redesign/kde-settings.png` | 0, 0, 1280, 745 |
-| `editor-gnome.png` | `docs/evidence/issue51-edit-and-upload/gnome-vm-agent-edits.png` | 220, 88, 1124, 742 |
-| `editor-kde.png` | `docs/evidence/issue51-edit-and-upload/kde-vm-editor-open.png` | 190, 48, 1090, 697 |
-| `tray-menu-cinnamon.png` | `docs/evidence/issue36-tray-label/cinnamon-menu.png` | 960, 500, 1280, 800 |
-| `desktops-strip.png` | the three `settings-*.png` crops above | each scaled to 416 px wide, 16 px gaps, 14 px rounded corners, top-aligned to the shortest panel |
+| Linux Mint Cinnamon / X11 | the lab's `cinnamon-x11` QEMU guest on the Fedora builder (1280×800) | CI package `putgd_0.1.1~dev.343+gac92b2158535_amd64.deb` from the nightly push run, installed with `tools/lab/lab.py install` |
+| Fedora 44 GNOME 50 / Wayland | the physical Fedora builder desktop (1920×1080) | `cmake --preset dev` scratch build of the same commit, run with the packaged host Shell extension |
+| Debian 13 KDE Plasma 6.3 / Wayland | the physical Debian builder desktop (1920×1080) | `cmake --preset dev` scratch build of the same commit, with the restricted KWin desktop entries for the scratch binaries |
 
-The crops were produced with Pillow:
+Each instance ran with isolated XDG directories and a lab configuration:
+local copies on, an S3 destination named `put.gd` with no credentials (the
+development template's non-secret settings), and shortcuts `Ctrl+Shift+1`
+to `Ctrl+Shift+6`. Nothing was uploaded anywhere; every History entry is a
+local-only capture, the edited photo, or a six-second local recording.
 
-```python
-from PIL import Image, ImageDraw
-Image.open(SOURCE).convert("RGB").crop(BOX).save(TARGET, optimize=True)
-# desktops-strip.png
-W, gap = 1280, 16; pw = (W - 2 * gap) // 3
-panels = [Image.open(f).convert("RGB") for f in ("settings-cinnamon.png", "settings-gnome.png", "settings-kde.png")]
-panels = [p.resize((pw, round(p.height * pw / p.width)), Image.LANCZOS) for p in panels]
-ph = min(p.height for p in panels)
-strip = Image.new("RGBA", (W, ph), (0, 0, 0, 0))
-for i, p in enumerate(panels):
-    mask = Image.new("L", (pw, ph), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, pw - 1, ph - 1), radius=14, fill=255)
-    strip.paste(p.crop((0, 0, pw, ph)), (i * (pw + gap), 0), mask)
-strip.save("desktops-strip.png", optimize=True)
-```
+| File | Content | Source frame |
+| --- | --- | --- |
+| `settings-cinnamon.png` | Settings › General | guest frame, window maximised, crop `0, 0, 1280, 760` |
+| `settings-gnome.png` | Settings › General | Fedora VNC frame, crop `298, 90, 1622, 1016` |
+| `settings-plasma.png` | Settings › General | Debian VNC frame, crop `298, 64, 1620, 972` |
+| `capture-plasma.png`, `shortcuts-plasma.png`, `destinations-plasma.png`, `history-plasma.png` | Settings › Capture, Settings › Shortcuts, Destinations, History (gallery, edited photo selected) | Debian VNC frames, same crop |
+| `review-plasma.png` | Review recording window after a six-second monitor recording through KWin's screencast stream | Debian VNC frame, crop `508, 150, 1412, 876` |
+| `editor-gnome.png` | Edit & upload with rectangle, highlight, redaction, arrow and text applied through `editor.apply` | Fedora VNC frame, crop `288, 54, 1632, 1052` |
+| `tray-cinnamon.png`, `tray-gnome.png`, `tray-plasma.png` | The tray context menu | guest frame crop `1055, 425, 1280, 800`; Fedora crop `1560, 33, 1860, 560`; Debian crop `1540, 680, 1920, 1080` |
+| `tray-trio.png` | the three tray crops side by side, 420 px tall, 16 px gaps, 12 px rounded corners | generated |
+| `desktops-strip.png` | the three Settings crops scaled to 416 px wide, 16 px gaps, 14 px rounded corners, top-aligned to the shortest | generated |
 
-The lab sessions behind these images are identified in their evidence
-directories; the README does not claim any acceptance result from them.
+The photo in the editor is NASA's *Blue Marble* image of Earth
+(NASA image ID `PIA18033`, `images-assets.nasa.gov/image/PIA18033/PIA18033~medium.jpg`),
+a public-domain NASA work. The annotations are the editor's own shapes.
+
+Frames were captured through the lab's VNC/QMP witnesses and cropped with
+Pillow (`Image.crop`, `optimize=True`); the composite images are built with the
+same library. The raw frames were not retained in the repository. The README
+claims no acceptance result from these images; acceptance evidence lives under
+`docs/evidence/` and is recorded in `docs/verification.md`.
