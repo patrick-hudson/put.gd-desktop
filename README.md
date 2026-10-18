@@ -40,7 +40,7 @@
 
 <br>
 
-<img src="docs/readme/flow.svg" alt="1. Press the hotkey. 2. Drag a region. 3. Upload. 4. Link on your clipboard." width="100%">
+<img src="docs/readme/flow.svg" alt="The put.gd pipeline, three scenarios in a loop: trigger by hotkey, tray menu or CLI; capture a region, clipboard files or a screen recording; optionally edit or review; upload to S3 or Proton Drive with a local copy; link on the clipboard and a receipt in History." width="100%">
 
 <br>
 
