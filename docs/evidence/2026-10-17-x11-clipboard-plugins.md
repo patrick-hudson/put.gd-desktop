@@ -1,6 +1,6 @@
 # X11 clipboard import without Qt image plugins — 2026-10-17
 
-The X11 resident's clipboard import no longer loads Qt image plugins for text, file-list or PNG offers. Candidate `d11940f` passed the host suite and the Cinnamon, KDE/X11, KDE/Wayland and GNOME/Wayland gates. On physical Kubuntu Plasma X11, the resident is 10.2 MiB smaller after its first clipboard import. One Debian window-capture case fails the same way on the unchanged baseline. The [structured receipt](2026-10-17-x11-clipboard-plugins.json) has exact identities, hashes and per-case results.
+The X11 resident's clipboard import no longer loads Qt image plugins for text, file-list or PNG offers. Candidate `d11940f` passed the host suite and the Cinnamon, KDE/X11, KDE/Wayland and GNOME/Wayland gates. On physical Kubuntu Plasma X11, the resident is 10.2 MiB smaller after its first clipboard import. One Debian window-capture check failed because of a lab expectation, not the product. The [structured receipt](2026-10-17-x11-clipboard-plugins.json) has exact identities, hashes and per-case results.
 
 ## Candidate
 
@@ -22,12 +22,12 @@ All four ran in parallel. The Cinnamon-first ordering was retired at the user's 
 | --- | --- | --- | --- | --- | --- |
 | Cinnamon 6.6.4 / X11 | Mint 22.3 VM, workstation KVM | 6.4.2 | 12/12 | pass | 25.95 / 25.95 MiB |
 | Plasma 6.6.6 / X11 | physical Kubuntu 26.04 (`k72`) | 6.10.2 | 12/12 | pass | 37.57 / 37.57 MiB |
-| Plasma 6.3.6 / Wayland | physical Debian 13 (`d69`) | 6.8.2 | 11/12 | pass | 28.86 / 28.86 MiB |
+| Plasma 6.3.6 / Wayland | physical Debian 13 (`d69`) | 6.8.2 | 11/12 (window: lab expectation) | pass | 28.86 / 28.86 MiB |
 | GNOME 50.0 / Wayland | physical Fedora 44 (`f44`) | 6.11.2 | 12/12 | pass | 33.23 / 33.23 MiB |
 
 Every window had 61 samples, zero swap and no helpers, with at most 0.007 % of one core. The cases cover region, window and desktop capture, Qt and GTK clipboard text/image/files with independent paste, and three region cancellations. The Cinnamon VM runs locally because its goldens trust only the workstation lab key.
 
-The Debian failure is the window case. KWin 6.3 returned the window with its title bar and frame (642×449), so the colour checks miss. The unchanged `95a0f9b` baseline fails identically on the same desktop, so this predates the change; a separate task tracks it.
+The Debian failure is the window case, and the lab's expectation caused it. The capture includes the title bar and frame (642×449, fixture paint at (1, 28)), which is what the app's help promises "where supported". `tools/lab/lab.py` asks KWin for the real frame only when the profile is exactly `kde-wayland`. This run's physical profile was named `kde-wayland-physical`, so the check expected the 640×420 client area. The unchanged `95a0f9b` baseline fails identically. The Kubuntu 6.6 VM receipts are frame-inclusive too. A separate session is fixing the lab check.
 
 ![Cinnamon History after graceful restart](x11-clipboard-plugins/cinnamon-history-after-restart.png)
 

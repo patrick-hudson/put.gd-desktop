@@ -19,8 +19,8 @@ candidate `d11940f` on `feat/edit-and-upload`:
   Plasma/Wayland and physical Fedora GNOME/Wayland, each with native cases, views,
   restart and two 300-second memory windows (25.9–37.6 MiB peak).
 - Plasma/X11 resident 10.2 MiB smaller after its first clipboard import, with no
-  image plugin mapped. The Debian window capture includes decorations, as on the
-  unchanged baseline.
+  image plugin mapped. The one Debian window failure was a lab expectation tied
+  to the physical profile name; the frame-inclusive capture is correct.
 
 ## Edit & upload — 2026-10-17
 

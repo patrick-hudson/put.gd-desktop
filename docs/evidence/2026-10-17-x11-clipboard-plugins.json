@@ -515,7 +515,7 @@
     },
     {
       "desktop": "kde-wayland",
-      "failure": "window case: KWin 6.3 capture includes title bar and frame (642x449); identical with the unchanged 95a0f9b baseline, so it predates this change (follow-up task opened)"
+      "failure": "window case: lab.py queries KWin's real frame only for profile 'kde-wayland'; the physical profile 'kde-wayland-physical' fell back to the 640x420 client area. The capture is correctly frame-inclusive (642x449, paint at (1,28)), identically on 95a0f9b; the lab check is being fixed separately"
     },
     {
       "desktop": "gnome-wayland",
@@ -546,7 +546,7 @@
   },
   "policyChange": "commit e59c040 retires Cinnamon-first ordering (user instruction 2026-10-17)",
   "openItems": [
-    "Debian 13 Plasma 6.3 window capture includes decorations (predates this change)",
+    "lab.py window-frame oracle keyed on the exact 'kde-wayland' profile name (being fixed separately); Debian Plasma 6.3 product behaviour is correct",
     "Qt 6.4.2/6.8.2 in-process PNG writer still loads all plugins after an image import (separate follow-up session)",
     "guarded overlay cleanup blocked by raw-backed Windows USB overlays under work/windows/runs/usb*; x11c1/x11c2 overlays and the restored p2c golden retained",
     "Kubuntu 26.04 KDE/Wayland and Ubuntu 26.04 GNOME VM profiles were not rerun; KDE/Wayland and GNOME/Wayland are covered on physical Debian and Fedora"
