@@ -28,7 +28,16 @@ QPushButton { background: #2a2f3a; color: #e6e8ee; border: 1px solid #3a4150; bo
 QPushButton:hover { background: #343a47; }
 QPushButton:disabled { color: #6f7685; background: #1c1f26; }
 QPushButton#upload { background: #2e7d32; border-color: #43a047; color: white; font-weight: 600; }
-QComboBox, QSpinBox, QListWidget { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 2px 6px; }
+QSpinBox, QListWidget { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 2px 6px; }
+QCheckBox { color: #e6e8ee; spacing: 6px; }
+QCheckBox:disabled { color: #6f7685; }
+QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #9bbcff; border-radius: 3px; background: #22262f; }
+QCheckBox::indicator:checked { background: #9bbcff; }
+QCheckBox::indicator:disabled { border-color: #3a4150; background: #1c1f26; }
+QComboBox { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 2px 8px; }
+QComboBox:disabled { color: #6f7685; }
+QComboBox::drop-down { border: none; width: 18px; }
+QComboBox QAbstractItemView { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; selection-background-color: #3a4150; selection-color: #ffffff; outline: none; }
 QSlider::groove:horizontal { height: 6px; background: #2a2f3a; border-radius: 3px; }
 QSlider::handle:horizontal { width: 14px; margin: -5px 0; background: #9bbcff; border-radius: 7px; }
 )QSS";
@@ -240,7 +249,14 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         emit configChanged(config_);
         refreshLabels();
     });
-    connect(upload_, &QPushButton::clicked, this, [this] { if (!exporting_) emit uploadRequested(edit_.revision); });
+    // Upload hands the clip to the resident: the review closes at once and the
+    // export and upload continue in the background, reported like any upload.
+    connect(upload_, &QPushButton::clicked, this, [this] {
+        if (exporting_) return;
+        closing_ = true;
+        emit uploadRequested(edit_.revision);
+        close();
+    });
     connect(save_, &QPushButton::clicked, this, [this] {
         if (exporting_) return;
         const auto path = QFileDialog::getSaveFileName(this, "Save a copy", QDir::homePath() + "/recording." + config_.extension(), QStringLiteral("%1 (*.%2)").arg(config_.format.toUpper(), config_.extension()));

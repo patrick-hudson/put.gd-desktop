@@ -44,8 +44,15 @@ const char* const barStyle = R"QSS(
 QWidget#putgd-record-bar { background: #15171c; border: 1px solid #3a4150; border-radius: 10px; }
 QLabel { color: #e6e8ee; font-size: 13px; }
 QLabel#time { font-family: "DejaVu Sans Mono", monospace; font-size: 14px; min-width: 64px; }
-QCheckBox { color: #c8cdd8; spacing: 6px; }
+QCheckBox { color: #e6e8ee; spacing: 6px; }
+QCheckBox:disabled { color: #6f7685; }
+QCheckBox::indicator { width: 14px; height: 14px; border: 1px solid #9bbcff; border-radius: 3px; background: #22262f; }
+QCheckBox::indicator:checked { background: #9bbcff; }
+QCheckBox::indicator:disabled { border-color: #3a4150; background: #1c1f26; }
 QComboBox { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 2px 8px; }
+QComboBox:disabled { color: #6f7685; }
+QComboBox::drop-down { border: none; width: 18px; }
+QComboBox QAbstractItemView { background: #22262f; color: #e6e8ee; border: 1px solid #3a4150; selection-background-color: #3a4150; selection-color: #ffffff; outline: none; }
 QPushButton { background: #2a2f3a; color: #e6e8ee; border: 1px solid #3a4150; border-radius: 6px; padding: 4px 12px; }
 QPushButton:hover { background: #343a47; }
 QPushButton#record { background: #c62828; color: white; border-color: #e53935; }

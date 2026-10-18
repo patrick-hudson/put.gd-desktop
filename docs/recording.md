@@ -185,9 +185,13 @@ copy…" and "Upload" send `saveCopyRequested {path, revision}` and
 `uploadRequested {revision}`; the resident runs exactly the `saveCopy` and
 `upload` paths, so a stale revision or an animation over budget is refused
 and the window shows the resident's current edit again. Discard, closing the
-window and Escape during selection end the operation as `cancelled`. While an
-export runs the controls are disabled and the status shows progress; after a
-successful Upload the resident shuts the helper down with the window.
+window and Escape during selection end the operation as `cancelled`. Upload
+closes the window at once and the export and upload continue in the
+background; the operation reports like any other upload (tray, history,
+`operation.inspect`), and the resident shuts the helper down when the export
+has been handed over. Save copy keeps the window open with the controls
+disabled and the status showing progress, so the user can still upload
+afterwards.
 
 ### Helper events
 

@@ -52,7 +52,9 @@ private:
 
 // The private review: scrub, trim, timed masks, then Upload or Save copy.
 // Edits are proposed to the resident as events and the resident's answer
-// (setEdit) is what this window displays; nothing uploads from here.
+// (setEdit) is what this window displays; nothing uploads from here. Upload
+// closes the window and the work continues in the background; Save copy
+// keeps it open so the user can still upload afterwards.
 class ReviewWindow final : public QWidget {
     Q_OBJECT
 public:
