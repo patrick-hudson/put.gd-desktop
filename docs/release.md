@@ -50,6 +50,9 @@ development releases, not new graphical, memory or live-S3 certification.
 
 ### Candidate and stable
 
+Agents releasing a version follow [the release runbook](release-runbook.md),
+which adds the version checks, acceptance recording and confirmation points.
+
 1. Run `python3 tools/releases/promote.py` to preview, then `--open` to create
    the pull request from `nightly` into `main` titled `release: vBASE`. Merge it
    with a merge commit once `CI` passes, so every `nightly` commit keeps its SHA.
