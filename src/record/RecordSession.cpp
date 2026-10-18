@@ -7,6 +7,9 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QJsonArray>
+#include <QStandardPaths>
+#include <QSaveFile>
+#include <QJsonDocument>
 #include <QPointer>
 #include <QScreen>
 #include <QTimer>
@@ -133,6 +136,10 @@ void RecordSession::cancelLocal() {
     if (selection_) { selection_->disconnect(this); selection_->cancel(); selection_->deleteLater(); selection_ = nullptr; }
     pipeline_.cancel();
     portal_.close();
+    mutter_.close();
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+    kde_.close();
+#endif
     if (portalFd_ >= 0) { ::close(portalFd_); portalFd_ = -1; }
     bounds_.hideAll();
     if (bar_) bar_->hide();
@@ -158,7 +165,9 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     staging_ = staging;
     workingClip_ = staging + "/working.mkv";
     capabilities_ = probeMedia();
-    if (capabilities_["acquisition"].toString() == "portal") { preparePortal(std::move(reply)); return; }
+    const auto acquisition = capabilities_["acquisition"].toString();
+    if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
+    if (acquisition == "portal") { preparePortal(std::move(reply)); return; }
     if (target_.kind == "region" && target_.rect.isEmpty()) {
         // Drag release keeps the bounds and shows the controls; nothing records yet.
         selection_ = new SelectionOverlay(this);
@@ -181,6 +190,31 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
     }
     finishPrepare(std::move(reply));
 }
+// Restore tokens live beside the resident's data (the helper inherits its
+// XDG directories): one per desktop and source class, replaced on every grant.
+static QString portalTokensPath() { return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/recording-portal-tokens.json"; }
+QString RecordSession::portalTokenKey() const {
+    const auto desktop = qEnvironmentVariable("XDG_CURRENT_DESKTOP").toLower();
+    return (desktop.isEmpty() ? QStringLiteral("wayland") : desktop) + "/" + (target_.kind == "window" ? QStringLiteral("window") : QStringLiteral("monitor"));
+}
+QString RecordSession::loadPortalToken() const {
+    QFile file(portalTokensPath());
+    if (!file.open(QIODevice::ReadOnly)) return {};
+    return QJsonDocument::fromJson(file.readAll()).object().value(portalTokenKey()).toString();
+}
+void RecordSession::storePortalToken(const QString& token) const {
+    if (token.isEmpty()) return;
+    QFile file(portalTokensPath());
+    QJsonObject tokens;
+    if (file.open(QIODevice::ReadOnly)) { tokens = QJsonDocument::fromJson(file.readAll()).object(); file.close(); }
+    tokens[portalTokenKey()] = token;
+    QDir().mkpath(QFileInfo(portalTokensPath()).path());
+    QSaveFile save(portalTokensPath());
+    if (!save.open(QIODevice::WriteOnly)) return;
+    save.setPermissions(QFile::ReadOwner | QFile::WriteOwner);
+    save.write(QJsonDocument(tokens).toJson(QJsonDocument::Compact));
+    save.commit();
+}
 void RecordSession::preparePortal(Reply reply) {
     // The compositor's picker chooses the monitor or window; a region needs an
     // explicit rectangle on the shared monitor (overlays cannot be placed on Wayland).
@@ -188,31 +222,78 @@ void RecordSession::preparePortal(Reply reply) {
     const int offered = capabilities_["portal"].toObject()["sourceTypes"].toInt();
     if (!(offered & int(types))) { reply({"recording_unsupported", "The portal does not offer this kind of screen cast", {{"kind", target_.kind}}}, {}); return; }
     QPointer<RecordSession> guard(this);
-    portal_.start(types, {}, [guard, reply](Error error, PortalScreenCast::Result result) {
+    const auto token = loadPortalToken();
+    debugLog(token.isEmpty() ? QStringLiteral("portal: no restore token for %1").arg(portalTokenKey()) : QStringLiteral("portal: restoring %1").arg(portalTokenKey()));
+    portal_.start(types, token, [guard, reply](Error error, PortalScreenCast::Result result) {
         if (!guard) return;
         if (error) { reply(error, {}); return; }
+        guard->storePortalToken(result.restoreToken);
         const auto& stream = result.streams.first();
-        guard->portalFd_ = result.fd;
-        guard->portalNode_ = stream.node;
-        guard->portalTarget_ = true;
         QRect shared(stream.position, stream.size);
-        if (shared.isEmpty()) shared = QRect(QPoint(0, 0), QSize(1280, 720));  // size arrives with the stream for some compositors; the probe below is informational
-        ResolvedTarget resolved;
-        resolved.rect = shared;
-        if (guard->target_.kind == "region" && !guard->target_.rect.isEmpty()) {
-            const QRect inside = guard->target_.rect.intersected(shared);
-            if (inside.width() < 2 || inside.height() < 2) { guard->portal_.close(); reply({"recording_target", "The region is not on the shared monitor", {{"shared", rectJson(shared)}}}, {}); return; }
-            guard->portalCrop_ = inside.translated(-shared.topLeft());
-            guard->portalCrop_.setWidth(guard->portalCrop_.width() & ~1);
-            guard->portalCrop_.setHeight(guard->portalCrop_.height() & ~1);
-            resolved.rect = guard->portalCrop_.translated(shared.topLeft());
-        }
-        resolved.canvas = QSize(resolved.rect.width() & ~1, resolved.rect.height() & ~1);
-        resolved.layout = QJsonObject{{"portal", true}, {"node", double(stream.node)}, {"sourceType", double(stream.sourceType)}, {"shared", rectJson(shared)}};
-        guard->resolved_ = resolved;
-        guard->prepared_ = true;
-        guard->finishPrepare(reply);
+        if (shared.isEmpty()) shared = QRect(QPoint(0, 0), QSize(1280, 720));
+        // The portal shares the whole monitor; a region is cropped out of it.
+        guard->finishWayland(stream.node, result.fd, shared, shared, QStringLiteral("portal"), reply);
     });
+}
+// Dialog-free paths: KWin streams an output or a logical region directly;
+// Mutter records a monitor connector or an area. Windows stay on the portal.
+void RecordSession::prepareNative(Reply reply) {
+    const auto acquisition = capabilities_["acquisition"].toString();
+    if (target_.kind == "window") { preparePortal(std::move(reply)); return; }
+    QPointer<RecordSession> guard(this);
+    const bool region = target_.kind == "region" && !target_.rect.isEmpty();
+    QRect rect = target_.rect;
+    rect.setWidth(rect.width() & ~1);
+    rect.setHeight(rect.height() & ~1);
+    if (acquisition == "mutter-screencast") {
+        auto done = [guard, reply, acquisition](Error error, MutterScreenCast::Stream stream) {
+            if (!guard) return;
+            if (error) { reply(error, {}); return; }
+            guard->finishWayland(stream.node, -1, stream.logical, stream.logical, acquisition, reply);
+        };
+        if (region) mutter_.recordArea(rect, done);
+        else {
+            QString connector = target_.identity;
+            QRect logical;
+            for (QScreen* screen : QGuiApplication::screens()) if ((connector.isEmpty() && screen == QGuiApplication::primaryScreen()) || screen->name() == connector) { connector = screen->name(); logical = screen->geometry(); }
+            if (logical.isEmpty() && QGuiApplication::primaryScreen()) logical = QGuiApplication::primaryScreen()->geometry();
+            mutter_.recordMonitor(connector, logical, done);
+        }
+        return;
+    }
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+    auto done = [guard, reply, acquisition](Error error, KdeScreencast::Stream stream) {
+        if (!guard) return;
+        if (error) { reply(error, {}); return; }
+        guard->finishWayland(stream.node, -1, stream.logical, stream.logical, acquisition, reply);
+    };
+    if (region) kde_.streamRegion(rect, done);
+    else kde_.streamOutput(target_.identity, done);
+#else
+    preparePortal(std::move(reply));
+#endif
+}
+// `shared` is the monitor or area the stream covers; `streamRect` is what the
+// stream frames show (equal unless a region is cropped out of a portal share).
+void RecordSession::finishWayland(quint32 node, int fd, const QRect& shared, const QRect& streamRect, const QString& source, Reply reply) {
+    portalFd_ = fd;
+    portalNode_ = node;
+    portalTarget_ = true;
+    ResolvedTarget resolved;
+    resolved.rect = streamRect;
+    if (source == "portal" && target_.kind == "region" && !target_.rect.isEmpty()) {
+        const QRect inside = target_.rect.intersected(shared);
+        if (inside.width() < 2 || inside.height() < 2) { cancelLocal(); reply({"recording_target", "The region is not on the shared monitor", {{"shared", rectJson(shared)}}}, {}); return; }
+        portalCrop_ = inside.translated(-shared.topLeft());
+        portalCrop_.setWidth(portalCrop_.width() & ~1);
+        portalCrop_.setHeight(portalCrop_.height() & ~1);
+        resolved.rect = portalCrop_.translated(shared.topLeft());
+    }
+    resolved.canvas = QSize(resolved.rect.width() & ~1, resolved.rect.height() & ~1);
+    resolved.layout = QJsonObject{{"acquisition", source}, {"node", double(node)}, {"shared", rectJson(shared)}};
+    resolved_ = resolved;
+    prepared_ = true;
+    finishPrepare(reply);
 }
 void RecordSession::finishPrepare(Reply reply) {
     if (!portalTarget_) {

@@ -10,9 +10,11 @@ and MCP) is complete, and the drag selection, ready bounds, outside dimming
 and floating control bar are in place, and every Stop opens the private review
 window. The tray's **Capture Screen Recording** entry, the dashboard's **Record
 screen** button and the `record` global shortcut start one (see "Tray and
-shortcut" below). On Wayland the helper shares a monitor or window through the
-ScreenCast portal (the compositor's own picker) into `pipewiresrc`; see
-"Wayland acquisition (portal)". Desktop acceptance evidence is recorded
+shortcut" below). On Wayland the helper takes a PipeWire stream from the
+compositor without a dialog where it can (KWin's screencast protocol on
+Plasma, Mutter's screen cast service on GNOME) and otherwise through the
+ScreenCast portal, whose picker is shown once per target kind thanks to
+restore tokens; see "Wayland acquisition". Desktop acceptance evidence is recorded
 separately in `docs/verification.md` when it exists; nothing here claims it.
 
 ## Workflow
@@ -258,35 +260,62 @@ backend.
 | `uploadRequested {revision}`, `saveCopyRequested {path, revision}` | the review's Upload / Save copy |
 | `failed {error}` | the pipeline or helper failed; the operation ends `failed` without an upload |
 
-## Wayland acquisition (portal)
+## Wayland acquisition
 
-On a Wayland session the probe reports `acquisition: "portal"` and
-`available: true` when `pipewiresrc` is installed and
-`org.freedesktop.portal.ScreenCast` (version 2 or later) answers on the
-session bus; `portal {portalVersion, sourceTypes, cursorModes}` carries the
-portal's facts and `targets` lists `window` only when the portal offers it.
-Reasons for an unavailable Wayland session are `live_source_missing`
-(no `pipewiresrc`), `portal_unavailable`, `portal_too_old` or
-`session_bus_unavailable`.
+On a Wayland session the compositor provides the pixels as a PipeWire video
+stream and `pipewiresrc` feeds them through `videorate` at the configured
+rate into the same encoder, pause and budget logic as X11. The probe picks
+one of three ways to obtain that stream and reports it as `acquisition`:
 
-`prepare` opens a portal session (`CreateSession`, `SelectSources` with the
-monitor or window type, `cursor_mode` embedded when offered, `Start`): the
-compositor shows its picker and the user chooses what to share, which is
-why the `prepare` deadline is long. Monitor and window identities are
-optional everywhere now (on X11 an empty monitor identity means the first
-connected monitor; the picker decides on Wayland, and `desktop` is a monitor
-pick). A `region` with a rectangle records the chosen monitor cropped to the
-rectangle (`videocrop`, stream-relative); a `region` without one records the
-whole chosen monitor, since drag overlays cannot be placed on Wayland. The
-stream's node and PipeWire connection feed `pipewiresrc fd= path=` through
-`videorate` at the configured rate into the same encoder, pause and budget
-logic as X11. There is no ready ring or dimming on Wayland; the control bar
-floats where the compositor puts it and `overlayExcluded` is `false`.
-Cancelling the picker ends the operation as `cancelled`; Cancel, Stop and
-discard close the portal session (`Session.Close`), which ends the share.
-The share is not persisted between recordings (every recording shows the
-picker). `tests/unit` covers the stream demarshalling; the picker itself is
-exercised on the Fedora GNOME and Debian KDE desktops.
+- `kde-screencast`: KWin's own `zkde_screencast_unstable_v1` protocol
+  (version 3 or later) on a Plasma session. `kdeScreencast {available,
+  version, outputs:[{name, logical}]}` carries the facts. A monitor or
+  `desktop` target streams the named output (the first output when the
+  identity is empty) and a `region` with a rectangle streams exactly that
+  logical rectangle (`stream_region`), so no crop is needed. KWin only
+  advertises the protocol to executables whose application desktop entry
+  lists it in `X-KDE-Wayland-Interfaces`; packaging installs
+  `putgd-record.desktop` with `Exec=<bindir>/putgd-record` for that, the
+  same mechanism `docs/desktops/kde.md` describes for ScreenShot2. Without
+  the entry the facts say `kde_screencast_unavailable` and the portal is used.
+- `mutter-screencast`: the `org.gnome.Mutter.ScreenCast` service on a GNOME
+  session (`mutterScreenCast {available, service}`). A monitor or `desktop`
+  target calls `RecordMonitor` with the Qt screen's connector name (the
+  primary screen when the identity is empty), a `region` with a rectangle
+  calls `RecordArea`; `PipeWireStreamAdded` delivers the node. The service
+  answers session clients on the GNOME desktops tested; where it refuses,
+  the error is reported and the portal remains the way to share.
+- `portal`: `org.freedesktop.portal.ScreenCast` (version 2 or later) on the
+  session bus, used for `window` targets everywhere and for everything when
+  neither native path is available. `portal {portalVersion, sourceTypes,
+  cursorModes}` carries the portal's facts and `targets` lists `window` only
+  when the portal offers it. `prepare` opens a portal session
+  (`CreateSession`, `SelectSources`, `Start`) and the compositor shows its
+  picker, which is why the `prepare` deadline is long. With portal version 4
+  or later the share is requested with `persist_mode 2` and the returned
+  restore token is kept in `<XDG_DATA_HOME>/putgd/putgd-record/recording-portal-tokens.json`
+  keyed by desktop and target kind, so the next recording of that kind
+  restores the share without a picker until the compositor invalidates the
+  token (a refused token simply shows the picker again and stores the new
+  one). A `region` with a rectangle records the shared monitor cropped to
+  the rectangle (`videocrop`, stream-relative); a `region` without one
+  records the whole shared monitor, since drag overlays cannot be placed on
+  Wayland.
+
+Both native paths name a node on the session's PipeWire daemon, so the probe
+also requires its socket (`pipewire {socket}`; `PIPEWIRE_REMOTE`,
+`PIPEWIRE_RUNTIME_DIR` and `XDG_RUNTIME_DIR` are honoured) and leaves the
+portal, which passes its own connection as a descriptor, in charge when it
+is missing. Monitor and window identities are optional everywhere (on X11 an
+empty monitor identity means the first connected monitor). Reasons for an
+unavailable Wayland session are `live_source_missing` (no `pipewiresrc`),
+`portal_unavailable`, `portal_too_old` or `session_bus_unavailable`.
+There is no ready ring or dimming on Wayland; the control bar floats where
+the compositor puts it and `overlayExcluded` is `false`. Cancelling a
+picker ends the operation as `cancelled`; Cancel, Stop and discard close the
+stream (`Session.Close`, `Session.Stop` or the protocol's `close`), which
+ends the share. `tests/unit` covers the portal stream demarshalling; the
+three paths are exercised on the Fedora GNOME and Debian KDE desktops.
 
 ## Capture and export engine (X11)
 

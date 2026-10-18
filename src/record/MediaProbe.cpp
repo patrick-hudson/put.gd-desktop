@@ -1,6 +1,12 @@
 #include "MediaProbe.h"
 #include "core/RecordingModel.h"
 #include "PortalScreenCast.h"
+#include "WaylandAcquisition.h"
+#include <QFileInfo>
+#include "MutterScreenCast.h"
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+#include "KdeScreencast.h"
+#endif
 #include <QJsonArray>
 #include <QProcessEnvironment>
 #include <gst/gst.h>
@@ -116,15 +122,38 @@ QJsonObject probeMedia() {
     QString portalReason;
     const bool portalOk = session == "wayland" && PortalScreenCast::available(portal, &portalReason);
     if (session == "wayland") { portal["available"] = portalOk; if (!portalOk) portal["reason"] = portalReason; result["portal"] = portal; }
-    result["acquisition"] = session == "x11" ? "x11" : session == "wayland" ? "portal" : "none";
+    // Dialog-free compositor paths first: KWin's screencast protocol on Plasma,
+    // Mutter's screen cast service on GNOME; the portal (with restore tokens) otherwise.
+    // Both native paths name a PipeWire node on the session daemon, so its socket
+    // must be reachable; the portal passes its own connection as a descriptor.
+    const auto env = QProcessEnvironment::systemEnvironment();
+    const auto desktop = env.value("XDG_CURRENT_DESKTOP").toLower();
+    const QString pipewire = pipewireSocket(env);
+    if (session == "wayland") result["pipewire"] = QJsonObject{{"socket", pipewire.isEmpty() ? QJsonValue() : QJsonValue(pipewire)}};
+    QString acquisition = session == "x11" ? "x11" : session == "wayland" ? "portal" : "none";
+    if (session == "wayland" && pipewire.isEmpty()) {
+        // leave the portal in charge: it carries its own PipeWire connection
+    } else if (session == "wayland" && desktop.contains("kde")) {
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+        QJsonObject kde; QString reason; KdeScreencast probe;
+        const bool ok = probe.available(kde, &reason); kde["available"] = ok; if (!ok) kde["reason"] = reason; result["kdeScreencast"] = kde;
+        if (ok) acquisition = "kde-screencast";
+#endif
+    } else if (session == "wayland" && desktop.contains("gnome")) {
+        QJsonObject mutter; QString reason;
+        const bool ok = MutterScreenCast::available(mutter, &reason); mutter["available"] = ok; if (!ok) mutter["reason"] = reason; result["mutterScreenCast"] = mutter;
+        if (ok) acquisition = "mutter-screencast";
+    }
+    result["acquisition"] = acquisition;
+    const bool nativeOk = acquisition == "kde-screencast" || acquisition == "mutter-screencast";
     const int sourceTypes = portal["sourceTypes"].toInt();
     QJsonArray targets;
     if (session == "x11" && liveSource) targets = QJsonArray{"monitor", "desktop", "region", "window"};
-    else if (portalOk && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (sourceTypes & int(PortalScreenCast::Window)) targets.append("window"); }
+    else if ((portalOk || nativeOk) && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (portalOk && (sourceTypes & int(PortalScreenCast::Window))) targets.append("window"); }
     result["targets"] = targets;
     result["audio"] = QJsonObject{{"system", result["liveCapture"].toObject()["audio"].toBool()}, {"microphone", false}};
     result["overlayExclusion"] = QJsonObject{};
-    const bool implemented = session == "x11" || portalOk;
+    const bool implemented = session == "x11" || portalOk || nativeOk;
     result["available"] = gst["available"].toBool() && liveSource && liveEncoder && !formats.isEmpty() && implemented;
     if (!result["available"].toBool())
         result["reason"] = !gst["available"].toBool() ? QStringLiteral("gstreamer_unavailable")

@@ -2,6 +2,10 @@
 #include "ClipExporter.h"
 #include "Overlays.h"
 #include "PortalScreenCast.h"
+#include "MutterScreenCast.h"
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+#include "KdeScreencast.h"
+#endif
 #include "RecordingPipeline.h"
 #include "ReviewWindow.h"
 #include "X11Targets.h"
@@ -36,6 +40,11 @@ private:
     void finishPrepare(Reply);
     // Wayland: share through the portal picker, then continue like X11 with the stream as the target.
     void preparePortal(Reply);
+    void prepareNative(Reply);
+    void finishWayland(quint32 node, int fd, const QRect& shared, const QRect& streamRect, const QString& source, Reply);
+    QString portalTokenKey() const;
+    QString loadPortalToken() const;
+    void storePortalToken(const QString&) const;
     void start(Reply);
     void stop(Reply);
     void cancelLocal();
@@ -56,6 +65,10 @@ private:
     bool prepared_ = false, recorded_ = false, overlayExcluded_ = true;
     RecordingPipeline pipeline_;
     PortalScreenCast portal_;
+    MutterScreenCast mutter_;
+#ifdef PUTGD_RECORD_KDE_SCREENCAST
+    KdeScreencast kde_;
+#endif
     int portalFd_ = -1;
     quint32 portalNode_ = 0;
     QRect portalCrop_;

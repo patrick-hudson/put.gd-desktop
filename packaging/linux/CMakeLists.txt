@@ -9,6 +9,12 @@ option(PUTGD_LAB_FIXTURE "Package independent synthetic desktop fixture (develop
 configure_file(app.desktop.in putgd.desktop @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd.desktop"
   DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+if(TARGET putgd-record)
+  # KWin grants its screencast protocol to the executable named by this entry's Exec.
+  configure_file(record.desktop.in putgd-record.desktop @ONLY)
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/putgd-record.desktop"
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/applications")
+endif()
 foreach(gnome_asset extension.js metadata.json)
   putgd_install_snapshot("${PROJECT_SOURCE_DIR}/integrations/gnome/${gnome_asset}"
     "${CMAKE_INSTALL_DATADIR}/gnome-shell/extensions/putgd@put.gd")
@@ -65,6 +71,8 @@ putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/ext-dat
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-ext-data-control-v1.xml)
 putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/wlr-data-control-unstable-v1.xml"
   "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-wlr-data-control-unstable-v1.xml)
+putgd_install_snapshot("${PROJECT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml"
+  "${CMAKE_INSTALL_DATADIR}/doc/putgd" RENAME wayland-zkde-screencast-unstable-v1.xml)
 # SDK license must come from the exact source tree provisioned by the build contract.
 set(PUTGD_AWS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/build/dependencies/aws-sdk-cpp" CACHE PATH "Pinned official SDK source")
 if(NOT EXISTS "${PUTGD_AWS_SOURCE_DIR}/LICENSE")

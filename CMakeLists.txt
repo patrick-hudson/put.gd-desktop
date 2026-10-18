@@ -310,15 +310,35 @@ if(PUTGD_RECORDING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   pkg_check_modules(PUTGD_GST IMPORTED_TARGET gstreamer-1.0>=1.24 gstreamer-video-1.0>=1.24 gstreamer-app-1.0>=1.24)
   pkg_check_modules(PUTGD_AV IMPORTED_TARGET libavcodec>=60.31 libavformat>=60.16 libavfilter>=9.12 libavutil>=58.29 libswscale>=7.5 libswresample>=4.12)
   if(PUTGD_GST_FOUND AND PUTGD_AV_FOUND)
-    add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/PortalScreenCast.cpp src/record/X11Targets.cpp src/record/RecordingPipeline.cpp src/record/ClipExporter.cpp src/record/RecordSession.cpp src/record/Overlays.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/core/RecordingModel.cpp)
+    add_executable(putgd-record src/record/main.cpp src/record/MediaProbe.cpp src/record/PortalScreenCast.cpp src/record/MutterScreenCast.cpp src/record/WaylandAcquisition.cpp src/record/X11Targets.cpp src/record/RecordingPipeline.cpp src/record/ClipExporter.cpp src/record/RecordSession.cpp src/record/Overlays.cpp src/record/ReviewWindow.cpp src/record/DebugLog.cpp src/core/RecordingModel.cpp)
     target_include_directories(putgd-record PRIVATE src)
     target_link_libraries(putgd-record PRIVATE putgd_build_options putgd_build_identity putgd_ui_control putgd_x11_native_snapshot Qt6::Core Qt6::Gui Qt6::Widgets Qt6::DBus PkgConfig::PUTGD_GST PkgConfig::PUTGD_AV PkgConfig::PUTGD_XCB)
+    if(TARGET putgd_kde)
+      # KWin's screencast protocol (vendored XML) for the dialog-free KDE path.
+      set(kde_screencast_protocol "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/kde/protocols/zkde-screencast-unstable-v1.xml")
+      add_custom_command(OUTPUT "${protocol_dir}/zkde-screencast-unstable-v1-client-protocol.h"
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" client-header "${kde_screencast_protocol}" "${protocol_dir}/zkde-screencast-unstable-v1-client-protocol.h"
+        DEPENDS "${kde_screencast_protocol}" VERBATIM)
+      add_custom_command(OUTPUT "${protocol_dir}/zkde-screencast-unstable-v1-protocol.c"
+        COMMAND "${PUTGD_WAYLAND_SCANNER}" private-code "${kde_screencast_protocol}" "${protocol_dir}/zkde-screencast-unstable-v1-protocol.c"
+        DEPENDS "${kde_screencast_protocol}" VERBATIM)
+      target_sources(putgd-record PRIVATE src/record/KdeScreencast.cpp
+        "${protocol_dir}/zkde-screencast-unstable-v1-client-protocol.h" "${protocol_dir}/zkde-screencast-unstable-v1-protocol.c"
+        "${protocol_dir}/xdg-output-unstable-v1-client-protocol.h" "${protocol_dir}/xdg-output-unstable-v1-protocol.c")
+      target_include_directories(putgd-record PRIVATE "${protocol_dir}")
+      target_compile_definitions(putgd-record PRIVATE PUTGD_RECORD_KDE_SCREENCAST=1)
+      target_link_libraries(putgd-record PRIVATE PkgConfig::PUTGD_WAYLAND)
+    endif()
     install(TARGETS putgd-record RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
     if(BUILD_TESTING)
       add_executable(test_portal_streams tests/unit/test_portal_streams.cpp src/record/PortalScreenCast.cpp src/record/DebugLog.cpp)
       target_include_directories(test_portal_streams PRIVATE src tests)
       target_link_libraries(test_portal_streams PRIVATE putgd_core putgd_build_options Qt6::Core Qt6::DBus Qt6::Test)
       add_test(NAME portal_streams_contract COMMAND test_portal_streams)
+      add_executable(test_wayland_acquisition tests/unit/test_wayland_acquisition.cpp src/record/WaylandAcquisition.cpp)
+      target_include_directories(test_wayland_acquisition PRIVATE src tests)
+      target_link_libraries(test_wayland_acquisition PRIVATE putgd_build_options Qt6::Core Qt6::Test)
+      add_test(NAME wayland_acquisition_contract COMMAND test_wayland_acquisition)
     endif()
   else()
     message(STATUS "putgd-record not built: GStreamer >= 1.24 and FFmpeg >= 6.1 development libraries are required; screen recording reports recording_helper_missing")

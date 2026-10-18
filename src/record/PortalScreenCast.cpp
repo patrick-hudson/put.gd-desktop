@@ -102,7 +102,9 @@ void PortalScreenCast::start(quint32 sourceTypes, const QString& restoreToken, D
         available(facts);
         const quint32 cursorModes = quint32(facts["cursorModes"].toInt());
         QVariantMap options{{"types", sourceTypes}, {"multiple", false}, {"cursor_mode", cursorModes & Embedded ? uint(Embedded) : uint(Hidden)}};
-        if (facts["portalVersion"].toInt() >= 4) { options["persist_mode"] = uint(restoreToken.isEmpty() ? 0 : 1); if (!restoreToken.isEmpty()) options["restore_token"] = restoreToken; }
+        // Version 4 portals hand back a restore token when asked to persist the
+        // grant; sending it next time skips the picker for the same source.
+        if (facts["portalVersion"].toInt() >= 4) { options["persist_mode"] = uint(2); if (!restoreToken.isEmpty()) options["restore_token"] = restoreToken; }
         debugLog("portal: SelectSources");
         guard->request("SelectSources", {QVariant::fromValue(QDBusObjectPath(guard->session_))}, options, [guard](quint32 code, QVariantMap) {
             if (!guard) return;
